@@ -61,10 +61,11 @@ lib/features/generation/providers/job.dart     ← ref.watch(generationProviderP
 
 | Scope | Riverpod Modifier | Example |
 |---|---|---|
-| App singleton | `keepAlive` | Database, dio instance, repositories |
-| Screen/feature | `autoDispose` | ViewModels, controllers, form state |
+| App singleton | `keepAlive` | Database, dio, repositories, **JobQueueService**, **FileResolverService**, **PerformanceDegradationController**, **SecureStorageService**, **LoggerService** |
+| Per-provider | `keepAlive` family | **ProviderRateLimiter(providerId)** — token bucket state must survive screen switches |
+| Screen/feature | `autoDispose` | ViewModels, controllers, form state, inline panel state |
 | Job queue | `keepAlive` | JobQueueService — outlives screens |
-| Transient | `autoDispose` | API call state, dialog state |
+| Transient | `autoDispose` | API call state, dialog state, IME composing guard |
 
 ```dart
 // ✅ Correct — lifecycle declared explicitly
@@ -164,6 +165,15 @@ Raw value  →  Token constant     →  ThemeData extension  →  Widget usage
 `lib/theme/components/` — the only place raw token values are used directly.
 Feature code always uses Ink components (`InkCard`, `InkButton`, etc.).
 
+`InkColors` exposes three factories — `dark()`, `light()`, `highContrast()` —
+selected by `ThemeModeController` which observes:
+1. Settings → General → Theme (`dark` / `light` / `system`)
+2. `PlatformDispatcher.platformBrightnessChanged` (when `system`)
+3. Settings → General → High Contrast (overrides 1 & 2)
+
+`context.inkColors` returns the resolved set. Widgets never branch on theme —
+they just read tokens, and the token set is swapped.
+
 ---
 
 ## i18n Architecture
@@ -203,6 +213,77 @@ Rules:
 
 ---
 
+## Error Taxonomy
+
+All errors implement `InkError` with a discriminated `code` from PRD §10.6.
+
+```dart
+sealed class InkError implements Exception {
+  String get code;               // 'invalid_key' | 'network_timeout' | ...
+  String get messageKey;         // i18n ARB key, e.g. 'errorInvalidKey'
+  bool   get retryable;          // drives retry policy in JobQueueService
+  Map<String, Object?> get extra;
+}
+
+final class ProviderError  extends InkError {}   // auth / quota / request validation
+final class NetworkError   extends InkError {}   // timeout / offline / 5xx / busy
+final class DownloadError  extends InkError {}   // download_failed
+final class LocalIOError   extends InkError {}   // disk full / permission denied
+final class CancelledError extends InkError {}   // by_user / on_exit
+```
+
+**Rule:** No layer above Infrastructure may construct raw `Exception`.
+Services translate infrastructure exceptions to `InkError` at the boundary.
+ViewModels propagate via `AsyncError(InkError)`.
+Widgets render via `InkErrorBanner` which reads `messageKey` for i18n.
+
+---
+
+## Concurrency & Rate Limiting
+
+Two-tier throttling, both owned at app scope, both observable via Riverpod:
+
+```
+┌─ JobQueueService (global) ──────────────────────────────┐
+│  maxConcurrent = PerformanceTier.maxConcurrentJobs      │
+│  FIFO across all canvases                               │
+│  pending → submitted → polling → terminal               │
+└────────────────────┬────────────────────────────────────┘
+                     │ acquire global slot
+                     ▼
+┌─ ProviderRateLimiter(providerId) (per-provider) ────────┐
+│  Token bucket: qps + burst                              │
+│  Blocks before each HTTP call, not counted as retry     │
+└─────────────────────────────────────────────────────────┘
+```
+
+Both are `Provider.family` / `keepAlive`. Neither is a static singleton.
+Unit tests override both via `ProviderContainer` with fake clocks.
+
+---
+
+## File Path Resolution
+
+Database stores only canvas-relative paths (`images/{uuid}.png`).
+No layer holds absolute paths except `FileResolverService`:
+
+```dart
+abstract class FileResolverService {
+  /// nodes.type_config.image_url → absolute file path
+  File resolve(String canvasId, String relativePath);
+
+  /// reverse: dropped file path → canvas-relative path
+  String toRelative(String canvasId, File source);
+}
+```
+
+**Rule:** Widgets and ViewModels MUST go through `FileResolverService`.
+Direct `File(nodeState.imageUrl)` is a violation — it breaks data-dir
+migration (PRD §12.6) and makes integration tests depend on host filesystem
+layout.
+
+---
+
 ## freezed Model Pattern
 
 ```dart
@@ -227,6 +308,24 @@ final updated = task.copyWith(status: TaskStatus.running);
 // ❌ Never
 task.status = TaskStatus.running;
 ```
+
+---
+
+## Accessibility
+
+A11y is a layered responsibility, not a one-off review. Rules:
+
+1. **Every Ink component** declares `Semantics(label:)` — widgets receive labels
+   via `context.l10n`, never hardcoded strings.
+2. **State changes** (job success/error, toast) call `SemanticsService.announce()`.
+3. **Focus management** — `FocusNode` trees are owned at ViewModel layer, not
+   scattered across widgets.
+4. **`MediaQuery.disableAnimations`** is honored globally via a `reduceMotion`
+   token; widgets reading animation duration get `Duration.zero` when active.
+5. **Keyboard equivalents** — every pointer action has a keyboard counterpart
+   registered in `KeybindingRegistry`. CI verifies coverage ≥ 95%.
+
+Scope: PRD §20.1 baseline for v0.1.0. WCAG 2.1 AA certification is out of scope.
 
 ---
 
@@ -272,3 +371,19 @@ const klingKey = 'sk-...';                     // hardcoded
 final key = prefs.getString('kling_api_key');  // insecure storage
 final key = db.query('SELECT key FROM ...');   // database — wrong
 ```
+
+---
+
+## Runtime Performance Degradation
+
+`PerformanceDegradationController` (app-scoped, `keepAlive`) samples:
+- Process RSS via `dart:io` / platform channel
+- Frame time via `SchedulerBinding.addTimingsCallback`
+- Disk free space via `path_provider` + stat
+
+On threshold breach (PRD §3.9.2), it mutates `effectivePerformanceTier` — a
+derived provider that token caches, animation durations, and connection renderers
+read. Hysteresis (60s cooldown, 30s sustain) prevents flapping.
+
+Degradation is **observable**: widgets never read raw signals, only the derived
+tier. The controller is overridable in tests with deterministic signal streams.
