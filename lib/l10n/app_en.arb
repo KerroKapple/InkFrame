@@ -1,0 +1,30 @@
+{
+  "@@locale": "en",
+  "appTitle": "InkFrame",
+  "@appTitle": {
+    "description": "Application display name"
+  },
+
+  "commonOk": "OK",
+  "commonCancel": "Cancel",
+  "commonRetry": "Retry",
+  "commonClose": "Close",
+  "commonSave": "Save",
+  "commonDelete": "Delete",
+  "commonConfirm": "Confirm",
+
+  "errorInvalidKey": "API key is invalid. Check your provider settings.",
+  "errorInsufficientBalance": "Provider account has insufficient balance.",
+  "errorContentPolicy": "The content policy rejected this request.",
+  "errorInvalidParameter": "One or more request parameters are invalid.",
+  "errorNetworkTimeout": "Network timed out. Please retry.",
+  "errorNetworkOffline": "Network is offline. Check your connection.",
+  "errorProviderServer": "The provider service is unavailable. Please retry.",
+  "errorProviderBusy": "The provider is busy. Please retry shortly.",
+  "errorPollTimeout": "Generation did not complete within the time limit.",
+  "errorDownloadFailed": "Failed to download the generated asset.",
+  "errorLocalIO": "Local disk I/O error. Check space and permissions.",
+  "errorCancelled": "Cancelled by user.",
+  "errorCancelledOnExit": "Cancelled because the application is exiting.",
+  "errorUnknown": "An unknown error occurred."
+}

@@ -103,9 +103,9 @@ void main() {
 
   group('toLogJson', () {
     test('serializes wire code + retryable + extra', () {
-      final err = NetworkError(
+      const err = NetworkError(
         code: InkErrorCode.networkTimeout,
-        extra: const <String, Object?>{'host': 'api.klingai.com'},
+        extra: <String, Object?>{'host': 'api.klingai.com'},
       );
       final json = err.toLogJson();
       expect(json['code'], 'network_timeout');

@@ -1,0 +1,27 @@
+{
+  "@@locale": "zh",
+  "appTitle": "InkFrame",
+
+  "commonOk": "确定",
+  "commonCancel": "取消",
+  "commonRetry": "重试",
+  "commonClose": "关闭",
+  "commonSave": "保存",
+  "commonDelete": "删除",
+  "commonConfirm": "确认",
+
+  "errorInvalidKey": "API Key 无效，请检查 Provider 设置。",
+  "errorInsufficientBalance": "Provider 账户余额不足。",
+  "errorContentPolicy": "内容审核拒绝了该请求。",
+  "errorInvalidParameter": "请求参数不合法。",
+  "errorNetworkTimeout": "网络超时，请稍后重试。",
+  "errorNetworkOffline": "网络不可用，请检查连接。",
+  "errorProviderServer": "Provider 服务暂不可用，请稍后重试。",
+  "errorProviderBusy": "Provider 繁忙，请稍后重试。",
+  "errorPollTimeout": "生成任务超时未完成。",
+  "errorDownloadFailed": "下载生成产物失败。",
+  "errorLocalIO": "本地磁盘 I/O 错误，请检查空间与权限。",
+  "errorCancelled": "已被用户取消。",
+  "errorCancelledOnExit": "应用退出，已取消任务。",
+  "errorUnknown": "未知错误。"
+}
