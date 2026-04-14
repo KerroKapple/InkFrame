@@ -55,3 +55,19 @@ inkframe_userdata/
 
 # CI 临时
 /untranslated.json
+
+# 敏感信息 — 任何密钥/凭证文件永不入仓
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+secrets/
+credentials/
+.aws/
+.ssh/
+*.crt
