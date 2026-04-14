@@ -12,9 +12,16 @@ import 'package:postgres/postgres.dart';
 
 /// 单条迁移：版本号递增 + SQL 语句块。
 class Migration {
-  const Migration({required this.version, required this.sql});
+  const Migration({
+    required this.version,
+    required this.sql,
+    this.queryMode = QueryMode.simple,
+  });
   final int version;
   final String sql;
+
+  /// 多语句 DDL 在 postgres-dart 上必须走 simple 协议；默认即为 simple。
+  final QueryMode queryMode;
 }
 
 class SchemaMigrationError extends StateError {
@@ -81,7 +88,7 @@ class MigrationRunner {
     for (final m in pending) {
       // v=1 的 SQL 自身会 UPSERT schema_version.version=1。
       // v≥2 的 SQL 不应自己写 schema_version；runner 负责统一 UPSERT。
-      await _session.execute(m.sql);
+      await _session.execute(m.sql, queryMode: m.queryMode);
       if (m.version > 1) {
         // version 由 runner 自身控制，用字符串插值而非绑定参数，
         // 便于测试断言 SQL 内容；无注入风险。
