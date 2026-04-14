@@ -34,6 +34,12 @@ dependencies:
   # 核心 Material / Cupertino
   cupertino_icons: ^1.0.8
 
+  # 嵌入式 PostgreSQL 客户端（T2 存储层）
+  postgres: ^3.5.9
+
+  # UUID 生成（repository 主键、测试装置）
+  uuid: ^4.5.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
