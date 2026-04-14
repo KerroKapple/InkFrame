@@ -1,0 +1,79 @@
+# InkFrame CI
+# 触发：push 到 main / 任何 PR。三条并行 job：analyze / test / golden。
+# Runner 用 ubuntu-latest 控成本，macOS/Windows 烟测放到 release 流水线。
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  FLUTTER_VERSION: 3.41.6
+
+jobs:
+  analyze:
+    name: analyze + hooks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze
+      - name: hook / i18n coverage
+        run: bash scripts/hooks/check-i18n-coverage.sh
+      - name: hook / inline styles
+        run: bash scripts/hooks/check-inline-styles.sh
+      - name: hook / magic strings
+        run: bash scripts/hooks/check-magic-strings.sh
+      - name: hook / direct instantiation
+        run: bash scripts/hooks/check-direct-instantiation.sh
+      - name: hook / disposable cleanup
+        run: bash scripts/hooks/check-disposable-cleanup.sh
+
+  test:
+    name: test + coverage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      - name: flutter test --coverage
+        run: flutter test --coverage
+      - name: enforce coverage threshold (70%)
+        uses: VeryGoodOpenSource/very_good_coverage@v3
+        with:
+          path: coverage/lcov.info
+          min_coverage: 70
+
+  golden:
+    name: golden
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      # T1 阶段无 golden test；占位 job 保证 T5 落地时不用改 workflow。
+      - name: run golden tests (if any)
+        run: |
+          if ls test/**/*_golden_test.dart >/dev/null 2>&1; then
+            flutter test test/**/*_golden_test.dart
+          else
+            echo "no golden tests yet — skipping"
+          fi
