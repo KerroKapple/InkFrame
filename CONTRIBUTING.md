@@ -1,20 +1,54 @@
 # Contributing to InkFrame
 
-## 分支策略
+## 分支模型（简化 git-flow）
 
-- `main`：受保护分支。所有改动走 PR。
-- `feat/<scope>-<desc>` / `fix/<scope>-<desc>` / `chore/<desc>`：短命 feature branch，完成即合并即删除。
-- 每个 PR 对应一个 T（T1 工程骨架 / T2 存储层 …），PR 标题带 T 编号。
+```
+main        ← 只接 release-quality 代码，每次合入打 tag (v0.1.0 / v0.1.1 / ...)
+ │
+ ├─ dev    ← 集成主干。所有 feature/fix 合这里。日常开发默认目标
+ │   │
+ │   ├─ feature/<scope>-<kebab-desc>   新功能，≤ 3 天合回 dev
+ │   ├─ fix/<issue-id>-<desc>          非紧急 bugfix
+ │   ├─ chore/<desc>                   仓库维护、依赖升级、CI 调整
+ │   ├─ docs/<desc>                    纯文档变更
+ │   └─ test/<desc>                    纯测试补齐
+ │
+ ├─ release/v0.1.x                     版本冻结分支，只接 bugfix，合 main + 回合 dev
+ └─ hotfix/<issue-id>-<desc>           线上紧急修复，从 main 分叉，合 main + 回合 dev
+```
+
+**铁律：**
+- `main` / `dev` 均受保护。禁止直接 push，全部走 PR
+- `main` 只从 `release/*` 或 `hotfix/*` 合进来
+- feature 分支超过 3 天必须每日 rebase dev，避免大合并冲突
+
+## 命名规范
+
+| 类型 | 前缀 | 举例 |
+|---|---|---|
+| 功能 | `feature/` | `feature/canvas-node-dragging` |
+| 修复 | `fix/` | `fix/GH-42-job-queue-deadlock` |
+| 紧急 | `hotfix/` | `hotfix/GH-99-api-key-leak` |
+| 维护 | `chore/` | `chore/bump-dio-5.4` |
+| 文档 | `docs/` | `docs/architecture-v2` |
+| 测试 | `test/` | `test/storage-cascade-matrix` |
+| 版本 | `release/` | `release/v0.1.0` |
+
+全小写 + kebab-case。不允许驼峰 / 下划线 / 中文。
 
 ## Commit 规范（Conventional Commits）
 
 ```
 <type>(<scope>): <subject>
+
+<可选正文，72 字换行，说 why 不说 what>
+
+<可选 footer：BREAKING CHANGE / Closes #42 / Co-Authored-By>
 ```
 
-- **type**: `feat` / `fix` / `refactor` / `test` / `docs` / `chore`
-- **scope**: `core` / `theme` / `l10n` / `storage` / `canvas` / `script` / `generation` / `ci` / ...
-- **subject**: 祈使句、≤ 60 char、中英文均可
+- **type**: `feat` / `fix` / `refactor` / `perf` / `test` / `docs` / `style` / `build` / `ci` / `chore`
+- **scope**: `canvas` / `script` / `generation` / `storyboard` / `assets` / `settings` / `jobs` / `theme` / `l10n` / `storage` / `providers` / `core` / ...
+- **subject**: 祈使句、≤ 50 char、中英文均可
 
 示例：
 - `feat(theme): design tokens with dark/light/high-contrast variants`
@@ -23,12 +57,24 @@
 
 ## PR 流程
 
-1. fork / 切 feature branch
+1. 从 `dev` 切 feature branch（hotfix 除外：从 `main` 切）
 2. 本地跑 `flutter analyze && flutter test`
-3. 提交前 pre-commit hook 会自动跑硬规则检查（i18n / tokens / magic strings / 直接实例化 / Disposable）
-4. 推送前 pre-push hook 会跑 `flutter test`
-5. 开 PR，CI（analyze / test / golden）全绿才能合并
-6. Squash merge 或 rebase merge，**不做 merge commit**
+3. `git commit` 时 pre-commit hook 自动跑 5 条硬规则（i18n / tokens / magic strings / 直接实例化 / Disposable）
+4. `git push` 时 pre-push hook 自动跑 `flutter test`
+5. 开 PR 到 `dev`（hotfix/release 开 PR 到 `main`）
+6. CI 全绿 + 至少 1 个 approve 才能合
+7. 合并策略：
+   - `feature/*` / `fix/*` / `chore/*` / `docs/*` / `test/*` → `dev`：**Squash merge**（保持 dev 线性）
+   - `release/*` / `hotfix/*` → `main`：**Merge commit**（保留 release 历史 + tag）
+   - `main` 变更回合 `dev`：**Merge commit**
+8. 合并后 GitHub 自动删除源分支
+
+## Tag & Release
+
+- 合入 `main` 后必须打 annotated tag：`git tag -a v0.1.0 -m "..."`
+- 严格 SemVer：`vMAJOR.MINOR.PATCH`
+- Pre-release：`v0.1.0-alpha.1` / `v0.1.0-rc.1`
+- Release note 用 `gh release create v0.1.0 --generate-notes`
 
 ## 本地 Hook 安装（首次 clone 必做）
 
@@ -59,8 +105,10 @@ lcov --summary coverage/lcov.info      # 摘要
 
 ## 不许做的
 
-- `git commit --no-verify`
-- `git push --force` 到 `main`
+- `git commit --no-verify` 绕过 pre-commit hook
+- `git push --force` 到 `main` 或 `dev`（自己的 feature 分支可用 `--force-with-lease`）
+- 在一个 PR 里混"重构 + 新功能"——分开提
+- 跨 feature 分支互相 merge（会形成毛线团，用 rebase dev）
 - 在 widget 里写硬编码字符串（用 `context.l10n`）
 - 在 widget 里写硬编码颜色/字号（用 `context.inkColors` / `context.inkTypography`）
 - 直接 `new Service()`（必须走 Riverpod provider）
