@@ -1,0 +1,4 @@
+tags:
+  pg:
+    # 真 PG 集成测：需环境变量 TEST_PG_URL
+    # 未设置时用例内 markTestSkipped，不阻塞默认测试运行。

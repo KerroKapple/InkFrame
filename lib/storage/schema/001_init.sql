@@ -1,5 +1,5 @@
--- pgcrypto 提供 gen_random_uuid()
-CREATE EXTENSION IF NOT EXISTS pgcrypto;
+-- NOTE: pgcrypto（gen_random_uuid 来源）由上层 MigrationRunner 或测试 harness
+-- 先行安装一次，避免并发 CREATE EXTENSION 竞争。
 
 -- =====================================================================
 -- schema_version（单行表，约束 id=1）

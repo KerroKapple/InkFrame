@@ -10,7 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../storage/pg_binary_locator.dart';
+import '../../storage/migrations/migration_runner.dart';
 import '../../storage/pg_controller.dart';
+import '../../storage/schema/schema_v1.dart';
 import 'paths.dart';
 
 /// 二进制定位器——默认按平台探测；单测可以覆盖为指向测试 fixture。
@@ -58,4 +60,27 @@ final pgConnectionProvider = FutureProvider<Connection>(
     return conn;
   },
   name: 'pgConnectionProvider',
+);
+
+
+/// Connection + schema migrated——应用层仓储层实际应该依赖的 provider。
+/// 首次读：启动 PG → 建连 → CREATE EXTENSION pgcrypto → MigrationRunner.migrate()。
+final pgMigratedConnectionProvider = FutureProvider<Connection>(
+  (ref) async {
+    final conn = await ref.watch(pgConnectionProvider.future);
+    // pgcrypto：gen_random_uuid() 依赖；IF NOT EXISTS 幂等。
+    try {
+      await conn.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+    } on ServerException catch (e) {
+      // 23505 并发竞争；其余重抛。
+      if (e.code != '23505') rethrow;
+    }
+    final runner = MigrationRunner(
+      conn,
+      migrations: const [Migration(version: 1, sql: kSchemaV1)],
+    );
+    await runner.migrate();
+    return conn;
+  },
+  name: 'pgMigratedConnectionProvider',
 );
