@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# pre-commit: 快速闸门，总耗时目标 ≤ 10s。
+#   1) flutter analyze —— 0 warning 才过
+#   2) 5 个硬规则检查（i18n / tokens / magic strings / 直接实例化 / Disposable）
+# 任一步非零退出即阻断 commit。
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+echo "[pre-commit] flutter analyze"
+flutter analyze
+
+HOOKS_DIR="$REPO_ROOT/scripts/hooks"
+CHECKS=(
+  "check-i18n-coverage.sh"
+  "check-inline-styles.sh"
+  "check-magic-strings.sh"
+  "check-direct-instantiation.sh"
+  "check-disposable-cleanup.sh"
+)
+
+for script in "${CHECKS[@]}"; do
+  echo "[pre-commit] $script"
+  bash "$HOOKS_DIR/$script"
+done
+
+echo "[pre-commit] OK"

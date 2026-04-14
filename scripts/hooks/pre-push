@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# pre-push: 跑全量测试。失败阻断 push。
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+echo "[pre-push] flutter test"
+flutter test
+
+echo "[pre-push] OK"

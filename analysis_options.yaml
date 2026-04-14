@@ -1,0 +1,35 @@
+# InkFrame 静态分析配置：零警告基线 + custom_lint（Riverpod 规则）
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # 警告一律阻断 CI
+    missing_required_param: error
+    missing_return: error
+    todo: ignore
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "lib/l10n/generated/**"
+    - "build/**"
+    - ".dart_tool/**"
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    always_declare_return_types: true
+    avoid_empty_else: true
+    avoid_relative_lib_imports: true
+    avoid_types_as_parameter_names: true
+    cancel_subscriptions: true
+    close_sinks: true
+    prefer_const_constructors: true
+    prefer_const_declarations: true
+    prefer_final_fields: true
+    prefer_final_locals: true
+    unawaited_futures: true
+    use_key_in_widget_constructors: true
