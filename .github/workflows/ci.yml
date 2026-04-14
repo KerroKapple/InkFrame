@@ -36,10 +36,28 @@ jobs:
         run: bash scripts/hooks/check-direct-instantiation.sh
       - name: hook / disposable cleanup
         run: bash scripts/hooks/check-disposable-cleanup.sh
+      - name: hook / updated_at maintenance
+        run: bash scripts/hooks/check-updated-at.sh
 
   test:
     name: test + coverage
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: inkframe
+          POSTGRES_PASSWORD: inkframe
+          POSTGRES_DB: inkframe_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U inkframe"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      TEST_PG_URL: postgres://inkframe:inkframe@127.0.0.1:5432/inkframe_test?sslmode=disable
     steps:
       - uses: actions/checkout@v4
       - uses: subosito/flutter-action@v2

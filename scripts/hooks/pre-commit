@@ -18,6 +18,7 @@ CHECKS=(
   "check-magic-strings.sh"
   "check-direct-instantiation.sh"
   "check-disposable-cleanup.sh"
+  "check-updated-at.sh"
 )
 
 for script in "${CHECKS[@]}"; do

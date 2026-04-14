@@ -65,3 +65,43 @@ lcov --summary coverage/lcov.info      # 摘要
 - 在 widget 里写硬编码颜色/字号（用 `context.inkColors` / `context.inkTypography`）
 - 直接 `new Service()`（必须走 Riverpod provider）
 - 为老 schema 留 migration / 向后兼容代码（InkFrame 明确 zero backward compat）
+
+
+## 本地 PostgreSQL（T2 存储层）
+
+InkFrame 使用嵌入式 PostgreSQL 17 作为本地存储。开发阶段有两种方式：
+
+### 方式 A：Homebrew 本地 PG（推荐开发机）
+
+```bash
+brew install postgresql@17
+brew services start postgresql@17
+createdb inkframe_test
+
+# 跑集成测
+export TEST_PG_URL="postgres://$(whoami)@127.0.0.1:5432/inkframe_test?sslmode=disable"
+flutter test
+```
+
+未设置 `TEST_PG_URL` 时，标记 `@Tags(['pg'])` 的集成测会自动 skip，不阻塞常规开发。
+
+### 方式 B：嵌入二进制（发布打包）
+
+```bash
+export PG_ARTIFACT_BASE_URL=<对象存储 base URL>
+./scripts/pg/fetch-binaries.sh
+```
+
+拉取脚本会按 `scripts/pg/pg-version.txt`（当前 17.2）校验 SHA256，写入：
+- macOS: `macos/Runner/Resources/pg/<platform>/bin + /lib`
+- Windows: `windows/runner/resources/pg/<platform>/bin + /lib`
+
+未配置对象存储时脚本输出 `NOT_CONFIGURED`，不会误判成功。
+
+### Schema 与迁移
+
+- `lib/storage/schema/schema_v1.dart`：v=1 首版 DDL（真相源）
+- `lib/storage/schema/001_init.sql`：文档镜像，运行时不加载
+- `MigrationRunner` 按版本号扫描后续 `002_*.sql`，高版本拒绝回滚
+
+所有 `UPDATE` 语句必须 `SET updated_at = ...`（应用层维护）。pre-commit 的 `check-updated-at.sh` 会拦截违规。
