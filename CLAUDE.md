@@ -191,12 +191,15 @@ lib/
 │   ├── assets/                  # Asset browser
 │   ├── settings/                # Settings
 │   └── jobs/                    # Job queue
-├── providers/                   # AI provider implementations
-│   ├── provider_interface.dart  # Abstract contract
-│   ├── wanx_provider.dart
-│   ├── banana_provider.dart
-│   ├── kling_provider.dart
-│   └── seedance_provider.dart
+├── providers/                   # AI provider implementations (see docs/PROVIDER-API.md)
+│   ├── provider_registry.dart   # id → factory mapping
+│   ├── rate_limiter.dart        # Per-provider token bucket
+│   ├── auth/                    # Volc HMAC signer, Kling JWT renewal
+│   ├── gemini_image_provider.dart
+│   ├── jimeng_image_provider.dart
+│   ├── kling_image_provider.dart
+│   ├── kling_video_provider.dart
+│   └── hailuo_video_provider.dart
 ├── storage/                     # Database layer
 │   ├── database.dart            # PG connection management
 │   ├── repositories/            # Concrete repository implementations
