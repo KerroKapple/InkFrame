@@ -1,0 +1,10 @@
+{
+  "models": [
+    {
+      "name": "models/gemini-2.5-flash-image-preview",
+      "displayName": "Gemini 2.5 Flash Image Preview",
+      "supportedGenerationMethods": ["generateContent"]
+    }
+  ],
+  "nextPageToken": ""
+}
