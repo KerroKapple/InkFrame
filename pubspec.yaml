@@ -18,7 +18,7 @@ dependencies:
   riverpod_annotation: ^2.6.1
 
   # 不可变模型
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
 
   # 国际化 / 格式化
@@ -49,7 +49,7 @@ dev_dependencies:
   # 代码生成
   build_runner: ^2.4.15
   riverpod_generator: ^2.6.3
-  freezed: ^2.5.7
+  freezed: ^3.0.0
   json_serializable: ^6.9.0
   custom_lint: ^0.7.0
   riverpod_lint: ^2.6.3
