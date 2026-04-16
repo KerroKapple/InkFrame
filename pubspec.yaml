@@ -40,6 +40,9 @@ dependencies:
   # UUID 生成（repository 主键、测试装置）
   uuid: ^4.5.3
 
+  # HTTP 客户端（Provider 层）
+  dio: ^5.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -53,6 +56,9 @@ dev_dependencies:
   json_serializable: ^6.9.0
   custom_lint: ^0.7.0
   riverpod_lint: ^2.6.3
+
+  # Provider 层 HTTP mock
+  http_mock_adapter: ^0.6.1
 
 flutter:
   uses-material-design: true
