@@ -41,8 +41,8 @@ lcov --summary coverage/lcov.info
 
 ## Architecture
 
-详见 [CLAUDE.md](CLAUDE.md)（SOLID / DI / i18n / Design Tokens 规则）与 `docs/ARCHITECTURE.md`。
+详见 [docs/CLAUDE.md](docs/CLAUDE.md)（SOLID / DI / i18n / Design Tokens 规则）与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
 ## Contributing
 
-见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+见 [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)。

@@ -130,7 +130,7 @@ lcov --summary coverage/lcov.info      # 摘要
 
 ## 代码规范
 
-- **SOLID / DI / i18n / Design Tokens 硬规则**：见仓库根 [CLAUDE.md](CLAUDE.md)。Widget 里任何硬编码字符串 / 硬编码颜色字号 / 直接 `new Service()` 都会被 hook 拦下
+- **SOLID / DI / i18n / Design Tokens 硬规则**：见 [CLAUDE.md](CLAUDE.md)。Widget 里任何硬编码字符串 / 硬编码颜色字号 / 直接 `new Service()` 都会被 hook 拦下
 - **模型**：全部 freezed；禁止可变 class / `Map<String, dynamic>` 当模型用
 - **异常**：每个 domain 一个 exception type；禁止 `catch (e)` 吞通用 Exception
 - **架构蓝图**：`docs/ARCHITECTURE.md`
