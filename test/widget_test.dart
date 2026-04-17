@@ -23,8 +23,8 @@ void main() {
         child: const InkFrameApp(),
       ),
     );
-    // 首屏为 StatelessWidget + 同步 l10n，一帧即可稳定。
     await tester.pump();
-    expect(find.text('InkFrame'), findsOneWidget);
+    // 画布空态提示（CanvasView 替代了 HomeStubScreen）
+    expect(find.textContaining('node'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

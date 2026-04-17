@@ -26,5 +26,17 @@
   "errorLocalIO": "Local disk I/O error. Check space and permissions.",
   "errorCancelled": "Cancelled by user.",
   "errorCancelledOnExit": "Cancelled because the application is exiting.",
-  "errorUnknown": "An unknown error occurred."
+  "errorUnknown": "An unknown error occurred.",
+
+  "canvasEmptyHint": "Right-click or press + to add a node",
+  "canvasNodeDefaultLabel": "New Node",
+  "canvasNodeImageType": "Image",
+  "canvasAddNode": "Add Node",
+  "canvasDeleteNode": "Delete Node",
+  "canvasNodesSelected": "{count} node(s) selected",
+  "@canvasNodesSelected": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  }
 }
