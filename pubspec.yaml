@@ -42,6 +42,7 @@ dependencies:
 
   # HTTP 客户端（Provider 层）
   dio: ^5.7.0
+  flutter_secure_storage: ^10.0.0
 
 dev_dependencies:
   flutter_test:
