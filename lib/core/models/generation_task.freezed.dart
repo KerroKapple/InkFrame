@@ -16,7 +16,11 @@ mixin _$GenerationTask {
 
 /// 目标 Provider ID（kebab-case，与 capabilities.providerId 一致）。
  String get providerId;/// 业务侧 jobId（对应 jobs.id）。Provider 层只读不写。
- String get jobId;/// 模式（决定调用哪个 Provider 端点）。
+ String get jobId;/// 所属项目 id（生产 path 必填，单测可为 null）。落盘路径需要它。
+ String? get projectId;/// 所属画布 id（生产 path 必填，单测可为 null）。落盘路径需要它。
+ String? get canvasId;/// 结果节点 id（生产 path 必填，单测可为 null）。
+/// 写完盘后 NodeRepository.update({image_url: ...}) 用到。
+ String? get resultNodeId;/// 模式（决定调用哪个 Provider 端点）。
  GenerationMode get mode;/// 已完成风格注入的完整 prompt。
  String get prompt;/// 负向 prompt（若 Provider 支持）。
  String? get negativePrompt;/// 分辨率。
@@ -39,16 +43,16 @@ $GenerationTaskCopyWith<GenerationTask> get copyWith => _$GenerationTaskCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerationTask&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.negativePrompt, negativePrompt) || other.negativePrompt == negativePrompt)&&(identical(other.resolution, resolution) || other.resolution == resolution)&&(identical(other.aspectRatio, aspectRatio) || other.aspectRatio == aspectRatio)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds)&&(identical(other.camera, camera) || other.camera == camera)&&const DeepCollectionEquality().equals(other.refImagePaths, refImagePaths)&&(identical(other.firstFramePath, firstFramePath) || other.firstFramePath == firstFramePath)&&(identical(other.lastFramePath, lastFramePath) || other.lastFramePath == lastFramePath)&&(identical(other.seed, seed) || other.seed == seed)&&(identical(other.batchSize, batchSize) || other.batchSize == batchSize));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerationTask&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.negativePrompt, negativePrompt) || other.negativePrompt == negativePrompt)&&(identical(other.resolution, resolution) || other.resolution == resolution)&&(identical(other.aspectRatio, aspectRatio) || other.aspectRatio == aspectRatio)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds)&&(identical(other.camera, camera) || other.camera == camera)&&const DeepCollectionEquality().equals(other.refImagePaths, refImagePaths)&&(identical(other.firstFramePath, firstFramePath) || other.firstFramePath == firstFramePath)&&(identical(other.lastFramePath, lastFramePath) || other.lastFramePath == lastFramePath)&&(identical(other.seed, seed) || other.seed == seed)&&(identical(other.batchSize, batchSize) || other.batchSize == batchSize));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,providerId,jobId,mode,prompt,negativePrompt,resolution,aspectRatio,durationSeconds,camera,const DeepCollectionEquality().hash(refImagePaths),firstFramePath,lastFramePath,seed,batchSize);
+int get hashCode => Object.hash(runtimeType,providerId,jobId,projectId,canvasId,resultNodeId,mode,prompt,negativePrompt,resolution,aspectRatio,durationSeconds,camera,const DeepCollectionEquality().hash(refImagePaths),firstFramePath,lastFramePath,seed,batchSize);
 
 @override
 String toString() {
-  return 'GenerationTask(providerId: $providerId, jobId: $jobId, mode: $mode, prompt: $prompt, negativePrompt: $negativePrompt, resolution: $resolution, aspectRatio: $aspectRatio, durationSeconds: $durationSeconds, camera: $camera, refImagePaths: $refImagePaths, firstFramePath: $firstFramePath, lastFramePath: $lastFramePath, seed: $seed, batchSize: $batchSize)';
+  return 'GenerationTask(providerId: $providerId, jobId: $jobId, projectId: $projectId, canvasId: $canvasId, resultNodeId: $resultNodeId, mode: $mode, prompt: $prompt, negativePrompt: $negativePrompt, resolution: $resolution, aspectRatio: $aspectRatio, durationSeconds: $durationSeconds, camera: $camera, refImagePaths: $refImagePaths, firstFramePath: $firstFramePath, lastFramePath: $lastFramePath, seed: $seed, batchSize: $batchSize)';
 }
 
 
@@ -59,7 +63,7 @@ abstract mixin class $GenerationTaskCopyWith<$Res>  {
   factory $GenerationTaskCopyWith(GenerationTask value, $Res Function(GenerationTask) _then) = _$GenerationTaskCopyWithImpl;
 @useResult
 $Res call({
- String providerId, String jobId, GenerationMode mode, String prompt, String? negativePrompt, Resolution resolution, AspectRatio aspectRatio, int durationSeconds, CameraMovement? camera, List<String> refImagePaths, String? firstFramePath, String? lastFramePath, int? seed, int batchSize
+ String providerId, String jobId, String? projectId, String? canvasId, String? resultNodeId, GenerationMode mode, String prompt, String? negativePrompt, Resolution resolution, AspectRatio aspectRatio, int durationSeconds, CameraMovement? camera, List<String> refImagePaths, String? firstFramePath, String? lastFramePath, int? seed, int batchSize
 });
 
 
@@ -76,11 +80,14 @@ class _$GenerationTaskCopyWithImpl<$Res>
 
 /// Create a copy of GenerationTask
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? providerId = null,Object? jobId = null,Object? mode = null,Object? prompt = null,Object? negativePrompt = freezed,Object? resolution = null,Object? aspectRatio = null,Object? durationSeconds = null,Object? camera = freezed,Object? refImagePaths = null,Object? firstFramePath = freezed,Object? lastFramePath = freezed,Object? seed = freezed,Object? batchSize = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? providerId = null,Object? jobId = null,Object? projectId = freezed,Object? canvasId = freezed,Object? resultNodeId = freezed,Object? mode = null,Object? prompt = null,Object? negativePrompt = freezed,Object? resolution = null,Object? aspectRatio = null,Object? durationSeconds = null,Object? camera = freezed,Object? refImagePaths = null,Object? firstFramePath = freezed,Object? lastFramePath = freezed,Object? seed = freezed,Object? batchSize = null,}) {
   return _then(_self.copyWith(
 providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
-as String,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as String,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String?,canvasId: freezed == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
+as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as GenerationMode,prompt: null == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String,negativePrompt: freezed == negativePrompt ? _self.negativePrompt : negativePrompt // ignore: cast_nullable_to_non_nullable
 as String?,resolution: null == resolution ? _self.resolution : resolution // ignore: cast_nullable_to_non_nullable
@@ -177,10 +184,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String providerId,  String jobId,  GenerationMode mode,  String prompt,  String? negativePrompt,  Resolution resolution,  AspectRatio aspectRatio,  int durationSeconds,  CameraMovement? camera,  List<String> refImagePaths,  String? firstFramePath,  String? lastFramePath,  int? seed,  int batchSize)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( String providerId,  String jobId,  String? projectId,  String? canvasId,  String? resultNodeId,  GenerationMode mode,  String prompt,  String? negativePrompt,  Resolution resolution,  AspectRatio aspectRatio,  int durationSeconds,  CameraMovement? camera,  List<String> refImagePaths,  String? firstFramePath,  String? lastFramePath,  int? seed,  int batchSize)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GenerationTask() when $default != null:
-return $default(_that.providerId,_that.jobId,_that.mode,_that.prompt,_that.negativePrompt,_that.resolution,_that.aspectRatio,_that.durationSeconds,_that.camera,_that.refImagePaths,_that.firstFramePath,_that.lastFramePath,_that.seed,_that.batchSize);case _:
+return $default(_that.providerId,_that.jobId,_that.projectId,_that.canvasId,_that.resultNodeId,_that.mode,_that.prompt,_that.negativePrompt,_that.resolution,_that.aspectRatio,_that.durationSeconds,_that.camera,_that.refImagePaths,_that.firstFramePath,_that.lastFramePath,_that.seed,_that.batchSize);case _:
   return orElse();
 
 }
@@ -198,10 +205,10 @@ return $default(_that.providerId,_that.jobId,_that.mode,_that.prompt,_that.negat
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String providerId,  String jobId,  GenerationMode mode,  String prompt,  String? negativePrompt,  Resolution resolution,  AspectRatio aspectRatio,  int durationSeconds,  CameraMovement? camera,  List<String> refImagePaths,  String? firstFramePath,  String? lastFramePath,  int? seed,  int batchSize)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( String providerId,  String jobId,  String? projectId,  String? canvasId,  String? resultNodeId,  GenerationMode mode,  String prompt,  String? negativePrompt,  Resolution resolution,  AspectRatio aspectRatio,  int durationSeconds,  CameraMovement? camera,  List<String> refImagePaths,  String? firstFramePath,  String? lastFramePath,  int? seed,  int batchSize)  $default,) {final _that = this;
 switch (_that) {
 case _GenerationTask():
-return $default(_that.providerId,_that.jobId,_that.mode,_that.prompt,_that.negativePrompt,_that.resolution,_that.aspectRatio,_that.durationSeconds,_that.camera,_that.refImagePaths,_that.firstFramePath,_that.lastFramePath,_that.seed,_that.batchSize);case _:
+return $default(_that.providerId,_that.jobId,_that.projectId,_that.canvasId,_that.resultNodeId,_that.mode,_that.prompt,_that.negativePrompt,_that.resolution,_that.aspectRatio,_that.durationSeconds,_that.camera,_that.refImagePaths,_that.firstFramePath,_that.lastFramePath,_that.seed,_that.batchSize);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -218,10 +225,10 @@ return $default(_that.providerId,_that.jobId,_that.mode,_that.prompt,_that.negat
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String providerId,  String jobId,  GenerationMode mode,  String prompt,  String? negativePrompt,  Resolution resolution,  AspectRatio aspectRatio,  int durationSeconds,  CameraMovement? camera,  List<String> refImagePaths,  String? firstFramePath,  String? lastFramePath,  int? seed,  int batchSize)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( String providerId,  String jobId,  String? projectId,  String? canvasId,  String? resultNodeId,  GenerationMode mode,  String prompt,  String? negativePrompt,  Resolution resolution,  AspectRatio aspectRatio,  int durationSeconds,  CameraMovement? camera,  List<String> refImagePaths,  String? firstFramePath,  String? lastFramePath,  int? seed,  int batchSize)?  $default,) {final _that = this;
 switch (_that) {
 case _GenerationTask() when $default != null:
-return $default(_that.providerId,_that.jobId,_that.mode,_that.prompt,_that.negativePrompt,_that.resolution,_that.aspectRatio,_that.durationSeconds,_that.camera,_that.refImagePaths,_that.firstFramePath,_that.lastFramePath,_that.seed,_that.batchSize);case _:
+return $default(_that.providerId,_that.jobId,_that.projectId,_that.canvasId,_that.resultNodeId,_that.mode,_that.prompt,_that.negativePrompt,_that.resolution,_that.aspectRatio,_that.durationSeconds,_that.camera,_that.refImagePaths,_that.firstFramePath,_that.lastFramePath,_that.seed,_that.batchSize);case _:
   return null;
 
 }
@@ -233,13 +240,20 @@ return $default(_that.providerId,_that.jobId,_that.mode,_that.prompt,_that.negat
 
 
 class _GenerationTask implements GenerationTask {
-  const _GenerationTask({required this.providerId, required this.jobId, required this.mode, required this.prompt, this.negativePrompt, required this.resolution, required this.aspectRatio, this.durationSeconds = 0, this.camera, final  List<String> refImagePaths = const <String>[], this.firstFramePath, this.lastFramePath, this.seed, this.batchSize = 1}): _refImagePaths = refImagePaths;
+  const _GenerationTask({required this.providerId, required this.jobId, this.projectId, this.canvasId, this.resultNodeId, required this.mode, required this.prompt, this.negativePrompt, required this.resolution, required this.aspectRatio, this.durationSeconds = 0, this.camera, final  List<String> refImagePaths = const <String>[], this.firstFramePath, this.lastFramePath, this.seed, this.batchSize = 1}): _refImagePaths = refImagePaths;
   
 
 /// 目标 Provider ID（kebab-case，与 capabilities.providerId 一致）。
 @override final  String providerId;
 /// 业务侧 jobId（对应 jobs.id）。Provider 层只读不写。
 @override final  String jobId;
+/// 所属项目 id（生产 path 必填，单测可为 null）。落盘路径需要它。
+@override final  String? projectId;
+/// 所属画布 id（生产 path 必填，单测可为 null）。落盘路径需要它。
+@override final  String? canvasId;
+/// 结果节点 id（生产 path 必填，单测可为 null）。
+/// 写完盘后 NodeRepository.update({image_url: ...}) 用到。
+@override final  String? resultNodeId;
 /// 模式（决定调用哪个 Provider 端点）。
 @override final  GenerationMode mode;
 /// 已完成风格注入的完整 prompt。
@@ -282,16 +296,16 @@ _$GenerationTaskCopyWith<_GenerationTask> get copyWith => __$GenerationTaskCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerationTask&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.negativePrompt, negativePrompt) || other.negativePrompt == negativePrompt)&&(identical(other.resolution, resolution) || other.resolution == resolution)&&(identical(other.aspectRatio, aspectRatio) || other.aspectRatio == aspectRatio)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds)&&(identical(other.camera, camera) || other.camera == camera)&&const DeepCollectionEquality().equals(other._refImagePaths, _refImagePaths)&&(identical(other.firstFramePath, firstFramePath) || other.firstFramePath == firstFramePath)&&(identical(other.lastFramePath, lastFramePath) || other.lastFramePath == lastFramePath)&&(identical(other.seed, seed) || other.seed == seed)&&(identical(other.batchSize, batchSize) || other.batchSize == batchSize));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerationTask&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.negativePrompt, negativePrompt) || other.negativePrompt == negativePrompt)&&(identical(other.resolution, resolution) || other.resolution == resolution)&&(identical(other.aspectRatio, aspectRatio) || other.aspectRatio == aspectRatio)&&(identical(other.durationSeconds, durationSeconds) || other.durationSeconds == durationSeconds)&&(identical(other.camera, camera) || other.camera == camera)&&const DeepCollectionEquality().equals(other._refImagePaths, _refImagePaths)&&(identical(other.firstFramePath, firstFramePath) || other.firstFramePath == firstFramePath)&&(identical(other.lastFramePath, lastFramePath) || other.lastFramePath == lastFramePath)&&(identical(other.seed, seed) || other.seed == seed)&&(identical(other.batchSize, batchSize) || other.batchSize == batchSize));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,providerId,jobId,mode,prompt,negativePrompt,resolution,aspectRatio,durationSeconds,camera,const DeepCollectionEquality().hash(_refImagePaths),firstFramePath,lastFramePath,seed,batchSize);
+int get hashCode => Object.hash(runtimeType,providerId,jobId,projectId,canvasId,resultNodeId,mode,prompt,negativePrompt,resolution,aspectRatio,durationSeconds,camera,const DeepCollectionEquality().hash(_refImagePaths),firstFramePath,lastFramePath,seed,batchSize);
 
 @override
 String toString() {
-  return 'GenerationTask(providerId: $providerId, jobId: $jobId, mode: $mode, prompt: $prompt, negativePrompt: $negativePrompt, resolution: $resolution, aspectRatio: $aspectRatio, durationSeconds: $durationSeconds, camera: $camera, refImagePaths: $refImagePaths, firstFramePath: $firstFramePath, lastFramePath: $lastFramePath, seed: $seed, batchSize: $batchSize)';
+  return 'GenerationTask(providerId: $providerId, jobId: $jobId, projectId: $projectId, canvasId: $canvasId, resultNodeId: $resultNodeId, mode: $mode, prompt: $prompt, negativePrompt: $negativePrompt, resolution: $resolution, aspectRatio: $aspectRatio, durationSeconds: $durationSeconds, camera: $camera, refImagePaths: $refImagePaths, firstFramePath: $firstFramePath, lastFramePath: $lastFramePath, seed: $seed, batchSize: $batchSize)';
 }
 
 
@@ -302,7 +316,7 @@ abstract mixin class _$GenerationTaskCopyWith<$Res> implements $GenerationTaskCo
   factory _$GenerationTaskCopyWith(_GenerationTask value, $Res Function(_GenerationTask) _then) = __$GenerationTaskCopyWithImpl;
 @override @useResult
 $Res call({
- String providerId, String jobId, GenerationMode mode, String prompt, String? negativePrompt, Resolution resolution, AspectRatio aspectRatio, int durationSeconds, CameraMovement? camera, List<String> refImagePaths, String? firstFramePath, String? lastFramePath, int? seed, int batchSize
+ String providerId, String jobId, String? projectId, String? canvasId, String? resultNodeId, GenerationMode mode, String prompt, String? negativePrompt, Resolution resolution, AspectRatio aspectRatio, int durationSeconds, CameraMovement? camera, List<String> refImagePaths, String? firstFramePath, String? lastFramePath, int? seed, int batchSize
 });
 
 
@@ -319,11 +333,14 @@ class __$GenerationTaskCopyWithImpl<$Res>
 
 /// Create a copy of GenerationTask
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? providerId = null,Object? jobId = null,Object? mode = null,Object? prompt = null,Object? negativePrompt = freezed,Object? resolution = null,Object? aspectRatio = null,Object? durationSeconds = null,Object? camera = freezed,Object? refImagePaths = null,Object? firstFramePath = freezed,Object? lastFramePath = freezed,Object? seed = freezed,Object? batchSize = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? providerId = null,Object? jobId = null,Object? projectId = freezed,Object? canvasId = freezed,Object? resultNodeId = freezed,Object? mode = null,Object? prompt = null,Object? negativePrompt = freezed,Object? resolution = null,Object? aspectRatio = null,Object? durationSeconds = null,Object? camera = freezed,Object? refImagePaths = null,Object? firstFramePath = freezed,Object? lastFramePath = freezed,Object? seed = freezed,Object? batchSize = null,}) {
   return _then(_GenerationTask(
 providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
-as String,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
+as String,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
+as String?,canvasId: freezed == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
+as String?,mode: null == mode ? _self.mode : mode // ignore: cast_nullable_to_non_nullable
 as GenerationMode,prompt: null == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String,negativePrompt: freezed == negativePrompt ? _self.negativePrompt : negativePrompt // ignore: cast_nullable_to_non_nullable
 as String?,resolution: null == resolution ? _self.resolution : resolution // ignore: cast_nullable_to_non_nullable

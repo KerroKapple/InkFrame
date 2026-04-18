@@ -1,26 +1,32 @@
 // JobQueueService 内存实现（PRD §10.7）。
 //
 // b1 ✅ 内存调度 + Provider 集成
-// b2 ✅ JobRepository 持久化 + 启动恢复（本次）
-// b3 ⏳ FileResolverService 落盘集成
+// b2 ✅ JobRepository 持久化 + 启动恢复
+// b3 ✅ FileResolverService 落盘集成（仅 inlineBytes，本次）
+// b3.1 ⏳ remoteUrls HTTP 下载 + 重试 + 续传
 // b4 ⏳ 性能档位 → globalConcurrency 联动
 
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
 import 'dart:math';
 
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/interfaces/job_queue_service.dart';
 import '../core/interfaces/job_repository.dart';
+import '../core/interfaces/node_repository.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../providers/provider_registry.dart';
+import 'file_resolver_service.dart';
 
 class InMemoryJobQueueService implements JobQueueService {
   InMemoryJobQueueService({
     required ProviderRegistry registry,
     JobRepository? repo,
+    FileResolverService? fileResolver,
+    NodeRepository? nodeRepo,
     int globalConcurrency = 2,
     Duration pollInitialInterval = const Duration(seconds: 3),
     Duration pollMaxInterval = const Duration(seconds: 30),
@@ -29,6 +35,8 @@ class InMemoryJobQueueService implements JobQueueService {
     Random? random,
   })  : _registry = registry,
         _repo = repo,
+        _fileResolver = fileResolver,
+        _nodeRepo = nodeRepo,
         _globalConcurrency = globalConcurrency,
         _pollInitial = pollInitialInterval,
         _pollMax = pollMaxInterval,
@@ -38,6 +46,8 @@ class InMemoryJobQueueService implements JobQueueService {
 
   final ProviderRegistry _registry;
   final JobRepository? _repo;
+  final FileResolverService? _fileResolver;
+  final NodeRepository? _nodeRepo;
   final int _globalConcurrency;
   final Duration _pollInitial;
   final Duration _pollMax;
@@ -252,7 +262,17 @@ class InMemoryJobQueueService implements JobQueueService {
             await _persistUpdate(task.jobId, {'progress': progress});
           }
           handle._emit(status);
-        case JobSuccess():
+        case JobSuccess(:final inlineBytes):
+          // b3：inlineBytes 落盘到 {canvasRoot}/images/{jobId}-{idx}.png
+          //     成功后更新 node.type_config.image_url。失败转 LocalIOError。
+          if (inlineBytes != null && inlineBytes.isNotEmpty) {
+            final ioErr = await _persistInlineBytes(task, inlineBytes);
+            if (ioErr != null) {
+              await _persistFailure(task.jobId, ioErr);
+              _emitFailure(handle, ioErr);
+              return;
+            }
+          }
           await _persistTransition(
             task.jobId,
             from: const ['submitted', 'polling'],
@@ -354,6 +374,67 @@ class InMemoryJobQueueService implements JobQueueService {
 
   String _truncate(String s, int max) =>
       s.length <= max ? s : s.substring(0, max);
+
+  /// b3：把同步 Provider 返回的 inline bytes 写到 canvas/images/，
+  /// 更新 node.type_config.image_url。
+  ///
+  /// 三个关键 ID（projectId / canvasId / resultNodeId）任一缺失或服务未注入 →
+  /// 跳过落盘（认为是单测路径）。返回 null 表示成功，非 null = 应转 failure。
+  Future<InkError?> _persistInlineBytes(
+    GenerationTask task,
+    List<dynamic> bytesList,
+  ) async {
+    final projectId = task.projectId;
+    final canvasId = task.canvasId;
+    final resultNodeId = task.resultNodeId;
+    final fileResolver = _fileResolver;
+    final nodeRepo = _nodeRepo;
+    if (projectId == null ||
+        canvasId == null ||
+        resultNodeId == null ||
+        fileResolver == null ||
+        nodeRepo == null) {
+      return null;
+    }
+    try {
+      final relativePaths = <String>[];
+      for (var i = 0; i < bytesList.length; i++) {
+        final bytes = bytesList[i];
+        final relPath = 'images/${task.jobId}-$i.png';
+        final file = fileResolver.resolve(
+          projectId: projectId,
+          canvasId: canvasId,
+          relativePath: relPath,
+        );
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytes as List<int>);
+        relativePaths.add(relPath);
+      }
+      // 多张时只取首张做主图（PRD §4.4：image_url 单值；批量在 batch_results 表）。
+      // 当前 batch_size=1 是 P0 主路径；批量留给后续 batch_results 接入。
+      await nodeRepo.patchTypeConfig(resultNodeId, {
+        'image_url': relativePaths.first,
+      });
+      return null;
+    } on FileSystemException catch (e) {
+      return LocalIOError(
+        cause: e,
+        extra: {
+          'job_id': task.jobId,
+          'reason': 'write_inline_bytes_failed',
+          'message': e.message,
+        },
+      );
+    } on PathSecurityError catch (e) {
+      return LocalIOError(
+        cause: e,
+        extra: {
+          'job_id': task.jobId,
+          'reason': 'unsafe_path',
+        },
+      );
+    }
+  }
 
   void _ensureNotDisposed() {
     if (_disposed) {
