@@ -122,11 +122,11 @@ return failure(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( double progress)?  inProgress,TResult Function( List<String> remoteUrls,  DateTime? urlExpiresAt)?  success,TResult Function( InkError error)?  failure,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( double progress)?  inProgress,TResult Function( List<String> remoteUrls,  DateTime? urlExpiresAt,  List<Uint8List>? inlineBytes)?  success,TResult Function( InkError error)?  failure,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case JobInProgress() when inProgress != null:
 return inProgress(_that.progress);case JobSuccess() when success != null:
-return success(_that.remoteUrls,_that.urlExpiresAt);case JobFailure() when failure != null:
+return success(_that.remoteUrls,_that.urlExpiresAt,_that.inlineBytes);case JobFailure() when failure != null:
 return failure(_that.error);case _:
   return orElse();
 
@@ -145,11 +145,11 @@ return failure(_that.error);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( double progress)  inProgress,required TResult Function( List<String> remoteUrls,  DateTime? urlExpiresAt)  success,required TResult Function( InkError error)  failure,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( double progress)  inProgress,required TResult Function( List<String> remoteUrls,  DateTime? urlExpiresAt,  List<Uint8List>? inlineBytes)  success,required TResult Function( InkError error)  failure,}) {final _that = this;
 switch (_that) {
 case JobInProgress():
 return inProgress(_that.progress);case JobSuccess():
-return success(_that.remoteUrls,_that.urlExpiresAt);case JobFailure():
+return success(_that.remoteUrls,_that.urlExpiresAt,_that.inlineBytes);case JobFailure():
 return failure(_that.error);}
 }
 /// A variant of `when` that fallback to returning `null`
@@ -164,11 +164,11 @@ return failure(_that.error);}
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( double progress)?  inProgress,TResult? Function( List<String> remoteUrls,  DateTime? urlExpiresAt)?  success,TResult? Function( InkError error)?  failure,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( double progress)?  inProgress,TResult? Function( List<String> remoteUrls,  DateTime? urlExpiresAt,  List<Uint8List>? inlineBytes)?  success,TResult? Function( InkError error)?  failure,}) {final _that = this;
 switch (_that) {
 case JobInProgress() when inProgress != null:
 return inProgress(_that.progress);case JobSuccess() when success != null:
-return success(_that.remoteUrls,_that.urlExpiresAt);case JobFailure() when failure != null:
+return success(_that.remoteUrls,_that.urlExpiresAt,_that.inlineBytes);case JobFailure() when failure != null:
 return failure(_that.error);case _:
   return null;
 
@@ -247,7 +247,7 @@ as double,
 
 
 class JobSuccess implements JobStatus {
-  const JobSuccess({required final  List<String> remoteUrls, this.urlExpiresAt}): _remoteUrls = remoteUrls;
+  const JobSuccess({required final  List<String> remoteUrls, this.urlExpiresAt, final  List<Uint8List>? inlineBytes}): _remoteUrls = remoteUrls,_inlineBytes = inlineBytes;
   
 
  final  List<String> _remoteUrls;
@@ -258,6 +258,15 @@ class JobSuccess implements JobStatus {
 }
 
  final  DateTime? urlExpiresAt;
+ final  List<Uint8List>? _inlineBytes;
+ List<Uint8List>? get inlineBytes {
+  final value = _inlineBytes;
+  if (value == null) return null;
+  if (_inlineBytes is EqualUnmodifiableListView) return _inlineBytes;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(value);
+}
+
 
 /// Create a copy of JobStatus
 /// with the given fields replaced by the non-null parameter values.
@@ -269,16 +278,16 @@ $JobSuccessCopyWith<JobSuccess> get copyWith => _$JobSuccessCopyWithImpl<JobSucc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobSuccess&&const DeepCollectionEquality().equals(other._remoteUrls, _remoteUrls)&&(identical(other.urlExpiresAt, urlExpiresAt) || other.urlExpiresAt == urlExpiresAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobSuccess&&const DeepCollectionEquality().equals(other._remoteUrls, _remoteUrls)&&(identical(other.urlExpiresAt, urlExpiresAt) || other.urlExpiresAt == urlExpiresAt)&&const DeepCollectionEquality().equals(other._inlineBytes, _inlineBytes));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_remoteUrls),urlExpiresAt);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_remoteUrls),urlExpiresAt,const DeepCollectionEquality().hash(_inlineBytes));
 
 @override
 String toString() {
-  return 'JobStatus.success(remoteUrls: $remoteUrls, urlExpiresAt: $urlExpiresAt)';
+  return 'JobStatus.success(remoteUrls: $remoteUrls, urlExpiresAt: $urlExpiresAt, inlineBytes: $inlineBytes)';
 }
 
 
@@ -289,7 +298,7 @@ abstract mixin class $JobSuccessCopyWith<$Res> implements $JobStatusCopyWith<$Re
   factory $JobSuccessCopyWith(JobSuccess value, $Res Function(JobSuccess) _then) = _$JobSuccessCopyWithImpl;
 @useResult
 $Res call({
- List<String> remoteUrls, DateTime? urlExpiresAt
+ List<String> remoteUrls, DateTime? urlExpiresAt, List<Uint8List>? inlineBytes
 });
 
 
@@ -306,11 +315,12 @@ class _$JobSuccessCopyWithImpl<$Res>
 
 /// Create a copy of JobStatus
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? remoteUrls = null,Object? urlExpiresAt = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? remoteUrls = null,Object? urlExpiresAt = freezed,Object? inlineBytes = freezed,}) {
   return _then(JobSuccess(
 remoteUrls: null == remoteUrls ? _self._remoteUrls : remoteUrls // ignore: cast_nullable_to_non_nullable
 as List<String>,urlExpiresAt: freezed == urlExpiresAt ? _self.urlExpiresAt : urlExpiresAt // ignore: cast_nullable_to_non_nullable
-as DateTime?,
+as DateTime?,inlineBytes: freezed == inlineBytes ? _self._inlineBytes : inlineBytes // ignore: cast_nullable_to_non_nullable
+as List<Uint8List>?,
   ));
 }
 

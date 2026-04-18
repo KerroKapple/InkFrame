@@ -22,6 +22,7 @@ import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/models/cost_model.dart';
 import '../core/models/generation_task.dart';
+import '../core/models/job_status.dart';
 import '../core/models/key_validation_result.dart';
 import '../core/models/provider_capabilities.dart';
 import 'dio_error_mapper.dart';
@@ -59,7 +60,8 @@ const ProviderCapabilities kGeminiImageCapabilities = ProviderCapabilities(
   supportsSound: false,
   supportsBatch: false,
   supportsCancellation: false,
-  supportsPolling: false,
+  // 同步 Provider 仍走 Pollable 路径（poll 一调即返回 inlineBytes，详见 ADR-0004）。
+  supportsPolling: true,
   costModel: CostModel.perCharInput(
     usdPerKChar: 0.000075,
     usdPerImageOutput: 0.039,
@@ -75,7 +77,7 @@ const String kGeminiLocalJobPrefix = 'local://gemini-image/';
 /// Key getter 协议——延迟读取，避免 Provider 持久化 Key。
 typedef GeminiKeySource = Future<String> Function();
 
-class GeminiImageProvider implements Submittable, KeyValidatable {
+class GeminiImageProvider implements Submittable, Pollable, KeyValidatable {
   GeminiImageProvider({
     required GeminiKeySource keySource,
     required ProviderRateLimiter rateLimiter,
@@ -87,6 +89,12 @@ class GeminiImageProvider implements Submittable, KeyValidatable {
   final GeminiKeySource _keySource;
   final ProviderRateLimiter _rateLimiter;
   final Dio _dio;
+
+  /// 同步 Provider 的 inline bytes 暂存（ADR-0004）。
+  ///
+  /// submit 解码 base64 后塞入；poll 一次性消费并删除。
+  /// instance-scoped，Provider 销毁时随 GC 回收。
+  final Map<JobId, Uint8List> _inlineCache = {};
 
   @override
   ProviderCapabilities get capabilities => kGeminiImageCapabilities;
@@ -242,9 +250,28 @@ class GeminiImageProvider implements Submittable, KeyValidatable {
         extra: {'provider_id': capabilities.providerId, 'reason': 'no_inline_data'},
       );
     }
-    // 同步 Provider：合成本地 JobId，上层 JobQueueService 识别前缀跳过 polling。
+    // 同步 Provider：合成本地 JobId，bytes 暂存 cache，等上层 poll 消费（ADR-0004）。
     final suffix = '${task.jobId}-${_rand()}';
-    return '$kGeminiLocalJobPrefix$suffix';
+    final jobId = '$kGeminiLocalJobPrefix$suffix';
+    _inlineCache[jobId] = inline;
+    return jobId;
+  }
+
+  @override
+  Future<JobStatus> poll(JobId id) async {
+    final bytes = _inlineCache.remove(id);
+    if (bytes == null) {
+      // 重复 poll 同一 jobId 或 jobId 未由本 instance submit 产生
+      throw ProviderError(
+        code: InkErrorCode.providerServer,
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'cache_miss_or_consumed',
+          'job_id': id,
+        },
+      );
+    }
+    return JobStatus.success(remoteUrls: const [], inlineBytes: [bytes]);
   }
 
   bool _isContentPolicy(Object? body) {

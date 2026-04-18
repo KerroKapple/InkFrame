@@ -19,6 +19,7 @@ proposed ──► accepted ──► superseded (by ADR-NNNN)
 | [ADR-0001](0001-embedded-postgresql.md) | 使用嵌入式 PostgreSQL 作为本地存储 | accepted | 2026-04-15 |
 | [ADR-0002](0002-riverpod-for-state-and-di.md) | 使用 Riverpod 统一状态管理与依赖注入 | accepted | 2026-04-15 |
 | [ADR-0003](0003-freezed-models-map-at-repo-edge.md) | 领域模型用 freezed，Repository 层暴露 `Map<String, Object?>` | accepted | 2026-04-15 |
+| [ADR-0004](0004-sync-provider-data-channel.md) | 同步 Provider 通过 Pollable + inline bytes 通道暴露结果 | accepted | 2026-04-18 |
 
 ---
 
