@@ -1,0 +1,7 @@
+{
+  "error": {
+    "code": 400,
+    "message": "Request was blocked due to SAFETY filters.",
+    "status": "INVALID_ARGUMENT"
+  }
+}
