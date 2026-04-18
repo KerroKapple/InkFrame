@@ -1,16 +1,23 @@
 // JobQueueService 内存实现单元测试：FakeProvider 覆盖核心路径。
 
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/generation_provider.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
+import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
+import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/providers/provider_registry.dart';
+import 'package:inkframe/services/file_resolver_service.dart';
 import 'package:inkframe/services/job_queue_service.dart';
+import 'package:path/path.dart' as p;
 
 /// FakeProvider：可配置 submit/poll/cancel 行为，用于精确控制场景。
 class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable {
@@ -133,10 +140,14 @@ InMemoryJobQueueService _build(
   ProviderRegistry registry, {
   int globalConcurrency = 4,
   JobRepository? repo,
+  FileResolverService? fileResolver,
+  NodeRepository? nodeRepo,
 }) {
   return InMemoryJobQueueService(
     registry: registry,
     repo: repo,
+    fileResolver: fileResolver,
+    nodeRepo: nodeRepo,
     globalConcurrency: globalConcurrency,
     pollInitialInterval: const Duration(milliseconds: 1),
     pollMaxInterval: const Duration(milliseconds: 5),
@@ -233,6 +244,62 @@ class FakeJobRepository implements JobRepository {
   @override
   Future<int> purgePerCanvasCap({required int cap}) =>
       throw UnimplementedError();
+
+  @override
+  Future<int> hardDelete(String id) => throw UnimplementedError();
+}
+
+/// 测试用 NodeRepository — 仅覆盖 patchTypeConfig，用于 b3 落盘后更新节点。
+class FakeNodeRepository implements NodeRepository {
+  /// nodeId → type_config patch 历史，断言用。
+  final Map<String, List<Map<String, Object?>>> patches =
+      <String, List<Map<String, Object?>>>{};
+
+  @override
+  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async {
+    patches.putIfAbsent(id, () => []).add(Map<String, Object?>.from(patch));
+    return 1;
+  }
+
+  // ---- 不被 b3 使用的方法（占位）-----------------------------------------
+  @override
+  Future<String> create({
+    required String canvasId,
+    required String type,
+    required String nodeRole,
+    String label = '',
+    String? sourceNodeId,
+    String? laneId,
+    double positionX = 0,
+    double positionY = 0,
+    double width = 240,
+    double height = 240,
+    int zIndex = 0,
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, Object?>?> findById(String id) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<Map<String, Object?>>> listOrphanResults(String canvasId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) =>
+      throw UnimplementedError();
+
+  @override
+  Future<int> softDelete(String id) => throw UnimplementedError();
+
+  @override
+  Future<int> restore(String id) => throw UnimplementedError();
 
   @override
   Future<int> hardDelete(String id) => throw UnimplementedError();
@@ -558,6 +625,129 @@ void main() {
       // success / pending 不动
       expect(repo.rows['completed']!['status'], 'success');
       expect(repo.rows['untouched']!['status'], 'pending');
+      svc.dispose();
+    });
+  });
+
+  // B-b3：FileResolverService 落盘集成（仅 inlineBytes，同步 Provider 路径）
+  group('InMemoryJobQueueService 落盘 (b3)', () {
+    late Directory tmp;
+    late FileResolverService fileResolver;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('ink_jq_b3_');
+      final paths = DefaultAppPaths.forRoot(tmp);
+      fileResolver = DefaultFileResolverService(paths);
+    });
+
+    tearDown(() {
+      if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+    });
+
+    GenerationTask sinkTask({
+      String jobId = 'jx',
+      String projectId = 'proj-1',
+      String canvasId = 'canvas-1',
+      String resultNodeId = 'node-1',
+    }) =>
+        GenerationTask(
+          providerId: 'fake',
+          jobId: jobId,
+          projectId: projectId,
+          canvasId: canvasId,
+          resultNodeId: resultNodeId,
+          mode: GenerationMode.textToImage,
+          prompt: 'x',
+          resolution: Resolution.p1080,
+          aspectRatio: AspectRatio.r1x1,
+        );
+
+    test('inlineBytes 落盘到 canvasRoot/images + node.image_url 更新', () async {
+      final bytes = Uint8List.fromList(const [0x89, 0x50, 0x4e, 0x47]); // PNG sig
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollSequence: [
+          JobStatus.success(remoteUrls: const [], inlineBytes: [bytes]),
+        ],
+      );
+      final repo = FakeJobRepository()..seedPending('jx');
+      final nodeRepo = FakeNodeRepository();
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        repo: repo,
+        fileResolver: fileResolver,
+        nodeRepo: nodeRepo,
+      );
+      final h = await svc.submit(sinkTask());
+      await h.done;
+
+      // 文件存在且字节正确
+      final file = File(p.join(
+        tmp.path, 'projects', 'proj-1', 'canvases', 'canvas-1', 'images', 'jx-0.png',
+      ));
+      expect(file.existsSync(), isTrue);
+      expect(file.readAsBytesSync(), bytes);
+
+      // node.type_config.image_url 写相对路径
+      expect(nodeRepo.patches['node-1'], hasLength(1));
+      expect(nodeRepo.patches['node-1']!.first['image_url'], 'images/jx-0.png');
+
+      // jobs 仍正常完成
+      expect(repo.rows['jx']!['status'], 'success');
+      svc.dispose();
+    });
+
+    test('缺 fileResolver/nodeRepo 时跳过落盘但任务正常 success', () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollSequence: [
+          JobStatus.success(
+            remoteUrls: const [],
+            inlineBytes: [Uint8List.fromList(const [1, 2, 3])],
+          ),
+        ],
+      );
+      final repo = FakeJobRepository()..seedPending('jx');
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        repo: repo,
+        // 不传 fileResolver / nodeRepo
+      );
+      final h = await svc.submit(sinkTask());
+      final terminal = await h.done;
+
+      expect(terminal, isA<JobSuccess>());
+      expect(repo.rows['jx']!['status'], 'success');
+      svc.dispose();
+    });
+
+    test('落盘抛 PathSecurityError（projectId 含 ..）→ JobFailure(LocalIOError)',
+        () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollSequence: [
+          JobStatus.success(
+            remoteUrls: const [],
+            inlineBytes: [Uint8List.fromList(const [1, 2, 3])],
+          ),
+        ],
+      );
+      final repo = FakeJobRepository()..seedPending('jx');
+      final nodeRepo = FakeNodeRepository();
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        repo: repo,
+        fileResolver: fileResolver,
+        nodeRepo: nodeRepo,
+      );
+      final h = await svc.submit(sinkTask(projectId: '..bad'));
+      final terminal = await h.done;
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.localIOError);
+      // jobs 表也写 error
+      expect(repo.rows['jx']!['status'], 'error');
+      expect(repo.rows['jx']!['error_code'], 'local_io_error');
       svc.dispose();
     });
   });
