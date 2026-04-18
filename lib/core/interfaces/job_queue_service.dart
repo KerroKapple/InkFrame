@@ -26,10 +26,18 @@ abstract class JobHandle {
 }
 
 abstract class JobQueueService {
+  /// 启动初始化：扫描 jobs 表把卡在 submitted/polling 的任务标 cancelledOnExit。
+  ///
+  /// 必须在 app 启动早期调用（在用户能 submit 新任务之前）。
+  /// 未注入 JobRepository 的实现允许 no-op。
+  Future<void> init();
+
   /// 提交生成任务，立即返回 JobHandle。
   ///
   /// 真实 Provider 调用、轮询、状态推进在后台异步执行。
   /// 同 jobId 重复 submit 抛 [StateError]。
+  ///
+  /// **前置条件**：调用方需先在 jobs 表创建 status='pending' 的行（PRD §10.3）。
   Future<JobHandle> submit(GenerationTask task);
 
   /// 取消任务。pending 直接踢出队列；running 调 Provider.cancel（若支持）。

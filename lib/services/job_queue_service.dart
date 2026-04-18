@@ -1,6 +1,9 @@
 // JobQueueService 内存实现（PRD §10.7）。
 //
-// 不持久化 jobs 表，不写盘——纯调度引擎。b2 / b3 子步分别接入。
+// b1 ✅ 内存调度 + Provider 集成
+// b2 ✅ JobRepository 持久化 + 启动恢复（本次）
+// b3 ⏳ FileResolverService 落盘集成
+// b4 ⏳ 性能档位 → globalConcurrency 联动
 
 import 'dart:async';
 import 'dart:collection';
@@ -9,6 +12,7 @@ import 'dart:math';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/interfaces/job_queue_service.dart';
+import '../core/interfaces/job_repository.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../providers/provider_registry.dart';
@@ -16,6 +20,7 @@ import '../providers/provider_registry.dart';
 class InMemoryJobQueueService implements JobQueueService {
   InMemoryJobQueueService({
     required ProviderRegistry registry,
+    JobRepository? repo,
     int globalConcurrency = 2,
     Duration pollInitialInterval = const Duration(seconds: 3),
     Duration pollMaxInterval = const Duration(seconds: 30),
@@ -23,6 +28,7 @@ class InMemoryJobQueueService implements JobQueueService {
     Duration pollTimeout = const Duration(minutes: 30),
     Random? random,
   })  : _registry = registry,
+        _repo = repo,
         _globalConcurrency = globalConcurrency,
         _pollInitial = pollInitialInterval,
         _pollMax = pollMaxInterval,
@@ -31,6 +37,7 @@ class InMemoryJobQueueService implements JobQueueService {
         _random = random ?? Random();
 
   final ProviderRegistry _registry;
+  final JobRepository? _repo;
   final int _globalConcurrency;
   final Duration _pollInitial;
   final Duration _pollMax;
@@ -42,6 +49,26 @@ class InMemoryJobQueueService implements JobQueueService {
   final Map<String, _RunningJob> _running = <String, _RunningJob>{};
   final Map<String, int> _perProviderSlots = <String, int>{};
   bool _disposed = false;
+
+  @override
+  Future<void> init() async {
+    final repo = _repo;
+    if (repo == null) return;
+    final orphan = await repo.listByStatus(const ['submitted', 'polling']);
+    for (final row in orphan) {
+      final id = row['id'] as String?;
+      if (id == null) continue;
+      await repo.transitionStatus(
+        id: id,
+        fromStatuses: const ['submitted', 'polling'],
+        toStatus: 'cancelled',
+        extra: {
+          'error_code': InkErrorCode.cancelledOnExit.wire,
+          'error_message': 'app exited while job was running',
+        },
+      );
+    }
+  }
 
   @override
   Future<JobHandle> submit(GenerationTask task) async {
@@ -69,12 +96,14 @@ class InMemoryJobQueueService implements JobQueueService {
       _pending
         ..clear()
         ..addAll(list);
+      await _persistCancel(jobId, fromStatuses: const ['pending']);
       _emitFailure(removed.handle, _cancelledError(jobId));
       return;
     }
     final running = _running[jobId];
     if (running == null) return; // idempotent
     running.cancelled = true;
+    await _persistCancel(jobId, fromStatuses: const ['submitted', 'polling']);
     final provider = running.provider;
     if (provider is Cancellable) {
       try {
@@ -147,8 +176,17 @@ class InMemoryJobQueueService implements JobQueueService {
     _running[task.jobId] = running;
 
     try {
+      // pending → submitted（写 submitted_at）
+      await _persistTransition(
+        task.jobId,
+        from: const ['pending'],
+        to: 'submitted',
+        extra: {'submitted_at': DateTime.now().toUtc().toIso8601String()},
+      );
+
       final providerJobId = await provider.submit(task);
       running.providerJobId = providerJobId;
+      await _persistUpdate(task.jobId, {'remote_task_id': providerJobId});
 
       if (provider is! Pollable) {
         // 仅 Submittable 的 Provider 在 P0 还没有——按契约 supportsPolling 必须实现
@@ -163,6 +201,7 @@ class InMemoryJobQueueService implements JobQueueService {
       }
       await _pollLoop(provider as Pollable, providerJobId, task, handle, running);
     } on InkError catch (e) {
+      await _persistFailure(task.jobId, e);
       _emitFailure(handle, e);
     } finally {
       _running.remove(task.jobId);
@@ -180,32 +219,54 @@ class InMemoryJobQueueService implements JobQueueService {
   ) async {
     final deadline = DateTime.now().add(_pollTimeout);
     var interval = _pollInitial;
+    var enteredPolling = false;
 
     while (true) {
       if (running.cancelled) {
+        // cancel 路径已写过 transitionStatus → cancelled，这里不再写
         _emitFailure(handle, _cancelledError(task.jobId));
         return;
       }
       if (DateTime.now().isAfter(deadline)) {
-        _emitFailure(
-          handle,
-          ProviderError(
-            code: InkErrorCode.pollTimeout,
-            extra: {'provider_id': task.providerId, 'job_id': task.jobId},
-          ),
+        final timeoutErr = ProviderError(
+          code: InkErrorCode.pollTimeout,
+          extra: {'provider_id': task.providerId, 'job_id': task.jobId},
         );
+        await _persistTimeout(task.jobId, timeoutErr);
+        _emitFailure(handle, timeoutErr);
         return;
       }
 
       final JobStatus status = await provider.poll(providerJobId);
       switch (status) {
-        case JobInProgress():
+        case JobInProgress(:final progress):
+          if (!enteredPolling) {
+            await _persistTransition(
+              task.jobId,
+              from: const ['submitted'],
+              to: 'polling',
+              extra: {'progress': progress},
+            );
+            enteredPolling = true;
+          } else {
+            await _persistUpdate(task.jobId, {'progress': progress});
+          }
           handle._emit(status);
         case JobSuccess():
+          await _persistTransition(
+            task.jobId,
+            from: const ['submitted', 'polling'],
+            to: 'success',
+            extra: {
+              'completed_at': DateTime.now().toUtc().toIso8601String(),
+              'progress': 1.0,
+            },
+          );
           handle._emit(status);
           handle._complete(status);
           return;
         case JobFailure(:final error):
+          await _persistFailure(task.jobId, error);
           _emitFailure(handle, error);
           return;
       }
@@ -226,6 +287,73 @@ class InMemoryJobQueueService implements JobQueueService {
 
   InkError _cancelledError(String jobId) =>
       CancelledError.byUser(extra: {'job_id': jobId});
+
+  // ---- 持久化 helpers (null repo 时全部 no-op) ----------------------------
+
+  Future<void> _persistTransition(
+    String jobId, {
+    required List<String> from,
+    required String to,
+    Map<String, Object?> extra = const <String, Object?>{},
+  }) async {
+    final repo = _repo;
+    if (repo == null) return;
+    await repo.transitionStatus(
+      id: jobId,
+      fromStatuses: from,
+      toStatus: to,
+      extra: extra,
+    );
+  }
+
+  Future<void> _persistUpdate(String jobId, Map<String, Object?> patch) async {
+    final repo = _repo;
+    if (repo == null) return;
+    await repo.update(jobId, patch);
+  }
+
+  Future<void> _persistFailure(String jobId, InkError error) async {
+    await _persistTransition(
+      jobId,
+      from: const ['pending', 'submitted', 'polling'],
+      to: 'error',
+      extra: {
+        'error_code': error.code.wire,
+        'error_message': _truncate(error.toString(), 2000),
+        'completed_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> _persistTimeout(String jobId, InkError error) async {
+    await _persistTransition(
+      jobId,
+      from: const ['submitted', 'polling'],
+      to: 'timeout',
+      extra: {
+        'error_code': error.code.wire,
+        'completed_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  Future<void> _persistCancel(
+    String jobId, {
+    required List<String> fromStatuses,
+  }) async {
+    await _persistTransition(
+      jobId,
+      from: fromStatuses,
+      to: 'cancelled',
+      extra: {
+        'error_code': InkErrorCode.cancelledByUser.wire,
+        'completed_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  String _truncate(String s, int max) =>
+      s.length <= max ? s : s.substring(0, max);
 
   void _ensureNotDisposed() {
     if (_disposed) {
