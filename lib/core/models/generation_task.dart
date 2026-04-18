@@ -17,6 +17,16 @@ abstract class GenerationTask with _$GenerationTask {
     /// 业务侧 jobId（对应 jobs.id）。Provider 层只读不写。
     required String jobId,
 
+    /// 所属项目 id（生产 path 必填，单测可为 null）。落盘路径需要它。
+    String? projectId,
+
+    /// 所属画布 id（生产 path 必填，单测可为 null）。落盘路径需要它。
+    String? canvasId,
+
+    /// 结果节点 id（生产 path 必填，单测可为 null）。
+    /// 写完盘后 NodeRepository.update({image_url: ...}) 用到。
+    String? resultNodeId,
+
     /// 模式（决定调用哪个 Provider 端点）。
     required GenerationMode mode,
 
