@@ -3,13 +3,13 @@
 // - 主题走 ThemeModeController（dark/light/highContrast + textScale）
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations
-// - 首屏为 HomeStubScreen 占位，T4 起接入画布
+// - 首屏：CanvasView（T4 起替代 HomeStubScreen）
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/theme.dart';
-import 'features/home/home_stub_screen.dart';
+import 'features/canvas/widgets/canvas_view.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'theme/app_theme.dart';
 
@@ -50,7 +50,7 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const HomeStubScreen(),
+      home: const Scaffold(body: CanvasView()),
       debugShowCheckedModeBanner: false,
     );
   }

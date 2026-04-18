@@ -229,6 +229,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'An unknown error occurred.'**
   String get errorUnknown;
+
+  /// No description provided for @canvasEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Right-click or press + to add a node'**
+  String get canvasEmptyHint;
+
+  /// No description provided for @canvasNodeDefaultLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'New Node'**
+  String get canvasNodeDefaultLabel;
+
+  /// No description provided for @canvasNodeImageType.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get canvasNodeImageType;
+
+  /// No description provided for @canvasAddNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Node'**
+  String get canvasAddNode;
+
+  /// No description provided for @canvasDeleteNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete Node'**
+  String get canvasDeleteNode;
+
+  /// No description provided for @canvasNodesSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} node(s) selected'**
+  String canvasNodesSelected(int count);
 }
 
 class _AppLocalizationsDelegate

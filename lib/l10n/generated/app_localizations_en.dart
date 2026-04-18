@@ -81,4 +81,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorUnknown => 'An unknown error occurred.';
+
+  @override
+  String get canvasEmptyHint => 'Right-click or press + to add a node';
+
+  @override
+  String get canvasNodeDefaultLabel => 'New Node';
+
+  @override
+  String get canvasNodeImageType => 'Image';
+
+  @override
+  String get canvasAddNode => 'Add Node';
+
+  @override
+  String get canvasDeleteNode => 'Delete Node';
+
+  @override
+  String canvasNodesSelected(int count) {
+    return '$count node(s) selected';
+  }
 }

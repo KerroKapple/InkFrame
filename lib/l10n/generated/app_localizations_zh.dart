@@ -73,4 +73,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get errorUnknown => '未知错误。';
+
+  @override
+  String get canvasEmptyHint => '右键或按 + 添加节点';
+
+  @override
+  String get canvasNodeDefaultLabel => '新节点';
+
+  @override
+  String get canvasNodeImageType => '图片';
+
+  @override
+  String get canvasAddNode => '添加节点';
+
+  @override
+  String get canvasDeleteNode => '删除节点';
+
+  @override
+  String canvasNodesSelected(int count) {
+    return '已选择 $count 个节点';
+  }
 }
