@@ -24,7 +24,7 @@ void main() {
       ),
     );
     await tester.pump();
-    // 画布空态提示（CanvasView 替代了 HomeStubScreen）
+    // 画布空态提示
     expect(find.textContaining('node'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }
