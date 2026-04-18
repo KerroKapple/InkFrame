@@ -53,6 +53,9 @@ coverage/lcov.info
 # 本地 InkFrame 用户数据目录（开发机可能链接）
 inkframe_userdata/
 
+# Claude Code 内部状态文件（每个 dev 机器独立）
+.claude/
+
 # CI 临时
 /untranslated.json
 

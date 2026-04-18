@@ -3,7 +3,7 @@
 // - 主题走 ThemeModeController（dark/light/highContrast + textScale）
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations
-// - 首屏：CanvasView（T4 起替代 HomeStubScreen）
+// - 首屏：CanvasView
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
