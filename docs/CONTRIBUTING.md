@@ -21,6 +21,7 @@ main        ← 只接 release-quality 代码，每次合入打 tag (v0.1.0 / v0
 - `main` / `dev` 均受保护。禁止直接 push，全部走 PR
 - `main` 只从 `release/*` 或 `hotfix/*` 合进来
 - feature 分支超过 3 天必须每日 rebase dev，避免大合并冲突
+- **线性历史强制**：`main` / `dev` 禁止一切 merge commit。任何方向（feature→dev / release→main / main→dev 回合）**只允许 Squash 或 Rebase merge**，禁止 `--no-ff` 与 `Create a merge commit`。GitHub Branch Protection 已开启 `Require linear history`，非线性 push 会被远端直接拒
 
 ## 命名规范
 
@@ -63,10 +64,11 @@ main        ← 只接 release-quality 代码，每次合入打 tag (v0.1.0 / v0
 4. `git push` 时 pre-push hook 自动跑 `flutter test`
 5. 开 PR 到 `dev`（hotfix/release 开 PR 到 `main`）
 6. CI 全绿 + 至少 1 个 approve 才能合
-7. 合并策略：
-   - `feature/*` / `fix/*` / `chore/*` / `docs/*` / `test/*` → `dev`：**Squash merge**（保持 dev 线性）
-   - `release/*` / `hotfix/*` → `main`：**Merge commit**（保留 release 历史 + tag）
-   - `main` 变更回合 `dev`：**Merge commit**
+7. 合并策略（**全线性，零 merge commit**）：
+   - `feature/*` / `fix/*` / `chore/*` / `docs/*` / `test/*` → `dev`：**Squash merge**（一个 PR 压一个 commit 进 dev）
+   - `release/*` / `hotfix/*` → `main`：**Rebase & merge**（保留每个 commit，无 merge commit；合入后在 `main` 打 annotated tag）
+   - `main` 变更回合 `dev`：**Rebase & merge** 经过新 PR（禁止直接 `git merge main` 产生 merge commit）
+   - Stacked PR：子 PR 的 base 指向父 PR 分支；父 PR 合入 dev 后，子 PR 自动 re-target dev
 8. 合并后 GitHub 自动删除源分支
 
 ## Tag & Release
@@ -85,6 +87,36 @@ ln -sf ../../scripts/hooks/pre-push   .git/hooks/pre-push
 
 不装 hook 等于绕过闸门，PR 进 CI 会打回——别省这两行。
 
+## 本地 git 配置（线性历史约束）
+
+```bash
+# 全局默认 pull 走 rebase，杜绝 pull 产生 merge commit
+git config --global pull.rebase true
+
+# rebase 时自动 stash 未提交变更
+git config --global rebase.autostash true
+
+# 新建分支默认跟随 rebase 策略
+git config --global branch.autoSetupRebase always
+```
+
+**禁止动作清单：**
+
+```bash
+# ❌ 产生 merge commit
+git merge --no-ff <branch>
+git pull                         # 如果没设 pull.rebase=true 就会 fetch+merge
+
+# ❌ 绕闸
+git commit --no-verify
+git push --force origin main     # 受保护分支严禁 force push
+git push --force origin dev
+
+# ✅ 允许
+git rebase dev                   # 同步上游
+git push --force-with-lease      # 仅在自己的 feature 分支
+```
+
 ## 本地验证命令
 
 ```bash
@@ -98,7 +130,7 @@ lcov --summary coverage/lcov.info      # 摘要
 
 ## 代码规范
 
-- **SOLID / DI / i18n / Design Tokens 硬规则**：见仓库根 [CLAUDE.md](CLAUDE.md)。Widget 里任何硬编码字符串 / 硬编码颜色字号 / 直接 `new Service()` 都会被 hook 拦下
+- **SOLID / DI / i18n / Design Tokens 硬规则**：见 [CLAUDE.md](CLAUDE.md)。Widget 里任何硬编码字符串 / 硬编码颜色字号 / 直接 `new Service()` 都会被 hook 拦下
 - **模型**：全部 freezed；禁止可变 class / `Map<String, dynamic>` 当模型用
 - **异常**：每个 domain 一个 exception type；禁止 `catch (e)` 吞通用 Exception
 - **架构蓝图**：`docs/ARCHITECTURE.md`
@@ -109,6 +141,8 @@ lcov --summary coverage/lcov.info      # 摘要
 - `git push --force` 到 `main` 或 `dev`（自己的 feature 分支可用 `--force-with-lease`）
 - 在一个 PR 里混"重构 + 新功能"——分开提
 - 跨 feature 分支互相 merge（会形成毛线团，用 rebase dev）
+- 任何方向的 `git merge --no-ff`——会产生 merge commit，违反线性历史铁律
+- GitHub PR UI 点 "Create a merge commit"——必须选 Squash 或 Rebase
 - 在 widget 里写硬编码字符串（用 `context.l10n`）
 - 在 widget 里写硬编码颜色/字号（用 `context.inkColors` / `context.inkTypography`）
 - 直接 `new Service()`（必须走 Riverpod provider）

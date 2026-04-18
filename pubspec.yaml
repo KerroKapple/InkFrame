@@ -18,7 +18,7 @@ dependencies:
   riverpod_annotation: ^2.6.1
 
   # 不可变模型
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.0.0
   json_annotation: ^4.9.0
 
   # 国际化 / 格式化
@@ -40,6 +40,9 @@ dependencies:
   # UUID 生成（repository 主键、测试装置）
   uuid: ^4.5.3
 
+  # HTTP 客户端（Provider 层）
+  dio: ^5.7.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -49,10 +52,13 @@ dev_dependencies:
   # 代码生成
   build_runner: ^2.4.15
   riverpod_generator: ^2.6.3
-  freezed: ^2.5.7
+  freezed: ^3.0.0
   json_serializable: ^6.9.0
   custom_lint: ^0.7.0
   riverpod_lint: ^2.6.3
+
+  # Provider 层 HTTP mock
+  http_mock_adapter: ^0.6.1
 
 flutter:
   uses-material-design: true
