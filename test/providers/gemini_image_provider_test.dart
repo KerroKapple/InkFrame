@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/models/generation_task.dart';
+import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/providers/gemini_image_provider.dart';
@@ -46,7 +47,8 @@ void main() {
       );
       expect(p.capabilities.providerId, 'gemini-image');
       expect(p.capabilities.region, ProviderRegion.global);
-      expect(p.capabilities.supportsPolling, isFalse);
+      // 同步 Provider 走 Pollable + inlineBytes 通道（ADR-0004）。
+      expect(p.capabilities.supportsPolling, isTrue);
       expect(p.capabilities.qps, 2);
     });
   });
@@ -286,6 +288,86 @@ void main() {
       final r = await _buildProvider(dio).validateApiKey('bad');
       expect(r, isA<KeyInvalid>());
       expect((r as KeyInvalid).reason, KeyInvalidReason.invalidKey);
+    });
+  });
+
+  // ADR-0004：同步 Provider 通过 Pollable + inlineBytes 通道返回结果。
+  group('GeminiImageProvider.poll (sync provider channel)', () {
+    test('submit→poll 一次成功返回 inlineBytes 且 remoteUrls 为空', () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kGeminiSubmitPath,
+        (req) => req.reply(200, _loadFixture('submit_success')),
+      );
+
+      final p = _buildProvider(dio);
+      final jobId = await p.submit(_task());
+      final status = await p.poll(jobId);
+
+      expect(status, isA<JobSuccess>());
+      final s = status as JobSuccess;
+      expect(s.remoteUrls, isEmpty);
+      expect(s.inlineBytes, isNotNull);
+      expect(s.inlineBytes!.length, 1);
+      expect(s.inlineBytes!.first.isNotEmpty, isTrue);
+    });
+
+    test('重复 poll 同一 jobId → ProviderError(cache_miss_or_consumed)', () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kGeminiSubmitPath,
+        (req) => req.reply(200, _loadFixture('submit_success')),
+      );
+
+      final p = _buildProvider(dio);
+      final jobId = await p.submit(_task());
+      await p.poll(jobId); // 第一次消费
+
+      await expectLater(
+        p.poll(jobId), // 第二次必须报错
+        throwsA(isA<ProviderError>()
+            .having((e) => e.code, 'code', InkErrorCode.providerServer)
+            .having(
+              (e) => e.extra['reason'],
+              'reason',
+              'cache_miss_or_consumed',
+            )),
+      );
+    });
+
+    test('submit 失败时不在 cache 留任何 jobId', () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kGeminiSubmitPath,
+        (req) => req.throws(
+          500,
+          DioException(
+            requestOptions: RequestOptions(path: kGeminiSubmitPath),
+            response: Response(
+              statusCode: 500,
+              data: const <String, Object?>{'error': 'boom'},
+              requestOptions: RequestOptions(path: kGeminiSubmitPath),
+            ),
+            type: DioExceptionType.badResponse,
+          ),
+        ),
+      );
+
+      final p = _buildProvider(dio);
+      await expectLater(p.submit(_task()), throwsA(isA<ProviderError>()));
+
+      // 任意构造 local:// jobId 都不应命中 cache（submit 失败未写入）
+      await expectLater(
+        p.poll('${kGeminiLocalJobPrefix}any-id'),
+        throwsA(isA<ProviderError>().having(
+          (e) => e.extra['reason'],
+          'reason',
+          'cache_miss_or_consumed',
+        )),
+      );
     });
   });
 }

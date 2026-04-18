@@ -194,7 +194,7 @@ pending ──► submitted ──► polling ──► success / error / timeou
 ### 5.2 submit() 契约
 
 - **幂等性**：Provider 层不保证幂等；幂等由 JobQueueService 的"同一 jobId 不二次入队"保证
-- **同步 Provider 特例**（Gemini）：`submit()` 内部完成生成，返回的 `JobId` 可以是 `local://` 前缀的合成 ID；`polling` 状态直接跳过，JobQueueService 检测 `capabilities.supportsPolling == false` 时不调 `poll()`
+- **同步 Provider**（Gemini）：`submit()` 内部完成 API 调用 + base64 解码 → 把 inline bytes 暂存进 instance-scoped cache → 返回 `local://` 前缀的合成 `JobId`。**仍必须 implements Pollable**（详见 §5.5 / ADR-0004）
 - **返回前**：必须完成 token bucket `acquire()`；**不准**在 `acquire()` 前建立 HTTP 连接
 
 ### 5.3 poll() 契约
@@ -209,6 +209,37 @@ pending ──► submitted ──► polling ──► success / error / timeou
 - 调用前 JobQueueService 已经把 `jobs.status` 置为 `cancelled_by_user`——`cancel()` 只负责通知 Provider
 - 不保证远端真的停止扣费；UI 文案必须明示"可能已产生部分费用"
 - `cancel()` 失败（网络超时、task 已结束）**不抛错**，写 WARN 日志
+
+### 5.5 同步 Provider 数据通道（ADR-0004）
+
+`JobStatus.success` 字段：
+
+| 字段 | 异步 Provider | 同步 Provider |
+|---|---|---|
+| `remoteUrls` | CDN 临时 URL 列表 | `[]` 空列表 |
+| `urlExpiresAt` | URL 过期时间 | `null` |
+| `inlineBytes` | `null` | `Uint8List` 列表（base64 解码后的图片字节） |
+
+**同步 Provider 实现规则：**
+
+- `submit()` 完成 API 调用后，把 inline bytes 写入 instance-scoped `Map<JobId, Uint8List>` cache，**不写盘**
+- `implements Pollable` + `capabilities.supportsPolling = true`
+- `poll(jobId)` 从 cache 取出 → **立即从 cache 删除**（一次性消费）→ 返回 `JobStatus.success(remoteUrls: [], inlineBytes: [bytes])`
+- 重复 poll 同一 jobId 抛 `ProviderError(providerServer, reason='cache_miss_or_consumed')`
+- submit 失败路径**不准**写 cache（避免泄漏）
+
+**JobQueueService 消费规则：**
+
+```dart
+final s = await provider.poll(jobId);
+if (s case JobSuccess(:final inlineBytes, :final remoteUrls)) {
+  if (inlineBytes != null) {
+    // 同步 Provider：本地落盘走 FileResolverService
+  } else {
+    // 异步 Provider：HTTP GET remoteUrls
+  }
+}
+```
 
 ---
 
