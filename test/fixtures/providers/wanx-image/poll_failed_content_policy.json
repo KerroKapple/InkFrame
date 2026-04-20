@@ -1,0 +1,9 @@
+{
+  "request_id": "FIXTURE_REQUEST_ID",
+  "output": {
+    "task_id": "wanx-task-FIXTURE_JOB_ID",
+    "task_status": "FAILED",
+    "code": "DataInspectionFailed",
+    "message": "Input data may contain inappropriate content."
+  }
+}
