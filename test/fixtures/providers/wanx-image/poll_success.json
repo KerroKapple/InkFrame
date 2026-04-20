@@ -1,0 +1,29 @@
+{
+  "request_id": "FIXTURE_REQUEST_ID",
+  "output": {
+    "task_id": "wanx-task-FIXTURE_JOB_ID",
+    "task_status": "SUCCEEDED",
+    "submit_time": "2026-04-18 10:00:00.000",
+    "scheduled_time": "2026-04-18 10:00:01.000",
+    "end_time": "2026-04-18 10:00:25.000",
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "message": {
+          "role": "assistant",
+          "content": [
+            {
+              "image": "https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/FIXTURE_IMAGE_1.png"
+            },
+            {
+              "image": "https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/FIXTURE_IMAGE_2.png"
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "usage": {
+    "image_count": 2
+  }
+}
