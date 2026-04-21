@@ -101,4 +101,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String canvasNodesSelected(int count) {
     return '$count node(s) selected';
   }
+
+  @override
+  String get canvasNoCanvasOpen => 'No canvas is open';
+
+  @override
+  String get canvasCreateSampleCanvas => 'Create sample canvas';
+
+  @override
+  String get canvasLoadFailed => 'Failed to load canvas';
+
+  @override
+  String get canvasSampleProjectName => 'Sample Project';
+
+  @override
+  String get canvasSampleCanvasName => 'Canvas 1';
 }

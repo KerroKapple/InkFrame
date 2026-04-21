@@ -1,13 +1,18 @@
 // CanvasView：画布主视图 — InteractiveViewer 视口 + Stack 节点渲染。
 //
-// 职责：渲染状态 + 分发手势。业务逻辑走 CanvasViewModel。
+// 职责：渲染状态 + 分发手势。业务逻辑走 CanvasNodesController / CanvasSelectionController。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../providers/canvas_view_model.dart';
+import '../../../theme/tokens.dart';
+import '../models/canvas_node.dart';
+import '../providers/canvas_bootstrap_controller.dart';
+import '../providers/canvas_nodes_controller.dart';
+import '../providers/canvas_selection_controller.dart';
+import '../providers/current_canvas_id.dart';
 import 'node_card.dart';
 
 class CanvasView extends ConsumerWidget {
@@ -15,14 +20,111 @@ class CanvasView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(canvasViewModelProvider);
+    final canvasId = ref.watch(currentCanvasIdProvider);
+    final colors = context.inkColors;
+    if (canvasId == null) {
+      return _NoCanvasOpen(colors: colors);
+    }
+
+    final nodesAsync = ref.watch(canvasNodesControllerProvider(canvasId));
+    return nodesAsync.when(
+      loading: () => Container(
+        color: colors.surface1,
+        child: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (err, _) => _LoadError(message: err.toString()),
+      data: (nodes) => _CanvasBody(canvasId: canvasId, nodes: nodes),
+    );
+  }
+}
+
+class _NoCanvasOpen extends ConsumerWidget {
+  const _NoCanvasOpen({required this.colors});
+  final InkColors colors;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final typo = context.inkTypography;
+    return Container(
+      color: colors.surface1,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.canvasNoCanvasOpen,
+              style: typo.body.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.md),
+            FilledButton(
+              onPressed: () async {
+                final bootstrap =
+                    ref.read(canvasBootstrapControllerProvider);
+                await bootstrap.createSample(
+                  projectName: context.l10n.canvasSampleProjectName,
+                  canvasName: context.l10n.canvasSampleCanvasName,
+                );
+              },
+              child: Text(context.l10n.canvasCreateSampleCanvas),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LoadError extends StatelessWidget {
+  const _LoadError({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final vm = ref.read(canvasViewModelProvider.notifier);
+    return Container(
+      color: colors.surface1,
+      padding: const EdgeInsets.all(InkSpacing.lg),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              context.l10n.canvasLoadFailed,
+              style: typo.body.copyWith(color: colors.fg1),
+            ),
+            const SizedBox(height: InkSpacing.sm),
+            Text(
+              message,
+              style: typo.caption.copyWith(color: colors.fg3),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 
-    if (state.nodes.isEmpty) {
+class _CanvasBody extends ConsumerWidget {
+  const _CanvasBody({required this.canvasId, required this.nodes});
+
+  final String canvasId;
+  final List<CanvasNode> nodes;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final selected = ref.watch(canvasSelectionControllerProvider);
+    final selectionCtrl =
+        ref.read(canvasSelectionControllerProvider.notifier);
+    final nodesCtrl =
+        ref.read(canvasNodesControllerProvider(canvasId).notifier);
+
+    if (nodes.isEmpty) {
       return GestureDetector(
-        onTap: vm.clearSelection,
+        onTap: selectionCtrl.clear,
         child: Container(
           color: colors.surface1,
           child: Center(
@@ -36,7 +138,7 @@ class CanvasView extends ConsumerWidget {
     }
 
     return GestureDetector(
-      onTap: vm.clearSelection,
+      onTap: selectionCtrl.clear,
       child: Container(
         color: colors.surface1,
         child: InteractiveViewer(
@@ -49,15 +151,16 @@ class CanvasView extends ConsumerWidget {
             height: 4000,
             child: Stack(
               children: [
-                for (final node in state.nodes)
+                for (final node in nodes)
                   Positioned(
                     left: node.position.dx,
                     top: node.position.dy,
                     child: NodeCard(
                       node: node,
-                      selected: state.selectedIds.contains(node.id),
-                      onTap: () => vm.select(node.id),
-                      onPanUpdate: (delta) => vm.moveNode(node.id, delta),
+                      selected: selected.contains(node.id),
+                      onTap: () => selectionCtrl.select(node.id),
+                      onPanUpdate: (delta) =>
+                          nodesCtrl.moveNode(node.id, delta),
                     ),
                   ),
               ],

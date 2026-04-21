@@ -93,3 +93,44 @@ class CanvasNode {
 }
 
 enum CanvasNodeType { image, text, video, shot }
+
+extension CanvasNodeMapping on CanvasNode {
+  /// 从 NodeRepository.listByCanvas 返回的单行 Map 构造 UI 模型。
+  ///
+  /// 容错：type 非法 → throw；role 非法 → throw（schema CHECK 已保护，UI 层再加一道断言）。
+  /// 其余可选字段缺失 → null / 默认值。
+  static CanvasNode fromRow(Map<String, Object?> row) {
+    final typeStr = row['type'] as String;
+    final roleStr = row['node_role'] as String;
+    return CanvasNode(
+      id: row['id']!.toString(),
+      label: (row['label'] as String?) ?? '',
+      type: CanvasNodeType.values.firstWhere(
+        (e) => e.name == typeStr,
+        orElse: () => throw FormatException('Unknown node type: $typeStr'),
+      ),
+      role: NodeRole.values.firstWhere(
+        (e) => e.name == roleStr,
+        orElse: () => throw FormatException('Unknown node role: $roleStr'),
+      ),
+      projectId: row['project_id'] as String?,
+      canvasId: row['canvas_id']?.toString(),
+      sourceNodeId: row['source_node_id']?.toString(),
+      position: Offset(
+        _asDouble(row['position_x']) ?? 0,
+        _asDouble(row['position_y']) ?? 0,
+      ),
+      size: Size(
+        _asDouble(row['width']) ?? 240,
+        _asDouble(row['height']) ?? 240,
+      ),
+    );
+  }
+}
+
+double? _asDouble(Object? v) {
+  if (v == null) return null;
+  if (v is double) return v;
+  if (v is num) return v.toDouble();
+  return double.tryParse(v.toString());
+}
