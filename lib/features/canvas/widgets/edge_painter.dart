@@ -15,6 +15,8 @@ class EdgePainter extends CustomPainter {
     required this.dataColor,
     required this.narrativeColor,
     required this.generationSourceColor,
+    required this.selectedColor,
+    this.selectedEdgeId,
   });
 
   final List<CanvasEdge> edges;
@@ -22,6 +24,8 @@ class EdgePainter extends CustomPainter {
   final Color dataColor;
   final Color narrativeColor;
   final Color generationSourceColor;
+  final Color selectedColor;
+  final String? selectedEdgeId;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -36,10 +40,15 @@ class EdgePainter extends CustomPainter {
       if (src == null || dst == null) continue;
       final p1 = _centerOf(src);
       final p2 = _centerOf(dst);
+      final isSelected = edge.id == selectedEdgeId;
 
       final paint = Paint()
-        ..color = _colorFor(edge.edgeType)
-        ..strokeWidth = edge.edgeType == EdgeType.data ? 2.0 : 1.0
+        ..color = isSelected ? selectedColor : _colorFor(edge.edgeType)
+        ..strokeWidth = isSelected
+            ? 3.0
+            : edge.edgeType == EdgeType.data
+                ? 2.0
+                : 1.0
         ..style = PaintingStyle.stroke;
 
       if (edge.edgeType == EdgeType.narrative) {
@@ -102,6 +111,8 @@ class EdgePainter extends CustomPainter {
         oldDelegate.nodes != nodes ||
         oldDelegate.dataColor != dataColor ||
         oldDelegate.narrativeColor != narrativeColor ||
-        oldDelegate.generationSourceColor != generationSourceColor;
+        oldDelegate.generationSourceColor != generationSourceColor ||
+        oldDelegate.selectedColor != selectedColor ||
+        oldDelegate.selectedEdgeId != selectedEdgeId;
   }
 }
