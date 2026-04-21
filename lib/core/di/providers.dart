@@ -1,15 +1,31 @@
 // Provider DI 装配 — 把所有 Submittable Provider 注册到 ProviderRegistry。
 //
-// S2a 范围内仅接 Gemini (PRD §10.2.1)；后续切片再把 Wanx / Kling 加进来。
+// 已注册：
+//   - gemini-image      (PRD §10.2.1, 同步文生图)
+//   - wanx-image        (阿里万相，异步文生图)
+//   - wanx-t2v          (阿里万相，异步文生视频)
+//   - wanx-i2v          (阿里万相，异步图生视频)
+//   - wanx-r2v          (阿里万相，异步参考生视频)
+//   - kling-v3          (快手 Kling v3，DashScope 渠道，异步)
+//   - kling-v3-omni     (快手 Kling v3 Omni，DashScope 渠道，异步)
 //
-// keySource 统一走 SecureStorage；未配置 Key 时 retrieve 返回 null →
-// 抛 StateError，由 UI/Controller 层捕获提示用户去 Settings 填。
+// keySource 统一走 SecureStorage，按 providerId 独立存 Key。
+// DashScope 系列 6 款虽然都用 DashScope API Key，但当前架构每个 providerId 一把 Key；
+// 未来可优化成 "family key" 让用户只填一次 DashScope Key。
+//
+// RateLimiter 每个 Provider 独立一把，按 capabilities.qps / burst 限速。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/gemini_image_provider.dart';
+import '../../providers/kling_v3_omni_provider.dart';
+import '../../providers/kling_v3_provider.dart';
 import '../../providers/provider_registry.dart';
 import '../../providers/rate_limiter.dart';
+import '../../providers/wanx_i2v_provider.dart';
+import '../../providers/wanx_image_provider.dart';
+import '../../providers/wanx_r2v_provider.dart';
+import '../../providers/wanx_t2v_provider.dart';
 import '../constants/secure_storage_keys.dart';
 import '../models/provider_capabilities.dart';
 import 'secure_storage.dart';
@@ -20,27 +36,50 @@ import 'secure_storage.dart';
 /// capabilities.qps / burst 上限。
 final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
   final secure = ref.watch(secureStorageServiceProvider);
-  final geminiRateLimiter = ProviderRateLimiter(
-    qps: kGeminiImageCapabilities.qps,
-    burst: kGeminiImageCapabilities.burst,
-  );
+
+  Future<String> Function() keyFor(String providerId) => () async {
+        final key = await secure.retrieve(
+          SecureStorageKeys.providerApiKey(providerId),
+        );
+        if (key == null || key.isEmpty) {
+          throw StateError(
+            '$providerId API key not configured in SecureStorage.',
+          );
+        }
+        return key;
+      };
+
+  ProviderRateLimiter limiterFor(ProviderCapabilities c) =>
+      ProviderRateLimiter(qps: c.qps, burst: c.burst);
 
   return ProviderRegistry(<String, ProviderFactory>{
     kGeminiImageCapabilities.providerId: () => GeminiImageProvider(
-          keySource: () async {
-            final key = await secure.retrieve(
-              SecureStorageKeys.providerApiKey(
-                kGeminiImageCapabilities.providerId,
-              ),
-            );
-            if (key == null || key.isEmpty) {
-              throw StateError(
-                'Gemini API key not configured in SecureStorage.',
-              );
-            }
-            return key;
-          },
-          rateLimiter: geminiRateLimiter,
+          keySource: keyFor(kGeminiImageCapabilities.providerId),
+          rateLimiter: limiterFor(kGeminiImageCapabilities),
+        ),
+    kWanxImageCapabilities.providerId: () => WanxImageProvider(
+          keySource: keyFor(kWanxImageCapabilities.providerId),
+          rateLimiter: limiterFor(kWanxImageCapabilities),
+        ),
+    kWanxT2VCapabilities.providerId: () => WanxT2VProvider(
+          keySource: keyFor(kWanxT2VCapabilities.providerId),
+          rateLimiter: limiterFor(kWanxT2VCapabilities),
+        ),
+    kWanxI2VCapabilities.providerId: () => WanxI2VProvider(
+          keySource: keyFor(kWanxI2VCapabilities.providerId),
+          rateLimiter: limiterFor(kWanxI2VCapabilities),
+        ),
+    kWanxR2VCapabilities.providerId: () => WanxR2VProvider(
+          keySource: keyFor(kWanxR2VCapabilities.providerId),
+          rateLimiter: limiterFor(kWanxR2VCapabilities),
+        ),
+    kKlingV3Capabilities.providerId: () => KlingV3Provider(
+          keySource: keyFor(kKlingV3Capabilities.providerId),
+          rateLimiter: limiterFor(kKlingV3Capabilities),
+        ),
+    kKlingV3OmniCapabilities.providerId: () => KlingV3OmniProvider(
+          keySource: keyFor(kKlingV3OmniCapabilities.providerId),
+          rateLimiter: limiterFor(kKlingV3OmniCapabilities),
         ),
   });
 });
