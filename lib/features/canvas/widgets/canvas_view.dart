@@ -8,12 +8,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_bootstrap_controller.dart';
+import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/current_canvas_id.dart';
 import 'config_node_inspector.dart';
+import 'edge_painter.dart';
 import 'node_card.dart';
 
 class CanvasView extends ConsumerWidget {
@@ -138,6 +141,9 @@ class _CanvasBody extends ConsumerWidget {
         ),
       );
     } else {
+      final edgesAsync =
+          ref.watch(canvasEdgesControllerProvider(canvasId));
+      final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
       canvasArea = GestureDetector(
         onTap: selectionCtrl.clear,
         child: Container(
@@ -152,6 +158,20 @@ class _CanvasBody extends ConsumerWidget {
               height: 4000,
               child: Stack(
                 children: [
+                  // 连线层（垫底，走 NodeCard 下方）。
+                  Positioned.fill(
+                    child: IgnorePointer(
+                      child: CustomPaint(
+                        painter: EdgePainter(
+                          edges: edges,
+                          nodes: nodes,
+                          dataColor: colors.accent,
+                          narrativeColor: colors.fg3,
+                          generationSourceColor: colors.fg3,
+                        ),
+                      ),
+                    ),
+                  ),
                   for (final node in nodes)
                     Positioned(
                       left: node.position.dx,
