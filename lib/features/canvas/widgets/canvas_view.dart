@@ -15,6 +15,7 @@ import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/current_canvas_id.dart';
+import '../providers/link_mode_controller.dart';
 import 'config_node_inspector.dart';
 import 'edge_painter.dart';
 import 'node_card.dart';
@@ -38,6 +39,38 @@ class CanvasView extends ConsumerWidget {
       ),
       error: (err, _) => _LoadError(message: err.toString()),
       data: (nodes) => _CanvasBody(canvasId: canvasId, nodes: nodes),
+    );
+  }
+}
+
+class _LinkHintBanner extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Material(
+      color: colors.surface3,
+      borderRadius: BorderRadius.circular(InkRadius.md),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: InkSpacing.md,
+          vertical: InkSpacing.sm,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.link, size: 16, color: colors.brand),
+            const SizedBox(width: InkSpacing.sm),
+            Flexible(
+              child: Text(
+                context.l10n.linkModeHint,
+                style: typo.body.copyWith(color: colors.fg1),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -125,11 +158,61 @@ class _CanvasBody extends ConsumerWidget {
         ref.read(canvasSelectionControllerProvider.notifier);
     final nodesCtrl =
         ref.read(canvasNodesControllerProvider(canvasId).notifier);
+    final linkSourceId = ref.watch(linkModeControllerProvider);
+    final linkCtrl = ref.read(linkModeControllerProvider.notifier);
+
+    void onEmptyTap() {
+      if (linkSourceId != null) {
+        linkCtrl.cancel();
+      }
+      selectionCtrl.clear();
+    }
+
+    Future<void> handleTap(CanvasNode node) async {
+      if (linkSourceId != null) {
+        if (node.id == linkSourceId) {
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            SnackBar(
+              content: Text(context.l10n.linkSelfNotAllowed),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+          linkCtrl.cancel();
+          return;
+        }
+        try {
+          await ref
+              .read(canvasEdgesControllerProvider(canvasId).notifier)
+              .addEdge(sourceNodeId: linkSourceId, targetNodeId: node.id);
+          if (context.mounted) {
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              SnackBar(
+                content: Text(context.l10n.linkCreated),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } catch (_) {
+          if (context.mounted) {
+            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+              SnackBar(
+                content: Text(context.l10n.linkAlreadyExists),
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        } finally {
+          linkCtrl.cancel();
+        }
+        return;
+      }
+      selectionCtrl.select(node.id);
+    }
 
     final Widget canvasArea;
     if (nodes.isEmpty) {
       canvasArea = GestureDetector(
-        onTap: selectionCtrl.clear,
+        onTap: onEmptyTap,
         child: Container(
           color: colors.surface1,
           child: Center(
@@ -145,7 +228,7 @@ class _CanvasBody extends ConsumerWidget {
           ref.watch(canvasEdgesControllerProvider(canvasId));
       final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
       canvasArea = GestureDetector(
-        onTap: selectionCtrl.clear,
+        onTap: onEmptyTap,
         child: Container(
           color: colors.surface1,
           child: InteractiveViewer(
@@ -179,9 +262,13 @@ class _CanvasBody extends ConsumerWidget {
                       child: NodeCard(
                         node: node,
                         selected: selected.contains(node.id),
-                        onTap: () => selectionCtrl.select(node.id),
+                        onTap: () => handleTap(node),
                         onPanUpdate: (delta) =>
                             nodesCtrl.moveNode(node.id, delta),
+                        onStartLink: () => linkCtrl.start(node.id),
+                        isLinkSource: linkSourceId == node.id,
+                        isLinkCandidate:
+                            linkSourceId != null && linkSourceId != node.id,
                       ),
                     ),
                 ],
@@ -202,9 +289,26 @@ class _CanvasBody extends ConsumerWidget {
           .firstWhere((_) => true, orElse: () => null);
     }
 
+    final Widget leftArea;
+    if (linkSourceId != null) {
+      leftArea = Stack(
+        children: [
+          Positioned.fill(child: canvasArea),
+          Positioned(
+            top: InkSpacing.md,
+            left: InkSpacing.md,
+            right: InkSpacing.md,
+            child: _LinkHintBanner(),
+          ),
+        ],
+      );
+    } else {
+      leftArea = canvasArea;
+    }
+
     return Row(
       children: [
-        Expanded(child: canvasArea),
+        Expanded(child: leftArea),
         if (inspectorTarget != null)
           ConfigNodeInspector(
             key: ValueKey(inspectorTarget.id),
