@@ -178,4 +178,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsApiKeyCleared => 'Cleared';
+
+  @override
+  String get generationSuccess => 'Generated';
+
+  @override
+  String get generationFailure => 'Generation failed';
+
+  @override
+  String get generationMissingKey => 'API key is missing';
+
+  @override
+  String generationInvalidConfig(String reason) {
+    return 'Invalid configuration: $reason';
+  }
+
+  @override
+  String get generationProviderNotRegistered => 'Provider not registered';
 }
