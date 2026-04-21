@@ -58,6 +58,41 @@ void main() {
       expect(a.hashCode == b.hashCode, isFalse);
     });
 
+    test('fromRow 解析 type_config Map / 结构化 image_url', () {
+      final n = CanvasNodeMapping.fromRow(<String, Object?>{
+        'id': 'r1',
+        'type': 'image',
+        'node_role': 'result',
+        'canvas_id': 'c',
+        'type_config': <String, Object?>{'image_url': 'images/abc.png'},
+      });
+      expect(n.typeConfig['image_url'], 'images/abc.png');
+      expect(n.imageUrl, 'images/abc.png');
+    });
+
+    test('fromRow 解析 type_config 字符串 JSON', () {
+      final n = CanvasNodeMapping.fromRow(<String, Object?>{
+        'id': 'r1',
+        'type': 'image',
+        'node_role': 'result',
+        'canvas_id': 'c',
+        'type_config': '{"image_url":"images/abc.png"}',
+      });
+      expect(n.imageUrl, 'images/abc.png');
+    });
+
+    test('imageUrl getter: 空字符串 / 缺失 / 非 String → null', () {
+      const n1 = CanvasNode(id: 'r', label: '', type: CanvasNodeType.image);
+      expect(n1.imageUrl, isNull);
+      const n2 = CanvasNode(
+        id: 'r',
+        label: '',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'image_url': ''},
+      );
+      expect(n2.imageUrl, isNull);
+    });
+
     test('equality 相同字段返回 true', () {
       const a = CanvasNode(
         id: 'x',

@@ -77,5 +77,8 @@
       "reason": { "type": "String" }
     }
   },
-  "generationProviderNotRegistered": "Provider not registered"
+  "generationProviderNotRegistered": "Provider not registered",
+
+  "resultNodePending": "Waiting for generation",
+  "resultNodeImageMissing": "Image file missing"
 }
