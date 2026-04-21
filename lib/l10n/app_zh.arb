@@ -74,5 +74,8 @@
       "reason": { "type": "String" }
     }
   },
-  "generationProviderNotRegistered": "Provider 未注册"
+  "generationProviderNotRegistered": "Provider 未注册",
+
+  "resultNodePending": "等待生成",
+  "resultNodeImageMissing": "图像文件缺失"
 }

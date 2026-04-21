@@ -185,4 +185,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get generationProviderNotRegistered => 'Provider 未注册';
+
+  @override
+  String get resultNodePending => '等待生成';
+
+  @override
+  String get resultNodeImageMissing => '图像文件缺失';
 }

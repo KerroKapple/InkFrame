@@ -445,6 +445,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Provider not registered'**
   String get generationProviderNotRegistered;
+
+  /// No description provided for @resultNodePending.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for generation'**
+  String get resultNodePending;
+
+  /// No description provided for @resultNodeImageMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Image file missing'**
+  String get resultNodeImageMissing;
 }
 
 class _AppLocalizationsDelegate
