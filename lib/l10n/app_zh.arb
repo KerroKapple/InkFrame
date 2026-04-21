@@ -77,5 +77,11 @@
   "generationProviderNotRegistered": "Provider 未注册",
 
   "resultNodePending": "等待生成",
-  "resultNodeImageMissing": "图像文件缺失"
+  "resultNodeImageMissing": "图像文件缺失",
+
+  "linkModeStart": "连线",
+  "linkModeHint": "点击目标节点建立连线，点空白取消",
+  "linkCreated": "连线已创建",
+  "linkAlreadyExists": "连线已存在",
+  "linkSelfNotAllowed": "不能连到自己"
 }

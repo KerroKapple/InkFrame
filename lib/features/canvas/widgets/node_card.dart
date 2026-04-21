@@ -23,6 +23,9 @@ class NodeCard extends ConsumerWidget {
     required this.selected,
     required this.onTap,
     required this.onPanUpdate,
+    this.onStartLink,
+    this.isLinkSource = false,
+    this.isLinkCandidate = false,
   });
 
   final CanvasNode node;
@@ -30,53 +33,87 @@ class NodeCard extends ConsumerWidget {
   final VoidCallback onTap;
   final void Function(Offset delta) onPanUpdate;
 
+  /// 选中后点击该回调 → 进入连线模式。null 代表不可发起连线（例如 result 节点）。
+  final VoidCallback? onStartLink;
+
+  /// 本节点是否为当前连线模式的起点（UI 高亮）。
+  final bool isLinkSource;
+
+  /// 连线模式下此节点是否为合法目标（非起点 → 高亮为点击候选）。
+  final bool isLinkCandidate;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
 
+    final Color borderColor;
+    final double borderWidth;
+    if (isLinkSource) {
+      borderColor = colors.brand;
+      borderWidth = 2.5;
+    } else if (isLinkCandidate) {
+      borderColor = colors.brand;
+      borderWidth = 2.0;
+    } else if (selected) {
+      borderColor = colors.accent;
+      borderWidth = 2.0;
+    } else {
+      borderColor = colors.border;
+      borderWidth = 1.0;
+    }
+
     return GestureDetector(
       onTap: onTap,
       onPanUpdate: (d) => onPanUpdate(d.delta),
-      child: Container(
-        width: node.size.width,
-        height: node.size.height,
-        decoration: BoxDecoration(
-          color: colors.surface2,
-          borderRadius: BorderRadius.circular(InkRadius.lg),
-          border: Border.all(
-            color: selected ? colors.accent : colors.border,
-            width: selected ? 2 : 1,
-          ),
-          boxShadow: selected ? InkShadow.elevated : InkShadow.card,
-        ),
-        padding: const EdgeInsets.all(InkSpacing.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: node.size.width,
+            height: node.size.height,
+            decoration: BoxDecoration(
+              color: colors.surface2,
+              borderRadius: BorderRadius.circular(InkRadius.lg),
+              border: Border.all(color: borderColor, width: borderWidth),
+              boxShadow:
+                  selected || isLinkSource ? InkShadow.elevated : InkShadow.card,
+            ),
+            padding: const EdgeInsets.all(InkSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  _iconFor(node.type),
-                  size: 16,
-                  color: colors.fg3,
+                Row(
+                  children: [
+                    Icon(
+                      _iconFor(node.type),
+                      size: 16,
+                      color: colors.fg3,
+                    ),
+                    const SizedBox(width: InkSpacing.xs),
+                    Text(
+                      _typeLabel(context, node.type),
+                      style: typo.caption.copyWith(color: colors.fg3),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: InkSpacing.xs),
-                Text(
-                  _typeLabel(context, node.type),
-                  style: typo.caption.copyWith(color: colors.fg3),
+                const SizedBox(height: InkSpacing.sm),
+                Expanded(
+                  child: _NodeBody(
+                    node: node,
+                    resolver: ref.watch(fileResolverServiceProvider),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: InkSpacing.sm),
-            Expanded(
-              child: _NodeBody(
-                node: node,
-                resolver: ref.watch(fileResolverServiceProvider),
-              ),
+          ),
+          if (selected && onStartLink != null && !isLinkSource)
+            Positioned(
+              right: -8,
+              top: -8,
+              child: _LinkAnchor(onPressed: onStartLink!),
             ),
-          ],
-        ),
+        ],
       ),
     );
   }
@@ -93,6 +130,33 @@ class NodeCard extends ConsumerWidget {
         CanvasNodeType.image => context.l10n.canvasNodeImageType,
         _ => type.name,
       };
+}
+
+class _LinkAnchor extends StatelessWidget {
+  const _LinkAnchor({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    return Tooltip(
+      message: context.l10n.linkModeStart,
+      child: Material(
+        color: colors.surface1,
+        shape: CircleBorder(side: BorderSide(color: colors.brand, width: 1.5)),
+        elevation: 2,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: Icon(Icons.link, size: 14, color: colors.brand),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _NodeBody extends StatelessWidget {
