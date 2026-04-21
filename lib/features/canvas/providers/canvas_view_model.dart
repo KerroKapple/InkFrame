@@ -41,12 +41,24 @@ class CanvasViewModel extends AutoDisposeNotifier<CanvasState> {
   void addNode({
     required String label,
     required CanvasNodeType type,
+    NodeRole role = NodeRole.config,
+    String? projectId,
+    String? canvasId,
+    String? sourceNodeId,
     Offset position = Offset.zero,
   }) {
+    assert(
+      role != NodeRole.result || sourceNodeId != null,
+      'result 节点必须带 sourceNodeId（§4.5.1）',
+    );
     final node = CanvasNode(
       id: _uuid.v4(),
       label: label,
       type: type,
+      role: role,
+      projectId: projectId,
+      canvasId: canvasId,
+      sourceNodeId: sourceNodeId,
       position: position,
     );
     state = state.copyWith(nodes: [...state.nodes, node]);
