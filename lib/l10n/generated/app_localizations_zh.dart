@@ -233,4 +233,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inspectorRemoveInput => '移除输入';
+
+  @override
+  String get canvasAddImageNode => '添加图片节点';
+
+  @override
+  String get canvasAddNodeFailed => '添加节点失败';
 }

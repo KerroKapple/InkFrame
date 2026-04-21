@@ -541,6 +541,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove input'**
   String get inspectorRemoveInput;
+
+  /// No description provided for @canvasAddImageNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add image node'**
+  String get canvasAddImageNode;
+
+  /// No description provided for @canvasAddNodeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add node'**
+  String get canvasAddNodeFailed;
 }
 
 class _AppLocalizationsDelegate
