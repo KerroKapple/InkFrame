@@ -80,5 +80,11 @@
   "generationProviderNotRegistered": "Provider not registered",
 
   "resultNodePending": "Waiting for generation",
-  "resultNodeImageMissing": "Image file missing"
+  "resultNodeImageMissing": "Image file missing",
+
+  "linkModeStart": "Start link",
+  "linkModeHint": "Tap a target node to link, or tap empty space to cancel",
+  "linkCreated": "Link created",
+  "linkAlreadyExists": "Link already exists",
+  "linkSelfNotAllowed": "Cannot link a node to itself"
 }

@@ -457,6 +457,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Image file missing'**
   String get resultNodeImageMissing;
+
+  /// No description provided for @linkModeStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start link'**
+  String get linkModeStart;
+
+  /// No description provided for @linkModeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap a target node to link, or tap empty space to cancel'**
+  String get linkModeHint;
+
+  /// No description provided for @linkCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Link created'**
+  String get linkCreated;
+
+  /// No description provided for @linkAlreadyExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Link already exists'**
+  String get linkAlreadyExists;
+
+  /// No description provided for @linkSelfNotAllowed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot link a node to itself'**
+  String get linkSelfNotAllowed;
 }
 
 class _AppLocalizationsDelegate

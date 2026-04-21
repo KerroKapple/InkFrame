@@ -191,4 +191,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get resultNodeImageMissing => '图像文件缺失';
+
+  @override
+  String get linkModeStart => '连线';
+
+  @override
+  String get linkModeHint => '点击目标节点建立连线，点空白取消';
+
+  @override
+  String get linkCreated => '连线已创建';
+
+  @override
+  String get linkAlreadyExists => '连线已存在';
+
+  @override
+  String get linkSelfNotAllowed => '不能连到自己';
 }
