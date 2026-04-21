@@ -20,10 +20,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/secure_storage_keys.dart';
+import '../../core/di/file_resolver.dart';
 import '../../core/di/job_queue.dart';
 import '../../core/di/providers.dart';
 import '../../core/di/repositories.dart';
 import '../../core/di/secure_storage.dart';
+import '../../core/interfaces/edge_repository.dart';
 import '../../core/interfaces/job_queue_service.dart';
 import '../../core/interfaces/job_repository.dart';
 import '../../core/interfaces/node_repository.dart';
@@ -33,20 +35,25 @@ import '../../core/models/job_status.dart';
 import '../../core/models/provider_capabilities.dart';
 import '../../providers/gemini_image_provider.dart';
 import '../../providers/provider_registry.dart';
+import '../../services/file_resolver_service.dart';
 
 final generationControllerProvider = FutureProvider<GenerationController>(
   (ref) async {
     final nodes = await ref.watch(nodeRepositoryProvider.future);
+    final edges = await ref.watch(edgeRepositoryProvider.future);
     final jobs = await ref.watch(jobRepositoryProvider.future);
     final secure = ref.watch(secureStorageServiceProvider);
     final queue = ref.watch(jobQueueServiceProvider);
     final registry = ref.watch(providerRegistryProvider);
+    final resolver = ref.watch(fileResolverServiceProvider);
     return GenerationController(
       nodes: nodes,
+      edges: edges,
       jobs: jobs,
       secure: secure,
       queue: queue,
       registry: registry,
+      resolver: resolver,
     );
   },
   name: 'generationControllerProvider',
@@ -94,17 +101,21 @@ class GenerationOutcome {
 class GenerationController {
   GenerationController({
     required this.nodes,
+    required this.edges,
     required this.jobs,
     required this.secure,
     required this.queue,
     required this.registry,
+    required this.resolver,
   });
 
   final NodeRepository nodes;
+  final EdgeRepository edges;
   final JobRepository jobs;
   final SecureStorageService secure;
   final JobQueueService queue;
   final ProviderRegistry registry;
+  final FileResolverService resolver;
 
   /// 从 config 节点发起一次文生图。阻塞到终态返回。
   Future<GenerationOutcome> submitFromConfigNode(String configNodeId) async {
@@ -140,6 +151,16 @@ class GenerationController {
     final canvasId = cfgRow['canvas_id']!.toString();
     final projectId = cfgRow['project_id']?.toString();
 
+    // 读入 data 连线作为参考图（PRD §8.2）。失败不阻断生成——refs 仍可为空。
+    final refs = await _resolveRefImages(
+      configNodeId: configNodeId,
+      projectId: projectId,
+      canvasId: canvasId,
+    );
+    final mode = refs.refImagePaths.isEmpty
+        ? GenerationMode.textToImage
+        : GenerationMode.imageToImage;
+
     // 预创建 result 节点（R2 路径调整：B-b3 落盘要求 resultNodeId 先在）。
     final resultNodeId = await nodes.create(
       canvasId: canvasId,
@@ -161,6 +182,12 @@ class GenerationController {
         parameters: <String, Object?>{
           'resolution': resolution.name,
           'aspect_ratio': aspect.name,
+          if (refs.refImagePaths.isNotEmpty)
+            'ref_image_paths': refs.refImagePaths,
+          if (refs.firstFramePath != null)
+            'first_frame_path': refs.firstFramePath,
+          if (refs.lastFramePath != null)
+            'last_frame_path': refs.lastFramePath,
         },
       );
 
@@ -170,10 +197,13 @@ class GenerationController {
         projectId: projectId,
         canvasId: canvasId,
         resultNodeId: resultNodeId,
-        mode: GenerationMode.textToImage,
+        mode: mode,
         prompt: prompt,
         resolution: resolution,
         aspectRatio: aspect,
+        refImagePaths: refs.refImagePaths,
+        firstFramePath: refs.firstFramePath,
+        lastFramePath: refs.lastFramePath,
       );
 
       final handle = await queue.submit(task);
@@ -193,6 +223,75 @@ class GenerationController {
       await nodes.softDelete(resultNodeId);
       rethrow;
     }
+  }
+
+  /// 读入 configNode 的所有 data 入连线，把源节点的 image_url 解析为绝对路径。
+  ///
+  /// 失败策略：单条边解析失败（源节点已删 / image_url 空 / PathSecurityError）静默跳过，
+  /// 不影响其他边。projectId 为空时所有解析跳过（单测场景）。
+  Future<_RefImages> _resolveRefImages({
+    required String configNodeId,
+    required String? projectId,
+    required String canvasId,
+  }) async {
+    if (projectId == null) return const _RefImages.empty();
+    final List<Map<String, Object?>> incoming;
+    try {
+      incoming = await edges.listIncoming(configNodeId);
+    } catch (_) {
+      return const _RefImages.empty();
+    }
+
+    final List<String> refs = [];
+    String? firstFrame;
+    String? lastFrame;
+
+    for (final row in incoming) {
+      if (row['edge_type'] != 'data') continue;
+      final srcId = row['source_node_id']?.toString();
+      if (srcId == null) continue;
+      final role = row['role'] as String? ?? 'reference';
+
+      final Map<String, Object?>? srcRow;
+      try {
+        srcRow = await nodes.findById(srcId);
+      } catch (_) {
+        continue;
+      }
+      if (srcRow == null) continue;
+
+      final tc = _readTypeConfig(srcRow['type_config']);
+      final relPath = tc['image_url'];
+      if (relPath is! String || relPath.isEmpty) continue;
+
+      final String absPath;
+      try {
+        absPath = resolver
+            .resolve(
+              projectId: projectId,
+              canvasId: canvasId,
+              relativePath: relPath,
+            )
+            .path;
+      } catch (_) {
+        continue;
+      }
+
+      switch (role) {
+        case 'first_frame':
+          firstFrame ??= absPath;
+        case 'last_frame':
+          lastFrame ??= absPath;
+        default:
+          refs.add(absPath);
+      }
+    }
+
+    return _RefImages(
+      refImagePaths: List.unmodifiable(refs),
+      firstFramePath: firstFrame,
+      lastFramePath: lastFrame,
+    );
   }
 
   Map<String, Object?> _readTypeConfig(Object? raw) {
@@ -220,6 +319,21 @@ class GenerationController {
     }
     return null;
   }
+}
+
+class _RefImages {
+  const _RefImages({
+    required this.refImagePaths,
+    this.firstFramePath,
+    this.lastFramePath,
+  });
+  const _RefImages.empty()
+      : refImagePaths = const <String>[],
+        firstFramePath = null,
+        lastFramePath = null;
+  final List<String> refImagePaths;
+  final String? firstFramePath;
+  final String? lastFramePath;
 }
 
 extension on JobStatus {
