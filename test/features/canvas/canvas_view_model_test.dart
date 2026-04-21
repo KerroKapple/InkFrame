@@ -94,5 +94,47 @@ void main() {
       vm.moveNode(id, const Offset(-5, 3));
       expect(s().nodes.first.position, const Offset(5, 23));
     });
+
+    test('addNode 默认 role = config', () {
+      vm.addNode(label: 'A', type: CanvasNodeType.image);
+      expect(s().nodes.first.role, NodeRole.config);
+      expect(s().nodes.first.sourceNodeId, isNull);
+    });
+
+    test('addNode 可创建 result 节点（带 sourceNodeId）', () {
+      vm.addNode(label: 'Cfg', type: CanvasNodeType.image);
+      final cfgId = s().nodes.first.id;
+      vm.addNode(
+        label: 'R',
+        type: CanvasNodeType.image,
+        role: NodeRole.result,
+        sourceNodeId: cfgId,
+      );
+      final result = s().nodes.last;
+      expect(result.role, NodeRole.result);
+      expect(result.sourceNodeId, cfgId);
+    });
+
+    test('addNode result 节点缺 sourceNodeId 触发 assert', () {
+      expect(
+        () => vm.addNode(
+          label: 'R',
+          type: CanvasNodeType.image,
+          role: NodeRole.result,
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('addNode 携带 projectId / canvasId 保留', () {
+      vm.addNode(
+        label: 'A',
+        type: CanvasNodeType.image,
+        projectId: 'p',
+        canvasId: 'c',
+      );
+      expect(s().nodes.first.projectId, 'p');
+      expect(s().nodes.first.canvasId, 'c');
+    });
   });
 }
