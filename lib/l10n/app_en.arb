@@ -55,5 +55,16 @@
   "inspectorGenerateDisabledEmptyPrompt": "Write a prompt first",
   "inspectorGenerateDisabledNoKey": "Configure API key in Settings",
   "inspectorGenerateNotWiredYet": "Generation wiring ships in the next slice",
-  "inspectorSelectSingleHint": "Select a single config node to edit"
+  "inspectorSelectSingleHint": "Select a single config node to edit",
+
+  "settingsTitle": "Settings",
+  "settingsApiKeysSection": "API Keys",
+  "settingsApiKeysHint": "Keys are stored in your system keychain. Nothing is sent off-device.",
+  "settingsApiKeyPlaceholder": "sk-...",
+  "settingsApiKeySave": "Save",
+  "settingsApiKeyClear": "Clear",
+  "settingsApiKeySet": "Set",
+  "settingsApiKeyNotSet": "Not set",
+  "settingsApiKeySaved": "Saved",
+  "settingsApiKeyCleared": "Cleared"
 }
