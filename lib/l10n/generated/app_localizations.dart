@@ -295,6 +295,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Canvas 1'**
   String get canvasSampleCanvasName;
+
+  /// No description provided for @inspectorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Config'**
+  String get inspectorTitle;
+
+  /// No description provided for @inspectorPromptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get inspectorPromptLabel;
+
+  /// No description provided for @inspectorPromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the image you want...'**
+  String get inspectorPromptHint;
+
+  /// No description provided for @inspectorProviderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get inspectorProviderLabel;
+
+  /// No description provided for @inspectorResolutionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolution'**
+  String get inspectorResolutionLabel;
+
+  /// No description provided for @inspectorGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
+  String get inspectorGenerate;
+
+  /// No description provided for @inspectorGenerateDisabledEmptyPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Write a prompt first'**
+  String get inspectorGenerateDisabledEmptyPrompt;
+
+  /// No description provided for @inspectorGenerateDisabledNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure API key in Settings'**
+  String get inspectorGenerateDisabledNoKey;
+
+  /// No description provided for @inspectorGenerateNotWiredYet.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation wiring ships in the next slice'**
+  String get inspectorGenerateNotWiredYet;
+
+  /// No description provided for @inspectorSelectSingleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a single config node to edit'**
+  String get inspectorSelectSingleHint;
 }
 
 class _AppLocalizationsDelegate

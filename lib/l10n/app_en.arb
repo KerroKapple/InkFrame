@@ -44,5 +44,16 @@
   "canvasCreateSampleCanvas": "Create sample canvas",
   "canvasLoadFailed": "Failed to load canvas",
   "canvasSampleProjectName": "Sample Project",
-  "canvasSampleCanvasName": "Canvas 1"
+  "canvasSampleCanvasName": "Canvas 1",
+
+  "inspectorTitle": "Config",
+  "inspectorPromptLabel": "Prompt",
+  "inspectorPromptHint": "Describe the image you want...",
+  "inspectorProviderLabel": "Provider",
+  "inspectorResolutionLabel": "Resolution",
+  "inspectorGenerate": "Generate",
+  "inspectorGenerateDisabledEmptyPrompt": "Write a prompt first",
+  "inspectorGenerateDisabledNoKey": "Configure API key in Settings",
+  "inspectorGenerateNotWiredYet": "Generation wiring ships in the next slice",
+  "inspectorSelectSingleHint": "Select a single config node to edit"
 }

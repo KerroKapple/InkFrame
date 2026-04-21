@@ -41,5 +41,16 @@
   "canvasCreateSampleCanvas": "新建示例画布",
   "canvasLoadFailed": "加载画布失败",
   "canvasSampleProjectName": "示例项目",
-  "canvasSampleCanvasName": "画布 1"
+  "canvasSampleCanvasName": "画布 1",
+
+  "inspectorTitle": "配置",
+  "inspectorPromptLabel": "提示词",
+  "inspectorPromptHint": "描述你想生成的画面……",
+  "inspectorProviderLabel": "服务商",
+  "inspectorResolutionLabel": "分辨率",
+  "inspectorGenerate": "生成",
+  "inspectorGenerateDisabledEmptyPrompt": "请先填写提示词",
+  "inspectorGenerateDisabledNoKey": "请在设置中配置 API Key",
+  "inspectorGenerateNotWiredYet": "生成流程将在下个切片接入",
+  "inspectorSelectSingleHint": "选中一个配置节点以编辑"
 }
