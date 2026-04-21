@@ -10,7 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/theme.dart';
 import 'features/canvas/widgets/canvas_view.dart';
+import 'features/settings/settings_screen.dart';
 import 'l10n/generated/app_localizations.dart';
+import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
 
 class InkFrameApp extends ConsumerStatefulWidget {
@@ -50,8 +52,35 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const Scaffold(body: CanvasView()),
+      home: const _HomeScaffold(),
       debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class _HomeScaffold extends StatelessWidget {
+  const _HomeScaffold();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(context.l10n.appTitle),
+        actions: [
+          IconButton(
+            tooltip: context.l10n.settingsTitle,
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+      body: const CanvasView(),
     );
   }
 }

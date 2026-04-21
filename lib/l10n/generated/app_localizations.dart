@@ -355,6 +355,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select a single config node to edit'**
   String get inspectorSelectSingleHint;
+
+  /// No description provided for @settingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get settingsTitle;
+
+  /// No description provided for @settingsApiKeysSection.
+  ///
+  /// In en, this message translates to:
+  /// **'API Keys'**
+  String get settingsApiKeysSection;
+
+  /// No description provided for @settingsApiKeysHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys are stored in your system keychain. Nothing is sent off-device.'**
+  String get settingsApiKeysHint;
+
+  /// No description provided for @settingsApiKeyPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'sk-...'**
+  String get settingsApiKeyPlaceholder;
+
+  /// No description provided for @settingsApiKeySave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get settingsApiKeySave;
+
+  /// No description provided for @settingsApiKeyClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get settingsApiKeyClear;
+
+  /// No description provided for @settingsApiKeySet.
+  ///
+  /// In en, this message translates to:
+  /// **'Set'**
+  String get settingsApiKeySet;
+
+  /// No description provided for @settingsApiKeyNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get settingsApiKeyNotSet;
+
+  /// No description provided for @settingsApiKeySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved'**
+  String get settingsApiKeySaved;
+
+  /// No description provided for @settingsApiKeyCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Cleared'**
+  String get settingsApiKeyCleared;
 }
 
 class _AppLocalizationsDelegate
