@@ -16,6 +16,8 @@ import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/current_canvas_id.dart';
 import '../providers/link_mode_controller.dart';
+import '../providers/selected_edge_controller.dart';
+import '../util/edge_hit_test.dart';
 import 'config_node_inspector.dart';
 import 'edge_painter.dart';
 import 'node_card.dart';
@@ -39,6 +41,30 @@ class CanvasView extends ConsumerWidget {
       ),
       error: (err, _) => _LoadError(message: err.toString()),
       data: (nodes) => _CanvasBody(canvasId: canvasId, nodes: nodes),
+    );
+  }
+}
+
+class _EdgeDeleteButton extends StatelessWidget {
+  const _EdgeDeleteButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    return Material(
+      color: colors.surface1,
+      shape: CircleBorder(side: BorderSide(color: colors.danger, width: 1.5)),
+      elevation: 2,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onPressed,
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: Icon(Icons.close, size: 16, color: colors.danger),
+        ),
+      ),
     );
   }
 }
@@ -160,12 +186,15 @@ class _CanvasBody extends ConsumerWidget {
         ref.read(canvasNodesControllerProvider(canvasId).notifier);
     final linkSourceId = ref.watch(linkModeControllerProvider);
     final linkCtrl = ref.read(linkModeControllerProvider.notifier);
+    final selectedEdgeId = ref.watch(selectedEdgeControllerProvider);
+    final selectedEdgeCtrl = ref.read(selectedEdgeControllerProvider.notifier);
 
     void onEmptyTap() {
       if (linkSourceId != null) {
         linkCtrl.cancel();
       }
       selectionCtrl.clear();
+      selectedEdgeCtrl.clear();
     }
 
     Future<void> handleTap(CanvasNode node) async {
@@ -227,34 +256,71 @@ class _CanvasBody extends ConsumerWidget {
       final edgesAsync =
           ref.watch(canvasEdgesControllerProvider(canvasId));
       final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
-      canvasArea = GestureDetector(
-        onTap: onEmptyTap,
-        child: Container(
-          color: colors.surface1,
-          child: InteractiveViewer(
-            constrained: false,
-            boundaryMargin: const EdgeInsets.all(2000),
-            minScale: 0.1,
-            maxScale: 3.0,
-            child: SizedBox(
-              width: 4000,
-              height: 4000,
-              child: Stack(
-                children: [
-                  // 连线层（垫底，走 NodeCard 下方）。
-                  Positioned.fill(
-                    child: IgnorePointer(
-                      child: CustomPaint(
-                        painter: EdgePainter(
-                          edges: edges,
-                          nodes: nodes,
-                          dataColor: colors.accent,
-                          narrativeColor: colors.fg3,
-                          generationSourceColor: colors.fg3,
-                        ),
+      final edgesCtrl =
+          ref.read(canvasEdgesControllerProvider(canvasId).notifier);
+
+      void onEdgeLayerTap(TapDownDetails d) {
+        final hitId = hitTestEdge(
+          point: d.localPosition,
+          edges: edges,
+          nodes: nodes,
+        );
+        if (hitId != null) {
+          selectedEdgeCtrl.select(hitId);
+          return;
+        }
+        onEmptyTap();
+      }
+
+      // 定位当前选中边的端点节点，渲染删除按钮用。
+      CanvasEdge? selectedEdge;
+      CanvasNode? selSrc;
+      CanvasNode? selDst;
+      if (selectedEdgeId != null) {
+        for (final e in edges) {
+          if (e.id == selectedEdgeId) {
+            selectedEdge = e;
+            break;
+          }
+        }
+        if (selectedEdge != null) {
+          for (final n in nodes) {
+            if (n.id == selectedEdge.sourceNodeId) selSrc = n;
+            if (n.id == selectedEdge.targetNodeId) selDst = n;
+          }
+        }
+      }
+
+      canvasArea = Container(
+        color: colors.surface1,
+        child: InteractiveViewer(
+          constrained: false,
+          boundaryMargin: const EdgeInsets.all(2000),
+          minScale: 0.1,
+          maxScale: 3.0,
+          child: SizedBox(
+            width: 4000,
+            height: 4000,
+            child: Stack(
+              children: [
+                // 连线层（含点击命中）。GestureDetector translucent 让空白处也冒泡。
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTapDown: onEdgeLayerTap,
+                    child: CustomPaint(
+                      painter: EdgePainter(
+                        edges: edges,
+                        nodes: nodes,
+                        dataColor: colors.accent,
+                        narrativeColor: colors.fg3,
+                        generationSourceColor: colors.fg3,
+                        selectedColor: colors.brand,
+                        selectedEdgeId: selectedEdgeId,
                       ),
                     ),
                   ),
+                ),
                   for (final node in nodes)
                     Positioned(
                       left: node.position.dx,
@@ -271,12 +337,30 @@ class _CanvasBody extends ConsumerWidget {
                             linkSourceId != null && linkSourceId != node.id,
                       ),
                     ),
+                  if (selectedEdge != null &&
+                      selSrc != null &&
+                      selDst != null)
+                    Positioned(
+                      left: edgeMidpoint(source: selSrc, target: selDst).dx - 14,
+                      top: edgeMidpoint(source: selSrc, target: selDst).dy - 14,
+                      child: _EdgeDeleteButton(
+                        onPressed: () async {
+                          final id = selectedEdge!.id;
+                          selectedEdgeCtrl.clear();
+                          try {
+                            await edgesCtrl.removeEdge(id);
+                          } catch (_) {
+                            // 删失败时 SelectedEdge 已清，选择放手——
+                            // EdgesController 已回滚内存，用户可重试。
+                          }
+                        },
+                      ),
+                    ),
                 ],
               ),
             ),
           ),
-        ),
-      );
+        );
     }
 
     // Inspector 仅当单选且选中的是 config 节点时显示。
