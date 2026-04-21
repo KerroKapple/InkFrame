@@ -108,4 +108,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasSampleCanvasName => '画布 1';
+
+  @override
+  String get inspectorTitle => '配置';
+
+  @override
+  String get inspectorPromptLabel => '提示词';
+
+  @override
+  String get inspectorPromptHint => '描述你想生成的画面……';
+
+  @override
+  String get inspectorProviderLabel => '服务商';
+
+  @override
+  String get inspectorResolutionLabel => '分辨率';
+
+  @override
+  String get inspectorGenerate => '生成';
+
+  @override
+  String get inspectorGenerateDisabledEmptyPrompt => '请先填写提示词';
+
+  @override
+  String get inspectorGenerateDisabledNoKey => '请在设置中配置 API Key';
+
+  @override
+  String get inspectorGenerateNotWiredYet => '生成流程将在下个切片接入';
+
+  @override
+  String get inspectorSelectSingleHint => '选中一个配置节点以编辑';
 }

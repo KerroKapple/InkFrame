@@ -116,4 +116,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get canvasSampleCanvasName => 'Canvas 1';
+
+  @override
+  String get inspectorTitle => 'Config';
+
+  @override
+  String get inspectorPromptLabel => 'Prompt';
+
+  @override
+  String get inspectorPromptHint => 'Describe the image you want...';
+
+  @override
+  String get inspectorProviderLabel => 'Provider';
+
+  @override
+  String get inspectorResolutionLabel => 'Resolution';
+
+  @override
+  String get inspectorGenerate => 'Generate';
+
+  @override
+  String get inspectorGenerateDisabledEmptyPrompt => 'Write a prompt first';
+
+  @override
+  String get inspectorGenerateDisabledNoKey => 'Configure API key in Settings';
+
+  @override
+  String get inspectorGenerateNotWiredYet =>
+      'Generation wiring ships in the next slice';
+
+  @override
+  String get inspectorSelectSingleHint => 'Select a single config node to edit';
 }
