@@ -206,4 +206,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get linkSelfNotAllowed => '不能连到自己';
+
+  @override
+  String get nodeDelete => '删除节点';
+
+  @override
+  String get nodeDeleted => '节点已删除';
+
+  @override
+  String get nodeDeleteFailed => '节点删除失败';
 }
