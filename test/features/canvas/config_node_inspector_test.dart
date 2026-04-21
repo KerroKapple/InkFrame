@@ -106,4 +106,19 @@ void main() {
     expect(btn.onPressed, isNotNull,
         reason: 'S3b 已接 wire：prompt 非空 + Key 存在时应启用');
   });
+
+  testWidgets('水化 typeConfig.prompt 到 TextField', (tester) async {
+    const nodeWithPrompt = CanvasNode(
+      id: 'cfg2',
+      label: 'Test',
+      type: CanvasNodeType.image,
+      typeConfig: <String, Object?>{'prompt': 'existing prompt'},
+    );
+    await tester.pumpWidget(
+      scope(host(const ConfigNodeInspector(node: nodeWithPrompt))),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('existing prompt'), findsOneWidget);
+  });
 }
