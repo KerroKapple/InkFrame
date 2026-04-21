@@ -91,7 +91,7 @@ void main() {
     expect(btn.onPressed, isNull);
   });
 
-  testWidgets('输入 prompt 后按钮仍 disabled（S2a 范围，S3 接 wire）',
+  testWidgets('输入 prompt + 有 Key → Generate 启用（S3b 接 wire）',
       (tester) async {
     final secure = _FakeSecure();
     await secure.store('provider.test-provider.api_key', 'sk-xxx');
@@ -103,7 +103,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final btn = tester.widget<FilledButton>(find.byType(FilledButton));
-    expect(btn.onPressed, isNull,
-        reason: 'S2a 不接真生成，按钮始终 disabled，tooltip 指向 S3');
+    expect(btn.onPressed, isNotNull,
+        reason: 'S3b 已接 wire：prompt 非空 + Key 存在时应启用');
   });
 }

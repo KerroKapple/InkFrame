@@ -63,5 +63,16 @@
   "settingsApiKeySet": "已配置",
   "settingsApiKeyNotSet": "未配置",
   "settingsApiKeySaved": "已保存",
-  "settingsApiKeyCleared": "已清除"
+  "settingsApiKeyCleared": "已清除",
+
+  "generationSuccess": "生成完成",
+  "generationFailure": "生成失败",
+  "generationMissingKey": "API Key 未配置",
+  "generationInvalidConfig": "配置无效：{reason}",
+  "@generationInvalidConfig": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "generationProviderNotRegistered": "Provider 未注册"
 }

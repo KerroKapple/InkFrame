@@ -168,4 +168,21 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsApiKeyCleared => '已清除';
+
+  @override
+  String get generationSuccess => '生成完成';
+
+  @override
+  String get generationFailure => '生成失败';
+
+  @override
+  String get generationMissingKey => 'API Key 未配置';
+
+  @override
+  String generationInvalidConfig(String reason) {
+    return '配置无效：$reason';
+  }
+
+  @override
+  String get generationProviderNotRegistered => 'Provider 未注册';
 }
