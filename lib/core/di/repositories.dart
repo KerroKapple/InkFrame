@@ -9,10 +9,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../interfaces/canvas_repository.dart';
 import '../interfaces/edge_repository.dart';
+import '../interfaces/job_repository.dart';
 import '../interfaces/node_repository.dart';
 import '../interfaces/project_repository.dart';
 import '../../storage/repositories/postgres_canvas_repository.dart';
 import '../../storage/repositories/postgres_edge_repository.dart';
+import '../../storage/repositories/postgres_job_repository.dart';
 import '../../storage/repositories/postgres_node_repository.dart';
 import '../../storage/repositories/postgres_project_repository.dart';
 import 'database.dart';
@@ -47,4 +49,12 @@ final edgeRepositoryProvider = FutureProvider<EdgeRepository>(
     return PostgresEdgeRepository(conn);
   },
   name: 'edgeRepositoryProvider',
+);
+
+final jobRepositoryProvider = FutureProvider<JobRepository>(
+  (ref) async {
+    final conn = await ref.watch(pgMigratedConnectionProvider.future);
+    return PostgresJobRepository(conn);
+  },
+  name: 'jobRepositoryProvider',
 );
