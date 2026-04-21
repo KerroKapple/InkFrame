@@ -11,12 +11,18 @@ class InkInput extends StatelessWidget {
     this.hintText,
     this.onChanged,
     this.focusNode,
+    this.minLines,
+    this.maxLines = 1,
   });
 
   final TextEditingController controller;
   final String? hintText;
   final ValueChanged<String>? onChanged;
   final FocusNode? focusNode;
+  final int? minLines;
+
+  /// 最大行数——null 表示无限扩展，适合 prompt 长文本。
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +42,8 @@ class InkInput extends StatelessWidget {
           controller: controller,
           focusNode: focusNode,
           onChanged: onChanged,
+          minLines: minLines,
+          maxLines: maxLines,
           style: context.inkTypography.body.copyWith(color: colors.fg1),
           decoration: InputDecoration(
             hintText: hintText,
