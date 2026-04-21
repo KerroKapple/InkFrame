@@ -97,5 +97,8 @@
   "inspectorRoleReference": "Reference",
   "inspectorRoleFirstFrame": "First frame",
   "inspectorRoleLastFrame": "Last frame",
-  "inspectorRemoveInput": "Remove input"
+  "inspectorRemoveInput": "Remove input",
+
+  "canvasAddImageNode": "Add image node",
+  "canvasAddNodeFailed": "Failed to add node"
 }

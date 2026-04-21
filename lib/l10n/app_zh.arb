@@ -94,5 +94,8 @@
   "inspectorRoleReference": "参考图",
   "inspectorRoleFirstFrame": "首帧",
   "inspectorRoleLastFrame": "尾帧",
-  "inspectorRemoveInput": "移除输入"
+  "inspectorRemoveInput": "移除输入",
+
+  "canvasAddImageNode": "添加图片节点",
+  "canvasAddNodeFailed": "添加节点失败"
 }
