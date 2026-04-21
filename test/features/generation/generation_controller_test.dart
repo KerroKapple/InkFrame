@@ -12,14 +12,19 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
+import 'dart:io';
+
+import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
+import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
 import 'package:inkframe/providers/provider_registry.dart';
+import 'package:inkframe/services/file_resolver_service.dart';
 
 // ---- fakes ------------------------------------------------------------
 
@@ -186,26 +191,96 @@ class _FakeJobQueue implements JobQueueService {
   void dispose() {}
 }
 
+class _FakeEdgeRepo implements EdgeRepository {
+  final List<Map<String, Object?>> rows = [];
+
+  @override
+  Future<List<Map<String, Object?>>> listIncoming(String targetNodeId) async =>
+      rows.where((r) => r['target_node_id'] == targetNodeId).toList();
+
+  @override
+  Future<String> create({
+    required String canvasId,
+    required String sourceNodeId,
+    required String targetNodeId,
+    required String edgeType,
+    String role = 'reference',
+    int sortOrder = 0,
+  }) async {
+    final id = 'e${rows.length + 1}';
+    rows.add({
+      'id': id,
+      'canvas_id': canvasId,
+      'source_node_id': sourceNodeId,
+      'target_node_id': targetNodeId,
+      'edge_type': edgeType,
+      'role': role,
+    });
+    return id;
+  }
+
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => null;
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String c) async => [];
+  @override
+  Future<List<Map<String, Object?>>> listOutgoing(String s) async => [];
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async => 0;
+  @override
+  Future<int> softDelete(String id) async => 0;
+  @override
+  Future<int> restore(String id) async => 0;
+  @override
+  Future<int> hardDelete(String id) async => 0;
+}
+
+class _FakeResolver implements FileResolverService {
+  @override
+  Directory canvasRoot({required String projectId, required String canvasId}) =>
+      Directory.systemTemp;
+  @override
+  File resolve({
+    required String projectId,
+    required String canvasId,
+    required String relativePath,
+  }) =>
+      File('/fake/$projectId/$canvasId/$relativePath');
+  @override
+  String toRelative({
+    required String projectId,
+    required String canvasId,
+    required File source,
+  }) =>
+      source.path;
+}
+
 // ---- tests ------------------------------------------------------------
 
 void main() {
   const providerId = 'gemini-image';
   late _FakeNodeRepo nodes;
+  late _FakeEdgeRepo edges;
   late _FakeJobRepo jobs;
   late _FakeSecure secure;
   late _FakeJobQueue queue;
   late ProviderRegistry registry;
+  late _FakeResolver resolver;
 
   GenerationController buildCtrl() => GenerationController(
         nodes: nodes,
+        edges: edges,
         jobs: jobs,
         secure: secure,
         queue: queue,
         registry: registry,
+        resolver: resolver,
       );
 
   setUp(() {
     nodes = _FakeNodeRepo();
+    edges = _FakeEdgeRepo();
+    resolver = _FakeResolver();
     jobs = _FakeJobRepo();
     secure = _FakeSecure();
     queue = _FakeJobQueue(const JobStatus.success(remoteUrls: []));
@@ -217,6 +292,7 @@ void main() {
   Future<String> seedConfigNode({
     String prompt = 'a cat',
     String? providerIdOverride,
+    String? projectId = 'proj-1',
   }) async {
     const id = 'cfg1';
     final typeConfig = <String, Object?>{'prompt': prompt};
@@ -226,11 +302,41 @@ void main() {
     nodes.rows[id] = {
       'id': id,
       'canvas_id': 'cvx',
+      'project_id': projectId,
       'type': 'image',
       'node_role': 'config',
       'type_config': typeConfig,
     };
     return id;
+  }
+
+  void seedRefImageNode({
+    required String id,
+    required String imageUrl,
+  }) {
+    nodes.rows[id] = {
+      'id': id,
+      'canvas_id': 'cvx',
+      'project_id': 'proj-1',
+      'type': 'image',
+      'node_role': 'result',
+      'type_config': <String, Object?>{'image_url': imageUrl},
+    };
+  }
+
+  void seedDataEdge({
+    required String sourceId,
+    required String targetId,
+    String role = 'reference',
+  }) {
+    edges.rows.add({
+      'id': 'e_${edges.rows.length + 1}',
+      'canvas_id': 'cvx',
+      'source_node_id': sourceId,
+      'target_node_id': targetId,
+      'edge_type': 'data',
+      'role': role,
+    });
   }
 
   test('成功路径：预创建 result + jobs.create + submit + 等 done', () async {
@@ -334,5 +440,107 @@ void main() {
       throwsStateError,
     );
     expect(nodes.softDeleted, hasLength(1));
+  });
+
+  group('data edge → refImagePaths', () {
+    test('多条 reference data edge 聚合为 refImagePaths + mode=imageToImage',
+        () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+      seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
+      seedRefImageNode(id: 'img2', imageUrl: 'images/b.png');
+      seedDataEdge(sourceId: 'img1', targetId: cfg);
+      seedDataEdge(sourceId: 'img2', targetId: cfg);
+
+      final outcome = await buildCtrl().submitFromConfigNode(cfg);
+      expect(outcome.succeeded, isTrue);
+      final task = queue.lastTask!;
+      expect(task.mode, GenerationMode.imageToImage);
+      expect(task.refImagePaths, hasLength(2));
+      expect(task.refImagePaths.first, contains('/proj-1/cvx/images/'));
+    });
+
+    test('first_frame / last_frame role 分流到独立字段', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+      seedRefImageNode(id: 'ff', imageUrl: 'images/first.png');
+      seedRefImageNode(id: 'lf', imageUrl: 'images/last.png');
+      seedRefImageNode(id: 'r1', imageUrl: 'images/ref.png');
+      seedDataEdge(sourceId: 'ff', targetId: cfg, role: 'first_frame');
+      seedDataEdge(sourceId: 'lf', targetId: cfg, role: 'last_frame');
+      seedDataEdge(sourceId: 'r1', targetId: cfg);
+
+      final outcome = await buildCtrl().submitFromConfigNode(cfg);
+      expect(outcome.succeeded, isTrue);
+      final task = queue.lastTask!;
+      expect(task.firstFramePath, contains('images/first.png'));
+      expect(task.lastFramePath, contains('images/last.png'));
+      expect(task.refImagePaths, hasLength(1));
+      expect(task.refImagePaths.first, contains('images/ref.png'));
+    });
+
+    test('源节点已删 / image_url 空 → 该边静默跳过', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+      // img1 有 url；img2 url 空；img3 不存在（FakeNodeRepo.findById 返回 null）
+      seedRefImageNode(id: 'img1', imageUrl: 'images/ok.png');
+      seedRefImageNode(id: 'img2', imageUrl: '');
+      seedDataEdge(sourceId: 'img1', targetId: cfg);
+      seedDataEdge(sourceId: 'img2', targetId: cfg);
+      seedDataEdge(sourceId: 'img3-missing', targetId: cfg);
+
+      final outcome = await buildCtrl().submitFromConfigNode(cfg);
+      expect(outcome.succeeded, isTrue);
+      final task = queue.lastTask!;
+      expect(task.refImagePaths, hasLength(1));
+    });
+
+    test('projectId 为空（单测占位）→ 不解析 refImages', () async {
+      final cfg = await seedConfigNode(projectId: null);
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+      seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
+      seedDataEdge(sourceId: 'img1', targetId: cfg);
+
+      final outcome = await buildCtrl().submitFromConfigNode(cfg);
+      final task = queue.lastTask!;
+      expect(task.refImagePaths, isEmpty);
+      expect(task.mode, GenerationMode.textToImage);
+      expect(outcome.succeeded, isTrue);
+    });
+
+    test('narrative / generation_source edge 不参与 refImages', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+      seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
+      // narrative 不该被消费
+      edges.rows.add({
+        'id': 'e1',
+        'canvas_id': 'cvx',
+        'source_node_id': 'img1',
+        'target_node_id': cfg,
+        'edge_type': 'narrative',
+        'role': 'reference',
+      });
+
+      final outcome = await buildCtrl().submitFromConfigNode(cfg);
+      expect(queue.lastTask!.refImagePaths, isEmpty);
+      expect(queue.lastTask!.mode, GenerationMode.textToImage);
+      expect(outcome.succeeded, isTrue);
+    });
   });
 }
