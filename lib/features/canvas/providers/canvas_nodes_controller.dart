@@ -14,8 +14,10 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/repositories.dart';
+import '../../../core/interfaces/edge_repository.dart';
 import '../../../core/interfaces/node_repository.dart';
 import '../models/canvas_node.dart';
+import 'canvas_edges_controller.dart';
 
 final canvasNodesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
     CanvasNodesController, List<CanvasNode>, String>(
@@ -39,6 +41,16 @@ class CanvasNodesController
       throw StateError('nodeRepositoryProvider 尚未就绪');
     }
     return repo;
+  }
+
+  /// 按需拉 EdgeRepository。首次触发时走一次 future；未 override 的环境下
+  /// 会抛（如离线单测），调用方应 catch 并 best-effort 跳过。
+  Future<EdgeRepository?> _edgeRepoOrNull() async {
+    try {
+      return await ref.read(edgeRepositoryProvider.future);
+    } catch (_) {
+      return null;
+    }
   }
 
   /// 新增节点。乐观插入——先改内存，DB 失败则回滚。
@@ -87,16 +99,56 @@ class CanvasNodesController
     }
   }
 
-  /// 软删除节点。乐观移除——先改内存，DB 失败则回滚。
+  /// 软删除节点 + 级联软删所有关联 edges（入/出）。
+  ///
+  /// PRD §4.3 "删除节点时，关联连线标记 deleted_at 而非物理删除（应用层拦截，
+  /// 不依赖 CASCADE）"。schema 的 ON DELETE CASCADE 仅在硬删时兜底。
+  ///
+  /// 顺序：先删 edges（单条失败不阻断，best-effort），再删 node。
+  /// Node DB 失败 → 回滚内存；已删 edges 留孤儿，用户可重试 node 删除。
+  /// 同时让 CanvasEdgesController(canvasId) 失效，UI 立即重新加载新边集。
   Future<void> removeNode(String id) async {
     final previous = state.valueOrNull ?? const <CanvasNode>[];
     final next = previous.where((n) => n.id != id).toList(growable: false);
     state = AsyncData(next);
+
+    final edgeRepo = await _edgeRepoOrNull();
+    if (edgeRepo != null) {
+      await _softDeleteConnectedEdges(edgeRepo, id);
+      // invalidate edges controller 让 UI 同步。
+      ref.invalidate(canvasEdgesControllerProvider(arg));
+    }
+
     try {
       await _repo.softDelete(id);
     } catch (_) {
       state = AsyncData(previous);
       rethrow;
+    }
+  }
+
+  Future<void> _softDeleteConnectedEdges(
+    EdgeRepository edgeRepo,
+    String nodeId,
+  ) async {
+    final List<Map<String, Object?>> outgoing;
+    final List<Map<String, Object?>> incoming;
+    try {
+      outgoing = await edgeRepo.listOutgoing(nodeId);
+      incoming = await edgeRepo.listIncoming(nodeId);
+    } catch (_) {
+      return; // 列表失败就放弃级联，不阻断节点删除。
+    }
+    final ids = <String>{
+      for (final r in outgoing) r['id']!.toString(),
+      for (final r in incoming) r['id']!.toString(),
+    };
+    for (final eid in ids) {
+      try {
+        await edgeRepo.softDelete(eid);
+      } catch (_) {
+        // 单条失败不阻断其他——best-effort。
+      }
     }
   }
 
