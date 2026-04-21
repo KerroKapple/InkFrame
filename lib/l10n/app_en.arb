@@ -66,5 +66,16 @@
   "settingsApiKeySet": "Set",
   "settingsApiKeyNotSet": "Not set",
   "settingsApiKeySaved": "Saved",
-  "settingsApiKeyCleared": "Cleared"
+  "settingsApiKeyCleared": "Cleared",
+
+  "generationSuccess": "Generated",
+  "generationFailure": "Generation failed",
+  "generationMissingKey": "API key is missing",
+  "generationInvalidConfig": "Invalid configuration: {reason}",
+  "@generationInvalidConfig": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+  "generationProviderNotRegistered": "Provider not registered"
 }

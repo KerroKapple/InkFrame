@@ -415,6 +415,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cleared'**
   String get settingsApiKeyCleared;
+
+  /// No description provided for @generationSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated'**
+  String get generationSuccess;
+
+  /// No description provided for @generationFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation failed'**
+  String get generationFailure;
+
+  /// No description provided for @generationMissingKey.
+  ///
+  /// In en, this message translates to:
+  /// **'API key is missing'**
+  String get generationMissingKey;
+
+  /// No description provided for @generationInvalidConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid configuration: {reason}'**
+  String generationInvalidConfig(String reason);
+
+  /// No description provided for @generationProviderNotRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider not registered'**
+  String get generationProviderNotRegistered;
 }
 
 class _AppLocalizationsDelegate
