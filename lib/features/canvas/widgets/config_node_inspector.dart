@@ -8,6 +8,8 @@
 //
 // 按钮 disabled 原因分层（就近原则）：prompt 空 / 无 API Key / 正在运行 / OK。
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -42,23 +44,62 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
   String? _providerId;
   Resolution? _resolution;
   bool _running = false;
+  Timer? _promptDebounce;
+
+  static const _debounceDuration = Duration(milliseconds: 500);
 
   @override
   void initState() {
     super.initState();
     final caps = ref.read(providerCapabilitiesListProvider);
-    if (caps.isNotEmpty) {
-      _providerId = caps.first.providerId;
-      _resolution = caps.first.supportedResolutions.isNotEmpty
-          ? caps.first.supportedResolutions.first
-          : null;
-    }
+    final tc = widget.node.typeConfig;
+
+    // 水化已存在配置；缺失字段回退到 caps 首项。
+    final savedProviderId = tc['provider_id'] as String?;
+    final savedResolution = _parseResolution(tc['resolution']);
+    final defaultProviderId = caps.isNotEmpty ? caps.first.providerId : null;
+    _providerId = savedProviderId ?? defaultProviderId;
+    final selectedCaps = caps.where((c) => c.providerId == _providerId);
+    final defaultResolution = selectedCaps.isNotEmpty &&
+            selectedCaps.first.supportedResolutions.isNotEmpty
+        ? selectedCaps.first.supportedResolutions.first
+        : null;
+    _resolution = savedResolution ?? defaultResolution;
+
+    final savedPrompt = tc['prompt'];
+    if (savedPrompt is String) _promptCtrl.text = savedPrompt;
   }
 
   @override
   void dispose() {
+    _promptDebounce?.cancel();
     _promptCtrl.dispose();
     super.dispose();
+  }
+
+  Resolution? _parseResolution(Object? raw) {
+    if (raw is! String) return null;
+    for (final r in Resolution.values) {
+      if (r.name == raw) return r;
+    }
+    return null;
+  }
+
+  Future<void> _patchTypeConfig(Map<String, Object?> patch) async {
+    try {
+      final nodes = await ref.read(nodeRepositoryProvider.future);
+      await nodes.patchTypeConfig(widget.node.id, patch);
+    } catch (_) {
+      // 静默——单次保存失败不打断用户输入流。下次保存会覆盖。
+    }
+  }
+
+  void _onPromptChanged(String value) {
+    setState(() {});
+    _promptDebounce?.cancel();
+    _promptDebounce = Timer(_debounceDuration, () {
+      _patchTypeConfig(<String, Object?>{'prompt': value});
+    });
   }
 
   ProviderCapabilities? _selectedCaps(List<ProviderCapabilities> all) {
@@ -166,7 +207,7 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
             hintText: context.l10n.inspectorPromptHint,
             minLines: 4,
             maxLines: 8,
-            onChanged: (_) => setState(() {}),
+            onChanged: _onPromptChanged,
           ),
           const SizedBox(height: InkSpacing.md),
           Text(
@@ -190,11 +231,18 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
                     if (v == null) return;
                     final next =
                         caps.firstWhere((c) => c.providerId == v);
+                    final newResolution =
+                        next.supportedResolutions.isNotEmpty
+                            ? next.supportedResolutions.first
+                            : null;
                     setState(() {
                       _providerId = v;
-                      _resolution = next.supportedResolutions.isNotEmpty
-                          ? next.supportedResolutions.first
-                          : null;
+                      _resolution = newResolution;
+                    });
+                    _patchTypeConfig(<String, Object?>{
+                      'provider_id': v,
+                      if (newResolution != null)
+                        'resolution': newResolution.name,
                     });
                   },
           ),
@@ -212,7 +260,13 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
                 for (final r in selected.supportedResolutions)
                   DropdownMenuItem(value: r, child: Text(r.name)),
             ],
-            onChanged: _running ? null : (v) => setState(() => _resolution = v),
+            onChanged: _running
+                ? null
+                : (v) {
+                    if (v == null) return;
+                    setState(() => _resolution = v);
+                    _patchTypeConfig(<String, Object?>{'resolution': v.name});
+                  },
           ),
           const SizedBox(height: InkSpacing.lg),
           _GenerateButton(
