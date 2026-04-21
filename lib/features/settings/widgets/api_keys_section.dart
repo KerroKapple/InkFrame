@@ -1,7 +1,7 @@
 // ApiKeysSection — 设置页内"API Keys"分节。
 //
-// 每个已注册 Provider 一行：Provider id + 遮罩输入框 + Save/Clear。
-// 状态条：已配置 / 未配置。保存写 SecureStorage；清除走 delete。
+// 按 SecureStorageKeys.scopeOf 折叠家族。DashScope 的 6 款 Provider 合并为
+// 一行，共用一把 Key；Gemini 独占一行。保存写 SecureStorage；清除走 delete。
 //
 // 本组件不做 key 格式校验——Provider 自身的 validate 调用留给 Controller 层
 // (后续 sprint)。此处只管"放进 / 取出 / 删除"三件事。
@@ -27,6 +27,14 @@ class ApiKeysSection extends ConsumerWidget {
     final caps = ref.watch(providerCapabilitiesListProvider);
     final colors = context.inkColors;
     final typo = context.inkTypography;
+
+    // 按 scope 折叠。LinkedHashMap 保持 caps 的注册顺序 → UI 稳定。
+    final groups = <String, List<ProviderCapabilities>>{};
+    for (final c in caps) {
+      final scope = SecureStorageKeys.scopeOf(c.providerId);
+      groups.putIfAbsent(scope, () => []).add(c);
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -40,15 +48,18 @@ class ApiKeysSection extends ConsumerWidget {
           style: typo.caption.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.md),
-        for (final c in caps) _ApiKeyRow(capabilities: c),
+        for (final entry in groups.entries)
+          _ApiKeyRow(scope: entry.key, members: entry.value),
       ],
     );
   }
 }
 
 class _ApiKeyRow extends ConsumerStatefulWidget {
-  const _ApiKeyRow({required this.capabilities});
-  final ProviderCapabilities capabilities;
+  const _ApiKeyRow({required this.scope, required this.members});
+
+  final String scope;
+  final List<ProviderCapabilities> members;
 
   @override
   ConsumerState<_ApiKeyRow> createState() => _ApiKeyRowState();
@@ -61,8 +72,10 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
 
   SecureStorageService get _secure =>
       ref.read(secureStorageServiceProvider);
+
+  /// scope 下所有 Provider 共用同一 storage key——任选一成员解析即可。
   String get _key =>
-      SecureStorageKeys.providerApiKey(widget.capabilities.providerId);
+      SecureStorageKeys.providerApiKey(widget.members.first.providerId);
 
   @override
   void initState() {
@@ -116,6 +129,12 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
+    final label = SecureStorageKeys.displayNameOf(widget.scope);
+    final memberIds =
+        widget.members.map((c) => c.providerId).join(' / ');
+    final showMembers =
+        widget.members.length > 1 || memberIds != label;
+
     return Padding(
       padding: const EdgeInsets.only(bottom: InkSpacing.md),
       child: Column(
@@ -124,9 +143,19 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
           Row(
             children: [
               Expanded(
-                child: Text(
-                  widget.capabilities.providerId,
-                  style: typo.body.copyWith(color: colors.fg1),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: typo.body.copyWith(color: colors.fg1),
+                    ),
+                    if (showMembers)
+                      Text(
+                        memberIds,
+                        style: typo.caption.copyWith(color: colors.fg3),
+                      ),
+                  ],
                 ),
               ),
               _StatusChip(isSet: _loading ? null : _isSet),
