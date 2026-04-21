@@ -201,4 +201,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultNodeImageMissing => 'Image file missing';
+
+  @override
+  String get linkModeStart => 'Start link';
+
+  @override
+  String get linkModeHint =>
+      'Tap a target node to link, or tap empty space to cancel';
+
+  @override
+  String get linkCreated => 'Link created';
+
+  @override
+  String get linkAlreadyExists => 'Link already exists';
+
+  @override
+  String get linkSelfNotAllowed => 'Cannot link a node to itself';
 }
