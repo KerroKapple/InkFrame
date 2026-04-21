@@ -195,4 +195,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generationProviderNotRegistered => 'Provider not registered';
+
+  @override
+  String get resultNodePending => 'Waiting for generation';
+
+  @override
+  String get resultNodeImageMissing => 'Image file missing';
 }
