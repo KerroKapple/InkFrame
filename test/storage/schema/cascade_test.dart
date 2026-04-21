@@ -201,22 +201,25 @@ void main() {
         parameters: {'n': resultNode, 'j': job},
       );
 
-      // TD-001：jobs.result_node_id 无 ON DELETE 子句（NO ACTION），
-      // 要删 result node 必须先解除 jobs 引用 / 删 jobs。
-      await h.conn.execute(
-        Sql.named('DELETE FROM jobs WHERE id = @j'),
-        parameters: {'j': job},
-      );
+      // schema v=2（TD-001 修复）：jobs.result_node_id ON DELETE SET NULL。
+      // 删 result node 直接通过 —— batch_results CASCADE；保留的 jobs 行 result_node_id 置 NULL。
       await h.conn.execute(
         Sql.named('DELETE FROM nodes WHERE id = @id'),
         parameters: {'id': resultNode},
       );
 
-      final left = await h.conn.execute(
+      final leftResults = await h.conn.execute(
         Sql.named('SELECT count(*) FROM batch_results WHERE node_id = @n'),
         parameters: {'n': resultNode},
       );
-      expect(left.first[0], 0);
+      expect(leftResults.first[0], 0, reason: 'batch_results 应 CASCADE 清空');
+
+      final jobRow = await h.conn.execute(
+        Sql.named('SELECT result_node_id FROM jobs WHERE id = @j'),
+        parameters: {'j': job},
+      );
+      expect(jobRow.first[0], isNull,
+          reason: 'jobs.result_node_id 应被 SET NULL，job 审计行保留');
     } on _Skip {
       return;
     }
