@@ -4,11 +4,17 @@
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations
 // - 首屏：CanvasView
+// - FAB：当前有 canvas 开着时 → 添加 image config 节点
+
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/theme.dart';
+import 'features/canvas/models/canvas_node.dart';
+import 'features/canvas/providers/canvas_nodes_controller.dart';
+import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_view.dart';
 import 'features/settings/settings_screen.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -58,11 +64,12 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
   }
 }
 
-class _HomeScaffold extends StatelessWidget {
+class _HomeScaffold extends ConsumerWidget {
   const _HomeScaffold();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canvasId = ref.watch(currentCanvasIdProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(context.l10n.appTitle),
@@ -81,6 +88,52 @@ class _HomeScaffold extends StatelessWidget {
         ],
       ),
       body: const CanvasView(),
+      floatingActionButton: canvasId == null
+          ? null
+          : _AddNodeFab(canvasId: canvasId),
+    );
+  }
+}
+
+class _AddNodeFab extends ConsumerWidget {
+  const _AddNodeFab({required this.canvasId});
+  final String canvasId;
+
+  // 简单随机位置，避免新节点全叠在原点。InteractiveViewer 下用户可平移找到。
+  static final _rand = Random();
+
+  Offset _pickPosition() {
+    return Offset(
+      200 + _rand.nextDouble() * 400,
+      200 + _rand.nextDouble() * 400,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return FloatingActionButton.extended(
+      tooltip: context.l10n.canvasAddImageNode,
+      onPressed: () async {
+        try {
+          await ref
+              .read(canvasNodesControllerProvider(canvasId).notifier)
+              .addNode(
+                label: context.l10n.canvasNodeDefaultLabel,
+                type: CanvasNodeType.image,
+                position: _pickPosition(),
+              );
+        } catch (_) {
+          if (!context.mounted) return;
+          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+            SnackBar(
+              content: Text(context.l10n.canvasAddNodeFailed),
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      },
+      icon: const Icon(Icons.add_photo_alternate_outlined),
+      label: Text(context.l10n.canvasAddImageNode),
     );
   }
 }

@@ -244,4 +244,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inspectorRemoveInput => 'Remove input';
+
+  @override
+  String get canvasAddImageNode => 'Add image node';
+
+  @override
+  String get canvasAddNodeFailed => 'Failed to add node';
 }
