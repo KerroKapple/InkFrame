@@ -87,7 +87,7 @@
 
 ### 遗留风险（已登记，非阻塞）
 
-1. **TD-001** — jobs.result_node_id 缺 ON DELETE SET NULL，schema v=2 修
+1. ~~**TD-001** — jobs.result_node_id 缺 ON DELETE SET NULL，schema v=2 修~~ ✅ 2026-04-21 修复（`lib/storage/schema/schema_v2.dart`）
 2. **pg_controller.dart 覆盖率 64.6%** — SystemPgProcessRunner 真 initdb/pg_ctl 未在无嵌入二进制机器跑，留给 T7 打包烟测补 E2E
 3. **pgMigratedConnectionProvider 端到端** 只能烟测完整验（集成测走 TEST_PG_URL 直连绕开 PgController）
 4. **JobRepository retention 分支** 孤儿保留有 happy-path 覆盖，独立 case 留给 T3
