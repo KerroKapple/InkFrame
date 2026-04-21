@@ -1,0 +1,13 @@
+{
+  "request_id": "FIXTURE_REQUEST_ID",
+  "output": {
+    "task_id": "wanx-i2v-FIXTURE_JOB_ID",
+    "task_status": "SUCCEEDED",
+    "submit_time": "2026-04-20 10:00:00.000",
+    "end_time": "2026-04-20 10:02:45.000",
+    "video_url": "https://dashscope-result-bj.oss-cn-beijing.aliyuncs.com/FIXTURE_I2V.mp4"
+  },
+  "usage": {
+    "video_duration": 5
+  }
+}
