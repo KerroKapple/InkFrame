@@ -332,6 +332,30 @@ class _CanvasBody extends ConsumerWidget {
                         onPanUpdate: (delta) =>
                             nodesCtrl.moveNode(node.id, delta),
                         onStartLink: () => linkCtrl.start(node.id),
+                        onDelete: () async {
+                          final nodeId = node.id;
+                          selectionCtrl.removed(nodeId);
+                          try {
+                            await nodesCtrl.removeNode(nodeId);
+                            if (context.mounted) {
+                              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                SnackBar(
+                                  content: Text(context.l10n.nodeDeleted),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          } catch (_) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                                SnackBar(
+                                  content: Text(context.l10n.nodeDeleteFailed),
+                                  duration: const Duration(seconds: 2),
+                                ),
+                              );
+                            }
+                          }
+                        },
                         isLinkSource: linkSourceId == node.id,
                         isLinkCandidate:
                             linkSourceId != null && linkSourceId != node.id,

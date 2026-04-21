@@ -6,6 +6,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
@@ -94,6 +95,55 @@ class _FakeNodeRepository implements NodeRepository {
   @override
   Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async =>
       0;
+  @override
+  Future<int> restore(String id) async => 0;
+  @override
+  Future<int> hardDelete(String id) async => 0;
+}
+
+class _FakeEdgeRepo implements EdgeRepository {
+  final List<Map<String, Object?>> rows = [];
+  final List<String> softDeleted = [];
+
+  @override
+  Future<String> create({
+    required String canvasId,
+    required String sourceNodeId,
+    required String targetNodeId,
+    required String edgeType,
+    String role = 'reference',
+    int sortOrder = 0,
+  }) async {
+    final id = 'e${rows.length + 1}';
+    rows.add({
+      'id': id,
+      'source_node_id': sourceNodeId,
+      'target_node_id': targetNodeId,
+    });
+    return id;
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> listOutgoing(String s) async =>
+      rows.where((r) => r['source_node_id'] == s).toList();
+
+  @override
+  Future<List<Map<String, Object?>>> listIncoming(String t) async =>
+      rows.where((r) => r['target_node_id'] == t).toList();
+
+  @override
+  Future<int> softDelete(String id) async {
+    softDeleted.add(id);
+    rows.removeWhere((r) => r['id'] == id);
+    return 1;
+  }
+
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => null;
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String c) async => [];
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
   Future<int> restore(String id) async => 0;
   @override
@@ -216,6 +266,59 @@ void main() {
       final state = container.read(canvasNodesControllerProvider(canvasId));
       expect(state.valueOrNull, hasLength(1));
       expect(state.valueOrNull!.first.id, n.id);
+    });
+
+    test('removeNode 级联软删相邻 edges（入+出）', () async {
+      final edgeRepo = _FakeEdgeRepo();
+      final cascadeContainer = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) async => repo),
+        edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+      ]);
+      addTearDown(cascadeContainer.dispose);
+
+      await cascadeContainer
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = cascadeContainer
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final c = await ctrl.addNode(label: 'C', type: CanvasNodeType.image);
+
+      await edgeRepo.create(
+        canvasId: canvasId,
+        sourceNodeId: a.id,
+        targetNodeId: b.id,
+        edgeType: 'data',
+      );
+      await edgeRepo.create(
+        canvasId: canvasId,
+        sourceNodeId: c.id,
+        targetNodeId: b.id,
+        edgeType: 'data',
+      );
+      await edgeRepo.create(
+        canvasId: canvasId,
+        sourceNodeId: b.id,
+        targetNodeId: a.id,
+        edgeType: 'narrative',
+      );
+
+      await ctrl.removeNode(b.id);
+
+      // b 的 2 条入边 + 1 条出边都应被 softDelete
+      expect(edgeRepo.softDeleted, hasLength(3));
+      expect(repo.softDeleted, contains(b.id));
+    });
+
+    test('removeNode 无 EdgeRepository 依然成功（best-effort 级联跳过）',
+        () async {
+      // 仅 node repo override，不注 edge repo → controller 跳过级联
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+      final n = await ctrl.addNode(label: 'X', type: CanvasNodeType.image);
+      await ctrl.removeNode(n.id);
+      expect(repo.softDeleted, contains(n.id));
     });
 
     test('moveNode 仅改内存，不调 Repository', () async {

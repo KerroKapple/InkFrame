@@ -487,6 +487,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cannot link a node to itself'**
   String get linkSelfNotAllowed;
+
+  /// No description provided for @nodeDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete node'**
+  String get nodeDelete;
+
+  /// No description provided for @nodeDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Node deleted'**
+  String get nodeDeleted;
+
+  /// No description provided for @nodeDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete node'**
+  String get nodeDeleteFailed;
 }
 
 class _AppLocalizationsDelegate
