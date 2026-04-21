@@ -11,8 +11,9 @@
 //   §4.5.1 孤儿 result：nodes.source_node_id ON DELETE SET NULL
 //   §22.0 schema_version 单行约束 id=1
 //
-// TD-001（tech-debt.md）：jobs.result_node_id 按 PRD §21 字面量落 NO ACTION。
-//   这块删 result 节点会因 FK 拒绝，需要 jobs retention 清理后才能硬删，schema v=2 修正为 SET NULL。
+// 历史：v=1 里 jobs.result_node_id 按 PRD §21 字面量落 NO ACTION（无 ON DELETE）。
+//   schema v=2（TD-001 修复）将其重建为 ON DELETE SET NULL，见 schema_v2.dart。
+//   本文件保留 v=1 原貌，不做字面量追改——升级路径走 MigrationRunner。
 //
 // 注意：PG 17 gen_random_uuid() 内置于 pgcrypto。initdb 后 postgres 默认包含 pgcrypto 扩展，
 // 若版本不带，需 CREATE EXTENSION IF NOT EXISTS pgcrypto——MigrationRunner 执行前插入。
@@ -163,8 +164,8 @@ CREATE INDEX idx_edges_deleted   ON edges(deleted_at) WHERE deleted_at IS NOT NU
 -- =====================================================================
 -- jobs
 -- =====================================================================
--- 注意：result_node_id 按 PRD §21 字面量落 NO ACTION（无 ON DELETE 子句）。
--- TD-001 记录：schema v=2 应改为 ON DELETE SET NULL。
+-- 注意：result_node_id 在 v=1 落 NO ACTION（无 ON DELETE 子句）。
+-- v=2（TD-001 修复）改为 ON DELETE SET NULL，见 schema_v2.dart。
 CREATE TABLE jobs (
   id             UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
   canvas_id      UUID    NOT NULL REFERENCES canvases(id) ON DELETE CASCADE,

@@ -45,7 +45,7 @@ erDiagram
 | nodes | nodes | source_node_id | SET NULL | §4.5.1 孤儿 result 节点 |
 | style_lanes | nodes | lane_id | SET NULL |  |
 | nodes | jobs | source_node_id | CASCADE |  |
-| nodes | jobs | result_node_id | **NO ACTION** | **TD-001** — v=2 应改为 SET NULL |
+| nodes | jobs | result_node_id | SET NULL | v=2 修（原 v=1 为 NO ACTION，见 schema_v2.dart） |
 | jobs | batch_results | job_id | CASCADE |  |
 | nodes | batch_results | node_id | CASCADE |  |
 | nodes | batch_results | promoted_node_id | SET NULL |  |
@@ -153,5 +153,4 @@ lib/storage/migrations/003_yyy.sql
 
 ## 技术债
 
-见 `docs/internal/tech-debt.md`。T2 新增：
-- **TD-001**: `jobs.result_node_id` 缺 `ON DELETE SET NULL`
+见 `docs/internal/tech-debt.md`。当前无未决项（TD-001 已在 schema v=2 修复）。

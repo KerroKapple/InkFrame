@@ -143,8 +143,8 @@ CREATE INDEX idx_edges_deleted   ON edges(deleted_at) WHERE deleted_at IS NOT NU
 -- =====================================================================
 -- jobs
 -- =====================================================================
--- 注意：result_node_id 按 PRD §21 字面量落 NO ACTION（无 ON DELETE 子句）。
--- TD-001 记录：schema v=2 应改为 ON DELETE SET NULL。
+-- 注意：result_node_id 在 v=1 落 NO ACTION（无 ON DELETE 子句）。
+-- v=2（TD-001 修复）改为 ON DELETE SET NULL，见 002_jobs_result_node_id_set_null.sql。
 CREATE TABLE jobs (
   id             UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
   canvas_id      UUID    NOT NULL REFERENCES canvases(id) ON DELETE CASCADE,
