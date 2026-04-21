@@ -35,5 +35,11 @@
     "placeholders": {
       "count": { "type": "int" }
     }
-  }
+  },
+
+  "canvasNoCanvasOpen": "当前没有打开的画布",
+  "canvasCreateSampleCanvas": "新建示例画布",
+  "canvasLoadFailed": "加载画布失败",
+  "canvasSampleProjectName": "示例项目",
+  "canvasSampleCanvasName": "画布 1"
 }
