@@ -7,13 +7,10 @@
 
 ## T2 (2026-04-15)
 
-### TD-001 — jobs.result_node_id 缺 ON DELETE SET NULL
+### TD-001 — jobs.result_node_id 缺 ON DELETE SET NULL ✅ 已修复（schema v=2, 2026-04-21）
 
-- **位置**：`lib/storage/schema/schema_v1.dart` `CREATE TABLE jobs` 段
-- **现状**：按 PRD §21 字面量落 `NO ACTION`（无 `ON DELETE` 子句）
-- **影响**：永久删除一个 result node 时，若仍有 jobs 行引用 `result_node_id`，外键会阻断删除。现阶段依赖 jobs retention（30 天 + 500 条）先清 jobs，再硬删 node。
-- **证据**：`test/storage/schema/cascade_test.dart` "删 result node → batch_results CASCADE" 测试中必须先 `DELETE FROM jobs`，注释已标注 TD-001。
-- **建议修复**：schema v=2 将 `result_node_id UUID REFERENCES nodes(id)` 改为 `ON DELETE SET NULL`。同时更新 PRD §21 的 DDL 文字。
-- **修复窗口**：T3 JobQueueService 落地前或 M2 Sprint 1。
-- **Owner**：T2 发现者（P7），修复由 T3 工程师承接。
+- **位置**：原 v=1 `lib/storage/schema/schema_v1.dart` `CREATE TABLE jobs` 段
+- **修复**：schema v=2 `lib/storage/schema/schema_v2.dart` DROP + ADD CONSTRAINT，`jobs_result_node_id_fkey` 重建为 `ON DELETE SET NULL`
+- **测试**：`test/storage/schema/cascade_test.dart` "删 result node → batch_results CASCADE" 已改为直接删 result，断言 batch_results CASCADE 清空 + jobs.result_node_id 置 NULL
+- **v=1 历史**：保留字面量 NO ACTION，不回溯字面追改——升级路径走 MigrationRunner
 
