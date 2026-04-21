@@ -13,6 +13,7 @@ import '../providers/canvas_bootstrap_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/current_canvas_id.dart';
+import 'config_node_inspector.dart';
 import 'node_card.dart';
 
 class CanvasView extends ConsumerWidget {
@@ -122,8 +123,9 @@ class _CanvasBody extends ConsumerWidget {
     final nodesCtrl =
         ref.read(canvasNodesControllerProvider(canvasId).notifier);
 
+    final Widget canvasArea;
     if (nodes.isEmpty) {
-      return GestureDetector(
+      canvasArea = GestureDetector(
         onTap: selectionCtrl.clear,
         child: Container(
           color: colors.surface1,
@@ -135,39 +137,60 @@ class _CanvasBody extends ConsumerWidget {
           ),
         ),
       );
-    }
-
-    return GestureDetector(
-      onTap: selectionCtrl.clear,
-      child: Container(
-        color: colors.surface1,
-        child: InteractiveViewer(
-          constrained: false,
-          boundaryMargin: const EdgeInsets.all(2000),
-          minScale: 0.1,
-          maxScale: 3.0,
-          child: SizedBox(
-            width: 4000,
-            height: 4000,
-            child: Stack(
-              children: [
-                for (final node in nodes)
-                  Positioned(
-                    left: node.position.dx,
-                    top: node.position.dy,
-                    child: NodeCard(
-                      node: node,
-                      selected: selected.contains(node.id),
-                      onTap: () => selectionCtrl.select(node.id),
-                      onPanUpdate: (delta) =>
-                          nodesCtrl.moveNode(node.id, delta),
+    } else {
+      canvasArea = GestureDetector(
+        onTap: selectionCtrl.clear,
+        child: Container(
+          color: colors.surface1,
+          child: InteractiveViewer(
+            constrained: false,
+            boundaryMargin: const EdgeInsets.all(2000),
+            minScale: 0.1,
+            maxScale: 3.0,
+            child: SizedBox(
+              width: 4000,
+              height: 4000,
+              child: Stack(
+                children: [
+                  for (final node in nodes)
+                    Positioned(
+                      left: node.position.dx,
+                      top: node.position.dy,
+                      child: NodeCard(
+                        node: node,
+                        selected: selected.contains(node.id),
+                        onTap: () => selectionCtrl.select(node.id),
+                        onPanUpdate: (delta) =>
+                            nodesCtrl.moveNode(node.id, delta),
+                      ),
                     ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
+      );
+    }
+
+    // Inspector 仅当单选且选中的是 config 节点时显示。
+    CanvasNode? inspectorTarget;
+    if (selected.length == 1) {
+      final id = selected.first;
+      inspectorTarget = nodes
+          .where((n) => n.id == id && n.role == NodeRole.config)
+          .cast<CanvasNode?>()
+          .firstWhere((_) => true, orElse: () => null);
+    }
+
+    return Row(
+      children: [
+        Expanded(child: canvasArea),
+        if (inspectorTarget != null)
+          ConfigNodeInspector(
+            key: ValueKey(inspectorTarget.id),
+            node: inspectorTarget,
+          ),
+      ],
     );
   }
 }
