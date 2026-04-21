@@ -138,4 +138,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inspectorSelectSingleHint => '选中一个配置节点以编辑';
+
+  @override
+  String get settingsTitle => '设置';
+
+  @override
+  String get settingsApiKeysSection => 'API Keys';
+
+  @override
+  String get settingsApiKeysHint => 'Key 存储在系统钥匙串中，不会发送到任何外部服务。';
+
+  @override
+  String get settingsApiKeyPlaceholder => 'sk-...';
+
+  @override
+  String get settingsApiKeySave => '保存';
+
+  @override
+  String get settingsApiKeyClear => '清除';
+
+  @override
+  String get settingsApiKeySet => '已配置';
+
+  @override
+  String get settingsApiKeyNotSet => '未配置';
+
+  @override
+  String get settingsApiKeySaved => '已保存';
+
+  @override
+  String get settingsApiKeyCleared => '已清除';
 }

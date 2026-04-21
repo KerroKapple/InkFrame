@@ -52,5 +52,16 @@
   "inspectorGenerateDisabledEmptyPrompt": "请先填写提示词",
   "inspectorGenerateDisabledNoKey": "请在设置中配置 API Key",
   "inspectorGenerateNotWiredYet": "生成流程将在下个切片接入",
-  "inspectorSelectSingleHint": "选中一个配置节点以编辑"
+  "inspectorSelectSingleHint": "选中一个配置节点以编辑",
+
+  "settingsTitle": "设置",
+  "settingsApiKeysSection": "API Keys",
+  "settingsApiKeysHint": "Key 存储在系统钥匙串中，不会发送到任何外部服务。",
+  "settingsApiKeyPlaceholder": "sk-...",
+  "settingsApiKeySave": "保存",
+  "settingsApiKeyClear": "清除",
+  "settingsApiKeySet": "已配置",
+  "settingsApiKeyNotSet": "未配置",
+  "settingsApiKeySaved": "已保存",
+  "settingsApiKeyCleared": "已清除"
 }

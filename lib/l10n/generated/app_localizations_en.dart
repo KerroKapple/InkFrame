@@ -147,4 +147,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inspectorSelectSingleHint => 'Select a single config node to edit';
+
+  @override
+  String get settingsTitle => 'Settings';
+
+  @override
+  String get settingsApiKeysSection => 'API Keys';
+
+  @override
+  String get settingsApiKeysHint =>
+      'Keys are stored in your system keychain. Nothing is sent off-device.';
+
+  @override
+  String get settingsApiKeyPlaceholder => 'sk-...';
+
+  @override
+  String get settingsApiKeySave => 'Save';
+
+  @override
+  String get settingsApiKeyClear => 'Clear';
+
+  @override
+  String get settingsApiKeySet => 'Set';
+
+  @override
+  String get settingsApiKeyNotSet => 'Not set';
+
+  @override
+  String get settingsApiKeySaved => 'Saved';
+
+  @override
+  String get settingsApiKeyCleared => 'Cleared';
 }
