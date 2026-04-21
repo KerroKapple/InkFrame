@@ -226,4 +226,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get nodeDeleteFailed => 'Failed to delete node';
+
+  @override
+  String get inspectorInputsLabel => 'Inputs';
+
+  @override
+  String get inspectorInputsEmpty => 'No input connections';
+
+  @override
+  String get inspectorRoleReference => 'Reference';
+
+  @override
+  String get inspectorRoleFirstFrame => 'First frame';
+
+  @override
+  String get inspectorRoleLastFrame => 'Last frame';
+
+  @override
+  String get inspectorRemoveInput => 'Remove input';
 }

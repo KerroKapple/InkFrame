@@ -12,8 +12,10 @@ class _FakeEdgeRepo implements EdgeRepository {
   final List<Map<String, Object?>> rows = <Map<String, Object?>>[];
   final List<Map<String, Object?>> createCalls = <Map<String, Object?>>[];
   final List<String> softDeleted = <String>[];
+  final List<Map<String, Object?>> updateCalls = <Map<String, Object?>>[];
   bool createThrows = false;
   bool softDeleteThrows = false;
+  bool updateThrows = false;
   int _seq = 0;
 
   @override
@@ -68,7 +70,13 @@ class _FakeEdgeRepo implements EdgeRepository {
   @override
   Future<List<Map<String, Object?>>> listIncoming(String t) async => [];
   @override
-  Future<int> update(String id, Map<String, Object?> patch) async => 0;
+  Future<int> update(String id, Map<String, Object?> patch) async {
+    if (updateThrows) throw StateError('update boom');
+    updateCalls.add({'id': id, ...patch});
+    final idx = rows.indexWhere((r) => r['id'] == id);
+    if (idx >= 0) rows[idx] = {...rows[idx], ...patch};
+    return 1;
+  }
   @override
   Future<int> restore(String id) async => 0;
   @override
@@ -162,6 +170,40 @@ void main() {
               .read(canvasEdgesControllerProvider(canvasId))
               .valueOrNull,
           isEmpty);
+    });
+
+    test('updateRole 写 DB role 字段 + 内存更新', () async {
+      await container.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasEdgesControllerProvider(canvasId).notifier);
+      final e = await ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+
+      await ctrl.updateRole(e.id, EdgeRole.firstFrame);
+
+      expect(repo.updateCalls, hasLength(1));
+      expect(repo.updateCalls.first['role'], 'first_frame');
+      final state = container.read(canvasEdgesControllerProvider(canvasId));
+      final updated =
+          state.valueOrNull!.firstWhere((x) => x.id == e.id);
+      expect(updated.role, EdgeRole.firstFrame);
+    });
+
+    test('updateRole DB 失败 → 回滚', () async {
+      await container.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasEdgesControllerProvider(canvasId).notifier);
+      final e = await ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+      repo.updateThrows = true;
+
+      await expectLater(
+        ctrl.updateRole(e.id, EdgeRole.lastFrame),
+        throwsStateError,
+      );
+      final updated = container
+          .read(canvasEdgesControllerProvider(canvasId))
+          .valueOrNull!
+          .firstWhere((x) => x.id == e.id);
+      expect(updated.role, EdgeRole.reference);
     });
 
     test('removeEdge DB 失败 → 回滚', () async {

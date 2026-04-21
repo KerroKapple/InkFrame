@@ -79,4 +79,23 @@ class CanvasEdgesController
       rethrow;
     }
   }
+
+  /// 变更已存在连线的 role（data edge 专用：reference / firstFrame / lastFrame）。
+  /// 乐观更新内存后 DB 失败回滚。
+  Future<void> updateRole(String id, EdgeRole role) async {
+    final previous = state.valueOrNull ?? const <CanvasEdge>[];
+    final next = [
+      for (final e in previous)
+        if (e.id == id) e.copyWith(role: role) else e,
+    ];
+    state = AsyncData(next);
+    try {
+      await _repo.update(id, <String, Object?>{
+        'role': CanvasEdgeMapping.roleToDb(role),
+      });
+    } catch (_) {
+      state = AsyncData(previous);
+      rethrow;
+    }
+  }
 }

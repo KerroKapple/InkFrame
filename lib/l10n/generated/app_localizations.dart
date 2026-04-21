@@ -505,6 +505,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to delete node'**
   String get nodeDeleteFailed;
+
+  /// No description provided for @inspectorInputsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Inputs'**
+  String get inspectorInputsLabel;
+
+  /// No description provided for @inspectorInputsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No input connections'**
+  String get inspectorInputsEmpty;
+
+  /// No description provided for @inspectorRoleReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get inspectorRoleReference;
+
+  /// No description provided for @inspectorRoleFirstFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'First frame'**
+  String get inspectorRoleFirstFrame;
+
+  /// No description provided for @inspectorRoleLastFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Last frame'**
+  String get inspectorRoleLastFrame;
+
+  /// No description provided for @inspectorRemoveInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove input'**
+  String get inspectorRemoveInput;
 }
 
 class _AppLocalizationsDelegate

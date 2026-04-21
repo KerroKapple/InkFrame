@@ -22,7 +22,9 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
+import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 
 class ConfigNodeInspector extends ConsumerStatefulWidget {
@@ -221,6 +223,121 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
                 : _hasApiKey(_providerId!),
             running: _running,
             onPressed: _submit,
+          ),
+          if (widget.node.canvasId != null) ...[
+            const SizedBox(height: InkSpacing.lg),
+            _InputsSection(targetNode: widget.node),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _InputsSection extends ConsumerWidget {
+  const _InputsSection({required this.targetNode});
+  final CanvasNode targetNode;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canvasId = targetNode.canvasId!;
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+
+    final edgesAsync = ref.watch(canvasEdgesControllerProvider(canvasId));
+    final nodesAsync = ref.watch(canvasNodesControllerProvider(canvasId));
+    final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
+    final nodes = nodesAsync.valueOrNull ?? const <CanvasNode>[];
+    final nodesById = {for (final n in nodes) n.id: n};
+
+    final inputs = edges
+        .where((e) =>
+            e.targetNodeId == targetNode.id && e.edgeType == EdgeType.data)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.inspectorInputsLabel,
+          style: typo.caption.copyWith(color: colors.fg3),
+        ),
+        const SizedBox(height: InkSpacing.xs),
+        if (inputs.isEmpty)
+          Text(
+            context.l10n.inspectorInputsEmpty,
+            style: typo.caption.copyWith(color: colors.fg3),
+          )
+        else
+          for (final edge in inputs)
+            _InputRow(
+              edge: edge,
+              source: nodesById[edge.sourceNodeId],
+              canvasId: canvasId,
+            ),
+      ],
+    );
+  }
+}
+
+class _InputRow extends ConsumerWidget {
+  const _InputRow({
+    required this.edge,
+    required this.source,
+    required this.canvasId,
+  });
+
+  final CanvasEdge edge;
+  final CanvasNode? source;
+  final String canvasId;
+
+  String _roleLabel(BuildContext context, EdgeRole role) => switch (role) {
+        EdgeRole.reference => context.l10n.inspectorRoleReference,
+        EdgeRole.firstFrame => context.l10n.inspectorRoleFirstFrame,
+        EdgeRole.lastFrame => context.l10n.inspectorRoleLastFrame,
+      };
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final ctrl = ref.read(canvasEdgesControllerProvider(canvasId).notifier);
+    final sourceLabel = source?.label.isNotEmpty == true
+        ? source!.label
+        : (source?.id ?? edge.sourceNodeId);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: InkSpacing.xs),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              sourceLabel,
+              style: typo.body.copyWith(color: colors.fg1),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: InkSpacing.xs),
+          DropdownButton<EdgeRole>(
+            value: edge.role,
+            isDense: true,
+            items: [
+              for (final r in EdgeRole.values)
+                DropdownMenuItem(value: r, child: Text(_roleLabel(context, r))),
+            ],
+            onChanged: (v) {
+              if (v == null || v == edge.role) return;
+              ctrl.updateRole(edge.id, v).catchError((Object _) {
+                // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染
+              });
+            },
+          ),
+          IconButton(
+            tooltip: context.l10n.inspectorRemoveInput,
+            icon: Icon(Icons.link_off, size: 16, color: colors.danger),
+            onPressed: () {
+              ctrl.removeEdge(edge.id).catchError((Object _) {});
+            },
           ),
         ],
       ),
