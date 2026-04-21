@@ -24,7 +24,7 @@ void main() {
       ),
     );
     await tester.pump();
-    // 画布空态提示
-    expect(find.textContaining('node'), findsOneWidget);
+    // 无画布空态：显示 "No canvas is open" + "Create sample canvas" 按钮
+    expect(find.textContaining('canvas'), findsWidgets);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

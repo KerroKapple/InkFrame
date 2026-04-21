@@ -93,4 +93,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String canvasNodesSelected(int count) {
     return '已选择 $count 个节点';
   }
+
+  @override
+  String get canvasNoCanvasOpen => '当前没有打开的画布';
+
+  @override
+  String get canvasCreateSampleCanvas => '新建示例画布';
+
+  @override
+  String get canvasLoadFailed => '加载画布失败';
+
+  @override
+  String get canvasSampleProjectName => '示例项目';
+
+  @override
+  String get canvasSampleCanvasName => '画布 1';
 }

@@ -265,6 +265,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} node(s) selected'**
   String canvasNodesSelected(int count);
+
+  /// No description provided for @canvasNoCanvasOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'No canvas is open'**
+  String get canvasNoCanvasOpen;
+
+  /// No description provided for @canvasCreateSampleCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Create sample canvas'**
+  String get canvasCreateSampleCanvas;
+
+  /// No description provided for @canvasLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load canvas'**
+  String get canvasLoadFailed;
+
+  /// No description provided for @canvasSampleProjectName.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample Project'**
+  String get canvasSampleProjectName;
+
+  /// No description provided for @canvasSampleCanvasName.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas 1'**
+  String get canvasSampleCanvasName;
 }
 
 class _AppLocalizationsDelegate
