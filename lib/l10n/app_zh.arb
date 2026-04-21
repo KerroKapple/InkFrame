@@ -87,5 +87,12 @@
 
   "nodeDelete": "删除节点",
   "nodeDeleted": "节点已删除",
-  "nodeDeleteFailed": "节点删除失败"
+  "nodeDeleteFailed": "节点删除失败",
+
+  "inspectorInputsLabel": "输入",
+  "inspectorInputsEmpty": "无输入连线",
+  "inspectorRoleReference": "参考图",
+  "inspectorRoleFirstFrame": "首帧",
+  "inspectorRoleLastFrame": "尾帧",
+  "inspectorRemoveInput": "移除输入"
 }

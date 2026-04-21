@@ -90,5 +90,12 @@
 
   "nodeDelete": "Delete node",
   "nodeDeleted": "Node deleted",
-  "nodeDeleteFailed": "Failed to delete node"
+  "nodeDeleteFailed": "Failed to delete node",
+
+  "inspectorInputsLabel": "Inputs",
+  "inspectorInputsEmpty": "No input connections",
+  "inspectorRoleReference": "Reference",
+  "inspectorRoleFirstFrame": "First frame",
+  "inspectorRoleLastFrame": "Last frame",
+  "inspectorRemoveInput": "Remove input"
 }
