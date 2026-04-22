@@ -89,4 +89,38 @@ TMPDIR="$(setup_fake_repo)"
 )
 rm -rf "$TMPDIR"
 
+# --- Task 4: guardrail #2 negative cases ---
+echo "=== Task 4: guardrail #2 negative ==="
+
+# Case C: expected SHA doesn't resolve to a commit → exit 11
+TMPDIR="$(setup_fake_repo)"
+(
+  cd "$TMPDIR/local"
+  echo b > b.txt && git add b.txt
+  git commit --quiet -m "release(v0.1.0-alpha.7): foo"
+  git push --quiet origin main
+  set +e
+  "$SCRIPT" 0000000 v0.1.0-alpha.7 "msg" >/dev/null 2>&1
+  ec=$?
+  set -e
+  [[ $ec -eq 11 ]] && pass "unknown SHA → exit 11" || fail "unknown SHA → exit $ec (want 11)"
+)
+rm -rf "$TMPDIR"
+
+# Case D: expected SHA is valid but NOT origin/main HEAD → exit 11
+TMPDIR="$(setup_fake_repo)"
+(
+  cd "$TMPDIR/local"
+  echo b > b.txt && git add b.txt
+  git commit --quiet -m "release(v0.1.0-alpha.7): foo"
+  git push --quiet origin main
+  parent_sha="$(git rev-parse HEAD^)"
+  set +e
+  "$SCRIPT" "$parent_sha" v0.1.0-alpha.7 "msg" >/dev/null 2>&1
+  ec=$?
+  set -e
+  [[ $ec -eq 11 ]] && pass "stale SHA → exit 11" || fail "stale SHA → exit $ec (want 11)"
+)
+rm -rf "$TMPDIR"
+
 exit $FAILURES
