@@ -64,5 +64,18 @@ assert_remote_main_is_release_commit
 echo "→ guardrail #2: <expected-merge-sha> == origin/main HEAD"
 assert_expected_merge_sha_matches_remote "$EXPECTED_SHA"
 
-echo "release-tag.sh: guardrails passed, tag action not yet implemented" >&2
-exit 2
+echo "→ git tag -a $TAG $EXPECTED_SHA -m '$MESSAGE'"
+git tag -a "$TAG" "$EXPECTED_SHA" -m "$MESSAGE"
+
+echo "→ git push origin $TAG"
+git push origin "$TAG"
+
+if [[ "$TAG" =~ -[a-z]+\.[0-9]+$ ]]; then
+  echo "→ gh release create $TAG --generate-notes --prerelease"
+  gh release create "$TAG" --generate-notes --prerelease
+else
+  echo "→ gh release create $TAG --generate-notes"
+  gh release create "$TAG" --generate-notes
+fi
+
+echo "✅ release-tag.sh: $TAG released"

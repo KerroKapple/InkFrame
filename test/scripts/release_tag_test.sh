@@ -74,20 +74,7 @@ TMPDIR="$(setup_fake_repo)"
 )
 rm -rf "$TMPDIR"
 
-# Case B: remote main HEAD IS a release commit, SHA matches → passes both guardrails, exits 2 (stub)
-TMPDIR="$(setup_fake_repo)"
-(
-  cd "$TMPDIR/local"
-  echo b > b.txt && git add b.txt
-  git commit --quiet -m "release(v0.1.0-alpha.7): foo"
-  git push --quiet origin main
-  set +e
-  out="$("$SCRIPT" HEAD v0.1.0-alpha.7 "msg" 2>&1)"
-  ec=$?
-  set -e
-  [[ $ec -eq 2 ]] && echo "$out" | grep -q "tag action not yet implemented" && pass "release main + matching SHA → passes both guardrails" || fail "release main flow broken (ec=$ec, out=$out)"
-)
-rm -rf "$TMPDIR"
+# (Case B moved to Task 5 happy path since guardrails + tag action now fully wired)
 
 # --- Task 4: guardrail #2 negative cases ---
 echo "=== Task 4: guardrail #2 negative ==="
@@ -120,6 +107,67 @@ TMPDIR="$(setup_fake_repo)"
   ec=$?
   set -e
   [[ $ec -eq 11 ]] && pass "stale SHA → exit 11" || fail "stale SHA → exit $ec (want 11)"
+)
+rm -rf "$TMPDIR"
+
+# --- Task 5: happy path (tag + push + gh release) ---
+echo "=== Task 5: happy path ==="
+
+# Case E: prerelease tag → --prerelease flag present
+TMPDIR="$(setup_fake_repo)"
+(
+  cd "$TMPDIR/local"
+  echo b > b.txt && git add b.txt
+  git commit --quiet -m "release(v0.1.0-alpha.7): foo"
+  git push --quiet origin main
+
+  mkdir -p bin
+  cat > bin/gh <<'GH'
+#!/usr/bin/env bash
+echo "gh $*" >> "$PWD/gh.log"
+exit 0
+GH
+  chmod +x bin/gh
+  export PATH="$PWD/bin:$PATH"
+
+  merge_sha="$(git rev-parse HEAD)"
+  set +e
+  "$SCRIPT" "$merge_sha" v0.1.0-alpha.7 "release msg" >/dev/null 2>&1
+  ec=$?
+  set -e
+  [[ $ec -eq 0 ]] && pass "happy path → exit 0" || fail "happy path → exit $ec"
+
+  git rev-parse v0.1.0-alpha.7 >/dev/null 2>&1 && pass "tag v0.1.0-alpha.7 created" || fail "tag missing"
+  git ls-remote --tags origin v0.1.0-alpha.7 | grep -q v0.1.0-alpha.7 && pass "tag pushed to origin" || fail "tag not pushed"
+  grep -q "release create v0.1.0-alpha.7" gh.log && pass "gh release create invoked" || fail "gh not invoked"
+  grep -q -- "--prerelease" gh.log && pass "prerelease tag → --prerelease flag present" || fail "prerelease tag missing --prerelease"
+)
+rm -rf "$TMPDIR"
+
+# Case F: stable tag (no -prerelease suffix) → no --prerelease flag
+TMPDIR="$(setup_fake_repo)"
+(
+  cd "$TMPDIR/local"
+  echo b > b.txt && git add b.txt
+  git commit --quiet -m "release(v1.0.0): GA"
+  git push --quiet origin main
+
+  mkdir -p bin
+  cat > bin/gh <<'GH'
+#!/usr/bin/env bash
+echo "gh $*" >> "$PWD/gh.log"
+exit 0
+GH
+  chmod +x bin/gh
+  export PATH="$PWD/bin:$PATH"
+
+  merge_sha="$(git rev-parse HEAD)"
+  set +e
+  "$SCRIPT" "$merge_sha" v1.0.0 "GA" >/dev/null 2>&1
+  ec=$?
+  set -e
+  [[ $ec -eq 0 ]] && pass "stable happy path → exit 0" || fail "stable happy path → exit $ec"
+  grep -q -- "--prerelease" gh.log && fail "stable tag should NOT pass --prerelease" || pass "stable tag omits --prerelease"
 )
 rm -rf "$TMPDIR"
 
