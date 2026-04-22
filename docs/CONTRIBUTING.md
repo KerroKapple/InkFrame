@@ -73,10 +73,39 @@ main        ← 只接 release-quality 代码，每次合入打 tag (v0.1.0 / v0
 
 ## Tag & Release
 
-- 合入 `main` 后必须打 annotated tag：`git tag -a v0.1.0 -m "..."`
 - 严格 SemVer：`vMAJOR.MINOR.PATCH`
 - Pre-release：`v0.1.0-alpha.1` / `v0.1.0-rc.1`
-- Release note 用 `gh release create v0.1.0 --generate-notes`
+
+### 使用 `scripts/release-tag.sh`（推荐）
+
+合入 `main` 后：
+
+```bash
+# 从 GitHub PR 页复制 squash/merge commit 的完整 SHA
+scripts/release-tag.sh <merge-sha> v0.1.0-alpha.7 "release 说明"
+```
+
+脚本内置两条护栏：
+1. `origin/main` HEAD commit 消息必须匹配 `release(v*)` 前缀（防 tag 被误打到非 release commit）
+2. `<merge-sha>` 必须等于 `origin/main` HEAD（防本地 `main` 未同步导致的时序陷阱，见 TD-002）
+
+出错退码：`2` 参数错、`10` 护栏 #1 失败、`11` 护栏 #2 失败。脚本成功后自动：
+
+- `git tag -a <tag> <sha> -m "<message>"`
+- `git push origin <tag>`
+- `gh release create <tag> --generate-notes`（tag 带 `-alpha.N` / `-beta.N` / `-rc.N` 后缀时自动加 `--prerelease`）
+
+测试：`./test/scripts/release_tag_test.sh`（纯 shell，零依赖）。
+
+### 手工兜底（不推荐）
+
+仅在脚本不可用时。按顺序：
+
+1. `git fetch origin`
+2. `git log -1 --format=%s origin/main` 确认是 release 合入 commit
+3. `git tag -a v0.1.0-alpha.7 <origin/main HEAD sha> -m "..."`
+4. `git push origin v0.1.0-alpha.7`
+5. `gh release create v0.1.0-alpha.7 --generate-notes --prerelease`
 
 ## 本地 Hook 安装（首次 clone 必做）
 
