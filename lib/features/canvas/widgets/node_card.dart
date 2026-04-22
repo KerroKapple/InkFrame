@@ -24,6 +24,7 @@ class NodeCard extends ConsumerWidget {
     required this.onTap,
     required this.onPanUpdate,
     this.onStartLink,
+    this.onDelete,
     this.isLinkSource = false,
     this.isLinkCandidate = false,
   });
@@ -35,6 +36,9 @@ class NodeCard extends ConsumerWidget {
 
   /// 选中后点击该回调 → 进入连线模式。null 代表不可发起连线（例如 result 节点）。
   final VoidCallback? onStartLink;
+
+  /// 选中后点击右上角 X → 删除本节点（含级联软删 edges）。null 代表禁用。
+  final VoidCallback? onDelete;
 
   /// 本节点是否为当前连线模式的起点（UI 高亮）。
   final bool isLinkSource;
@@ -113,6 +117,12 @@ class NodeCard extends ConsumerWidget {
               top: -8,
               child: _LinkAnchor(onPressed: onStartLink!),
             ),
+          if (selected && onDelete != null && !isLinkSource)
+            Positioned(
+              left: -8,
+              top: -8,
+              child: _DeleteAnchor(onPressed: onDelete!),
+            ),
         ],
       ),
     );
@@ -152,6 +162,33 @@ class _LinkAnchor extends StatelessWidget {
             width: 24,
             height: 24,
             child: Icon(Icons.link, size: 14, color: colors.brand),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DeleteAnchor extends StatelessWidget {
+  const _DeleteAnchor({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    return Tooltip(
+      message: context.l10n.nodeDelete,
+      child: Material(
+        color: colors.surface1,
+        shape: CircleBorder(side: BorderSide(color: colors.danger, width: 1.5)),
+        elevation: 2,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onPressed,
+          child: SizedBox(
+            width: 24,
+            height: 24,
+            child: Icon(Icons.close, size: 14, color: colors.danger),
           ),
         ),
       ),

@@ -487,6 +487,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cannot link a node to itself'**
   String get linkSelfNotAllowed;
+
+  /// No description provided for @nodeDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete node'**
+  String get nodeDelete;
+
+  /// No description provided for @nodeDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Node deleted'**
+  String get nodeDeleted;
+
+  /// No description provided for @nodeDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete node'**
+  String get nodeDeleteFailed;
+
+  /// No description provided for @inspectorInputsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Inputs'**
+  String get inspectorInputsLabel;
+
+  /// No description provided for @inspectorInputsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No input connections'**
+  String get inspectorInputsEmpty;
+
+  /// No description provided for @inspectorRoleReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get inspectorRoleReference;
+
+  /// No description provided for @inspectorRoleFirstFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'First frame'**
+  String get inspectorRoleFirstFrame;
+
+  /// No description provided for @inspectorRoleLastFrame.
+  ///
+  /// In en, this message translates to:
+  /// **'Last frame'**
+  String get inspectorRoleLastFrame;
+
+  /// No description provided for @inspectorRemoveInput.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove input'**
+  String get inspectorRemoveInput;
+
+  /// No description provided for @canvasAddImageNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add image node'**
+  String get canvasAddImageNode;
+
+  /// No description provided for @canvasAddNodeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to add node'**
+  String get canvasAddNodeFailed;
 }
 
 class _AppLocalizationsDelegate

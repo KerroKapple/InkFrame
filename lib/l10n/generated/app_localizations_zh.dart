@@ -206,4 +206,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get linkSelfNotAllowed => '不能连到自己';
+
+  @override
+  String get nodeDelete => '删除节点';
+
+  @override
+  String get nodeDeleted => '节点已删除';
+
+  @override
+  String get nodeDeleteFailed => '节点删除失败';
+
+  @override
+  String get inspectorInputsLabel => '输入';
+
+  @override
+  String get inspectorInputsEmpty => '无输入连线';
+
+  @override
+  String get inspectorRoleReference => '参考图';
+
+  @override
+  String get inspectorRoleFirstFrame => '首帧';
+
+  @override
+  String get inspectorRoleLastFrame => '尾帧';
+
+  @override
+  String get inspectorRemoveInput => '移除输入';
+
+  @override
+  String get canvasAddImageNode => '添加图片节点';
+
+  @override
+  String get canvasAddNodeFailed => '添加节点失败';
 }

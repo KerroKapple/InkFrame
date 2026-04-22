@@ -86,5 +86,19 @@
   "linkModeHint": "Tap a target node to link, or tap empty space to cancel",
   "linkCreated": "Link created",
   "linkAlreadyExists": "Link already exists",
-  "linkSelfNotAllowed": "Cannot link a node to itself"
+  "linkSelfNotAllowed": "Cannot link a node to itself",
+
+  "nodeDelete": "Delete node",
+  "nodeDeleted": "Node deleted",
+  "nodeDeleteFailed": "Failed to delete node",
+
+  "inspectorInputsLabel": "Inputs",
+  "inspectorInputsEmpty": "No input connections",
+  "inspectorRoleReference": "Reference",
+  "inspectorRoleFirstFrame": "First frame",
+  "inspectorRoleLastFrame": "Last frame",
+  "inspectorRemoveInput": "Remove input",
+
+  "canvasAddImageNode": "Add image node",
+  "canvasAddNodeFailed": "Failed to add node"
 }

@@ -217,4 +217,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get linkSelfNotAllowed => 'Cannot link a node to itself';
+
+  @override
+  String get nodeDelete => 'Delete node';
+
+  @override
+  String get nodeDeleted => 'Node deleted';
+
+  @override
+  String get nodeDeleteFailed => 'Failed to delete node';
+
+  @override
+  String get inspectorInputsLabel => 'Inputs';
+
+  @override
+  String get inspectorInputsEmpty => 'No input connections';
+
+  @override
+  String get inspectorRoleReference => 'Reference';
+
+  @override
+  String get inspectorRoleFirstFrame => 'First frame';
+
+  @override
+  String get inspectorRoleLastFrame => 'Last frame';
+
+  @override
+  String get inspectorRemoveInput => 'Remove input';
+
+  @override
+  String get canvasAddImageNode => 'Add image node';
+
+  @override
+  String get canvasAddNodeFailed => 'Failed to add node';
 }
