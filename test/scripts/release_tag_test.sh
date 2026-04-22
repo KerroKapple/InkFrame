@@ -41,10 +41,52 @@ ec=$?
 set -e
 [[ $ec -eq 2 ]] && pass "bad tag format (no v prefix) → exit 2" || fail "bad tag → exit $ec (want 2)"
 
-set +e
-out="$("$SCRIPT" b41d735 v0.1.0-alpha.7 "msg" 2>&1)"
-ec=$?
-set -e
-[[ $ec -eq 2 ]] && echo "$out" | grep -q "guardrails not yet implemented" && pass "good args → reaches guardrail stub" || fail "good args path broken (ec=$ec)"
+# (dropped "reaches guardrail stub" test — guardrails are now wired; covered by Task 3 cases below)
+
+# --- Task 3: guardrail #1 (remote main is release commit) ---
+echo "=== Task 3: guardrail #1 ==="
+
+setup_fake_repo() {
+  local dir
+  dir="$(mktemp -d)"
+  (
+    cd "$dir"
+    git init --quiet --bare remote.git
+    git clone --quiet remote.git local
+    cd local
+    git config user.email 'test@test' && git config user.name 'test'
+    echo a > a.txt && git add a.txt && git commit --quiet -m "feat: init"
+    git branch -M main
+    git push --quiet origin main
+  )
+  echo "$dir"
+}
+
+# Case A: remote main HEAD is NOT a release commit → exit 10
+TMPDIR="$(setup_fake_repo)"
+(
+  cd "$TMPDIR/local"
+  set +e
+  "$SCRIPT" deadbeef v0.1.0-alpha.7 "msg" >/dev/null 2>&1
+  ec=$?
+  set -e
+  [[ $ec -eq 10 ]] && pass "non-release main → exit 10" || fail "non-release main → exit $ec (want 10)"
+)
+rm -rf "$TMPDIR"
+
+# Case B: remote main HEAD IS a release commit, SHA matches → passes both guardrails, exits 2 (stub)
+TMPDIR="$(setup_fake_repo)"
+(
+  cd "$TMPDIR/local"
+  echo b > b.txt && git add b.txt
+  git commit --quiet -m "release(v0.1.0-alpha.7): foo"
+  git push --quiet origin main
+  set +e
+  out="$("$SCRIPT" HEAD v0.1.0-alpha.7 "msg" 2>&1)"
+  ec=$?
+  set -e
+  [[ $ec -eq 2 ]] && echo "$out" | grep -q "tag action not yet implemented" && pass "release main + matching SHA → passes both guardrails" || fail "release main flow broken (ec=$ec, out=$out)"
+)
+rm -rf "$TMPDIR"
 
 exit $FAILURES

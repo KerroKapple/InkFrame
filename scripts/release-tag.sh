@@ -51,5 +51,18 @@ if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+\.[0-9]+)?$ ]]; then
   exit 2
 fi
 
-echo "release-tag.sh: args OK, guardrails not yet implemented" >&2
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=lib/release_guardrails.sh
+source "$SCRIPT_DIR/lib/release_guardrails.sh"
+
+echo "→ git fetch origin"
+git fetch origin --quiet
+
+echo "→ guardrail #1: origin/main HEAD is a release commit"
+assert_remote_main_is_release_commit
+
+echo "→ guardrail #2: <expected-merge-sha> == origin/main HEAD"
+assert_expected_merge_sha_matches_remote "$EXPECTED_SHA"
+
+echo "release-tag.sh: guardrails passed, tag action not yet implemented" >&2
 exit 2
