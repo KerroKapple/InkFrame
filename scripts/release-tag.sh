@@ -35,5 +35,21 @@ if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
   exit 0
 fi
 
-echo "release-tag.sh: not yet implemented beyond --help" >&2
+if [[ $# -ne 3 ]]; then
+  echo "error: expected 3 arguments, got $#" >&2
+  echo "" >&2
+  usage >&2
+  exit 2
+fi
+
+EXPECTED_SHA="$1"
+TAG="$2"
+MESSAGE="$3"
+
+if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-z]+\.[0-9]+)?$ ]]; then
+  echo "error: tag '$TAG' doesn't match SemVer vMAJOR.MINOR.PATCH[-prerelease.N]" >&2
+  exit 2
+fi
+
+echo "release-tag.sh: args OK, guardrails not yet implemented" >&2
 exit 2
