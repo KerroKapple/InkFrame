@@ -56,6 +56,37 @@ class CanvasNode {
     return v is String && v.isNotEmpty ? v : null;
   }
 
+  /// video result 节点的相对视频路径；非 video 或未设置时为 null。
+  String? get videoUrl {
+    final v = typeConfig['video_url'];
+    return v is String && v.isNotEmpty ? v : null;
+  }
+
+  /// video result 节点的首帧缩略图相对路径；未抽帧时为 null。
+  String? get thumbnailUrl {
+    final v = typeConfig['thumbnail_url'];
+    return v is String && v.isNotEmpty ? v : null;
+  }
+
+  /// video config 节点的时长（毫秒）；未设置返回 null。
+  int? get durationMs {
+    final v = typeConfig['duration_ms'];
+    return v is int ? v : null;
+  }
+
+  /// video config 节点的运镜名（CameraMovement.name）；未设置返回 null。
+  String? get cameraName {
+    final v = typeConfig['camera'];
+    return v is String && v.isNotEmpty ? v : null;
+  }
+
+  /// video config 节点的生成模式（"t2v" / "i2v"）；未设置返回 null，
+  /// 生成时按 incoming data edges 自动推断（见 GenerationController）。
+  String? get videoMode {
+    final v = typeConfig['mode'];
+    return v is String && v.isNotEmpty ? v : null;
+  }
+
   CanvasNode copyWith({
     String? label,
     CanvasNodeType? type,
