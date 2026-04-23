@@ -249,6 +249,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasAddImageNode => 'Add image node';
 
   @override
+  String get canvasAddVideoNode => 'Add video node';
+
+  @override
+  String get canvasAddNodeTooltip => 'New node';
+
+  @override
   String get canvasAddNodeFailed => 'Failed to add node';
 
   @override

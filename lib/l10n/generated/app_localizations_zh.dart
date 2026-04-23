@@ -238,6 +238,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasAddImageNode => '添加图片节点';
 
   @override
+  String get canvasAddVideoNode => '新增视频节点';
+
+  @override
+  String get canvasAddNodeTooltip => '新建节点';
+
+  @override
   String get canvasAddNodeFailed => '添加节点失败';
 
   @override
