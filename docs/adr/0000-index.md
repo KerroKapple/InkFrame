@@ -21,6 +21,7 @@ proposed ──► accepted ──► superseded (by ADR-NNNN)
 | [ADR-0003](0003-freezed-models-map-at-repo-edge.md) | 领域模型用 freezed，Repository 层暴露 `Map<String, Object?>` | accepted | 2026-04-15 |
 | [ADR-0004](0004-sync-provider-data-channel.md) | 同步 Provider 通过 Pollable + inline bytes 通道暴露结果 | accepted | 2026-04-18 |
 | [ADR-0005](0005-dashscope-async-provider-base.md) | DashScope 异步 Provider 公共基类（Wanx + Kling 6 Provider 共享） | accepted | 2026-04-18 |
+| [ADR-0006](0006-video-playback-library.md) | 视频播放库：media_kit | accepted | 2026-04-22 |
 
 ---
 
