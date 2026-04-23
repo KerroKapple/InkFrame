@@ -18,7 +18,7 @@ import '../providers/current_canvas_id.dart';
 import '../providers/link_mode_controller.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/edge_hit_test.dart';
-import 'config_node_inspector.dart';
+import 'node_inspector_router.dart';
 import 'edge_painter.dart';
 import 'node_card.dart';
 
@@ -418,7 +418,7 @@ class _CanvasBody extends ConsumerWidget {
       children: [
         Expanded(child: leftArea),
         if (inspectorTarget != null)
-          ConfigNodeInspector(
+          NodeInspectorRouter(
             key: ValueKey(inspectorTarget.id),
             node: inspectorTarget,
           ),

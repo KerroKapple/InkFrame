@@ -100,5 +100,15 @@
   "inspectorRemoveInput": "Remove input",
 
   "canvasAddImageNode": "Add image node",
-  "canvasAddNodeFailed": "Failed to add node"
+  "canvasAddNodeFailed": "Failed to add node",
+
+  "inspectorVideoPromptLabel": "Video prompt",
+  "inspectorVideoDurationLabel": "Duration (seconds)",
+  "inspectorVideoCameraLabel": "Camera movement",
+  "inspectorVideoModeAuto": "Mode: auto-detected from inputs",
+  "inspectorVideoModeT2v": "Text-to-video",
+  "inspectorVideoModeI2v": "Image-to-video",
+  "inspectorVideoGenerateDisabledEmptyPrompt": "Prompt required",
+  "inspectorVideoGenerateDisabledNoKey": "API key required in Settings",
+  "inspectorVideoGenerate": "Generate video"
 }
