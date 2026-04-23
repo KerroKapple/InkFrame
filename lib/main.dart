@@ -5,6 +5,7 @@
 //   4) runApp(InkFrameApp)
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'app.dart';
 import 'core/di/paths.dart';
@@ -12,6 +13,7 @@ import 'core/paths/app_paths.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
 
   final AppPaths paths = await DefaultAppPaths.create();
   await paths.ensureInitialized();

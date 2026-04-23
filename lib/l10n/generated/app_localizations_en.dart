@@ -284,4 +284,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inspectorVideoGenerate => 'Generate video';
+
+  @override
+  String get lightboxClose => 'Close';
+
+  @override
+  String get lightboxPlayPause => 'Play / Pause';
 }

@@ -619,6 +619,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generate video'**
   String get inspectorVideoGenerate;
+
+  /// Video lightbox close tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get lightboxClose;
+
+  /// Video lightbox play/pause tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Play / Pause'**
+  String get lightboxPlayPause;
 }
 
 class _AppLocalizationsDelegate

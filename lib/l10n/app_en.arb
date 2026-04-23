@@ -114,5 +114,14 @@
   "inspectorVideoModeI2v": "Image-to-video",
   "inspectorVideoGenerateDisabledEmptyPrompt": "Prompt required",
   "inspectorVideoGenerateDisabledNoKey": "API key required in Settings",
-  "inspectorVideoGenerate": "Generate video"
+  "inspectorVideoGenerate": "Generate video",
+
+  "lightboxClose": "Close",
+  "@lightboxClose": {
+    "description": "Video lightbox close tooltip"
+  },
+  "lightboxPlayPause": "Play / Pause",
+  "@lightboxPlayPause": {
+    "description": "Video lightbox play/pause tooltip"
+  }
 }
