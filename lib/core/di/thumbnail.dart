@@ -1,11 +1,13 @@
 // ThumbnailService 的 Riverpod DI。
 //
-// S3 阶段返回 null —— JobQueueService 在 `_thumbnail == null` 时跳过抽帧，
-// 视频仍能落盘，只是没有 thumbnail_url。
-// S4 会把 Provider 换成 MediaKitThumbnailService 真实现。
+// S4：换 MediaKitThumbnailService 真实现。类型仍为可空，
+// JobQueueService 在 `_thumbnail == null` 时跳过抽帧（测试覆盖）。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../services/media_kit_thumbnail_service.dart';
 import '../interfaces/thumbnail_service.dart';
 
-final thumbnailServiceProvider = Provider<ThumbnailService?>((ref) => null);
+final thumbnailServiceProvider = Provider<ThumbnailService?>(
+  (ref) => MediaKitThumbnailService(),
+);
