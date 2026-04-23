@@ -249,5 +249,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasAddImageNode => 'Add image node';
 
   @override
+  String get canvasAddVideoNode => 'Add video node';
+
+  @override
+  String get canvasAddNodeTooltip => 'New node';
+
+  @override
   String get canvasAddNodeFailed => 'Failed to add node';
+
+  @override
+  String get inspectorVideoPromptLabel => 'Video prompt';
+
+  @override
+  String get inspectorVideoDurationLabel => 'Duration (seconds)';
+
+  @override
+  String get inspectorVideoCameraLabel => 'Camera movement';
+
+  @override
+  String get inspectorVideoModeAuto => 'Mode: auto-detected from inputs';
+
+  @override
+  String get inspectorVideoModeT2v => 'Text-to-video';
+
+  @override
+  String get inspectorVideoModeI2v => 'Image-to-video';
+
+  @override
+  String get inspectorVideoGenerateDisabledEmptyPrompt => 'Prompt required';
+
+  @override
+  String get inspectorVideoGenerateDisabledNoKey =>
+      'API key required in Settings';
+
+  @override
+  String get inspectorVideoGenerate => 'Generate video';
+
+  @override
+  String get lightboxClose => 'Close';
+
+  @override
+  String get lightboxPlayPause => 'Play / Pause';
 }

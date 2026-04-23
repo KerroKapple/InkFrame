@@ -16,8 +16,11 @@ import '../core/interfaces/generation_provider.dart';
 import '../core/interfaces/job_queue_service.dart';
 import '../core/interfaces/job_repository.dart';
 import '../core/interfaces/node_repository.dart';
+import '../core/interfaces/thumbnail_service.dart';
+import '../core/interfaces/video_download_service.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
+import '../core/models/provider_capabilities.dart';
 import '../providers/provider_registry.dart';
 import 'file_resolver_service.dart';
 
@@ -27,6 +30,8 @@ class InMemoryJobQueueService implements JobQueueService {
     JobRepository? repo,
     FileResolverService? fileResolver,
     NodeRepository? nodeRepo,
+    VideoDownloadService? videoDownloader,
+    ThumbnailService? thumbnailService,
     int globalConcurrency = 2,
     Duration pollInitialInterval = const Duration(seconds: 3),
     Duration pollMaxInterval = const Duration(seconds: 30),
@@ -37,6 +42,8 @@ class InMemoryJobQueueService implements JobQueueService {
         _repo = repo,
         _fileResolver = fileResolver,
         _nodeRepo = nodeRepo,
+        _videoDownloader = videoDownloader,
+        _thumbnail = thumbnailService,
         _globalConcurrency = globalConcurrency,
         _pollInitial = pollInitialInterval,
         _pollMax = pollMaxInterval,
@@ -48,6 +55,8 @@ class InMemoryJobQueueService implements JobQueueService {
   final JobRepository? _repo;
   final FileResolverService? _fileResolver;
   final NodeRepository? _nodeRepo;
+  final VideoDownloadService? _videoDownloader;
+  final ThumbnailService? _thumbnail;
   final int _globalConcurrency;
   final Duration _pollInitial;
   final Duration _pollMax;
@@ -262,7 +271,7 @@ class InMemoryJobQueueService implements JobQueueService {
             await _persistUpdate(task.jobId, {'progress': progress});
           }
           handle._emit(status);
-        case JobSuccess(:final inlineBytes):
+        case JobSuccess(:final inlineBytes, :final remoteUrls):
           // b3：inlineBytes 落盘到 {canvasRoot}/images/{jobId}-{idx}.png
           //     成功后更新 node.type_config.image_url。失败转 LocalIOError。
           if (inlineBytes != null && inlineBytes.isNotEmpty) {
@@ -270,6 +279,16 @@ class InMemoryJobQueueService implements JobQueueService {
             if (ioErr != null) {
               await _persistFailure(task.jobId, ioErr);
               _emitFailure(handle, ioErr);
+              return;
+            }
+          }
+          // T5-S3：remoteUrls（所有异步 Provider 走这条）→ 下载到
+          //   videos/{jobId}.mp4 或 images/{jobId}.png，按 task.mode 分流。
+          if (remoteUrls.isNotEmpty) {
+            final err = await _persistRemoteUrls(task, remoteUrls);
+            if (err != null) {
+              await _persistFailure(task.jobId, err);
+              _emitFailure(handle, err);
               return;
             }
           }
@@ -422,6 +441,109 @@ class InMemoryJobQueueService implements JobQueueService {
         extra: {
           'job_id': task.jobId,
           'reason': 'write_inline_bytes_failed',
+          'message': e.message,
+        },
+      );
+    } on PathSecurityError catch (e) {
+      return LocalIOError(
+        cause: e,
+        extra: {
+          'job_id': task.jobId,
+          'reason': 'unsafe_path',
+        },
+      );
+    }
+  }
+
+  /// T5-S3：把 Provider 返回的 remoteUrls 下载到本地，
+  /// 并更新 node.type_config 里 video_url / image_url（可选 thumbnail_url）。
+  ///
+  /// 失败映射：
+  ///   - [VideoDownloadError] → [ProviderError]（`providerServer`，extra 带 http_status / url）
+  ///   - [FileSystemException] → [LocalIOError]
+  ///   - [PathSecurityError]   → [LocalIOError]
+  ///
+  /// 三关键 ID（projectId / canvasId / resultNodeId）任一缺失或依赖未注入 →
+  /// 静默跳过（单测路径）。batch_size=1：只取 remoteUrls.first，批量留后续。
+  Future<InkError?> _persistRemoteUrls(
+    GenerationTask task,
+    List<String> remoteUrls,
+  ) async {
+    final projectId = task.projectId;
+    final canvasId = task.canvasId;
+    final resultNodeId = task.resultNodeId;
+    final fileResolver = _fileResolver;
+    final nodeRepo = _nodeRepo;
+    final downloader = _videoDownloader;
+    if (projectId == null ||
+        canvasId == null ||
+        resultNodeId == null ||
+        fileResolver == null ||
+        nodeRepo == null ||
+        downloader == null) {
+      return null;
+    }
+
+    final isVideo = task.mode == GenerationMode.textToVideo ||
+        task.mode == GenerationMode.imageToVideo;
+    final subdir = isVideo ? 'videos' : 'images';
+    final ext = isVideo ? 'mp4' : 'png';
+    final urlKey = isVideo ? 'video_url' : 'image_url';
+    final url = remoteUrls.first;
+    final relPath = '$subdir/${task.jobId}.$ext';
+
+    try {
+      final file = fileResolver.resolve(
+        projectId: projectId,
+        canvasId: canvasId,
+        relativePath: relPath,
+      );
+      await downloader.download(url: url, destination: file);
+
+      final patch = <String, Object?>{urlKey: relPath};
+
+      // 视频可选：抽首帧（S4 换真实现；S3 provider 返回 null 时跳过）。
+      final thumbnail = _thumbnail;
+      if (isVideo && thumbnail != null) {
+        try {
+          final thumbRel = 'videos/${task.jobId}.jpg';
+          final thumbFile = fileResolver.resolve(
+            projectId: projectId,
+            canvasId: canvasId,
+            relativePath: thumbRel,
+          );
+          await thumbnail.extractFirstFrame(
+            videoPath: file.path,
+            destination: thumbFile,
+          );
+          patch['thumbnail_url'] = thumbRel;
+        } on ThumbnailError {
+          // 抽帧失败不阻断视频可用，仅没有 thumbnail_url。
+        } on FileSystemException {
+          // 同上。
+        } on PathSecurityError {
+          // 同上。
+        }
+      }
+
+      await nodeRepo.patchTypeConfig(resultNodeId, patch);
+      return null;
+    } on VideoDownloadError catch (e) {
+      return ProviderError(
+        code: InkErrorCode.providerServer,
+        extra: {
+          'job_id': task.jobId,
+          'reason': 'remote_url_download_failed',
+          'url': e.url,
+          'http_status': e.httpStatus,
+        },
+      );
+    } on FileSystemException catch (e) {
+      return LocalIOError(
+        cause: e,
+        extra: {
+          'job_id': task.jobId,
+          'reason': 'write_remote_file_failed',
           'message': e.message,
         },
       );

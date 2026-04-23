@@ -1,12 +1,8 @@
-// ConfigNodeInspector：单选 config 节点时展示的参数面板。
+// VideoConfigInspector：单选 video config 节点时展示的参数面板。
 //
-// S3b：Generate 按钮真接 GenerationController。流程：
-//   1. patchTypeConfig({prompt, provider_id, resolution, aspect_ratio}) 持久化
-//   2. controller.submitFromConfigNode(nodeId) 等终态
-//   3. 成功 → SnackBar + invalidate 当前画布的 nodesController 拉新 result 节点
-//      失败 → SnackBar 展示错误码；预创建的 result 已由 Controller 清理
-//
-// 按钮 disabled 原因分层（就近原则）：prompt 空 / 无 API Key / 正在运行 / OK。
+// 控件：prompt / provider 下拉 / duration 下拉 / camera 下拉 / 自动持久化 / Generate。
+// 按钮 disabled 原因分层（就近）：prompt 空 / 无 API Key / 正在运行 / OK。
+// mode（t2v vs i2v）在 GenerationController 根据 incoming data edges 自动推断。
 
 import 'dart:async';
 
@@ -24,25 +20,24 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
-import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
-import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 
-class ConfigNodeInspector extends ConsumerStatefulWidget {
-  const ConfigNodeInspector({super.key, required this.node});
+class VideoConfigInspector extends ConsumerStatefulWidget {
+  const VideoConfigInspector({super.key, required this.node});
 
   final CanvasNode node;
 
   @override
-  ConsumerState<ConfigNodeInspector> createState() =>
-      _ConfigNodeInspectorState();
+  ConsumerState<VideoConfigInspector> createState() =>
+      _VideoConfigInspectorState();
 }
 
-class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
+class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
   final TextEditingController _promptCtrl = TextEditingController();
   String? _providerId;
-  Resolution? _resolution;
+  int? _durationSec;
+  CameraMovement? _camera;
   bool _running = false;
   Timer? _promptDebounce;
 
@@ -51,21 +46,23 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
   @override
   void initState() {
     super.initState();
-    final caps = ref.read(providerCapabilitiesListProvider);
+    final caps = _videoCaps();
     final tc = widget.node.typeConfig;
 
-    // 水化已存在配置；缺失字段回退到 caps 首项。
     final savedProviderId = tc['provider_id'] as String?;
-    final savedResolution = _parseResolution(tc['resolution']);
-    final defaultProviderId = caps.isNotEmpty ? caps.first.providerId : null;
-    _providerId = savedProviderId ?? defaultProviderId;
-    final selectedCaps = caps.where((c) => c.providerId == _providerId);
-    final defaultResolution = selectedCaps.isNotEmpty &&
-            selectedCaps.first.supportedResolutions.isNotEmpty
-        ? selectedCaps.first.supportedResolutions.first
-        : null;
-    _resolution = savedResolution ?? defaultResolution;
-
+    _providerId =
+        savedProviderId ?? (caps.isNotEmpty ? caps.first.providerId : null);
+    final selected = _selectedCaps(caps);
+    final savedDurMs = tc['duration_ms'];
+    _durationSec = savedDurMs is int
+        ? savedDurMs ~/ 1000
+        : (selected != null && selected.supportedDurations.isNotEmpty
+            ? selected.supportedDurations.first
+            : null);
+    _camera = _parseCamera(tc['camera']) ??
+        (selected != null && selected.supportedCameras.isNotEmpty
+            ? selected.supportedCameras.first
+            : null);
     final savedPrompt = tc['prompt'];
     if (savedPrompt is String) _promptCtrl.text = savedPrompt;
   }
@@ -77,10 +74,25 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
     super.dispose();
   }
 
-  Resolution? _parseResolution(Object? raw) {
-    if (raw is! String) return null;
-    for (final r in Resolution.values) {
-      if (r.name == raw) return r;
+  List<ProviderCapabilities> _videoCaps() => ref
+      .read(providerCapabilitiesListProvider)
+      .where((c) =>
+          c.modes.contains(GenerationMode.textToVideo) ||
+          c.modes.contains(GenerationMode.imageToVideo))
+      .toList(growable: false);
+
+  ProviderCapabilities? _selectedCaps(List<ProviderCapabilities> all) {
+    if (_providerId == null || all.isEmpty) return null;
+    return all.firstWhere(
+      (c) => c.providerId == _providerId,
+      orElse: () => all.first,
+    );
+  }
+
+  CameraMovement? _parseCamera(Object? raw) {
+    if (raw is! String || raw.isEmpty) return null;
+    for (final c in CameraMovement.values) {
+      if (c.name == raw) return c;
     }
     return null;
   }
@@ -90,7 +102,7 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
       final nodes = await ref.read(nodeRepositoryProvider.future);
       await nodes.patchTypeConfig(widget.node.id, patch);
     } catch (_) {
-      // 静默——单次保存失败不打断用户输入流。下次保存会覆盖。
+      // 静默——下次覆盖
     }
   }
 
@@ -100,14 +112,6 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
     _promptDebounce = Timer(_debounceDuration, () {
       _patchTypeConfig(<String, Object?>{'prompt': value});
     });
-  }
-
-  ProviderCapabilities? _selectedCaps(List<ProviderCapabilities> all) {
-    if (_providerId == null) return null;
-    return all.firstWhere(
-      (c) => c.providerId == _providerId,
-      orElse: () => all.first,
-    );
   }
 
   Future<bool> _hasApiKey(String providerId) async {
@@ -125,10 +129,10 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
       await nodes.patchTypeConfig(widget.node.id, <String, Object?>{
         'prompt': prompt,
         'provider_id': _providerId,
-        if (_resolution != null) 'resolution': _resolution!.name,
+        if (_durationSec != null) 'duration_ms': _durationSec! * 1000,
+        if (_camera != null) 'camera': _camera!.name,
       });
-      final controller =
-          await ref.read(generationControllerProvider.future);
+      final controller = await ref.read(generationControllerProvider.future);
       final outcome = await controller.submitFromConfigNode(widget.node.id);
       if (!mounted) return;
       if (outcome.succeeded) {
@@ -177,10 +181,10 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
 
   @override
   Widget build(BuildContext context) {
-    final caps = ref.watch(providerCapabilitiesListProvider);
+    final caps = _videoCaps();
+    final selected = _selectedCaps(caps);
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final selected = _selectedCaps(caps);
 
     return Container(
       width: 320,
@@ -198,7 +202,7 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
           ),
           const SizedBox(height: InkSpacing.lg),
           Text(
-            context.l10n.inspectorPromptLabel,
+            context.l10n.inspectorVideoPromptLabel,
             style: typo.caption.copyWith(color: colors.fg3),
           ),
           const SizedBox(height: InkSpacing.xs),
@@ -231,45 +235,80 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
                     if (v == null) return;
                     final next =
                         caps.firstWhere((c) => c.providerId == v);
-                    final newResolution =
-                        next.supportedResolutions.isNotEmpty
-                            ? next.supportedResolutions.first
-                            : null;
+                    final newDuration = next.supportedDurations.isNotEmpty
+                        ? next.supportedDurations.first
+                        : null;
+                    final newCamera = next.supportedCameras.isNotEmpty
+                        ? next.supportedCameras.first
+                        : null;
                     setState(() {
                       _providerId = v;
-                      _resolution = newResolution;
+                      _durationSec = newDuration;
+                      _camera = newCamera;
                     });
                     _patchTypeConfig(<String, Object?>{
                       'provider_id': v,
-                      if (newResolution != null)
-                        'resolution': newResolution.name,
+                      if (newDuration != null)
+                        'duration_ms': newDuration * 1000,
+                      if (newCamera != null) 'camera': newCamera.name,
                     });
                   },
           ),
           const SizedBox(height: InkSpacing.md),
           Text(
-            context.l10n.inspectorResolutionLabel,
+            context.l10n.inspectorVideoDurationLabel,
             style: typo.caption.copyWith(color: colors.fg3),
           ),
           const SizedBox(height: InkSpacing.xs),
-          DropdownButton<Resolution>(
-            value: _resolution,
+          DropdownButton<int>(
+            value: _durationSec,
             isExpanded: true,
             items: [
               if (selected != null)
-                for (final r in selected.supportedResolutions)
-                  DropdownMenuItem(value: r, child: Text(r.name)),
+                for (final d in selected.supportedDurations)
+                  DropdownMenuItem(value: d, child: Text('$d')),
             ],
             onChanged: _running
                 ? null
                 : (v) {
                     if (v == null) return;
-                    setState(() => _resolution = v);
-                    _patchTypeConfig(<String, Object?>{'resolution': v.name});
+                    setState(() => _durationSec = v);
+                    _patchTypeConfig(
+                      <String, Object?>{'duration_ms': v * 1000},
+                    );
                   },
           ),
+          const SizedBox(height: InkSpacing.md),
+          Text(
+            context.l10n.inspectorVideoCameraLabel,
+            style: typo.caption.copyWith(color: colors.fg3),
+          ),
+          const SizedBox(height: InkSpacing.xs),
+          DropdownButton<CameraMovement>(
+            value: _camera,
+            isExpanded: true,
+            items: [
+              if (selected != null)
+                for (final c in selected.supportedCameras)
+                  DropdownMenuItem(value: c, child: Text(c.name)),
+            ],
+            onChanged: _running
+                ? null
+                : (v) {
+                    if (v == null) return;
+                    setState(() => _camera = v);
+                    _patchTypeConfig(
+                      <String, Object?>{'camera': v.name},
+                    );
+                  },
+          ),
+          const SizedBox(height: InkSpacing.md),
+          Text(
+            context.l10n.inspectorVideoModeAuto,
+            style: typo.caption.copyWith(color: colors.fg3),
+          ),
           const SizedBox(height: InkSpacing.lg),
-          _GenerateButton(
+          _VideoGenerateButton(
             prompt: _promptCtrl.text,
             providerId: _providerId,
             hasApiKey: _providerId == null
@@ -278,129 +317,14 @@ class _ConfigNodeInspectorState extends ConsumerState<ConfigNodeInspector> {
             running: _running,
             onPressed: _submit,
           ),
-          if (widget.node.canvasId != null) ...[
-            const SizedBox(height: InkSpacing.lg),
-            _InputsSection(targetNode: widget.node),
-          ],
         ],
       ),
     );
   }
 }
 
-class _InputsSection extends ConsumerWidget {
-  const _InputsSection({required this.targetNode});
-  final CanvasNode targetNode;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final canvasId = targetNode.canvasId!;
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-
-    final edgesAsync = ref.watch(canvasEdgesControllerProvider(canvasId));
-    final nodesAsync = ref.watch(canvasNodesControllerProvider(canvasId));
-    final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
-    final nodes = nodesAsync.valueOrNull ?? const <CanvasNode>[];
-    final nodesById = {for (final n in nodes) n.id: n};
-
-    final inputs = edges
-        .where((e) =>
-            e.targetNodeId == targetNode.id && e.edgeType == EdgeType.data)
-        .toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.inspectorInputsLabel,
-          style: typo.caption.copyWith(color: colors.fg3),
-        ),
-        const SizedBox(height: InkSpacing.xs),
-        if (inputs.isEmpty)
-          Text(
-            context.l10n.inspectorInputsEmpty,
-            style: typo.caption.copyWith(color: colors.fg3),
-          )
-        else
-          for (final edge in inputs)
-            _InputRow(
-              edge: edge,
-              source: nodesById[edge.sourceNodeId],
-              canvasId: canvasId,
-            ),
-      ],
-    );
-  }
-}
-
-class _InputRow extends ConsumerWidget {
-  const _InputRow({
-    required this.edge,
-    required this.source,
-    required this.canvasId,
-  });
-
-  final CanvasEdge edge;
-  final CanvasNode? source;
-  final String canvasId;
-
-  String _roleLabel(BuildContext context, EdgeRole role) => switch (role) {
-        EdgeRole.reference => context.l10n.inspectorRoleReference,
-        EdgeRole.firstFrame => context.l10n.inspectorRoleFirstFrame,
-        EdgeRole.lastFrame => context.l10n.inspectorRoleLastFrame,
-      };
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-    final ctrl = ref.read(canvasEdgesControllerProvider(canvasId).notifier);
-    final sourceLabel = source?.label.isNotEmpty == true
-        ? source!.label
-        : (source?.id ?? edge.sourceNodeId);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: InkSpacing.xs),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              sourceLabel,
-              style: typo.body.copyWith(color: colors.fg1),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: InkSpacing.xs),
-          DropdownButton<EdgeRole>(
-            value: edge.role,
-            isDense: true,
-            items: [
-              for (final r in EdgeRole.values)
-                DropdownMenuItem(value: r, child: Text(_roleLabel(context, r))),
-            ],
-            onChanged: (v) {
-              if (v == null || v == edge.role) return;
-              ctrl.updateRole(edge.id, v).catchError((Object _) {
-                // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染
-              });
-            },
-          ),
-          IconButton(
-            tooltip: context.l10n.inspectorRemoveInput,
-            icon: Icon(Icons.link_off, size: 16, color: colors.danger),
-            onPressed: () {
-              ctrl.removeEdge(edge.id).catchError((Object _) {});
-            },
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GenerateButton extends StatelessWidget {
-  const _GenerateButton({
+class _VideoGenerateButton extends StatelessWidget {
+  const _VideoGenerateButton({
     required this.prompt,
     required this.providerId,
     required this.hasApiKey,
@@ -426,9 +350,10 @@ class _GenerateButton extends StatelessWidget {
         if (running) {
           disabledReason = null;
         } else if (promptEmpty) {
-          disabledReason = context.l10n.inspectorGenerateDisabledEmptyPrompt;
+          disabledReason =
+              context.l10n.inspectorVideoGenerateDisabledEmptyPrompt;
         } else if (providerId == null || !hasKey) {
-          disabledReason = context.l10n.inspectorGenerateDisabledNoKey;
+          disabledReason = context.l10n.inspectorVideoGenerateDisabledNoKey;
         }
 
         final enabled =
@@ -440,7 +365,7 @@ class _GenerateButton extends StatelessWidget {
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
-            : Text(context.l10n.inspectorGenerate);
+            : Text(context.l10n.inspectorVideoGenerate);
 
         final button = FilledButton(
           onPressed: enabled ? onPressed : null,

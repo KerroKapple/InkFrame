@@ -56,6 +56,15 @@ dart --version                # 与 .fvmrc 一致
 ls resources/pg/{platform}/   # PG 二进制已拉取
 ```
 
+### 1.4 视频依赖（T5 起）
+
+T5 Sprint 引入 `media_kit` + `media_kit_libs_video` —— 视频生成结果的缩略抽帧 + 灯箱播放依赖 libmpv。
+
+- **macOS**：`media_kit_libs_macos_video` 自带 libmpv.dylib，Flutter build 自动嵌入 `Contents/Frameworks/`。`codesign --deep --force` 已覆盖新增 dylib，无需额外命令。
+- **Windows**：`media_kit_libs_windows_video` 自带 libmpv 相关 DLL，CMake 自动收敛到 `build/windows/x64/runner/Release/`。MSIX / MSI 打包时自动包含。
+- **体积影响**：安装包 +~40 MB（libmpv x64）。alpha 阶段可接受；GA 前如需瘦身，考虑按需加载或切更轻量 player。
+- **CI 约束**：headless Ubuntu runner 无 GPU / 原生播放栈，`media_kit` 依赖文件（`lib/features/canvas/widgets/video_lightbox.dart` / `lib/services/media_kit_*_service.dart` 等）被 coverage 阈值排除，改由手动回归清单覆盖，见 `docs/internal/t5-manual-regression.md`。
+
 ---
 
 ## 2. 版本号规范

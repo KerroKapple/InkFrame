@@ -1,4 +1,4 @@
-// ConfigNodeInspector widget 测试——仅骨架层级：
+// ImageConfigInspector widget 测试——仅骨架层级：
 // 显示标题 / prompt 框 / provider 下拉 / Generate 按钮初始 disabled。
 
 import 'package:flutter/material.dart';
@@ -10,7 +10,7 @@ import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
-import 'package:inkframe/features/canvas/widgets/config_node_inspector.dart';
+import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 
 class _FakeSecure implements SecureStorageService {
@@ -75,7 +75,7 @@ void main() {
   );
 
   testWidgets('渲染标题 / prompt 输入 / Provider 下拉', (tester) async {
-    await tester.pumpWidget(scope(host(const ConfigNodeInspector(node: configNode))));
+    await tester.pumpWidget(scope(host(const ImageConfigInspector(node: configNode))));
     await tester.pumpAndSettle();
 
     expect(find.text('Config'), findsOneWidget);
@@ -84,7 +84,7 @@ void main() {
   });
 
   testWidgets('Generate 初始 disabled（prompt 空）', (tester) async {
-    await tester.pumpWidget(scope(host(const ConfigNodeInspector(node: configNode))));
+    await tester.pumpWidget(scope(host(const ImageConfigInspector(node: configNode))));
     await tester.pumpAndSettle();
 
     final btn = tester.widget<FilledButton>(find.byType(FilledButton));
@@ -96,7 +96,7 @@ void main() {
     final secure = _FakeSecure();
     await secure.store('provider.test-provider.api_key', 'sk-xxx');
     await tester.pumpWidget(
-      scope(host(const ConfigNodeInspector(node: configNode)), secure: secure),
+      scope(host(const ImageConfigInspector(node: configNode)), secure: secure),
     );
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'a cat');
@@ -115,7 +115,7 @@ void main() {
       typeConfig: <String, Object?>{'prompt': 'existing prompt'},
     );
     await tester.pumpWidget(
-      scope(host(const ConfigNodeInspector(node: nodeWithPrompt))),
+      scope(host(const ImageConfigInspector(node: nodeWithPrompt))),
     );
     await tester.pumpAndSettle();
 

@@ -74,6 +74,12 @@ jobs:
         with:
           path: coverage/lcov.info
           min_coverage: 70
+          # 排除：
+          #   - main.dart 入口（DI 装配代码，常规不做单测）
+          #   - media_kit 依赖的 service / widget（headless CI 无 GPU/native 层，
+          #     手动回归覆盖，见 docs/internal/t5-manual-regression.md）
+          #   - generated l10n
+          exclude: 'lib/main.dart lib/features/canvas/widgets/video_lightbox.dart lib/services/media_kit_*.dart lib/core/di/video_player.dart lib/core/di/thumbnail.dart lib/l10n/generated/**'
 
   golden:
     name: golden
