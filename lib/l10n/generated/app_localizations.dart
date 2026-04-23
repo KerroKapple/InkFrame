@@ -548,6 +548,18 @@ abstract class AppLocalizations {
   /// **'Add image node'**
   String get canvasAddImageNode;
 
+  /// No description provided for @canvasAddVideoNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add video node'**
+  String get canvasAddVideoNode;
+
+  /// No description provided for @canvasAddNodeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New node'**
+  String get canvasAddNodeTooltip;
+
   /// No description provided for @canvasAddNodeFailed.
   ///
   /// In en, this message translates to:
