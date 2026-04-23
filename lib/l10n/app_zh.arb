@@ -109,5 +109,8 @@
   "inspectorVideoModeI2v": "图生视频",
   "inspectorVideoGenerateDisabledEmptyPrompt": "请先填写提示词",
   "inspectorVideoGenerateDisabledNoKey": "请在设置中配置 API Key",
-  "inspectorVideoGenerate": "生成视频"
+  "inspectorVideoGenerate": "生成视频",
+
+  "lightboxClose": "关闭",
+  "lightboxPlayPause": "播放 / 暂停"
 }

@@ -272,4 +272,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inspectorVideoGenerate => '生成视频';
+
+  @override
+  String get lightboxClose => '关闭';
+
+  @override
+  String get lightboxPlayPause => '播放 / 暂停';
 }

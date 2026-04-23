@@ -5,7 +5,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/file_resolver.dart';
 import '../../../l10n/l10n_x.dart';
+import '../../../services/file_resolver_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_edge.dart';
@@ -21,6 +23,7 @@ import '../util/edge_hit_test.dart';
 import 'node_inspector_router.dart';
 import 'edge_painter.dart';
 import 'node_card.dart';
+import 'video_lightbox.dart';
 
 class CanvasView extends ConsumerWidget {
   const CanvasView({super.key});
@@ -198,6 +201,30 @@ class _CanvasBody extends ConsumerWidget {
     }
 
     Future<void> handleTap(CanvasNode node) async {
+      // video result 节点且视频文件存在 → 打开 Lightbox；不走常规选中。
+      if (linkSourceId == null &&
+          node.type == CanvasNodeType.video &&
+          node.role == NodeRole.result &&
+          node.videoUrl != null &&
+          node.projectId != null &&
+          node.canvasId != null) {
+        final resolver = ref.read(fileResolverServiceProvider);
+        try {
+          final file = resolver.resolve(
+            projectId: node.projectId!,
+            canvasId: node.canvasId!,
+            relativePath: node.videoUrl!,
+          );
+          if (file.existsSync()) {
+            selectionCtrl.select(node.id);
+            await showVideoLightbox(context, videoPath: file.path);
+            return;
+          }
+        } on PathSecurityError {
+          // 路径不安全 —— 退到常规选中
+        }
+      }
+
       if (linkSourceId != null) {
         if (node.id == linkSourceId) {
           ScaffoldMessenger.maybeOf(context)?.showSnackBar(
