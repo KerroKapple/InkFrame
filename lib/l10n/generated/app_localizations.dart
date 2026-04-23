@@ -548,11 +548,89 @@ abstract class AppLocalizations {
   /// **'Add image node'**
   String get canvasAddImageNode;
 
+  /// No description provided for @canvasAddVideoNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add video node'**
+  String get canvasAddVideoNode;
+
+  /// No description provided for @canvasAddNodeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New node'**
+  String get canvasAddNodeTooltip;
+
   /// No description provided for @canvasAddNodeFailed.
   ///
   /// In en, this message translates to:
   /// **'Failed to add node'**
   String get canvasAddNodeFailed;
+
+  /// No description provided for @inspectorVideoPromptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Video prompt'**
+  String get inspectorVideoPromptLabel;
+
+  /// No description provided for @inspectorVideoDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration (seconds)'**
+  String get inspectorVideoDurationLabel;
+
+  /// No description provided for @inspectorVideoCameraLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera movement'**
+  String get inspectorVideoCameraLabel;
+
+  /// No description provided for @inspectorVideoModeAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Mode: auto-detected from inputs'**
+  String get inspectorVideoModeAuto;
+
+  /// No description provided for @inspectorVideoModeT2v.
+  ///
+  /// In en, this message translates to:
+  /// **'Text-to-video'**
+  String get inspectorVideoModeT2v;
+
+  /// No description provided for @inspectorVideoModeI2v.
+  ///
+  /// In en, this message translates to:
+  /// **'Image-to-video'**
+  String get inspectorVideoModeI2v;
+
+  /// No description provided for @inspectorVideoGenerateDisabledEmptyPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt required'**
+  String get inspectorVideoGenerateDisabledEmptyPrompt;
+
+  /// No description provided for @inspectorVideoGenerateDisabledNoKey.
+  ///
+  /// In en, this message translates to:
+  /// **'API key required in Settings'**
+  String get inspectorVideoGenerateDisabledNoKey;
+
+  /// No description provided for @inspectorVideoGenerate.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate video'**
+  String get inspectorVideoGenerate;
+
+  /// Video lightbox close tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get lightboxClose;
+
+  /// Video lightbox play/pause tooltip
+  ///
+  /// In en, this message translates to:
+  /// **'Play / Pause'**
+  String get lightboxPlayPause;
 }
 
 class _AppLocalizationsDelegate

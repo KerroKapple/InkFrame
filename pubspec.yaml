@@ -44,6 +44,11 @@ dependencies:
   dio: ^5.7.0
   flutter_secure_storage: ^10.0.0
 
+  # T5：视频播放 + 首帧抽帧
+  media_kit: ^1.1.11
+  media_kit_video: ^1.2.5
+  media_kit_libs_video: ^1.0.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

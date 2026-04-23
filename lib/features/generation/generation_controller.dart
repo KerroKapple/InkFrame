@@ -126,6 +126,10 @@ class GenerationController {
     if (cfgRow['node_role'] != 'config') {
       throw const InvalidGenerationConfigError('node is not a config node');
     }
+    final nodeType = (cfgRow['type'] as String?) ?? 'image';
+    if (nodeType != 'image' && nodeType != 'video') {
+      throw const InvalidGenerationConfigError('unsupported node type');
+    }
     final typeConfig = _readTypeConfig(cfgRow['type_config']);
 
     final prompt = (typeConfig['prompt'] as String?)?.trim() ?? '';
@@ -157,14 +161,35 @@ class GenerationController {
       projectId: projectId,
       canvasId: canvasId,
     );
-    final mode = refs.refImagePaths.isEmpty
-        ? GenerationMode.textToImage
-        : GenerationMode.imageToImage;
+
+    // image / video 分流：mode 推断 + video 独有 duration / camera。
+    final GenerationMode mode;
+    int durationSeconds = 0;
+    CameraMovement? cameraEnum;
+    if (nodeType == 'video') {
+      mode = refs.refImagePaths.isEmpty &&
+              refs.firstFramePath == null &&
+              refs.lastFramePath == null
+          ? GenerationMode.textToVideo
+          : GenerationMode.imageToVideo;
+      final durMs = typeConfig['duration_ms'];
+      if (durMs is int) durationSeconds = durMs ~/ 1000;
+      final camRaw = typeConfig['camera'];
+      if (camRaw is String) {
+        for (final c in CameraMovement.values) {
+          if (c.name == camRaw) cameraEnum = c;
+        }
+      }
+    } else {
+      mode = refs.refImagePaths.isEmpty
+          ? GenerationMode.textToImage
+          : GenerationMode.imageToImage;
+    }
 
     // 预创建 result 节点（R2 路径调整：B-b3 落盘要求 resultNodeId 先在）。
     final resultNodeId = await nodes.create(
       canvasId: canvasId,
-      type: 'image',
+      type: nodeType,
       nodeRole: 'result',
       sourceNodeId: configNodeId,
     );
@@ -176,12 +201,14 @@ class GenerationController {
         sourceNodeId: configNodeId,
         resultNodeId: resultNodeId,
         providerId: providerId,
-        jobType: 'image',
+        jobType: nodeType,
         fullPrompt: prompt,
         userPrompt: prompt,
         parameters: <String, Object?>{
           'resolution': resolution.name,
           'aspect_ratio': aspect.name,
+          if (durationSeconds > 0) 'duration_seconds': durationSeconds,
+          if (cameraEnum != null) 'camera': cameraEnum.name,
           if (refs.refImagePaths.isNotEmpty)
             'ref_image_paths': refs.refImagePaths,
           if (refs.firstFramePath != null)
@@ -201,6 +228,8 @@ class GenerationController {
         prompt: prompt,
         resolution: resolution,
         aspectRatio: aspect,
+        durationSeconds: durationSeconds,
+        camera: cameraEnum,
         refImagePaths: refs.refImagePaths,
         firstFramePath: refs.firstFramePath,
         lastFramePath: refs.lastFramePath,

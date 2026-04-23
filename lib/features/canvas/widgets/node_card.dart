@@ -15,6 +15,7 @@ import '../../../services/file_resolver_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
+import 'video_node_body.dart';
 
 class NodeCard extends ConsumerWidget {
   const NodeCard({
@@ -205,6 +206,9 @@ class _NodeBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (node.role == NodeRole.result) {
+      if (node.type == CanvasNodeType.video) {
+        return VideoNodeBody(node: node);
+      }
       return _ResultBody(node: node, resolver: resolver);
     }
     return _ConfigBody(node: node);

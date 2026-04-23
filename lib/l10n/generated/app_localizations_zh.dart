@@ -238,5 +238,44 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasAddImageNode => '添加图片节点';
 
   @override
+  String get canvasAddVideoNode => '新增视频节点';
+
+  @override
+  String get canvasAddNodeTooltip => '新建节点';
+
+  @override
   String get canvasAddNodeFailed => '添加节点失败';
+
+  @override
+  String get inspectorVideoPromptLabel => '视频提示词';
+
+  @override
+  String get inspectorVideoDurationLabel => '时长（秒）';
+
+  @override
+  String get inspectorVideoCameraLabel => '运镜';
+
+  @override
+  String get inspectorVideoModeAuto => '生成模式：根据输入自动识别';
+
+  @override
+  String get inspectorVideoModeT2v => '文生视频';
+
+  @override
+  String get inspectorVideoModeI2v => '图生视频';
+
+  @override
+  String get inspectorVideoGenerateDisabledEmptyPrompt => '请先填写提示词';
+
+  @override
+  String get inspectorVideoGenerateDisabledNoKey => '请在设置中配置 API Key';
+
+  @override
+  String get inspectorVideoGenerate => '生成视频';
+
+  @override
+  String get lightboxClose => '关闭';
+
+  @override
+  String get lightboxPlayPause => '播放 / 暂停';
 }
