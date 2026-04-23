@@ -97,5 +97,15 @@
   "inspectorRemoveInput": "移除输入",
 
   "canvasAddImageNode": "添加图片节点",
-  "canvasAddNodeFailed": "添加节点失败"
+  "canvasAddNodeFailed": "添加节点失败",
+
+  "inspectorVideoPromptLabel": "视频提示词",
+  "inspectorVideoDurationLabel": "时长（秒）",
+  "inspectorVideoCameraLabel": "运镜",
+  "inspectorVideoModeAuto": "生成模式：根据输入自动识别",
+  "inspectorVideoModeT2v": "文生视频",
+  "inspectorVideoModeI2v": "图生视频",
+  "inspectorVideoGenerateDisabledEmptyPrompt": "请先填写提示词",
+  "inspectorVideoGenerateDisabledNoKey": "请在设置中配置 API Key",
+  "inspectorVideoGenerate": "生成视频"
 }
