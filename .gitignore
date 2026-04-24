@@ -74,3 +74,19 @@ credentials/
 .aws/
 .ssh/
 *.crt
+
+# FileSecureStorageService debug-only 产物（真实路径在 ~/InkFrame/，
+# 这里拦截任何误复制进 repo 的副本）
+secrets.*.json
+secrets.json
+*.secrets.json
+apikey*
+api-key*
+
+# 任意 *.local / *.local.* 都算本地私货
+*.local
+*.local.*
+
+# IDE / debug 运行日志
+.vscode/
+/tmp/flutter_run_*.log

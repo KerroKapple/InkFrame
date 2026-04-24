@@ -12,6 +12,7 @@ import '../../theme/primitives/ink_gradient_button.dart';
 import '../../theme/primitives/ink_pill_tag.dart';
 import '../../theme/primitives/ink_surface_button.dart';
 import '../../theme/tokens.dart';
+import '../../theme/typography.dart';
 
 class PrimitivesShowcaseScreen extends StatelessWidget {
   const PrimitivesShowcaseScreen({super.key});
@@ -30,6 +31,10 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            const _Section(
+              title: 'InlinePanel Mock（CineFlow 节点内嵌面板组装样例）',
+              child: _InlinePanelMock(),
+            ),
             const _Section(
               title: 'Glass Trio',
               child: Wrap(
@@ -161,6 +166,286 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// InlinePanel Mock：用 Sprint 2 v3 的 primitive 还原 CineFlow 节点内嵌
+/// 操作面板的真实使用场景 —— 底下铺假画布 + 假节点卡片，让 glass-card
+/// 毛玻璃有实际"可模糊"的下层内容，才能看出效果。
+class _InlinePanelMock extends StatelessWidget {
+  const _InlinePanelMock();
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(InkRadius.lg),
+      child: Container(
+        width: double.infinity,
+        height: 640,
+        color: colors.surfaceCanvas,
+        child: Stack(
+          children: <Widget>[
+            // 伪画布斑驳背景（让 glass backdrop-blur 有东西可模糊）
+            const _FakeCanvasBackdrop(),
+
+            // 假节点卡（image result）
+            Positioned(
+              top: 80,
+              left: 40,
+              child: _FakeNodeCard(
+                width: 220,
+                height: 140,
+                label: 'shot_42 / 图片结果',
+                colors: colors,
+                typo: typo,
+              ),
+            ),
+
+            // Inline panel 浮在节点下方
+            Positioned(
+              top: 80 + 140 + 16, // 节点底 + gap
+              left: 40 - (380 - 220) / 2, // 面板宽 380，水平对齐节点中心
+              child: SizedBox(
+                width: 380,
+                child: InkGlassCard(
+                  padding: const EdgeInsets.fromLTRB(
+                    InkSpacing.md,
+                    InkSpacing.sm,
+                    InkSpacing.md,
+                    InkSpacing.sm,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      // 参考图区（紧凑一行）
+                      Row(
+                        children: <Widget>[
+                          Text(
+                            '参考',
+                            style: typo.nano.copyWith(color: colors.fg3),
+                          ),
+                          const SizedBox(width: InkSpacing.sm),
+                          Expanded(
+                            child: Wrap(
+                              spacing: InkSpacing.xs,
+                              runSpacing: InkSpacing.xs,
+                              children: <Widget>[
+                                const InkPillTag(
+                                  label: 'ref-01',
+                                  icon: Icons.image_outlined,
+                                ),
+                                const InkPillTag(
+                                  label: 'ref-02',
+                                  icon: Icons.image_outlined,
+                                ),
+                                InkDashedSlot(
+                                  onPressed: () {},
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: <Widget>[
+                                      Icon(
+                                        Icons.add,
+                                        size: 11,
+                                        color: colors.fg3,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '加',
+                                        style: typo.nano
+                                            .copyWith(color: colors.fg3),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: InkSpacing.sm),
+                      // Prompt
+                      const InkCompactTextField(
+                        placeholder: '输入提示词（/ 命令、@ 引用）…',
+                        minLines: 3,
+                        maxLines: 5,
+                      ),
+                      const SizedBox(height: InkSpacing.sm),
+                      // 底部控制条：左 Wrap(model/ratio/quality/cam) + 右 Generate
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: <Widget>[
+                          Expanded(
+                            child: Wrap(
+                              spacing: InkSpacing.xs,
+                              runSpacing: InkSpacing.xs,
+                              children: <Widget>[
+                                InkSurfaceButton(
+                                  label: 'wanx-t2v',
+                                  icon: Icons.auto_awesome,
+                                  onPressed: () {},
+                                ),
+                                InkSurfaceButton(
+                                  label: '16:9',
+                                  icon: Icons.aspect_ratio,
+                                  onPressed: () {},
+                                ),
+                                InkSurfaceButton(
+                                  label: '1080p',
+                                  onPressed: () {},
+                                ),
+                                InkAccentChip(
+                                  icon: Icons.videocam_outlined,
+                                  label: '运镜',
+                                  onPressed: () {},
+                                ),
+                                InkSurfaceButton(
+                                  label: '高级',
+                                  icon: Icons.tune,
+                                  onPressed: () {},
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: InkSpacing.sm),
+                          InkGradientButton(
+                            variant: InkGradientVariant.image,
+                            label: '生成',
+                            icon: Icons.bolt,
+                            onPressed: () {},
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 假画布背景：几个漂浮色斑，仅用来给 glass backdrop-blur 提供可模糊内容。
+class _FakeCanvasBackdrop extends StatelessWidget {
+  const _FakeCanvasBackdrop();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Stack(
+      children: <Widget>[
+        Positioned(
+          left: 260,
+          top: 40,
+          child: _ColorBlob(size: 220, color: Color(0xFFA855F7)),
+        ),
+        Positioned(
+          right: 80,
+          top: 200,
+          child: _ColorBlob(size: 160, color: Color(0xFFEAB308)),
+        ),
+        Positioned(
+          left: 120,
+          bottom: 40,
+          child: _ColorBlob(size: 180, color: Color(0xFF22C55E)),
+        ),
+        Positioned(
+          right: 200,
+          bottom: 120,
+          child: _ColorBlob(size: 140, color: Color(0xFFEC4899)),
+        ),
+      ],
+    );
+  }
+}
+
+class _ColorBlob extends StatelessWidget {
+  const _ColorBlob({required this.size, required this.color});
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: <Color>[
+            color.withValues(alpha: 0.55),
+            color.withValues(alpha: 0.0),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 假节点卡：纯视觉，模拟 NodeCard 在画布上的样子。
+class _FakeNodeCard extends StatelessWidget {
+  const _FakeNodeCard({
+    required this.width,
+    required this.height,
+    required this.label,
+    required this.colors,
+    required this.typo,
+  });
+
+  final double width;
+  final double height;
+  final String label;
+  final InkColors colors;
+  final InkTypography typo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: colors.surface2,
+        borderRadius: BorderRadius.circular(InkRadius.md),
+        border: Border.all(color: colors.borderSubtle),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(10, 8, 10, 6),
+            child: Text(
+              label,
+              style: typo.micro.copyWith(color: colors.fg2),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              decoration: BoxDecoration(
+                color: colors.surface3,
+                borderRadius: BorderRadius.circular(InkRadius.sm),
+              ),
+              child: Center(
+                child: Icon(
+                  Icons.image_outlined,
+                  size: 32,
+                  color: colors.fg3,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
