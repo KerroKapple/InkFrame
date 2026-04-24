@@ -3,23 +3,54 @@
 //   - 有 thumbnail_url 但文件缺失 → broken_image 占位
 //   - 有 video_url 无 thumbnail_url → play_circle_outline
 //
-// 用 temp 目录 + override appPathsProvider 让 FileResolverService 能指向 canvas 根。
+// 直接 override fileResolverServiceProvider 为 FakeResolver，避开 real fs I/O
+// 与 testWidgets fake-async zone 的死锁（TD-003 旧方案 await Directory.createTemp
+// 让 pump 永不收敛）。
 
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/paths.dart';
-import 'package:inkframe/core/paths/app_paths.dart';
+import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/video_node_body.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
-import 'package:path/path.dart' as p;
+import 'package:inkframe/services/file_resolver_service.dart';
 
-Widget _host(Widget child, {AppPaths? paths}) => ProviderScope(
+class _FakeResolver implements FileResolverService {
+  _FakeResolver(this.dir);
+  final Directory dir;
+
+  @override
+  Directory canvasRoot({required String projectId, required String canvasId}) =>
+      dir;
+
+  @override
+  File resolve({
+    required String projectId,
+    required String canvasId,
+    required String relativePath,
+  }) {
+    if (relativePath.contains('..')) {
+      throw PathSecurityError('parent traversal');
+    }
+    return File('${dir.path}/$relativePath');
+  }
+
+  @override
+  String toRelative({
+    required String projectId,
+    required String canvasId,
+    required File source,
+  }) =>
+      source.path;
+}
+
+Widget _host(Widget child, {FileResolverService? resolver}) => ProviderScope(
       overrides: [
-        if (paths != null) appPathsProvider.overrideWithValue(paths),
+        if (resolver != null)
+          fileResolverServiceProvider.overrideWithValue(resolver),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -45,10 +76,9 @@ void main() {
     });
 
     testWidgets('有 thumbnail_url 但文件缺失 → broken_image 占位', (tester) async {
-      final tmp = await Directory.systemTemp.createTemp('video_node_body_');
-      addTearDown(() => tmp.delete(recursive: true));
-      final paths = DefaultAppPaths.forRoot(tmp);
-      await paths.ensureInitialized();
+      final resolver = _FakeResolver(
+        Directory('/tmp/inkframe-video-node-body-nonexistent'),
+      );
 
       const node = CanvasNode(
         id: 'n2',
@@ -65,23 +95,14 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _host(const VideoNodeBody(node: node), paths: paths),
+        _host(const VideoNodeBody(node: node), resolver: resolver),
       );
-      await tester.pump();
       expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
-      // TD-003：widget test 进入 fileResolverServiceProvider 后 pump 不收敛，挂死 20min+；跟进单独查，S4 不阻塞。
-    }, skip: true);
+    });
 
-    testWidgets('有 video_url 无 thumbnail_url → play_circle_outline', (tester) async {
-      final tmp = await Directory.systemTemp.createTemp('video_node_body_');
-      addTearDown(() => tmp.delete(recursive: true));
-      final paths = DefaultAppPaths.forRoot(tmp);
-      await paths.ensureInitialized();
-      // 视频占位文件可有可无，本分支不读 videoUrl 文件。
-      final canvasDir = Directory(
-        p.join(tmp.path, 'projects', 'proj-1', 'canvases', 'canvas-1', 'videos'),
-      );
-      await canvasDir.create(recursive: true);
+    testWidgets('有 video_url 无 thumbnail_url → play_circle_outline',
+        (tester) async {
+      final resolver = _FakeResolver(Directory.systemTemp);
 
       const node = CanvasNode(
         id: 'n3',
@@ -97,12 +118,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        _host(const VideoNodeBody(node: node), paths: paths),
+        _host(const VideoNodeBody(node: node), resolver: resolver),
       );
       expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
       expect(find.byIcon(Icons.hourglass_empty_outlined), findsNothing);
       expect(find.byIcon(Icons.broken_image_outlined), findsNothing);
-      // TD-003：同上，skip 解锁 S4。
-    }, skip: true);
+    });
   });
 }
