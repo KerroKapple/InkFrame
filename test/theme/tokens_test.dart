@@ -131,6 +131,18 @@ void main() {
       expect(t.title.fontSize, 18 * 1.25);
       expect(t.display.fontSize, 28 * 1.25);
     });
+
+    test('micro / nano 字号对齐 CineFlow text-[10px] / text-[9px]', () {
+      final t = InkTypography.defaults();
+      expect(t.micro.fontSize, 10);
+      expect(t.nano.fontSize, 9);
+    });
+
+    test('scaled(1.5) applies to micro / nano too', () {
+      final t = InkTypography.defaults().scaled(1.5);
+      expect(t.micro.fontSize, 10 * 1.5);
+      expect(t.nano.fontSize, 9 * 1.5);
+    });
   });
 
   group('buildAppTheme', () {
