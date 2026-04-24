@@ -14,6 +14,9 @@ class PlatformSecureStorageService implements SecureStorageService {
               ),
               mOptions: MacOsOptions(
                 accessibility: KeychainAccessibility.first_unlock_this_device,
+                // ad-hoc / 个人 Dev cert 签名下 DataProtectionKeychain 需 entitlement，
+                // 切回传统文件型 Keychain（Keychain Access.app 能看到），不要 entitlement。
+                usesDataProtectionKeychain: false,
               ),
             );
 
