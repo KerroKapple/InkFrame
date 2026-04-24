@@ -15,8 +15,11 @@
 //
 // RateLimiter 每个 Provider 独立一把，按 capabilities.qps / burst 限速。
 
+import 'dart:io';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/fake_generation_provider.dart';
 import '../../providers/gemini_image_provider.dart';
 import '../../providers/kling_v3_omni_provider.dart';
 import '../../providers/kling_v3_provider.dart';
@@ -51,6 +54,24 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
 
   ProviderRateLimiter limiterFor(ProviderCapabilities c) =>
       ProviderRateLimiter(qps: c.qps, burst: c.burst);
+
+  // 开发期假 Provider 开关：INKFRAME_FAKE_PROVIDERS=1 时全部用 FakeGenerationProvider，
+  // 便于跑 UI 回归不消耗 DashScope 配额。
+  final useFake =
+      Platform.environment['INKFRAME_FAKE_PROVIDERS'] == '1';
+  if (useFake) {
+    ProviderFactory fakeOf(ProviderCapabilities c) =>
+        () => FakeGenerationProvider(c);
+    return ProviderRegistry(<String, ProviderFactory>{
+      kGeminiImageCapabilities.providerId: fakeOf(kGeminiImageCapabilities),
+      kWanxImageCapabilities.providerId: fakeOf(kWanxImageCapabilities),
+      kWanxT2VCapabilities.providerId: fakeOf(kWanxT2VCapabilities),
+      kWanxI2VCapabilities.providerId: fakeOf(kWanxI2VCapabilities),
+      kWanxR2VCapabilities.providerId: fakeOf(kWanxR2VCapabilities),
+      kKlingV3Capabilities.providerId: fakeOf(kKlingV3Capabilities),
+      kKlingV3OmniCapabilities.providerId: fakeOf(kKlingV3OmniCapabilities),
+    });
+  }
 
   return ProviderRegistry(<String, ProviderFactory>{
     kGeminiImageCapabilities.providerId: () => GeminiImageProvider(
