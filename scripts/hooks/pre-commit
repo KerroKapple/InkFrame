@@ -5,6 +5,10 @@
 # 任一步非零退出即阻断 commit。
 set -euo pipefail
 
+# worktree / agent 调用场景下，外部可能注入 GIT_DIR 等变量，
+# 污染 hook 内部 git/flutter 的仓库探测（flutter 会报 "0.0.0-unknown"）。
+unset GIT_DIR GIT_INDEX_FILE GIT_PREFIX GIT_WORK_TREE GIT_COMMON_DIR
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
