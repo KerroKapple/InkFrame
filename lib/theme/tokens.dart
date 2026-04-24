@@ -172,6 +172,8 @@ class InkRadius {
   static const double lg = 12;
   static const double xl = 16;
   static const double pill = 999;
+  static const double bento = 10; // CineFlow bento 卡片圆角
+  static const double bentoBtn = 6; // CineFlow bento 按钮圆角
 }
 
 /// 阴影（随亮/暗主题固化——暗色场景下阴影几乎不可见，依赖 surface 提升传达层级）。

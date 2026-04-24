@@ -112,6 +112,11 @@ void main() {
       expect(InkRadius.xl, 16);
       expect(InkRadius.pill, 999);
     });
+
+    test('radius includes CineFlow bento tokens', () {
+      expect(InkRadius.bento, 10);
+      expect(InkRadius.bentoBtn, 6);
+    });
   });
 
   group('InkTypography scaling', () {
