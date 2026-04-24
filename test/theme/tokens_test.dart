@@ -43,6 +43,33 @@ void main() {
       }
     });
 
+    test('dark variant exact values match CineFlow dark palette', () {
+      final c = InkColors.dark();
+      expect(c.surfaceCanvas, const Color(0xFF101218));
+      expect(c.surface1, const Color(0xFF1B1D24));
+      expect(c.surface2, const Color(0xFF262830));
+      expect(c.surface3, const Color(0xFF323440));
+      expect(c.surface4, const Color(0xFF3E404C));
+      expect(c.accent, const Color(0xFF0080FF));
+      expect(c.accentHover, const Color(0xFF0070E0));
+      expect(c.accentPressed, const Color(0xFF0060C0));
+      expect(c.cta, const Color(0xFFD42B57));
+      expect(c.info, const Color(0xFF00A3D9));
+      expect(c.fg1, const Color(0xFFFFFFFF));
+      expect(c.fg2, const Color(0xFFCFCECE));
+      expect(c.fg3, const Color(0xFF6B6B6B));
+      expect(c.fg4, const Color(0xFF4D4D4D));
+    });
+
+    test('light variant exact values match CineFlow light palette', () {
+      final c = InkColors.light();
+      expect(c.surfaceCanvas, const Color(0xFFFAFAFA));
+      expect(c.surface1, const Color(0xFFFFFFFF));
+      expect(c.accent, const Color(0xFF0080FF));
+      expect(c.cta, const Color(0xFFD42B57));
+      expect(c.fg1, const Color(0xFF1A1A1A));
+    });
+
     test('every variant exposes all 15 semantic slots', () {
       for (final InkColors c in <InkColors>[
         InkColors.dark(),
