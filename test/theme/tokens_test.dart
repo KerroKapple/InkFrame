@@ -171,6 +171,25 @@ void main() {
       );
     });
 
+    testWidgets('ColorScheme.primary is Apple Blue (CineFlow accent)',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(
+            variant: InkThemeVariant.dark,
+            textScale: 1,
+          ),
+          home: Builder(
+            builder: (ctx) {
+              final scheme = Theme.of(ctx).colorScheme;
+              expect(scheme.primary, const Color(0xFF0080FF));
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+    });
+
     test('AppThemeExtension.lerp picks terminal state past halfway', () {
       final a = AppThemeExtension(
         colors: InkColors.dark(),
