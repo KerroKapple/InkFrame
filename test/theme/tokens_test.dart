@@ -24,6 +24,25 @@ void main() {
       expect(colors.fg1, const Color(0xFFFFFFFF));
     });
 
+    test('every variant exposes the 10 new CineFlow-aligned slots', () {
+      for (final InkColors c in <InkColors>[
+        InkColors.dark(),
+        InkColors.light(),
+        InkColors.highContrast(),
+      ]) {
+        expect(c.surfaceCanvas, isA<Color>());
+        expect(c.surface4, isA<Color>());
+        expect(c.borderSubtle, isA<Color>());
+        expect(c.borderHover, isA<Color>());
+        expect(c.fg4, isA<Color>());
+        expect(c.accentHover, isA<Color>());
+        expect(c.accentPressed, isA<Color>());
+        expect(c.info, isA<Color>());
+        expect(c.cta, isA<Color>());
+        expect(c.ctaHover, isA<Color>());
+      }
+    });
+
     test('every variant exposes all 15 semantic slots', () {
       for (final InkColors c in <InkColors>[
         InkColors.dark(),
