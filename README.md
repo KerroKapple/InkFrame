@@ -13,7 +13,7 @@ InkFrame 是一个给独立创作者、小团队用的 **桌面级** 分镜工�
 - 数据、产物、API Key 全部存本机（嵌入 PostgreSQL + macOS Keychain / Windows Credential Manager）
 - macOS + Windows 双端
 
-> **当前状态**：Alpha，v0.1.0-alpha.8 已发布。视频生成闭环可用；UI 仍在按 CineFlow 设计语言重构中（见 `docs/superpowers/analysis/`）。
+> **当前状态**：Alpha，v0.1.0-alpha.8 已发布。视频生成闭环可用；UI 仍在按 CineFlow 设计语言重构中。
 
 ---
 
@@ -114,7 +114,6 @@ lib/
 - [docs/CLAUDE.md](docs/CLAUDE.md) — SOLID / DI / i18n / token 硬规则
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — 模块关系
 - [docs/PROVIDER-API.md](docs/PROVIDER-API.md) — Provider 接入契约
-- [docs/superpowers/analysis/2026-04-24-cineflow-canvas-ux-patterns.md](docs/superpowers/analysis/2026-04-24-cineflow-canvas-ux-patterns.md) — CineFlow 视觉迁移分析
 
 ---
 

@@ -137,7 +137,7 @@ PRD §5 整章、§19.1 MVP 边界里"视频生成"打钩、6 款视频 Provider
 4. **自定义**：你来描述一个新方向（例如：批量并发 UI / §18 多选批量 / §23 ⌘K 命令栏 / 导出系统 §13）
 
 拍板后我会：
-- 把选定方向的 Sprint Plan 按 `/writing-plans` skill 格式展开，保存到 `docs/superpowers/plans/2026-04-22-t5-<feature>.md`
+- 把选定方向的 Sprint Plan 展开，保存到 `docs/specs/2026-04-22-t5-<feature>.md`
 - 按切片切 PR（参考 T4 的 S1-S4 结构）
 - 起 feature 分支动手
 
