@@ -1,5 +1,7 @@
 # InkFrame
 
+**[English](./README.md)** | **中文**
+
 > 本地优先的 AI 影视创作工作站 —— Flutter Desktop，节点化画布串联多家 AI 图/视频 Provider，所有数据与密钥留在本机
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
