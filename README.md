@@ -1,6 +1,8 @@
 # InkFrame
 
-> 本地优先的 AI 影视创作工作站 —— Flutter Desktop，节点化画布串联多家 AI 图/视频 Provider，所有数据与密钥留在本机
+**English** | **[中文](./README.zh-CN.md)**
+
+> A local-first AI filmmaking workstation — Flutter Desktop with a node-based canvas that wires together multiple AI image/video providers. Your data and API keys never leave your machine.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)]()
@@ -8,102 +10,102 @@
 [![Dart](https://img.shields.io/badge/Dart-%E2%89%A5%203.11-blue.svg)](https://dart.dev)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
 
-InkFrame 给独立创作者和小团队做 **桌面级** AI 分镜工作台：
+InkFrame is a **desktop-class** AI storyboard tool for indie creators and small teams:
 
-- **节点化画布**：把 *文本 / 图片 / 视频* 拖成可追溯的生成流水线，每个节点都记录输入、Provider、参数、产物与状态
-- **多 Provider 直连**：阿里 wanx、快手 Kling、Google Gemini 等无中间服务器，请求直发 Provider
-- **一切本地**：嵌入 PostgreSQL 17 存数据，API Key 进系统 Keychain / Credential Manager，产物落到本地磁盘
-- **macOS + Windows 双端**，同一份 Dart 代码
+- **Node-based canvas** — chain *text / image / video* nodes into a traceable generation pipeline; every node records its input, provider, parameters, output, and status
+- **Direct provider access** — calls go straight to Aliyun wanx, Kuaishou Kling, Google Gemini, etc. No middleman server.
+- **Everything stays local** — embedded PostgreSQL 17 for data, system Keychain / Credential Manager for keys, generated assets on local disk
+- **macOS + Windows**, single Dart codebase
 
-> **当前状态**：Alpha，v0.1.0-alpha.8 已发布。视频生成闭环已可用；UI 仍在按 CineFlow 设计语言重构中。
+> **Status**: Alpha. v0.1.0-alpha.8 has shipped. The video-generation loop is functional; UI is being reworked toward a CineFlow-style design language.
 
 ---
 
-## 目录
+## Table of Contents
 
-- [功能特性](#功能特性)
-- [支持的 AI Provider](#支持的-ai-provider)
-- [快速开始](#快速开始)
-- [核心配置](#核心配置)
-- [数据存储位置](#数据存储位置)
-- [架构概览](#架构概览)
-- [项目结构](#项目结构)
-- [开发规范](#开发规范)
-- [故障排查](#故障排查)
-- [隐私与安全](#隐私与安全)
-- [贡献](#贡献)
+- [Features](#features)
+- [Supported AI Providers](#supported-ai-providers)
+- [Quick Start](#quick-start)
+- [Configuration](#configuration)
+- [Where Your Data Lives](#where-your-data-lives)
+- [Architecture Overview](#architecture-overview)
+- [Project Layout](#project-layout)
+- [Development Standards](#development-standards)
+- [Troubleshooting](#troubleshooting)
+- [Privacy & Security](#privacy--security)
+- [Contributing](#contributing)
 - [Roadmap](#roadmap)
 - [License](#license)
 
 ---
 
-## 功能特性
+## Features
 
-| 模块 | 状态 | 说明 |
-|------|:----:|------|
-| 节点画布（拖拽 / 连线 / 缩放）| ✅ | 文本、图片、视频三类节点，多种连边 |
-| 多 Provider 适配（图 + 视频）| ✅ | 7 款真 Provider + 1 款 Fake，统一接口 |
-| 任务队列（双层并发 + 限流）| ✅ | 全局 1–4 并发档位 + per-provider QPS Token Bucket |
-| 嵌入 PostgreSQL 17 | ✅ | 应用启动自带，零外部 DB 依赖 |
-| 系统级 SecureStorage | ✅ | macOS Keychain / Windows Credential Manager / Debug 文件后端 |
-| 主题（dark / light / highContrast）| ✅ | 设计 Token 三套语义色，零硬编码色值 |
-| i18n（zh-CN + en-US 100%）| ✅ | ARB 键集合 CI 强制对齐，包含 system prompt |
-| 性能降级控制器（4 档位）| ✅ | 内存 / 帧率 / 磁盘三信号驱动，双阈值防抖动 |
-| 视频生成闭环（5 款 Provider）| ✅ | wanx-t2v / wanx-i2v / wanx-r2v / kling-v3 / kling-v3-omni |
-| Lightbox 预览 + 视频播放 | ✅ | media_kit 后端 |
-| 内联节点操作面板（NodeInlinePanel）| 🚧 | Sprint 3 |
-| 渐变曲线连边（StyledEdge）| 🚧 | Sprint 4 |
-| 框选 / Group / 多人协作 | ⏳ | 远期 |
-| Undo / Redo | ⏳ | 远期 |
-
----
-
-## 支持的 AI Provider
-
-所有 Provider 通过统一接口接入，新增一个 = 新建一个文件，零改动现有代码（OCP 落地）。
-
-| ID | 供应商 | 类型 | 用途 | Key 申请入口 |
-|----|--------|------|------|--------------|
-| `wanx-image` | 阿里通义万相 | 图像 | 文生图 | DashScope 控制台 |
-| `wanx-t2v` | 阿里通义万相 | 视频 | 文生视频 | DashScope 控制台 |
-| `wanx-i2v` | 阿里通义万相 | 视频 | 图生视频 | DashScope 控制台 |
-| `wanx-r2v` | 阿里通义万相 | 视频 | 参考图生视频 | DashScope 控制台 |
-| `kling-v3` | 快手可灵 | 视频 | 文/图 生视频 | 快手开放平台 |
-| `kling-v3-omni` | 快手可灵 | 视频 | 多模态视频生成 | 快手开放平台 |
-| `gemini-image` | Google Gemini | 图像 | 多模态图像生成 | Google AI Studio |
-| `fake` | 内置 | 图/视频 | 开发/测试，返回公开样例媒体 | 不需要 |
-
-每个 Provider 实现遵循 `lib/core/interfaces/` 下的能力维度接口（`Submittable / Pollable / Cancellable / KeyValidatable / QuotaAware`），按需混合，不强加全量契约（ISP 落地）。
-
-详细接入契约见 [docs/PROVIDER-API.md](docs/PROVIDER-API.md)。
+| Module | Status | Notes |
+|--------|:------:|-------|
+| Node canvas (drag / connect / zoom) | ✅ | Text, image, and video nodes with multiple edge types |
+| Multi-provider integration (image + video) | ✅ | 7 real providers + 1 fake, behind a unified interface |
+| Job queue (two-tier concurrency + rate limiting) | ✅ | Global 1–4 concurrency tiers + per-provider QPS token bucket |
+| Embedded PostgreSQL 17 | ✅ | Bundled with the app — zero external DB dependency |
+| System-level secure storage | ✅ | macOS Keychain / Windows Credential Manager / debug file backend |
+| Themes (dark / light / high-contrast) | ✅ | Three semantic-color sets via design tokens, zero hard-coded colors |
+| i18n (zh-CN + en-US, 100% coverage) | ✅ | ARB key sets enforced equal at CI; system prompts are localized too |
+| Performance degradation controller (4 tiers) | ✅ | Driven by memory / FPS / disk signals with hysteresis |
+| Video generation loop (5 providers) | ✅ | wanx-t2v / wanx-i2v / wanx-r2v / kling-v3 / kling-v3-omni |
+| Lightbox preview + video playback | ✅ | media_kit backend |
+| Inline node panel (NodeInlinePanel) | 🚧 | Sprint 3 |
+| Styled gradient edges (StyledEdge) | 🚧 | Sprint 4 |
+| Marquee selection / Group / collaboration | ⏳ | Long-term |
+| Undo / Redo | ⏳ | Long-term |
 
 ---
 
-## 快速开始
+## Supported AI Providers
 
-### 环境要求
+All providers are wired through a single interface — adding a new one means a new file with zero changes to existing code (Open/Closed Principle in practice).
 
-- **OS**：macOS 12+ 或 Windows 10/11
-- **Flutter**：≥ 3.41（stable channel）
-- **Dart**：≥ 3.11
-- **macOS 开发**：Xcode 16+（完整版，非仅 Command Line Tools）+ CocoaPods（`brew install cocoapods`）
-- **PostgreSQL 17**：本机一份 `bin/`（含 `postgres / pg_ctl / initdb`），用 Homebrew / scoop 装即可，或自编译；通过 `INKFRAME_PG_BIN` 指向
+| ID | Vendor | Type | Use case | Where to get a key |
+|----|--------|------|----------|--------------------|
+| `wanx-image` | Aliyun Tongyi Wanxiang | Image | Text-to-image | DashScope Console |
+| `wanx-t2v` | Aliyun Tongyi Wanxiang | Video | Text-to-video | DashScope Console |
+| `wanx-i2v` | Aliyun Tongyi Wanxiang | Video | Image-to-video | DashScope Console |
+| `wanx-r2v` | Aliyun Tongyi Wanxiang | Video | Reference-image-to-video | DashScope Console |
+| `kling-v3` | Kuaishou Kling | Video | Text/image-to-video | Kuaishou Open Platform |
+| `kling-v3-omni` | Kuaishou Kling | Video | Multimodal video generation | Kuaishou Open Platform |
+| `gemini-image` | Google Gemini | Image | Multimodal image generation | Google AI Studio |
+| `fake` | Built-in | Image / Video | Dev/test — returns public sample media | None needed |
 
-### 克隆 + 初始化
+Each provider implementation honors the capability-segregated interfaces under `lib/core/interfaces/` (`Submittable / Pollable / Cancellable / KeyValidatable / QuotaAware`), mixed in only where supported (Interface Segregation Principle in practice).
+
+Full integration contract: [docs/PROVIDER-API.md](docs/PROVIDER-API.md).
+
+---
+
+## Quick Start
+
+### Requirements
+
+- **OS**: macOS 12+ or Windows 10/11
+- **Flutter**: ≥ 3.41 (stable channel)
+- **Dart**: ≥ 3.11
+- **macOS dev**: Xcode 16+ (full IDE, not just Command Line Tools) + CocoaPods (`brew install cocoapods`)
+- **PostgreSQL 17**: a local `bin/` (with `postgres / pg_ctl / initdb`); install via Homebrew / scoop / from source. Point `INKFRAME_PG_BIN` at it.
+
+### Clone + bootstrap
 
 ```bash
 git clone https://github.com/KerroKapple/InkFrame.git
 cd InkFrame
 
-# 拉依赖
+# Pull dependencies
 flutter pub get
 
-# 链接 git hooks（pre-commit analyze + pre-push 全量 test）
+# Wire up git hooks (pre-commit analyze + pre-push full test)
 ln -sf ../../scripts/hooks/pre-commit .git/hooks/pre-commit
 ln -sf ../../scripts/hooks/pre-push   .git/hooks/pre-push
 ```
 
-### 第一次跑（不烧 API 配额）
+### First run (without burning API quota)
 
 ```bash
 # macOS
@@ -112,164 +114,165 @@ INKFRAME_FAKE_PROVIDERS=1 \
 flutter run -d macos --debug
 ```
 
-`INKFRAME_FAKE_PROVIDERS=1` 把所有真 Provider 替换为本地 `FakeGenerationProvider`，返回公开样例图/视频，**第一次跑 UI 强烈推荐开启**——避免 key 未配置直接炸。
+`INKFRAME_FAKE_PROVIDERS=1` swaps every real provider for the local `FakeGenerationProvider` that returns public sample images/videos. **Strongly recommended for the first UI run** — avoids crashes from missing keys.
 
-### 配置真 API Key
+### Wire in real API keys
 
-去掉 `INKFRAME_FAKE_PROVIDERS`，再次启动后进 **Settings → Providers**，按需填入：
+Drop `INKFRAME_FAKE_PROVIDERS`, restart, then go to **Settings → Providers** and fill in:
 
-- DashScope API Key（覆盖 `wanx-*` 全部 4 款）
-- Kling Access Key + Secret Key（覆盖 `kling-v3` / `kling-v3-omni`）
-- Gemini API Key（覆盖 `gemini-image`）
+- DashScope API key (covers all four `wanx-*` providers)
+- Kling Access Key + Secret Key (covers `kling-v3` / `kling-v3-omni`)
+- Gemini API key (covers `gemini-image`)
 
-Key 写入位置：
+Where keys are stored:
 
-| 构建类型 | 后端 |
-|---------|------|
+| Build type | Backend |
+|------------|---------|
 | Release | macOS Keychain / Windows Credential Manager |
-| Debug（macOS）| `~/InkFrame/config/secrets.dev.json`（绕开 ad-hoc 签名对 Keychain 的限制）|
+| Debug (macOS) | `~/InkFrame/config/secrets.dev.json` (works around Keychain restrictions on ad-hoc-signed builds) |
 
-API Key 验证结果在内存缓存 1 小时，节省配额；用户可随时点 *重新验证*。
+Key validation results are cached in memory for one hour to save quota; users can hit *Re-validate* anytime.
 
-### 跑测试
+### Run tests
 
 ```bash
-flutter analyze              # 0 warning 为准（CI 强制 --fatal-infos）
-flutter test --coverage      # 全量单元 + widget test，约 380+ tests
+flutter analyze              # Must report 0 warnings (CI runs --fatal-infos)
+flutter test --coverage      # Full unit + widget suite, ~380+ tests
 lcov --summary coverage/lcov.info
 
-# 仅集成测试（需要 PG 进程）
+# Integration tests only (requires a PG process)
 flutter test --tags integration
 
-# 排除集成测试
+# Skip integration tests
 flutter test --exclude-tags integration
 ```
 
 ---
 
-## 核心配置
+## Configuration
 
-### 环境变量
+### Environment variables
 
-| 变量 | 默认 | 用途 |
-|------|------|------|
-| `INKFRAME_PG_BIN` | *未设*（用打包内置） | 指向本地 PG 17 `bin/`；Release 包优先用 app 内置 |
-| `INKFRAME_FAKE_PROVIDERS` | `0` | `=1` 启用 fake Provider，全部不调外部 API |
-| `INKFRAME_DATA_DIR` | `~/InkFrame` | 用户数据根目录（数据库、产物、配置）|
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `INKFRAME_PG_BIN` | *unset* (uses bundled binaries) | Path to a local PG 17 `bin/`; release builds prefer the in-app bundle |
+| `INKFRAME_FAKE_PROVIDERS` | `0` | Set to `1` to use fake providers — no external API calls |
+| `INKFRAME_DATA_DIR` | `~/InkFrame` | Root of user data (database, generated assets, config) |
 | `INKFRAME_LOG_LEVEL` | `INFO` | `DEBUG` / `INFO` / `WARN` / `ERROR` |
 
-### 应用内设置项
+### In-app settings
 
-- **性能档位**：省电（1）/ 均衡（2）/ 性能（3）/ 极致（4）—— 控制全局并发上限
-- **主题**：跟随系统 / 深色 / 浅色 / 高对比度
-- **字号**：S / M / L / XL（A11y）
-- **数据目录**：可改（默认 `~/InkFrame`）
-- **代理**：HTTP / SOCKS5，密码进 SecureStorage
+- **Performance tier**: Power-saver (1) / Balanced (2) / Performance (3) / Max (4) — controls global concurrency
+- **Theme**: Follow system / Dark / Light / High contrast
+- **Font scale**: S / M / L / XL (A11y)
+- **Data directory**: configurable (default `~/InkFrame`)
+- **Proxy**: HTTP / SOCKS5; password lives in SecureStorage
 
 ---
 
-## 数据存储位置
+## Where Your Data Lives
 
 ```
-~/InkFrame/                              # 默认数据目录（INKFRAME_DATA_DIR 可改）
+~/InkFrame/                              # Default data root (overridable via INKFRAME_DATA_DIR)
 ├── config/
-│   ├── settings.json                    # 应用设置（无敏感字段）
-│   └── secrets.dev.json                 # 仅 Debug：本地 key 文件后端
-├── database/                            # 嵌入 PG data dir（initdb 生成）
+│   ├── settings.json                    # App settings (no sensitive fields)
+│   └── secrets.dev.json                 # Debug only: local key file backend
+├── database/                            # Embedded PG data dir (created by initdb)
 │   └── PG_VERSION  base/  pg_wal/  ...
 ├── projects/
 │   └── {projectId}/
 │       └── canvases/
 │           └── {canvasId}/
-│               ├── images/              # 图片产物（按 nodeId 命名）
-│               ├── videos/              # 视频产物
-│               └── thumbnails/          # 缩略图
+│               ├── images/              # Image outputs (named by nodeId)
+│               ├── videos/              # Video outputs
+│               └── thumbnails/          # Thumbnails
 └── logs/
-    ├── inkframe.log                     # 单文件 ≤ 10 MB，总量 ≤ 200 MB
-    └── inkframe.crash.{ts}.log          # 崩溃日志，独立保留最近 3 份
+    ├── inkframe.log                     # Per file ≤ 10 MB, total ≤ 200 MB
+    └── inkframe.crash.{ts}.log          # Crash logs; last 3 retained, outside rotation
 ```
 
-数据库中**只存相对路径**（如 `images/node-abc.png`），运行时由 `FileResolverService` 拼接绝对路径，避免数据目录搬迁后链接失效。
+The database stores **relative paths only** (e.g. `images/node-abc.png`); `FileResolverService` joins them with the data root at runtime, so moving the data directory doesn't break references.
 
 ---
 
-## 架构概览
+## Architecture Overview
 
-### 五层依赖
+### Five-layer dependency
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  Widget Layer        lib/features/*/widgets/, theme/        │
-│                      只渲染状态、分发事件，零业务逻辑        │
+│                      Renders state, dispatches events.      │
+│                      Zero business logic.                   │
 ├─────────────────────────────────────────────────────────────┤
 │  ViewModel Layer     lib/features/*/providers/              │
-│                      Riverpod Notifier，编排 Service         │
+│                      Riverpod Notifiers, orchestrate svcs.  │
 ├─────────────────────────────────────────────────────────────┤
 │  Service Layer       lib/services/, lib/features/*/services/│
-│                      纯 Dart，零 Flutter import              │
+│                      Pure Dart, zero Flutter imports.       │
 ├─────────────────────────────────────────────────────────────┤
 │  Repository Layer    lib/storage/repositories/              │
-│                      抽象接口在 core/interfaces/             │
+│                      Abstract interfaces in core/interfaces.│
 ├─────────────────────────────────────────────────────────────┤
 │  Infrastructure      lib/storage/, lib/providers/, platform/│
-│                      PostgreSQL / dio / Keychain / ffmpeg   │
+│                      PostgreSQL / dio / Keychain / ffmpeg.  │
 └─────────────────────────────────────────────────────────────┘
 
-依赖只能向下流动 —— 任何一层不得 import 上层符号
+Dependencies only flow downward — no layer may import from above.
 ```
 
-### 任务调度
+### Job scheduling
 
 ```
-全局并发上限（性能档位）
-  省电=1 / 均衡=2 / 性能=3 / 极致=4
+Global concurrency cap (performance tier)
+  Power=1 / Balanced=2 / Performance=3 / Max=4
       ↕ min()
-Per-Provider 并发上限（ProviderCapabilities.maxConcurrentJobs）
+Per-provider concurrency cap (ProviderCapabilities.maxConcurrentJobs)
       ↕
-Per-Provider Token Bucket（QPS / Burst）
+Per-provider token bucket (QPS / Burst)
 
-调度状态机：
+State machine:
   pending ──► submitted ──► polling ──► success / error / timeout
      │                                       │
      └── cancelled_by_user                   │
                                              │
-  任何阶段 ──────────────────────► cancelled_on_exit（app 退出）
+  any stage ────────────────────► cancelled_on_exit (app shutdown)
 ```
 
-详细架构（DI 矩阵 / 错误体系 14 错误码 / 性能降级双阈值 / A11y / 测试分层 / 构建流水线）见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+Full architecture (DI matrix / 14-code error taxonomy / hysteresis-based degradation / A11y / test layering / build pipeline) lives in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## 项目结构
+## Project Layout
 
 ```
 lib/
-├── main.dart                       # 入口 + ProviderScope
-├── app.dart                        # MaterialApp、路由、主题切换
-├── l10n/                           # ARB i18n（zh + en，100% 对齐）
-├── theme/                          # 设计 Token + 组件库
+├── main.dart                       # Entry + ProviderScope
+├── app.dart                        # MaterialApp, routing, theme switching
+├── l10n/                           # ARB i18n (zh + en, 100% aligned)
+├── theme/                          # Design tokens + component library
 │   ├── tokens.dart                 # InkColors / InkSpacing / InkRadius / InkShadow
 │   ├── typography.dart
 │   ├── primitives/                 # InkGlassCard / GradientButton / CompactTextField …
 │   └── components/                 # InkButton / InkCard / InkInput …
-├── core/                           # 共享抽象
-│   ├── di/                         # Riverpod Provider 装配（唯一接线处）
-│   ├── interfaces/                 # 抽象接口（无具体实现）
+├── core/                           # Shared abstractions
+│   ├── di/                         # Riverpod provider wiring (single source of truth)
+│   ├── interfaces/                 # Abstract interfaces (no implementations)
 │   ├── errors/                     # InkError sealed hierarchy
-│   ├── constants/                  # 枚举、常量（无副作用）
-│   ├── logging/                    # InkLogger 接口
-│   ├── models/                     # Freezed 不可变 domain 模型
-│   └── paths/                      # FileResolverService 接口
-├── features/                       # 垂直切分的功能模块
-│   ├── workspace/                  # 工作台首页
-│   ├── canvas/                     # 节点画布 + 生成流水
-│   ├── settings/                   # 设置（含 API Key 配置）
-│   ├── generation/                 # 生成调度
-│   ├── lightbox/                   # 媒体预览
-│   └── debug/                      # Debug-only（Primitives Showcase）
-├── providers/                      # AI Provider 实现（Infrastructure）
+│   ├── constants/                  # Enums, constants (side-effect free)
+│   ├── logging/                    # InkLogger interface
+│   ├── models/                     # Freezed immutable domain models
+│   └── paths/                      # FileResolverService interface
+├── features/                       # Feature modules (vertical slices)
+│   ├── workspace/                  # Workspace home
+│   ├── canvas/                     # Node canvas + generation pipeline
+│   ├── settings/                   # Settings (incl. API key configuration)
+│   ├── generation/                 # Generation orchestration
+│   ├── lightbox/                   # Media preview
+│   └── debug/                      # Debug-only (Primitives Showcase)
+├── providers/                      # AI provider implementations (Infrastructure)
 │   ├── provider_registry.dart      # id → factory
-│   ├── rate_limiter.dart           # Token Bucket
+│   ├── rate_limiter.dart           # Token bucket
 │   ├── dashscope_async_provider_base.dart
 │   ├── wanx_image_provider.dart
 │   ├── wanx_t2v_provider.dart
@@ -279,12 +282,12 @@ lib/
 │   ├── kling_v3_omni_provider.dart
 │   ├── gemini_image_provider.dart
 │   └── fake_generation_provider.dart
-├── storage/                        # 嵌入 PG + repository 实现
-│   ├── pg_controller.dart          # PG 进程生命周期（127.0.0.1 + auth=trust）
+├── storage/                        # Embedded PG + repository implementations
+│   ├── pg_controller.dart          # PG process lifecycle (127.0.0.1 + auth=trust)
 │   ├── pg_binary_locator.dart
-│   ├── migrations/                 # 增量 schema migration
+│   ├── migrations/                 # Incremental schema migrations
 │   └── repositories/
-└── services/                       # 应用级 Service
+└── services/                       # App-level services
     ├── job_queue_service.dart
     ├── file_resolver_service.dart
     ├── secure_storage_service.dart
@@ -293,142 +296,142 @@ lib/
 
 ---
 
-## 开发规范
+## Development Standards
 
-提交前请逐条确认（pre-commit hook 也会强制检查）：
+Confirm every item before committing (the pre-commit hook also enforces these):
 
-### 硬规则（违反 = CI 拒收）
+### Hard rules (CI rejects on violation)
 
-- **SOLID / DI**：所有外部依赖通过 Riverpod Provider 注入，禁止 `new ConcreteClass()` 出现在 Widget / Service 层；接口在 `core/interfaces/`，实现在 `storage/` 或 `providers/`，接线在 `core/di/`
-- **零硬编码字符串**：所有 UI 文案、错误消息、AI system prompt 走 `context.l10n.xxx`；`app_en.arb` + `app_zh.arb` 必须同 commit 更新且 key 集合完全一致
-- **零硬编码样式**：禁止 `Color(0xFF...)`、`fontSize: N`、`EdgeInsets.all(N)` 出现在 feature 代码；只用 `InkColors / InkSpacing / InkRadius` 等 token 与 Ink 组件
-- **零向后兼容**：schema 变了就改，不写 migration helper，不留 deprecated API
-- **错误用 InkError**：所有跨层错误必须是 `InkError` 子类，禁止裸 `Exception` / `String` 跨层传递
-- **Disposable 必须清理**：`StreamSubscription / Timer / AnimationController` 必须 `ref.onDispose` 或 widget `dispose()`
-- **TDD**：先写测试看红 → 实现看绿 → 重构。Repository 层覆盖率 ≥ 75%，其余 ≥ 70%
+- **SOLID / DI**: every external dependency is injected through a Riverpod provider. No `new ConcreteClass()` inside Widget / Service layers. Interfaces in `core/interfaces/`, implementations in `storage/` or `providers/`, wiring in `core/di/`.
+- **Zero hard-coded strings**: every UI string, error message, and AI system prompt goes through `context.l10n.xxx`. `app_en.arb` and `app_zh.arb` must be updated in the same commit and have identical key sets.
+- **Zero hard-coded styles**: no `Color(0xFF...)`, `fontSize: N`, or `EdgeInsets.all(N)` in feature code. Use `InkColors / InkSpacing / InkRadius` tokens and Ink components.
+- **Zero backward compatibility**: when a schema changes, change the code — don't write migration helpers or keep deprecated APIs.
+- **Errors as `InkError`**: every cross-layer error must be an `InkError` subtype. No raw `Exception` / `String` crossing layers.
+- **Disposables must be cleaned up**: `StreamSubscription / Timer / AnimationController` must be disposed via `ref.onDispose` or widget `dispose()`.
+- **TDD**: red → green → refactor. Repository layer coverage ≥ 75%, everything else ≥ 70%.
 
-### 工具门禁
+### Pre-commit hooks
 
-| Hook | 检测内容 |
-|------|---------|
-| `check-magic-strings.sh` | 硬编码 UI 字符串 / 魔法数字 / 状态字符串比较 |
-| `check-inline-styles.sh` | `Color(0xFF...)` / 硬编码 EdgeInsets / BoxShadow |
-| `check-direct-instantiation.sh` | Widget/Service 内 `new ConcreteClass()` |
-| `check-disposable-cleanup.sh` | StreamSubscription / Timer / Controller 未 dispose |
-| `check-i18n-coverage.sh` | ARB key 不一致 / 空值 / TODO 翻译 |
-| `check-updated-at.sh` | UPDATE 语句缺少 `updated_at` |
-| `check-keybindings.sh` | 默认快捷键命中 OS 保留键 |
+| Hook | Checks |
+|------|--------|
+| `check-magic-strings.sh` | Hard-coded UI strings / magic numbers / status string comparisons |
+| `check-inline-styles.sh` | `Color(0xFF...)` / hard-coded EdgeInsets / BoxShadow |
+| `check-direct-instantiation.sh` | `new ConcreteClass()` inside Widget/Service |
+| `check-disposable-cleanup.sh` | StreamSubscription / Timer / Controller without dispose |
+| `check-i18n-coverage.sh` | ARB key drift / empty values / TODO translations |
+| `check-updated-at.sh` | UPDATE statements missing `updated_at` |
+| `check-keybindings.sh` | Default shortcuts colliding with OS reserved keys |
 
-完整规范见 [docs/CLAUDE.md](docs/CLAUDE.md) 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
+Full standards: [docs/CLAUDE.md](docs/CLAUDE.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-### Commit 规范
+### Commit conventions
 
-Conventional Commits：
+Conventional Commits:
 
 ```
-feat(canvas): 添加节点拖拽吸附
-fix(provider/kling): poll 超时改用指数退避
-refactor(storage): 抽出 BaseRepository.withUpdatedAt
-test(generation): 覆盖 cancel pending 路径
-docs(adr): 新增 0007-rate-limiting-strategy
+feat(canvas): add node drag snapping
+fix(provider/kling): switch poll backoff to exponential
+refactor(storage): extract BaseRepository.withUpdatedAt
+test(generation): cover cancel-pending path
+docs(adr): add 0007-rate-limiting-strategy
 chore: bump dart_test deps
 ```
 
-不允许 `--no-verify` 跳 hook。pre-push 跑全量测试，慢但是底线。
+`--no-verify` to skip hooks is not allowed. The pre-push hook runs the full test suite — slow but it's the floor.
 
 ---
 
-## 故障排查
+## Troubleshooting
 
-### `flutter run` 启动后立刻退出 / PG 报 "binaries not found"
+### App exits immediately after `flutter run`, or PG reports "binaries not found"
 
-`INKFRAME_PG_BIN` 没设或路径不对。验证：
+`INKFRAME_PG_BIN` is unset or wrong. Verify:
 
 ```bash
-ls "$INKFRAME_PG_BIN/postgres"  # 必须存在
-"$INKFRAME_PG_BIN/postgres" --version  # 必须输出 17.x
+ls "$INKFRAME_PG_BIN/postgres"            # must exist
+"$INKFRAME_PG_BIN/postgres" --version     # must report 17.x
 ```
 
-macOS 用 Homebrew 装的话路径通常是 `/opt/homebrew/opt/postgresql@17/bin`（Apple Silicon）或 `/usr/local/opt/postgresql@17/bin`（Intel）。
+Homebrew on macOS typically puts it at `/opt/homebrew/opt/postgresql@17/bin` (Apple Silicon) or `/usr/local/opt/postgresql@17/bin` (Intel).
 
-### macOS Debug 启动时 Keychain 访问被拒
+### macOS Debug build hits a Keychain access denial
 
-ad-hoc 签名的 debug 包不能写系统 Keychain。InkFrame 在 Debug 自动 fallback 到 `~/InkFrame/config/secrets.dev.json` 文件后端（仍然不入仓）。看日志确认 `secure_storage` 模块用的是 `FileSecureStorageService`。
+Ad-hoc-signed debug builds can't write to the system Keychain. InkFrame automatically falls back to `~/InkFrame/config/secrets.dev.json` in Debug builds (still git-ignored). Check the logs — the `secure_storage` module should report `FileSecureStorageService`.
 
 ### "Another postgres instance (pid=...) is already running"
 
-之前的 InkFrame 进程没干净退出，留下了 `postmaster.pid`。InkFrame 启动时会自检 PID 是否还活着，活着就拒启。手动清理：
+A previous InkFrame process didn't shut down cleanly and left a `postmaster.pid`. InkFrame checks whether that PID is still alive on startup and refuses to launch if it is. Clean up manually:
 
 ```bash
-ps -p <pid>           # 确认那个 PID 是不是你想杀的
-kill <pid>            # 或直接删 ~/InkFrame/database/postmaster.pid（仅在确认进程死了之后）
+ps -p <pid>           # confirm the PID is what you think it is
+kill <pid>            # or remove ~/InkFrame/database/postmaster.pid (only after the process is gone)
 ```
 
-### `flutter test` pre-push 卡住
+### `flutter test` hangs in pre-push
 
-某个 widget test 可能在等异步任务。先单跑那个文件：
+A widget test is probably awaiting an async task. Run that file in isolation first:
 
 ```bash
 flutter test test/features/canvas/foo_test.dart -r expanded
 ```
 
-### Provider 报 `invalid_key` 但 key 是对的
+### Provider returns `invalid_key` even though the key is correct
 
-- 确认 key 没有前后空格（粘贴时常见）
-- DashScope key 格式 `sk-xxx`（32+ 位），Gemini key 是 `AIza...`
-- Kling 需要 *两个* 字段：Access Key + Secret Key
-- 进设置面板点 *重新验证*，强制刷新 1 小时缓存
+- Check for leading/trailing whitespace (common when pasting)
+- DashScope keys are `sk-xxx` (32+ chars); Gemini keys start with `AIza...`
+- Kling needs *two* fields: Access Key + Secret Key
+- Hit *Re-validate* in the settings panel to bypass the 1-hour cache
 
-更多排查见 [docs/internal/t5-manual-regression.md](docs/internal/t5-manual-regression.md)。
+More: [docs/internal/t5-manual-regression.md](docs/internal/t5-manual-regression.md).
 
 ---
 
-## 隐私与安全
+## Privacy & Security
 
-- **所有数据本机存储**：项目、产物、缩略图、日志全部落 `~/InkFrame/`，不上传任何云端（除你主动调用的 AI Provider 端点）
-- **API Key 永不入 repo**：`.gitignore` 已拦截 `secrets*.json` / `apikey*` / `*.env` / `*.pem` / `*.key` / `*.local` 等常见模式；FileSecureStorage 在 `~/InkFrame/config/`，不在仓库里
-- **直连 Provider**：生成请求由 InkFrame 本进程直发 DashScope / Kling / Gemini 端点，无中间服务器、无任何第三方 telemetry
-- **日志脱敏**：API Key 在日志里仅保留前 4 位（`sk-a1b2****`），prompt 截断 50 字符防版权泄露，路径中的 home 目录替换为 `~`，代理密码完全 `[REDACTED]`
-- **Key 存储后端**：
-  - macOS Release → Keychain（kSecClassGenericPassword）
+- **Everything stays local**: projects, generated assets, thumbnails, and logs all live under `~/InkFrame/`. Nothing is uploaded to any cloud (except the AI provider endpoints you actively call).
+- **API keys never enter the repo**: `.gitignore` blocks `secrets*.json` / `apikey*` / `*.env` / `*.pem` / `*.key` / `*.local` and similar patterns. The file-based SecureStorage backend writes to `~/InkFrame/config/`, outside the repo.
+- **Direct provider calls**: generation requests go straight from the InkFrame process to DashScope / Kling / Gemini endpoints. No middleman, no third-party telemetry.
+- **Log redaction**: API keys appear as `sk-a1b2****` (first 4 chars only); prompts are truncated to 50 chars to avoid copyright leakage; home paths in log lines become `~`; proxy passwords become `[REDACTED]`.
+- **Key storage backends**:
+  - macOS Release → Keychain (`kSecClassGenericPassword`)
   - Windows Release → Credential Manager
-  - macOS Debug → 本地 JSON 文件，绕开 ad-hoc 签名限制（仍在 ignore 范围内）
+  - macOS Debug → local JSON file (works around ad-hoc signing limits; still ignored by git)
 
-详见 [docs/CLAUDE.md](docs/CLAUDE.md) 中 "Provider API Keys" 与 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §9 / §13.4。
+Details: "Provider API Keys" in [docs/CLAUDE.md](docs/CLAUDE.md), and §9 / §13.4 of [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## 贡献
+## Contributing
 
-欢迎 issue / PR。先读：
+Issues and PRs welcome. Read first:
 
 - [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
-- [docs/CLAUDE.md](docs/CLAUDE.md)（硬规则）
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（DI / 错误体系 / 性能降级 / 测试分层）
-- [docs/PROVIDER-API.md](docs/PROVIDER-API.md)（新增 Provider 必读）
-- [docs/DATABASE.md](docs/DATABASE.md)（schema + migration 规则）
-- [docs/TESTING.md](docs/TESTING.md)（TDD 节奏 + mock 边界）
+- [docs/CLAUDE.md](docs/CLAUDE.md) (hard rules)
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (DI / errors / degradation / test layering)
+- [docs/PROVIDER-API.md](docs/PROVIDER-API.md) (required before adding a provider)
+- [docs/DATABASE.md](docs/DATABASE.md) (schema + migration rules)
+- [docs/TESTING.md](docs/TESTING.md) (TDD rhythm + mock boundaries)
 
-提交前 checklist：
+Pre-submission checklist:
 
-- [ ] `flutter analyze` 0 warning
-- [ ] `flutter test` 全绿
-- [ ] pre-commit 7 项硬检查通过
-- [ ] `app_en.arb` 和 `app_zh.arb` 同步更新
-- [ ] commit 走 conventional commits
+- [ ] `flutter analyze` reports 0 warnings
+- [ ] `flutter test` is fully green
+- [ ] All 7 pre-commit hooks pass
+- [ ] `app_en.arb` and `app_zh.arb` are updated together
+- [ ] Commit message follows Conventional Commits
 
 ---
 
 ## Roadmap
 
-- [x] **T0–T5**：节点画布 + 多 Provider 骨架 + 视频生成闭环（v0.1.0-alpha.8）
-- [x] **Sprint 1**：CineFlow 设计 token 对齐（Apple Blue accent + 5 级 surface）
-- [x] **Sprint 2**：Design primitives（GlassCard / GradientButton / CompactTextField 等 9 个原子）
-- [ ] **Sprint 3**：NodeInlinePanel v2（节点下方内联操作面板替代侧栏 Inspector）
-- [ ] **Sprint 4**：StyledEdge（bezier 渐变曲线）
-- [ ] **Sprint 5**：画布交互（marquee 框选 / handle drag / 伙伴边）
-- [ ] **Beta**：A11y 完整覆盖（VoiceOver / Narrator 验收）+ Undo/Redo + Group + 导出系统
-- [ ] **远期**：多人协作 / 插件化 Provider / 自定义节点
+- [x] **T0–T5**: Node canvas + multi-provider skeleton + video generation loop (v0.1.0-alpha.8)
+- [x] **Sprint 1**: CineFlow design-token alignment (Apple Blue accent + 5-tier surface)
+- [x] **Sprint 2**: Design primitives (GlassCard / GradientButton / CompactTextField — 9 atoms)
+- [ ] **Sprint 3**: NodeInlinePanel v2 (inline action panel below the node, replacing the side Inspector)
+- [ ] **Sprint 4**: StyledEdge (Bézier gradient curves)
+- [ ] **Sprint 5**: Canvas interactions (marquee selection / handle drag / partner edges)
+- [ ] **Beta**: Full A11y coverage (VoiceOver / Narrator) + Undo/Redo + Group + export pipeline
+- [ ] **Long-term**: Multi-user collaboration / pluggable providers / custom node types
 
 ---
 
@@ -440,7 +443,7 @@ flutter test test/features/canvas/foo_test.dart -r expanded
 
 ## Acknowledgements
 
-- 设计语言借鉴 **CineFlow**（节点化画布 + 毛玻璃视觉）
-- 嵌入式 PostgreSQL 思路参考开源社区方案
-- AI Provider SDK：阿里云 DashScope、Google Gemini、快手 Kling
-- Flutter Desktop 生态：Riverpod、freezed、dio、media_kit、ffmpeg_kit_flutter、flutter_secure_storage
+- Visual language inspired by **CineFlow** (node-based canvas + frosted-glass aesthetic)
+- Embedded PostgreSQL approach informed by open-source community work
+- AI provider SDKs: Aliyun DashScope, Google Gemini, Kuaishou Kling
+- Flutter Desktop ecosystem: Riverpod, freezed, dio, media_kit, ffmpeg_kit_flutter, flutter_secure_storage
