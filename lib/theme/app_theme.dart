@@ -67,9 +67,9 @@ ThemeData buildAppTheme({
     scaffoldBackgroundColor: colors.surface1,
     colorScheme: ColorScheme(
       brightness: brightness,
-      primary: colors.brand,
+      primary: colors.accent,
       onPrimary: colors.fg1,
-      secondary: colors.accent,
+      secondary: colors.brand,
       onSecondary: colors.fg1,
       error: colors.danger,
       onError: colors.fg1,

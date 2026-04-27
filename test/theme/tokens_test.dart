@@ -24,6 +24,52 @@ void main() {
       expect(colors.fg1, const Color(0xFFFFFFFF));
     });
 
+    test('every variant exposes the 10 new CineFlow-aligned slots', () {
+      for (final InkColors c in <InkColors>[
+        InkColors.dark(),
+        InkColors.light(),
+        InkColors.highContrast(),
+      ]) {
+        expect(c.surfaceCanvas, isA<Color>());
+        expect(c.surface4, isA<Color>());
+        expect(c.borderSubtle, isA<Color>());
+        expect(c.borderHover, isA<Color>());
+        expect(c.fg4, isA<Color>());
+        expect(c.accentHover, isA<Color>());
+        expect(c.accentPressed, isA<Color>());
+        expect(c.info, isA<Color>());
+        expect(c.cta, isA<Color>());
+        expect(c.ctaHover, isA<Color>());
+      }
+    });
+
+    test('dark variant exact values match CineFlow dark palette', () {
+      final c = InkColors.dark();
+      expect(c.surfaceCanvas, const Color(0xFF101218));
+      expect(c.surface1, const Color(0xFF1B1D24));
+      expect(c.surface2, const Color(0xFF262830));
+      expect(c.surface3, const Color(0xFF323440));
+      expect(c.surface4, const Color(0xFF3E404C));
+      expect(c.accent, const Color(0xFF0080FF));
+      expect(c.accentHover, const Color(0xFF0070E0));
+      expect(c.accentPressed, const Color(0xFF0060C0));
+      expect(c.cta, const Color(0xFFD42B57));
+      expect(c.info, const Color(0xFF00A3D9));
+      expect(c.fg1, const Color(0xFFFFFFFF));
+      expect(c.fg2, const Color(0xFFCFCECE));
+      expect(c.fg3, const Color(0xFF6B6B6B));
+      expect(c.fg4, const Color(0xFF4D4D4D));
+    });
+
+    test('light variant exact values match CineFlow light palette', () {
+      final c = InkColors.light();
+      expect(c.surfaceCanvas, const Color(0xFFFAFAFA));
+      expect(c.surface1, const Color(0xFFFFFFFF));
+      expect(c.accent, const Color(0xFF0080FF));
+      expect(c.cta, const Color(0xFFD42B57));
+      expect(c.fg1, const Color(0xFF1A1A1A));
+    });
+
     test('every variant exposes all 15 semantic slots', () {
       for (final InkColors c in <InkColors>[
         InkColors.dark(),
@@ -66,6 +112,11 @@ void main() {
       expect(InkRadius.xl, 16);
       expect(InkRadius.pill, 999);
     });
+
+    test('radius includes CineFlow bento tokens', () {
+      expect(InkRadius.bento, 10);
+      expect(InkRadius.bentoBtn, 6);
+    });
   });
 
   group('InkTypography scaling', () {
@@ -79,6 +130,18 @@ void main() {
       expect(t.body.fontSize, 14 * 1.25);
       expect(t.title.fontSize, 18 * 1.25);
       expect(t.display.fontSize, 28 * 1.25);
+    });
+
+    test('micro / nano 字号对齐 CineFlow text-[10px] / text-[9px]', () {
+      final t = InkTypography.defaults();
+      expect(t.micro.fontSize, 10);
+      expect(t.nano.fontSize, 9);
+    });
+
+    test('scaled(1.5) applies to micro / nano too', () {
+      final t = InkTypography.defaults().scaled(1.5);
+      expect(t.micro.fontSize, 10 * 1.5);
+      expect(t.nano.fontSize, 9 * 1.5);
     });
   });
 
@@ -113,6 +176,25 @@ void main() {
           home: Builder(
             builder: (ctx) {
               expect(ctx.inkColors.fg1, const Color(0xFFFFFFFF));
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
+    });
+
+    testWidgets('ColorScheme.primary is Apple Blue (CineFlow accent)',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(
+            variant: InkThemeVariant.dark,
+            textScale: 1,
+          ),
+          home: Builder(
+            builder: (ctx) {
+              final scheme = Theme.of(ctx).colorScheme;
+              expect(scheme.primary, const Color(0xFF0080FF));
               return const SizedBox.shrink();
             },
           ),

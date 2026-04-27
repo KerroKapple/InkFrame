@@ -8,6 +8,7 @@
 
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,7 +17,9 @@ import 'features/canvas/models/canvas_node.dart';
 import 'features/canvas/providers/canvas_nodes_controller.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_view.dart';
+import 'features/debug/primitives_showcase_screen.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/workspace/workspace_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
@@ -71,10 +74,33 @@ class _HomeScaffold extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasId = ref.watch(currentCanvasIdProvider);
+    final inCanvas = canvasId != null;
     return Scaffold(
       appBar: AppBar(
-        title: Text(context.l10n.appTitle),
+        leading: inCanvas
+            ? IconButton(
+                tooltip: context.l10n.workspaceBackToWorkspace,
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () =>
+                    ref.read(currentCanvasIdProvider.notifier).state = null,
+              )
+            : null,
+        title: Text(
+          inCanvas ? context.l10n.appTitle : context.l10n.workspaceTitle,
+        ),
         actions: [
+          if (kDebugMode)
+            IconButton(
+              tooltip: 'Primitives Showcase',
+              icon: const Icon(Icons.palette_outlined),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const PrimitivesShowcaseScreen(),
+                  ),
+                );
+              },
+            ),
           IconButton(
             tooltip: context.l10n.settingsTitle,
             icon: const Icon(Icons.settings_outlined),
@@ -88,10 +114,10 @@ class _HomeScaffold extends ConsumerWidget {
           ),
         ],
       ),
-      body: const CanvasView(),
-      floatingActionButton: canvasId == null
-          ? null
-          : _AddNodeFab(canvasId: canvasId),
+      body:
+          inCanvas ? const CanvasView() : const WorkspaceHomeScreen(),
+      floatingActionButton:
+          inCanvas ? _AddNodeFab(canvasId: canvasId) : null,
     );
   }
 }
