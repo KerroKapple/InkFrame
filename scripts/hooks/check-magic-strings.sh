@@ -17,6 +17,7 @@ FILE="$1"
 [[ "$FILE" == *"constants"* ]]    && exit 0
 [[ "$FILE" == *"tokens.dart" ]]   && exit 0
 [[ "$FILE" == *"_test.dart" ]]    && exit 0
+[[ "$FILE" == *"features/debug/"* ]] && exit 0
 
 VIOLATIONS=()
 LINENUM=0

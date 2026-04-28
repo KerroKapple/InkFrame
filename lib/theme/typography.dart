@@ -12,6 +12,8 @@ class InkTypography {
     required this.body,
     required this.label,
     required this.caption,
+    required this.micro,
+    required this.nano,
     required this.code,
   });
 
@@ -41,6 +43,16 @@ class InkTypography {
           fontWeight: FontWeight.w400,
           height: 1.35,
         ),
+        micro: TextStyle(
+          fontSize: 10 * scale,
+          fontWeight: FontWeight.w400,
+          height: 1.3,
+        ),
+        nano: TextStyle(
+          fontSize: 9 * scale,
+          fontWeight: FontWeight.w400,
+          height: 1.25,
+        ),
         code: TextStyle(
           fontSize: 13 * scale,
           fontWeight: FontWeight.w400,
@@ -55,6 +67,8 @@ class InkTypography {
   final TextStyle body;
   final TextStyle label;
   final TextStyle caption;
+  final TextStyle micro;
+  final TextStyle nano;
   final TextStyle code;
 
   InkTypography scaled(double scale) => InkTypography(
@@ -63,6 +77,8 @@ class InkTypography {
         body: body.copyWith(fontSize: (body.fontSize ?? 14) * scale),
         label: label.copyWith(fontSize: (label.fontSize ?? 13) * scale),
         caption: caption.copyWith(fontSize: (caption.fontSize ?? 12) * scale),
+        micro: micro.copyWith(fontSize: (micro.fontSize ?? 10) * scale),
+        nano: nano.copyWith(fontSize: (nano.fontSize ?? 9) * scale),
         code: code.copyWith(fontSize: (code.fontSize ?? 13) * scale),
       );
 }

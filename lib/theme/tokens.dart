@@ -12,18 +12,28 @@ import 'package:flutter/widgets.dart';
 @immutable
 class InkColors {
   const InkColors._({
+    required this.surfaceCanvas,
     required this.surface1,
     required this.surface2,
     required this.surface3,
+    required this.surface4,
     required this.fg1,
     required this.fg2,
     required this.fg3,
+    required this.fg4,
     required this.accent,
+    required this.accentHover,
+    required this.accentPressed,
     required this.brand,
+    required this.cta,
+    required this.ctaHover,
     required this.danger,
     required this.warning,
     required this.success,
+    required this.info,
     required this.border,
+    required this.borderSubtle,
+    required this.borderHover,
     required this.focusRing,
     required this.overlay,
     required this.scrim,
@@ -31,56 +41,86 @@ class InkColors {
 
   /// 深色主题（P0 默认）。
   factory InkColors.dark() => const InkColors._(
-        surface1: Color(0xFF0F0F13),
-        surface2: Color(0xFF1C1C24),
-        surface3: Color(0xFF2A2A3A),
-        fg1: Color(0xFFF5F5F7),
-        fg2: Color(0xFFB5B5C0),
-        fg3: Color(0xFF7A7A85),
-        accent: Color(0xFF7B61FF),
+        surfaceCanvas: Color(0xFF101218),
+        surface1: Color(0xFF1B1D24),
+        surface2: Color(0xFF262830),
+        surface3: Color(0xFF323440),
+        surface4: Color(0xFF3E404C),
+        fg1: Color(0xFFFFFFFF),
+        fg2: Color(0xFFCFCECE),
+        fg3: Color(0xFF6B6B6B),
+        fg4: Color(0xFF4D4D4D),
+        accent: Color(0xFF0080FF),
+        accentHover: Color(0xFF0070E0),
+        accentPressed: Color(0xFF0060C0),
         brand: Color(0xFFA88BFF),
-        danger: Color(0xFFF5534A),
-        warning: Color(0xFFF5B72E),
-        success: Color(0xFF4CC38A),
-        border: Color(0xFF32323F),
-        focusRing: Color(0xFF8E72FF),
-        overlay: Color(0xCC0F0F13),
+        cta: Color(0xFFD42B57),
+        ctaHover: Color(0xFFBA2149),
+        danger: Color(0xFFE53E3E),
+        warning: Color(0xFFF59E0B),
+        success: Color(0xFF2EBD6B),
+        info: Color(0xFF00A3D9),
+        border: Color(0xFF34363F),
+        borderSubtle: Color(0xFF262830),
+        borderHover: Color(0xFF484A54),
+        focusRing: Color(0xFF0080FF),
+        overlay: Color(0xCC101218),
         scrim: Color(0x99000000),
       );
 
   /// 浅色主题（P0 最小可用，打磨列入 P1）。
   factory InkColors.light() => const InkColors._(
-        surface1: Color(0xFFFAFAFC),
-        surface2: Color(0xFFF0F0F5),
-        surface3: Color(0xFFE4E4EC),
-        fg1: Color(0xFF151520),
-        fg2: Color(0xFF46465A),
-        fg3: Color(0xFF7A7A8A),
-        accent: Color(0xFF6E55E6),
+        surfaceCanvas: Color(0xFFFAFAFA),
+        surface1: Color(0xFFFFFFFF),
+        surface2: Color(0xFFF7F7F7),
+        surface3: Color(0xFFF2F2F2),
+        surface4: Color(0xFFEBEBEB),
+        fg1: Color(0xFF1A1A1A),
+        fg2: Color(0xFF737373),
+        fg3: Color(0xFF9E9E9E),
+        fg4: Color(0xFFBFBFBF),
+        accent: Color(0xFF0080FF),
+        accentHover: Color(0xFF0070E0),
+        accentPressed: Color(0xFF0060C0),
         brand: Color(0xFF4A2FD1),
-        danger: Color(0xFFD0342C),
-        warning: Color(0xFFB47200),
+        cta: Color(0xFFD42B57),
+        ctaHover: Color(0xFFBA2149),
+        danger: Color(0xFFE53E3E),
+        warning: Color(0xFFF59E0B),
         success: Color(0xFF2E8C57),
-        border: Color(0xFFD5D5DD),
-        focusRing: Color(0xFF6E55E6),
-        overlay: Color(0xCCFAFAFC),
+        info: Color(0xFF00A3D9),
+        border: Color(0xFFE0E0E0),
+        borderSubtle: Color(0xFFEBEBEB),
+        borderHover: Color(0xFFCCCCCC),
+        focusRing: Color(0xFF0080FF),
+        overlay: Color(0xCCFAFAFA),
         scrim: Color(0x66000000),
       );
 
   /// 高对比度变体（A11y §20.1，启用"高对比度"时激活）。
   factory InkColors.highContrast() => const InkColors._(
+        surfaceCanvas: Color(0xFF000000),
         surface1: Color(0xFF000000),
         surface2: Color(0xFF0A0A0A),
         surface3: Color(0xFF151515),
+        surface4: Color(0xFF202020),
         fg1: Color(0xFFFFFFFF),
         fg2: Color(0xFFF0F0F0),
         fg3: Color(0xFFDADADA),
+        fg4: Color(0xFFBEBEBE),
         accent: Color(0xFFFFD400),
+        accentHover: Color(0xFFFFE550),
+        accentPressed: Color(0xFFF5C000),
         brand: Color(0xFFFFD400),
+        cta: Color(0xFFFFD400),
+        ctaHover: Color(0xFFFFE550),
         danger: Color(0xFFFF6A6A),
         warning: Color(0xFFFFD400),
         success: Color(0xFF66FFB0),
+        info: Color(0xFF66E0FF),
         border: Color(0xFFFFFFFF),
+        borderSubtle: Color(0xFFA0A0A0),
+        borderHover: Color(0xFFFFFFFF),
         focusRing: Color(0xFFFFD400),
         overlay: Color(0xEE000000),
         scrim: Color(0xCC000000),
@@ -101,6 +141,16 @@ class InkColors {
   final Color focusRing; // A11y 键盘焦点环
   final Color overlay; // 遮罩背景
   final Color scrim; // 全屏遮罩
+  final Color surfaceCanvas; // 画布最底层（CineFlow surface-0）
+  final Color surface4; // 活跃控件（CineFlow surface-4）
+  final Color fg4; // 极弱辅助文本（CineFlow text-quaternary）
+  final Color accentHover;
+  final Color accentPressed;
+  final Color cta; // 品牌红 CTA
+  final Color ctaHover;
+  final Color info; // 语义信息蓝
+  final Color borderSubtle;
+  final Color borderHover;
 }
 
 /// 间距（8 的倍数制）。
@@ -122,6 +172,8 @@ class InkRadius {
   static const double lg = 12;
   static const double xl = 16;
   static const double pill = 999;
+  static const double bento = 10; // CineFlow bento 卡片圆角
+  static const double bentoBtn = 6; // CineFlow bento 按钮圆角
 }
 
 /// 阴影（随亮/暗主题固化——暗色场景下阴影几乎不可见，依赖 surface 提升传达层级）。
