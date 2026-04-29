@@ -22,7 +22,7 @@
 
 ## 🛠 In Progress (Maintainer)
 
-- **UI Sprint 3+** — CineFlow 设计语言落地剩余组件
+- **UI Sprint 3+** — 统一设计 token 落地剩余组件 / Design-token rollout for remaining components
 - **稳定 alpha → beta** — 测试覆盖 / 跨平台烟测 / 性能基线
 
 ## 🙋 Help Wanted
