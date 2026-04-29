@@ -1,4 +1,4 @@
-// InkDashedSlot：虚线边"未填"空槽容器（CineFlow border-dashed 对应）。
+// InkDashedSlot：虚线边"未填"空槽容器。
 //
 // 用途：参考图空位、待填写的占位按钮。CustomPainter 画虚线 RRect 外框。
 // 默认 dash 6px / gap 4px；border 色取 inkColors.border；tap hover 淡色底。

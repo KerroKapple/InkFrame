@@ -1,5 +1,5 @@
-// InkAccentChip：accent 半透明激活态芯片（CineFlow
-// "border-accent-primary/50 bg-accent-primary/10 text-accent-primary" 对应）。
+// InkAccentChip：accent 半透明激活态芯片
+// (border-accent-primary/50 bg-accent-primary/10 text-accent-primary)。
 //
 // padding 10x4；圆角 md；label 用 micro；可选 leading icon 16；onPressed 可选。
 import 'package:flutter/material.dart';

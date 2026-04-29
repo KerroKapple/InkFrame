@@ -141,9 +141,9 @@ class InkColors {
   final Color focusRing; // A11y 键盘焦点环
   final Color overlay; // 遮罩背景
   final Color scrim; // 全屏遮罩
-  final Color surfaceCanvas; // 画布最底层（CineFlow surface-0）
-  final Color surface4; // 活跃控件（CineFlow surface-4）
-  final Color fg4; // 极弱辅助文本（CineFlow text-quaternary）
+  final Color surfaceCanvas; // 画布最底层（surface-0）
+  final Color surface4; // 活跃控件（surface-4）
+  final Color fg4; // 极弱辅助文本（text-quaternary）
   final Color accentHover;
   final Color accentPressed;
   final Color cta; // 品牌红 CTA
@@ -172,8 +172,8 @@ class InkRadius {
   static const double lg = 12;
   static const double xl = 16;
   static const double pill = 999;
-  static const double bento = 10; // CineFlow bento 卡片圆角
-  static const double bentoBtn = 6; // CineFlow bento 按钮圆角
+  static const double bento = 10; // bento 卡片圆角
+  static const double bentoBtn = 6; // bento 按钮圆角
 }
 
 /// 阴影（随亮/暗主题固化——暗色场景下阴影几乎不可见，依赖 surface 提升传达层级）。

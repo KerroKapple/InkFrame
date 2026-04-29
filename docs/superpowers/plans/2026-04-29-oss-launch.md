@@ -575,7 +575,7 @@ Expected: gemini_image / kling_v3 / kling_v3_omni / wanx_i2v / wanx_image / wanx
 
 ## 🛠 In Progress (Sprint 当前 / Maintainer)
 
-- UI Sprint 3+ — CineFlow 设计语言落地剩余组件（@KerroKapple, tracked in #65 后续）
+- UI Sprint 3+ — 统一设计 token 落地剩余组件（@KerroKapple, tracked in #65 后续）
 - macOS 构建链整理 — CocoaPods 集成的 commit 边界决策（issue: TBD）
 
 ## 🙋 Help Wanted
