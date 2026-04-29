@@ -1,0 +1,87 @@
+# Roadmap
+
+> 当前阶段: **alpha**。每个里程碑对应一个 minor tag。Help wanted = 维护者欢迎 PR / 协同设计的方向。
+>
+> 想认领某条？开 issue 或在 Discussions 提问，对齐 scope 后再动手。**不要直接闷头 PR 大功能**——先对齐方向避免白做。
+>
+> Project stage: **alpha**. Each milestone corresponds to a minor tag. "Help wanted" entries are directions where the maintainer welcomes PRs and co-design.
+>
+> Want to claim something? File an issue or post in Discussions to align scope first — please **don't write a large PR before alignment**.
+
+---
+
+## ✅ Shipped (v0.1.0-alpha.x)
+
+| Tag | 主题 / Theme | 日期 |
+|-----|--------------|------|
+| alpha.8 | T5 video node UI loop — 5 款视频 Provider UI 接入 + Lightbox | 2026-04 |
+| alpha.7 | canvas UX 收口 — 节点删除 / Inspector autosave / FAB | 2026-04 |
+| alpha.6 | secure-storage：DashScope 系 6 款 Provider 共用 Key | 2026-04 |
+| alpha.5 | canvas 点击选中连线 + midpoint 删除按钮 | 2026-04 |
+| earlier | alpha.1 ~ alpha.4 — 基础 canvas / DI / i18n 骨架（见 `git tag`） | — |
+
+## 🛠 In Progress (Maintainer)
+
+- **UI Sprint 3+** — CineFlow 设计语言落地剩余组件
+- **稳定 alpha → beta** — 测试覆盖 / 跨平台烟测 / 性能基线
+
+## 🙋 Help Wanted
+
+按贡献门槛由低到高排列。Sorted by contribution effort, lowest first.
+
+### 📚 文档 / i18n
+
+- 翻译 README / CONTRIBUTING 到第 3 种语言（日 / 韩 / 西班牙语优先）
+  Translate README / CONTRIBUTING to a third language (JA / KO / ES preferred)
+- ARB 文件中文翻译 review — 当前 `app_zh.arb` 由维护者一人翻译，需要母语者抽查硬翻味
+  Native-Chinese review pass on `app_zh.arb` keys
+- ARB 文件英文 polish — 同上，但是 native English speaker review
+
+### 🔌 Provider 接入 / Provider integration
+
+新增 AI provider 不需要懂整个 codebase，只需读 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) 实现一个文件。
+Adding a new AI provider does not require understanding the whole codebase — read [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) and implement a single file.
+
+| Provider | 类型 / Type | 状态 / Status | 优先级 |
+|----------|-------------|---------------|--------|
+| Stable Diffusion (local ComfyUI) | image | 🟢 Open | High |
+| Midjourney (Discord API) | image | 🟢 Open | Medium |
+| OpenAI DALL-E 3 / GPT-Image | image | 🟢 Open | Medium |
+| Runway Gen-3 / Gen-4 | video | 🟢 Open | High |
+| Pika Labs | video | 🟢 Open | Medium |
+| Luma Dream Machine | video | 🟢 Open | Medium |
+
+已实现 / Implemented: Gemini Image · Kling V3 / V3 Omni · Wanx (image / i2v / r2v / t2v).
+
+### 🎨 Canvas / Editor
+
+- Undo/Redo 完整覆盖 — 当前部分操作未入 undo stack
+- 节点 group / collapse — 大画布折叠
+- 画布缩放性能优化 — 节点 > 200 时 frame drop
+
+### 💻 平台 / Platform
+
+- Windows 烟测自动化 — macOS 已手动跑，Windows 缺 reproducible 流程
+- Linux 桌面端可行性评估 — 社区有需求即启动
+
+### 🧪 测试基建 / Test infrastructure
+
+- Golden test 补齐 — 当前 `golden` job 是占位
+- E2E：完整 script → storyboard → export 流程
+- Coverage 70% 门槛之上的提升路径
+
+## 🚫 Out of Scope（明确不做 / Explicit non-goals）
+
+- 移动端（iOS/Android）— 项目定位是 desktop workstation
+- Web 端 SaaS — 与 local-first 设计哲学冲突
+- 闭源 / 商业 license — MIT 不变
+
+## 如何参与 / How to contribute
+
+1. 看到感兴趣的条目 → 开 issue / 在已有 issue 评论"我来" / Comment on an existing issue or open a new one
+2. 维护者 24-72h 内 ack 并对齐 scope
+3. 切 feature 分支（fork 也行）→ 按 [CONTRIBUTING.md](CONTRIBUTING.md) 规范开 PR
+4. CI 绿 + review pass → squash merge
+
+第一次贡献？看 issue tracker 里 [`good first issue`](https://github.com/KerroKapple/InkFrame/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 标签。
+First-time contributor? Look for the `good first issue` label.

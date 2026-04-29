@@ -10,6 +10,8 @@
 [![Dart](https://img.shields.io/badge/Dart-%E2%89%A5%203.11-blue.svg)](https://dart.dev)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
 
+**Quick links**: [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Provider API](docs/PROVIDER-API.md) · [Security](SECURITY.md) · [Discussions](https://github.com/KerroKapple/InkFrame/discussions)
+
 InkFrame is a **desktop-class** AI storyboard tool for indie creators and small teams:
 
 - **Node-based canvas** — chain *text / image / video* nodes into a traceable generation pipeline; every node records its input, provider, parameters, output, and status

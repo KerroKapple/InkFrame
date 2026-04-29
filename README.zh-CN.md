@@ -10,6 +10,8 @@
 [![Dart](https://img.shields.io/badge/Dart-%E2%89%A5%203.11-blue.svg)](https://dart.dev)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
 
+**快速入口**：[路线图](ROADMAP.md) · [贡献指南](CONTRIBUTING.md) · [架构](docs/ARCHITECTURE.md) · [Provider API](docs/PROVIDER-API.md) · [安全策略](SECURITY.md) · [讨论区](https://github.com/KerroKapple/InkFrame/discussions)
+
 InkFrame 给独立创作者和小团队做 **桌面级** AI 分镜工作台：
 
 - **节点化画布**：把 *文本 / 图片 / 视频* 拖成可追溯的生成流水线，每个节点都记录输入、Provider、参数、产物与状态
