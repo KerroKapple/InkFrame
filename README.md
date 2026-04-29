@@ -405,7 +405,7 @@ Details: "Provider API Keys" in [docs/CLAUDE.md](docs/CLAUDE.md), and §9 / §13
 
 Issues and PRs welcome. Read first:
 
-- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
 - [docs/CLAUDE.md](docs/CLAUDE.md) (hard rules)
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (DI / errors / degradation / test layering)
 - [docs/PROVIDER-API.md](docs/PROVIDER-API.md) (required before adding a provider)

@@ -1,0 +1,89 @@
+name: 🐛 Bug Report
+description: 应用崩溃、行为不符合预期、UI 异常
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈。InkFrame 是 desktop-class 工具，环境信息缺一项就很难复现。请尽量填全。
+
+        **API key / 凭证类问题不要贴 key 原文** —— 用 `sk-***xxx` 这种脱敏写法。
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 现象描述
+      description: 发生了什么？预期是什么？
+      placeholder: |
+        例：在 macOS 上打开 v0.1.0-alpha.8，添加 Kling 视频节点 → 点 Generate → 进度条卡在 0% 不动，约 2 分钟后日志报 …
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. 启动 InkFrame
+        2. 新建 project "test"
+        3. 添加 video 节点 → 选 Kling 3.0
+        4. 输入 prompt "a cat" → 点 Generate
+        5. 观察 …
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows 11
+        - Windows 10
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: os_version
+    attributes:
+      label: 操作系统具体版本
+      placeholder: macOS 14.5 / Windows 11 23H2
+
+  - type: input
+    id: app_version
+    attributes:
+      label: InkFrame 版本
+      description: 在「设置 → 关于」或 `git describe` 看到的版本号
+      placeholder: v0.1.0-alpha.8
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: 涉及的 AI Provider（如适用）
+      multiple: true
+      options:
+        - Aliyun wanx
+        - Kuaishou Kling
+        - Google Gemini
+        - Volc 即梦
+        - Hailuo
+        - 不涉及（UI / 数据库 / 其他）
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: 日志（`~/InkFrame/logs/inkframe.log` 最后 100 行）
+      description: |
+        粘贴时**先把 API key / 个人凭证脱敏**。如有截图直接拖进来。
+      render: shell

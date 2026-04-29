@@ -1,0 +1,14 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 README & 项目入口
+    url: https://github.com/KerroKapple/InkFrame/blob/main/README.md
+    about: 安装 / 配置 / 常见问题先看 README
+  - name: 🏛 ARCHITECTURE
+    url: https://github.com/KerroKapple/InkFrame/blob/main/docs/ARCHITECTURE.md
+    about: DI / 错误体系 / 测试分层 — 提 PR 前必读
+  - name: 🔌 Provider API
+    url: https://github.com/KerroKapple/InkFrame/blob/main/docs/PROVIDER-API.md
+    about: 想加新 AI Provider 的看这里
+  - name: 💬 GitHub Discussions
+    url: https://github.com/KerroKapple/InkFrame/discussions
+    about: 开放讨论 / 求助 / 分享 use case（不是 bug 也不是明确 feature 提案）
