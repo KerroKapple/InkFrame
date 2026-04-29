@@ -404,7 +404,7 @@ flutter test test/features/canvas/foo_test.dart -r expanded
 
 欢迎 issue / PR。先读：
 
-- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
+- [CONTRIBUTING.md](CONTRIBUTING.md)
 - [docs/CLAUDE.md](docs/CLAUDE.md)（硬规则）
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（DI / 错误体系 / 性能降级 / 测试分层）
 - [docs/PROVIDER-API.md](docs/PROVIDER-API.md)（新增 Provider 必读）
