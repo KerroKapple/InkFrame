@@ -1,6 +1,10 @@
 # InkFrame CI
-# 触发：push 到 main / 任何 PR。三条并行 job：analyze / test / golden。
+# 触发：push 到 main / 任何 PR（含 fork PR）。三条并行 job：analyze / test / golden。
 # Runner 用 ubuntu-latest 控成本，macOS/Windows 烟测放到 release 流水线。
+#
+# Fork PR 兼容性：本 workflow 不依赖任何 secrets，fork PR 可直接跑。
+# 维护者：新增任何 ${{ secrets.XXX }} 之前请评估对 fork PR 的影响——
+# 默认 fork PR 拿不到 secrets，相关 step 必须用 if 守卫。
 name: ci
 
 on:

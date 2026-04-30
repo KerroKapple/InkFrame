@@ -1,4 +1,4 @@
-// InkMotionSpring 预设测试：对齐 CineFlow Framer Motion 常用参数。
+// InkMotionSpring 预设测试：常用动画弹簧 / 入场出场时长参数。
 import 'package:flutter/animation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/theme/motion.dart';

@@ -10,6 +10,8 @@
 [![Dart](https://img.shields.io/badge/Dart-%E2%89%A5%203.11-blue.svg)](https://dart.dev)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
 
+**快速入口**：[路线图](ROADMAP.md) · [贡献指南](CONTRIBUTING.md) · [架构](docs/ARCHITECTURE.md) · [Provider API](docs/PROVIDER-API.md) · [安全策略](SECURITY.md) · [讨论区](https://github.com/KerroKapple/InkFrame/discussions)
+
 InkFrame 给独立创作者和小团队做 **桌面级** AI 分镜工作台：
 
 - **节点化画布**：把 *文本 / 图片 / 视频* 拖成可追溯的生成流水线，每个节点都记录输入、Provider、参数、产物与状态
@@ -17,7 +19,7 @@ InkFrame 给独立创作者和小团队做 **桌面级** AI 分镜工作台：
 - **一切本地**：嵌入 PostgreSQL 17 存数据，API Key 进系统 Keychain / Credential Manager，产物落到本地磁盘
 - **macOS + Windows 双端**，同一份 Dart 代码
 
-> **当前状态**：Alpha，v0.1.0-alpha.8 已发布。视频生成闭环已可用；UI 仍在按 CineFlow 设计语言重构中。
+> **当前状态**：Alpha，v0.1.0-alpha.8 已发布。视频生成闭环已可用；UI 仍在按统一设计 token 重构中。
 
 ---
 
@@ -424,7 +426,7 @@ flutter test test/features/canvas/foo_test.dart -r expanded
 ## Roadmap
 
 - [x] **T0–T5**：节点画布 + 多 Provider 骨架 + 视频生成闭环（v0.1.0-alpha.8）
-- [x] **Sprint 1**：CineFlow 设计 token 对齐（Apple Blue accent + 5 级 surface）
+- [x] **Sprint 1**：设计 token 对齐（Apple Blue accent + 5 级 surface）
 - [x] **Sprint 2**：Design primitives（GlassCard / GradientButton / CompactTextField 等 9 个原子）
 - [ ] **Sprint 3**：NodeInlinePanel v2（节点下方内联操作面板替代侧栏 Inspector）
 - [ ] **Sprint 4**：StyledEdge（bezier 渐变曲线）
@@ -442,7 +444,6 @@ flutter test test/features/canvas/foo_test.dart -r expanded
 
 ## Acknowledgements
 
-- 设计语言借鉴 **CineFlow**（节点化画布 + 毛玻璃视觉）
 - 嵌入式 PostgreSQL 思路参考开源社区方案
 - AI Provider SDK：阿里云 DashScope、Google Gemini、快手 Kling
 - Flutter Desktop 生态：Riverpod、freezed、dio、media_kit、ffmpeg_kit_flutter、flutter_secure_storage

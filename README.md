@@ -10,6 +10,8 @@
 [![Dart](https://img.shields.io/badge/Dart-%E2%89%A5%203.11-blue.svg)](https://dart.dev)
 [![Status](https://img.shields.io/badge/status-alpha-orange.svg)]()
 
+**Quick links**: [Roadmap](ROADMAP.md) · [Contributing](CONTRIBUTING.md) · [Architecture](docs/ARCHITECTURE.md) · [Provider API](docs/PROVIDER-API.md) · [Security](SECURITY.md) · [Discussions](https://github.com/KerroKapple/InkFrame/discussions)
+
 InkFrame is a **desktop-class** AI storyboard tool for indie creators and small teams:
 
 - **Node-based canvas** — chain *text / image / video* nodes into a traceable generation pipeline; every node records its input, provider, parameters, output, and status
@@ -17,7 +19,7 @@ InkFrame is a **desktop-class** AI storyboard tool for indie creators and small 
 - **Everything stays local** — embedded PostgreSQL 17 for data, system Keychain / Credential Manager for keys, generated assets on local disk
 - **macOS + Windows**, single Dart codebase
 
-> **Status**: Alpha. v0.1.0-alpha.8 has shipped. The video-generation loop is functional; UI is being reworked toward a CineFlow-style design language.
+> **Status**: Alpha. v0.1.0-alpha.8 has shipped. The video-generation loop is functional; UI is being reworked toward a unified design-token system.
 
 ---
 
@@ -425,7 +427,7 @@ Pre-submission checklist:
 ## Roadmap
 
 - [x] **T0–T5**: Node canvas + multi-provider skeleton + video generation loop (v0.1.0-alpha.8)
-- [x] **Sprint 1**: CineFlow design-token alignment (Apple Blue accent + 5-tier surface)
+- [x] **Sprint 1**: Design-token alignment (Apple Blue accent + 5-tier surface)
 - [x] **Sprint 2**: Design primitives (GlassCard / GradientButton / CompactTextField — 9 atoms)
 - [ ] **Sprint 3**: NodeInlinePanel v2 (inline action panel below the node, replacing the side Inspector)
 - [ ] **Sprint 4**: StyledEdge (Bézier gradient curves)
@@ -443,7 +445,6 @@ Pre-submission checklist:
 
 ## Acknowledgements
 
-- Visual language inspired by **CineFlow** (node-based canvas + frosted-glass aesthetic)
 - Embedded PostgreSQL approach informed by open-source community work
 - AI provider SDKs: Aliyun DashScope, Google Gemini, Kuaishou Kling
 - Flutter Desktop ecosystem: Riverpod, freezed, dio, media_kit, ffmpeg_kit_flutter, flutter_secure_storage

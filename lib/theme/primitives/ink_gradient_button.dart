@@ -1,4 +1,4 @@
-// InkGradientButton：彩条渐变类型按钮（CineFlow FloatingToolbar 对应）。
+// InkGradientButton：彩条渐变类型按钮（工具栏类型选择控件）。
 //
 // 6 变体：image / video / text / upload / editor / neutral
 // 尺寸：padding 12x6（h:md=16 去一点，v:sm=8 去一点）

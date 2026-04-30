@@ -1,5 +1,4 @@
-// InkPillTag：圆胶囊展示标签（CineFlow "rounded-full border-cineflow-border-subtle
-// bg-white/10 text-secondary" 对应）。
+// InkPillTag：圆胶囊展示标签（rounded-full + 弱边 + 半透明 bg）。
 //
 // 圆角 pill；padding 8x2；label 用 micro；可选 leading icon 12；纯展示不 tap。
 import 'package:flutter/material.dart';

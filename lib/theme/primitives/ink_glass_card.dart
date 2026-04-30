@@ -1,5 +1,4 @@
-// Glass 毛玻璃三态容器：Card / Panel / Pill（对应 CineFlow globals.css
-// .glass-card / .glass-panel / .glass-pill）。
+// Glass 毛玻璃三态容器：Card / Panel / Pill。
 //
 // 共同特征：BackdropFilter 做模糊+饱和度、半透明 surface1 底色、
 // 细白边（0.08~0.10 opacity）、overlay shadow。

@@ -1,5 +1,5 @@
 // PrimitivesShowcase: debug-only 路由，并排展示 Sprint 2 v3 全部原子组件变体，
-// 用于肉眼对照 CineFlow 视觉。仅通过 kDebugMode AppBar 按钮进入，不参与发布构建。
+// 用于肉眼对照设计 token 视觉。仅通过 kDebugMode AppBar 按钮进入，不参与发布构建。
 
 import 'package:flutter/material.dart';
 
@@ -32,7 +32,7 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             const _Section(
-              title: 'InlinePanel Mock（CineFlow 节点内嵌面板组装样例）',
+              title: 'InlinePanel Mock（节点内嵌面板组装样例）',
               child: _InlinePanelMock(),
             ),
             const _Section(
@@ -171,9 +171,9 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
   }
 }
 
-/// InlinePanel Mock：用 Sprint 2 v3 的 primitive 还原 CineFlow 节点内嵌
-/// 操作面板的真实使用场景 —— 底下铺假画布 + 假节点卡片，让 glass-card
-/// 毛玻璃有实际"可模糊"的下层内容，才能看出效果。
+/// InlinePanel Mock：用 Sprint 2 v3 的 primitive 演示节点内嵌操作面板
+/// 的真实使用场景 —— 底下铺假画布 + 假节点卡片，让 glass-card 毛玻璃
+/// 有实际"可模糊"的下层内容，才能看出效果。
 class _InlinePanelMock extends StatelessWidget {
   const _InlinePanelMock();
 

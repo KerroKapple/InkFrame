@@ -1,4 +1,4 @@
-// InkCompactTextField：CineFlow 紧凑 textarea（bg-white/0.04 + rounded-lg +
+// InkCompactTextField：紧凑 textarea（bg-white/0.04 + rounded-lg +
 // ring-1 focus 细边）。单行/多行通用，配合 minLines/maxLines。
 //
 // 背景半透明白（与父面板层叠出微差异），聚焦时用 borderHover 做细 ring，
