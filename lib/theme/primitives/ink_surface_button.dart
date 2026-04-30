@@ -1,4 +1,4 @@
-// InkSurfaceButton：surface-2 单色按钮（CineFlow FloatingToolbar 辅助控件对应）。
+// InkSurfaceButton：surface-2 单色按钮（工具栏辅助控件）。
 //
 // 两个 flavor：
 //   - InkSurfaceButton(label, icon?, onPressed)       — 常规 padding 10x6
