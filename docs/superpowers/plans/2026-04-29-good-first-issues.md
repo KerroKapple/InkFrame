@@ -2,6 +2,10 @@
 
 > 5 条候选，每条都是单文件 / 30min-2h 可完成、不依赖未公开内部知识的入门任务。
 > public 之后用 `gh issue create` 批量创建。
+>
+> **状态：已执行（2026-05-06）** — 5 条全部转为 GitHub issue：
+> #69 (.editorconfig) / #70 (Quickstart) / #71 (zh ARB review) / #72 (i18n unused-key hook) / #73 (Windows dev env)
+> 本文档保留作历史决策存证（为何是这 5 条）。
 
 ---
 
