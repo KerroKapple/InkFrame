@@ -1,27 +1,23 @@
 # Contributing to InkFrame
 
-## 分支模型（简化 git-flow）
+## 分支模型（GitHub Flow）
 
 ```
-main        ← 只接 release-quality 代码，每次合入打 tag (v0.1.0 / v0.1.1 / ...)
+main        ← 集成主干。所有 PR 合这里。Release 时在 main 上打 tag (v0.1.0 / v0.1.1 / ...)
  │
- ├─ dev    ← 集成主干。所有 feature/fix 合这里。日常开发默认目标
- │   │
- │   ├─ feature/<scope>-<kebab-desc>   新功能，≤ 3 天合回 dev
- │   ├─ fix/<issue-id>-<desc>          非紧急 bugfix
- │   ├─ chore/<desc>                   仓库维护、依赖升级、CI 调整
- │   ├─ docs/<desc>                    纯文档变更
- │   └─ test/<desc>                    纯测试补齐
- │
- ├─ release/v0.1.x                     版本冻结分支，只接 bugfix，合 main + 回合 dev
- └─ hotfix/<issue-id>-<desc>           线上紧急修复，从 main 分叉，合 main + 回合 dev
+ ├─ feature/<scope>-<kebab-desc>   新功能
+ ├─ fix/<issue-id>-<desc>          bugfix
+ ├─ chore/<desc>                   仓库维护、依赖升级、CI 调整
+ ├─ docs/<desc>                    纯文档变更
+ ├─ test/<desc>                    纯测试补齐
+ ├─ release/v0.1.x                 版本冻结分支（仅在多版本并行维护时使用）
+ └─ hotfix/<issue-id>-<desc>       线上紧急修复，从 main 分叉
 ```
 
 **铁律：**
-- `main` / `dev` 均受保护。禁止直接 push，全部走 PR
-- `main` 只从 `release/*` 或 `hotfix/*` 合进来
-- feature 分支超过 3 天必须每日 rebase dev，避免大合并冲突
-- **线性历史强制**：`main` / `dev` 禁止一切 merge commit。任何方向（feature→dev / release→main / main→dev 回合）**只允许 Squash 或 Rebase merge**，禁止 `--no-ff` 与 `Create a merge commit`。GitHub Branch Protection 已开启 `Require linear history`，非线性 push 会被远端直接拒
+- `main` 受保护。禁止直接 push，全部走 PR
+- feature 分支超过 3 天必须每日 rebase main，避免大合并冲突
+- **线性历史强制**：`main` 禁止一切 merge commit。所有 PR **只允许 Squash 或 Rebase merge**，禁止 `--no-ff` 与 `Create a merge commit`。GitHub Branch Protection 已开启 `Require linear history`，非线性 push 会被远端直接拒
 
 ## 命名规范
 
@@ -58,17 +54,16 @@ main        ← 只接 release-quality 代码，每次合入打 tag (v0.1.0 / v0
 
 ## PR 流程
 
-1. 从 `dev` 切 feature branch（hotfix 除外：从 `main` 切）
+1. 从 `main` 切 feature branch
 2. 本地跑 `flutter analyze && flutter test`
 3. `git commit` 时 pre-commit hook 自动跑 5 条硬规则（i18n / tokens / magic strings / 直接实例化 / Disposable）
 4. `git push` 时 pre-push hook 自动跑 `flutter test`
-5. 开 PR 到 `dev`（hotfix/release 开 PR 到 `main`）
+5. 开 PR 到 `main`
 6. CI 全绿 + 至少 1 个 approve 才能合
 7. 合并策略（**全线性，零 merge commit**）：
-   - `feature/*` / `fix/*` / `chore/*` / `docs/*` / `test/*` → `dev`：**Squash merge**（一个 PR 压一个 commit 进 dev）
+   - `feature/*` / `fix/*` / `chore/*` / `docs/*` / `test/*` → `main`：**Squash merge**（一个 PR 压一个 commit 进 main）
    - `release/*` / `hotfix/*` → `main`：**Rebase & merge**（保留每个 commit，无 merge commit；合入后在 `main` 打 annotated tag）
-   - `main` 变更回合 `dev`：**Rebase & merge** 经过新 PR（禁止直接 `git merge main` 产生 merge commit）
-   - Stacked PR：子 PR 的 base 指向父 PR 分支；父 PR 合入 dev 后，子 PR 自动 re-target dev
+   - Stacked PR：子 PR 的 base 指向父 PR 分支；父 PR 合入 main 后，子 PR 自动 re-target main
 8. 合并后 GitHub 自动删除源分支
 
 ## Tag & Release
@@ -139,10 +134,9 @@ git pull                         # 如果没设 pull.rebase=true 就会 fetch+me
 # ❌ 绕闸
 git commit --no-verify
 git push --force origin main     # 受保护分支严禁 force push
-git push --force origin dev
 
 # ✅ 允许
-git rebase dev                   # 同步上游
+git rebase main                  # 同步上游
 git push --force-with-lease      # 仅在自己的 feature 分支
 ```
 
@@ -167,9 +161,9 @@ lcov --summary coverage/lcov.info      # 摘要
 ## 不许做的
 
 - `git commit --no-verify` 绕过 pre-commit hook
-- `git push --force` 到 `main` 或 `dev`（自己的 feature 分支可用 `--force-with-lease`）
+- `git push --force` 到 `main`（自己的 feature 分支可用 `--force-with-lease`）
 - 在一个 PR 里混"重构 + 新功能"——分开提
-- 跨 feature 分支互相 merge（会形成毛线团，用 rebase dev）
+- 跨 feature 分支互相 merge（会形成毛线团，用 rebase main）
 - 任何方向的 `git merge --no-ff`——会产生 merge commit，违反线性历史铁律
 - GitHub PR UI 点 "Create a merge commit"——必须选 Squash 或 Rebase
 - 在 widget 里写硬编码字符串（用 `context.l10n`）
