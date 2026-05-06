@@ -26,7 +26,7 @@
 - **建议护栏**（下次 release 前必须加）：
   1. release 脚本 pull 后断言：`git log -1 --format=%s` 匹配 release PR 标题模式 `release(v*)`，不匹配 abort
   2. 或更稳：脚本接受 `<merge-commit-sha>` 入参，tag 直接打在该 SHA 上（跳过本地 main 同步的时序陷阱）
-  3. 软约束：release PR 评审时 reviewer 必须盯 merge method，只点 "Rebase and merge" ——不改 repo 级 Pull Requests 设置（三种 merge 方法全留开），避免与 `dev` 的 Squash merge 规矩 §67 打架
+  3. 软约束：release PR 评审时 reviewer 必须盯 merge method，只点 "Rebase and merge" ——不改 repo 级 Pull Requests 设置（三种 merge 方法全留开），避免与 feature PR 的 Squash merge 规矩打架
 - **Owner**：下次 release 起手前由操作人加；Branch Protection 由仓库 admin 在 GitHub UI 设置
 - **关联**：`CONTRIBUTING.md §69`（Rebase & merge 强制条款），PR #48（事故 release）
 - **修复 (2026-04-22)**：`scripts/release-tag.sh` 落地，护栏 #1（PR 标题断言，exit 10）+ 护栏 #2（SHA 入参，exit 11）以强断言形式实现。CONTRIBUTING §Tag & Release 已改为脚本优先 + 手工兜底。集成测试 `test/scripts/release_tag_test.sh` 覆盖 17 个断言：arg 校验、guardrail negative、happy path（prerelease + stable）。护栏 3（软约束 reviewer 盯 merge method）保留为人肉约定，不改 repo 级设置以避免与 §67 打架。
