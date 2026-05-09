@@ -7,8 +7,11 @@
 - **Storage**: Embedded PostgreSQL
 - **Network**: dio
 - **i18n**: flutter_localizations + ARB files
-- **Video Export**: ffmpeg_kit_flutter
+- **Video playback / thumbnail**: media_kit (+ media_kit_video, media_kit_libs_video)
+- **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager)
 - **Platforms**: macOS + Windows
+
+> Modules not yet implemented (e.g. video export, script editor, storyboard, asset browser) live in `ROADMAP.md`. This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
 
 ## Architecture Principles
 
@@ -63,10 +66,15 @@ final projectProvider = Provider((ref) {
 
 ### Rules
 
-1. **Development language is English** — all keys and default values in English
-2. **Every user-facing string** goes through i18n. No exceptions.
-3. **Every commit** must have 100% zh-CN and en-US coverage
-4. **CI check**: ARB files must have identical key sets (build fails otherwise)
+1. **i18n covers end-user UI text only.** Strings the user reads on screen go through ARB.
+2. **Internal strings stay English-only constants.** This includes:
+   - LLM/system prompts sent to providers (a localized prompt = silent A/B on model behavior)
+   - Log messages and `module` names
+   - Error code identifiers (`InkErrorCode.invalidKey` etc.)
+   - SQL, JSON keys, network protocol literals
+3. **Development language is English** — all ARB keys and default values in English
+4. **Every commit** must have 100% zh-CN and en-US coverage of the keys that DO exist in ARB
+5. **CI check**: `app_en.arb` and `app_zh.arb` must have identical key sets (build fails otherwise). Adding more locales later only adds new ARB files; the parity rule generalizes to "all locales share identical key sets."
 
 ### File Structure
 
@@ -91,12 +99,21 @@ Text("生成")
 ToastService.show("已提交到 $providerName")
 ```
 
-### AI Prompts
+### LLM / System Prompts — DO NOT i18n
 
-System prompts for Gemini/providers also go through i18n:
+Prompts sent to AI providers are part of the model contract, not user-facing copy. Keep them as English string constants in `lib/providers/<provider>_prompts.dart` (or inline near the call site for short ones). Translating a system prompt creates a per-locale model behavior fork that is impossible to A/B reason about.
+
 ```dart
+// ✅ Correct — English-only constant
+const _kGeminiImageSystemPrompt = '''
+You are an image-generation assistant...
+''';
+
+// ❌ Wrong — i18n'd prompt drifts across locales
 final hint = context.l10n.geminiSystemPrompt;
 ```
+
+If you ever need to inject locale-aware text **into** a prompt (e.g. "respond in the user's UI language"), pass the user-facing locale code as a parameter; the prompt template itself stays English.
 
 ### Adding a New String
 
@@ -168,46 +185,64 @@ Container(
 
 ## Project Structure
 
+> **Snapshot, not blueprint.** Mirrors the current `lib/` tree. Planned-but-unimplemented modules belong in `ROADMAP.md`, not here. Keep this in sync — if your PR adds/removes a directory, update this section in the same commit.
+
 ```
 lib/
-├── main.dart                    # Entry point, ProviderScope
-├── app.dart                     # MaterialApp, router, theme
-├── l10n/                        # i18n ARB files
-├── theme/                       # Design tokens, theme, components
-├── core/                        # Shared abstractions
-│   ├── di/                      # Provider definitions
-│   ├── models/                  # Domain models (immutable, freezed)
-│   ├── interfaces/              # Abstract repository/service interfaces
-│   └── utils/                   # Pure utility functions
-├── features/                    # Feature modules (vertical slices)
-│   ├── canvas/                  # Node canvas
+├── main.dart                          # Entry point, ProviderScope
+├── app.dart                           # MaterialApp, router, theme wiring
+├── l10n/                              # ARB files (app_en.arb, app_zh.arb) + gen
+├── theme/                             # Design tokens, theme, components
+│   ├── tokens.dart                    # Color / spacing / radius / shadow tokens
+│   ├── typography.dart                # Text styles
+│   ├── motion.dart                    # Animation timings / curves
+│   ├── app_theme.dart                 # ThemeData builder from tokens
+│   ├── primitives/                    # Low-level styled primitives
+│   └── components/                    # Reusable Ink* components
+├── core/                              # Shared abstractions (no Flutter imports below interfaces)
+│   ├── constants/                     # Enums, numeric constants (no side effects)
+│   ├── di/                            # Riverpod provider definitions (the only wiring folder)
+│   ├── errors/                        # InkError sealed hierarchy + InkErrorCode
+│   ├── interfaces/                    # Abstract service / repository contracts
+│   ├── logging/                       # InkLogger interface
+│   ├── models/                        # Domain models (freezed, immutable)
+│   └── paths/                         # FileResolverService interface
+├── features/                          # Feature modules (vertical slices)
+│   ├── canvas/                        # Node canvas
 │   │   ├── models/
-│   │   ├── providers/           # Riverpod state
-│   │   ├── widgets/             # UI components
-│   │   └── services/
-│   ├── script/                  # Script editor + AI co-writing
-│   ├── generation/              # Asset generation (人物/场景/道具)
-│   ├── storyboard/              # Storyboard table
-│   ├── assets/                  # Asset browser
-│   ├── settings/                # Settings
-│   └── jobs/                    # Job queue
-├── providers/                   # AI provider implementations (see docs/PROVIDER-API.md)
-│   ├── provider_registry.dart   # id → factory mapping
-│   ├── rate_limiter.dart        # Per-provider token bucket
-│   ├── auth/                    # Volc HMAC signer, Kling JWT renewal
+│   │   ├── providers/                 # Riverpod ViewModels
+│   │   ├── util/
+│   │   └── widgets/
+│   ├── debug/                         # Internal debug surfaces
+│   ├── generation/                    # Generation flow UI + state
+│   ├── settings/                      # Settings surfaces
+│   └── workspace/                     # Project / workspace shell
+├── providers/                         # AI provider adapters (see docs/PROVIDER-API.md)
+│   ├── provider_registry.dart         # providerId → factory mapping
+│   ├── rate_limiter.dart              # Per-provider token bucket
+│   ├── dio_error_mapper.dart          # DioException → InkError mapping
+│   ├── dashscope_async_provider_base.dart  # Shared base for DashScope async tasks
 │   ├── gemini_image_provider.dart
-│   ├── jimeng_image_provider.dart
-│   ├── kling_image_provider.dart
-│   ├── kling_video_provider.dart
-│   └── hailuo_video_provider.dart
-├── storage/                     # Database layer
-│   ├── database.dart            # PG connection management
-│   ├── repositories/            # Concrete repository implementations
-│   └── schema.dart              # Table definitions
-└── services/                    # App-level services
-    ├── toast_service.dart
-    ├── file_service.dart
-    └── export_service.dart
+│   ├── kling_v3_provider.dart
+│   ├── kling_v3_omni_provider.dart
+│   ├── wanx_image_provider.dart
+│   ├── wanx_i2v_provider.dart
+│   ├── wanx_r2v_provider.dart
+│   └── wanx_t2v_provider.dart
+├── storage/                           # Embedded PostgreSQL layer
+│   ├── pg_controller.dart             # Embedded PG lifecycle
+│   ├── pg_binary_locator.dart         # PG binary discovery
+│   ├── base_repository.dart           # Shared SQL helpers
+│   ├── migrations/                    # Migration runner
+│   ├── repositories/                  # Concrete postgres_*_repository.dart
+│   └── schema/                        # DDL (.sql) + schema version (.dart)
+└── services/                          # App-level services
+    ├── job_queue_service.dart         # Dual-layer concurrency + persisted state machine
+    ├── file_resolver_service.dart     # Relative ↔ absolute path resolution
+    ├── dio_video_download_service.dart
+    ├── media_kit_video_player_service.dart
+    ├── media_kit_thumbnail_service.dart
+    └── platform_secure_storage_service.dart
 ```
 
 ## Code Rules
