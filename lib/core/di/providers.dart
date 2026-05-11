@@ -49,37 +49,66 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
         return key;
       };
 
-  ProviderRateLimiter limiterFor(ProviderCapabilities c) =>
-      ProviderRateLimiter(qps: c.qps, burst: c.burst);
+  // RateLimiter 必须按 providerId 共享：token bucket 持有 _tokens/_waiters
+  // 等可变状态，每次 get() 新建实例会让限速形同虚设。提前实例化，由 factory
+  // 闭包捕获共享引用。
+  final geminiImageRl = ProviderRateLimiter(
+    qps: kGeminiImageCapabilities.qps,
+    burst: kGeminiImageCapabilities.burst,
+  );
+  final wanxImageRl = ProviderRateLimiter(
+    qps: kWanxImageCapabilities.qps,
+    burst: kWanxImageCapabilities.burst,
+  );
+  final wanxT2VRl = ProviderRateLimiter(
+    qps: kWanxT2VCapabilities.qps,
+    burst: kWanxT2VCapabilities.burst,
+  );
+  final wanxI2VRl = ProviderRateLimiter(
+    qps: kWanxI2VCapabilities.qps,
+    burst: kWanxI2VCapabilities.burst,
+  );
+  final wanxR2VRl = ProviderRateLimiter(
+    qps: kWanxR2VCapabilities.qps,
+    burst: kWanxR2VCapabilities.burst,
+  );
+  final klingV3Rl = ProviderRateLimiter(
+    qps: kKlingV3Capabilities.qps,
+    burst: kKlingV3Capabilities.burst,
+  );
+  final klingV3OmniRl = ProviderRateLimiter(
+    qps: kKlingV3OmniCapabilities.qps,
+    burst: kKlingV3OmniCapabilities.burst,
+  );
 
   return ProviderRegistry(<String, ProviderFactory>{
     kGeminiImageCapabilities.providerId: () => GeminiImageProvider(
           keySource: keyFor(kGeminiImageCapabilities.providerId),
-          rateLimiter: limiterFor(kGeminiImageCapabilities),
+          rateLimiter: geminiImageRl,
         ),
     kWanxImageCapabilities.providerId: () => WanxImageProvider(
           keySource: keyFor(kWanxImageCapabilities.providerId),
-          rateLimiter: limiterFor(kWanxImageCapabilities),
+          rateLimiter: wanxImageRl,
         ),
     kWanxT2VCapabilities.providerId: () => WanxT2VProvider(
           keySource: keyFor(kWanxT2VCapabilities.providerId),
-          rateLimiter: limiterFor(kWanxT2VCapabilities),
+          rateLimiter: wanxT2VRl,
         ),
     kWanxI2VCapabilities.providerId: () => WanxI2VProvider(
           keySource: keyFor(kWanxI2VCapabilities.providerId),
-          rateLimiter: limiterFor(kWanxI2VCapabilities),
+          rateLimiter: wanxI2VRl,
         ),
     kWanxR2VCapabilities.providerId: () => WanxR2VProvider(
           keySource: keyFor(kWanxR2VCapabilities.providerId),
-          rateLimiter: limiterFor(kWanxR2VCapabilities),
+          rateLimiter: wanxR2VRl,
         ),
     kKlingV3Capabilities.providerId: () => KlingV3Provider(
           keySource: keyFor(kKlingV3Capabilities.providerId),
-          rateLimiter: limiterFor(kKlingV3Capabilities),
+          rateLimiter: klingV3Rl,
         ),
     kKlingV3OmniCapabilities.providerId: () => KlingV3OmniProvider(
           keySource: keyFor(kKlingV3OmniCapabilities.providerId),
-          rateLimiter: limiterFor(kKlingV3OmniCapabilities),
+          rateLimiter: klingV3OmniRl,
         ),
   });
 });
