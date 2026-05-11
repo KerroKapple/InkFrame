@@ -113,15 +113,12 @@ class InMemoryJobQueueService implements JobQueueService {
 
   @override
   Future<void> cancel(String jobId) async {
-    final pendingIdx = _pending.toList().indexWhere((p) => p.task.jobId == jobId);
-    if (pendingIdx >= 0) {
-      final list = _pending.toList();
-      final removed = list.removeAt(pendingIdx);
-      _pending
-        ..clear()
-        ..addAll(list);
+    final pending = _pendingIndex.remove(jobId);
+    if (pending != null) {
+      // 软删除：标记后 dispatch loop 自然跳过并出队，避免重建 Queue。
+      pending.cancelled = true;
       await _persistCancel(jobId, fromStatuses: const ['pending']);
-      _emitFailure(removed.handle, _cancelledError(jobId));
+      _emitFailure(pending.handle, _cancelledError(jobId));
       return;
     }
     final running = _running[jobId];
@@ -143,9 +140,11 @@ class InMemoryJobQueueService implements JobQueueService {
     if (_disposed) return;
     _disposed = true;
     for (final p in _pending) {
+      if (p.cancelled) continue; // 已 cancel 的事件已发过
       _emitFailure(p.handle, _cancelledError(p.task.jobId));
     }
     _pending.clear();
+    _pendingIndex.clear();
     for (final entry in _running.entries) {
       entry.value.cancelled = true;
     }
@@ -155,11 +154,16 @@ class InMemoryJobQueueService implements JobQueueService {
 
   void _schedule() {
     if (_disposed) return;
+    // 把队头的 cancelled 条目顺手清掉；摊还 O(1)。
+    while (_pending.isNotEmpty && _pending.first.cancelled) {
+      _pending.removeFirst();
+    }
     while (_pending.isNotEmpty &&
         _running.length < _globalConcurrency) {
       final next = _pickNextSchedulable();
       if (next == null) return; // 所有 pending 都被 per-provider 限流卡住
       _pending.remove(next);
+      _pendingIndex.remove(next.task.jobId);
       _occupy(next.task.providerId);
       _runJob(next.task, next.handle);
     }
@@ -167,6 +171,7 @@ class InMemoryJobQueueService implements JobQueueService {
 
   _PendingJob? _pickNextSchedulable() {
     for (final p in _pending) {
+      if (p.cancelled) continue;
       final cap = _perProviderCap(p.task.providerId);
       final used = _perProviderSlots[p.task.providerId] ?? 0;
       if (used < cap) return p;
