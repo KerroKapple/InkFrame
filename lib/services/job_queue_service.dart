@@ -65,6 +65,9 @@ class InMemoryJobQueueService implements JobQueueService {
   final Random _random;
 
   final Queue<_PendingJob> _pending = Queue<_PendingJob>();
+  // 与 _pending 一一对应的索引；jobId → 同一个 _PendingJob 引用。
+  // cancel(jobId) 用它做 O(1) 定位 + 移除，避免把 queue 拆成 List 重建。
+  final Map<String, _PendingJob> _pendingIndex = <String, _PendingJob>{};
   final Map<String, _RunningJob> _running = <String, _RunningJob>{};
   final Map<String, int> _perProviderSlots = <String, int>{};
   bool _disposed = false;
@@ -92,7 +95,7 @@ class InMemoryJobQueueService implements JobQueueService {
   @override
   Future<JobHandle> submit(GenerationTask task) async {
     _ensureNotDisposed();
-    if (_pending.any((p) => p.task.jobId == task.jobId) ||
+    if (_pendingIndex.containsKey(task.jobId) ||
         _running.containsKey(task.jobId)) {
       throw StateError('jobId ${task.jobId} already submitted');
     }
@@ -101,7 +104,9 @@ class InMemoryJobQueueService implements JobQueueService {
     final doneCompleter = Completer<JobStatus>();
     final handle = _Handle(task.jobId, controller, doneCompleter);
 
-    _pending.add(_PendingJob(task: task, handle: handle));
+    final pendingJob = _PendingJob(task: task, handle: handle);
+    _pending.add(pendingJob);
+    _pendingIndex[task.jobId] = pendingJob;
     _schedule();
     return handle;
   }
@@ -569,6 +574,8 @@ class _PendingJob {
   _PendingJob({required this.task, required this.handle});
   final GenerationTask task;
   final _Handle handle;
+  // 被 cancel 后由 dispatch loop 跳过并丢弃。pending 队列只追加不重建。
+  bool cancelled = false;
 }
 
 class _RunningJob {
