@@ -50,6 +50,9 @@ abstract class DashScopeAsyncProviderBase
   final ProviderRateLimiter _rateLimiter;
   final Dio _dio;
 
+  /// 仅供 DI 单测验证「共享 limiter」不变量。生产代码不要读这个。
+  ProviderRateLimiter get rateLimiterForTesting => _rateLimiter;
+
   // ---- 子类必须提供 ------------------------------------------------------
 
   /// POST 创建任务的 endpoint 路径（相对 base URL）。

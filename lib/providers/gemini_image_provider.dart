@@ -90,6 +90,9 @@ class GeminiImageProvider implements Submittable, Pollable, KeyValidatable {
   final ProviderRateLimiter _rateLimiter;
   final Dio _dio;
 
+  /// 仅供 DI 单测验证「共享 limiter」不变量。生产代码不要读这个。
+  ProviderRateLimiter get rateLimiterForTesting => _rateLimiter;
+
   /// 同步 Provider 的 inline bytes 暂存（ADR-0004）。
   ///
   /// submit 解码 base64 后塞入；poll 一次性消费并删除。
