@@ -24,6 +24,12 @@ import '../core/models/provider_capabilities.dart';
 import '../providers/provider_registry.dart';
 import 'file_resolver_service.dart';
 
+// 数据结构：
+//   _pending      = Queue<_PendingJob>，保持 FIFO；只追加 / 队头出队
+//   _pendingIndex = Map<jobId, _PendingJob>，cancel 用 O(1) 定位
+//   cancel pending = pendingIndex.remove + 标记 cancelled；queue 不重建
+//   dispatch loop  = 跳过 cancelled 条目并顺手出队（摊还 O(1)）
+//   FIFO / retry / status 机 契约外部不变。
 class InMemoryJobQueueService implements JobQueueService {
   InMemoryJobQueueService({
     required ProviderRegistry registry,
