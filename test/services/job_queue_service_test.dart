@@ -305,6 +305,64 @@ class FakeNodeRepository implements NodeRepository {
   Future<int> hardDelete(String id) => throw UnimplementedError();
 }
 
+/// 性能护栏专用：maxConcurrentJobs=0 → 任务全部堆 pending，便于压 cancel 路径。
+class _BenchNoopProvider implements Submittable {
+  @override
+  ProviderCapabilities get capabilities => const ProviderCapabilities(
+        providerId: 'bench-noop',
+        region: ProviderRegion.global,
+        modes: [GenerationMode.textToImage],
+        supportedRatios: [AspectRatio.r1x1],
+        supportedResolutions: [Resolution.p1080],
+        supportedDurations: [],
+        supportedCameras: [],
+        maxBatchSize: 1,
+        maxRefImages: 0,
+        refImagesIncludeKeyframes: false,
+        supportsFirstFrame: false,
+        supportsLastFrame: false,
+        supportsNegativePrompt: false,
+        supportsSeed: false,
+        supportsSound: false,
+        supportsBatch: false,
+        supportsCancellation: false,
+        supportsPolling: true,
+        costModel: CostModel.perCall(usdPerCall: 0),
+        maxConcurrentJobs: 0,
+        qps: 1,
+        burst: 1,
+      );
+
+  @override
+  Future<JobId> submit(GenerationTask task) async => task.jobId;
+}
+
+InMemoryJobQueueService _buildBenchSvc() {
+  return InMemoryJobQueueService(
+    registry: ProviderRegistry({'bench-noop': () => _BenchNoopProvider()}),
+  );
+}
+
+Future<List<String>> _seedPending(InMemoryJobQueueService svc, int n) async {
+  final ids = <String>[];
+  for (var i = 0; i < n; i++) {
+    final id = 'bench-$i';
+    await svc.submit(GenerationTask(
+      jobId: id,
+      projectId: 'p',
+      canvasId: 'c',
+      resultNodeId: 'r-$i',
+      providerId: 'bench-noop',
+      prompt: 'noop',
+      mode: GenerationMode.textToImage,
+      resolution: Resolution.p1080,
+      aspectRatio: AspectRatio.r1x1,
+    ));
+    ids.add(id);
+  }
+  return ids;
+}
+
 void main() {
   group('InMemoryJobQueueService.submit', () {
     test('单任务 submit→poll→success 路径', () async {
@@ -750,5 +808,60 @@ void main() {
       expect(repo.rows['jx']!['error_code'], 'local_io_error');
       svc.dispose();
     });
+  });
+
+  group('InMemoryJobQueueService.cancel perf invariant', () {
+    // 真正的护栏：N=10000 个 pending 全部 cancel 必须在 500ms 内。
+    // 实测 O(1) 实现 ~250ms；500ms = 2x 余量（CI 抖动）。
+    // O(n) 退化（旧版本 toList+rebuild）会到 ~2500ms+，5x 信噪比。
+    // 上限对 CI runner 宽松到 flake-free。
+    const n = 10000;
+
+    test('cancel head→tail N=10000 < 500ms', () async {
+      final svc = _buildBenchSvc();
+      final ids = await _seedPending(svc, n);
+      final sw = Stopwatch()..start();
+      for (final id in ids) {
+        await svc.cancel(id);
+      }
+      sw.stop();
+      // ignore: avoid_print
+      print('[perf-invariant] head N=$n: ${sw.elapsedMilliseconds}ms');
+      expect(sw.elapsedMilliseconds, lessThan(500),
+          reason: 'cancel head-first 退化到 O(n) 了');
+      svc.dispose();
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('cancel tail→head N=10000 < 500ms', () async {
+      final svc = _buildBenchSvc();
+      final ids = await _seedPending(svc, n);
+      final order = ids.reversed.toList();
+      final sw = Stopwatch()..start();
+      for (final id in order) {
+        await svc.cancel(id);
+      }
+      sw.stop();
+      // ignore: avoid_print
+      print('[perf-invariant] tail N=$n: ${sw.elapsedMilliseconds}ms');
+      expect(sw.elapsedMilliseconds, lessThan(500),
+          reason: 'cancel tail-first 退化到 O(n) 了');
+      svc.dispose();
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    test('cancel random N=10000 < 500ms', () async {
+      final svc = _buildBenchSvc();
+      final ids = await _seedPending(svc, n);
+      final order = ids.toList()..shuffle();
+      final sw = Stopwatch()..start();
+      for (final id in order) {
+        await svc.cancel(id);
+      }
+      sw.stop();
+      // ignore: avoid_print
+      print('[perf-invariant] random N=$n: ${sw.elapsedMilliseconds}ms');
+      expect(sw.elapsedMilliseconds, lessThan(500),
+          reason: 'cancel random-order 退化到 O(n) 了');
+      svc.dispose();
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }
