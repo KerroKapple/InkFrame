@@ -13,10 +13,7 @@ typedef ProviderFactory = Submittable Function();
 
 class ProviderRegistry {
   ProviderRegistry(Map<String, ProviderFactory> entries)
-      : _entries = Map.unmodifiable(entries),
-        _capabilities = List<ProviderCapabilities>.unmodifiable(
-          entries.values.map((f) => f().capabilities),
-        ) {
+      : _entries = Map.unmodifiable(entries) {
     assert(
       entries.keys.every((k) => k.isNotEmpty),
       'providerId must not be empty',
@@ -24,7 +21,6 @@ class ProviderRegistry {
   }
 
   final Map<String, ProviderFactory> _entries;
-  final List<ProviderCapabilities> _capabilities;
 
   /// 按 id 取 Provider。不存在抛 ArgumentError。
   Submittable get(String providerId) {
@@ -42,6 +38,6 @@ class ProviderRegistry {
   bool contains(String providerId) => _entries.containsKey(providerId);
 
   /// 列出所有 Provider 的 capabilities——UI 下拉菜单数据源。
-  /// 构造期快照一次，后续返回同一只读列表，避免每次调用都跑 factory。
-  List<ProviderCapabilities> listCapabilities() => _capabilities;
+  List<ProviderCapabilities> listCapabilities() =>
+      _entries.values.map((f) => f().capabilities).toList(growable: false);
 }
