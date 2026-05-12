@@ -9,25 +9,25 @@
 
 | Section | Entries | contradiction | stale | missing | misleading |
 |---------|--------:|--------------:|------:|--------:|-----------:|
-| §1 分层架构 | — | — | — | — | — |
-| §2 Riverpod DI | — | — | — | — | — |
-| §3 SOLID | — | — | — | — | — |
-| §4 错误体系 | — | — | — | — | — |
-| §5 并发与限流 | — | — | — | — | — |
-| §6 文件路径解析 | — | — | — | — | — |
-| §7 设计 Token | — | — | — | — | — |
-| §8 i18n | — | — | — | — | — |
-| §9 密钥存储 | — | — | — | — | — |
-| §10 性能降级 | — | — | — | — | — |
-| §11 A11y | — | — | — | — | — |
-| §12 测试策略 | — | — | — | — | — |
-| §13 日志规范 | — | — | — | — | — |
-| §14 构建发布 | — | — | — | — | — |
-| 附录 checklist | — | — | — | — | — |
-| Cross-doc (ARCH↔CLAUDE) | — | — | — | — | — |
-| **Total** | — | — | — | — | — |
+| §1 分层架构 | 4 | 1 | 3 | 0 | 0 |
+| §2 Riverpod DI | 3 | 1 | 1 | 0 | 1 |
+| §3 SOLID | 2 | 0 | 1 | 0 | 1 |
+| §4 错误体系 | 4 | 3 | 1 | 0 | 0 |
+| §5 并发与限流 | 3 | 0 | 1 | 1 | 1 |
+| §6 文件路径解析 | 5 | 1 | 3 | 1 | 0 |
+| §7 设计 Token | 0 | 0 | 0 | 0 | 0 |
+| §8 i18n | 3 | 1 | 1 | 0 | 1 |
+| §9 密钥存储 | 3 | 0 | 2 | 1 | 0 |
+| §10 性能降级 | 3 | 0 | 3 | 0 | 0 |
+| §11 A11y | 2 | 0 | 2 | 0 | 0 |
+| §12 测试策略 | 2 | 2 | 0 | 0 | 0 |
+| §13 日志规范 | 3 | 1 | 1 | 1 | 0 |
+| §14 构建发布 | 4 | 0 | 2 | 2 | 0 |
+| 附录 checklist | 3 | 1 | 1 | 1 | 0 |
+| Cross-doc (ARCH↔CLAUDE) | 5 | 5 | 0 | 0 | 0 |
+| **Total** | **49** | **16** | **22** | **7** | **4** |
 
-> 表格在 Task 8 填实数。Total drift entries 必须 ≥ 5（A1 acceptance #3 floor），若严格不到 5，在 Task 8 显式写一段 "ARCHITECTURE.md is in better shape than expected" 说明。
+> Total = 49，远超 A1 acceptance #3 floor (≥ 5)，无需 "better shape than expected" 段。clean 章节（§7 / §5.2 / §11.3 / §13.1-2 / §14.1 / §14.7 / §附.1 / §附.4 / §附.5 / §附.7 / §附.9-10）与 §8.x ARB 实测数据条目不计入 Entries。附录 §附.3 标记为复合 `stale + misleading`，作 1 entry 计入 stale 列。
 
 ---
 
@@ -768,3 +768,40 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 
 **Suggested fix:** 不是直接对立，但术语"screen-scoped"(CLAUDE) ≠ "feature-scoped"(ARCH)；CLAUDE 未提及 `.family` / FutureProvider autoDispose；ARCH 未提及 "HTTP clients app-scoped (shared dio)"。建议统一术语为 ARCH 的 4 类生命周期矩阵，CLAUDE.md 仅引用而不重复定义。
 
+---
+
+## Top-N Priority Drift（建议优先修）
+
+按 `severity = contradiction` 优先 → `misleading` → `stale` → `missing`，每类最多 3 条最关键。引用使用纯文本 `§N.M` 章节号。
+
+### Critical (contradiction × 3)
+1. §8.3 / Cross-doc — System prompt i18n：ARCH 要求走 ARB，CLAUDE.md 与代码（`gemini_image_provider` 等）均要求英文常量；照 ARCH 改会引入 per-locale 模型行为漂移，且对应 ARB key 根本不存在。
+2. §4.1 — `_messageKeys` 表 14 项命名全错（`errorProviderInvalidKey` 实际是 `errorInvalidKey` 等）；按文档查 ARB 或写代码会全表 miss-key。
+3. §13.4 — 日志脱敏文档承诺 "API key 前 4 + ****"/prompt 截断/`~`/`[REDACTED]`，实际是白名单字段值整体替换 `***`，且 `proxy_password` 不在白名单 → 潜在密码原样落盘的数据泄露面。
+
+### High (misleading × 3)
+1. §2.2 — 生命周期矩阵 `.family` 参数化举 `nodeProvider(nodeId)` / `providerClientProvider(providerId)`，仓库 `.family` 零命中；新人按此模式硬造 Provider 名。
+2. §3.D — 依赖倒置示例 `class NodeGenerationService { final Submittable _provider; ... }` 构造注入风格在仓库零实例，实际是 Riverpod Controller；模板抄过来与代码模式冲突。
+3. §5.1 — 状态机末态画了 `cancelled_by_user / cancelled_on_exit` 两个 status，实际是单 `cancelled` + `error_code` 区分；按图写迁移会建错 CHECK 约束。
+
+### Medium (stale × 3)
+1. §10.1 — `PerformanceDegradationController` 整节（含 `effectiveTier` / `PerformanceTier` 枚举）在 `lib/services/` 零文件零类型；整个性能降级抽象全是纸面。
+2. §6.4 — `FileNameSanitizer.sanitize()` 及 200 字截断 / `_1` 冲突后缀 / Unicode 保留语义在仓库零命中；写盘安全语义全部承诺未兑现。
+3. §14.6 — CI Hook 清单列 7 个含 `check-keybindings`，`scripts/hooks/` 实际只有 6 个；新人按文档找 hook 文件直接失败。
+
+### Low (missing × 3)
+1. §9.2 — DashScope 家族 6 个 providerId 在 `SecureStorageKeys.scopeOf` 折叠为单 scope `dashscope`，文档完全没记；新增成员的人会按字面 `provider.{providerId}.api_key` 写出永远读不到的孤儿 key。
+2. §5.1 — cancel 摊还 O(1) invariant（pendingIndex map + soft-delete，commit `9998880`）在 §5.1 无任何记录；性能 invariant 无文档兜底，后续回退无人察觉。
+3. §14.5 — `scripts/sign-and-notarize.sh` 与 codesign / notarytool / signtool 流程全是纸面，且 `.github/workflows/` 无 release workflow → 发布签名公证整体阻塞，P0-Beta 前置项。
+
+---
+
+## A1 Acceptance Criteria 闭环
+
+对应 `docs/internal/new-issue-drafts.md` line 39-44：
+
+- [x] Drift report covers all 1164 lines — Task 1-6 commits 按 §1-§3 / §4-§6 / §7-§9 / §10-§11 / §12-§14 / 附录顺序逐段覆盖，git log 可追溯
+- [x] Each finding cites: section reference + current claim + actual repo state + file:line evidence — Drift Entry Format 4 字段强制
+- [x] At least 5 concrete drift items found (or explicit "better shape than expected" note) — Total = 49，远超 floor
+- [x] Report flags any contradictions between ARCHITECTURE.md and CLAUDE.md — Task 7 专项节（Cross-doc contradictions，5 entries）
+- [ ] CI is green — Task 9 Step 3 验证后勾掉
