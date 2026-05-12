@@ -73,6 +73,10 @@ void main() {
         'token': 'abc.xyz',
         'authorization': 'Bearer 123',
         'prompt': 'very private user text',
+        'password': 'hunter2',
+        'proxy_password': 'corp-proxy-secret',
+        'proxyPassword': 'camel-case-secret',
+        'secret': 'oauth-client-secret',
         'job_id': 'J-1',
       });
       await logger.flush();
@@ -84,6 +88,10 @@ void main() {
       expect(extra['token'], '***');
       expect(extra['authorization'], '***');
       expect(extra['prompt'], '***');
+      expect(extra['password'], '***');
+      expect(extra['proxy_password'], '***');
+      expect(extra['proxyPassword'], '***');
+      expect(extra['secret'], '***');
       expect(extra['job_id'], 'J-1');
 
       await logger.close();
