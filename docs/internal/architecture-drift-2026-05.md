@@ -287,6 +287,91 @@
 
 **Suggested fix (one line):** clarify — 要么 schema 加 `CHECK (image_url !~ '^([a-zA-Z]:|/)')` 列约束，要么 §6.1 明确 "约束仅在应用层强制，schema 不做格式校验"。
 
+## §7 设计 Token 系统与主题切换
+
+§7: clean — token 层级、三套 `InkColors` 变体、主题切换机制均与代码一一对应。
+
+- `lib/theme/tokens.dart:13/157/168/180` 分别定义 `InkColors / InkSpacing / InkRadius / InkShadow` 四个 token 类（§7.1 / §7.2 全部命中）。
+- `InkColors.dark()` (line 43) / `InkColors.light()` (line 72) / `InkColors.highContrast()` (line 101) 三套变体齐全；A11y `focusRing` 字段 (line 37,141) 与 §7.2 注释 "A11y §11 新增" 对应。
+- 主题切换：`lib/theme/app_theme.dart:46` 定义 `enum InkThemeVariant { dark, light, highContrast }`；`lib/core/di/theme.dart:31-82` 的 `ThemeModeController` 监听 `PlatformDispatcher.platformBrightness`（line 50）并按 "用户偏好 > 系统亮度" 决议（line 41-50, 73），与 §7.3 "用户手动选择 > 跟随系统" 优先级一致。
+- 仓库另有 `lib/theme/typography.dart`、`lib/theme/motion.dart`、`lib/theme/primitives/`（7 个文件）— §7.1 层级图未画出，但 `docs/CLAUDE.md` "Token Structure" 已列出，非 drift。
+
+**Suggested fix (one line):** none — §7 与代码一致；如要进一步收紧，可在 §7.1 层级图中补一行 `Primitives（lib/theme/primitives/）` 与 `Typography / Motion` token 文件。
+
+## §8 i18n 架构与 ARB 一致性门禁
+
+### §8.3 — "System prompt 也必须走 i18n" 与项目根铁律及代码现状直接冲突
+
+**Claim (ARCHITECTURE.md:665-670):**
+> **System prompt 也必须走 i18n：** `final systemPrompt = context.l10n.geminiImageSystemPrompt;`
+
+**Reality:** `docs/CLAUDE.md` "LLM / System Prompts — DO NOT i18n" 节明确规定：prompts "Keep them as English string constants ... Translating a system prompt creates a per-locale model behavior fork that is impossible to A/B reason about." 两份治理文档自相矛盾。代码层面也站在 CLAUDE.md 一边——`lib/providers/` 下 7 个 provider 文件 grep `systemPrompt|_kSystemPrompt|_kPromptTemplate` 零命中；`lib/providers/gemini_image_provider.dart:123,137` 只把用户输入 `task.prompt` 直接发给模型，未注入任何 system prompt；`l10n.geminiImageSystemPrompt` 这个 ARB key 在 `app_en.arb` / `app_zh.arb` 中都不存在。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite §8.3 — 删除 "System prompt 也必须走 i18n" 段，改为引用 `docs/CLAUDE.md` 的 "LLM / System Prompts — DO NOT i18n" 铁律。
+
+### §8.1 — `lib/l10n/generated/` 子目录不存在（gen-l10n 输出在 build 目录）
+
+**Claim (ARCHITECTURE.md:632-637):**
+> `lib/l10n/ ├── app_en.arb ├── app_zh.arb └── generated/  # flutter gen-l10n 自动生成，不手动修改`
+
+**Reality:** `lib/l10n/` 实际内容只有 `app_en.arb`、`app_zh.arb`、`l10n_x.dart`（手写的 `BuildContext.l10n` 扩展，非 generated）。无 `generated/` 子目录。Flutter gen-l10n 默认把 `AppLocalizations` 输出到 `.dart_tool/flutter_gen/gen_l10n/`，由 `pubspec.yaml: generate: true` 隐式包入；仓库未 override `synthetic-package: false`。文档画的目录结构会让读者去 `lib/l10n/generated/` 找不到东西。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** rewrite — 删除 `generated/` 行，补一句 "AppLocalizations 由 flutter_gen 写入 `.dart_tool/`（synthetic package），开发者不直接访问"，并提及手写扩展 `lib/l10n/l10n_x.dart`。
+
+### §8.4 — ARB 一致性门禁实际是 Claude hook，而非通用 CI
+
+**Claim (ARCHITECTURE.md:672-681):**
+> `scripts/hooks/check-i18n-coverage.sh` 在每次 `PostToolUse Write/Edit` 后执行 ... 每次 commit 必须满足：en 和 zh 的 key 集合完全一致。
+
+**Reality:** `scripts/hooks/check-i18n-coverage.sh` 存在且 (line 56-60) 用 `grep + sed + sort` 抽 key 求差集，与文档行为大体一致；但触发点是 **Claude Code PostToolUse hook**（line 8 仅接受单文件参数 `$1`），不是 git pre-commit / CI step。`scripts/hooks/pre-commit` 文件确实存在（同目录），需进一步确认是否调用此脚本；无 GitHub Actions 工作流（`.github/workflows/` 未在 §8 提及）。当前措辞 "CI 强制" 措辞夸大——真正强制的是本机 Claude 写文件后的钩子。
+
+**Severity:** `misleading`
+
+**Suggested fix (one line):** clarify — 把 "CI 强制" 改为 "Claude Code PostToolUse hook 强制（脚本同时被 `scripts/hooks/pre-commit` 调用以双重保护）"，并补一句"CI 工作流如未配置请加 `.github/workflows/i18n.yml`"。
+
+### §8.x — ARB 双语 coverage 实测
+
+ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb` 103 key，`only_en = ∅`，`only_zh = ∅`。门禁当前 green。
+
+## §9 密钥存储
+
+### §9.2 — 接口签名与代码完全一致；平台后端清单缺 "debug 文件" 一项
+
+**Claim (ARCHITECTURE.md:707-725):**
+> `abstract class SecureStorageService { Future<void> store / retrieve / delete / exists ... }` + 平台实现 "macOS → Keychain / Windows → Credential Manager"。
+
+**Reality:** `lib/core/interfaces/secure_storage_service.dart` 抽象与 `lib/services/platform_secure_storage_service.dart:9-34` 实现一对一匹配（`store / retrieve / delete / exists` 四方法签名完全一致）。平台后端仅 macOS Keychain + Windows Credential Manager 两套；**没有** debug 文件后端（grep `lib/` 下 `DebugFile|FileSecureStorage` 零命中）。Task 3 描述中提到的"三套（含 debug 文件）"在代码里不存在——若属规划应放 ROADMAP，不应在审计假设里。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** none for §9.2 doc itself（与代码一致）；但若团队期望 debug-file 后端，应在 ROADMAP.md 增项，而非维持在审计任务假设里。
+
+### §9.2 — Key 命名规范缺 "provider family scope 折叠" 这一关键约定
+
+**Claim (ARCHITECTURE.md:723-724):**
+> `provider API key：  'provider.{providerId}.api_key'  /  proxy password：  'network.proxy.password'`
+
+**Reality:** `lib/core/constants/secure_storage_keys.dart:7-40` 实现的是 **family scope** 而非 raw providerId——`wanx-image / wanx-t2v / wanx-i2v / wanx-r2v / kling-v3 / kling-v3-omni` 六个 providerId 在 `scopeOf()` (line 26-29) 折叠为单一 scope `dashscope`，最终 key 是 `provider.dashscope.api_key`，并非 `provider.wanx-image.api_key`。文档完全没提这层映射，新加一个阿里云家族成员的人会按字面 `provider.{providerId}.api_key` 写 key，结果存了一把读不到的孤立密钥。
+
+**Severity:** `missing`
+
+**Suggested fix (one line):** rewrite — 在 §9.2 key 命名规范段补一句 "DashScope 家族（wanx-* / kling-v3*）共用 `provider.dashscope.api_key`，详见 `SecureStorageKeys.scopeOf`"，避免用户重复配置同一把 Key。
+
+### §9.3 — `lib/core/constants/network.dart` 与 `kApiKeyValidationCacheTtl` 整段未实现
+
+**Claim (ARCHITECTURE.md:730-737):**
+> `// lib/core/constants/network.dart` + `const Duration kApiKeyValidationCacheTtl = Duration(hours: 1);` + "缓存有效期内不重复调用 Provider 验证接口（节省配额）"。
+
+**Reality:** `lib/core/constants/` 下只有 `secure_storage_keys.dart` 一个文件；全树 grep `kApiKeyValidationCacheTtl` / `network\.dart` 零命中。整段 "Key 验证缓存" 机制（TTL / 失效条件 / 节配额）在代码里完全不存在——承诺未兑现。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** move to ROADMAP — Key 验证缓存尚未实现，从 §9.3 删除或显式标 "planned"。
+
 
 ---
 
