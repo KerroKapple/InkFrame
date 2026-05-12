@@ -120,6 +120,7 @@
 
   "inspectorVideoPromptLabel": "视频提示词",
   "inspectorVideoDurationLabel": "时长（秒）",
+  "inspectorVideoDurationOption": "{seconds} 秒",
   "inspectorVideoCameraLabel": "运镜",
   "inspectorVideoModeAuto": "生成模式：根据输入自动识别",
   "inspectorVideoModeT2v": "文生视频",

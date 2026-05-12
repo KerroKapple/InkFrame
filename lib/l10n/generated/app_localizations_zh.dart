@@ -294,6 +294,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorVideoDurationLabel => '时长（秒）';
 
   @override
+  String inspectorVideoDurationOption(int seconds) {
+    return '$seconds 秒';
+  }
+
+  @override
   String get inspectorVideoCameraLabel => '运镜';
 
   @override

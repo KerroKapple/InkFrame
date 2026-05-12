@@ -66,6 +66,30 @@ void main() {
     expect(find.text('运镜'), findsOneWidget);
   });
 
+  testWidgets('duration dropdown 显示带单位（"5 秒" 而非 "5"）', (tester) async {
+    const node = CanvasNode(
+      id: 'n1',
+      label: '',
+      type: CanvasNodeType.video,
+      role: NodeRole.config,
+    );
+    await tester.pumpWidget(
+      _host(const VideoConfigInspector(node: node), [_fakeVideoCaps]),
+    );
+    await tester.pumpAndSettle();
+
+    // 打开 dropdown，断言 menu items 显示带单位
+    await tester.tap(find.byType(DropdownButton<int>));
+    await tester.pumpAndSettle();
+
+    // [5, 10] 两个 supportedDurations，每个都应渲染为 "{n} 秒"
+    expect(find.text('5 秒'), findsWidgets);
+    expect(find.text('10 秒'), findsWidgets);
+    // 不应出现裸数字
+    expect(find.text('5'), findsNothing);
+    expect(find.text('10'), findsNothing);
+  });
+
   testWidgets('Generate 按钮初始 disabled（prompt 空）', (tester) async {
     const node = CanvasNode(
       id: 'n1',
