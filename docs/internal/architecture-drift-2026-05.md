@@ -146,6 +146,147 @@
 
 **Suggested fix (one line):** rewrite — 换成 `generation_controller.dart` 真实片段，或注明"示意代码，本仓库改用 Riverpod Controller 形态"。
 
+## §4 错误体系
+
+### §4.1 — 错误码 wire 字符串 `content_policy_violation` 与代码不一致
+
+**Claim (ARCHITECTURE.md:338):**
+> `| content_policy_violation | Provider | false | errorProviderContentPolicy |`
+
+**Reality:** `lib/core/errors/ink_error.dart:12` 实际枚举值 `contentPolicy('content_policy')`，wire 是 `content_policy`（无 `_violation` 后缀）。DB 列 `jobs.error_code` 据注释与此一致。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite — 把表格里的 `content_policy_violation` 改为 `content_policy`，与代码 wire 对齐。
+
+### §4.1 — messageKey 命名与 ARB 实际 key 全表偏离
+
+**Claim (ARCHITECTURE.md:336-349):**
+> 表格列出 14 个 messageKey：`errorProviderInvalidKey / errorProviderInsufficientBalance / errorProviderContentPolicy / errorProviderInvalidParameter / errorProvider5xx / errorProviderBusy / errorProviderTimeout …`
+
+**Reality:** `lib/core/errors/ink_error.dart:39-54` 的 `_messageKeys` 表实际是 `errorInvalidKey / errorInsufficientBalance / errorContentPolicy / errorInvalidParameter / errorProviderServer / errorProviderBusy / errorNetworkTimeout / errorNetworkOffline / errorPollTimeout / errorDownloadFailed / errorLocalIO / errorCancelled / errorCancelledOnExit / errorUnknown`。除 `errorProviderBusy` 一项外，其余 13 个 key 命名与文档全不一致（无 `Provider` 前缀；`5xx` → `Server`；`Timeout` 拆为 Network/Poll）。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite — 整表 messageKey 列以代码与 ARB 实际 key 为准重写。
+
+### §4.1 — `InkError` 字段 `isRetryable` 实为 `retryable` getter，且非构造参数
+
+**Claim (ARCHITECTURE.md:303 / 311 / 317):**
+> `bool get isRetryable;` 且子类 `const ProviderError.invalidKey() : super(..., isRetryable: false)`。
+
+**Reality:** `lib/core/errors/ink_error.dart:85` 是 `bool get retryable => _retryable.contains(code);`（非 `isRetryable`），由全局 `_retryable` set（line 57-63）按 code 静态判定；子类构造器无 `isRetryable` 参数，例如 `ProviderError` (line 98-114) 只接收 `code/extra/cause/stackTrace`。文档示例若被照抄会编译失败。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite — 把 `isRetryable` 改为 `retryable` getter，并删除子类构造器里 `isRetryable:` 命名参数。
+
+### §4.1 — 子类清单与代码层级不符（`ValidationError` 不存在；多出 `NetworkError / DownloadError / CancelledError / UnknownError`）
+
+**Claim (ARCHITECTURE.md:307-329):**
+> 列出四个子类 `ProviderError / StorageError / ValidationError / LocalIOError`。
+
+**Reality:** `lib/core/errors/ink_error.dart` 实际 sealed 子类是 `ProviderError / NetworkError / DownloadError / LocalIOError / CancelledError / UnknownError`（line 98-163）。无 `StorageError`、无 `ValidationError`；多出 4 个文档未提及的子类。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** rewrite — 重写 sealed hierarchy 清单，列实际六个子类并删除 `StorageError / ValidationError`。
+
+## §5 并发与限流
+
+### §5.1 — "全局并发档位 省电/均衡/性能/极致 = 1/2/3/4" 在代码里不存在
+
+**Claim (ARCHITECTURE.md:398-405):**
+> `全局并发上限（性能档位决定）省电=1 / 均衡=2 / 性能=3 / 极致=4`
+
+**Reality:** `lib/services/job_queue_service.dart:41` 仅有 `int globalConcurrency = 2` 构造参数（默认 2）。全树 grep `PerformanceTier` / 档位枚举零命中；`lib/services/job_queue_service.dart:7` 自己注释 `// b4 ⏳ 性能档位 → globalConcurrency 联动`，明确标 "未接入"。文档把规划描述成既成事实。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** move to ROADMAP — 性能档位尚未实现，从 §5.1 删除四档数值或显式标 "planned (b4)"。
+
+### §5.1 — 状态机末态 `cancelled_by_user / cancelled_on_exit` 实为单一 `cancelled` + error_code 区分
+
+**Claim (ARCHITECTURE.md:411-415):**
+> 状态机末态包含 `cancelled_by_user` 与 `cancelled_on_exit` 两个独立 status。
+
+**Reality:** `lib/services/job_queue_service.dart:92,402` 写入 DB 的 `toStatus` 只有单一 `'cancelled'`；取消原因放在 `error_code`（`cancelled_by_user` / `cancelled_on_exit` wire 字符串）。`jobs.status` 取值集合实际是 `pending / submitted / polling / success / error / timeout / cancelled`（7 个），而非文档暗示的 8 个。
+
+**Severity:** `misleading`
+
+**Suggested fix (one line):** rewrite — 把状态机图里 `cancelled_by_user` / `cancelled_on_exit` 合并为 `cancelled`，并补注 "取消原因由 error_code 区分"。
+
+### §5.1 — cancel 复杂度（未声明 → 现在 O(1)）
+
+**Claim (ARCHITECTURE.md:392-418):** §5.1 全节 **未对 cancel 复杂度做任何声明**（无 O(n) / O(1) 字样）。
+
+**Reality:** 实现已在 commit `9998880` 引入 `_pendingIndex` map + soft-delete，cancel 摊还 O(1)（`lib/services/job_queue_service.dart:73-77, 121-142, 161-176`）；commit `364e6a0` 在源码顶部补了数据结构注释（line 27-32）。文档不存在过时复杂度断言，但也未记录 invariant — 是 "应有未有" 的遗漏。
+
+**Severity:** `missing`
+
+**Suggested fix (one line):** clarify — 在 §5.1 增加一行 "cancel 对 pending 队列摊还 O(1)（pendingIndex map + soft-delete，见 job_queue_service.dart 注释）"。
+
+### §5.2 — Token Bucket 字段名 / 接口 clean
+
+§5.2: clean — `qps` / `burst` / `acquire()` 与 `lib/providers/rate_limiter.dart:25-44` 一一对应；阻塞语义、不抛错、不计入 retry 的描述与实现一致。
+
+## §6 文件路径解析契约
+
+### §6.2 — `FileResolverService` 文件位置与文档路径不符
+
+**Claim (ARCHITECTURE.md:481):**
+> `// lib/core/paths/file_resolver_service.dart`
+
+**Reality:** 实际文件在 `lib/services/file_resolver_service.dart`（abstract + DefaultFileResolverService）。`lib/core/paths/` 下只有 `app_paths.dart`，无 `file_resolver_service.dart`。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** rewrite — 把示例路径改为 `lib/services/file_resolver_service.dart`。
+
+### §6.2 — `resolve()` 返回类型 / `toRelative` 入参 / `mediaDir()` 全部与代码偏离
+
+**Claim (ARCHITECTURE.md:482-505):**
+> `String resolve({...})` / `String toRelative({..., required String absolutePath})` / `String mediaDir({..., required MediaType type})` + `enum MediaType { images, videos, thumbnails }`。
+
+**Reality:** `lib/services/file_resolver_service.dart:17-34` 实际签名是 `File resolve({...})`（返回 `File`，非 `String`）、`String toRelative({..., required File source})`（入参是 `File`，非 `String`）、`Directory canvasRoot({...})`（**无** `mediaDir` 方法，**无** `MediaType` 枚举）。文档抽象与实际抽象在签名/方法名层面都不匹配。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite — 用真实签名重写接口块；删除 `mediaDir` / `MediaType` 或先在代码里加上。
+
+### §6.3 — `DefaultFileResolverService(dataDir: ...)` 构造形态不存在
+
+**Claim (ARCHITECTURE.md:516-519):**
+> `return DefaultFileResolverService(dataDir: settings.dataDir);`
+
+**Reality:** `lib/services/file_resolver_service.dart:42` 构造器是 `const DefaultFileResolverService(this._paths)`——位置参数注入 `AppPaths`（不是 `dataDir` 字符串），且 dataDir 来源是 `AppPaths` / 环境变量 `HOME|USERPROFILE` + path_provider 回退，并非 `SettingsService.dataDir`（grep `settingsServiceProvider` 与示例中 `dataDir` 字段在 lib 下零相关命中）。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** rewrite — 改为 `DefaultFileResolverService(ref.watch(appPathsProvider))`（或仓库实际 DI 名），并删除虚构的 `SettingsService.dataDir`。
+
+### §6.4 — `FileNameSanitizer.sanitize()` 在代码中不存在
+
+**Claim (ARCHITECTURE.md:524):**
+> `写入磁盘前，所有文件名必须经过 FileNameSanitizer.sanitize()`
+
+**Reality:** Grep `FileNameSanitizer` / `sanitize` 在 `lib/` 下零命中。`DefaultFileResolverService` 自身有控制字符 / 绝对路径 / `..` 穿越校验（`_assertSafeSegment`、`_controlChar`），但没有 200 字符截断 / `_1` 冲突后缀 / Unicode 保留这些文档承诺的语义。整个清理 API 是承诺未兑现。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** move to ROADMAP — `FileNameSanitizer` 未实现，从 §6.4 删除或标 "planned"。
+
+### §6.1 — "数据库只存相对路径" 在 schema 中无注释 / 约束体现
+
+**Claim (ARCHITECTURE.md:467):**
+> 数据库中 **只存相对路径**，根为画布目录。禁止任何层持有绝对路径字符串。
+
+**Reality:** `lib/storage/schema/001_init.sql` / `schema_v1.dart` 中 `image_url / video_url / thumbnail_url`（line 194 等）均为裸 `TEXT`，无 CHECK 约束、无列注释（COMMENT ON）、无 SQL 文件级说明明确该列必须相对路径。文档契约只在 Dart 层（FileResolverService）落地，schema 层是 best-effort。
+
+**Severity:** `missing`
+
+**Suggested fix (one line):** clarify — 要么 schema 加 `CHECK (image_url !~ '^([a-zA-Z]:|/)')` 列约束，要么 §6.1 明确 "约束仅在应用层强制，schema 不做格式校验"。
+
 
 ---
 
