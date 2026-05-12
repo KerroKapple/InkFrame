@@ -373,6 +373,69 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 **Suggested fix (one line):** move to ROADMAP — Key 验证缓存尚未实现，从 §9.3 删除或显式标 "planned"。
 
 
+## §10 性能降级控制器
+
+### §10.1 — `PerformanceDegradationController` / `lib/services/performance_degradation_controller.dart` 整节未实现
+
+**Claim (ARCHITECTURE.md:744-765):**
+> `// lib/services/performance_degradation_controller.dart` + `@Riverpod(keepAlive: true) class PerformanceDegradationController extends _$PerformanceDegradationController { ... PerformanceTier get effectiveTier => state; ... }`
+
+**Reality:** not present. `lib/services/` 实际只有 6 个文件（`job_queue_service.dart / file_resolver_service.dart / dio_video_download_service.dart / media_kit_thumbnail_service.dart / media_kit_video_player_service.dart / platform_secure_storage_service.dart`），无 `performance_degradation_controller.dart`。全树 grep `DegradationTier|PerformanceTier|tierUp|tierDown|PerformanceDegradationController|effectiveTier|performanceTierProvider` 在 `lib/` 下零命中。整套 "基准档位 vs effectiveTier" 抽象在代码里不存在。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** move to ROADMAP — 性能降级控制器整段未实现，从 §10.1 删除或显式标 "planned"（与 §5.1 性能档位 b4 注释一致）。
+
+### §10.2 — 双阈值 hysteresis 矩阵（内存/帧率/磁盘 + 冷却期）在代码中无任何实现
+
+**Claim (ARCHITECTURE.md:767-775):**
+> `| 内存 RSS | > 80% | 10s | 清 LRU 至 50% ... | 帧率 < 30fps | 5s | 关动画 ... | 磁盘 < 1GB ... | 冷却期：每次降级或恢复后 60s 内不再触发同向动作。`
+
+**Reality:** not present. 无内存/帧率/磁盘信号采样代码——grep `ProcessInfo|currentRss|rss|diskSpace|freeSpace|cooldown` 与降级动作（清 LRU / 关动画 / 缩略图减半）在 `lib/` 下均无与该机制相关命中。Hysteresis、冷却期、降级动作三层皆为纸面规范。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** move to ROADMAP — 整张矩阵搬到 ROADMAP，待 controller 落地后再回流到 ARCHITECTURE.md。
+
+### §10.4 — `lib/services/fps_monitor.dart` 与 3s 滑动平均帧率监控不存在
+
+**Claim (ARCHITECTURE.md:790-800):**
+> `// lib/services/fps_monitor.dart class FpsMonitor { static const _windowDuration = Duration(seconds: 3); ... double get averageFps { ... } }`
+
+**Reality:** not present. `lib/services/` 无 `fps_monitor.dart`；全树 grep `FpsMonitor|averageFps|SchedulerBinding.*addTimingsCallback` 在 `lib/` 下零命中。3 秒滑动平均帧率采样机制完全缺失。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** move to ROADMAP — 删除 §10.4 代码示例或标 "planned"。
+
+## §11 A11y 分层责任与键盘覆盖率门禁
+
+### §11.1 — Semantics / SemanticsService.announce 在 ViewModel/Widget 层近乎零覆盖
+
+**Claim (ARCHITECTURE.md:807-826):**
+> 分层责任矩阵：Widget Layer 声明 `Semantics` label/role/state；ViewModel Layer "状态变化时触发 `SemanticsService.announce`"；并要求"节点状态变化必须 announce"、"所有按钮/输入框必须有 label"、"节点必须声明 role + state"。
+
+**Reality:** `lib/` 全树 grep `Semantics\(|SemanticsService\.announce` 仅 2 个命中文件（`lib/theme/components/ink_button.dart:1`、`lib/theme/components/ink_error_banner.dart:1`，各 1 处），且 grep `SemanticsService\.announce` 零命中。节点状态变化、ViewModel announce、Semantics role+state 三条强承诺在仓库里均无落地。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** clarify — 在 §11.1/§11.2 标注"当前覆盖度近零，P0-Beta 前补齐"，或把该节整体降级为 ROADMAP 条目。
+
+### §11.4 — `scripts/hooks/check-keyboard-semantics.sh` 不存在；键盘门禁纸面规范
+
+**Claim (ARCHITECTURE.md:864-870):**
+> `CI Hook scripts/hooks/check-keyboard-semantics.sh：扫描 lib/features/ 下的 GestureDetector 和 InkWell，若无对应的 onKey / KeyboardListener / Shortcuts 覆盖，exit 1`
+
+**Reality:** not present. `scripts/hooks/` 下实际只有 8 个脚本（`check-direct-instantiation.sh / check-disposable-cleanup.sh / check-i18n-coverage.sh / check-inline-styles.sh / check-updated-at.sh / check-magic-strings.sh / pre-commit / pre-push`），无 `check-keyboard-semantics.sh`。佐证：`lib/` 全树 grep `LogicalKeySet|SingleActivator|Shortcuts\(|CallbackShortcuts` 零命中——即便门禁存在也会因无键盘绑定全量 exit 1，进一步说明门禁从未运行过。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** move to ROADMAP — 删除"CI Hook ..."段或标 "planned"，与 §10 性能降级一并归入 P0-Beta 验收前置项。
+
+### §11.3 — focusRing token clean
+
+§11.3: clean — `lib/theme/tokens.dart` 提供 `focusRing` 字段（`InkColors` 三套变体均含；§7.2 注释 "A11y §11 新增" 与此呼应）；token 层供给到位，但消费侧（`FocusableActionDetector` + 2px 焦点环）在 `lib/` 中无实际使用（grep `FocusableActionDetector` 零命中）——属于"token 备好、widget 未消费"的半成品状态，按 §11.3 仅描述 token 规范而言不算 drift，故标 clean。
+
 ---
 
 ## Cross-doc contradictions (ARCHITECTURE.md ↔ docs/CLAUDE.md)
