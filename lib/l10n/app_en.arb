@@ -125,6 +125,12 @@
 
   "inspectorVideoPromptLabel": "Video prompt",
   "inspectorVideoDurationLabel": "Duration (seconds)",
+  "inspectorVideoDurationOption": "{seconds}s",
+  "@inspectorVideoDurationOption": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
   "inspectorVideoCameraLabel": "Camera movement",
   "inspectorVideoModeAuto": "Mode: auto-detected from inputs",
   "inspectorVideoModeT2v": "Text-to-video",

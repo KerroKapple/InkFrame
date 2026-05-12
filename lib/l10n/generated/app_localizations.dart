@@ -656,6 +656,12 @@ abstract class AppLocalizations {
   /// **'Duration (seconds)'**
   String get inspectorVideoDurationLabel;
 
+  /// No description provided for @inspectorVideoDurationOption.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String inspectorVideoDurationOption(int seconds);
+
   /// No description provided for @inspectorVideoCameraLabel.
   ///
   /// In en, this message translates to:

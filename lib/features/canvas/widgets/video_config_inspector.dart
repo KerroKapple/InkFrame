@@ -266,7 +266,10 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             items: [
               if (selected != null)
                 for (final d in selected.supportedDurations)
-                  DropdownMenuItem(value: d, child: Text('$d')),
+                  DropdownMenuItem(
+                    value: d,
+                    child: Text(context.l10n.inspectorVideoDurationOption(d)),
+                  ),
             ],
             onChanged: _running
                 ? null

@@ -32,7 +32,7 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             const _Section(
-              title: 'InlinePanel Mock（节点内嵌面板组装样例）',
+              title: 'InlinePanel Mock (node inline panel composition)',
               child: _InlinePanelMock(),
             ),
             const _Section(
@@ -43,18 +43,18 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
                 children: <Widget>[
                   InkGlassCard(
                     padding: EdgeInsets.all(InkSpacing.md),
-                    child: Text('InkGlassCard\n圆角 lg (12) blur 40 sat 1.5'),
+                    child: Text('InkGlassCard\nradius lg (12) blur 40 sat 1.5'),
                   ),
                   InkGlassPanel(
                     padding: EdgeInsets.all(InkSpacing.md),
-                    child: Text('InkGlassPanel\n圆角 md (8) blur 24 sat 1.25'),
+                    child: Text('InkGlassPanel\nradius md (8) blur 24 sat 1.25'),
                   ),
                   InkGlassPill(
                     padding: EdgeInsets.symmetric(
                       horizontal: InkSpacing.md,
                       vertical: InkSpacing.sm,
                     ),
-                    child: Text('InkGlassPill 圆胶囊'),
+                    child: Text('InkGlassPill (pill shape)'),
                   ),
                 ],
               ),
@@ -82,25 +82,25 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
                 runSpacing: InkSpacing.sm,
                 children: <Widget>[
                   InkSurfaceButton(
-                    label: '原点',
+                    label: 'Home',
                     icon: Icons.home_outlined,
                     onPressed: () {},
                   ),
                   InkSurfaceButton(
-                    label: '全览',
+                    label: 'Fit all',
                     icon: Icons.zoom_out_map,
                     onPressed: () {},
                   ),
-                  InkSurfaceButton(label: '无 icon', onPressed: () {}),
+                  InkSurfaceButton(label: 'No icon', onPressed: () {}),
                   InkSurfaceButton.icon(
                     icon: Icons.add,
                     onPressed: () {},
-                    tooltip: '放大',
+                    tooltip: 'Zoom in',
                   ),
                   InkSurfaceButton.icon(
                     icon: Icons.remove,
                     onPressed: () {},
-                    tooltip: '缩小',
+                    tooltip: 'Zoom out',
                   ),
                   const InkSurfaceButton(label: 'disabled', onPressed: null),
                 ],
@@ -119,12 +119,12 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
                       children: <Widget>[
                         Icon(Icons.add, size: 14),
                         SizedBox(width: InkSpacing.xs),
-                        Text('添加参考图'),
+                        Text('Add reference'),
                       ],
                     ),
                   ),
                   const InkDashedSlot(
-                    child: Text('静态占位（不可 tap）'),
+                    child: Text('Static slot (non-tappable)'),
                   ),
                 ],
               ),
@@ -150,13 +150,13 @@ class PrimitivesShowcaseScreen extends StatelessWidget {
                 children: <Widget>[
                   SizedBox(
                     width: 320,
-                    child: InkCompactTextField(placeholder: '输入提示词...'),
+                    child: InkCompactTextField(placeholder: 'Enter prompt...'),
                   ),
                   SizedBox(height: InkSpacing.md),
                   SizedBox(
                     width: 320,
                     child: InkCompactTextField(
-                      placeholder: '多行模式：讲一个故事...',
+                      placeholder: 'Multiline: tell a story...',
                       minLines: 3,
                       maxLines: 6,
                     ),
@@ -200,7 +200,7 @@ class _InlinePanelMock extends StatelessWidget {
               child: _FakeNodeCard(
                 width: 220,
                 height: 140,
-                label: 'shot_42 / 图片结果',
+                label: 'shot_42 / image result',
                 colors: colors,
                 typo: typo,
               ),
@@ -227,7 +227,7 @@ class _InlinePanelMock extends StatelessWidget {
                       Row(
                         children: <Widget>[
                           Text(
-                            '参考',
+                            'Refs',
                             style: typo.nano.copyWith(color: colors.fg3),
                           ),
                           const SizedBox(width: InkSpacing.sm),
@@ -260,7 +260,7 @@ class _InlinePanelMock extends StatelessWidget {
                                       ),
                                       const SizedBox(width: 2),
                                       Text(
-                                        '加',
+                                        'Add',
                                         style: typo.nano
                                             .copyWith(color: colors.fg3),
                                       ),
@@ -275,7 +275,7 @@ class _InlinePanelMock extends StatelessWidget {
                       const SizedBox(height: InkSpacing.sm),
                       // Prompt
                       const InkCompactTextField(
-                        placeholder: '输入提示词（/ 命令、@ 引用）…',
+                        placeholder: 'Enter prompt (/ commands, @ refs)...',
                         minLines: 3,
                         maxLines: 5,
                       ),
@@ -305,11 +305,11 @@ class _InlinePanelMock extends StatelessWidget {
                                 ),
                                 InkAccentChip(
                                   icon: Icons.videocam_outlined,
-                                  label: '运镜',
+                                  label: 'Camera',
                                   onPressed: () {},
                                 ),
                                 InkSurfaceButton(
-                                  label: '高级',
+                                  label: 'Advanced',
                                   icon: Icons.tune,
                                   onPressed: () {},
                                 ),
@@ -319,7 +319,7 @@ class _InlinePanelMock extends StatelessWidget {
                           const SizedBox(width: InkSpacing.sm),
                           InkGradientButton(
                             variant: InkGradientVariant.image,
-                            label: '生成',
+                            label: 'Generate',
                             icon: Icons.bolt,
                             onPressed: () {},
                           ),

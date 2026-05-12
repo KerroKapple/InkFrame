@@ -307,6 +307,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorVideoDurationLabel => 'Duration (seconds)';
 
   @override
+  String inspectorVideoDurationOption(int seconds) {
+    return '${seconds}s';
+  }
+
+  @override
   String get inspectorVideoCameraLabel => 'Camera movement';
 
   @override
