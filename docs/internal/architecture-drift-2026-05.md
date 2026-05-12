@@ -23,11 +23,11 @@
 | §12 测试策略 | 2 | 2 | 0 | 0 | 0 |
 | §13 日志规范 | 3 | 1 | 1 | 1 | 0 |
 | §14 构建发布 | 4 | 0 | 2 | 2 | 0 |
-| 附录 checklist | 3 | 1 | 1 | 1 | 0 |
+| 附录 checklist | 2 | 0 | 1 | 1 | 0 |
 | Cross-doc (ARCH↔CLAUDE) | 5 | 5 | 0 | 0 | 0 |
-| **Total** | **49** | **16** | **22** | **7** | **4** |
+| **Total** | **48** | **15** | **22** | **7** | **4** |
 
-> Total = 49，远超 A1 acceptance #3 floor (≥ 5)，无需 "better shape than expected" 段。clean 章节（§7 / §5.2 / §11.3 / §13.1-2 / §14.1 / §14.7 / §附.1 / §附.4 / §附.5 / §附.7 / §附.9-10）与 §8.x ARB 实测数据条目不计入 Entries。附录 §附.3 标记为复合 `stale + misleading`，作 1 entry 计入 stale 列。
+> Total = 48，远超 A1 acceptance #3 floor (≥ 5)，无需 "better shape than expected" 段。clean 章节（§7 / §5.2 / §11.3 / §13.1-2 / §14.1 / §14.7 / §附.1 / §附.4 / §附.5 / §附.6 / §附.7 / §附.9-10）与 §8.x ARB 实测数据条目不计入 Entries。附录 §附.3 标记为复合 `stale + misleading`，作 1 entry 计入 stale 列。原 §附.6 entry 在本 PR 内 amend 校正为 clean（buildUpdate 传递性强制 + CI 白名单豁免，详见该条 Reality 段）。
 
 ---
 
@@ -619,21 +619,26 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 
 **Suggested fix (one line):** 无须修改。
 
-### §附.6 — Repository `update` 经 `withUpdatedAt()` 包装 partial drift
+### §附.6 — Repository `upsert/update` 经 `withUpdatedAt()` 包装 clean (transitive enforcement)
 
 **Claim (ARCHITECTURE.md:1160):**
 > 所有 Repository `upsert/update` 经过 `withUpdatedAt()` 包装
 
-**Reality:** 部分 repository 的 `update(...)` 方法**未**调用 `withUpdatedAt`：
-- `lib/storage/repositories/postgres_batch_result_repository.dart:73-87`: `update` 直接展开 patch，**未** `withUpdatedAt` 包装。
-- `lib/storage/repositories/postgres_edge_repository.dart:83-84`: 注释明确 "edges 表没有 updated_at 列；withUpdatedAt 不适用——直接 patch"，属合理豁免但 invariant 字面未豁免。
-- `lib/storage/repositories/postgres_style_lane_repository.dart:65` / `postgres_project_repository.dart:57` / `postgres_node_repository.dart:89` / `postgres_job_repository.dart:103` / `postgres_canvas_repository.dart:57`: 5 个 `update` 方法签名均直接接 patch；未在采样片段中看到 `withUpdatedAt` 调用（`base_repository.dart` 仅在 `upsert` 路径用 `withUpdatedAt` —— line 47）。
+**Reality:** clean — invariant 通过 `BaseRepository.buildUpdate` **传递性强制**，且 CI 脚本为无 `updated_at` 列的表显式白名单豁免。原 entry 漏看了这一层传递关系，特此更正：
 
-注：`withUpdatedAt` 在 `lib/` 真实调用仅 1 处（`base_repository.dart:47` 的 upsert 分支）。invariant 中关于 `update` 路径的部分实际未被 base class 强制；具体 repository 的 `update` 实现自行决定是否包装。
+- `lib/storage/base_repository.dart:50-52` —— `buildUpdate` 内部 `patch.containsKey('updated_at') ? Map.from(patch) : withUpdatedAt(patch)`，每次 UPDATE 自动注入 `updated_at`。
+- 5 个有 `updated_at` 列的 repo 全部走 `buildUpdate`：
+  - `postgres_canvas_repository.dart:58, 68`
+  - `postgres_node_repository.dart:99, 131`
+  - `postgres_project_repository.dart:58, 68`
+  - `postgres_style_lane_repository.dart:66, 76`
+- `postgres_node_repository.dart:114-115` 的 JSONB merge update 显式 `updated_at = @uat`（手写 SQL 不走 buildUpdate，但 invariant 仍维持）。
+- 手写 UPDATE 三个表 `jobs` / `batch_results` / `edges` 的 schema DDL 实际**无** `updated_at` 列（`lib/storage/schema/001_init.sql:123, 148, 186`），靠 `created_at` + 状态切换时间戳跟踪生命周期。
+- CI 脚本 `scripts/hooks/check-updated-at.sh:14`（白名单正则 `UPDATE\s+(edges|jobs|batch_results)\b`）静态拦截，未走 `withUpdatedAt` 的 UPDATE 语句若涉及非白名单表立即 exit 1。
 
-**Severity:** `contradiction`
+**Severity:** （不构成 drift）
 
-**Suggested fix (one line):** rewrite invariant 为"经过 `withUpdatedAt()` 包装（除 schema 无 `updated_at` 列的表如 `edges`）"，并在 `BaseRepository.update` 默认通道强制注入。
+**Suggested fix (one line):** 无须修改；可考虑在 ARCH §附.6 文案补一行 "schema 无 `updated_at` 的表（edges/jobs/batch_results）由 CI 白名单豁免"，让读者不必反推。
 
 ### §附.7 — 无裸 `Exception` 跨层 clean
 
@@ -802,6 +807,6 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 
 - [x] Drift report covers all 1164 lines — Task 1-6 commits 按 §1-§3 / §4-§6 / §7-§9 / §10-§11 / §12-§14 / 附录顺序逐段覆盖，git log 可追溯
 - [x] Each finding cites: section reference + current claim + actual repo state + file:line evidence — Drift Entry Format 4 字段强制
-- [x] At least 5 concrete drift items found (or explicit "better shape than expected" note) — Total = 49，远超 floor
+- [x] At least 5 concrete drift items found (or explicit "better shape than expected" note) — Total = 48，远超 floor
 - [x] Report flags any contradictions between ARCHITECTURE.md and CLAUDE.md — Task 7 专项节（Cross-doc contradictions，5 entries）
 - [x] CI is green — PR #89 CI all green (analyze+hooks / gitleaks / golden / test+coverage)
