@@ -438,6 +438,121 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 
 ---
 
+## §12 测试策略与分层
+
+### §12.1 — Repository 75% 覆盖率门槛未在 CI 强制
+
+**Claim (ARCHITECTURE.md:884, 934-946):**
+> Repository 层 ... 75% ... `lcov --extract coverage/lcov.info 'lib/storage/*' -o storage_coverage.info; check_coverage storage_coverage.info 75`
+
+**Reality:** `.github/workflows/ci.yml:76-87` 只用 `VeryGoodOpenSource/very_good_coverage@v3` 跑了一道 `min_coverage: 70` 的全仓门禁，**没有** `lcov --extract` 拆 `lib/storage/*` 单独打 75% 的步骤，也没有任何 `check_coverage` 工具调用；门禁同时还 `exclude` 掉了 `lib/main.dart / media_kit_* / video_player / thumbnail / l10n/generated / features/debug`（doc 完全未提）。Repository 层的 75% 浮在纸面，CI 无法兜底。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite §12.1 + §12.5 — 改为 "全仓 70%（含 exclude list）" 或在 CI 加一步真实 lcov extract + storage 75% 二段门禁。
+
+### §12.4 — `dart_test.yaml` 标签与超时配置不符
+
+**Claim (ARCHITECTURE.md:917-924):**
+> `tags:\n  integration:\n    timeout: 60s\n  unit:\n    timeout: 10s`
+
+**Reality:** `dart_test.yaml:1-4` 实际定义的是 `tags: { pg: ... }`（占位、未设超时），用途是真 PG 集成测；仓内 `@Tags(...)` 命中 4 处全部是 `@Tags(['pg'])`（`test/storage/schema/violation_matrix_test.dart:5`、`test/storage/schema/cascade_test.dart:2`、`test/storage/migration_runner_integration_test.dart:3`、`test/storage/repositories/postgres_repositories_integration_test.dart:2`）。`integration` / `unit` 两个 tag 名在仓中**零命中**，doc 给的 `flutter test --tags integration` / `--exclude-tags integration` 命令打不到任何测试。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite — 把 §12.4 改为 `pg` tag 实情（"真 PG 集成测；未设 TEST_PG_URL 时自动 skip"），删除 integration/unit 超时段。
+
+## §13 日志规范
+
+### §13.3 — 接口命名 `InkLogger` ≠ 实际 `LoggerService`
+
+**Claim (ARCHITECTURE.md:984-990):**
+> `// lib/core/logging/ink_logger.dart\nabstract class InkLogger { void error(String module, String msg, {Object? cause, Map<String, Object> extra = const {}}); ... }`
+
+**Reality:** `lib/core/logging/logger_service.dart:62-79` 实际接口名 `LoggerService`（不是 `InkLogger`），文件名 `logger_service.dart`（不是 `ink_logger.dart`）；方法签名 `extra` 类型为 `Map<String, Object?>?`（可空 + 值可空），与 doc 的 `Map<String, Object> extra = const {}` 都不同；`error` 多了 `StackTrace? stackTrace` 参数 doc 未列。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** rewrite §13.3 — 同步接口名 / 文件名 / `extra` 可空签名 / `stackTrace` 参数。
+
+### §13.4 — 脱敏规则与实现策略完全不同
+
+**Claim (ARCHITECTURE.md:1005-1014):**
+> API Key 显示前 4 位 + `****`；prompt 截断至前 50 字符 + `...`；用户文件路径替换 home 目录为 `~`；代理密码替换为 `[REDACTED]`
+
+**Reality:** `lib/core/logging/logger_service.dart:100-108, 119-133` 实际策略是"白名单 key 全量替换 `***`"：命中 `key / api_key / apikey / token / authorization / authorisation / prompt`（**不区分大小写**）整体替换为字面量 `***`；**没有** "前 4 位 + ****" 截断逻辑、**没有** prompt 前 50 字符截断、**没有** home → `~` 路径替换、**没有** `[REDACTED]` 字面量；代理密码字段（如 `proxy_password`）不在白名单内，会原样落盘——这是一条潜在数据泄露面。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite — 要么把 §13.4 改为"白名单字段值替换 ***"实情，要么在 LoggerService 实现 doc 描述的差异化打码（API key 前 4 / prompt 截断 50 / `~` / `[REDACTED]`）。
+
+### §13.5 — 崩溃日志独立保留 3 份"未实现写入路径"
+
+**Claim (ARCHITECTURE.md:1023):**
+> 崩溃日志：`inkframe.crash.{timestamp}.log`，独立保留最近 3 份，不参与轮转
+
+**Reality:** `lib/core/logging/logger_service.dart:275-277` 只在 `_logFilesByAge` 里**跳过** `inkframe.crash.` 前缀文件（不参与磁盘预算回收），但仓内 grep 找不到任何"写崩溃日志"的代码路径（无 FlutterError.onError / PlatformDispatcher.instance.onError / runZonedGuarded 调 logger 写 `inkframe.crash.*` 的逻辑），也没有"最近 3 份"的滚动保留实现。当前是"目录扫描时跳过这类文件名"，并非实际能产出 crash log。
+
+**Severity:** `missing`
+
+**Suggested fix (one line):** clarify — 在 §13.5 标 "planned: crash dump writer 未实现，当前 LoggerService 仅在磁盘回收时豁免 `inkframe.crash.*` 前缀" 或移入 ROADMAP。
+
+### §13.1 — 日志格式 / §13.2 模块命名 clean
+
+§13.1: clean — `_serialize` (`logger_service.dart:135-149`) 输出 `ts/level/module/msg/extra` 五字段单行 JSON，与 doc 一致；`ts` 走 `DateTime.now().toUtc().toIso8601String()`。§13.2: clean — 模块名作为字符串参数自由传入，无 schema 强制，doc 给的是命名指南而非接口契约，不构成 drift。
+
+## §14 构建与发布流水线
+
+### §14.3 — PG 拉取脚本路径不对
+
+**Claim (ARCHITECTURE.md:1060-1061):**
+> `# scripts/fetch-pg-binaries.sh\nPG_VERSION=$(cat scripts/pg-version.txt)`
+
+**Reality:** `scripts/fetch-pg-binaries.sh` not present；实际路径为 `scripts/pg/fetch-binaries.sh`，版本文件 `scripts/pg/pg-version.txt`（均位于 `scripts/pg/` 子目录）。doc 的 §14.4 构建步骤里同样写错路径 `scripts/fetch-pg-binaries.sh`（line 1084）。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** rewrite §14.3 + §14.4 — 把脚本路径统一改为 `scripts/pg/fetch-binaries.sh` 与 `scripts/pg/pg-version.txt`。
+
+### §14.4 / §14.5 — `scripts/sign-and-notarize.sh` 不存在；签名公证只有纸面流程
+
+**Claim (ARCHITECTURE.md:1091, 1098-1118):**
+> `scripts/sign-and-notarize.sh         # 8. 签名 + 公证` + macOS `codesign` / `xcrun notarytool` / Windows `signtool` 三段实操命令
+
+**Reality:** not present。`scripts/` 树（`scripts/hooks/`、`scripts/lib/release_guardrails.sh`、`scripts/pg/*`、`scripts/release-tag.sh`）下没有 `sign-and-notarize.sh`，没有任何 codesign / notarytool / signtool 调用；`.github/workflows/` 也无 release / sign workflow。整个 §14.5 是计划稿。
+
+**Severity:** `missing`
+
+**Suggested fix (one line):** move to ROADMAP — §14.5 标 "planned, 见 ROADMAP P0-Beta 签名公证"，或新增 release workflow + 脚本后再写回。
+
+### §14.2 — 平台构建矩阵在 CI 中不存在
+
+**Claim (ARCHITECTURE.md:1040-1053):**
+> `matrix: include: - macos-latest arm64 ... - macos-latest x64 ... - windows-latest x64 ...`
+
+**Reality:** `.github/workflows/ci.yml:18-108` 三个 job（analyze / test / golden）全部跑在 `ubuntu-latest` 单平台，**没有** matrix 配置，**没有** release-build workflow 文件（`.github/workflows/` 只有 `ci.yml` 与 `secret-scan.yml`）。ci.yml 头注释也明说 "macOS/Windows 烟测放到 release 流水线"——但该流水线还没建。
+
+**Severity:** `missing`
+
+**Suggested fix (one line):** move to ROADMAP — §14.2 整段标 planned，或先新增 `.github/workflows/release.yml` 再保留 doc。
+
+### §14.6 — CI Hook 清单与 ci.yml 不齐（7 条 vs 6 条）
+
+**Claim (ARCHITECTURE.md:1125-1133):**
+> 7 个 hook：check-magic-strings / check-inline-styles / check-direct-instantiation / check-disposable-cleanup / check-i18n-coverage / check-updated-at / check-keybindings
+
+**Reality:** `scripts/hooks/` 下只有 6 个 `check-*.sh`（`check-direct-instantiation / check-disposable-cleanup / check-i18n-coverage / check-inline-styles / check-magic-strings / check-updated-at`），无 `check-keybindings.sh`；`.github/workflows/ci.yml:33-44` 也只挂了这 6 个 hook。§11.4 已记录 `check-keyboard-semantics.sh` 缺失（不同脚本名，同一类问题）。
+
+**Severity:** `stale`
+
+**Suggested fix (one line):** rewrite §14.6 — 删除 `check-keybindings.sh` 行（或并入 §11.4 的 ROADMAP 条目）。
+
+### §14.1 / §14.7 — 触发条件 / 发布渠道 clean
+
+§14.1: clean — `ci.yml:10-13` `on: { push: branches: [main], pull_request: }` 与 doc "PR → main / push main" 触发条件一致。§14.7: clean — `scripts/release-tag.sh` 实际就在做 annotated tag + guardrail（grep `release(v*)` pattern 校验），与 doc 描述的 alpha/beta/stable tag 流派一致；GitHub Releases 侧操作不在仓内代码可验证。
+
+---
+
 ## Cross-doc contradictions (ARCHITECTURE.md ↔ docs/CLAUDE.md)
 
 <!-- Task 7 填充。 -->
