@@ -804,4 +804,4 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 - [x] Each finding cites: section reference + current claim + actual repo state + file:line evidence — Drift Entry Format 4 字段强制
 - [x] At least 5 concrete drift items found (or explicit "better shape than expected" note) — Total = 49，远超 floor
 - [x] Report flags any contradictions between ARCHITECTURE.md and CLAUDE.md — Task 7 专项节（Cross-doc contradictions，5 entries）
-- [ ] CI is green — Task 9 Step 3 验证后勾掉
+- [x] CI is green — PR #89 CI all green (analyze+hooks / gitleaks / golden / test+coverage)
