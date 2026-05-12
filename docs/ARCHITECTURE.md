@@ -662,12 +662,21 @@ Text("Add Node")
 ToastService.show("Generation complete")
 ```
 
-**System prompt 也必须走 i18n：**
+**System prompt 不走 i18n —— 必须是英文常量：**
+
+发给 AI Provider 的系统 prompt 是模型契约的一部分，不是面向用户的拷贝。统一以英文常量形式留在 `lib/providers/<provider>_prompts.dart`（短 prompt 可内联在调用点附近）。把 system prompt 翻译成多语言等于按 locale 给模型行为做 A/B 分叉，无法对照推理。
 
 ```dart
-// AI Provider 的系统 prompt 也在 ARB 中管理
-final systemPrompt = context.l10n.geminiImageSystemPrompt;
+// ✅ 正确 —— 英文常量
+const _kGeminiImageSystemPrompt = '''
+You are an image-generation assistant...
+''';
+
+// ❌ 错误 —— i18n'd prompt 会随 locale 漂移
+final hint = context.l10n.geminiSystemPrompt;
 ```
+
+如需在 prompt 内**注入**与用户语言相关的文本（例如 "respond in the user's UI language"），把 UI locale code 作为参数传入；prompt 模板本身保持英文。
 
 ### 8.4 ARB 一致性门禁（CI 强制）
 
