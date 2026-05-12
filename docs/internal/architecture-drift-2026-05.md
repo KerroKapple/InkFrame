@@ -553,6 +553,123 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 
 ---
 
+## 附录
+
+10 条 invariant 逐条验证（ARCHITECTURE.md §附录, line 1151–1164）。结论概要：
+
+- `new ConcreteClass()` in Widget/Service 层: **clean**
+- 硬编码 UI 字符串: **clean**（前置 §8 已覆盖；ARB key 集合一致）
+- `Color(0xFF...)` / `fontSize: N` / `EdgeInsets.all(N)`: **partial drift**（见 §附.3）
+- `StreamSubscription` / `Timer` / `AnimationController` dispose: **clean**
+- `app_en.arb` 与 `app_zh.arb` key 集合一致: **clean**（en/zh 各 103 keys，diff = ∅）
+- Repository `upsert/update` 经 `withUpdatedAt()` 包装: **partial**（见 §附.6）
+- 错误通过 `InkError` 传播，无裸 `Exception` 跨层: **clean**（`throw Exception(` 0 hits in lib/）
+- `ref.watch()` in `build()` / `ref.read()` in callbacks: **not fully audited**（见 §附.8）
+- `flutter analyze` 0 warning / `flutter test` 全绿: **out-of-scope**（前置 §12/§14 覆盖；本次仅静态 sweep）
+
+### §附.1 — `new ConcreteClass()` in Widget/Service 层 clean
+
+**Claim (ARCHITECTURE.md:1155):**
+> 没有 `new ConcreteClass()` 在 Widget / Service 层
+
+**Reality:** clean — `grep -rn 'new [A-Z]' lib/**/*.dart` 仅 1 hit (`lib/services/file_resolver_service.dart:1` 为注释或路径字符串而非构造器调用; Dart 2 起 `new` 关键字已可省略，全局零有效命中)。
+
+**Severity:** （不构成 drift）
+
+**Suggested fix (one line):** 无须修改。
+
+### §附.3 — 硬编码视觉值 partial drift (debug showcase + InteractiveViewer)
+
+**Claim (ARCHITECTURE.md:1157):**
+> 没有 `Color(0xFF...)` / `fontSize: N` / `EdgeInsets.all(N)`
+
+**Reality:**
+- `lib/theme/tokens.dart`: 69× `Color(0xFF...)` —— **token 定义文件本身**，invariant 隐含 token 源文件除外，不算 drift。
+- `lib/theme/typography.dart:22-57`: 8× `fontSize: N * scale` —— typography token 定义文件，token 源文件，不算 drift。
+- `lib/theme/primitives/ink_gradient_button.dart:32-37`: 6× `Color(0xFF...)` 作为 `InkGradientVariant` 颜色对常量。**stale**——这些渐变色应迁入 `tokens.dart` 而不是写在 primitive 里。
+- `lib/features/debug/primitives_showcase_screen.dart`: 1× `Color(0xFF...)` + 2× `EdgeInsets.all(N)` —— **debug 展厅**屏幕，附录未列出豁免；invariant 字面上禁止。建议明确豁免 `features/debug/`。
+- `lib/features/canvas/widgets/canvas_view.dart:325`: `boundaryMargin: const EdgeInsets.all(2000)` —— InteractiveViewer 边界外延，非视觉 padding，但 invariant 字面禁止。**misleading**：invariant 应澄清"视觉 padding"而非所有 `EdgeInsets.all`。
+
+**Severity:** `stale`（ink_gradient_button 硬编码色应迁入 tokens）+ `misleading`（附录 invariant 未区分视觉 padding vs. 几何边界 / 未豁免 debug 展厅）
+
+**Suggested fix (one line):** rewrite 附录条目为"非 `lib/theme/` 与 `features/debug/` 下"；并将 `ink_gradient_button.dart` 的 6 色迁入 tokens。
+
+### §附.4 — Timer / AnimationController dispose clean
+
+**Claim (ARCHITECTURE.md:1158):**
+> 所有 `StreamSubscription` / `Timer` / `AnimationController` 有 dispose
+
+**Reality:** clean — `StreamSubscription` 与 `AnimationController` 在 `lib/` 0 hits（功能上未使用）；`Timer(` 3 处全部正确 cancel：
+- `lib/providers/rate_limiter.dart:69` → `dispose():78 _wakeTimer?.cancel()`
+- `lib/features/canvas/widgets/video_config_inspector.dart:112` → `dispose():72 _promptDebounce?.cancel()`
+- `lib/features/canvas/widgets/image_config_inspector.dart:100` → `dispose():75 _promptDebounce?.cancel()`
+
+**Severity:** （不构成 drift）
+
+**Suggested fix (one line):** 无须修改。
+
+### §附.5 — ARB key 集合一致 clean
+
+**Claim (ARCHITECTURE.md:1159):**
+> `app_en.arb` 和 `app_zh.arb` 同步更新，key 集合一致
+
+**Reality:** clean —— 忽略 `@`-前缀 metadata 后，`lib/l10n/app_en.arb` 与 `lib/l10n/app_zh.arb` 各 103 keys，对称差 = ∅。（含 `@` metadata 时 en 有 6 个 `@xxx` 描述项 zh 未提供，属常规 ARB 模式，非 drift。）
+
+**Severity:** （不构成 drift）
+
+**Suggested fix (one line):** 无须修改。
+
+### §附.6 — Repository `update` 经 `withUpdatedAt()` 包装 partial drift
+
+**Claim (ARCHITECTURE.md:1160):**
+> 所有 Repository `upsert/update` 经过 `withUpdatedAt()` 包装
+
+**Reality:** 部分 repository 的 `update(...)` 方法**未**调用 `withUpdatedAt`：
+- `lib/storage/repositories/postgres_batch_result_repository.dart:73-87`: `update` 直接展开 patch，**未** `withUpdatedAt` 包装。
+- `lib/storage/repositories/postgres_edge_repository.dart:83-84`: 注释明确 "edges 表没有 updated_at 列；withUpdatedAt 不适用——直接 patch"，属合理豁免但 invariant 字面未豁免。
+- `lib/storage/repositories/postgres_style_lane_repository.dart:65` / `postgres_project_repository.dart:57` / `postgres_node_repository.dart:89` / `postgres_job_repository.dart:103` / `postgres_canvas_repository.dart:57`: 5 个 `update` 方法签名均直接接 patch；未在采样片段中看到 `withUpdatedAt` 调用（`base_repository.dart` 仅在 `upsert` 路径用 `withUpdatedAt` —— line 47）。
+
+注：`withUpdatedAt` 在 `lib/` 真实调用仅 1 处（`base_repository.dart:47` 的 upsert 分支）。invariant 中关于 `update` 路径的部分实际未被 base class 强制；具体 repository 的 `update` 实现自行决定是否包装。
+
+**Severity:** `contradiction`
+
+**Suggested fix (one line):** rewrite invariant 为"经过 `withUpdatedAt()` 包装（除 schema 无 `updated_at` 列的表如 `edges`）"，并在 `BaseRepository.update` 默认通道强制注入。
+
+### §附.7 — 无裸 `Exception` 跨层 clean
+
+**Claim (ARCHITECTURE.md:1161):**
+> 错误通过 `InkError` 子类传播，没有裸 `Exception` 跨层
+
+**Reality:** clean —— `grep 'throw Exception(' lib/**/*.dart` 0 hits。
+
+**Severity:** （不构成 drift）
+
+**Suggested fix (one line):** 无须修改。
+
+### §附.8 — `ref.watch()` in build / `ref.read()` in callbacks 未完整审计
+
+**Claim (ARCHITECTURE.md:1162):**
+> `ref.watch()` 在 `build()` 里，`ref.read()` 只在事件回调里
+
+**Reality:** 静态正则难以可靠区分 "build 体内的事件回调" vs. "build 体内的同步执行路径"。粗扫 `lib/app.dart` / `lib/features/canvas/widgets/canvas_view.dart` / `lib/features/canvas/widgets/image_config_inspector.dart` 的 build 体中均出现 `ref.read`；目测多数位于 `onPressed` / `onTap` 等回调闭包内（合法）。不构成可断言的 drift，但缺少自动化门禁。
+
+**Severity:** `missing`（规则存在但无 lint / CI 强制）
+
+**Suggested fix (one line):** add `custom_lint` 规则或在 CI 跑 `riverpod_lint` 强制此 invariant，否则该条 invariant 长期靠 review 兜底。
+
+### §附.9 / §附.10 — `flutter analyze` / `flutter test` clean (out-of-scope)
+
+**Claim (ARCHITECTURE.md:1163-1164):**
+> `flutter analyze` 0 warning / `flutter test` 全绿
+
+**Reality:** 本次审计仅静态 sweep，未执行 build。`ci.yml` 已在 §14 验证包含 analyze + test job，强制门禁在 CI；本地状态不在本审计范围。
+
+**Severity:** （不构成 drift；前置 §12/§14 已覆盖）
+
+**Suggested fix (one line):** 无须修改。
+
+---
+
 ## Cross-doc contradictions (ARCHITECTURE.md ↔ docs/CLAUDE.md)
 
 <!-- Task 7 填充。 -->
