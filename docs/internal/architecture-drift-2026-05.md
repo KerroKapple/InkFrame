@@ -672,4 +672,99 @@ ARB 一致性现状（2026-05-12 实测）：`app_en.arb` 103 key，`app_zh.arb`
 
 ## Cross-doc contradictions (ARCHITECTURE.md ↔ docs/CLAUDE.md)
 
-<!-- Task 7 填充。 -->
+### ARCH §8.3 vs CLAUDE §i18n — System prompt i18n policy (HARD contradiction)
+
+**ARCHITECTURE.md:665-670:**
+> **System prompt 也必须走 i18n：**
+> ```dart
+> // AI Provider 的系统 prompt 也在 ARB 中管理
+> final systemPrompt = context.l10n.geminiImageSystemPrompt;
+> ```
+
+**docs/CLAUDE.md:103-117** (`### LLM / System Prompts — DO NOT i18n`):
+> Prompts sent to AI providers are part of the model contract, not user-facing copy. Keep them as English string constants in `lib/providers/<provider>_prompts.dart` ...
+> ```dart
+> // ❌ Wrong — i18n'd prompt drifts across locales
+> final hint = context.l10n.geminiSystemPrompt;
+> ```
+
+**Severity:** `contradiction`
+
+**Suggested fix:** CLAUDE.md 是源真相（与代码实现一致：`gemini_image_provider.dart` 等使用英文常量；ARB 中也无 `geminiImageSystemPrompt` key）。ARCH §8.3 那段必须删除/改写，明确"LLM system prompt 不走 i18n，作为英文常量保存"。已在 Task 3 sweep (§7-§9) 中独立 flag，此处是 cross-doc 同源确认。
+
+---
+
+### ARCH §4.1 vs CLAUDE §Error Handling — 错误类型命名与结构
+
+**ARCHITECTURE.md:284-329:**
+> 所有跨层传播的错误必须是 `InkError` 的子类型。禁止裸 `Exception` 或 `String` 跨层传递。
+> ```dart
+> sealed class InkError { ... }
+> final class ProviderError extends InkError { ... }
+> final class StorageError extends InkError { ... }
+> ```
+
+**docs/CLAUDE.md:236-240:**
+> - Custom exception types per domain (ProviderException, StorageException, etc.)
+> - NO catching `Exception` or `dynamic` — always specific types
+> - Errors bubble up to UI via Riverpod AsyncValue
+
+**Severity:** `contradiction`
+
+**Suggested fix:** ARCH 是源真相（`lib/core/errors/` 实际存在 `InkError` sealed hierarchy + `ProviderError` / `StorageError` 命名，不是 `*Exception`）。CLAUDE.md L237 应改为 `Custom InkError subclasses per domain (ProviderError, StorageError, ValidationError, LocalIOError)`，并指向 ARCH §4.1。
+
+---
+
+### ARCH §1.2 vs CLAUDE §Project Structure — 目录树两边都没对齐代码
+
+**ARCHITECTURE.md:64-85** (lib/ tree)：
+> 缺：`core/models/`、`core/constants/`、`theme/primitives/`、`theme/motion.dart`、`theme/typography.dart`、`providers/` 的具体 adapter 列表（gemini/kling/wanx_*）、`storage/base_repository.dart`、`storage/pg_controller.dart` 等。
+> 列了：`features/{feature}/services/`（实际 lib 树中无此目录）
+
+**docs/CLAUDE.md:163-211** (lib/ tree)：
+> 列了：`core/models/`、`theme/primitives/`、`theme/motion.dart`、`theme/typography.dart`、所有 providers/ 具体 adapter、storage 详细结构。
+> 缺：`features/{feature}/services/`（也未列）；未列 `features/canvas/util/`、`features/debug/`、`features/workspace/` 之外的等价于 ARCH 的细节。
+
+**Severity:** `contradiction`
+
+**Suggested fix:** 两边都需要重写以匹配代码。CLAUDE.md 的快照已声明 "Snapshot, not blueprint. Mirrors the current `lib/` tree"，结构更接近真实；ARCH §1.2 更像"骨架原则示意"。建议：ARCH §1.2 改写为"层与目录的对应原则（高层）"，移除具体子目录枚举；具体目录树以 CLAUDE.md 为准并按 Task 1 sweep 校准（特别是 `features/{feature}/services/` 是否真实存在）。
+
+---
+
+### ARCH §12.1 vs CLAUDE §Testing — TDD 验收标准
+
+**ARCHITECTURE.md:880-890:**
+> | 层 | 工具 | 范围 | 覆盖率门槛 |
+> | core / utils | ... | 70% |
+> | Repository 层 | ... | **75%** |
+> | ... | 70% |
+> **数据层（Repository + schema）门槛 75% 的理由：** 数据层是基座 ...
+
+**docs/CLAUDE.md:226-231:**
+> - TDD: write test first, watch it fail, implement, watch it pass
+> - **Every public method has a test**
+> - Repositories tested with mock DB
+> - Providers tested with mock repositories
+> - Widgets tested with ProviderScope overrides
+
+**Severity:** `contradiction`
+
+**Suggested fix:** 两个口径不互斥但门禁标准不一致——ARCH 用覆盖率百分比（aggregate, CI 可测量），CLAUDE 用"每个 public method 有 test"（per-method, 静态规则）。另外 CLAUDE.md L229 说"Repositories tested with **mock DB**"，ARCH §12.1 line 884 明确"真实 PG（测试 schema）"。Repo 层测试策略直接打架。建议：ARCH 是源真相（与 `pg_test_harness` 实际存在一致）；CLAUDE.md L229 应改为 "Repositories tested against real embedded PG with isolated test schema"，覆盖率门槛保留 ARCH 表格作为唯一定义。
+
+---
+
+### ARCH §2.2 vs CLAUDE §IoC & Lifecycle — Lifecycle 维度差异（非矛盾，但口径不齐）
+
+**ARCHITECTURE.md:127-132** （4 类生命周期：app-scoped / feature-scoped / 参数化 / 异步单次）
+
+**docs/CLAUDE.md:54-58:**
+> - Database connections: app-scoped (created once, disposed on exit)
+> - HTTP clients: app-scoped (shared dio instance)
+> - Repositories: app-scoped
+> - ViewModels/Controllers: screen-scoped (autoDispose)
+> - Generation jobs: managed by JobQueue, outlive screens
+
+**Severity:** `contradiction`
+
+**Suggested fix:** 不是直接对立，但术语"screen-scoped"(CLAUDE) ≠ "feature-scoped"(ARCH)；CLAUDE 未提及 `.family` / FutureProvider autoDispose；ARCH 未提及 "HTTP clients app-scoped (shared dio)"。建议统一术语为 ARCH 的 4 类生命周期矩阵，CLAUDE.md 仅引用而不重复定义。
+
