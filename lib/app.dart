@@ -12,12 +12,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/di/secure_storage.dart';
 import 'core/di/theme.dart';
 import 'features/canvas/models/canvas_node.dart';
 import 'features/canvas/providers/canvas_nodes_controller.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_view.dart';
 import 'features/debug/primitives_showcase_screen.dart';
+import 'features/lock/lock_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/workspace/workspace_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -70,6 +72,33 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
 
 class _HomeScaffold extends ConsumerWidget {
   const _HomeScaffold();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unlockedAsync = ref.watch(apiKeyUnlockedProvider);
+    return unlockedAsync.when(
+      loading: () => const _LockSplash(),
+      error: (_, _) => const LockScreen(),
+      data: (unlocked) =>
+          unlocked ? const _UnlockedShell() : const LockScreen(),
+    );
+  }
+}
+
+class _LockSplash extends StatelessWidget {
+  const _LockSplash();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.inkColors.surfaceCanvas,
+      body: const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _UnlockedShell extends ConsumerWidget {
+  const _UnlockedShell();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

@@ -8,10 +8,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/app.dart';
 import 'package:inkframe/core/di/paths.dart';
+import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 
 void main() {
-  testWidgets('InkFrameApp boots', (tester) async {
+  testWidgets('InkFrameApp boots into workspace when unlocked',
+      (tester) async {
     final Directory tmp = Directory.systemTemp.createTempSync('ink_app_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final AppPaths paths = DefaultAppPaths.forRoot(tmp);
@@ -19,12 +21,37 @@ void main() {
 
     await tester.pumpWidget(
       ProviderScope(
-        overrides: <Override>[appPathsProvider.overrideWithValue(paths)],
+        overrides: <Override>[
+          appPathsProvider.overrideWithValue(paths),
+          apiKeyUnlockedProvider.overrideWith((_) async => true),
+        ],
         child: const InkFrameApp(),
       ),
     );
     await tester.pump();
+    await tester.pump();
     // 无画布空态：显示 "No canvas is open" + "Create sample canvas" 按钮
     expect(find.textContaining('canvas'), findsWidgets);
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('InkFrameApp shows LockScreen when not unlocked',
+      (tester) async {
+    final Directory tmp = Directory.systemTemp.createTempSync('ink_lock_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final AppPaths paths = DefaultAppPaths.forRoot(tmp);
+    await tester.runAsync(() => paths.ensureInitialized());
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          appPathsProvider.overrideWithValue(paths),
+          apiKeyUnlockedProvider.overrideWith((_) async => false),
+        ],
+        child: const InkFrameApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Unlock'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }
