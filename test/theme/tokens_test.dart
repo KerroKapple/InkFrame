@@ -129,7 +129,7 @@ void main() {
       final t = InkTypography.defaults().scaled(1.25);
       expect(t.body.fontSize, 14 * 1.25);
       expect(t.title.fontSize, 18 * 1.25);
-      expect(t.display.fontSize, 28 * 1.25);
+      expect(t.display.fontSize, 48 * 1.25);
     });
 
     test('micro / nano 字号 10px / 9px', () {
