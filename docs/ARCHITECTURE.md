@@ -668,8 +668,12 @@ InkCard(child: ...)
 lib/l10n/
 ├── app_en.arb          # 英文（source of truth，开发语言）
 ├── app_zh.arb          # 中文（key 集合必须与 en 完全一致）
-└── generated/          # flutter gen-l10n 自动生成，不手动修改
+└── l10n_x.dart         # 手写扩展：BuildContext.l10n getter（非生成代码）
 ```
+
+`AppLocalizations` 由 `flutter gen-l10n` 在 `pubspec.yaml: generate: true` 驱动下写入
+`.dart_tool/flutter_gen/gen_l10n/`（synthetic package），开发者**不直接访问**该目录、不入 git；
+所有 UI 通过 `context.l10n.<key>` 触达，由 `l10n_x.dart` 桥接。
 
 ### 8.2 Key 命名规范
 
@@ -713,9 +717,14 @@ final hint = context.l10n.geminiSystemPrompt;
 
 如需在 prompt 内**注入**与用户语言相关的文本（例如 "respond in the user's UI language"），把 UI locale code 作为参数传入；prompt 模板本身保持英文。
 
-### 8.4 ARB 一致性门禁（CI 强制）
+### 8.4 ARB 一致性门禁（Claude Code hook + pre-commit）
 
-`scripts/hooks/check-i18n-coverage.sh` 在每次 `PostToolUse Write/Edit` 后执行：
+`scripts/hooks/check-i18n-coverage.sh` 是真正强制的执行点，由两条链路触发：
+
+1. **Claude Code PostToolUse hook**：每次 Write/Edit ARB 文件后立即跑（脚本 line 8 接受单文件参数 `$1`）
+2. **`scripts/hooks/pre-commit`**：commit 前再跑一次双重保护
+
+脚本动作（line 56-60）：
 
 1. 提取 `app_en.arb` 和 `app_zh.arb` 的所有 key（扁平化 + 排序）
 2. 求差集，任一方向有差集立即 **exit 1**
@@ -723,6 +732,9 @@ final hint = context.l10n.geminiSystemPrompt;
 4. 校验 JSON 语法有效性
 
 **每次 commit 必须满足：en 和 zh 的 key 集合完全一致，无空值。**
+
+> ⚠️ GitHub Actions 侧目前**未**配置独立的 i18n workflow——保护仅靠本地 hook。若需 CI 端兜底，应在
+> `.github/workflows/` 下加 `i18n.yml`（追踪 issue 待立）。
 
 ### 8.5 新增字符串流程（强制顺序）
 
@@ -763,10 +775,18 @@ abstract class SecureStorageService {
 // macOS  → flutter_secure_storage → macOS Keychain
 // Windows → flutter_secure_storage → Windows Credential Manager
 
-// Key 命名约定
-// provider API key：  'provider.{providerId}.api_key'
-// proxy password：    'network.proxy.password'
+// Key 命名约定（实现见 lib/core/constants/secure_storage_keys.dart）
+// provider API key：  'provider.{scope}.api_key'
+//   - scope = SecureStorageKeys.scopeOf(providerId)
+//   - 同一 API 家族的多个 providerId 折叠为单一 scope（共用 Key，避免重复配置）
+//   - 当前家族：dashscope = { wanx-image, wanx-t2v, wanx-i2v, wanx-r2v, kling-v3, kling-v3-omni }
+//     → 全部存到 'provider.dashscope.api_key'
+//   - 非家族成员 scope 直接等于 providerId（如 'provider.gemini-image.api_key'）
+// proxy password：    'network.proxy.password'（无 provider 维度）
 ```
+
+> ⚠️ 新加 Provider 时务必走 `SecureStorageKeys.providerApiKey(providerId)` 工厂方法构造 key，
+> 不要散落 `'provider.${providerId}.api_key'` 字面量——否则给家族成员存的会是孤儿 key，存了读不到。
 
 ### 9.3 Key 验证缓存
 
