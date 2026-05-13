@@ -33,7 +33,7 @@ class _InkNoirCardState extends State<InkNoirCard> {
             ? colors.borderHover
             : colors.border;
     final card = AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: InkMotion.fast,
       padding: widget.padding,
       decoration: BoxDecoration(
         color: colors.surface2,
