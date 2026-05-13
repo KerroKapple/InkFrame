@@ -132,6 +132,28 @@
   "lightboxClose": "关闭",
   "lightboxPlayPause": "播放 / 暂停",
 
+  "lockTagline": "为分镜师而生的工作台",
+  "lockKeyPlaceholder": "粘贴 Provider Key...",
+  "lockKeyHelpLine1": "从你的 Provider 后台获取 API Key。",
+  "lockKeyHelpLine2": "我们不会把 Key 存到服务器。",
+  "lockUnlock": "解锁",
+  "lockKeyInvalid": "Key 无效或网络错误，请重试。",
+
+  "studioRecentProjects": "最近项目",
+  "studioNewProject": "新建项目",
+  "studioLibrary": "工作库",
+  "studioArchive": "归档",
+  "studioArchivedProjects": "已归档项目",
+  "studioBreadcrumbAll": "全部项目",
+
+  "canvasInspectorTransform": "变换",
+  "canvasInspectorCamera": "镜头",
+  "canvasInspectorComposition": "构图",
+  "canvasInspectorMetadata": "元数据",
+  "canvasInspectorNotes": "备注",
+  "canvasInspectorAddAttribute": "添加属性",
+  "canvasRenderQueue": "渲染队列",
+
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",
   "windowClose": "关闭"

@@ -340,6 +340,64 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lightboxPlayPause => 'Play / Pause';
 
   @override
+  String get lockTagline => 'A DESK FOR STORYBOARDERS';
+
+  @override
+  String get lockKeyPlaceholder => 'Paste provider key...';
+
+  @override
+  String get lockKeyHelpLine1 =>
+      'Get your API key from your provider dashboard.';
+
+  @override
+  String get lockKeyHelpLine2 => 'We never store your key on our servers.';
+
+  @override
+  String get lockUnlock => 'Unlock';
+
+  @override
+  String get lockKeyInvalid => 'Key invalid or network error. Try again.';
+
+  @override
+  String get studioRecentProjects => 'Recent Projects';
+
+  @override
+  String get studioNewProject => 'New Project';
+
+  @override
+  String get studioLibrary => 'LIBRARY';
+
+  @override
+  String get studioArchive => 'ARCHIVE';
+
+  @override
+  String get studioArchivedProjects => 'Archived Projects';
+
+  @override
+  String get studioBreadcrumbAll => 'All Projects';
+
+  @override
+  String get canvasInspectorTransform => 'Transform';
+
+  @override
+  String get canvasInspectorCamera => 'Camera';
+
+  @override
+  String get canvasInspectorComposition => 'Composition';
+
+  @override
+  String get canvasInspectorMetadata => 'Metadata';
+
+  @override
+  String get canvasInspectorNotes => 'Notes';
+
+  @override
+  String get canvasInspectorAddAttribute => 'Add Attribute';
+
+  @override
+  String get canvasRenderQueue => 'Render Queue';
+
+  @override
   String get windowMinimize => 'Minimize';
 
   @override

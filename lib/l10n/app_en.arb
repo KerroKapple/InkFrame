@@ -148,6 +148,28 @@
     "description": "Video lightbox play/pause tooltip"
   },
 
+  "lockTagline": "A DESK FOR STORYBOARDERS",
+  "lockKeyPlaceholder": "Paste provider key...",
+  "lockKeyHelpLine1": "Get your API key from your provider dashboard.",
+  "lockKeyHelpLine2": "We never store your key on our servers.",
+  "lockUnlock": "Unlock",
+  "lockKeyInvalid": "Key invalid or network error. Try again.",
+
+  "studioRecentProjects": "Recent Projects",
+  "studioNewProject": "New Project",
+  "studioLibrary": "LIBRARY",
+  "studioArchive": "ARCHIVE",
+  "studioArchivedProjects": "Archived Projects",
+  "studioBreadcrumbAll": "All Projects",
+
+  "canvasInspectorTransform": "Transform",
+  "canvasInspectorCamera": "Camera",
+  "canvasInspectorComposition": "Composition",
+  "canvasInspectorMetadata": "Metadata",
+  "canvasInspectorNotes": "Notes",
+  "canvasInspectorAddAttribute": "Add Attribute",
+  "canvasRenderQueue": "Render Queue",
+
   "windowMinimize": "Minimize",
   "@windowMinimize": {
     "description": "Window chrome minimize button a11y label"

@@ -716,6 +716,120 @@ abstract class AppLocalizations {
   /// **'Play / Pause'**
   String get lightboxPlayPause;
 
+  /// No description provided for @lockTagline.
+  ///
+  /// In en, this message translates to:
+  /// **'A DESK FOR STORYBOARDERS'**
+  String get lockTagline;
+
+  /// No description provided for @lockKeyPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste provider key...'**
+  String get lockKeyPlaceholder;
+
+  /// No description provided for @lockKeyHelpLine1.
+  ///
+  /// In en, this message translates to:
+  /// **'Get your API key from your provider dashboard.'**
+  String get lockKeyHelpLine1;
+
+  /// No description provided for @lockKeyHelpLine2.
+  ///
+  /// In en, this message translates to:
+  /// **'We never store your key on our servers.'**
+  String get lockKeyHelpLine2;
+
+  /// No description provided for @lockUnlock.
+  ///
+  /// In en, this message translates to:
+  /// **'Unlock'**
+  String get lockUnlock;
+
+  /// No description provided for @lockKeyInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Key invalid or network error. Try again.'**
+  String get lockKeyInvalid;
+
+  /// No description provided for @studioRecentProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Projects'**
+  String get studioRecentProjects;
+
+  /// No description provided for @studioNewProject.
+  ///
+  /// In en, this message translates to:
+  /// **'New Project'**
+  String get studioNewProject;
+
+  /// No description provided for @studioLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'LIBRARY'**
+  String get studioLibrary;
+
+  /// No description provided for @studioArchive.
+  ///
+  /// In en, this message translates to:
+  /// **'ARCHIVE'**
+  String get studioArchive;
+
+  /// No description provided for @studioArchivedProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived Projects'**
+  String get studioArchivedProjects;
+
+  /// No description provided for @studioBreadcrumbAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All Projects'**
+  String get studioBreadcrumbAll;
+
+  /// No description provided for @canvasInspectorTransform.
+  ///
+  /// In en, this message translates to:
+  /// **'Transform'**
+  String get canvasInspectorTransform;
+
+  /// No description provided for @canvasInspectorCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get canvasInspectorCamera;
+
+  /// No description provided for @canvasInspectorComposition.
+  ///
+  /// In en, this message translates to:
+  /// **'Composition'**
+  String get canvasInspectorComposition;
+
+  /// No description provided for @canvasInspectorMetadata.
+  ///
+  /// In en, this message translates to:
+  /// **'Metadata'**
+  String get canvasInspectorMetadata;
+
+  /// No description provided for @canvasInspectorNotes.
+  ///
+  /// In en, this message translates to:
+  /// **'Notes'**
+  String get canvasInspectorNotes;
+
+  /// No description provided for @canvasInspectorAddAttribute.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Attribute'**
+  String get canvasInspectorAddAttribute;
+
+  /// No description provided for @canvasRenderQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Render Queue'**
+  String get canvasRenderQueue;
+
   /// Window chrome minimize button a11y label
   ///
   /// In en, this message translates to:

@@ -326,6 +326,63 @@ class AppLocalizationsZh extends AppLocalizations {
   String get lightboxPlayPause => '播放 / 暂停';
 
   @override
+  String get lockTagline => '为分镜师而生的工作台';
+
+  @override
+  String get lockKeyPlaceholder => '粘贴 Provider Key...';
+
+  @override
+  String get lockKeyHelpLine1 => '从你的 Provider 后台获取 API Key。';
+
+  @override
+  String get lockKeyHelpLine2 => '我们不会把 Key 存到服务器。';
+
+  @override
+  String get lockUnlock => '解锁';
+
+  @override
+  String get lockKeyInvalid => 'Key 无效或网络错误，请重试。';
+
+  @override
+  String get studioRecentProjects => '最近项目';
+
+  @override
+  String get studioNewProject => '新建项目';
+
+  @override
+  String get studioLibrary => '工作库';
+
+  @override
+  String get studioArchive => '归档';
+
+  @override
+  String get studioArchivedProjects => '已归档项目';
+
+  @override
+  String get studioBreadcrumbAll => '全部项目';
+
+  @override
+  String get canvasInspectorTransform => '变换';
+
+  @override
+  String get canvasInspectorCamera => '镜头';
+
+  @override
+  String get canvasInspectorComposition => '构图';
+
+  @override
+  String get canvasInspectorMetadata => '元数据';
+
+  @override
+  String get canvasInspectorNotes => '备注';
+
+  @override
+  String get canvasInspectorAddAttribute => '添加属性';
+
+  @override
+  String get canvasRenderQueue => '渲染队列';
+
+  @override
   String get windowMinimize => '最小化';
 
   @override
