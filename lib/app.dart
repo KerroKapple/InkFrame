@@ -90,8 +90,8 @@ class _LockSplash extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.inkColors.surfaceCanvas,
-      body: Column(
-        children: const <Widget>[
+      body: const Column(
+        children: <Widget>[
           InkWindowChrome(),
           Expanded(child: Center(child: CircularProgressIndicator())),
         ],
