@@ -110,32 +110,10 @@ class WorkspaceHomeScreen extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
   ) async {
-    final controller = TextEditingController();
     final name = await showDialog<String>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(context.l10n.workspaceNewProject),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          decoration: InputDecoration(
-            hintText: context.l10n.workspaceNewProjectHint,
-          ),
-          onSubmitted: (v) => Navigator.of(ctx).pop(v.trim()),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(context.l10n.commonCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: Text(context.l10n.commonOk),
-          ),
-        ],
-      ),
+      builder: (ctx) => const _NewProjectDialog(),
     );
-    controller.dispose();
     if (name == null || name.isEmpty) return;
     final projects = await ref.read(projectRepositoryProvider.future);
     final canvases = await ref.read(canvasRepositoryProvider.future);
@@ -147,6 +125,50 @@ class WorkspaceHomeScreen extends ConsumerWidget {
           : 'Canvas 1',
     );
     ref.invalidate(workspaceProjectsProvider);
+  }
+}
+
+class _NewProjectDialog extends StatefulWidget {
+  const _NewProjectDialog();
+
+  @override
+  State<_NewProjectDialog> createState() => _NewProjectDialogState();
+}
+
+class _NewProjectDialogState extends State<_NewProjectDialog> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.workspaceNewProject),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(
+          hintText: context.l10n.workspaceNewProjectHint,
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.commonCancel),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: Text(context.l10n.commonOk),
+        ),
+      ],
+    );
   }
 }
 
