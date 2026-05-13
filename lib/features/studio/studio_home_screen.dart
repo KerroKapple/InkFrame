@@ -1,7 +1,7 @@
 // StudioHomeScreen：Amber Noir 风格的首页。
 //
 // 布局：Column(chrome, Expanded(Row(LibrarySidebar 280, Expanded(Stack(grid, fab)))))
-// 数据：复用 workspace_home_screen.dart 暴露的 workspaceProjectsProvider。
+// 数据：workspaceProjectsProvider 位于 models/project_with_canvases.dart。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,8 +9,8 @@ import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/primitives/ink_amber_button.dart';
 import '../../theme/tokens.dart';
-import '../workspace/workspace_home_screen.dart' show workspaceProjectsProvider;
 import 'controllers/studio_state.dart';
+import 'models/project_with_canvases.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
 import 'widgets/studio_top_chrome.dart';
@@ -114,8 +114,7 @@ class _StudioMainArea extends ConsumerWidget {
 class _ProjectGrid extends StatelessWidget {
   const _ProjectGrid({required this.projects});
 
-  // 复用 workspace 模块的 _ProjectWithCanvases（私有，duck typed via dynamic）
-  final List<dynamic> projects;
+  final List<ProjectWithCanvases> projects;
 
   @override
   Widget build(BuildContext context) {
@@ -133,11 +132,9 @@ class _ProjectGrid extends StatelessWidget {
           ),
           itemBuilder: (_, i) {
             final p = projects[i];
-            final name = p.name as String;
-            final canvasCount = (p.canvases as List).length;
             return StudioProjectCard(
-              name: name,
-              metaLine: 'EP 01 · 2026.05 · ${_box()} $canvasCount',
+              name: p.name,
+              metaLine: 'EP 01 · 2026.05 · ${_box()} ${p.canvases.length}',
               onTap: () {
                 // Task 11/13 接 open canvas
               },

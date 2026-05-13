@@ -8,8 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
-import '../../workspace/workspace_home_screen.dart' show workspaceProjectsProvider;
 import '../controllers/studio_state.dart';
+import '../models/project_with_canvases.dart';
 
 class LibrarySidebar extends ConsumerWidget {
   const LibrarySidebar({super.key});
@@ -79,10 +79,7 @@ class _LibraryTree extends StatelessWidget {
   });
 
   final String studioName;
-  // 用 dynamic 是因为 workspace_home_screen 的 _ProjectWithCanvases 是私有；
-  // 这里只读 .id / .name / .canvases 这些 getter（duck typing on Dart 不直接支持，
-  // 但 dynamic 调用解析在运行期 OK）。
-  final List<dynamic> projects;
+  final List<ProjectWithCanvases> projects;
   final String? selectedId;
   final ValueChanged<String?> onSelect;
 
@@ -112,10 +109,10 @@ class _LibraryTree extends StatelessWidget {
             indent: 2,
             twirl: '▸',
             icon: null,
-            label: (p.name as String),
+            label: p.name,
             trailing: null,
-            selected: (p.id as String) == selectedId,
-            onTap: () => onSelect(p.id as String),
+            selected: p.id == selectedId,
+            onTap: () => onSelect(p.id),
           ),
       ],
     );

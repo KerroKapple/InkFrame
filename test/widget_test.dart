@@ -30,8 +30,8 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    // 无画布空态：显示 "No canvas is open" + "Create sample canvas" 按钮
-    expect(find.textContaining('canvas'), findsWidgets);
+    // 解锁态首屏为 StudioHomeScreen，顶部 chrome 中显示 LIBRARY section
+    expect(find.text('LIBRARY'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
   testWidgets('InkFrameApp shows LockScreen when not unlocked',
