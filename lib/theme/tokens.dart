@@ -8,6 +8,18 @@
 // 自动对比度检查——值由人工维护。
 import 'package:flutter/widgets.dart';
 
+/// 启动阶段（main 进入 runApp 前）唯一可暴露的原始色板常量入口。
+///
+/// 仅暴露在 BuildContext 可用之前必须使用的颜色（如 window_manager 背景），
+/// 其他场景请走 `context.inkColors`。每个常量必须等于对应主题工厂的值，
+/// 由 tokens_test 守护一致性。
+class InkPalette {
+  InkPalette._();
+
+  /// 启动时 window_manager 背景色；必须等于 `InkColors.dark().surfaceCanvas`。
+  static const Color surfaceCanvasDark = Color(0xFF0B0908);
+}
+
 /// 语义化色板：widget 永远读这个接口，token 工厂决定具体值。
 @immutable
 class InkColors {
@@ -41,7 +53,7 @@ class InkColors {
 
   /// 深色主题（P0 默认）—— Amber Noir：电影暗室 + 琥珀金高光 + 哑光暖黑。
   factory InkColors.dark() => const InkColors._(
-        surfaceCanvas: Color(0xFF0B0908),
+        surfaceCanvas: InkPalette.surfaceCanvasDark,
         surface1: Color(0xFF100C0A),
         surface2: Color(0xFF15110E),
         surface3: Color(0xFF1C1814),

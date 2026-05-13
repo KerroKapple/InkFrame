@@ -338,4 +338,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lightboxPlayPause => 'Play / Pause';
+
+  @override
+  String get windowMinimize => 'Minimize';
+
+  @override
+  String get windowMaximize => 'Maximize';
+
+  @override
+  String get windowClose => 'Close';
 }

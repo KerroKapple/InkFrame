@@ -130,5 +130,9 @@
   "inspectorVideoGenerate": "生成视频",
 
   "lightboxClose": "关闭",
-  "lightboxPlayPause": "播放 / 暂停"
+  "lightboxPlayPause": "播放 / 暂停",
+
+  "windowMinimize": "最小化",
+  "windowMaximize": "最大化",
+  "windowClose": "关闭"
 }

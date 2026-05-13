@@ -12,6 +12,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/di/paths.dart';
 import 'core/paths/app_paths.dart';
+import 'theme/tokens.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,7 @@ Future<void> main() async {
     size: Size(1536, 984),
     minimumSize: Size(960, 600),
     titleBarStyle: TitleBarStyle.hidden,
-    backgroundColor: Color(0xFF0B0908),
+    backgroundColor: InkPalette.surfaceCanvasDark,
   );
   await windowManager.waitUntilReadyToShow(winOpts, () async {
     await windowManager.show();

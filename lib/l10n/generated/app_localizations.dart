@@ -715,6 +715,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Play / Pause'**
   String get lightboxPlayPause;
+
+  /// Window chrome minimize button a11y label
+  ///
+  /// In en, this message translates to:
+  /// **'Minimize'**
+  String get windowMinimize;
+
+  /// Window chrome maximize/restore button a11y label
+  ///
+  /// In en, this message translates to:
+  /// **'Maximize'**
+  String get windowMaximize;
+
+  /// Window chrome close button a11y label
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get windowClose;
 }
 
 class _AppLocalizationsDelegate

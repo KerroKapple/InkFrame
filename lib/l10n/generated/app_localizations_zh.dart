@@ -324,4 +324,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get lightboxPlayPause => '播放 / 暂停';
+
+  @override
+  String get windowMinimize => '最小化';
+
+  @override
+  String get windowMaximize => '最大化';
+
+  @override
+  String get windowClose => '关闭';
 }

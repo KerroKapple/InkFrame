@@ -146,5 +146,18 @@
   "lightboxPlayPause": "Play / Pause",
   "@lightboxPlayPause": {
     "description": "Video lightbox play/pause tooltip"
+  },
+
+  "windowMinimize": "Minimize",
+  "@windowMinimize": {
+    "description": "Window chrome minimize button a11y label"
+  },
+  "windowMaximize": "Maximize",
+  "@windowMaximize": {
+    "description": "Window chrome maximize/restore button a11y label"
+  },
+  "windowClose": "Close",
+  "@windowClose": {
+    "description": "Window chrome close button a11y label"
   }
 }
