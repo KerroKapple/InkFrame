@@ -383,6 +383,51 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasRenderQueue => '渲染队列';
 
   @override
+  String get canvasNodeTypeCharacter => '角色';
+
+  @override
+  String get canvasNodeTypeScene => '场景';
+
+  @override
+  String get canvasNodeTypeCamera => '镜头';
+
+  @override
+  String get canvasNodeTypeProp => '道具';
+
+  @override
+  String get canvasNodeTypeShot => '分镜';
+
+  @override
+  String get canvasNodeTypeImageGen => '图像生成';
+
+  @override
+  String get canvasBreadcrumbProject => '项目';
+
+  @override
+  String get canvasBreadcrumbCanvas => '画布';
+
+  @override
+  String get canvasInspectorKindCamera => '镜头节点';
+
+  @override
+  String get canvasInspectorMockTitle => '宽景镜头';
+
+  @override
+  String get canvasInspectorMockId => 'cam_0021';
+
+  @override
+  String get canvasRenderQueueJobWatch => '怀表特写';
+
+  @override
+  String get canvasRenderQueueJobHarbor => '港口码头';
+
+  @override
+  String get canvasRenderQueueJobNocturne => '夜曲预告';
+
+  @override
+  String get canvasRenderQueueStatusQueued => '排队中';
+
+  @override
   String get windowMinimize => '最小化';
 
   @override

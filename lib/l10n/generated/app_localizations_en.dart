@@ -398,6 +398,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasRenderQueue => 'Render Queue';
 
   @override
+  String get canvasNodeTypeCharacter => 'Character';
+
+  @override
+  String get canvasNodeTypeScene => 'Scene';
+
+  @override
+  String get canvasNodeTypeCamera => 'Camera';
+
+  @override
+  String get canvasNodeTypeProp => 'Prop';
+
+  @override
+  String get canvasNodeTypeShot => 'Shot';
+
+  @override
+  String get canvasNodeTypeImageGen => 'Image Gen';
+
+  @override
+  String get canvasBreadcrumbProject => 'Project';
+
+  @override
+  String get canvasBreadcrumbCanvas => 'Canvas';
+
+  @override
+  String get canvasInspectorKindCamera => 'Camera Node';
+
+  @override
+  String get canvasInspectorMockTitle => 'Wide Shot';
+
+  @override
+  String get canvasInspectorMockId => 'cam_0021';
+
+  @override
+  String get canvasRenderQueueJobWatch => 'Watch Closeup';
+
+  @override
+  String get canvasRenderQueueJobHarbor => 'Harbor Docks';
+
+  @override
+  String get canvasRenderQueueJobNocturne => 'Nocturne Teaser';
+
+  @override
+  String get canvasRenderQueueStatusQueued => 'Queued';
+
+  @override
   String get windowMinimize => 'Minimize';
 
   @override

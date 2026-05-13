@@ -8,7 +8,6 @@
 
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,10 +16,8 @@ import 'core/di/theme.dart';
 import 'features/canvas/models/canvas_node.dart';
 import 'features/canvas/providers/canvas_nodes_controller.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
-import 'features/canvas/widgets/canvas_view.dart';
-import 'features/debug/primitives_showcase_screen.dart';
+import 'features/canvas/widgets/canvas_screen.dart';
 import 'features/lock/lock_screen.dart';
-import 'features/settings/settings_screen.dart';
 import 'features/studio/studio_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
@@ -107,43 +104,15 @@ class _UnlockedShell extends ConsumerWidget {
     if (!inCanvas) {
       return const Scaffold(body: StudioHomeScreen());
     }
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          tooltip: context.l10n.workspaceBackToWorkspace,
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () =>
-              ref.read(currentCanvasIdProvider.notifier).state = null,
+    return Stack(
+      children: <Widget>[
+        CanvasScreen(canvasName: context.l10n.appTitle),
+        Positioned(
+          right: 16,
+          bottom: 16,
+          child: _AddNodeFab(canvasId: canvasId),
         ),
-        title: Text(context.l10n.appTitle),
-        actions: [
-          if (kDebugMode)
-            IconButton(
-              tooltip: 'Primitives Showcase',
-              icon: const Icon(Icons.palette_outlined),
-              onPressed: () {
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const PrimitivesShowcaseScreen(),
-                  ),
-                );
-              },
-            ),
-          IconButton(
-            tooltip: context.l10n.settingsTitle,
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: const CanvasView(),
-      floatingActionButton: _AddNodeFab(canvasId: canvasId),
+      ],
     );
   }
 }

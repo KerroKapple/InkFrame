@@ -830,6 +830,96 @@ abstract class AppLocalizations {
   /// **'Render Queue'**
   String get canvasRenderQueue;
 
+  /// No description provided for @canvasNodeTypeCharacter.
+  ///
+  /// In en, this message translates to:
+  /// **'Character'**
+  String get canvasNodeTypeCharacter;
+
+  /// No description provided for @canvasNodeTypeScene.
+  ///
+  /// In en, this message translates to:
+  /// **'Scene'**
+  String get canvasNodeTypeScene;
+
+  /// No description provided for @canvasNodeTypeCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get canvasNodeTypeCamera;
+
+  /// No description provided for @canvasNodeTypeProp.
+  ///
+  /// In en, this message translates to:
+  /// **'Prop'**
+  String get canvasNodeTypeProp;
+
+  /// No description provided for @canvasNodeTypeShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get canvasNodeTypeShot;
+
+  /// No description provided for @canvasNodeTypeImageGen.
+  ///
+  /// In en, this message translates to:
+  /// **'Image Gen'**
+  String get canvasNodeTypeImageGen;
+
+  /// No description provided for @canvasBreadcrumbProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get canvasBreadcrumbProject;
+
+  /// No description provided for @canvasBreadcrumbCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get canvasBreadcrumbCanvas;
+
+  /// No description provided for @canvasInspectorKindCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Node'**
+  String get canvasInspectorKindCamera;
+
+  /// No description provided for @canvasInspectorMockTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Wide Shot'**
+  String get canvasInspectorMockTitle;
+
+  /// No description provided for @canvasInspectorMockId.
+  ///
+  /// In en, this message translates to:
+  /// **'cam_0021'**
+  String get canvasInspectorMockId;
+
+  /// No description provided for @canvasRenderQueueJobWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Watch Closeup'**
+  String get canvasRenderQueueJobWatch;
+
+  /// No description provided for @canvasRenderQueueJobHarbor.
+  ///
+  /// In en, this message translates to:
+  /// **'Harbor Docks'**
+  String get canvasRenderQueueJobHarbor;
+
+  /// No description provided for @canvasRenderQueueJobNocturne.
+  ///
+  /// In en, this message translates to:
+  /// **'Nocturne Teaser'**
+  String get canvasRenderQueueJobNocturne;
+
+  /// No description provided for @canvasRenderQueueStatusQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Queued'**
+  String get canvasRenderQueueStatusQueued;
+
   /// Window chrome minimize button a11y label
   ///
   /// In en, this message translates to:
