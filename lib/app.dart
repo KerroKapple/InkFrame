@@ -21,7 +21,7 @@ import 'features/canvas/widgets/canvas_view.dart';
 import 'features/debug/primitives_showcase_screen.dart';
 import 'features/lock/lock_screen.dart';
 import 'features/settings/settings_screen.dart';
-import 'features/workspace/workspace_home_screen.dart';
+import 'features/studio/studio_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
@@ -104,19 +104,18 @@ class _UnlockedShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasId = ref.watch(currentCanvasIdProvider);
     final inCanvas = canvasId != null;
+    if (!inCanvas) {
+      return const Scaffold(body: StudioHomeScreen());
+    }
     return Scaffold(
       appBar: AppBar(
-        leading: inCanvas
-            ? IconButton(
-                tooltip: context.l10n.workspaceBackToWorkspace,
-                icon: const Icon(Icons.arrow_back),
-                onPressed: () =>
-                    ref.read(currentCanvasIdProvider.notifier).state = null,
-              )
-            : null,
-        title: Text(
-          inCanvas ? context.l10n.appTitle : context.l10n.workspaceTitle,
+        leading: IconButton(
+          tooltip: context.l10n.workspaceBackToWorkspace,
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () =>
+              ref.read(currentCanvasIdProvider.notifier).state = null,
         ),
+        title: Text(context.l10n.appTitle),
         actions: [
           if (kDebugMode)
             IconButton(
@@ -143,10 +142,8 @@ class _UnlockedShell extends ConsumerWidget {
           ),
         ],
       ),
-      body:
-          inCanvas ? const CanvasView() : const WorkspaceHomeScreen(),
-      floatingActionButton:
-          inCanvas ? _AddNodeFab(canvasId: canvasId) : null,
+      body: const CanvasView(),
+      floatingActionButton: _AddNodeFab(canvasId: canvasId),
     );
   }
 }
