@@ -27,6 +27,12 @@ class InkTypography {
   factory InkTypography.defaults({double scale = 1.0}) => InkTypography(
         display: TextStyle(
           fontFamily: 'CormorantGaramond',
+          fontFamilyFallback: const <String>[
+            'PingFang SC',
+            'Microsoft YaHei',
+            'Noto Serif CJK SC',
+            'Noto Sans CJK SC',
+          ],
           fontSize: 48 * scale,
           fontWeight: FontWeight.w300,
           letterSpacing: 0.5,
@@ -34,6 +40,12 @@ class InkTypography {
         ),
         headline: TextStyle(
           fontFamily: 'CormorantGaramond',
+          fontFamilyFallback: const <String>[
+            'PingFang SC',
+            'Microsoft YaHei',
+            'Noto Serif CJK SC',
+            'Noto Sans CJK SC',
+          ],
           fontSize: 22 * scale,
           fontWeight: FontWeight.w400,
           height: 1.25,
@@ -55,6 +67,12 @@ class InkTypography {
         ),
         caption: TextStyle(
           fontFamily: 'JetBrainsMono',
+          fontFamilyFallback: const <String>[
+            'Menlo',
+            'Consolas',
+            'PingFang SC',
+            'Microsoft YaHei',
+          ],
           fontSize: 11 * scale,
           fontWeight: FontWeight.w400,
           letterSpacing: 1.5,

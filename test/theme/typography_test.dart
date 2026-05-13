@@ -28,5 +28,26 @@ void main() {
       final t = InkTypography.defaults().scaled(1.5);
       expect(t.headline.fontSize, 22 * 1.5);
     });
+
+    test('display has CJK fallback', () {
+      final t = InkTypography.defaults();
+      expect(t.display.fontFamilyFallback, contains('PingFang SC'));
+    });
+
+    test('headline has CJK fallback', () {
+      final t = InkTypography.defaults();
+      expect(t.headline.fontFamilyFallback, contains('PingFang SC'));
+    });
+
+    test('caption has mono and CJK fallback', () {
+      final t = InkTypography.defaults();
+      expect(t.caption.fontFamilyFallback, contains('Menlo'));
+      expect(t.caption.fontFamilyFallback, contains('PingFang SC'));
+    });
+
+    test('scaled() preserves fontFamilyFallback on display', () {
+      final t = InkTypography.defaults().scaled(1.5);
+      expect(t.display.fontFamilyFallback, contains('PingFang SC'));
+    });
   });
 }
