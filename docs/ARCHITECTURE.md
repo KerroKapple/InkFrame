@@ -428,11 +428,10 @@ final result = ref.watch(someProvider).value!; // 可能是 loading 或 error �
 
 ### 5.1 JobQueueService — 双层并发控制
 
-`JobQueueService` 是 app-scoped keepAlive 单例，横跨所有画布和项目。
+`JobQueueService` 是 app-scoped keepAlive 单例（实现 `lib/services/job_queue_service.dart` 的 `InMemoryJobQueueService`），横跨所有画布和项目。
 
 ```
-全局并发上限（性能档位决定）
-  省电=1 / 均衡=2 / 性能=3 / 极致=4
+全局并发上限（构造参数 globalConcurrency，默认 2）
       ↕ min()
 Per-Provider 并发上限（ProviderCapabilities.maxConcurrentJobs）
   Gemini=1 / Kling=2 / 海螺=2 / Jimeng=1
@@ -440,17 +439,32 @@ Per-Provider 并发上限（ProviderCapabilities.maxConcurrentJobs）
 实际可调度数 = min(全局剩余槽位, per-provider 剩余槽位)
 ```
 
-**调度状态机（jobs.status）：**
+> **Planned (b4)**：UI 性能档位 → `globalConcurrency` 动态联动（省电 / 均衡 / 性能 / 极致 = 1/2/3/4），目前未实现，参数固定为构造时注入值。源码注释见 `lib/services/job_queue_service.dart:7`（`// b4 ⏳ 性能档位 → globalConcurrency 联动`）。`PerformanceTier` 枚举与 `PerformanceDegradationController` 仍属 ROADMAP。
+
+**调度状态机（`jobs.status`，schema 见 `lib/storage/schema/001_init.sql:156-158`）：**
 
 ```
-pending ──► submitted ──► polling ──► success / error / timeout
-   │                                       │
-   └── cancelled_by_user                   │
-                                           │
-任何阶段 ──────────────────────► cancelled_on_exit（app 退出）
+pending ──► submitted ──► polling ──► success
+                 │              │  ╲
+                 │              │   ╲► error
+                 │              │    ╲► timeout
+                 ▼              ▼     ╲
+              cancelled  ◄──────────── (任何阶段，含 app 退出)
 ```
 
-**出队策略：** FIFO，同 provider 按 `created_at` 升序，跨 provider 抢占全局槽位也按 FIFO。
+`jobs.status` 的 CHECK 取值恰好是 7 个：`pending / submitted / polling / success / error / cancelled / timeout`。**末态只有一个 `cancelled`**；取消原因由 `jobs.error_code` 区分：
+
+- `cancelled_by_user`：用户主动调用 `cancel(jobId)`（`lib/services/job_queue_service.dart:121-142`，写入见 `_persistCancel` 行 395-408）。
+- `cancelled_on_exit`：app 启动时对上次未结束的 `submitted / polling` 行做扫尾（`init()` 行 82-99）。
+
+**出队策略：** FIFO，同 provider 按 `created_at` 升序；跨 provider 抢占全局槽位也按 FIFO，被 per-provider 上限卡住的 pending 会让位给后面 provider 槽位有空的任务（`_pickNextSchedulable` 行 178-186）。
+
+**Cancel 性能 invariant：**
+
+- `cancel(jobId)` 对 pending 队列**摊还 O(1)**（与 pending 长度无关），对 running 任务为 O(1) + provider cancel 网络往返。
+- 数据结构：`Queue<_PendingJob> _pending` 维持 FIFO，`Map<String, _PendingJob> _pendingIndex` 提供 jobId → 队列条目的 O(1) 索引；cancel 走"软删除"——`_pendingIndex.remove + _PendingJob.cancelled = true`，**不重建 Queue**；dispatch loop 在队头顺手丢弃 cancelled 条目（`_schedule` 行 161-176）。源码顶部注释行 27-32 是契约说明。
+- 回归基线：N=10000 pending 全量 cancel < 500 ms（`test/services/job_queue_service_test.dart` 中的 perf 用例）。
+- 实现引用：commit `41afffb` (`fix(jobqueue): O(1) cancel via pendingIndex + soft-delete`)，并入 PR #86。修改这块数据结构前先看测试与本节 invariant。
 
 ### 5.2 ProviderRateLimiter — Token Bucket
 
