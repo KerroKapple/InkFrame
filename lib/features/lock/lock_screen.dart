@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/di/package_info.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/primitives/ink_amber_button.dart';
@@ -82,25 +83,16 @@ class _LockScreenState extends ConsumerState<LockScreen> {
             ),
           ),
 
-          // 左下版本号。
+          // 左下版本号（PackageInfo 实时读取，loading/error 时显示空字符串）。
           Positioned(
             left: InkSpacing.lg,
             bottom: InkSpacing.md,
             child: Text(
-              'v0.14.2 -- 3f8c91a',
-              style: typo.caption.copyWith(
-                color: colors.fg3,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ),
-
-          // 右下 OFFLINE 标识。
-          Positioned(
-            right: InkSpacing.lg,
-            bottom: InkSpacing.md,
-            child: Text(
-              'OFFLINE - LOCAL ONLY',
+              ref.watch(packageInfoProvider).when(
+                    data: (info) => 'v${info.version} -- ${info.buildNumber}',
+                    loading: () => '',
+                    error: (_, _) => '',
+                  ),
               style: typo.caption.copyWith(
                 color: colors.fg3,
                 letterSpacing: 1.0,

@@ -17,8 +17,12 @@ final apiKeyUnlockedProvider = FutureProvider<bool>((ref) async {
     'wanx-image',
     'kling-v3',
   ]) {
-    if (await storage.exists(SecureStorageKeys.providerApiKey(providerId))) {
-      return true;
+    try {
+      if (await storage.exists(SecureStorageKeys.providerApiKey(providerId))) {
+        return true;
+      }
+    } catch (_) {
+      // storage 异常视作"未解锁"，由 LockScreen 提示用户重试。
     }
   }
   return false;

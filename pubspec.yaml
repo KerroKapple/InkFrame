@@ -51,6 +51,7 @@ dependencies:
 
   # 无边框窗口管理（Amber Noir frameless chrome）
   window_manager: ^0.4.3
+  package_info_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
