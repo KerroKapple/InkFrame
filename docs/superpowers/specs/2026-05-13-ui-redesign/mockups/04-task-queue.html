@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>04 · Task Queue — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .three-col { display: grid; grid-template-columns: 340px 1fr 380px; flex: 1; min-height: 0; }
+  .col { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .col + .col { border-left: 1px solid var(--border-subtle); }
+
+  /* script preview */
+  .script-prev { background: var(--surface-1); padding: 18px 18px 8px; overflow:auto; }
+  .script-prev .sec-no { font-family: var(--ff-mono); font-size:10px; letter-spacing: 0.2em; color: var(--fg-3); }
+  .script-prev h3 { font-family: var(--ff-serif); font-size: 18px; margin: 0 0 6px; color: var(--fg-1); }
+  .script-prev p { color: var(--fg-2); font-size: 12px; line-height: 1.7; }
+  .script-prev .scene { border-bottom: 1px dashed var(--border-subtle); padding: 10px 0; }
+  .script-prev .scene.active { background: var(--surface-2); margin: 0 -18px; padding: 10px 18px; border-left: 2px solid var(--accent); }
+
+  /* canvas thumb middle */
+  .canvas-mid { background: var(--surface-canvas); position: relative; overflow:hidden;}
+  .canvas-mid .dots { position: absolute; inset:0; background-image: radial-gradient(rgba(90,80,72,0.22) 1px, transparent 1.4px); background-size: 22px 22px; }
+  .mid-node {
+    position: absolute;
+    width: 170px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px;
+    overflow: hidden;
+  }
+  .mid-node .top { position:absolute; top:0; left:0; right:0; height:3px; }
+  .mid-node .thumb { aspect-ratio: 16/9; margin:8px; border: 1px solid var(--border-subtle); border-radius: 4px; }
+  .mid-node .meta {font-family:var(--ff-mono); font-size:10px; color: var(--fg-3); padding: 0 10px 8px; display:flex; justify-content:space-between;}
+  .mid-edge { stroke: var(--fg-4); stroke-dasharray: 4 4; fill: none; }
+  .mid-edge.live { stroke: var(--accent); stroke-dasharray: 0;}
+
+  /* queue right */
+  .queue { background: var(--surface-1); overflow:auto; }
+  .qhead { display:flex; align-items:center; justify-content:space-between; padding: 16px 18px; border-bottom: 1px solid var(--border-subtle); }
+  .qhead h2 { font-family: var(--ff-serif); font-size: 22px; margin: 0; }
+  .qtabs { display:flex; gap:6px; padding: 10px 18px; border-bottom: 1px solid var(--border-subtle); font-family: var(--ff-mono); font-size: 11px; }
+  .qtab { padding: 4px 10px; border-radius: 999px; color: var(--fg-3); cursor: pointer;}
+  .qtab.on { color: var(--accent); background: var(--surface-2); border: 1px solid rgba(201,168,91,0.35);}
+  .qgroup { padding: 12px 18px; }
+  .qgroup h4 { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-4); margin: 0 0 8px;}
+
+  .qitem { display:flex; gap: 10px; padding: 10px 0; border-bottom: 1px dashed var(--border-subtle); align-items: center; }
+  .qitem .th { width: 56px; height: 36px; border-radius: 4px; border: 1px solid var(--border-subtle); flex: 0 0 56px; background-size: cover; background-position: center;}
+  .qitem .info { flex: 1; min-width: 0; }
+  .qitem .ttl { font-family: var(--ff-serif); font-size: 15px; color: var(--fg-1); }
+  .qitem .sub { font-family: var(--ff-mono); font-size: 10px; color: var(--fg-3); letter-spacing: 0.05em;}
+  .qitem .pct { font-family: var(--ff-mono); font-size: 13px; color: var(--accent); }
+  .qitem.failed .pct { color: var(--danger); }
+  .qitem.done .pct { color: var(--success); }
+  .qitem .bar { height: 3px; background: var(--surface-3); margin-top: 6px; border-radius: 2px; position: relative;}
+  .qitem .bar i { position:absolute; left:0; top:0; bottom:0; background: var(--cta); border-radius: 2px;}
+
+  .bot-bar {
+    height: 32px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--surface-1);
+    display:flex; align-items:center; gap: 22px;
+    padding: 0 18px;
+    font-family: var(--ff-mono); font-size: 11px; color: var(--fg-3);
+    letter-spacing: 0.06em;
+  }
+  .bot-bar b { color: var(--accent); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">The Boy In The Fog</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘K</span><button class="ico-btn">▶</button><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body three-col">
+    <!-- left: script -->
+    <div class="col script-prev">
+      <div class="scene">
+        <div class="sec-no">01 · INT · NIGHT</div>
+        <h3>梦境的边缘</h3>
+        <p>男孩在迷雾中前行，远处的灯塔忽明忽灭。海浪的低鸣像是某种古老的承诺。</p>
+      </div>
+      <div class="scene active">
+        <div class="sec-no">02 · EXT · DAWN</div>
+        <h3>灯塔的回声</h3>
+        <p>风停了，雾散开一道缝。一束琥珀色的光照在男孩的脸上——他抬起头，第一次看清海的另一端。</p>
+        <p>镜头从男孩的肩头掠过，停在他握紧的怀表上。怀表的指针正在以异常缓慢的节奏移动。</p>
+      </div>
+      <div class="scene">
+        <div class="sec-no">03 · INT · DAY</div>
+        <h3>港口的午后</h3>
+        <p>渔民们的对话隐约可闻，海鸥的影子掠过木地板。他坐下，把怀表轻轻放在桌上。</p>
+      </div>
+      <div class="scene">
+        <div class="sec-no">04 · EXT · DUSK</div>
+        <h3>潮汐</h3>
+        <p>夕阳沉入海平面之下，最后一道光在他眼中熄灭。</p>
+      </div>
+    </div>
+
+    <!-- middle: canvas mini -->
+    <div class="col canvas-mid">
+      <div class="dots"></div>
+      <svg style="position:absolute;inset:0;pointer-events:none;width:100%;height:100%">
+        <path class="mid-edge" d="M 120,140 C 200,140 200,220 280,220"/>
+        <path class="mid-edge live" d="M 280,220 C 360,220 360,140 440,140"/>
+        <path class="mid-edge" d="M 440,140 C 520,140 520,300 440,300"/>
+        <path class="mid-edge" d="M 280,220 C 280,300 280,300 220,340"/>
+      </svg>
+
+      <div class="mid-node" style="left:40px;top:90px">
+        <div class="top bar-scene"></div>
+        <div class="thumb" style="background:linear-gradient(180deg,#181610,#06050a)"></div>
+        <div class="meta"><span>Scene 02</span><span>S02</span></div>
+      </div>
+      <div class="mid-node" style="left:240px;top:170px">
+        <div class="top bar-shot"></div>
+        <div class="thumb" style="background:linear-gradient(140deg,#2a1f12,#0a0807)"></div>
+        <div class="meta"><span>Shot 02A</span><span>62%</span></div>
+      </div>
+      <div class="mid-node" style="left:400px;top:90px">
+        <div class="top bar-imagegen"></div>
+        <div class="thumb" style="background:linear-gradient(140deg,#3a2a16,#0a0807)"></div>
+        <div class="meta"><span>Render</span><span>queued</span></div>
+      </div>
+      <div class="mid-node" style="left:400px;top:280px">
+        <div class="top bar-prop"></div>
+        <div class="thumb" style="background:radial-gradient(circle,#5a4218,#0a0807 80%)"></div>
+        <div class="meta"><span>Pocket Watch</span><span>1080²</span></div>
+      </div>
+      <div class="mid-node" style="left:180px;top:330px">
+        <div class="top bar-character"></div>
+        <div class="thumb" style="background:linear-gradient(160deg,#2c1d12,#0c0908)"></div>
+        <div class="meta"><span>Elara</span><span>v3</span></div>
+      </div>
+    </div>
+
+    <!-- right: queue -->
+    <div class="col queue">
+      <div class="qhead">
+        <h2>任务队列</h2>
+        <span class="chip">12 active</span>
+      </div>
+      <div class="qtabs">
+        <span class="qtab on">渲染中</span>
+        <span class="qtab">已完成</span>
+        <span class="qtab">失败</span>
+      </div>
+
+      <div class="qgroup">
+        <h4>Running · 3</h4>
+        <div class="qitem">
+          <div class="th" style="background:linear-gradient(160deg,#2a1f12,#0a0807)"></div>
+          <div class="info">
+            <div class="ttl">Scene 02 · Shot 02B</div>
+            <div class="sub">Kling v3 · 1080p · ETA 04:12</div>
+            <div class="bar"><i style="width:62%"></i></div>
+          </div>
+          <div class="pct">62%</div>
+        </div>
+        <div class="qitem">
+          <div class="th" style="background:linear-gradient(160deg,#1a1610,#0a0807)"></div>
+          <div class="info">
+            <div class="ttl">Scene 04 · Shot 04A</div>
+            <div class="sub">Wanx i2v · 1920×1080 · ETA 02:48</div>
+            <div class="bar"><i style="width:51%"></i></div>
+          </div>
+          <div class="pct">51%</div>
+        </div>
+        <div class="qitem">
+          <div class="th" style="background:radial-gradient(circle,#3a2a16,#0a0807 80%)"></div>
+          <div class="info">
+            <div class="ttl">Scene 03 · Shot 03A</div>
+            <div class="sub">Gemini Image · 2048² · ETA 00:36</div>
+            <div class="bar"><i style="width:34%"></i></div>
+          </div>
+          <div class="pct">34%</div>
+        </div>
+      </div>
+
+      <div class="qgroup">
+        <h4>Failed · 2</h4>
+        <div class="qitem failed">
+          <div class="th" style="background:linear-gradient(180deg,#1a1212,#0a0807)"></div>
+          <div class="info">
+            <div class="ttl">Scene 06 · Shot 06C</div>
+            <div class="sub">Kling · rate-limited 429 · retry in 1:24</div>
+          </div>
+          <div class="pct">429</div>
+        </div>
+        <div class="qitem failed">
+          <div class="th" style="background:linear-gradient(180deg,#1a1212,#0a0807)"></div>
+          <div class="info">
+            <div class="ttl">Scene 07 · Shot 07A</div>
+            <div class="sub">Wanx · INVALID_KEY · check provider</div>
+          </div>
+          <div class="pct">401</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bot-bar">
+    <span><b>3</b> coming</span>
+    <span><b>12</b> queued</span>
+    <span><b>5</b> open nodes</span>
+    <span style="margin-left:auto;color:var(--fg-4)">Auto-resume on reconnect</span>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a class="active" href="04-task-queue.html">04</a>
+  <a href="05-storyboard.html">05</a><a href="06-script-editor.html">06</a>
+  <a href="07-asset-library.html">07</a><a href="08-asset-generation.html">08</a>
+  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>06 · Script Editor — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .scenes-list { width: 240px; flex: 0 0 240px; background: var(--surface-1); border-right: 1px solid var(--border-subtle); overflow:auto; padding: 18px 0;}
+  .scenes-list .lab { padding: 0 18px 8px; font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--fg-4); text-transform: uppercase;}
+  .scenes-list .scn { display:flex; gap: 10px; padding: 8px 18px; color: var(--fg-2); font-size: 13px; cursor:pointer;}
+  .scenes-list .scn .n { font-family: var(--ff-mono); font-size: 11px; color: var(--fg-4); width: 24px; }
+  .scenes-list .scn:hover { background: var(--surface-2); color: var(--fg-1); }
+  .scenes-list .scn.on { color: var(--accent); background: var(--surface-2); border-left: 2px solid var(--accent); padding-left: 16px; }
+
+  .script-main {
+    flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative;
+    background: var(--surface-canvas);
+  }
+  .script-doc {
+    flex: 1; overflow: auto; padding: 36px 14% 80px;
+    font-family: var(--ff-serif);
+    color: var(--fg-1);
+    line-height: 1.85;
+    font-size: 16px;
+  }
+  .scene-title {
+    font-family: var(--ff-mono); font-size: 12px;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    margin: 28px 0 18px;
+  }
+  .para { margin-bottom: 14px; }
+  .para.action { color: var(--fg-2); }
+  .para.character { text-align: center; text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg-1); font-family: var(--ff-mono); font-size: 12px; margin: 12px 0 4px;}
+  .para.dialog { text-align: center; max-width: 480px; margin-left: auto; margin-right: auto; font-style: italic;}
+  .para.parenth { text-align: center; color: var(--fg-3); font-style: italic; font-size: 14px;}
+  .para.selected { background: rgba(201,168,91,0.10); border-left: 2px solid var(--accent); padding: 4px 12px; margin-left: -14px; }
+
+  /* Tool popover */
+  .pop {
+    position: absolute; right: 96px; top: 178px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    width: 140px;
+    padding: 6px;
+    z-index: 5;
+  }
+  .pop .row {
+    display:flex; align-items:center; gap: 10px;
+    padding: 6px 10px;
+    font-size: 12px;
+    color: var(--fg-2);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .pop .row:hover { background: var(--surface-3); color: var(--accent); }
+  .pop .row .ico { width: 14px; color: var(--fg-3); }
+  .pop hr { border: none; height: 1px; background: var(--border-subtle); margin: 4px 0; }
+
+  /* assist card */
+  .assist {
+    position: absolute; right: 36px; bottom: 76px;
+    width: 320px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 14px 16px;
+  }
+  .assist h5 { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--fg-4); margin: 0 0 8px; text-transform: uppercase; }
+  .assist p { font-family: var(--ff-serif); font-size: 15px; color: var(--fg-2); margin: 0; line-height: 1.6; }
+  .assist .meta { margin-top: 10px; display:flex; gap: 6px; }
+
+  .foot-bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: 32px;
+    background: var(--surface-1);
+    border-top: 1px solid var(--border-subtle);
+    display: flex; align-items: center; gap: 22px;
+    padding: 0 22px;
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--fg-3); letter-spacing: 0.06em;
+  }
+  .foot-bar b { color: var(--accent); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">先遣的回音 Script</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <aside class="scenes-list">
+      <div class="lab">Scenes · 12</div>
+      <div class="scn"><span class="n">01</span>梦境的边缘</div>
+      <div class="scn on"><span class="n">02</span>灯塔的回声</div>
+      <div class="scn"><span class="n">03</span>港口的午后</div>
+      <div class="scn"><span class="n">04</span>潮汐</div>
+      <div class="scn"><span class="n">05</span>木屋里的灯</div>
+      <div class="scn"><span class="n">06</span>无声的客人</div>
+      <div class="scn"><span class="n">07</span>第二次相遇</div>
+      <div class="scn"><span class="n">08</span>怀表的秘密</div>
+      <div class="scn"><span class="n">09</span>火光</div>
+      <div class="scn"><span class="n">10</span>海岸线</div>
+      <div class="scn"><span class="n">11</span>抉择</div>
+      <div class="scn"><span class="n">12</span>黎明</div>
+    </aside>
+
+    <div class="script-main">
+      <div class="script-doc">
+        <div class="scene-title">INT. 灯塔脚下 — 夜</div>
+        <div class="para action selected">海风扑打着窗，灯塔的光在浓雾里像一颗缓慢转动的心脏。</div>
+
+        <div class="para character">少年</div>
+        <div class="para parenth">（低声）</div>
+        <div class="para dialog">"它真的还在转吗？"</div>
+
+        <div class="para action">他抬起手腕，怀表的秒针几乎察觉不到地颤动了一下。然后又一次。<br>玻璃罩下的金色刻度像被人涂了一层很薄的蜂蜜。</div>
+
+        <div class="para character">老灯塔守</div>
+        <div class="para dialog">"它从来没停过。停的是听它的人。"</div>
+
+        <div class="para action">少年没有回应。他把怀表轻轻放回口袋，转身看向窗外。<br>第一缕光，从海面尽头浮起来。</div>
+
+        <div class="scene-title">INT. 木屋 — 凌晨</div>
+        <div class="para action">屋内只剩炉火的余烬。窗台上一杯茶，茶面凝着一层极淡的奶白。</div>
+
+        <div class="para character">老灯塔守</div>
+        <div class="para dialog">"明天的潮，比今天慢半拍。"</div>
+      </div>
+
+      <!-- right popover -->
+      <div class="pop">
+        <div class="row"><span class="ico">✎</span>编辑</div>
+        <div class="row"><span class="ico">⌗</span>加镜头</div>
+        <div class="row"><span class="ico">◴</span>加角色</div>
+        <hr>
+        <div class="row" style="color:var(--danger)"><span class="ico">⌫</span>移除</div>
+      </div>
+
+      <!-- assist card -->
+      <div class="assist">
+        <h5>Selected Beat · 02-001</h5>
+        <p>海风扑打着窗，灯塔的光在浓雾里像一颗缓慢转动的心脏。</p>
+        <div class="meta">
+          <span class="chip">EXT</span>
+          <span class="chip">NIGHT</span>
+          <span class="chip warning">Slow Push-in</span>
+        </div>
+      </div>
+
+      <div class="foot-bar">
+        <span><b>2,184</b> 字</span>
+        <span>段落 <b>02-001</b></span>
+        <span>阅读时长 <b>11 min</b></span>
+        <span style="margin-left:auto;color:var(--fg-4)">Auto-saved 14:02</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
+  <a class="active" href="06-script-editor.html">06</a>
+  <a href="07-asset-library.html">07</a><a href="08-asset-generation.html">08</a>
+  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

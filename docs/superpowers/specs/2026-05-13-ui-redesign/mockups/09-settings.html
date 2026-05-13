@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>09 · Settings — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .set-side {
+    width: 220px; flex: 0 0 220px;
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-subtle);
+    padding: 28px 0;
+  }
+  .set-side .lab { padding: 0 22px 8px; font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--fg-4); text-transform: uppercase; }
+  .set-side .item { display: flex; align-items: center; gap: 10px; padding: 8px 22px; color: var(--fg-2); font-size: 13px; cursor: pointer; position: relative; }
+  .set-side .item:hover { background: var(--surface-2); color: var(--fg-1); }
+  .set-side .item.on { color: var(--accent); background: var(--surface-2); }
+  .set-side .item.on::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+
+  .set-main { flex: 1; overflow: auto; padding: 32px 40px 40px;}
+  .set-main h1 { font-family: var(--ff-serif); font-size: 30px; margin: 0; }
+  .set-main .lead { color: var(--fg-3); font-size: 13px; margin: 6px 0 24px; }
+  .set-card {
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    background: var(--surface-1);
+    margin-bottom: 22px;
+  }
+  .set-card .head {
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .set-card .head h3 { font-family: var(--ff-serif); font-size: 18px; margin: 0; }
+  .set-card .head .sub { color: var(--fg-3); font-size: 12px; margin-top: 2px; }
+  .prov-row {
+    display: grid; grid-template-columns: 32px 1.4fr 1fr 110px 110px 50px;
+    align-items: center;
+    gap: 16px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .prov-row:last-child { border-bottom: none; }
+  .prov-row .logo {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: var(--surface-3);
+    display: grid; place-items: center;
+    font-family: var(--ff-serif); font-weight: 500;
+    color: var(--accent);
+  }
+  .prov-row .name b { display:block; color: var(--fg-1); font-size: 14px; }
+  .prov-row .name span { color: var(--fg-3); font-size: 11px; font-family: var(--ff-mono);}
+  .prov-row .key { font-family: var(--ff-mono); font-size: 12px; color: var(--fg-2); display: flex; align-items: center; gap: 6px;}
+  .prov-row .key .dots { letter-spacing: 0.2em; }
+  .prov-row .role { font-family: var(--ff-mono); font-size: 11px; color: var(--fg-3); text-align: center;}
+  .prov-row .more { color: var(--fg-3); text-align: right; cursor: pointer;}
+
+  /* toggle */
+  .opt {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px; border-bottom: 1px solid var(--border-subtle);
+  }
+  .opt:last-child { border-bottom: none; }
+  .opt .t { color: var(--fg-1); font-size: 14px; }
+  .opt .d { color: var(--fg-3); font-size: 12px; margin-top: 2px; }
+  .toggle {
+    width: 36px; height: 20px; border-radius: 999px;
+    background: var(--surface-3);
+    position: relative; cursor: pointer;
+    border: 1px solid var(--border);
+  }
+  .toggle::after {
+    content: ""; position: absolute; left: 2px; top: 2px;
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--fg-3);
+    transition: .15s;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle.on::after { left: 17px; background: var(--surface-canvas); }
+
+  .num-input {
+    width: 80px; padding: 4px 10px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 4px;
+    font-family: var(--ff-mono); font-size: 12px;
+    color: var(--fg-1);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame v2</div>
+    <div class="crumbs"><span class="here">设置</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘,</span><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <aside class="set-side">
+      <div class="lab">Settings</div>
+      <div class="item">👤 账号</div>
+      <div class="item on">☁ 服务商</div>
+      <div class="item">⚙ 模型偏好</div>
+      <div class="item">🎨 外观</div>
+      <div class="item">⌨ 快捷键</div>
+      <div class="item">ⓘ 关于</div>
+    </aside>
+
+    <div class="set-main">
+      <h1>服务商</h1>
+      <div class="lead">PROVIDERS · 管理您的图像和视频生成服务，主备切换，按需启用。</div>
+
+      <div class="set-card">
+        <div class="head">
+          <div>
+            <h3>已配置的服务商</h3>
+            <div class="sub">5 connected · 1 needs attention</div>
+          </div>
+          <button class="btn">＋ 添加服务商</button>
+        </div>
+
+        <div class="prov-row">
+          <div class="logo">O</div>
+          <div class="name"><b>OpenAI</b><span>api.openai.com · gpt-image-1</span></div>
+          <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
+          <div class="role"><span class="chip success">已连接</span></div>
+          <div class="role">主用</div>
+          <div class="more">⋯</div>
+        </div>
+        <div class="prov-row">
+          <div class="logo">R</div>
+          <div class="name"><b>Runway</b><span>api.runway.team · gen-3</span></div>
+          <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
+          <div class="role"><span class="chip success">已连接</span></div>
+          <div class="role">备用</div>
+          <div class="more">⋯</div>
+        </div>
+        <div class="prov-row">
+          <div class="logo">K</div>
+          <div class="name"><b>Kling</b><span>klingai.com · v3 · omni</span></div>
+          <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
+          <div class="role"><span class="chip warning">配额预警</span></div>
+          <div class="role">主用</div>
+          <div class="more">⋯</div>
+        </div>
+        <div class="prov-row">
+          <div class="logo">P</div>
+          <div class="name"><b>Pika</b><span>pika.art · v2.2</span></div>
+          <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
+          <div class="role"><span class="chip danger">连接失败</span></div>
+          <div class="role">备用</div>
+          <div class="more">⋯</div>
+        </div>
+        <div class="prov-row">
+          <div class="logo">W</div>
+          <div class="name"><b>Wanx</b><span>dashscope.aliyun · t2v / i2v</span></div>
+          <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
+          <div class="role"><span class="chip success">已连接</span></div>
+          <div class="role">备用</div>
+          <div class="more">⋯</div>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <div class="head"><div><h3>操作偏好</h3><div class="sub">影响默认行为，可随时切换</div></div></div>
+        <div class="opt">
+          <div>
+            <div class="t">自动选择最低成本</div>
+            <div class="d">在主备服务商均可用时，优先使用单次费用更低的一项。</div>
+          </div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="opt">
+          <div>
+            <div class="t">提交前显示对比</div>
+            <div class="d">生成视频任务前展示主备 provider 的费用 / 时长 / 配额对比。</div>
+          </div>
+          <div class="toggle on"></div>
+        </div>
+        <div class="opt">
+          <div>
+            <div class="t">关闭时自动备份</div>
+            <div class="d">应用退出时打包项目与素材库到本地备份目录。</div>
+          </div>
+          <div class="toggle"></div>
+        </div>
+        <div class="opt">
+          <div>
+            <div class="t">隐藏未使用的服务商类型</div>
+            <div class="d">画布上的节点选择器中不再展示未配置的 provider。</div>
+          </div>
+          <div class="toggle on"></div>
+        </div>
+      </div>
+
+      <div class="set-card">
+        <div class="head"><div><h3>速率限制</h3><div class="sub">RATE LIMITER · 每个 provider 的本地令牌桶</div></div></div>
+        <div class="opt">
+          <div>
+            <div class="t">每分钟最大请求</div>
+            <div class="d">触发 429 后自动减半，5 分钟后恢复。</div>
+          </div>
+          <input class="num-input" value="120" />
+        </div>
+        <div class="opt">
+          <div>
+            <div class="t">退避起点 (秒)</div>
+            <div class="d">指数退避起始秒数，最大 60s。</div>
+          </div>
+          <input class="num-input" value="2" />
+        </div>
+      </div>
+
+      <div style="font-family:var(--ff-mono); font-size: 11px; color: var(--fg-4); margin-top: 20px;">
+        InkFrame v0.14.2 · 3f8c91a · 2026-05-13
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
+  <a href="08-asset-generation.html">08</a>
+  <a class="active" href="09-settings.html">09</a>
+  <a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

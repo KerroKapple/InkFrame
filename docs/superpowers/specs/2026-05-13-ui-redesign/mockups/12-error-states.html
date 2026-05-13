@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>12 · Error States — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .stage { flex: 1; padding: 36px; overflow: auto; background: var(--surface-canvas);}
+  .heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px;}
+  .heading h1 { font-family: var(--ff-serif); font-size: 28px; margin: 0; }
+  .heading p { color: var(--fg-3); font-size: 13px; margin: 4px 0 0; }
+
+  .err-grid {
+    display: grid; gap: 20px;
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .err {
+    background: var(--surface-2);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    padding: 22px 24px 20px;
+    position: relative;
+    overflow: hidden;
+    min-height: 220px;
+  }
+  .err::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px;
+  }
+  .err.network::before { background: var(--info); }
+  .err.provider::before { background: var(--warning); }
+  .err.storage::before  { background: var(--success); }
+  .err.internal::before { background: var(--danger); }
+
+  .err .ico {
+    width: 28px; height: 28px;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: var(--fg-2);
+    font-size: 14px;
+    margin-bottom: 16px;
+  }
+  .err.network .ico { color: var(--info); border-color: rgba(75,122,146,0.5);}
+  .err.provider .ico { color: var(--warning); border-color: rgba(216,139,58,0.5);}
+  .err.storage .ico { color: var(--success); border-color: rgba(92,138,78,0.5);}
+  .err.internal .ico { color: var(--danger); border-color: rgba(200,82,58,0.5);}
+
+  .err h2 {
+    font-family: var(--ff-serif);
+    font-weight: 400;
+    font-size: 26px;
+    margin: 0 0 6px;
+    color: var(--fg-1);
+  }
+  .err .code {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.16em;
+    color: var(--fg-3);
+    margin-bottom: 14px;
+  }
+  .err .code b { color: var(--accent); font-weight: 500; }
+  .err .body { color: var(--fg-2); font-size: 13px; line-height: 1.7; margin-bottom: 18px; max-width: 460px;}
+  .err .row { display: flex; align-items: center; gap: 12px; }
+  .err .row .link { font-family: var(--ff-mono); font-size: 11px; color: var(--fg-3); cursor: pointer; margin-left: auto;}
+  .err .row .link:hover { color: var(--accent);}
+
+  .err .btn {
+    height: 32px; padding: 0 14px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--fg-1);
+    font-size: 12px;
+  }
+  .err .btn:hover { border-color: var(--border-hover); background: var(--surface-3);}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs"><span class="here">Error States</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <div class="stage">
+      <div class="heading">
+        <div>
+          <h1>错误类型</h1>
+          <p>四类典型错误页 · 同一卡片骨架 · 左 4px 色条区分类别</p>
+        </div>
+        <span class="chip">ER 系列</span>
+      </div>
+
+      <div class="err-grid">
+        <!-- network -->
+        <div class="err network">
+          <div class="ico">⚯</div>
+          <h2>Something went sideways.</h2>
+          <div class="code">ERR · <b>NETWORK</b> · 5005 · CONNECTION_LOST</div>
+          <div class="body">
+            无法连接到服务器。这通常是网络中断或代理设置变化导致。<br>
+            请检查网络状态后重试，或在诊断指南中查看更详细的排查步骤。
+          </div>
+          <div class="row">
+            <button class="btn">重试</button>
+            <button class="btn">复制错误 ID</button>
+            <span class="link">打开诊断指南 ↗</span>
+          </div>
+        </div>
+
+        <!-- provider -->
+        <div class="err provider">
+          <div class="ico">⚡</div>
+          <h2>Something went sideways.</h2>
+          <div class="code">ERR · <b>PROVIDER</b> · 429 · RATE_LIMITED</div>
+          <div class="body">
+            请求被服务商限流。请稍等片刻后重试，或切换为备用 provider。<br>
+            您可以在设置中调整速率限制，或查看本机配额使用情况。
+          </div>
+          <div class="row">
+            <button class="btn">重试</button>
+            <button class="btn">复制错误 ID</button>
+            <span class="link">打开诊断指南 ↗</span>
+          </div>
+        </div>
+
+        <!-- storage -->
+        <div class="err storage">
+          <div class="ico">▤</div>
+          <h2>Something went sideways.</h2>
+          <div class="code">ERR · <b>STORAGE</b> · E3002 · WRITE_FAILED</div>
+          <div class="body">
+            无法将项目写入本地数据库。这通常表示磁盘空间不足或权限被拒。<br>
+            请检查可用空间，或在诊断指南中查看权限设置说明。
+          </div>
+          <div class="row">
+            <button class="btn">重试</button>
+            <button class="btn">复制错误 ID</button>
+            <span class="link">技术细节 ↗</span>
+          </div>
+        </div>
+
+        <!-- internal -->
+        <div class="err internal">
+          <div class="ico">⚠</div>
+          <h2>Something went sideways.</h2>
+          <div class="code">ERR · <b>INTERNAL</b> · E5000 · UNEXPECTED_ERROR</div>
+          <div class="body">
+            出现了未预期的内部错误。我们已记录这次故障，可以复制错误 ID 反馈。<br>
+            如问题持续出现，请在诊断指南中查看下一步建议。
+          </div>
+          <div class="row">
+            <button class="btn">重试</button>
+            <button class="btn">复制错误 ID</button>
+            <span class="link">技术细节 ↗</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
+  <a href="08-asset-generation.html">08</a><a href="09-settings.html">09</a>
+  <a href="10-account.html">10</a><a href="11-toasts.html">11</a>
+  <a class="active" href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>
