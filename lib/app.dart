@@ -22,6 +22,7 @@ import 'features/studio/studio_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
+import 'theme/components/ink_window_chrome.dart';
 import 'theme/tokens.dart';
 
 class InkFrameApp extends ConsumerStatefulWidget {
@@ -89,7 +90,12 @@ class _LockSplash extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: context.inkColors.surfaceCanvas,
-      body: const Center(child: CircularProgressIndicator()),
+      body: Column(
+        children: const <Widget>[
+          InkWindowChrome(),
+          Expanded(child: Center(child: CircularProgressIndicator())),
+        ],
+      ),
     );
   }
 }

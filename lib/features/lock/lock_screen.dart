@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/di/package_info.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/components/ink_window_chrome.dart';
 import '../../theme/primitives/ink_amber_button.dart';
 import '../../theme/primitives/ink_ghost_button.dart';
 import '../../theme/tokens.dart';
@@ -54,36 +55,36 @@ class _LockScreenState extends ConsumerState<LockScreen> {
 
     return Scaffold(
       backgroundColor: colors.surfaceCanvas,
-      body: Stack(
+      body: Column(
         children: <Widget>[
-          // 装饰大 "I" 溢出左下角。
-          Positioned(
-            left: -80,
-            bottom: -260,
-            child: IgnorePointer(
-              child: Text(
-                'I',
-                style: typo.display.copyWith(
-                  fontSize: 720,
-                  height: 0.8,
-                  color: colors.fg4.withValues(alpha: 0.16),
-                ),
-              ),
-            ),
-          ),
-
-          // 右上 locale 切换。
-          Positioned(
-            top: InkSpacing.md,
-            right: InkSpacing.md,
-            child: InkGhostButton(
+          // Frameless 模式下，每屏必须自带 chrome，否则用户找不到关闭/最小化。
+          InkWindowChrome(
+            trailing: InkGhostButton(
               label: '中 / EN',
               compact: true,
               onPressed: () {},
             ),
           ),
+          Expanded(
+            child: Stack(
+              children: <Widget>[
+                // 装饰大 "I" 溢出左下角。
+                Positioned(
+                  left: -80,
+                  bottom: -260,
+                  child: IgnorePointer(
+                    child: Text(
+                      'I',
+                      style: typo.display.copyWith(
+                        fontSize: 720,
+                        height: 0.8,
+                        color: colors.fg4.withValues(alpha: 0.16),
+                      ),
+                    ),
+                  ),
+                ),
 
-          // 左下版本号（PackageInfo 实时读取，loading/error 时显示空字符串）。
+                // 左下版本号（PackageInfo 实时读取，loading/error 时显示空字符串）。
           Positioned(
             left: InkSpacing.lg,
             bottom: InkSpacing.md,
@@ -158,7 +159,10 @@ class _LockScreenState extends ConsumerState<LockScreen> {
                 ],
               ),
             ),
+              ),
+            ],
           ),
+        ),
         ],
       ),
     );
