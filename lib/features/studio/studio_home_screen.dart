@@ -5,6 +5,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/di/repositories.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/primitives/ink_amber_button.dart';
@@ -100,13 +101,64 @@ class _StudioMainArea extends ConsumerWidget {
             child: InkAmberButton(
               label: context.l10n.studioNewProject,
               icon: Icons.add,
-              onPressed: () {
-                // Task 13 接 _showNewProjectDialog
-              },
+              onPressed: () => _showNewProjectDialog(context, ref),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showNewProjectDialog(BuildContext context, WidgetRef ref) async {
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => const _NewProjectDialog(),
+    );
+    if (name == null || name.isEmpty) return;
+    final projects = await ref.read(projectRepositoryProvider.future);
+    final canvases = await ref.read(canvasRepositoryProvider.future);
+    final projectId = await projects.create(name: name);
+    await canvases.create(
+      projectId: projectId,
+      name: context.mounted
+          ? context.l10n.canvasSampleCanvasName
+          : 'Canvas 1',
+    );
+    ref.invalidate(workspaceProjectsProvider);
+  }
+}
+
+class _NewProjectDialog extends StatefulWidget {
+  const _NewProjectDialog();
+  @override
+  State<_NewProjectDialog> createState() => _NewProjectDialogState();
+}
+
+class _NewProjectDialogState extends State<_NewProjectDialog> {
+  final TextEditingController _controller = TextEditingController();
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(context.l10n.workspaceNewProject),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        decoration: InputDecoration(hintText: context.l10n.workspaceNewProjectHint),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.commonCancel),
+        ),
+        TextButton(onPressed: _submit, child: Text(context.l10n.commonOk)),
+      ],
     );
   }
 }
