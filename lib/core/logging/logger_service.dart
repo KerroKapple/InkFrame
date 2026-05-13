@@ -105,6 +105,10 @@ class FileLoggerService implements LoggerService {
     'authorization',
     'authorisation',
     'prompt',
+    'password',
+    'proxy_password',
+    'proxypassword',
+    'secret',
   };
 
   File get _activeFile => File(p.join(_paths.logs.path, 'inkframe.log'));

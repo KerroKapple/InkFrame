@@ -73,7 +73,14 @@ void main() {
         'token': 'abc.xyz',
         'authorization': 'Bearer 123',
         'prompt': 'very private user text',
+        'password': 'hunter2',
+        'proxy_password': 'corp-proxy-secret',
+        'proxyPassword': 'camel-case-secret',
+        'secret': 'oauth-client-secret',
         'job_id': 'J-1',
+        // 否定面：URL 本身不是凭证，必须保留以便排障
+        'proxy_url': 'http://proxy.corp.local:8080',
+        'proxyUrl': 'http://proxy.corp.local:8080',
       });
       await logger.flush();
 
@@ -84,7 +91,21 @@ void main() {
       expect(extra['token'], '***');
       expect(extra['authorization'], '***');
       expect(extra['prompt'], '***');
+      expect(extra['password'], '***');
+      expect(extra['proxy_password'], '***');
+      expect(extra['proxyPassword'], '***');
+      expect(extra['secret'], '***');
       expect(extra['job_id'], 'J-1');
+      // proxy_url / proxyUrl 不在白名单，原样落盘
+      expect(extra['proxy_url'], 'http://proxy.corp.local:8080');
+      expect(extra['proxyUrl'], 'http://proxy.corp.local:8080');
+
+      // 兜底：整行原文不得出现任何原始密码值
+      final raw = lines.first;
+      expect(raw.contains('corp-proxy-secret'), isFalse);
+      expect(raw.contains('camel-case-secret'), isFalse);
+      expect(raw.contains('hunter2'), isFalse);
+      expect(raw.contains('sk-real-secret'), isFalse);
 
       await logger.close();
       await tmp.delete(recursive: true);
