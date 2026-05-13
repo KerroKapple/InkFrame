@@ -255,9 +255,9 @@ lib/
 
 ### Error Handling
 
-- Custom exception types per domain (ProviderException, StorageException, etc.)
-- NO catching `Exception` or `dynamic` — always specific types
-- Errors bubble up to UI via Riverpod AsyncValue
+- Custom `InkError` sealed subclasses per domain (`ProviderError` / `NetworkError` / `DownloadError` / `LocalIOError` / `CancelledError` / `UnknownError`) — see `lib/core/errors/ink_error.dart` and ARCHITECTURE.md §4.1
+- NO catching `Exception` or `dynamic` — always specific `InkError` subtypes
+- Errors bubble up to UI via Riverpod AsyncValue; widgets render `messageKey` through `context.l10n`
 
 ### Testing
 
