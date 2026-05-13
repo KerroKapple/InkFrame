@@ -40,7 +40,7 @@ class _InkGhostButtonState extends State<InkGhostButton> {
           behavior: HitTestBehavior.opaque,
           onTap: widget.onPressed,
           child: AnimatedContainer(
-            duration: const Duration(milliseconds: 120),
+            duration: InkMotion.fast,
             height: widget.compact ? 28 : 36,
             padding: EdgeInsets.symmetric(
               horizontal: widget.compact ? InkSpacing.sm : InkSpacing.md,
