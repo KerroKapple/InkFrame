@@ -287,73 +287,108 @@ class NodeGenerationService {
 
 ```dart
 // lib/core/errors/ink_error.dart
-sealed class InkError {
+enum InkErrorCode {
+  invalidKey('invalid_key'),
+  insufficientBalance('insufficient_balance'),
+  contentPolicy('content_policy'),
+  invalidParameter('invalid_parameter'),
+  networkTimeout('network_timeout'),
+  networkOffline('network_offline'),
+  providerServer('provider_5xx'),
+  providerBusy('provider_busy'),
+  pollTimeout('poll_timeout'),
+  downloadFailed('download_failed'),
+  localIOError('local_io_error'),
+  cancelledByUser('cancelled_by_user'),
+  cancelledOnExit('cancelled_on_exit'),
+  unknown('unknown');
+
+  const InkErrorCode(this.wire);
+  final String wire;  // DB / 日志 / 跨进程的字符串 code
+}
+
+@immutable
+sealed class InkError implements Exception {
   const InkError({
     required this.code,
-    required this.messageKey,  // i18n key，UI 层用 context.l10n 显示
+    this.extra = const <String, Object?>{},
     this.cause,
-    this.extra = const {},
+    this.stackTrace,
   });
 
-  final String code;         // 对应 §10.6 的 14 个错误码
-  final String messageKey;   // ARB key，如 'errorProviderTimeout'
-  final Object? cause;       // 原始异常，仅用于日志
-  final Map<String, Object> extra;
+  final InkErrorCode code;
+  final Map<String, Object?> extra;  // job_id / provider_id / status_code 等
+  final Object? cause;                // 原始异常，仅用于日志
+  final StackTrace? stackTrace;
 
-  bool get isRetryable;      // 是否可重试（影响 JobQueue 行为）
+  String get messageKey => _messageKeys[code]!;       // ARB key，UI 层用 context.l10n 渲染
+  bool get retryable => _retryable.contains(code);    // 是否可重试（影响 JobQueue 行为）
 }
 
-// Provider 错误（网络/API）
+// Provider / 鉴权 / 配额 / 参数 / Provider 5xx / Busy / Poll 超时
 final class ProviderError extends InkError {
-  const ProviderError.invalidKey() : super(
-    code: 'invalid_key',
-    messageKey: 'errorProviderInvalidKey',
-    isRetryable: false,  // 不可重试
-  );
-  const ProviderError.timeout({required String jobId}) : super(
-    code: 'network_timeout',
-    messageKey: 'errorProviderTimeout',
-    extra: {'job_id': jobId},
-    isRetryable: true,   // 可重试
-  );
-  // ... 其余 12 个错误码见 §10.6
+  const ProviderError({required super.code, super.extra, super.cause, super.stackTrace});
 }
 
-// 存储错误（数据库/文件）
-final class StorageError extends InkError { ... }
+// 网络层（本机 / 链路 / TLS / 代理）：network_timeout / network_offline
+final class NetworkError extends InkError {
+  const NetworkError({required super.code, super.extra, super.cause, super.stackTrace});
+}
 
-// 验证错误（参数非法）
-final class ValidationError extends InkError { ... }
+// 产物下载（生成成功但取文件失败）
+final class DownloadError extends InkError {
+  const DownloadError({super.extra, super.cause, super.stackTrace})
+      : super(code: InkErrorCode.downloadFailed);
+}
 
-// 本地 IO 错误（磁盘满/权限）
-final class LocalIOError extends InkError { ... }
+// 本地 IO（磁盘满 / 权限拒绝 / 路径不存在）
+final class LocalIOError extends InkError {
+  const LocalIOError({super.extra, super.cause, super.stackTrace})
+      : super(code: InkErrorCode.localIOError);
+}
+
+// 取消（用户主动 / 应用退出）
+final class CancelledError extends InkError {
+  const CancelledError.byUser({super.extra}) : super(code: InkErrorCode.cancelledByUser);
+  const CancelledError.onExit({super.extra}) : super(code: InkErrorCode.cancelledOnExit);
+}
+
+// 兜底：未归类异常，必须带 cause 以便诊断
+final class UnknownError extends InkError {
+  const UnknownError({required Object super.cause, super.stackTrace, super.extra})
+      : super(code: InkErrorCode.unknown);
+}
 ```
+
+`messageKey` 与 `retryable` 由顶层 `_messageKeys` / `_retryable` 表按 code 静态查表（详见
+`lib/core/errors/ink_error.dart:39-63`），子类不重写、不通过构造参数注入——新增 code 改两张表即可，
+子类层级保持稳定。
 
 **§10.6 完整 14 个错误码：**
 
-| code | 类型 | isRetryable | messageKey |
-|------|------|-------------|------------|
-| `invalid_key` | Provider | false | `errorProviderInvalidKey` |
-| `insufficient_balance` | Provider | false | `errorProviderInsufficientBalance` |
-| `content_policy_violation` | Provider | false | `errorProviderContentPolicy` |
-| `invalid_parameter` | Provider | false | `errorProviderInvalidParameter` |
-| `provider_5xx` | Provider | true | `errorProvider5xx` |
-| `provider_busy` | Provider | true | `errorProviderBusy` |
-| `network_timeout` | Provider | true | `errorNetworkTimeout` |
-| `network_offline` | Provider | true | `errorNetworkOffline` |
-| `poll_timeout` | Provider | false | `errorPollTimeout` |
-| `download_failed` | 产物 | true | `errorDownloadFailed` |
-| `local_io_error` | 本地 | false | `errorLocalIO` |
-| `cancelled_by_user` | 用户 | — | `errorCancelled` |
-| `cancelled_on_exit` | 系统 | — | `errorCancelledOnExit` |
-| `unknown` | 兜底 | false | `errorUnknown` |
+| code (`wire`) | 子类 | retryable | messageKey (ARB) |
+|---------------|------|-----------|------------------|
+| `invalid_key` | ProviderError | false | `errorInvalidKey` |
+| `insufficient_balance` | ProviderError | false | `errorInsufficientBalance` |
+| `content_policy` | ProviderError | false | `errorContentPolicy` |
+| `invalid_parameter` | ProviderError | false | `errorInvalidParameter` |
+| `provider_5xx` | ProviderError | true | `errorProviderServer` |
+| `provider_busy` | ProviderError | true | `errorProviderBusy` |
+| `poll_timeout` | ProviderError | false | `errorPollTimeout` |
+| `network_timeout` | NetworkError | true | `errorNetworkTimeout` |
+| `network_offline` | NetworkError | true | `errorNetworkOffline` |
+| `download_failed` | DownloadError | true | `errorDownloadFailed` |
+| `local_io_error` | LocalIOError | false | `errorLocalIO` |
+| `cancelled_by_user` | CancelledError | false | `errorCancelled` |
+| `cancelled_on_exit` | CancelledError | false | `errorCancelledOnExit` |
+| `unknown` | UnknownError | false | `errorUnknown` |
 
 ### 4.2 跨层传播规则
 
 ```
 Infrastructure 层   → 抛 InkError 子类（不泄露 PostgreSQL / dio 原生异常）
-Repository 层       → catch 基础设施异常，包装为 StorageError / LocalIOError 后重新抛出
-Service 层          → catch InkError，判断 isRetryable，决定重试或上报
+Repository 层       → catch 基础设施异常，包装为 LocalIOError / UnknownError 后重新抛出
+Service 层          → catch InkError，判断 retryable，决定重试或上报
 ViewModel 层        → catch InkError，写入 AsyncValue.error(inkError)，不再 catch
 Widget 层           → 读取 AsyncValue.error，用 messageKey 显示 i18n 错误信息
 
@@ -456,7 +491,7 @@ const int      kMaxRetries           = 3;     // 仅网络错误重试
 ```
 
 **可重试白名单：** `network_timeout / network_offline / provider_5xx / provider_busy / download_failed`。
-**不可重试：** `invalid_key / insufficient_balance / content_policy_violation / invalid_parameter / poll_timeout / local_io_error`。
+**不可重试：** `invalid_key / insufficient_balance / content_policy / invalid_parameter / poll_timeout / local_io_error / cancelled_by_user / cancelled_on_exit / unknown`。
 
 ---
 
@@ -644,7 +679,7 @@ lib/l10n/
 示例：
   canvasAddNode              → 画布"添加节点"按钮文字
   generationSubmitButton     → 生成提交按钮
-  errorProviderTimeout       → Provider 超时错误提示
+  errorNetworkTimeout        → 网络超时错误提示（对应 InkErrorCode.networkTimeout）
   settingsApiKeyLabel        → 设置页 API Key 标签
   baseStylePreset_cinematic  → 基底风格预设（下划线分隔变体）
 ```
