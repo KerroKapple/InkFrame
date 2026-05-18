@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>05 · Storyboard — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .main { flex: 1; display:flex; flex-direction:column; min-height:0; }
+  .sub-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .sub-head h1 { font-family: var(--ff-serif); font-size: 28px; margin: 0; }
+  .sub-head .tabs { display: flex; gap: 18px; font-family: var(--ff-mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--fg-3); }
+  .sub-head .tabs span.on { color: var(--accent); border-bottom: 1px solid var(--accent); padding-bottom: 14px; }
+  .sub-head .right { display: flex; gap: 10px; }
+
+  .table-head {
+    display: grid; grid-template-columns: 60px 220px 1fr 120px 220px 120px;
+    padding: 10px 28px;
+    border-bottom: 1px solid var(--border-subtle);
+    font-family: var(--ff-mono);
+    font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--fg-4);
+  }
+  .rows { flex: 1; overflow: auto; }
+  .row {
+    display: grid; grid-template-columns: 60px 220px 1fr 120px 220px 120px;
+    align-items: center;
+    padding: 14px 28px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-2);
+    gap: 18px;
+  }
+  .row:hover { background: var(--surface-3); }
+  .row .no { font-family: var(--ff-mono); font-size: 22px; color: var(--accent); letter-spacing: 0.05em; }
+  .row .thumb {
+    aspect-ratio: 16/9; border-radius: 4px; border: 1px solid var(--border-subtle);
+    background-size: cover; background-position: center;
+  }
+  .row .desc { color: var(--fg-2); font-size: 13px; line-height: 1.5; }
+  .row .dur { font-family: var(--ff-mono); font-size: 12px; color: var(--fg-3); }
+  .row .note { color: var(--fg-3); font-size: 12px; line-height: 1.4; }
+  .row .status { display: flex; justify-content: flex-end; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">Storyboard</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘K</span><button class="ico-btn">⤴</button><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <div class="main">
+      <div class="sub-head">
+        <h1>智能分镜</h1>
+        <div class="tabs">
+          <span class="on">表格</span><span>看板</span><span>时间线</span>
+        </div>
+        <div class="right">
+          <button class="btn">EP 02 ▾</button>
+          <button class="btn">Share</button>
+          <button class="btn">Filter</button>
+        </div>
+      </div>
+
+      <div class="table-head">
+        <div>编号</div><div>缩略图</div><div>描述</div><div>持续时间</div><div>备注</div><div style="text-align:right">状态</div>
+      </div>
+
+      <div class="rows">
+        <div class="row">
+          <div class="no">012</div>
+          <div class="thumb" style="background:linear-gradient(180deg,#16110a,#06050a)"></div>
+          <div class="desc">海风扑打着灯塔，少年抬头望着灯塔顶端的光在浓雾中闪烁。</div>
+          <div class="dur">00 : 06</div>
+          <div class="note">需要从 establishing shot 推进至特写。</div>
+          <div class="status"><span class="tag accent">待校对</span></div>
+        </div>
+        <div class="row">
+          <div class="no">013</div>
+          <div class="thumb" style="background:linear-gradient(140deg,#2a1f12,#0a0807)"></div>
+          <div class="desc">怀表的指针缓慢转动，少年的瞳孔在金光中收缩。</div>
+          <div class="dur">00 : 04</div>
+          <div class="note">钟摆音效衔接至下一镜的潮汐声。</div>
+          <div class="status"><span class="tag warn">已完成</span></div>
+        </div>
+        <div class="row">
+          <div class="no">014</div>
+          <div class="thumb" style="background:linear-gradient(160deg,#0e0c14,#020205)"></div>
+          <div class="desc">远景：灯塔的光斜切水面，留下狭长的金色路径。</div>
+          <div class="dur">00 : 08</div>
+          <div class="note">用作过场。</div>
+          <div class="status"><span class="tag ok">通过</span></div>
+        </div>
+        <div class="row">
+          <div class="no">015</div>
+          <div class="thumb" style="background:linear-gradient(180deg,#241810,#0a0807)"></div>
+          <div class="desc">少年低头看怀表，影子在木板上拉得很长。</div>
+          <div class="dur">00 : 05</div>
+          <div class="note">道具：怀表已锁定。</div>
+          <div class="status"><span class="tag accent">待校对</span></div>
+        </div>
+        <div class="row">
+          <div class="no">016</div>
+          <div class="thumb" style="background:linear-gradient(160deg,#1a140c,#0a0807)"></div>
+          <div class="desc">渔夫从背后路过，回头看了一眼，欲言又止。</div>
+          <div class="dur">00 : 07</div>
+          <div class="note">需要再补一次台词录音。</div>
+          <div class="status"><span class="tag danger">重拍</span></div>
+        </div>
+        <div class="row">
+          <div class="no">017</div>
+          <div class="thumb" style="background:linear-gradient(180deg,#2c2114,#0a0807)"></div>
+          <div class="desc">特写：怀表表盖合上，反射出灯塔的光晕。</div>
+          <div class="dur">00 : 03</div>
+          <div class="note">闭合镜头，本场结束。</div>
+          <div class="status"><span class="tag ok">通过</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a>
+  <a class="active" href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a>
+  <a href="07-asset-library.html">07</a><a href="08-asset-generation.html">08</a>
+  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

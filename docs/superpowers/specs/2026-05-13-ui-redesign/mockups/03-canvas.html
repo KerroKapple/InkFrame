@@ -1,0 +1,368 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>03 · Canvas — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .toolbar {
+    width: 56px; flex: 0 0 56px;
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-subtle);
+    display: flex; flex-direction: column;
+    align-items: center;
+    padding: 10px 0;
+    gap: 4px;
+  }
+  .tool {
+    width: 36px; height: 36px;
+    display: grid; place-items: center;
+    color: var(--fg-3);
+    border-radius: var(--r-md);
+    font-size: 14px;
+  }
+  .tool:hover { background: var(--surface-3); color: var(--fg-1); }
+  .tool.on { color: var(--accent); background: var(--surface-2); border: 1px solid rgba(201,168,91,0.35); }
+  .tool-sep { height: 1px; width: 28px; background: var(--border-subtle); margin: 6px 0; }
+
+  .canvas-wrap {
+    flex: 1; position: relative;
+    background: var(--surface-canvas);
+    overflow: hidden;
+  }
+  .dots {
+    position: absolute; inset: 0;
+    background-image: radial-gradient(circle, rgba(90,80,72,0.28) 1px, transparent 1.4px);
+    background-size: 22px 22px;
+  }
+
+  /* Minimap bar */
+  .mini {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--fg-3);
+    z-index: 4;
+  }
+  .mini .map {
+    width: 220px; height: 8px;
+    border-radius: 4px;
+    background: var(--surface-3);
+    position: relative;
+  }
+  .mini .map::after {
+    content: ""; position: absolute; left: 30%; width: 24%; top: 0; bottom: 0;
+    border: 1px solid var(--accent); border-radius: 4px;
+  }
+
+  /* Inspector */
+  .inspector {
+    width: 320px; flex: 0 0 320px;
+    background: var(--surface-1);
+    border-left: 1px solid var(--border-subtle);
+    overflow-y: auto;
+    display: flex; flex-direction: column;
+  }
+  .insp-head { padding: 18px 18px 8px; border-bottom: 1px solid var(--border-subtle); }
+  .insp-head .title { font-family: var(--ff-serif); font-size: 22px; }
+  .insp-head .id { font-family: var(--ff-mono); font-size: 10px; color: var(--fg-3); letter-spacing: 0.12em; margin-top: 2px; }
+  .insp-section {
+    border-bottom: 1px solid var(--border-subtle);
+    padding: 12px 16px;
+  }
+  .insp-section h4 {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--fg-3);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+    display: flex; justify-content: space-between;
+  }
+  .insp-section h4 .tw { color: var(--fg-4); cursor: pointer; }
+  .kv { display: flex; justify-content: space-between; padding: 5px 0; font-size: 12px; color: var(--fg-2); }
+  .kv b { font-weight: 500; color: var(--fg-1); font-family: var(--ff-mono); font-size: 11px; }
+  .add-attr {
+    margin: 10px 0 2px;
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--accent);
+    cursor: pointer;
+    letter-spacing: 0.06em;
+  }
+
+  /* Render queue panel inside inspector */
+  .rq { margin-top: auto; border-top: 1px solid var(--border-subtle); padding: 12px 16px; }
+  .rq h4 { font-family: var(--ff-mono); font-size: 11px; letter-spacing: 0.18em; color: var(--fg-3); margin: 0 0 10px; display: flex; justify-content: space-between; }
+  .rq .job { display: flex; align-items: center; gap: 10px; padding: 6px 0; }
+  .rq .pill { width: 8px; height: 8px; border-radius: 50%; }
+  .rq .running { background: var(--cta); box-shadow: 0 0 0 3px rgba(227,166,72,0.18); }
+  .rq .queued  { background: var(--fg-4); }
+  .rq .name { font-size: 12px; color: var(--fg-1); flex: 1; }
+  .rq .pct { font-family: var(--ff-mono); font-size: 11px; color: var(--fg-3); }
+  .rq .bar { margin-left: 18px; height: 3px; background: var(--surface-3); border-radius: 2px; position: relative; }
+  .rq .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--cta); border-radius: 2px; }
+
+  /* Hint bar */
+  .hint {
+    position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 24px;
+    font-family: var(--ff-mono); font-size: 10px;
+    color: var(--fg-4);
+    letter-spacing: 0.12em;
+  }
+  .hint b { color: var(--accent); font-weight: 500; }
+
+  /* Nodes */
+  .node {
+    position: absolute;
+    width: 200px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+  }
+  .node:hover { border-color: var(--border-hover); }
+  .node.selected { border-color: var(--accent); }
+  .node .type {
+    font-family: var(--ff-mono);
+    font-size: 9px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--fg-3);
+    padding: 8px 12px 2px;
+  }
+  .node .title {
+    font-family: var(--ff-serif); font-size: 18px;
+    padding: 0 12px 8px;
+  }
+  .node .thumb {
+    margin: 0 10px;
+    aspect-ratio: 16/9;
+    background: var(--surface-canvas);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-sm);
+    background-size: cover; background-position: center;
+  }
+  .node .foot {
+    padding: 8px 12px 10px;
+    display: flex; justify-content: space-between;
+    font-family: var(--ff-mono);
+    font-size: 10px; color: var(--fg-3);
+    letter-spacing: 0.06em;
+  }
+
+  /* SVG edges layer */
+  .edges { position: absolute; inset: 0; pointer-events: none; }
+  .edges path { fill: none; stroke: var(--fg-4); stroke-width: 1.4; stroke-dasharray: 4 4; }
+  .edges path.live { stroke: var(--accent); stroke-dasharray: 0; }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- chrome -->
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs">
+      <span>Nocturne</span><span class="chev">›</span>
+      <span>Episode 02</span><span class="chev">›</span>
+      <span class="here">Canvas</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <span class="kbd">⌘K</span>
+      <button class="ico-btn">▶</button>
+      <button class="ico-btn">⤓</button>
+      <div class="avatar">J</div>
+    </div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <!-- toolbar -->
+    <aside class="toolbar">
+      <button class="tool on" title="Select">⌖</button>
+      <button class="tool" title="Pan">✋</button>
+      <button class="tool" title="Box">▢</button>
+      <button class="tool" title="Connect">↔</button>
+      <button class="tool" title="Shape">◇</button>
+      <button class="tool" title="Text">T</button>
+      <button class="tool" title="Image">▦</button>
+      <button class="tool" title="3D">◰</button>
+      <div class="tool-sep"></div>
+      <button class="tool" title="Undo">↶</button>
+      <button class="tool" title="Redo">↷</button>
+      <button class="tool" title="Center">⊙</button>
+      <button class="tool" title="Snap">⊞</button>
+      <div style="flex:1"></div>
+      <button class="tool" title="More">⋯</button>
+    </aside>
+
+    <!-- canvas -->
+    <div class="canvas-wrap">
+      <div class="dots"></div>
+
+      <div class="mini">
+        <span>87%</span>
+        <button style="color:var(--fg-3)">−</button>
+        <div class="map"></div>
+        <button style="color:var(--fg-3)">＋</button>
+        <span>🔒</span>
+        <span style="color:var(--success)">60 FPS</span>
+      </div>
+
+      <!-- edges -->
+      <svg class="edges">
+        <path d="M 220,170 C 290,170 290,170 360,170"></path>
+        <path d="M 420,170 C 490,170 490,170 560,170"></path>
+        <path class="live" d="M 320,260 C 360,300 380,300 420,330"></path>
+        <path d="M 220,370 C 290,370 290,370 360,370"></path>
+        <path d="M 420,370 C 500,370 500,370 580,370"></path>
+        <path class="live" d="M 660,250 C 660,300 660,300 660,330"></path>
+      </svg>
+
+      <!-- nodes -->
+      <div class="node selected" style="left:40px; top:80px">
+        <div class="bar-strip bar-character"></div>
+        <div class="type">Character</div>
+        <div class="title">Elara</div>
+        <div class="thumb" style="background:linear-gradient(160deg,#3a2818,#0f0a07)"></div>
+        <div class="foot"><span>ID 0021</span><span>1080×1350</span></div>
+      </div>
+
+      <div class="node" style="left:280px; top:80px">
+        <div class="bar-strip bar-scene"></div>
+        <div class="type">Scene</div>
+        <div class="title">Harbor Docks</div>
+        <div class="thumb" style="background:linear-gradient(180deg,#1a1812,#06050a)"></div>
+        <div class="foot"><span>ID 0102</span><span>2048×1152</span></div>
+      </div>
+
+      <div class="node" style="left:520px; top:80px">
+        <div class="bar-strip bar-camera"></div>
+        <div class="type">Camera · Wide Shot</div>
+        <div class="title">Wide Shot</div>
+        <div class="thumb" style="background:linear-gradient(120deg,#2a1f0e,#0a0807)"></div>
+        <div class="foot"><span>ID 0314</span><span>50 mm · f/4</span></div>
+      </div>
+
+      <div class="node" style="left:40px; top:300px">
+        <div class="bar-strip bar-prop"></div>
+        <div class="type">Prop</div>
+        <div class="title">Pocket Watch</div>
+        <div class="thumb" style="background:radial-gradient(circle at 50% 50%,#6a4f1a 0,#0a0807 70%)"></div>
+        <div class="foot"><span>ID 0508</span><span>1024×1024</span></div>
+      </div>
+
+      <div class="node" style="left:280px; top:300px">
+        <div class="bar-strip bar-shot"></div>
+        <div class="type">Cu Watch</div>
+        <div class="title">CU Watch</div>
+        <div class="thumb" style="background:radial-gradient(circle at 60% 50%,#3a2a14,#08070a 80%)"></div>
+        <div class="foot"><span>ID 0617</span><span>1920×1080</span></div>
+      </div>
+
+      <div class="node" style="left:520px; top:300px">
+        <div class="bar-strip bar-imagegen"></div>
+        <div class="type">Image Gen</div>
+        <div class="title">Watch Closeup</div>
+        <div class="thumb" style="background:linear-gradient(160deg,#3a2a16,#0a0807)"></div>
+        <div class="foot"><span>ID 0732</span><span>generating…</span></div>
+      </div>
+
+      <div class="hint">
+        <span>Pan <b>[Space]</b></span>
+        <span>Zoom <b>[⌘ +/−]</b></span>
+        <span>Add Node <b>[A]</b></span>
+        <span>Connect <b>[C]</b></span>
+        <span>Frame <b>[F]</b></span>
+      </div>
+    </div>
+
+    <!-- inspector -->
+    <aside class="inspector">
+      <div class="insp-head">
+        <div class="title">Wide Shot</div>
+        <div class="id">CAMERA NODE · ID 0314 · UPD 05.12 14:02</div>
+      </div>
+
+      <div class="insp-section">
+        <h4><span>Transform</span><span class="tw">▾</span></h4>
+        <div class="kv"><span>Position</span><b>140, 220, 0</b></div>
+        <div class="kv"><span>Rotation</span><b>0°, 12°, 0°</b></div>
+        <div class="kv"><span>Scale</span><b>1.00</b></div>
+      </div>
+
+      <div class="insp-section">
+        <h4><span>Camera</span><span class="tw">▾</span></h4>
+        <div class="kv"><span>Focal length</span><b>50 mm</b></div>
+        <div class="kv"><span>Aperture</span><b>f/4.0</b></div>
+        <div class="kv"><span>Focus distance</span><b>2.7 m</b></div>
+        <div class="kv"><span>Sensor</span><b>S35</b></div>
+      </div>
+
+      <div class="insp-section">
+        <h4><span>Composition</span><span class="tw">▸</span></h4>
+      </div>
+      <div class="insp-section">
+        <h4><span>Metadata</span><span class="tw">▸</span></h4>
+      </div>
+      <div class="insp-section">
+        <h4><span>Notes</span><span class="tw">▾</span></h4>
+        <div style="color:var(--fg-2);font-size:12px;line-height:1.6">
+          Establishing the docks. Hold for 4 s before pushing in to CU Watch.
+        </div>
+        <div class="add-attr">＋ Add Attribute</div>
+      </div>
+
+      <div class="rq">
+        <h4><span>Render Queue</span><span style="color:var(--fg-3)">3 jobs · 2 running ▾</span></h4>
+        <div class="job">
+          <span class="pill running"></span>
+          <span class="name">Watch Closeup</span>
+          <span class="pct">62%</span>
+        </div>
+        <div class="bar" style="margin-left:18px;width:calc(100% - 18px)"><i style="width:62%"></i></div>
+
+        <div class="job" style="margin-top:8px">
+          <span class="pill running"></span>
+          <span class="name">Harbor Wide</span>
+          <span class="pct">28%</span>
+        </div>
+        <div class="bar"><i style="width:28%"></i></div>
+
+        <div class="job" style="margin-top:8px">
+          <span class="pill queued"></span>
+          <span class="name">Nocturne Teaser</span>
+          <span class="pct" style="color:var(--fg-4)">queued</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a>
+  <a href="02-studio-home.html">02</a>
+  <a class="active" href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a>
+  <a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a>
+  <a href="07-asset-library.html">07</a>
+  <a href="08-asset-generation.html">08</a>
+  <a href="09-settings.html">09</a>
+  <a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a>
+  <a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

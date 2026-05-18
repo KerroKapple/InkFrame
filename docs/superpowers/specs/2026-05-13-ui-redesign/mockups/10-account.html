@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>10 · Account Menu — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  /* dim background using canvas screen as stage */
+  .stage { flex: 1; position: relative; background: var(--surface-canvas); overflow: hidden; }
+  .stage::before {
+    content: ""; position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 70% 30%, rgba(201,168,91,0.05), transparent 40%),
+      linear-gradient(180deg, var(--surface-1), var(--surface-canvas));
+  }
+  .ghost-top {
+    position: absolute; top: 0; left: 0; right: 0; height: 44px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--surface-1);
+    display: flex; align-items: center; padding: 0 12px;
+    z-index: 1;
+  }
+  .ghost-top .search {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 8px;
+    height: 28px; padding: 0 12px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--fg-3); font-size: 12px;
+    width: 280px;
+  }
+  .ghost-top .ico { width: 28px; height: 28px; display: grid; place-items: center; color: var(--fg-2); margin-left: 6px;}
+  .ghost-top .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface-4);
+    display: grid; place-items: center;
+    font-family: var(--ff-serif); color: var(--fg-1);
+    border: 1px solid var(--accent);
+    margin-left: 6px;
+  }
+
+  /* menu */
+  .menu-wrap { position: absolute; top: 56px; right: 36px; z-index: 5; display: flex; gap: 6px; }
+  .menu {
+    width: 280px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 14px 12px;
+  }
+  .menu .uhead { padding: 8px 8px 14px; display: flex; gap: 12px; align-items: center; }
+  .menu .uhead .av {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--surface-4); border: 1px solid var(--accent);
+    display: grid; place-items: center;
+    font-family: var(--ff-serif); font-size: 22px; color: var(--fg-1);
+  }
+  .menu .uhead .nm { font-family: var(--ff-serif); font-size: 20px; color: var(--fg-1); line-height: 1.1; }
+  .menu .uhead .em { font-family: var(--ff-mono); font-size: 11px; color: var(--fg-3); margin-top: 2px;}
+  .menu .uhead .edit { margin-left: auto; color: var(--fg-3); cursor: pointer; }
+
+  .menu hr { border:none; height:1px; background: var(--border-subtle); margin: 6px 0;}
+
+  .mi {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    color: var(--fg-1);
+    font-size: 13px;
+    cursor: pointer;
+    position: relative;
+  }
+  .mi:hover { background: var(--surface-3); }
+  .mi .ico { color: var(--fg-3); width: 16px; }
+  .mi .arrow { margin-left: auto; color: var(--fg-4); }
+  .mi.danger { color: var(--danger); }
+  .mi.on { background: var(--surface-3); }
+
+  /* submenu */
+  .submenu {
+    width: 180px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 10px 8px;
+    align-self: flex-start;
+    margin-top: 130px;
+  }
+  .submenu .si {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 10px;
+    font-size: 13px; color: var(--fg-2);
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .submenu .si:hover { background: var(--surface-3); color: var(--fg-1);}
+  .submenu .si.on { color: var(--accent); }
+  .submenu .si .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="body">
+    <div class="stage">
+      <div class="ghost-top">
+        <div class="logo" style="font-family:var(--ff-serif);font-size:19px;font-weight:300;margin-left:6px">Ink<span style="color:var(--accent)">/</span>Frame</div>
+        <div class="search">🔍 Search… <span class="kbd" style="margin-left:auto">⌘K</span></div>
+        <button class="ico">⇄</button>
+        <button class="ico">⌶</button>
+        <button class="ico">≡</button>
+        <div class="avatar">J</div>
+        <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+      </div>
+
+      <div class="menu-wrap">
+        <!-- account menu -->
+        <div class="menu">
+          <div class="uhead">
+            <div class="av">J</div>
+            <div>
+              <div class="nm">Jonathan Lin</div>
+              <div class="em">jonathan.lin@inkframe.studio</div>
+            </div>
+            <span class="edit">✎</span>
+          </div>
+          <hr>
+          <div class="mi"><span class="ico">👤</span>账号 <span class="arrow">›</span></div>
+          <div class="mi"><span class="ico">⇄</span>偏好 <span class="arrow">›</span></div>
+          <div class="mi on"><span class="ico">◐</span>主题 <span class="arrow">›</span></div>
+          <div class="mi"><span class="ico">🌐</span>语言 <span class="arrow">›</span></div>
+          <div class="mi"><span class="ico">⌨</span>快捷键 <span class="arrow">›</span></div>
+          <div class="mi"><span class="ico">📄</span>文档 <span class="arrow" style="color:var(--fg-3)">↗</span></div>
+          <hr>
+          <div class="mi danger"><span class="ico">⎋</span>退出</div>
+        </div>
+
+        <!-- submenu theme -->
+        <div class="submenu">
+          <div class="si on"><span class="dot"></span>暗</div>
+          <div class="si" style="padding-left:24px">亮</div>
+          <div class="si" style="padding-left:24px">跟随系统</div>
+          <hr style="border:none;height:1px;background:var(--border-subtle);margin:6px 0">
+          <div class="si on"><span class="dot"></span>中</div>
+          <div class="si" style="padding-left:24px">EN</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
+  <a href="08-asset-generation.html">08</a><a href="09-settings.html">09</a>
+  <a class="active" href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

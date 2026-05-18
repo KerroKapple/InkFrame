@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>02 · Studio Home — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .main {
+    flex: 1; padding: 28px 36px 40px;
+    overflow: auto;
+    position: relative;
+  }
+  .title-row {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .title-row h1 {
+    font-family: var(--ff-serif);
+    font-weight: 400;
+    font-size: 32px;
+    margin: 0;
+    letter-spacing: 0.01em;
+  }
+  .title-row .filters { display: flex; gap: 8px; }
+  .view-switch {
+    display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+    font-family: var(--ff-mono); font-size: 11px;
+  }
+  .view-switch button {
+    padding: 6px 10px; color: var(--fg-3);
+  }
+  .view-switch button.on { color: var(--accent); background: var(--surface-2); }
+
+  .proj-grid {
+    display: grid; gap: 24px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .proj {
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    cursor: pointer;
+  }
+  .proj:hover { border-color: var(--border-hover); }
+  .proj .still {
+    aspect-ratio: 16/10;
+    border-bottom: 1px solid var(--border-subtle);
+    background:
+      radial-gradient(circle at 30% 40%, rgba(201,168,91,0.10) 0%, transparent 50%),
+      linear-gradient(180deg, #1c1812 0%, #0c0a08 100%);
+    position: relative;
+  }
+  .proj .still::after {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      radial-gradient(2px 2px at 20% 30%, rgba(255,220,180,0.18), transparent 60%),
+      radial-gradient(1px 1px at 70% 60%, rgba(255,220,180,0.10), transparent 60%),
+      radial-gradient(1px 1px at 50% 80%, rgba(255,220,180,0.10), transparent 60%);
+  }
+  .proj.v2 .still { background: linear-gradient(160deg, #1f1410 0%, #0a0807 100%); }
+  .proj.v3 .still { background: linear-gradient(180deg, #1a1a22 0%, #0a0a0e 100%); }
+  .proj.v4 .still { background: radial-gradient(circle at 70% 30%, #2a1f12, #0a0807 70%); }
+  .proj.v5 .still { background: linear-gradient(120deg, #14110e, #221b13 100%); }
+  .proj.v6 .still { background: linear-gradient(200deg, #1a1612, #0a0807); }
+  .proj.v7 .still { background: linear-gradient(180deg, #2b1f15, #0c0a08); }
+  .proj.v8 .still { background: linear-gradient(180deg, #16100c, #0a0807); }
+
+  .proj .body { padding: 14px 16px 16px; }
+  .proj .name {
+    font-family: var(--ff-serif);
+    font-size: 22px;
+    color: var(--fg-1);
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+  .proj .meta {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--fg-3);
+    letter-spacing: 0.04em;
+  }
+
+  .fab {
+    position: absolute; right: 36px; bottom: 36px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <!-- chrome -->
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs">
+      <span>Kerro Studio</span><span class="chev">›</span>
+      <span>Projects</span><span class="chev">›</span>
+      <span class="here">All Projects</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions">
+      <span class="kbd">⌘K</span>
+      <button class="ico-btn">⌥</button>
+      <button class="ico-btn">⚑</button>
+      <div class="avatar">J</div>
+    </div>
+    <div class="win-ctrl">
+      <button>—</button><button>▢</button><button class="close">✕</button>
+    </div>
+  </div>
+
+  <div class="body">
+    <!-- sidebar -->
+    <aside class="sidebar">
+      <div class="section-label"><span>Library</span><span style="color:var(--fg-3);cursor:pointer">+</span></div>
+      <ul>
+        <li class="tree-item"><span class="twirl">▾</span>📁 Kerro Studio <span class="count">8</span></li>
+        <li class="tree-item indent-1 selected"><span class="twirl">▾</span>📂 Projects <span class="count">8</span></li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>Nocturne <span class="count">EP 02</span></li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>The Last Harbor</li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>Paper Reverie</li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>Eclipse Chronicle</li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>Ashes of Tomorrow</li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>Afterlight</li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>Fragments</li>
+        <li class="tree-item indent-2"><span class="twirl">▸</span>Silent Script</li>
+      </ul>
+
+      <div class="section-label" style="margin-top:8px"><span>Archive</span></div>
+      <ul>
+        <li class="tree-item"><span class="twirl">▸</span>🗄 Archived Projects <span class="count">23</span></li>
+      </ul>
+
+      <div class="footer">
+        <span title="Tags">🏷</span>
+        <span title="People">👥</span>
+        <span title="Settings">⚙</span>
+        <span title="Trash">🗑</span>
+      </div>
+    </aside>
+
+    <!-- main -->
+    <main class="main">
+      <div class="title-row">
+        <h1>Recent Projects</h1>
+        <div class="filters">
+          <div class="view-switch">
+            <button class="on">Grid</button><button>List</button>
+          </div>
+          <button class="btn ghost" style="height:32px">Sort: Updated ▾</button>
+        </div>
+      </div>
+
+      <div class="proj-grid">
+        <div class="proj v1"><div class="still"></div><div class="body"><div class="name">Nocturne</div><div class="meta">EP 02 · 2024.06.20 · 📦 31</div></div></div>
+        <div class="proj v2"><div class="still"></div><div class="body"><div class="name">The Last Harbor</div><div class="meta">EP 01 · 2024.06.18 · 📦 22</div></div></div>
+        <div class="proj v3"><div class="still"></div><div class="body"><div class="name">Paper Reverie</div><div class="meta">EP 03 · 2024.06.10 · 📦 14</div></div></div>
+        <div class="proj v4"><div class="still"></div><div class="body"><div class="name">Eclipse Chronicle</div><div class="meta">EP 04 · 2024.06.07 · 📦 41</div></div></div>
+        <div class="proj v5"><div class="still"></div><div class="body"><div class="name">Ashes of Tomorrow</div><div class="meta">EP 01 · 2024.05.30 · 📦 19</div></div></div>
+        <div class="proj v6"><div class="still"></div><div class="body"><div class="name">Afterlight</div><div class="meta">EP 02 · 2024.05.28 · 📦 27</div></div></div>
+        <div class="proj v7"><div class="still"></div><div class="body"><div class="name">Fragments</div><div class="meta">EP 01 · 2024.05.20 · 📦 8</div></div></div>
+        <div class="proj v8"><div class="still"></div><div class="body"><div class="name">Silent Script</div><div class="meta">DRAFT · 2024.05.14 · 📦 3</div></div></div>
+      </div>
+
+      <button class="btn cta fab">＋ New Project</button>
+    </main>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a>
+  <a class="active" href="02-studio-home.html">02</a>
+  <a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a>
+  <a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a>
+  <a href="07-asset-library.html">07</a>
+  <a href="08-asset-generation.html">08</a>
+  <a href="09-settings.html">09</a>
+  <a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a>
+  <a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

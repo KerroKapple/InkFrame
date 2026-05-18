@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>11 · Toasts — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .stage { flex: 1; position: relative; overflow: hidden;
+    background:
+      radial-gradient(circle at 20% 80%, rgba(201,168,91,0.06), transparent 50%),
+      var(--surface-canvas);
+  }
+  .dots { position: absolute; inset: 0; background-image: radial-gradient(circle, rgba(90,80,72,0.18) 1px, transparent 1.4px); background-size: 22px 22px;}
+
+  .desc { position: absolute; top: 28px; left: 36px; color: var(--fg-3); }
+  .desc h1 { font-family: var(--ff-serif); font-size: 28px; color: var(--fg-1); margin: 0; }
+  .desc p { font-size: 13px; margin: 6px 0 0; max-width: 520px; }
+
+  .grid {
+    position: absolute; right: 36px; top: 110px; bottom: 36px;
+    display: grid; gap: 16px;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto;
+    align-content: end;
+    width: 720px;
+  }
+
+  .toast {
+    display: flex; gap: 12px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    padding: 14px 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .toast::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px;
+  }
+  .toast.success::before { background: var(--success); }
+  .toast.warning::before { background: var(--warning); }
+  .toast.error::before   { background: var(--danger); }
+  .toast.info::before    { background: var(--info); }
+
+  .toast .ico {
+    width: 28px; height: 28px;
+    display: grid; place-items: center;
+    font-size: 14px;
+    border-radius: 50%;
+    flex: 0 0 28px;
+  }
+  .toast.success .ico { background: rgba(92,138,78,0.15); color: var(--success); }
+  .toast.warning .ico { background: rgba(216,139,58,0.15); color: var(--warning); }
+  .toast.error   .ico { background: rgba(200,82,58,0.15); color: var(--danger); }
+  .toast.info    .ico { background: rgba(75,122,146,0.15); color: var(--info); }
+
+  .toast .body { flex: 1; }
+  .toast .title { font-size: 13px; color: var(--fg-1); font-weight: 600; }
+  .toast .msg { font-family: var(--ff-mono); font-size: 11px; color: var(--fg-3); margin-top: 4px; letter-spacing: 0.04em; }
+  .toast .actions { margin-top: 10px; display: flex; gap: 10px; font-family: var(--ff-mono); font-size: 11px; }
+  .toast .actions a { color: var(--accent); cursor: pointer; }
+
+  .toast .close {
+    color: var(--fg-3); cursor: pointer;
+    width: 18px; height: 18px;
+    display: grid; place-items: center;
+    font-size: 13px;
+  }
+  .toast .close:hover { color: var(--fg-1); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs"><span class="here">Notification Types</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <div class="stage">
+      <div class="dots"></div>
+      <div class="desc">
+        <h1>通知类型</h1>
+        <p>四类系统 toast，统一卡片结构 + 左 4px 色条。无毛玻璃，无投影，悬停 18s 后自动消失，可手动关闭。</p>
+      </div>
+
+      <div class="grid">
+        <div class="toast success">
+          <div class="ico">✓</div>
+          <div class="body">
+            <div class="title">Render finished</div>
+            <div class="msg">shot_014_comp.mov exported successfully</div>
+            <div class="actions"><a>View</a><a style="color:var(--fg-3)">Reveal in Finder</a></div>
+          </div>
+          <div class="close">✕</div>
+        </div>
+
+        <div class="toast warning">
+          <div class="ico">!</div>
+          <div class="body">
+            <div class="title">Provider nearing limit</div>
+            <div class="msg">OpenAI · credits below configured threshold (12%)</div>
+            <div class="actions"><a>Manage</a><a style="color:var(--fg-3)">Dismiss</a></div>
+          </div>
+          <div class="close">✕</div>
+        </div>
+
+        <div class="toast error">
+          <div class="ico">✕</div>
+          <div class="body">
+            <div class="title">Frame generation failed</div>
+            <div class="msg">Kling · returned ERR_429_RATE_LIMITED</div>
+            <div class="actions"><a>Retry</a><a style="color:var(--fg-3)">Copy error ID</a></div>
+          </div>
+          <div class="close">✕</div>
+        </div>
+
+        <div class="toast info">
+          <div class="ico">i</div>
+          <div class="body">
+            <div class="title">Background sync paused</div>
+            <div class="msg">Workspace indexing suspended while offline</div>
+            <div class="actions"><a>Resume now</a></div>
+          </div>
+          <div class="close">✕</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
+  <a href="08-asset-generation.html">08</a><a href="09-settings.html">09</a>
+  <a href="10-account.html">10</a>
+  <a class="active" href="11-toasts.html">11</a>
+  <a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

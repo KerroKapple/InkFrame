@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>07 · Asset Library — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .tag-sidebar { width: 240px; flex: 0 0 240px; background: var(--surface-1); border-right: 1px solid var(--border-subtle); overflow:auto; padding-bottom: 36px;}
+  .lab-row { padding: 14px 16px 6px; font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-4); display:flex; justify-content:space-between; }
+  .lab-row .add { color: var(--accent); cursor: pointer; }
+  .ti { display:flex; align-items:center; gap:8px; padding: 4px 16px 4px 22px; color: var(--fg-2); font-size: 12px; position: relative; }
+  .ti.indent { padding-left: 38px; }
+  .ti .count { margin-left:auto; font-family: var(--ff-mono); font-size: 10px; color: var(--fg-4); }
+  .ti:hover { background: var(--surface-2); color: var(--fg-1); }
+  .ti.on { color: var(--accent); background: var(--surface-2); }
+  .ti.on::before { content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background: var(--accent); }
+  .ti .ico { color: var(--fg-3); font-size: 11px; width: 12px; }
+
+  .asset-main { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+  .lib-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 22px;
+    border-bottom: 1px solid var(--border-subtle);
+  }
+  .lib-head h1 { font-family: var(--ff-serif); font-size: 22px; margin: 0 18px 0 0; }
+  .lib-head .crumb { color: var(--fg-3); font-size: 12px; }
+  .lib-head .search {
+    flex: 1; max-width: 520px;
+    display: flex; align-items: center; gap: 10px;
+    height: 32px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md);
+    padding: 0 12px; color: var(--fg-3);
+  }
+  .lib-head .search input { flex:1; }
+  .lib-head .vsw { margin-left: auto; display: inline-flex; gap: 4px; font-family: var(--ff-mono); font-size: 11px; }
+  .lib-head .vsw span { padding: 4px 10px; color: var(--fg-3); border: 1px solid var(--border); border-radius: 4px; cursor:pointer;}
+  .lib-head .vsw span.on { color: var(--accent); background: var(--surface-2); border-color: rgba(201,168,91,0.4); }
+
+  .filter-row {
+    display: flex; gap: 8px; padding: 10px 22px;
+    border-bottom: 1px solid var(--border-subtle);
+    align-items: center;
+  }
+  .filter-row .right { margin-left:auto; display:flex; gap:8px; }
+
+  .mason { flex: 1; overflow:auto; padding: 18px 22px 22px;
+    columns: 4; column-gap: 16px;
+  }
+  .asset {
+    break-inside: avoid;
+    margin-bottom: 16px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+    background: var(--surface-2);
+    cursor: pointer;
+  }
+  .asset:hover { border-color: var(--border-hover); }
+  .asset.sel { border-color: var(--accent); }
+  .asset.sel::after { content: ""; position: absolute; inset: 0; border: 1px solid var(--accent); pointer-events: none; border-radius: 6px;}
+  .asset .img { width: 100%; display:block; background-position: center; background-size: cover; }
+  .asset .info { position: absolute; left: 8px; bottom: 8px; right: 8px; opacity: 0; transition: opacity .15s; font-family: var(--ff-mono); font-size: 10px; color: var(--fg-1); }
+  .asset:hover .info { opacity: 1; }
+
+  /* context menu macOS-ish */
+  .ctx {
+    position: absolute; right: 180px; top: 220px;
+    width: 240px;
+    background: rgba(28,24,20,0.96);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px;
+    backdrop-filter: none;
+    z-index: 20;
+  }
+  .ctx .it { display: flex; justify-content: space-between; padding: 5px 12px; font-size: 12px; color: var(--fg-1); border-radius: 4px; cursor: pointer; }
+  .ctx .it:hover { background: var(--surface-3); }
+  .ctx .it .k { font-family: var(--ff-mono); font-size: 11px; color: var(--fg-4); letter-spacing: 0.04em; }
+  .ctx .it.danger { color: var(--danger); }
+  .ctx hr { border: none; height: 1px; background: var(--border-subtle); margin: 4px 0;}
+
+  .status-bar {
+    height: 30px;
+    background: var(--surface-1);
+    border-top: 1px solid var(--border-subtle);
+    display: flex; align-items: center; gap: 22px;
+    padding: 0 22px;
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--fg-3);
+  }
+  .status-bar b { color: var(--accent); font-weight: 500; }
+  .slider {
+    margin-left: auto;
+    width: 160px; height: 4px;
+    background: var(--surface-3); border-radius: 2px; position: relative;
+  }
+  .slider::after { content:""; position:absolute; left: 40%; width: 12px; height: 12px; top: -4px; background: var(--accent); border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame v2</div>
+    <div class="crumbs"><span>Assets</span><span class="chev">›</span><span class="here">All</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <aside class="tag-sidebar">
+      <div class="lab-row"><span>Tags</span><span class="add">+</span></div>
+      <div class="ti on"><span class="ico">▾</span>角色 Characters <span class="count">86</span></div>
+      <div class="ti indent">主角 <span class="count">12</span></div>
+      <div class="ti indent">配角 <span class="count">28</span></div>
+      <div class="ti indent">群演 <span class="count">46</span></div>
+      <div class="ti"><span class="ico">▾</span>环境 Environments <span class="count">312</span></div>
+      <div class="ti indent">内景 <span class="count">94</span></div>
+      <div class="ti indent">外景 <span class="count">148</span></div>
+      <div class="ti indent">概念场景 <span class="count">70</span></div>
+      <div class="ti"><span class="ico">▸</span>道具 Props <span class="count">244</span></div>
+      <div class="ti"><span class="ico">▸</span>纹理 Textures <span class="count">98</span></div>
+      <div class="ti"><span class="ico">▸</span>概念 Concept Art <span class="count">87</span></div>
+      <div class="ti"><span class="ico">▸</span>故事板 Storyboard <span class="count">212</span></div>
+      <div class="ti"><span class="ico">▸</span>音频 Audio <span class="count">36</span></div>
+      <div class="ti"><span class="ico">▾</span>自定义标签 <span class="count">+</span></div>
+      <div class="ti indent">夜景 <span class="count">128</span></div>
+      <div class="ti indent">雾 <span class="count">71</span></div>
+      <div class="ti indent">海边 <span class="count">512+</span></div>
+
+      <div class="lab-row" style="margin-top:14px"><span>Smart Collections</span></div>
+      <div class="ti">最近导入 <span class="count">129</span></div>
+      <div class="ti">本周新增 <span class="count">38</span></div>
+      <div class="ti">收藏 <span class="count">42</span></div>
+      <div class="ti">待审核 <span class="count">512+</span></div>
+    </aside>
+
+    <div class="asset-main">
+      <div class="lib-head">
+        <h1>Assets</h1>
+        <span class="crumb">All</span>
+        <div class="search">
+          <span>🔍</span><input placeholder="Search assets, tags, models…"/><span class="kbd">⌘K</span>
+        </div>
+        <div class="vsw"><span class="on">Gallery</span><span>List</span><span>Filmstrip</span></div>
+      </div>
+
+      <div class="filter-row">
+        <button class="btn ghost" style="height:30px">Model: All ▾</button>
+        <button class="btn ghost" style="height:30px">Tags: All ▾</button>
+        <button class="btn ghost" style="height:30px">Date: All Time ▾</button>
+        <button class="btn ghost" style="height:30px">Color: Any ▾</button>
+        <button class="btn ghost" style="height:30px">＋ Filter</button>
+        <div class="right">
+          <button class="btn ghost" style="height:30px">Clear</button>
+          <button class="btn" style="height:30px">Save View</button>
+        </div>
+      </div>
+
+      <div class="mason">
+        <div class="asset"><div class="img" style="aspect-ratio:9/13;background:linear-gradient(180deg,#1a160e,#06050a)"></div><div class="info">corridor_v3 · 1024×1280</div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:16/9;background:linear-gradient(160deg,#2a1f12,#0a0807)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:1/1;background:radial-gradient(circle,#3a2a18,#0a0807 80%)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:4/5;background:linear-gradient(180deg,#0e0c14,#020205)"></div></div>
+        <div class="asset sel"><div class="img" style="aspect-ratio:16/10;background:linear-gradient(180deg,#1a1610,#06050a)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:4/3;background:linear-gradient(160deg,#2c2114,#0a0807)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:3/4;background:linear-gradient(180deg,#24180f,#0a0807)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:1/1;background:linear-gradient(160deg,#16110b,#0a0807)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:9/16;background:linear-gradient(180deg,#251a10,#06050a)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:16/9;background:linear-gradient(120deg,#1a140c,#0a0807)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:4/3;background:radial-gradient(circle at 30% 40%,#3a2a18,#08070a 75%)"></div></div>
+        <div class="asset"><div class="img" style="aspect-ratio:5/6;background:linear-gradient(180deg,#100c0a,#06050a)"></div></div>
+      </div>
+
+      <!-- ctx menu -->
+      <div class="ctx">
+        <div class="it"><span>打开</span><span class="k">⌘O</span></div>
+        <div class="it"><span>在新标签中打开</span><span class="k">⌘⇧O</span></div>
+        <div class="it"><span>显示在访达</span><span class="k">⌘R</span></div>
+        <hr>
+        <div class="it"><span>添加标签</span><span class="k">⌘T</span></div>
+        <div class="it"><span>添加到收藏</span><span class="k">F</span></div>
+        <div class="it"><span>加入项目</span><span class="k">⌘P</span></div>
+        <hr>
+        <div class="it"><span>重命名</span><span class="k">⏎</span></div>
+        <div class="it"><span>复制</span><span class="k">⌘D</span></div>
+        <div class="it"><span>导出…</span><span class="k">⌘E</span></div>
+        <hr>
+        <div class="it"><span>生成预览</span><span class="k">⌘P</span></div>
+        <div class="it"><span>重新生成缩略图</span><span class="k">⌘⇧P</span></div>
+        <div class="it"><span>检查模型来源</span><span class="k">⌘I</span></div>
+        <hr>
+        <div class="it danger"><span>移到回收站</span><span class="k">⌘⌫</span></div>
+      </div>
+
+      <div class="status-bar">
+        <span><b>1,432</b> assets</span>
+        <span><b>33</b> selected</span>
+        <span><b>4.3 GB</b></span>
+        <div class="slider"></div>
+        <span>5.24 TB used / 6 TB</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a>
+  <a class="active" href="07-asset-library.html">07</a>
+  <a href="08-asset-generation.html">08</a>
+  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>

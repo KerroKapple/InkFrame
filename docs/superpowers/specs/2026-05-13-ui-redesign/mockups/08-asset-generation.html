@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>08 · Asset Generation — InkFrame v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .tabs {
+    display:flex; gap: 24px;
+    padding: 12px 28px 0;
+    border-bottom: 1px solid var(--border-subtle);
+    font-family: var(--ff-mono); font-size: 12px; color: var(--fg-3);
+    letter-spacing: 0.16em; text-transform: uppercase;
+  }
+  .tabs span { padding-bottom: 12px; cursor: pointer;}
+  .tabs span.on { color: var(--accent); border-bottom: 1px solid var(--accent); }
+
+  .gen-cols { flex: 1; display: grid; grid-template-columns: 320px 1fr 280px; min-height: 0; overflow: hidden; }
+  .gen-cols > div { overflow: auto; }
+
+  /* prompt panel */
+  .prompt {
+    background: var(--surface-1);
+    border-right: 1px solid var(--border-subtle);
+    padding: 20px 22px;
+  }
+  .prompt h4 { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-4); margin: 0 0 8px; }
+  .prompt textarea {
+    width: 100%; min-height: 120px;
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-md);
+    color: var(--fg-1); padding: 12px;
+    font-family: var(--ff-serif); font-size: 14px;
+    resize: vertical;
+  }
+  .prompt .field { margin-bottom: 18px; }
+  .pick {
+    display:flex; align-items:center; gap: 8px;
+    background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: var(--r-md);
+    padding: 8px 12px;
+    font-size: 12px; color: var(--fg-2);
+  }
+  .pick .badge { font-family: var(--ff-mono); font-size: 10px; color: var(--accent); border: 1px solid rgba(201,168,91,0.4); padding: 2px 6px; border-radius: 4px;}
+
+  .sliders { display: grid; gap: 14px; }
+  .sld { font-size: 12px; color: var(--fg-2); }
+  .sld .row { display:flex; justify-content:space-between; margin-bottom: 6px; }
+  .sld .row b { color: var(--fg-1); font-family: var(--ff-mono); font-size: 12px; }
+  .track { height: 3px; background: var(--surface-3); border-radius: 2px; position: relative;}
+  .track i { position:absolute; left: 0; top: 0; bottom: 0; background: var(--accent); border-radius: 2px;}
+  .track::after { content:""; width: 12px; height: 12px; background: var(--accent); border-radius: 50%; position: absolute; top: -4px; }
+
+  .chip-row { display:flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+
+  /* preview center */
+  .preview {
+    background: var(--surface-canvas);
+    padding: 22px;
+    display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;
+    align-content: start;
+  }
+  .pv {
+    aspect-ratio: 16/10;
+    border-radius: var(--r-md);
+    border: 1px solid var(--border-subtle);
+    background-size: cover; background-position: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .pv .id {
+    position: absolute; left: 10px; bottom: 10px;
+    font-family: var(--ff-mono); font-size: 10px; color: var(--fg-1);
+    background: rgba(0,0,0,0.45); padding: 2px 8px; border-radius: 999px;
+  }
+  .pv .status {
+    position: absolute; right: 10px; top: 10px;
+  }
+
+  /* right history */
+  .history {
+    background: var(--surface-1);
+    border-left: 1px solid var(--border-subtle);
+    padding: 18px 16px;
+  }
+  .history h4 { font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--fg-4); margin: 0 0 12px; text-transform: uppercase;}
+  .h-item { display:flex; gap: 10px; align-items:center; padding: 8px 0; border-bottom: 1px dashed var(--border-subtle); }
+  .h-item .th { width: 56px; aspect-ratio: 16/10; border-radius: 4px; background-size: cover; background-position: center;}
+  .h-item .nm { font-family: var(--ff-serif); font-size: 14px; color: var(--fg-1);}
+  .h-item .sub { font-family: var(--ff-mono); font-size: 10px; color: var(--fg-3); }
+
+  .bot-bar {
+    height: 36px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--surface-1);
+    display: flex; align-items: center; gap: 18px; padding: 0 22px;
+    font-family: var(--ff-mono); font-size: 11px;
+    color: var(--fg-3);
+  }
+  .bot-bar .right { margin-left: auto; display: flex; gap: 8px; align-items: center;}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="chrome">
+    <div class="logo">Ink<span class="sep">/</span>Frame</div>
+    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">Generation</span></div>
+    <div class="spacer"></div>
+    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
+    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+  </div>
+
+  <div class="body">
+    <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+      <div class="tabs">
+        <span class="on">人物</span><span>场景</span><span>道具</span><span>其他</span>
+      </div>
+
+      <div class="gen-cols">
+        <!-- prompt -->
+        <div class="prompt">
+          <div class="field">
+            <h4>Prompt</h4>
+            <textarea>一位约十六岁的少年，雨夜中站在港口的木板路上，背景是被雾气晕开的黄色街灯，怀里抱着一只旧式怀表。逆光剪影，电影感分镜构图，琥珀色调，胶片颗粒。</textarea>
+          </div>
+
+          <div class="field">
+            <h4>Model</h4>
+            <div class="pick"><span class="badge">SDXL</span> sdxl-lightning · v1.0 <span style="margin-left:auto;color:var(--fg-3)">▾</span></div>
+          </div>
+
+          <div class="field">
+            <h4>Style</h4>
+            <div class="sliders">
+              <div class="sld">
+                <div class="row"><span>真实感</span><b>0.72</b></div>
+                <div class="track"><i style="width:72%"></i><span style="left:72%" class="dot"></span></div>
+              </div>
+              <div class="sld">
+                <div class="row"><span>风格化</span><b>0.40</b></div>
+                <div class="track"><i style="width:40%"></i></div>
+              </div>
+              <div class="sld">
+                <div class="row"><span>对比</span><b>0.55</b></div>
+                <div class="track"><i style="width:55%"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="field">
+            <h4>参考图</h4>
+            <div class="chip-row">
+              <span class="chip">📎 elara_v2</span>
+              <span class="chip">📎 fog_dock</span>
+              <span class="chip" style="color:var(--accent);border-color:rgba(201,168,91,0.4)">+ Add</span>
+            </div>
+          </div>
+
+          <div class="field">
+            <h4>风格 Chips</h4>
+            <div class="chip-row">
+              <span class="chip on">琥珀色调</span>
+              <span class="chip">胶片颗粒</span>
+              <span class="chip">柔焦</span>
+              <span class="chip">高对比</span>
+              <span class="chip">体积光</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- previews -->
+        <div class="preview">
+          <div class="pv" style="background:linear-gradient(160deg,#3a2a18,#0a0807)">
+            <div class="status"><span class="chip success">✓ done</span></div>
+            <div class="id">v01 · 040b</div>
+          </div>
+          <div class="pv" style="background:linear-gradient(140deg,#2a1f12,#0a0807)">
+            <div class="status"><span class="chip success">✓ done</span></div>
+            <div class="id">v02 · 8c2f</div>
+          </div>
+          <div class="pv" style="background:linear-gradient(180deg,#1a1610,#06050a)">
+            <div class="status"><span class="chip warning">⟳ running 62%</span></div>
+            <div class="id">v03 · queued</div>
+          </div>
+          <div class="pv" style="background:repeating-linear-gradient(135deg,#15110e 0 12px,#1c1814 12px 24px)">
+            <div class="status"><span class="chip">empty</span></div>
+            <div class="id">v04 · pending</div>
+          </div>
+        </div>
+
+        <!-- history -->
+        <div class="history">
+          <h4>已生成 · 12</h4>
+          <div class="h-item">
+            <div class="th" style="background:linear-gradient(160deg,#3a2a18,#0a0807)"></div>
+            <div><div class="nm">夜雾码头 v05</div><div class="sub">14:02 · SDXL · 1024²</div></div>
+          </div>
+          <div class="h-item">
+            <div class="th" style="background:linear-gradient(180deg,#1a1610,#06050a)"></div>
+            <div><div class="nm">少年逆光 v04</div><div class="sub">13:58 · SDXL · 1024²</div></div>
+          </div>
+          <div class="h-item">
+            <div class="th" style="background:radial-gradient(circle,#3a2a18,#0a0807 80%)"></div>
+            <div><div class="nm">怀表特写 v02</div><div class="sub">13:46 · Flux · 1024²</div></div>
+          </div>
+          <div class="h-item">
+            <div class="th" style="background:linear-gradient(160deg,#16110b,#0a0807)"></div>
+            <div><div class="nm">街灯研究 v03</div><div class="sub">13:21 · SDXL · 1024²</div></div>
+          </div>
+          <div class="h-item">
+            <div class="th" style="background:linear-gradient(120deg,#2a1f12,#0a0807)"></div>
+            <div><div class="nm">海面剪影 v01</div><div class="sub">12:48 · Flux · 1024²</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bot-bar">
+        <span>Aspect <b style="color:var(--fg-1)">16:10</b></span>
+        <span>Seed <b style="color:var(--fg-1)">428931</b></span>
+        <span>Steps <b style="color:var(--fg-1)">32</b></span>
+        <span>CFG <b style="color:var(--fg-1)">5.7</b></span>
+        <span>Batch <b style="color:var(--fg-1)">4</b></span>
+        <div class="right">
+          <span style="color:var(--fg-4)">~ $0.14 / batch</span>
+          <button class="btn">Save Preset</button>
+          <button class="btn cta" style="height:36px">Generate</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<nav class="mock-nav">
+  <a class="home" href="index.html">◇ Index</a>
+  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
+  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
+  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
+  <a class="active" href="08-asset-generation.html">08</a>
+  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
+  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
+</nav>
+</body>
+</html>
