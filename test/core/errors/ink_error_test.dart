@@ -101,6 +101,18 @@ void main() {
     });
   });
 
+  group('non-const constructor bodies', () {
+    // const 实例由编译期 canonicalize，构造器 body 不计入运行时 coverage。
+    // 这里以非 const 形式调用，确保构造器分支被运行时计入。
+    test('runtime instantiation hits each subclass body', () {
+      expect(DownloadError().code, InkErrorCode.downloadFailed);
+      expect(LocalIOError().code, InkErrorCode.localIOError);
+      expect(CancelledError.byUser().code, InkErrorCode.cancelledByUser);
+      expect(CancelledError.onExit().code, InkErrorCode.cancelledOnExit);
+      expect(UnknownError(cause: Exception('x')).code, InkErrorCode.unknown);
+    });
+  });
+
   group('toLogJson', () {
     test('serializes wire code + retryable + extra', () {
       const err = NetworkError(
