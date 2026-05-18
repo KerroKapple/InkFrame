@@ -43,31 +43,31 @@ void main() {
       }
     });
 
-    test('dark variant exact palette values', () {
+    test('dark variant exact palette values (Amber Noir)', () {
       final c = InkColors.dark();
-      expect(c.surfaceCanvas, const Color(0xFF101218));
-      expect(c.surface1, const Color(0xFF1B1D24));
-      expect(c.surface2, const Color(0xFF262830));
-      expect(c.surface3, const Color(0xFF323440));
-      expect(c.surface4, const Color(0xFF3E404C));
-      expect(c.accent, const Color(0xFF0080FF));
-      expect(c.accentHover, const Color(0xFF0070E0));
-      expect(c.accentPressed, const Color(0xFF0060C0));
-      expect(c.cta, const Color(0xFFD42B57));
-      expect(c.info, const Color(0xFF00A3D9));
-      expect(c.fg1, const Color(0xFFFFFFFF));
-      expect(c.fg2, const Color(0xFFCFCECE));
-      expect(c.fg3, const Color(0xFF6B6B6B));
-      expect(c.fg4, const Color(0xFF4D4D4D));
+      expect(c.surfaceCanvas, const Color(0xFF0B0908));
+      expect(c.surface1, const Color(0xFF100C0A));
+      expect(c.surface2, const Color(0xFF15110E));
+      expect(c.surface3, const Color(0xFF1C1814));
+      expect(c.surface4, const Color(0xFF2A2520));
+      expect(c.accent, const Color(0xFFC9A85B));
+      expect(c.accentHover, const Color(0xFFD8B66B));
+      expect(c.accentPressed, const Color(0xFFB89A4F));
+      expect(c.cta, const Color(0xFFE3A648));
+      expect(c.info, const Color(0xFF4B7A92));
+      expect(c.fg1, const Color(0xFFE8DFD0));
+      expect(c.fg2, const Color(0xFFB5A89A));
+      expect(c.fg3, const Color(0xFF8A7E70));
+      expect(c.fg4, const Color(0xFF5A5048));
     });
 
-    test('light variant exact palette values', () {
+    test('light variant exact palette values (Paper Ivory)', () {
       final c = InkColors.light();
-      expect(c.surfaceCanvas, const Color(0xFFFAFAFA));
-      expect(c.surface1, const Color(0xFFFFFFFF));
-      expect(c.accent, const Color(0xFF0080FF));
-      expect(c.cta, const Color(0xFFD42B57));
-      expect(c.fg1, const Color(0xFF1A1A1A));
+      expect(c.surfaceCanvas, const Color(0xFFF5EFE3));
+      expect(c.surface1, const Color(0xFFFAF5EB));
+      expect(c.accent, const Color(0xFFA88340));
+      expect(c.cta, const Color(0xFFC68B2E));
+      expect(c.fg1, const Color(0xFF2A2520));
     });
 
     test('every variant exposes all 15 semantic slots', () {
@@ -129,7 +129,7 @@ void main() {
       final t = InkTypography.defaults().scaled(1.25);
       expect(t.body.fontSize, 14 * 1.25);
       expect(t.title.fontSize, 18 * 1.25);
-      expect(t.display.fontSize, 28 * 1.25);
+      expect(t.display.fontSize, 48 * 1.25);
     });
 
     test('micro / nano 字号 10px / 9px', () {
@@ -183,8 +183,7 @@ void main() {
       );
     });
 
-    testWidgets('ColorScheme.primary is Apple Blue accent',
-        (tester) async {
+    testWidgets('ColorScheme.primary is Amber accent', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
           theme: buildAppTheme(
@@ -194,7 +193,7 @@ void main() {
           home: Builder(
             builder: (ctx) {
               final scheme = Theme.of(ctx).colorScheme;
-              expect(scheme.primary, const Color(0xFF0080FF));
+              expect(scheme.primary, const Color(0xFFC9A85B));
               return const SizedBox.shrink();
             },
           ),
