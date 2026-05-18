@@ -105,10 +105,19 @@ void main() {
     // const 实例由编译期 canonicalize，构造器 body 不计入运行时 coverage。
     // 这里以非 const 形式调用，确保构造器分支被运行时计入。
     test('runtime instantiation hits each subclass body', () {
-      expect(DownloadError().code, InkErrorCode.downloadFailed);
-      expect(LocalIOError().code, InkErrorCode.localIOError);
-      expect(CancelledError.byUser().code, InkErrorCode.cancelledByUser);
-      expect(CancelledError.onExit().code, InkErrorCode.cancelledOnExit);
+      // 传非 const extra map 阻断 prefer_const_constructors lint —— 同时确保
+      // 构造器以 runtime 形式调用，body 行计入 coverage。
+      final extra = <String, Object?>{'runtime': true};
+      expect(DownloadError(extra: extra).code, InkErrorCode.downloadFailed);
+      expect(LocalIOError(extra: extra).code, InkErrorCode.localIOError);
+      expect(
+        CancelledError.byUser(extra: extra).code,
+        InkErrorCode.cancelledByUser,
+      );
+      expect(
+        CancelledError.onExit(extra: extra).code,
+        InkErrorCode.cancelledOnExit,
+      );
       expect(UnknownError(cause: Exception('x')).code, InkErrorCode.unknown);
     });
   });
