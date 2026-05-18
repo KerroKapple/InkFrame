@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/primitives/ink_amber_button.dart';
-import 'package:inkframe/theme/tokens.dart';
 
 void main() {
   testWidgets('InkAmberButton uses cta bg + surfaceCanvas text + 44 height', (tester) async {
