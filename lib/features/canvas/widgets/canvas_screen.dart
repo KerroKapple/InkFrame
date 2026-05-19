@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../providers/current_canvas_id.dart';
+import 'canvas_add_node_fab.dart';
 import 'canvas_inspector.dart';
 import 'canvas_left_toolbar.dart';
 import 'canvas_render_queue.dart';
@@ -21,8 +23,12 @@ class CanvasScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final l = context.l10n;
+    final canvasId = ref.watch(currentCanvasIdProvider);
     return Scaffold(
       backgroundColor: colors.surfaceCanvas,
+      floatingActionButton: canvasId == null
+          ? null
+          : CanvasAddNodeFab(canvasId: canvasId),
       body: Column(
         children: <Widget>[
           CanvasTopChrome(canvasName: canvasName),
