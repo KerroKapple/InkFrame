@@ -1,14 +1,19 @@
 // StudioHomeScreen：Amber Noir 风格的首页。
 //
-// 布局：Column(chrome, Expanded(Row(LibrarySidebar 280, Expanded(Stack(grid, fab)))))
-// 数据：workspaceProjectsProvider 位于 models/project_with_canvases.dart。
+// 布局：Column(chrome, Expanded(Row(LibrarySidebar 280, Expanded(Stack(main, fab)))))
+// 状态：workspaceProjectsProvider 的 loading / error / empty / data 四态。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/di/current_screen.dart';
 import '../../core/di/repositories.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/components/ink_error_banner.dart';
 import '../../theme/primitives/ink_amber_button.dart';
+import '../../theme/primitives/ink_compact_text_field.dart';
+import '../../theme/primitives/ink_ghost_button.dart';
+import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
 import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
@@ -30,6 +35,9 @@ class StudioHomeScreen extends ConsumerWidget {
           StudioTopChrome(
             studioName: studioName,
             breadcrumbTail: context.l10n.studioBreadcrumbAll,
+            onOpenSettings: () =>
+                ref.read(currentScreenProvider.notifier).state =
+                    AppScreen.settings,
           ),
           const Expanded(
             child: Row(
@@ -53,6 +61,10 @@ class _StudioMainArea extends ConsumerWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final projectsAsync = ref.watch(workspaceProjectsProvider);
+    final showFab = projectsAsync.maybeWhen(
+      data: (p) => p.isNotEmpty,
+      orElse: () => false,
+    );
     return ColoredBox(
       color: colors.surfaceCanvas,
       child: Stack(
@@ -79,86 +91,303 @@ class _StudioMainArea extends ConsumerWidget {
                 ),
                 Expanded(
                   child: projectsAsync.when(
-                    loading: () => const Center(
-                      child: CircularProgressIndicator(),
+                    loading: () => const _StudioLoadingState(),
+                    error: (e, _) => _StudioErrorState(
+                      onRetry: () =>
+                          ref.invalidate(workspaceProjectsProvider),
                     ),
-                    error: (e, _) => Center(
-                      child: Text(
-                        e.toString(),
-                        style: typo.body.copyWith(color: colors.danger),
-                      ),
-                    ),
-                    data: (projects) =>
-                        _ProjectGrid(projects: projects),
+                    data: (projects) => projects.isEmpty
+                        ? _StudioEmptyState(
+                            onCreate: () =>
+                                _showNewProjectDialog(context, ref, const []),
+                          )
+                        : _ProjectGrid(projects: projects),
                   ),
                 ),
               ],
             ),
           ),
-          Positioned(
-            right: InkSpacing.xl,
-            bottom: InkSpacing.xl,
-            child: InkAmberButton(
-              label: context.l10n.studioNewProject,
-              icon: Icons.add,
-              onPressed: () => _showNewProjectDialog(context, ref),
+          if (showFab)
+            Positioned(
+              right: InkSpacing.xl,
+              bottom: InkSpacing.xl,
+              child: InkAmberButton(
+                label: context.l10n.studioNewProject,
+                icon: Icons.add,
+                onPressed: () => _showNewProjectDialog(
+                  context,
+                  ref,
+                  projectsAsync.maybeWhen(
+                    data: (p) => p,
+                    orElse: () => const <ProjectWithCanvases>[],
+                  ),
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
   }
 
-  Future<void> _showNewProjectDialog(BuildContext context, WidgetRef ref) async {
+  Future<void> _showNewProjectDialog(
+    BuildContext context,
+    WidgetRef ref,
+    List<ProjectWithCanvases> existing,
+  ) async {
+    final existingNames =
+        existing.map((p) => p.name.trim().toLowerCase()).toSet();
     final name = await showDialog<String>(
       context: context,
-      builder: (_) => const _NewProjectDialog(),
+      barrierColor: context.inkColors.scrim,
+      builder: (_) => _NewProjectDialog(existingNames: existingNames),
     );
     if (name == null || name.isEmpty) return;
-    final projects = await ref.read(projectRepositoryProvider.future);
-    final canvases = await ref.read(canvasRepositoryProvider.future);
-    final projectId = await projects.create(name: name);
-    await canvases.create(
-      projectId: projectId,
-      name: context.mounted
-          ? context.l10n.canvasSampleCanvasName
-          : 'Canvas 1',
+    try {
+      final projects = await ref.read(projectRepositoryProvider.future);
+      final canvases = await ref.read(canvasRepositoryProvider.future);
+      final projectId = await projects.create(name: name);
+      await canvases.create(
+        projectId: projectId,
+        name: 'Canvas 1',
+      );
+      ref.invalidate(workspaceProjectsProvider);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.studioNewProjectFailed),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+}
+
+class _StudioLoadingState extends StatelessWidget {
+  const _StudioLoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(child: CircularProgressIndicator());
+  }
+}
+
+class _StudioErrorState extends StatelessWidget {
+  const _StudioErrorState({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 480),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            InkErrorBanner(message: context.l10n.studioErrorTitle),
+            const SizedBox(height: InkSpacing.md),
+            Text(
+              context.l10n.studioEmptySubtitle,
+              style: typo.body.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.lg),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: InkGhostButton(
+                label: context.l10n.studioErrorRetry,
+                icon: Icons.refresh,
+                onPressed: onRetry,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    ref.invalidate(workspaceProjectsProvider);
+  }
+}
+
+class _StudioEmptyState extends StatelessWidget {
+  const _StudioEmptyState({required this.onCreate});
+
+  final VoidCallback onCreate;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: InkNoirCard(
+          padding: const EdgeInsets.all(InkSpacing.xl),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Container(
+                width: 72,
+                height: 72,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colors.surface3,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: colors.borderSubtle),
+                ),
+                child: Icon(
+                  Icons.movie_filter_outlined,
+                  size: 32,
+                  color: colors.accent,
+                ),
+              ),
+              const SizedBox(height: InkSpacing.lg),
+              Text(
+                context.l10n.studioEmptyTitle,
+                style: typo.headline.copyWith(color: colors.fg1),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: InkSpacing.sm),
+              Text(
+                context.l10n.studioEmptySubtitle,
+                style: typo.body.copyWith(color: colors.fg3),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: InkSpacing.lg),
+              InkAmberButton(
+                label: context.l10n.studioNewProject,
+                icon: Icons.add,
+                onPressed: onCreate,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
 class _NewProjectDialog extends StatefulWidget {
-  const _NewProjectDialog();
+  const _NewProjectDialog({required this.existingNames});
+
+  final Set<String> existingNames;
+
   @override
   State<_NewProjectDialog> createState() => _NewProjectDialogState();
 }
 
 class _NewProjectDialogState extends State<_NewProjectDialog> {
+  static const int _maxNameLength = 60;
   final TextEditingController _controller = TextEditingController();
+  String? _errorKey; // 'empty' | 'tooLong' | 'duplicate'
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  void _submit() => Navigator.of(context).pop(_controller.text.trim());
+
+  String _validate(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return 'empty';
+    if (trimmed.length > _maxNameLength) return 'tooLong';
+    if (widget.existingNames.contains(trimmed.toLowerCase())) {
+      return 'duplicate';
+    }
+    return '';
+  }
+
+  void _submit() {
+    final trimmed = _controller.text.trim();
+    final err = _validate(trimmed);
+    if (err.isNotEmpty) {
+      setState(() => _errorKey = err);
+      return;
+    }
+    Navigator.of(context).pop(trimmed);
+  }
+
+  String? _errorMessage(BuildContext context) {
+    switch (_errorKey) {
+      case 'empty':
+        return context.l10n.studioNewProjectErrorEmpty;
+      case 'tooLong':
+        return context.l10n.studioNewProjectErrorTooLong;
+      case 'duplicate':
+        return context.l10n.studioNewProjectErrorDuplicate;
+      default:
+        return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(context.l10n.workspaceNewProject),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        decoration: InputDecoration(hintText: context.l10n.workspaceNewProjectHint),
-        onSubmitted: (_) => _submit(),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.commonCancel),
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final error = _errorMessage(context);
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      insetPadding: const EdgeInsets.all(InkSpacing.xl),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 440),
+        child: InkNoirCard(
+          padding: const EdgeInsets.all(InkSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                context.l10n.studioNewProjectDialogTitle,
+                style: typo.headline.copyWith(color: colors.fg1),
+              ),
+              const SizedBox(height: InkSpacing.md),
+              Text(
+                context.l10n.studioNewProjectNameLabel,
+                style: typo.caption.copyWith(
+                  color: colors.fg3,
+                  letterSpacing: 1.5,
+                ),
+              ),
+              const SizedBox(height: InkSpacing.xs),
+              InkCompactTextField(
+                controller: _controller,
+                placeholder: context.l10n.studioNewProjectNameHint,
+                autofocus: true,
+                onChanged: (_) {
+                  if (_errorKey != null) setState(() => _errorKey = null);
+                },
+                onSubmitted: (_) => _submit(),
+              ),
+              if (error != null) ...<Widget>[
+                const SizedBox(height: InkSpacing.sm),
+                Text(
+                  error,
+                  style: typo.caption.copyWith(color: colors.danger),
+                ),
+              ],
+              const SizedBox(height: InkSpacing.lg),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: <Widget>[
+                  InkGhostButton(
+                    label: context.l10n.commonCancel,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const SizedBox(width: InkSpacing.sm),
+                  InkAmberButton(
+                    label: context.l10n.studioCreate,
+                    icon: Icons.check,
+                    onPressed: _submit,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        TextButton(onPressed: _submit, child: Text(context.l10n.commonOk)),
-      ],
+      ),
     );
   }
 }
@@ -197,6 +426,5 @@ class _ProjectGrid extends StatelessWidget {
     );
   }
 
-  // mono 区域字符里的小盒子（避免直接写 emoji 在源码里）
   String _box() => '\u{1F4E6}';
 }
