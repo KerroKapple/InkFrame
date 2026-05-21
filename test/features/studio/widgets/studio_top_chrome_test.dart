@@ -5,18 +5,20 @@ import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
 void main() {
-  testWidgets('StudioTopChrome 渲染 logo + breadcrumb + ⌘K + avatar',
+  testWidgets('StudioTopChrome 渲染 logo + breadcrumb + ⌘K + Settings + avatar',
       (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    var settingsTaps = 0;
     await tester.pumpWidget(MaterialApp(
       theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const Scaffold(
+      home: Scaffold(
         body: StudioTopChrome(
           studioName: 'Kerro Studio',
           breadcrumbTail: 'All',
+          onOpenSettings: () => settingsTaps += 1,
         ),
       ),
     ));
@@ -31,5 +33,30 @@ void main() {
 
     final size = tester.getSize(find.byType(StudioTopChrome));
     expect(size.height, 56);
+
+    final settingsButton =
+        find.byKey(StudioTopChrome.settingsButtonKey);
+    expect(settingsButton, findsOneWidget);
+    await tester.tap(settingsButton, warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(settingsTaps, 1);
+  });
+
+  testWidgets('StudioTopChrome onOpenSettings 为 null 时仍渲染但不响应',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 200));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(MaterialApp(
+      theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: const Scaffold(
+        body: StudioTopChrome(
+          studioName: 'Kerro Studio',
+          breadcrumbTail: 'All',
+        ),
+      ),
+    ));
+    expect(find.byKey(StudioTopChrome.settingsButtonKey), findsOneWidget);
   });
 }
