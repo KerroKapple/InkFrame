@@ -17,7 +17,7 @@ import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import 'video_node_body.dart';
 
-class NodeCard extends ConsumerWidget {
+class NodeCard extends ConsumerStatefulWidget {
   const NodeCard({
     super.key,
     required this.node,
@@ -48,19 +48,27 @@ class NodeCard extends ConsumerWidget {
   final bool isLinkCandidate;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<NodeCard> createState() => _NodeCardState();
+}
+
+class _NodeCardState extends ConsumerState<NodeCard> {
+  bool _dragging = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final node = widget.node;
     final colors = context.inkColors;
     final typo = context.inkTypography;
 
     final Color borderColor;
     final double borderWidth;
-    if (isLinkSource) {
+    if (widget.isLinkSource) {
       borderColor = colors.brand;
       borderWidth = 2.5;
-    } else if (isLinkCandidate) {
+    } else if (widget.isLinkCandidate) {
       borderColor = colors.brand;
       borderWidth = 2.0;
-    } else if (selected) {
+    } else if (widget.selected) {
       borderColor = colors.accent;
       borderWidth = 2.0;
     } else {
@@ -68,24 +76,37 @@ class NodeCard extends ConsumerWidget {
       borderWidth = 1.0;
     }
 
-    return GestureDetector(
-      onTap: onTap,
-      onPanUpdate: (d) => onPanUpdate(d.delta),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: node.size.width,
-            height: node.size.height,
-            decoration: BoxDecoration(
-              color: colors.surface2,
-              borderRadius: BorderRadius.circular(InkRadius.lg),
-              border: Border.all(color: borderColor, width: borderWidth),
-              boxShadow:
-                  selected || isLinkSource ? InkShadow.elevated : InkShadow.card,
-            ),
-            padding: const EdgeInsets.all(InkSpacing.md),
-            child: Column(
+    final elevated = _dragging || widget.selected || widget.isLinkSource;
+    final cursor = _dragging
+        ? SystemMouseCursors.grabbing
+        : SystemMouseCursors.grab;
+
+    return MouseRegion(
+      cursor: cursor,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        onPanStart: (_) => setState(() => _dragging = true),
+        onPanUpdate: (d) => widget.onPanUpdate(d.delta),
+        onPanEnd: (_) => setState(() => _dragging = false),
+        onPanCancel: () => setState(() => _dragging = false),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedScale(
+              scale: _dragging ? 1.02 : 1.0,
+              duration: InkMotion.fast,
+              child: AnimatedContainer(
+                duration: InkMotion.fast,
+                width: node.size.width,
+                height: node.size.height,
+                decoration: BoxDecoration(
+                  color: colors.surface2,
+                  borderRadius: BorderRadius.circular(InkRadius.lg),
+                  border: Border.all(color: borderColor, width: borderWidth),
+                  boxShadow: elevated ? InkShadow.elevated : InkShadow.card,
+                ),
+                padding: const EdgeInsets.all(InkSpacing.md),
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
@@ -111,20 +132,26 @@ class NodeCard extends ConsumerWidget {
                 ),
               ],
             ),
-          ),
-          if (selected && onStartLink != null && !isLinkSource)
-            Positioned(
-              right: -8,
-              top: -8,
-              child: _LinkAnchor(onPressed: onStartLink!),
+              ),
             ),
-          if (selected && onDelete != null && !isLinkSource)
-            Positioned(
-              left: -8,
-              top: -8,
-              child: _DeleteAnchor(onPressed: onDelete!),
-            ),
-        ],
+            if (widget.selected &&
+                widget.onStartLink != null &&
+                !widget.isLinkSource)
+              Positioned(
+                right: -8,
+                top: -8,
+                child: _LinkAnchor(onPressed: widget.onStartLink!),
+              ),
+            if (widget.selected &&
+                widget.onDelete != null &&
+                !widget.isLinkSource)
+              Positioned(
+                left: -8,
+                top: -8,
+                child: _DeleteAnchor(onPressed: widget.onDelete!),
+              ),
+          ],
+        ),
       ),
     );
   }
