@@ -1,12 +1,15 @@
 // ImageConfigInspector：单选 image config 节点时展示的参数面板。
 //
-// S3b：Generate 按钮真接 GenerationController。流程：
-//   1. patchTypeConfig({prompt, provider_id, resolution, aspect_ratio}) 持久化
-//   2. controller.submitFromConfigNode(nodeId) 等终态
-//   3. 成功 → SnackBar + invalidate 当前画布的 nodesController 拉新 result 节点
-//      失败 → SnackBar 展示错误码；预创建的 result 已由 Controller 清理
+// 提交流程：patch 节点 type_config → GenerationController.submitFromConfigNode
+// → 终态写回。状态由 InspectorStatusPanel 四态渲染（idle / submitting /
+// running / error）。
 //
-// 按钮 disabled 原因分层（就近原则）：prompt 空 / 无 API Key / 正在运行 / OK。
+// JobState 绑定点（agent-generation slice 落地后接线）：
+//   features/generation/models/job_state.dart 提供 JobState 后，
+//   本地 _view 应被 `ref.watch(jobStateProvider(node.id))` 派生的 view 替换；
+//   _submit 拆分为 controller.submit（提交） + jobs 的进度订阅。
+//
+// 按钮 disabled 原因分层（就近原则）：prompt 空 / 无 API Key / 正在运行。
 
 import 'dart:async';
 
@@ -28,6 +31,7 @@ import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
+import 'inspector_status_panel.dart';
 
 class ImageConfigInspector extends ConsumerStatefulWidget {
   const ImageConfigInspector({super.key, required this.node});
@@ -43,10 +47,13 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
   final TextEditingController _promptCtrl = TextEditingController();
   String? _providerId;
   Resolution? _resolution;
-  bool _running = false;
+  InspectorJobView _view = const InspectorJobIdle();
   Timer? _promptDebounce;
 
   static const _debounceDuration = Duration(milliseconds: 500);
+
+  bool get _busy =>
+      _view is InspectorJobSubmitting || _view is InspectorJobRunning;
 
   @override
   void initState() {
@@ -54,7 +61,6 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
     final caps = ref.read(providerCapabilitiesListProvider);
     final tc = widget.node.typeConfig;
 
-    // 水化已存在配置；缺失字段回退到 caps 首项。
     final savedProviderId = tc['provider_id'] as String?;
     final savedResolution = _parseResolution(tc['resolution']);
     final defaultProviderId = caps.isNotEmpty ? caps.first.providerId : null;
@@ -117,9 +123,8 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
 
   Future<void> _submit() async {
     final prompt = _promptCtrl.text.trim();
-    if (prompt.isEmpty || _providerId == null || _running) return;
-    setState(() => _running = true);
-    final messenger = ScaffoldMessenger.maybeOf(context);
+    if (prompt.isEmpty || _providerId == null || _busy) return;
+    setState(() => _view = const InspectorJobSubmitting());
     try {
       final nodes = await ref.read(nodeRepositoryProvider.future);
       await nodes.patchTypeConfig(widget.node.id, <String, Object?>{
@@ -127,14 +132,14 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
         'provider_id': _providerId,
         if (_resolution != null) 'resolution': _resolution!.name,
       });
+      if (!mounted) return;
+      setState(() => _view = const InspectorJobRunning());
       final controller =
           await ref.read(generationControllerProvider.future);
       final outcome = await controller.submitFromConfigNode(widget.node.id);
       if (!mounted) return;
       if (outcome.succeeded) {
-        messenger?.showSnackBar(
-          SnackBar(content: Text(context.l10n.generationSuccess)),
-        );
+        setState(() => _view = const InspectorJobIdle());
         final canvasId = widget.node.canvasId;
         if (canvasId != null) {
           ref.invalidate(canvasNodesControllerProvider(canvasId));
@@ -144,34 +149,26 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
           failure: (f) => f.error.code.name,
           orElse: () => 'unknown',
         );
-        messenger?.showSnackBar(
-          SnackBar(
-            content: Text('${context.l10n.generationFailure}: $code'),
-          ),
-        );
+        setState(() => _view = InspectorJobError(code: code));
       }
     } on MissingApiKeyError {
-      messenger?.showSnackBar(
-        SnackBar(content: Text(context.l10n.generationMissingKey)),
-      );
+      if (mounted) {
+        setState(() => _view = const InspectorJobError(code: 'missingApiKey'));
+      }
     } on InvalidGenerationConfigError catch (e) {
-      messenger?.showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.generationInvalidConfig(e.reason)),
-        ),
-      );
+      if (mounted) {
+        setState(() =>
+            _view = InspectorJobError(code: 'invalidConfig: ${e.reason}'));
+      }
     } on ProviderNotRegisteredError {
-      messenger?.showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.generationProviderNotRegistered),
-        ),
-      );
+      if (mounted) {
+        setState(() =>
+            _view = const InspectorJobError(code: 'providerNotRegistered'));
+      }
     } catch (e) {
-      messenger?.showSnackBar(
-        SnackBar(content: Text('${context.l10n.generationFailure}: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _running = false);
+      if (mounted) {
+        setState(() => _view = InspectorJobError(code: e.toString()));
+      }
     }
   }
 
@@ -225,7 +222,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
                   child: Text(c.providerId),
                 ),
             ],
-            onChanged: _running
+            onChanged: _busy
                 ? null
                 : (v) {
                     if (v == null) return;
@@ -260,7 +257,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
                 for (final r in selected.supportedResolutions)
                   DropdownMenuItem(value: r, child: Text(r.name)),
             ],
-            onChanged: _running
+            onChanged: _busy
                 ? null
                 : (v) {
                     if (v == null) return;
@@ -269,14 +266,18 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
                   },
           ),
           const SizedBox(height: InkSpacing.lg),
-          _GenerateButton(
-            prompt: _promptCtrl.text,
+          _StatusBinding(
             providerId: _providerId,
-            hasApiKey: _providerId == null
+            promptEmpty: _promptCtrl.text.trim().isEmpty,
+            hasApiKeyFuture: _providerId == null
                 ? Future<bool>.value(false)
                 : _hasApiKey(_providerId!),
-            running: _running,
-            onPressed: _submit,
+            view: _view,
+            generateLabel: context.l10n.inspectorGenerate,
+            disabledEmptyPromptText:
+                context.l10n.inspectorGenerateDisabledEmptyPrompt,
+            disabledNoKeyText: context.l10n.inspectorGenerateDisabledNoKey,
+            onSubmit: _submit,
           ),
           if (widget.node.canvasId != null) ...[
             const SizedBox(height: InkSpacing.lg),
@@ -284,6 +285,54 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// 包一层 FutureBuilder 解析 API Key 存在性，再委托 InspectorStatusPanel。
+/// image / video Inspector 复用，逻辑等价。
+class _StatusBinding extends StatelessWidget {
+  const _StatusBinding({
+    required this.providerId,
+    required this.promptEmpty,
+    required this.hasApiKeyFuture,
+    required this.view,
+    required this.generateLabel,
+    required this.disabledEmptyPromptText,
+    required this.disabledNoKeyText,
+    required this.onSubmit,
+  });
+
+  final String? providerId;
+  final bool promptEmpty;
+  final Future<bool> hasApiKeyFuture;
+  final InspectorJobView view;
+  final String generateLabel;
+  final String disabledEmptyPromptText;
+  final String disabledNoKeyText;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: hasApiKeyFuture,
+      builder: (context, snap) {
+        final hasKey = snap.data ?? false;
+        String? disabledReason;
+        if (promptEmpty) {
+          disabledReason = disabledEmptyPromptText;
+        } else if (providerId == null || !hasKey) {
+          disabledReason = disabledNoKeyText;
+        }
+        final canSubmit = !promptEmpty && providerId != null && hasKey;
+        return InspectorStatusPanel(
+          view: view,
+          generateLabel: generateLabel,
+          canSubmit: canSubmit,
+          disabledReason: disabledReason,
+          onSubmit: onSubmit,
+        );
+      },
     );
   }
 }
@@ -395,63 +444,6 @@ class _InputRow extends ConsumerWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _GenerateButton extends StatelessWidget {
-  const _GenerateButton({
-    required this.prompt,
-    required this.providerId,
-    required this.hasApiKey,
-    required this.running,
-    required this.onPressed,
-  });
-
-  final String prompt;
-  final String? providerId;
-  final Future<bool> hasApiKey;
-  final bool running;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: hasApiKey,
-      builder: (context, snap) {
-        final hasKey = snap.data ?? false;
-        final promptEmpty = prompt.trim().isEmpty;
-
-        String? disabledReason;
-        if (running) {
-          disabledReason = null;
-        } else if (promptEmpty) {
-          disabledReason = context.l10n.inspectorGenerateDisabledEmptyPrompt;
-        } else if (providerId == null || !hasKey) {
-          disabledReason = context.l10n.inspectorGenerateDisabledNoKey;
-        }
-
-        final enabled =
-            !running && !promptEmpty && providerId != null && hasKey;
-
-        final child = running
-            ? const SizedBox(
-                width: 16,
-                height: 16,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            : Text(context.l10n.inspectorGenerate);
-
-        final button = FilledButton(
-          onPressed: enabled ? onPressed : null,
-          child: child,
-        );
-
-        if (disabledReason != null) {
-          return Tooltip(message: disabledReason, child: button);
-        }
-        return button;
-      },
     );
   }
 }
