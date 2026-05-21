@@ -181,6 +181,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorSelectSingleHint => '选中一个配置节点以编辑';
 
   @override
+  String get inspectorStatusSubmitting => '提交中...';
+
+  @override
+  String get inspectorStatusRunning => '生成中...';
+
+  @override
+  String inspectorStatusRunningWithProgress(int percent) {
+    return '生成中... $percent%';
+  }
+
+  @override
+  String get inspectorStatusErrorTitle => '生成失败';
+
+  @override
+  String get inspectorRetry => '重试';
+
+  @override
   String get settingsTitle => '设置';
 
   @override
@@ -211,6 +228,70 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsApiKeyCleared => '已清除';
 
   @override
+  String get settingsThemeSection => '主题';
+
+  @override
+  String get settingsThemeDark => '深色';
+
+  @override
+  String get settingsThemeLight => '浅色';
+
+  @override
+  String get settingsThemeHighContrast => '高对比度';
+
+  @override
+  String get settingsThemeTextScale => '字号缩放';
+
+  @override
+  String get settingsLanguageSection => '语言';
+
+  @override
+  String get settingsLanguageEn => 'English';
+
+  @override
+  String get settingsLanguageZh => '中文';
+
+  @override
+  String get settingsStorageSection => '存储';
+
+  @override
+  String get settingsStorageReadOnlyHint => '本版本数据库目录固定，后续版本会提供迁移流程。';
+
+  @override
+  String get settingsStorageDatabasePathLabel => '数据库目录';
+
+  @override
+  String get settingsStorageCopyPath => '复制路径';
+
+  @override
+  String get settingsStoragePathCopied => '路径已复制到剪贴板';
+
+  @override
+  String get settingsAboutSection => '关于';
+
+  @override
+  String get settingsAboutAppNameLabel => '应用';
+
+  @override
+  String get settingsAboutVersionLabel => '版本';
+
+  @override
+  String get settingsAboutSecureStorageLabel => '安全存储';
+
+  @override
+  String get settingsAboutSecureStorageProbing => '检测中…';
+
+  @override
+  String settingsAboutSecureStorageAvailable(String backend) {
+    return '可用（$backend）';
+  }
+
+  @override
+  String settingsAboutSecureStorageUnavailable(String reason) {
+    return '不可用：$reason';
+  }
+
+  @override
   String get generationSuccess => '生成完成';
 
   @override
@@ -226,6 +307,47 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get generationProviderNotRegistered => 'Provider 未注册';
+
+  @override
+  String get generationQueueTitle => '渲染队列';
+
+  @override
+  String get generationQueueEmpty => '暂无活跃任务';
+
+  @override
+  String get generationQueueClearTerminated => '清理已完成';
+
+  @override
+  String get generationQueueRemove => '移除';
+
+  @override
+  String get generationQueueCancel => '取消任务';
+
+  @override
+  String get generationQueueRetry => '重试';
+
+  @override
+  String get generationStatusQueued => '排队中';
+
+  @override
+  String get generationStatusSubmitting => '提交中';
+
+  @override
+  String get generationStatusRunning => '生成中';
+
+  @override
+  String get generationStatusSucceeded => '已完成';
+
+  @override
+  String get generationStatusFailed => '失败';
+
+  @override
+  String get generationStatusCancelled => '已取消';
+
+  @override
+  String generationCountActive(int count) {
+    return '$count 个进行中';
+  }
 
   @override
   String get resultNodePending => '等待生成';
@@ -362,6 +484,45 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioBreadcrumbAll => '全部项目';
 
   @override
+  String get studioEmptyTitle => '还没有项目';
+
+  @override
+  String get studioEmptySubtitle => '新建一个项目开始你的分镜创作。';
+
+  @override
+  String get studioErrorTitle => '项目列表加载失败';
+
+  @override
+  String get studioErrorRetry => '重试';
+
+  @override
+  String get studioOpenSettings => '打开设置';
+
+  @override
+  String get studioNewProjectDialogTitle => '新建项目';
+
+  @override
+  String get studioNewProjectNameLabel => '项目名';
+
+  @override
+  String get studioNewProjectNameHint => '例如：日落劫案';
+
+  @override
+  String get studioNewProjectErrorEmpty => '请填写项目名';
+
+  @override
+  String get studioNewProjectErrorTooLong => '项目名不超过 60 个字符';
+
+  @override
+  String get studioNewProjectErrorDuplicate => '已存在同名项目';
+
+  @override
+  String get studioNewProjectFailed => '项目创建失败';
+
+  @override
+  String get studioCreate => '创建';
+
+  @override
   String get canvasInspectorTransform => '变换';
 
   @override
@@ -405,6 +566,26 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasBreadcrumbCanvas => '画布';
+
+  @override
+  String get canvasBackToStudio => 'Studio';
+
+  @override
+  String get canvasEmptyTitle => '当前画布为空';
+
+  @override
+  String get canvasEmptySubtitle => '添加第一个节点，开始分镜。';
+
+  @override
+  String get canvasEmptyAddImage => '添加图片节点';
+
+  @override
+  String get canvasEmptyAddVideo => '添加视频节点';
+
+  @override
+  String canvasSelectionCount(int count) {
+    return '已选 $count 个';
+  }
 
   @override
   String get canvasInspectorKindCamera => '镜头节点';
