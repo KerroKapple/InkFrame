@@ -1,14 +1,19 @@
-// SettingsScreen — 用户设置页。
+// SettingsScreen — 设置页。
 //
-// S2b 只落地 ApiKeysSection；后续 sprint 陆续添加主题 / 网络代理 / 日志级别
-// / 生成默认参数等分节。
+// 组合：ApiKeys / Theme / Language / Storage / About 五个 section。
+// 路由展示由 inkframe-dev 在 core/di/currentScreenProvider 落地后接管；当前
+// 仍可由其他 slice push 进入。
 
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
+import 'widgets/language_section.dart';
+import 'widgets/storage_path_section.dart';
+import 'widgets/theme_section.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -25,7 +30,20 @@ class SettingsScreen extends StatelessWidget {
         padding: const EdgeInsets.all(InkSpacing.lg),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
-          child: const ApiKeysSection(),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              ApiKeysSection(),
+              SizedBox(height: InkSpacing.xl),
+              ThemeSection(),
+              SizedBox(height: InkSpacing.xl),
+              LanguageSection(),
+              SizedBox(height: InkSpacing.xl),
+              StoragePathSection(),
+              SizedBox(height: InkSpacing.xl),
+              AboutSection(),
+            ],
+          ),
         ),
       ),
     );
