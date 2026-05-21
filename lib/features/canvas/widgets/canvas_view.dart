@@ -3,6 +3,7 @@
 // 职责：渲染状态 + 分发手势。业务逻辑走 CanvasNodesController / CanvasSelectionController。
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/file_resolver.dart';
@@ -20,6 +21,7 @@ import '../providers/current_canvas_id.dart';
 import '../providers/link_mode_controller.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/edge_hit_test.dart';
+import 'canvas_empty_state.dart';
 import 'node_inspector_router.dart';
 import 'edge_painter.dart';
 import 'node_card.dart';
@@ -66,6 +68,39 @@ class _EdgeDeleteButton extends StatelessWidget {
           width: 28,
           height: 28,
           child: Icon(Icons.close, size: 16, color: colors.danger),
+        ),
+      ),
+    );
+  }
+}
+
+class _SelectionCountChip extends StatelessWidget {
+  const _SelectionCountChip({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Material(
+      color: colors.surface3,
+      borderRadius: BorderRadius.circular(InkRadius.pill),
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: InkSpacing.md,
+          vertical: InkSpacing.xs,
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(Icons.check_circle_outline, size: 14, color: colors.accent),
+            const SizedBox(width: InkSpacing.xs),
+            Text(
+              context.l10n.canvasSelectionCount(count),
+              style: typo.caption.copyWith(color: colors.fg1),
+            ),
+          ],
         ),
       ),
     );
@@ -181,7 +216,6 @@ class _CanvasBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    final typo = context.inkTypography;
     final selected = ref.watch(canvasSelectionControllerProvider);
     final selectionCtrl =
         ref.read(canvasSelectionControllerProvider.notifier);
@@ -225,6 +259,11 @@ class _CanvasBody extends ConsumerWidget {
         }
       }
 
+      final keyboard = HardwareKeyboard.instance;
+      final modifierHeld = keyboard.isShiftPressed ||
+          keyboard.isControlPressed ||
+          keyboard.isMetaPressed;
+
       if (linkSourceId != null) {
         if (node.id == linkSourceId) {
           ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -262,22 +301,14 @@ class _CanvasBody extends ConsumerWidget {
         }
         return;
       }
-      selectionCtrl.select(node.id);
+      selectionCtrl.select(node.id, toggle: modifierHeld);
     }
 
     final Widget canvasArea;
     if (nodes.isEmpty) {
-      canvasArea = GestureDetector(
-        onTap: onEmptyTap,
-        child: Container(
-          color: colors.surface1,
-          child: Center(
-            child: Text(
-              context.l10n.canvasEmptyHint,
-              style: typo.body.copyWith(color: colors.fg3),
-            ),
-          ),
-        ),
+      canvasArea = CanvasEmptyState(
+        canvasId: canvasId,
+        onBackgroundTap: onEmptyTap,
       );
     } else {
       final edgesAsync =
@@ -424,22 +455,24 @@ class _CanvasBody extends ConsumerWidget {
           .firstWhere((_) => true, orElse: () => null);
     }
 
-    final Widget leftArea;
-    if (linkSourceId != null) {
-      leftArea = Stack(
-        children: [
-          Positioned.fill(child: canvasArea),
+    final Widget leftArea = Stack(
+      children: [
+        Positioned.fill(child: canvasArea),
+        if (linkSourceId != null)
           Positioned(
             top: InkSpacing.md,
             left: InkSpacing.md,
             right: InkSpacing.md,
             child: _LinkHintBanner(),
           ),
-        ],
-      );
-    } else {
-      leftArea = canvasArea;
-    }
+        if (selected.length >= 2)
+          Positioned(
+            top: InkSpacing.md,
+            right: InkSpacing.md,
+            child: _SelectionCountChip(count: selected.length),
+          ),
+      ],
+    );
 
     return Row(
       children: [
