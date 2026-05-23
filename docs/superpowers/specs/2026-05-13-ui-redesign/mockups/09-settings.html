@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .set-side {
     width: 220px; flex: 0 0 220px;
@@ -91,13 +92,7 @@
 </head>
 <body>
 <div class="page">
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame v2</div>
-    <div class="crumbs"><span class="here">设置</span></div>
-    <div class="spacer"></div>
-    <div class="actions"><span class="kbd">⌘,</span><div class="avatar">J</div></div>
-    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
-  </div>
+  <ink-chrome breadcrumb="设置" kbd="⌘,"></ink-chrome>
 
   <div class="body">
     <aside class="set-side">
@@ -120,14 +115,14 @@
             <h3>已配置的服务商</h3>
             <div class="sub">5 connected · 1 needs attention</div>
           </div>
-          <button class="btn">＋ 添加服务商</button>
+          <ink-btn>＋ 添加服务商</ink-btn>
         </div>
 
         <div class="prov-row">
           <div class="logo">O</div>
           <div class="name"><b>OpenAI</b><span>api.openai.com · gpt-image-1</span></div>
           <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
-          <div class="role"><span class="chip success">已连接</span></div>
+          <div class="role"><ink-chip variant="success">已连接</ink-chip></div>
           <div class="role">主用</div>
           <div class="more">⋯</div>
         </div>
@@ -135,7 +130,7 @@
           <div class="logo">R</div>
           <div class="name"><b>Runway</b><span>api.runway.team · gen-3</span></div>
           <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
-          <div class="role"><span class="chip success">已连接</span></div>
+          <div class="role"><ink-chip variant="success">已连接</ink-chip></div>
           <div class="role">备用</div>
           <div class="more">⋯</div>
         </div>
@@ -143,7 +138,7 @@
           <div class="logo">K</div>
           <div class="name"><b>Kling</b><span>klingai.com · v3 · omni</span></div>
           <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
-          <div class="role"><span class="chip warning">配额预警</span></div>
+          <div class="role"><ink-chip variant="warning">配额预警</ink-chip></div>
           <div class="role">主用</div>
           <div class="more">⋯</div>
         </div>
@@ -151,7 +146,7 @@
           <div class="logo">P</div>
           <div class="name"><b>Pika</b><span>pika.art · v2.2</span></div>
           <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
-          <div class="role"><span class="chip danger">连接失败</span></div>
+          <div class="role"><ink-chip variant="danger">连接失败</ink-chip></div>
           <div class="role">备用</div>
           <div class="more">⋯</div>
         </div>
@@ -159,7 +154,7 @@
           <div class="logo">W</div>
           <div class="name"><b>Wanx</b><span>dashscope.aliyun · t2v / i2v</span></div>
           <div class="key"><span class="dots">●●●●●●●●●●●●</span><span style="color:var(--fg-4)">👁</span></div>
-          <div class="role"><span class="chip success">已连接</span></div>
+          <div class="role"><ink-chip variant="success">已连接</ink-chip></div>
           <div class="role">备用</div>
           <div class="more">⋯</div>
         </div>
@@ -222,15 +217,6 @@
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
-  <a href="08-asset-generation.html">08</a>
-  <a class="active" href="09-settings.html">09</a>
-  <a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
