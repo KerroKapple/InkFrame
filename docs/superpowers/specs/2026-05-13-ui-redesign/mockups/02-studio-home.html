@@ -14,6 +14,40 @@
     overflow: auto;
     position: relative;
   }
+  .provider-banner {
+    display: flex; align-items: center; gap: 14px;
+    padding: 10px 16px;
+    margin-bottom: 24px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--warning);
+    border-radius: var(--r-md);
+  }
+  .provider-banner .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--warning);
+    box-shadow: 0 0 0 3px rgba(216,139,58,0.18);
+    flex-shrink: 0;
+  }
+  .provider-banner .msg {
+    color: var(--fg-2);
+    font-size: 13px;
+    flex: 1;
+  }
+  .provider-banner .msg b { color: var(--fg-1); font-weight: 500; }
+  .provider-banner .action {
+    color: var(--accent);
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+  }
+  .provider-banner .action:hover { color: var(--accent-hover); }
+  .provider-banner .dismiss {
+    color: var(--fg-3); cursor: pointer;
+    padding: 0 4px; user-select: none;
+  }
+  .provider-banner .dismiss:hover { color: var(--fg-1); }
   .title-row {
     display: flex; align-items: flex-end; justify-content: space-between;
     margin-bottom: 24px;
@@ -113,6 +147,12 @@
 
     <!-- main -->
     <main class="main">
+      <div class="provider-banner">
+        <span class="dot"></span>
+        <span class="msg"><b>No provider configured.</b> Generation actions are disabled until you set one up.</span>
+        <a class="action" href="09-settings.html">Set up provider →</a>
+        <span class="dismiss" title="Dismiss">✕</span>
+      </div>
       <div class="title-row">
         <h1>Recent Projects</h1>
         <div class="filters">
