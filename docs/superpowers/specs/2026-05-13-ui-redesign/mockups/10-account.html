@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   /* dim background using canvas screen as stage */
   .stage { flex: 1; position: relative; background: var(--surface-canvas); overflow: hidden; }
@@ -111,7 +112,7 @@
         <button class="ico">⌶</button>
         <button class="ico">≡</button>
         <div class="avatar">J</div>
-        <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
+        <ink-win-ctrl></ink-win-ctrl>
       </div>
 
       <div class="menu-wrap">
@@ -150,14 +151,6 @@
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
-  <a href="08-asset-generation.html">08</a><a href="09-settings.html">09</a>
-  <a class="active" href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
