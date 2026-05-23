@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .scenes-list { width: 240px; flex: 0 0 240px; background: var(--surface-1); border-right: 1px solid var(--border-subtle); overflow:auto; padding: 18px 0;}
   .scenes-list .lab { padding: 0 18px 8px; font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--fg-4); text-transform: uppercase;}
@@ -89,13 +90,7 @@
 </head>
 <body>
 <div class="page">
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame</div>
-    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">先遣的回音 Script</span></div>
-    <div class="spacer"></div>
-    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
-    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
-  </div>
+  <ink-chrome breadcrumb="Nocturne › Episode 02 › 先遣的回音 Script"></ink-chrome>
 
   <div class="body">
     <aside class="scenes-list">
@@ -140,10 +135,11 @@
       <!-- right popover -->
       <div class="pop">
         <div class="row"><span class="ico">✎</span>编辑</div>
-        <div class="row"><span class="ico">⌗</span>加镜头</div>
-        <div class="row"><span class="ico">◴</span>加角色</div>
+        <div class="row"><span class="ico">⧉</span>复制</div>
+        <div class="row"><span class="ico">✍</span>批注</div>
+        <div class="row"><span class="ico">⟳</span>查看历史</div>
         <hr>
-        <div class="row" style="color:var(--danger)"><span class="ico">⌫</span>移除</div>
+        <div class="row" style="color:var(--danger)"><span class="ico">⌫</span>删除</div>
       </div>
 
       <!-- assist card -->
@@ -151,9 +147,9 @@
         <h5>Selected Beat · 02-001</h5>
         <p>海风扑打着窗，灯塔的光在浓雾里像一颗缓慢转动的心脏。</p>
         <div class="meta">
-          <span class="chip">EXT</span>
-          <span class="chip">NIGHT</span>
-          <span class="chip warning">Slow Push-in</span>
+          <ink-chip>EXT</ink-chip>
+          <ink-chip>NIGHT</ink-chip>
+          <ink-chip variant="warning">Slow Push-in</ink-chip>
         </div>
       </div>
 
@@ -167,14 +163,6 @@
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
-  <a class="active" href="06-script-editor.html">06</a>
-  <a href="07-asset-library.html">07</a><a href="08-asset-generation.html">08</a>
-  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
