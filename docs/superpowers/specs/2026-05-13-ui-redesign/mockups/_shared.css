@@ -317,3 +317,57 @@ a { color: inherit; text-decoration: none; }
 .tag.warn   { color: var(--warning); border-color: rgba(216,139,58,0.4); }
 .tag.danger { color: var(--danger); border-color: rgba(200,82,58,0.4); }
 .tag.ok     { color: var(--success); border-color: rgba(92,138,78,0.4); }
+
+/* ===== Fake cinematic thumbnails ===== */
+/* Multi-layer gradient + film-grain noise overlay to fake a moody still
+   without needing an actual image asset. Variants paint different scenes. */
+.fake-thumb {
+  position: relative;
+  background-color: #0a0807;
+  background-image: var(--ft-bg, none);
+  background-size: cover;
+  background-position: center;
+  overflow: hidden;
+}
+.fake-thumb::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image:
+    radial-gradient(1.5px 1.5px at 14% 22%, rgba(232,223,208,0.18), transparent 60%),
+    radial-gradient(1px 1px at 78% 64%, rgba(232,223,208,0.10), transparent 60%),
+    radial-gradient(1px 1px at 36% 88%, rgba(232,223,208,0.08), transparent 60%),
+    radial-gradient(1px 1px at 92% 18%, rgba(232,223,208,0.12), transparent 60%);
+  pointer-events: none;
+}
+.fake-thumb::before {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(0,0,0,0.55) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+/* Variant palette — keep tones inside the Amber Noir token range */
+.thumb-night     { --ft-bg:
+  radial-gradient(circle at 30% 40%, rgba(75,122,146,0.25) 0%, transparent 55%),
+  linear-gradient(180deg, #14181f 0%, #07090c 100%); }
+.thumb-dock      { --ft-bg:
+  radial-gradient(circle at 70% 30%, rgba(201,168,91,0.20) 0%, transparent 50%),
+  linear-gradient(160deg, #1c1812 0%, #08070a 100%); }
+.thumb-watch     { --ft-bg:
+  radial-gradient(circle at 50% 50%, rgba(227,166,72,0.32) 0%, rgba(58,42,22,0.6) 35%, #0a0807 80%); }
+.thumb-character { --ft-bg:
+  radial-gradient(circle at 50% 38%, rgba(201,168,91,0.18) 0%, transparent 55%),
+  linear-gradient(180deg, #2a1f12 0%, #08060a 100%); }
+.thumb-fog       { --ft-bg:
+  radial-gradient(ellipse at 50% 60%, rgba(181,168,154,0.15) 0%, transparent 55%),
+  linear-gradient(180deg, #1a1814 0%, #0a0907 100%); }
+.thumb-dawn      { --ft-bg:
+  radial-gradient(circle at 50% 80%, rgba(216,139,58,0.22) 0%, transparent 55%),
+  linear-gradient(180deg, #14110e 0%, #06050a 100%); }
+.thumb-ember     { --ft-bg:
+  radial-gradient(circle at 40% 70%, rgba(200,82,58,0.18) 0%, transparent 50%),
+  linear-gradient(140deg, #1c130e 0%, #08060a 100%); }
+.thumb-prop      { --ft-bg:
+  radial-gradient(circle at 60% 50%, rgba(216,139,58,0.16) 0%, transparent 55%),
+  linear-gradient(180deg, #1f1812 0%, #0a0807 100%); }
