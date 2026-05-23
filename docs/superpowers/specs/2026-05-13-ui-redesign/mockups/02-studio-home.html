@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .main {
     flex: 1; padding: 28px 36px 40px;
@@ -73,25 +74,10 @@
 </head>
 <body>
 <div class="page">
-  <!-- chrome -->
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame</div>
-    <div class="crumbs">
-      <span>Kerro Studio</span><span class="chev">›</span>
-      <span>Projects</span><span class="chev">›</span>
-      <span class="here">All Projects</span>
-    </div>
-    <div class="spacer"></div>
-    <div class="actions">
-      <span class="kbd">⌘K</span>
-      <button class="ico-btn">⌥</button>
-      <button class="ico-btn">⚑</button>
-      <div class="avatar">J</div>
-    </div>
-    <div class="win-ctrl">
-      <button>—</button><button>▢</button><button class="close">✕</button>
-    </div>
-  </div>
+  <ink-chrome breadcrumb="Kerro Studio › Projects › All Projects">
+    <button class="ico-btn">⌥</button>
+    <button class="ico-btn">⚑</button>
+  </ink-chrome>
 
   <div class="body">
     <!-- sidebar -->
@@ -131,7 +117,7 @@
           <div class="view-switch">
             <button class="on">Grid</button><button>List</button>
           </div>
-          <button class="btn ghost" style="height:32px">Sort: Updated ▾</button>
+          <ink-btn variant="ghost">Sort: Updated ▾</ink-btn>
         </div>
       </div>
 
@@ -146,25 +132,11 @@
         <div class="proj"><div class="still fake-thumb thumb-prop"></div><div class="body"><div class="name">Silent Script</div><div class="meta">DRAFT · 2024.05.14 · 📦 3</div></div></div>
       </div>
 
-      <button class="btn cta fab">＋ New Project</button>
+      <ink-btn variant="cta" class="fab">＋ New Project</ink-btn>
     </main>
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a>
-  <a class="active" href="02-studio-home.html">02</a>
-  <a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a>
-  <a href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a>
-  <a href="07-asset-library.html">07</a>
-  <a href="08-asset-generation.html">08</a>
-  <a href="09-settings.html">09</a>
-  <a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a>
-  <a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
