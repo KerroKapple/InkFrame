@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .stage { flex: 1; padding: 36px; overflow: auto; background: var(--surface-canvas);}
   .heading { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 24px;}
@@ -82,13 +83,7 @@
 </head>
 <body>
 <div class="page">
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame</div>
-    <div class="crumbs"><span class="here">Error States</span></div>
-    <div class="spacer"></div>
-    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
-    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
-  </div>
+  <ink-chrome breadcrumb="Error States"></ink-chrome>
 
   <div class="body">
     <div class="stage">
@@ -97,7 +92,7 @@
           <h1>错误类型</h1>
           <p>四类典型错误页 · 同一卡片骨架 · 左 4px 色条区分类别</p>
         </div>
-        <span class="chip">ER 系列</span>
+        <ink-chip>ER 系列</ink-chip>
       </div>
 
       <div class="err-grid">
@@ -111,8 +106,8 @@
             请检查网络状态后重试，或在诊断指南中查看更详细的排查步骤。
           </div>
           <div class="row">
-            <button class="btn">重试</button>
-            <button class="btn">复制错误 ID</button>
+            <ink-btn>重试</ink-btn>
+            <ink-btn>复制错误 ID</ink-btn>
             <span class="link">打开诊断指南 ↗</span>
           </div>
         </div>
@@ -127,8 +122,8 @@
             您可以在设置中调整速率限制，或查看本机配额使用情况。
           </div>
           <div class="row">
-            <button class="btn">重试</button>
-            <button class="btn">复制错误 ID</button>
+            <ink-btn>重试</ink-btn>
+            <ink-btn>复制错误 ID</ink-btn>
             <span class="link">打开诊断指南 ↗</span>
           </div>
         </div>
@@ -143,8 +138,8 @@
             请检查可用空间，或在诊断指南中查看权限设置说明。
           </div>
           <div class="row">
-            <button class="btn">重试</button>
-            <button class="btn">复制错误 ID</button>
+            <ink-btn>重试</ink-btn>
+            <ink-btn>复制错误 ID</ink-btn>
             <span class="link">技术细节 ↗</span>
           </div>
         </div>
@@ -159,8 +154,8 @@
             如问题持续出现，请在诊断指南中查看下一步建议。
           </div>
           <div class="row">
-            <button class="btn">重试</button>
-            <button class="btn">复制错误 ID</button>
+            <ink-btn>重试</ink-btn>
+            <ink-btn>复制错误 ID</ink-btn>
             <span class="link">技术细节 ↗</span>
           </div>
         </div>
@@ -169,14 +164,6 @@
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
-  <a href="08-asset-generation.html">08</a><a href="09-settings.html">09</a>
-  <a href="10-account.html">10</a><a href="11-toasts.html">11</a>
-  <a class="active" href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
