@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>InkFrame v2 — Amber Noir Mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="_shared.css">
+<style>
+  html, body { overflow: auto; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 64px 48px 120px; }
+  header.hero {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 24px; margin-bottom: 40px;
+  }
+  .logo-xl {
+    font-family: var(--ff-serif);
+    font-weight: 300;
+    font-size: 56px;
+    line-height: 1;
+    color: var(--fg-1);
+  }
+  .logo-xl .sep { color: var(--accent); }
+  .tagline {
+    margin-top: 12px;
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    color: var(--fg-3);
+    text-transform: uppercase;
+  }
+  .meta { text-align: right; color: var(--fg-3); font-family: var(--ff-mono); font-size: 11px; line-height: 1.8; }
+  .meta b { color: var(--fg-1); font-weight: 500; }
+  .lead {
+    color: var(--fg-2); max-width: 720px;
+    margin: 0 0 40px;
+    font-size: 14px; line-height: 1.7;
+  }
+  .grid {
+    display: grid; gap: 24px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .tile {
+    display: block; position: relative;
+    background: var(--surface-1);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    transition: border-color .15s;
+  }
+  .tile:hover { border-color: var(--accent); }
+  .tile .thumb {
+    --s: 0.18;
+    aspect-ratio: 3 / 2;
+    background: var(--surface-canvas);
+    overflow: hidden;
+    border-bottom: 1px solid var(--border-subtle);
+    position: relative;
+  }
+  .tile .thumb iframe {
+    position: absolute;
+    inset: 0;
+    width: calc(100% / var(--s));
+    height: calc(100% / var(--s));
+    border: 0;
+    pointer-events: none;
+    transform: scale(var(--s));
+    transform-origin: top left;
+    background: var(--surface-canvas);
+  }
+  /* Hide the floating mock-nav inside each embedded page */
+  .tile .thumb iframe { color-scheme: dark; }
+  .tile .body {
+    padding: 14px 16px 16px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+  }
+  .tile .title {
+    font-family: var(--ff-serif);
+    font-size: 22px;
+    color: var(--fg-1);
+    line-height: 1.1;
+  }
+  .tile .id {
+    font-family: var(--ff-mono);
+    font-size: 10px;
+    color: var(--fg-3);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .legend {
+    margin: 56px 0 0;
+    padding: 20px 24px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--r-lg);
+    background: var(--surface-1);
+    color: var(--fg-2);
+    font-size: 13px; line-height: 1.7;
+  }
+  .legend h3 {
+    font-family: var(--ff-mono);
+    font-size: 11px;
+    color: var(--fg-3);
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    margin: 0 0 10px;
+  }
+  .legend code { font-family: var(--ff-mono); color: var(--accent); background: var(--surface-2); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
+  .deco {
+    position: fixed; left: -60px; bottom: -140px;
+    font-family: var(--ff-serif); font-weight: 300;
+    font-size: 460px; line-height: 0.85;
+    color: var(--fg-4);
+    opacity: 0.12;
+    pointer-events: none;
+    user-select: none;
+  }
+</style>
+</head>
+<body>
+<div class="deco">I</div>
+<div class="wrap">
+  <header class="hero">
+    <div>
+      <div class="logo-xl">Ink<span class="sep">/</span>Frame</div>
+      <div class="tagline">A Desk For Storyboarders &nbsp;·&nbsp; Amber Noir UI Mockups</div>
+    </div>
+    <div class="meta">
+      <div><b>v0.14.2</b> · 3f8c91a</div>
+      <div>12 screens · static HTML/CSS</div>
+      <div>2026-05-13</div>
+    </div>
+  </header>
+
+  <p class="lead">
+    Twelve static mockups for the InkFrame v2 UI redesign. Each screen is a self-contained HTML file
+    linking the shared design-token stylesheet. Open any tile in a browser to inspect at full size.
+    Use the floating navigator at the bottom of each screen to jump between them.
+  </p>
+
+  <div class="grid">
+    <a class="tile" href="01-lock.html">
+      <div class="thumb"><iframe src="01-lock.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Lock / Unlock</div><div class="id">01 · lock</div></div>
+    </a>
+    <a class="tile" href="02-studio-home.html">
+      <div class="thumb"><iframe src="02-studio-home.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Studio Home</div><div class="id">02 · home</div></div>
+    </a>
+    <a class="tile" href="03-canvas.html">
+      <div class="thumb"><iframe src="03-canvas.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Node Canvas</div><div class="id">03 · canvas</div></div>
+    </a>
+    <a class="tile" href="04-task-queue.html">
+      <div class="thumb"><iframe src="04-task-queue.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Task Queue</div><div class="id">04 · queue</div></div>
+    </a>
+    <a class="tile" href="05-storyboard.html">
+      <div class="thumb"><iframe src="05-storyboard.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Storyboard</div><div class="id">05 · board</div></div>
+    </a>
+    <a class="tile" href="06-script-editor.html">
+      <div class="thumb"><iframe src="06-script-editor.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Script Editor</div><div class="id">06 · script</div></div>
+    </a>
+    <a class="tile" href="07-asset-library.html">
+      <div class="thumb"><iframe src="07-asset-library.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Asset Library</div><div class="id">07 · assets</div></div>
+    </a>
+    <a class="tile" href="08-asset-generation.html">
+      <div class="thumb"><iframe src="08-asset-generation.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Asset Generation</div><div class="id">08 · gen</div></div>
+    </a>
+    <a class="tile" href="09-settings.html">
+      <div class="thumb"><iframe src="09-settings.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Settings</div><div class="id">09 · settings</div></div>
+    </a>
+    <a class="tile" href="10-account.html">
+      <div class="thumb"><iframe src="10-account.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Account Menu</div><div class="id">10 · account</div></div>
+    </a>
+    <a class="tile" href="11-toasts.html">
+      <div class="thumb"><iframe src="11-toasts.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Toast Types</div><div class="id">11 · toasts</div></div>
+    </a>
+    <a class="tile" href="12-error-states.html">
+      <div class="thumb"><iframe src="12-error-states.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
+      <div class="body"><div class="title">Error States</div><div class="id">12 · errors</div></div>
+    </a>
+  </div>
+
+  <div class="legend">
+    <h3>How to review</h3>
+    Open any tile in a browser. All screens share <code>_shared.css</code> — tokens, type, components.
+    Each screen has a bottom floating nav-strip to hop between mockups. Thumbnails on this index are
+    live <code>&lt;iframe&gt;</code> previews of the actual HTML — zero external assets, edits visible
+    on reload.
+  </div>
+</div>
+</body>
+</html>

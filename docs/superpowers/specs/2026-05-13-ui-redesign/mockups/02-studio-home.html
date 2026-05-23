@@ -40,11 +40,13 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
   .proj {
+    display: block;
     background: var(--surface-1);
     border: 1px solid var(--border-subtle);
     border-radius: var(--r-lg);
     overflow: hidden;
     cursor: pointer;
+    color: inherit;
   }
   .proj:hover { border-color: var(--border-hover); }
   .proj .still {
@@ -102,9 +104,9 @@
       </ul>
 
       <div class="footer">
-        <span title="Tags">🏷</span>
+        <a href="07-asset-library.html" title="Tags">🏷</a>
         <span title="People">👥</span>
-        <span title="Settings">⚙</span>
+        <a href="09-settings.html" title="Settings">⚙</a>
         <span title="Trash">🗑</span>
       </div>
     </aside>
@@ -122,14 +124,14 @@
       </div>
 
       <div class="proj-grid">
-        <div class="proj"><div class="still fake-thumb thumb-night"></div><div class="body"><div class="name">Nocturne</div><div class="meta">EP 02 · 2024.06.20 · 📦 31</div></div></div>
-        <div class="proj"><div class="still fake-thumb thumb-dock"></div><div class="body"><div class="name">The Last Harbor</div><div class="meta">EP 01 · 2024.06.18 · 📦 22</div></div></div>
-        <div class="proj"><div class="still fake-thumb thumb-fog"></div><div class="body"><div class="name">Paper Reverie</div><div class="meta">EP 03 · 2024.06.10 · 📦 14</div></div></div>
-        <div class="proj"><div class="still fake-thumb thumb-ember"></div><div class="body"><div class="name">Eclipse Chronicle</div><div class="meta">EP 04 · 2024.06.07 · 📦 41</div></div></div>
-        <div class="proj"><div class="still fake-thumb thumb-dawn"></div><div class="body"><div class="name">Ashes of Tomorrow</div><div class="meta">EP 01 · 2024.05.30 · 📦 19</div></div></div>
-        <div class="proj"><div class="still fake-thumb thumb-character"></div><div class="body"><div class="name">Afterlight</div><div class="meta">EP 02 · 2024.05.28 · 📦 27</div></div></div>
-        <div class="proj"><div class="still fake-thumb thumb-watch"></div><div class="body"><div class="name">Fragments</div><div class="meta">EP 01 · 2024.05.20 · 📦 8</div></div></div>
-        <div class="proj"><div class="still fake-thumb thumb-prop"></div><div class="body"><div class="name">Silent Script</div><div class="meta">DRAFT · 2024.05.14 · 📦 3</div></div></div>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-night"></div><div class="body"><div class="name">Nocturne</div><div class="meta">EP 02 · 2024.06.20 · 📦 31</div></div></a>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-dock"></div><div class="body"><div class="name">The Last Harbor</div><div class="meta">EP 01 · 2024.06.18 · 📦 22</div></div></a>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-fog"></div><div class="body"><div class="name">Paper Reverie</div><div class="meta">EP 03 · 2024.06.10 · 📦 14</div></div></a>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-ember"></div><div class="body"><div class="name">Eclipse Chronicle</div><div class="meta">EP 04 · 2024.06.07 · 📦 41</div></div></a>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-dawn"></div><div class="body"><div class="name">Ashes of Tomorrow</div><div class="meta">EP 01 · 2024.05.30 · 📦 19</div></div></a>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-character"></div><div class="body"><div class="name">Afterlight</div><div class="meta">EP 02 · 2024.05.28 · 📦 27</div></div></a>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-watch"></div><div class="body"><div class="name">Fragments</div><div class="meta">EP 01 · 2024.05.20 · 📦 8</div></div></a>
+        <a class="proj" href="03-canvas.html"><div class="still fake-thumb thumb-prop"></div><div class="body"><div class="name">Silent Script</div><div class="meta">DRAFT · 2024.05.14 · 📦 3</div></div></a>
       </div>
 
       <ink-btn variant="cta" class="fab">＋ New Project</ink-btn>

@@ -69,13 +69,13 @@ customElements.define("ink-chrome", class extends HTMLElement {
       ? `<div class="actions">${
           kbd !== null ? `<span class="kbd">${kbd || "⌘K"}</span>` : ""
         }${this._slot}${
-          avatar !== null ? `<div class="avatar">${avatar || "J"}</div>` : ""
+          avatar !== null ? `<a class="avatar" href="10-account.html" title="Account">${avatar || "J"}</a>` : ""
         }</div>`
       : "";
 
     this.classList.add("chrome");
     this.innerHTML = `
-      ${noLogo ? "" : `<div class="logo">Ink<span class="sep">/</span>Frame</div>`}
+      ${noLogo ? "" : `<a class="logo" href="02-studio-home.html" title="Studio Home">Ink<span class="sep">/</span>Frame</a>`}
       ${crumbsHtml}
       <div class="spacer"></div>
       ${actionsHtml}
@@ -103,20 +103,38 @@ customElements.define("ink-win-ctrl", class extends HTMLElement {
 // Attributes:
 //   variant  "cta" | "ghost" | "danger" | (combination) | unset
 //   icon     leading glyph rendered before the label
+//   href     if set, clicking the button navigates to the URL (in-app nav)
 // Uses the existing .btn / .btn.cta / .btn.ghost rules in _shared.css.
 // ============================================================================
 customElements.define("ink-btn", class extends HTMLElement {
-  static observedAttributes = ["variant", "icon"];
+  static observedAttributes = ["variant", "icon", "href"];
   connectedCallback() {
+    if (this._userClass === undefined) this._userClass = this.className;
     if (this._label === undefined) this._label = this.textContent.trim();
     this.render();
+    this._wireNav();
   }
-  attributeChangedCallback() { if (this.isConnected) this.render(); }
+  attributeChangedCallback() {
+    if (this.isConnected) { this.render(); this._wireNav(); }
+  }
+  _wireNav() {
+    const href = this.getAttribute("href");
+    if (href && !this._navWired) {
+      this.addEventListener("click", () => { location.href = href; });
+      this.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          location.href = href;
+        }
+      });
+      this._navWired = true;
+    }
+  }
   render() {
     const variant = (this.getAttribute("variant") || "").trim();
     const icon    = this.getAttribute("icon");
-    // Reset and re-apply classes so variant changes are sticky.
-    this.className = "btn" + (variant ? " " + variant : "");
+    // Compose user-provided classes + component-managed classes.
+    this.className = [this._userClass, "btn", variant].filter(Boolean).join(" ").trim();
     this.setAttribute("role", "button");
     if (!this.hasAttribute("tabindex")) this.setAttribute("tabindex", "0");
     this.innerHTML = `${icon ? `<span class="ico">${icon}</span>` : ""}${this._label}`;
@@ -130,8 +148,9 @@ customElements.define("ink-btn", class extends HTMLElement {
 // ============================================================================
 customElements.define("ink-chip", class extends HTMLElement {
   connectedCallback() {
+    if (this._userClass === undefined) this._userClass = this.className;
     const variant = (this.getAttribute("variant") || "").trim();
-    this.className = "chip" + (variant ? " " + variant : "");
+    this.className = [this._userClass, "chip", variant].filter(Boolean).join(" ").trim();
   }
 });
 
@@ -142,26 +161,33 @@ customElements.define("ink-chip", class extends HTMLElement {
 // ============================================================================
 customElements.define("ink-tag", class extends HTMLElement {
   connectedCallback() {
+    if (this._userClass === undefined) this._userClass = this.className;
     const variant = (this.getAttribute("variant") || "").trim();
-    this.className = "tag" + (variant ? " " + variant : "");
+    this.className = [this._userClass, "tag", variant].filter(Boolean).join(" ").trim();
   }
 });
 
 // ============================================================================
-// ink-mock-nav — fixed bottom strip with links to all 12 mockups.
+// ink-mock-nav — developer-only bottom nav strip. Hidden by default to keep
+// the app-simulation clean; show it by appending `?dev=1` to any page URL.
 // If `active` is unset, the active id is derived from the current filename.
 // ============================================================================
 customElements.define("ink-mock-nav", class extends HTMLElement {
   connectedCallback() {
+    const dev = new URLSearchParams(location.search).has("dev");
+    if (!dev) { this.style.display = "none"; return; }
+
     let active = this.getAttribute("active");
     if (!active) {
       active = (location.pathname.split("/").pop() || "").replace(".html", "");
     }
     this.classList.add("mock-nav");
+    // Propagate ?dev=1 so the strip survives across navigations.
+    const q = "?dev=1";
     this.innerHTML = `
-      <a class="home" href="index.html">◇ Index</a>
+      <a class="home" href="01-lock.html${q}">◇ Start</a>
       ${PAGES.map(([file, label]) =>
-        `<a${active === file ? ' class="active"' : ""} href="${file}.html">${label}</a>`
+        `<a${active === file ? ' class="active"' : ""} href="${file}.html${q}">${label}</a>`
       ).join("")}
     `;
   }
