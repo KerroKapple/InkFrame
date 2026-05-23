@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .three-col { display: grid; grid-template-columns: 340px 1fr 380px; flex: 1; min-height: 0; }
   .col { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
@@ -70,13 +71,9 @@
 </head>
 <body>
 <div class="page">
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame</div>
-    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">The Boy In The Fog</span></div>
-    <div class="spacer"></div>
-    <div class="actions"><span class="kbd">⌘K</span><button class="ico-btn">▶</button><div class="avatar">J</div></div>
-    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
-  </div>
+  <ink-chrome breadcrumb="Nocturne › Episode 02 › The Boy In The Fog">
+    <button class="ico-btn">▶</button>
+  </ink-chrome>
 
   <div class="body three-col">
     <!-- left: script -->
@@ -145,7 +142,7 @@
     <div class="col queue">
       <div class="qhead">
         <h2>任务队列</h2>
-        <span class="chip">12 active</span>
+        <ink-chip>12 active</ink-chip>
       </div>
       <div class="qtabs">
         <span class="qtab on">渲染中</span>
@@ -214,14 +211,6 @@
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a class="active" href="04-task-queue.html">04</a>
-  <a href="05-storyboard.html">05</a><a href="06-script-editor.html">06</a>
-  <a href="07-asset-library.html">07</a><a href="08-asset-generation.html">08</a>
-  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
