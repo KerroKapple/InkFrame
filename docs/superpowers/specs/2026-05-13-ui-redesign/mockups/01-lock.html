@@ -7,22 +7,17 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .lock-page { position: relative; width: 100vw; height: 100vh; background: var(--surface-canvas); overflow: hidden; }
   .deco-I {
     position: absolute; left: -80px; bottom: -260px;
     font-family: var(--ff-serif); font-weight: 300;
     font-size: 720px; line-height: 0.8;
-    color: var(--fg-4);
-    opacity: 0.16;
-    pointer-events: none;
-    user-select: none;
+    color: var(--fg-4); opacity: 0.16;
+    pointer-events: none; user-select: none;
   }
-  .lock-top {
-    position: absolute; top: 14px; right: 18px;
-    display: flex; gap: 6px;
-    z-index: 3;
-  }
+  .lock-top { position: absolute; top: 14px; right: 18px; display: flex; gap: 6px; z-index: 3; }
   .lang-chip {
     display: inline-flex; align-items: center;
     border: 1px solid var(--border);
@@ -32,18 +27,10 @@
     font-size: 11px;
     background: var(--surface-1);
   }
-  .lang-chip span {
-    padding: 4px 10px;
-    color: var(--fg-3);
-  }
+  .lang-chip span { padding: 4px 10px; color: var(--fg-3); }
   .lang-chip span.on { color: var(--accent); background: var(--surface-2); }
   .lang-chip .div { padding: 4px 2px; color: var(--fg-4); }
-
-  .win-corner {
-    position: absolute; top: 8px; right: 8px;
-    display: flex; gap: 2px;
-    z-index: 3;
-  }
+  .lock-win { position: absolute; top: 8px; right: 8px; z-index: 3; }
 
   .center {
     position: absolute; inset: 0;
@@ -60,7 +47,7 @@
     letter-spacing: 0.01em;
   }
   .brand .sep { color: var(--accent); margin: 0 2px; }
-  .tag {
+  .subtitle {
     margin-top: 18px;
     font-family: var(--ff-mono);
     font-size: 11px;
@@ -75,9 +62,7 @@
     display: flex; flex-direction: column;
     gap: 18px;
   }
-  .form .underline-input {
-    width: 100%;
-  }
+  .form .underline-input { width: 100%; }
   .form .help {
     font-family: var(--ff-mono);
     font-size: 11px;
@@ -86,7 +71,7 @@
     letter-spacing: 0.04em;
   }
   .form .help b { color: var(--fg-2); font-weight: 500; }
-  .form .btn.cta { width: 100%; }
+  .form ink-btn { width: 100%; }
 
   .footer-mono {
     position: absolute; left: 24px; bottom: 18px;
@@ -96,7 +81,6 @@
     letter-spacing: 0.08em;
   }
   .footer-mono .dim { color: var(--fg-4); }
-
   .footer-right {
     position: absolute; right: 24px; bottom: 18px;
     font-family: var(--ff-mono);
@@ -115,15 +99,11 @@
       <span class="on">中</span><span class="div">/</span><span>EN</span>
     </div>
   </div>
-  <div class="win-corner">
-    <button class="ico-btn" style="width:30px;height:24px;color:var(--fg-3)">—</button>
-    <button class="ico-btn" style="width:30px;height:24px;color:var(--fg-3)">▢</button>
-    <button class="ico-btn" style="width:30px;height:24px;color:var(--fg-3)">✕</button>
-  </div>
+  <div class="lock-win"><ink-win-ctrl></ink-win-ctrl></div>
 
   <div class="center">
     <div class="brand">Ink<span class="sep">/</span>Frame</div>
-    <div class="tag">A Desk For Storyboarders</div>
+    <div class="subtitle">A Desk For Storyboarders</div>
 
     <div class="form">
       <div class="underline-input">
@@ -134,32 +114,14 @@
         Keys never leave this machine. Stored in your <b>OS keychain</b>.<br>
         We don't phone home. Once you unlock, the desk is yours.
       </div>
-      <button class="btn cta">Unlock</button>
+      <ink-btn variant="cta">Unlock</ink-btn>
     </div>
   </div>
 
-  <div class="footer-mono">
-    v0.14.2 <span class="dim">·</span> 3f8c91a
-  </div>
-  <div class="footer-right">
-    OFFLINE · LOCAL ONLY
-  </div>
+  <div class="footer-mono">v0.14.2 <span class="dim">·</span> 3f8c91a</div>
+  <div class="footer-right">OFFLINE · LOCAL ONLY</div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a class="active" href="01-lock.html">01</a>
-  <a href="02-studio-home.html">02</a>
-  <a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a>
-  <a href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a>
-  <a href="07-asset-library.html">07</a>
-  <a href="08-asset-generation.html">08</a>
-  <a href="09-settings.html">09</a>
-  <a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a>
-  <a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
