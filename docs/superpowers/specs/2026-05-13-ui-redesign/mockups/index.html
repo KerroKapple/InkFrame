@@ -52,16 +52,26 @@
   }
   .tile:hover { border-color: var(--accent); }
   .tile .thumb {
-    aspect-ratio: 16 / 10;
+    --s: 0.18;
+    aspect-ratio: 3 / 2;
     background: var(--surface-canvas);
     overflow: hidden;
     border-bottom: 1px solid var(--border-subtle);
     position: relative;
   }
-  .tile .thumb img {
-    width: 100%; height: 100%; object-fit: cover;
-    filter: saturate(.9);
+  .tile .thumb iframe {
+    position: absolute;
+    inset: 0;
+    width: calc(100% / var(--s));
+    height: calc(100% / var(--s));
+    border: 0;
+    pointer-events: none;
+    transform: scale(var(--s));
+    transform-origin: top left;
+    background: var(--surface-canvas);
   }
+  /* Hide the floating mock-nav inside each embedded page */
+  .tile .thumb iframe { color-scheme: dark; }
   .tile .body {
     padding: 14px 16px 16px;
     display: flex; justify-content: space-between; align-items: flex-end;
@@ -131,51 +141,51 @@
 
   <div class="grid">
     <a class="tile" href="01-lock.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/首页登录.png" alt=""></div>
+      <div class="thumb"><iframe src="01-lock.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Lock / Unlock</div><div class="id">01 · lock</div></div>
     </a>
     <a class="tile" href="02-studio-home.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/首页.png" alt=""></div>
+      <div class="thumb"><iframe src="02-studio-home.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Studio Home</div><div class="id">02 · home</div></div>
     </a>
     <a class="tile" href="03-canvas.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/画布.png" alt=""></div>
+      <div class="thumb"><iframe src="03-canvas.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Node Canvas</div><div class="id">03 · canvas</div></div>
     </a>
     <a class="tile" href="04-task-queue.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/任务队列.png" alt=""></div>
+      <div class="thumb"><iframe src="04-task-queue.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Task Queue</div><div class="id">04 · queue</div></div>
     </a>
     <a class="tile" href="05-storyboard.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/智能分镜.png" alt=""></div>
+      <div class="thumb"><iframe src="05-storyboard.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Storyboard</div><div class="id">05 · board</div></div>
     </a>
     <a class="tile" href="06-script-editor.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/剧本解析.png" alt=""></div>
+      <div class="thumb"><iframe src="06-script-editor.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Script Editor</div><div class="id">06 · script</div></div>
     </a>
     <a class="tile" href="07-asset-library.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/素材库.png" alt=""></div>
+      <div class="thumb"><iframe src="07-asset-library.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Asset Library</div><div class="id">07 · assets</div></div>
     </a>
     <a class="tile" href="08-asset-generation.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/素材生成.png" alt=""></div>
+      <div class="thumb"><iframe src="08-asset-generation.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Asset Generation</div><div class="id">08 · gen</div></div>
     </a>
     <a class="tile" href="09-settings.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/设置.png" alt=""></div>
+      <div class="thumb"><iframe src="09-settings.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Settings</div><div class="id">09 · settings</div></div>
     </a>
     <a class="tile" href="10-account.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/账户设置、.png" alt=""></div>
+      <div class="thumb"><iframe src="10-account.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Account Menu</div><div class="id">10 · account</div></div>
     </a>
     <a class="tile" href="11-toasts.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/通知类型.png" alt=""></div>
+      <div class="thumb"><iframe src="11-toasts.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Toast Types</div><div class="id">11 · toasts</div></div>
     </a>
     <a class="tile" href="12-error-states.html">
-      <div class="thumb"><img src="file:///D:/Docs/IMG/IF/错误类型.png" alt=""></div>
+      <div class="thumb"><iframe src="12-error-states.html" loading="lazy" scrolling="no" tabindex="-1" aria-hidden="true"></iframe></div>
       <div class="body"><div class="title">Error States</div><div class="id">12 · errors</div></div>
     </a>
   </div>
@@ -183,9 +193,9 @@
   <div class="legend">
     <h3>How to review</h3>
     Open any tile in a browser. All screens share <code>_shared.css</code> — tokens, type, components.
-    Each screen has a bottom floating nav-strip to hop between mockups. Thumbnails on this index pull
-    directly from the reference PNGs in <code>D:/Docs/IMG/IF/</code> for side-by-side comparison;
-    the click target is the live HTML mockup.
+    Each screen has a bottom floating nav-strip to hop between mockups. Thumbnails on this index are
+    live <code>&lt;iframe&gt;</code> previews of the actual HTML — zero external assets, edits visible
+    on reload.
   </div>
 </div>
 </body>
