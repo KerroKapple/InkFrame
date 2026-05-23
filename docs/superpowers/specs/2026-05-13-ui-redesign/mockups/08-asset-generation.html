@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .tabs {
     display:flex; gap: 24px;
@@ -104,18 +105,12 @@
 </head>
 <body>
 <div class="page">
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame</div>
-    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">Generation</span></div>
-    <div class="spacer"></div>
-    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
-    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
-  </div>
+  <ink-chrome breadcrumb="Nocturne › Episode 02 › Generation"></ink-chrome>
 
   <div class="body">
     <div style="flex:1;display:flex;flex-direction:column;min-height:0">
       <div class="tabs">
-        <span class="on">人物</span><span>场景</span><span>道具</span><span>其他</span>
+        <span class="on">人物</span><span>场景</span><span>道具</span>
       </div>
 
       <div class="gen-cols">
@@ -152,20 +147,20 @@
           <div class="field">
             <h4>参考图</h4>
             <div class="chip-row">
-              <span class="chip">📎 elara_v2</span>
-              <span class="chip">📎 fog_dock</span>
-              <span class="chip" style="color:var(--accent);border-color:rgba(201,168,91,0.4)">+ Add</span>
+              <ink-chip>📎 elara_v2</ink-chip>
+              <ink-chip>📎 fog_dock</ink-chip>
+              <ink-chip style="color:var(--accent);border-color:rgba(201,168,91,0.4)">+ Add</ink-chip>
             </div>
           </div>
 
           <div class="field">
             <h4>风格 Chips</h4>
             <div class="chip-row">
-              <span class="chip on">琥珀色调</span>
-              <span class="chip">胶片颗粒</span>
-              <span class="chip">柔焦</span>
-              <span class="chip">高对比</span>
-              <span class="chip">体积光</span>
+              <ink-chip variant="on">琥珀色调</ink-chip>
+              <ink-chip>胶片颗粒</ink-chip>
+              <ink-chip>柔焦</ink-chip>
+              <ink-chip>高对比</ink-chip>
+              <ink-chip>体积光</ink-chip>
             </div>
           </div>
         </div>
@@ -173,19 +168,19 @@
         <!-- previews -->
         <div class="preview">
           <div class="pv fake-thumb thumb-character">
-            <div class="status"><span class="chip success">✓ done</span></div>
+            <div class="status"><ink-chip variant="success">✓ done</ink-chip></div>
             <div class="id">v01 · 040b</div>
           </div>
           <div class="pv fake-thumb thumb-character">
-            <div class="status"><span class="chip success">✓ done</span></div>
+            <div class="status"><ink-chip variant="success">✓ done</ink-chip></div>
             <div class="id">v02 · 8c2f</div>
           </div>
           <div class="pv" style="background:linear-gradient(180deg,#1a1610,#06050a)">
-            <div class="status"><span class="chip warning">⟳ running 62%</span></div>
+            <div class="status"><ink-chip variant="warning">⟳ running 62%</ink-chip></div>
             <div class="id">v03 · queued</div>
           </div>
           <div class="pv fake-thumb thumb-character">
-            <div class="status"><span class="chip">empty</span></div>
+            <div class="status"><ink-chip>empty</ink-chip></div>
             <div class="id">v04 · pending</div>
           </div>
         </div>
@@ -224,22 +219,14 @@
         <span>Batch <b style="color:var(--fg-1)">4</b></span>
         <div class="right">
           <span style="color:var(--fg-4)">~ $0.14 / batch</span>
-          <button class="btn">Save Preset</button>
-          <button class="btn cta" style="height:36px">Generate</button>
+          <ink-btn>Save Preset</ink-btn>
+          <ink-btn variant="cta">Generate</ink-btn>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a><a href="07-asset-library.html">07</a>
-  <a class="active" href="08-asset-generation.html">08</a>
-  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
