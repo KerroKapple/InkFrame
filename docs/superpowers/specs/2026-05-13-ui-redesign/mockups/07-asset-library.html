@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .tag-sidebar { width: 240px; flex: 0 0 240px; background: var(--surface-1); border-right: 1px solid var(--border-subtle); overflow:auto; padding-bottom: 36px;}
   .lab-row { padding: 14px 16px 6px; font-family: var(--ff-mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--fg-4); display:flex; justify-content:space-between; }
@@ -102,13 +103,7 @@
 </head>
 <body>
 <div class="page">
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame v2</div>
-    <div class="crumbs"><span>Assets</span><span class="chev">›</span><span class="here">All</span></div>
-    <div class="spacer"></div>
-    <div class="actions"><span class="kbd">⌘K</span><div class="avatar">J</div></div>
-    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
-  </div>
+  <ink-chrome breadcrumb="Assets › All"></ink-chrome>
 
   <div class="body">
     <aside class="tag-sidebar">
@@ -149,14 +144,14 @@
       </div>
 
       <div class="filter-row">
-        <button class="btn ghost" style="height:30px">Model: All ▾</button>
-        <button class="btn ghost" style="height:30px">Tags: All ▾</button>
-        <button class="btn ghost" style="height:30px">Date: All Time ▾</button>
-        <button class="btn ghost" style="height:30px">Color: Any ▾</button>
-        <button class="btn ghost" style="height:30px">＋ Filter</button>
+        <ink-btn variant="ghost">Model: All ▾</ink-btn>
+        <ink-btn variant="ghost">Tags: All ▾</ink-btn>
+        <ink-btn variant="ghost">Date: All Time ▾</ink-btn>
+        <ink-btn variant="ghost">Color: Any ▾</ink-btn>
+        <ink-btn variant="ghost">＋ Filter</ink-btn>
         <div class="right">
-          <button class="btn ghost" style="height:30px">Clear</button>
-          <button class="btn" style="height:30px">Save View</button>
+          <ink-btn variant="ghost">Clear</ink-btn>
+          <ink-btn>Save View</ink-btn>
         </div>
       </div>
 
@@ -207,15 +202,6 @@
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a><a href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a>
-  <a class="active" href="07-asset-library.html">07</a>
-  <a href="08-asset-generation.html">08</a>
-  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
