@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="_shared.css">
+<script src="_components.js"></script>
 <style>
   .main { flex: 1; display:flex; flex-direction:column; min-height:0; }
   .sub-head {
@@ -50,13 +51,9 @@
 </head>
 <body>
 <div class="page">
-  <div class="chrome">
-    <div class="logo">Ink<span class="sep">/</span>Frame</div>
-    <div class="crumbs"><span>Nocturne</span><span class="chev">›</span><span>Episode 02</span><span class="chev">›</span><span class="here">Storyboard</span></div>
-    <div class="spacer"></div>
-    <div class="actions"><span class="kbd">⌘K</span><button class="ico-btn">⤴</button><div class="avatar">J</div></div>
-    <div class="win-ctrl"><button>—</button><button>▢</button><button class="close">✕</button></div>
-  </div>
+  <ink-chrome breadcrumb="Nocturne › Episode 02 › Storyboard">
+    <button class="ico-btn">⤴</button>
+  </ink-chrome>
 
   <div class="body">
     <div class="main">
@@ -66,9 +63,9 @@
           <span class="on">表格</span><span>看板</span><span>时间线</span>
         </div>
         <div class="right">
-          <button class="btn">EP 02 ▾</button>
-          <button class="btn">Share</button>
-          <button class="btn">Filter</button>
+          <ink-btn>EP 02 ▾</ink-btn>
+          <ink-btn>Share</ink-btn>
+          <ink-btn>Filter</ink-btn>
         </div>
       </div>
 
@@ -83,7 +80,7 @@
           <div class="desc">海风扑打着灯塔，少年抬头望着灯塔顶端的光在浓雾中闪烁。</div>
           <div class="dur">00 : 06</div>
           <div class="note">需要从 establishing shot 推进至特写。</div>
-          <div class="status"><span class="tag accent">待校对</span></div>
+          <div class="status"><ink-tag variant="accent">待校对</ink-tag></div>
         </div>
         <div class="row">
           <div class="no">013</div>
@@ -91,7 +88,7 @@
           <div class="desc">怀表的指针缓慢转动，少年的瞳孔在金光中收缩。</div>
           <div class="dur">00 : 04</div>
           <div class="note">钟摆音效衔接至下一镜的潮汐声。</div>
-          <div class="status"><span class="tag warn">已完成</span></div>
+          <div class="status"><ink-tag variant="warn">已完成</ink-tag></div>
         </div>
         <div class="row">
           <div class="no">014</div>
@@ -99,7 +96,7 @@
           <div class="desc">远景：灯塔的光斜切水面，留下狭长的金色路径。</div>
           <div class="dur">00 : 08</div>
           <div class="note">用作过场。</div>
-          <div class="status"><span class="tag ok">通过</span></div>
+          <div class="status"><ink-tag variant="ok">通过</ink-tag></div>
         </div>
         <div class="row">
           <div class="no">015</div>
@@ -107,7 +104,7 @@
           <div class="desc">少年低头看怀表，影子在木板上拉得很长。</div>
           <div class="dur">00 : 05</div>
           <div class="note">道具：怀表已锁定。</div>
-          <div class="status"><span class="tag accent">待校对</span></div>
+          <div class="status"><ink-tag variant="accent">待校对</ink-tag></div>
         </div>
         <div class="row">
           <div class="no">016</div>
@@ -115,7 +112,7 @@
           <div class="desc">渔夫从背后路过，回头看了一眼，欲言又止。</div>
           <div class="dur">00 : 07</div>
           <div class="note">需要再补一次台词录音。</div>
-          <div class="status"><span class="tag danger">重拍</span></div>
+          <div class="status"><ink-tag variant="danger">重拍</ink-tag></div>
         </div>
         <div class="row">
           <div class="no">017</div>
@@ -123,22 +120,13 @@
           <div class="desc">特写：怀表表盖合上，反射出灯塔的光晕。</div>
           <div class="dur">00 : 03</div>
           <div class="note">闭合镜头，本场结束。</div>
-          <div class="status"><span class="tag ok">通过</span></div>
+          <div class="status"><ink-tag variant="ok">通过</ink-tag></div>
         </div>
       </div>
     </div>
   </div>
 </div>
 
-<nav class="mock-nav">
-  <a class="home" href="index.html">◇ Index</a>
-  <a href="01-lock.html">01</a><a href="02-studio-home.html">02</a><a href="03-canvas.html">03</a>
-  <a href="04-task-queue.html">04</a>
-  <a class="active" href="05-storyboard.html">05</a>
-  <a href="06-script-editor.html">06</a>
-  <a href="07-asset-library.html">07</a><a href="08-asset-generation.html">08</a>
-  <a href="09-settings.html">09</a><a href="10-account.html">10</a>
-  <a href="11-toasts.html">11</a><a href="12-error-states.html">12</a>
-</nav>
+<ink-mock-nav></ink-mock-nav>
 </body>
 </html>
