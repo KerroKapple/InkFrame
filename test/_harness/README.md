@@ -21,10 +21,14 @@ InkFrame 测试基础设施。所有 widget / provider / controller test 共享�
 | `fixtures.dart` | `loadProviderFixture(providerId, name)` JSON loader |
 | `fake_dio.dart` | `FakeDio.fromFixture / respondWith / throwsError / routes` dio builder |
 | `fake_providers.dart` | `FakeSubmittable / FakePollable / FakeKeyValidatable / FakeProvider` + `fakeImageCapabilities / fakeVideoCapabilities` 工厂 |
+| `fake_clock.dart` | `FakeClock(initial).advance(d)` 实现 `Clock` 接口 |
+| `fake_secure_storage.dart` | `FakeSecureStorage([seed])` 实现 `SecureStorageService` |
+| `fake_repositories.dart` | `InMemoryProjectRepository / InMemoryCanvasRepository / InMemoryNodeRepository / InMemoryEdgeRepository` |
 | `_harness_test.dart` | test_app + fixtures 契约测试 |
 | `_fakes_test.dart` | fake_dio + fake_providers 契约测试 |
+| `_persistence_fakes_test.dart` | fake_clock + fake_secure_storage + fake_repositories 契约测试 |
 
-> 其余 fake_clock.dart / fake_secure_storage.dart / fake_repositories.dart / golden_scaffold.dart 在 Task 3/4 落地。
+> 其余 golden_scaffold.dart 在 Task 4 落地。
 
 ## 用法
 
