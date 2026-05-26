@@ -19,9 +19,12 @@ InkFrame 测试基础设施。所有 widget / provider / controller test 共享�
 |---|---|
 | `test_app.dart` | `pumpInkApp(tester, child, {...})` widget 启动器 |
 | `fixtures.dart` | `loadProviderFixture(providerId, name)` JSON loader |
-| `_harness_test.dart` | 上述 API 的契约测试 |
+| `fake_dio.dart` | `FakeDio.fromFixture / respondWith / throwsError / routes` dio builder |
+| `fake_providers.dart` | `FakeSubmittable / FakePollable / FakeKeyValidatable / FakeProvider` + `fakeImageCapabilities / fakeVideoCapabilities` 工厂 |
+| `_harness_test.dart` | test_app + fixtures 契约测试 |
+| `_fakes_test.dart` | fake_dio + fake_providers 契约测试 |
 
-> 其余 fake_*.dart / golden_scaffold.dart 在后续 Task 2/3/4 落地。
+> 其余 fake_clock.dart / fake_secure_storage.dart / fake_repositories.dart / golden_scaffold.dart 在 Task 3/4 落地。
 
 ## 用法
 
@@ -49,6 +52,37 @@ import '../_harness/fixtures.dart';
 final Map<String, Object?> body =
     loadProviderFixture('gemini-image', 'submit_success');
 dioAdapter.onPost(path, (req) => req.reply(200, body));
+```
+
+### FakeDio 一步装好 dio + 适配器
+
+```dart
+import '../_harness/fake_dio.dart';
+
+final Dio dio = FakeDio.fromFixture(
+  'gemini-image',
+  'submit_success',
+  baseUrl: kGeminiBaseUrl,
+  path: kGeminiSubmitPath,
+);
+final jobId = await provider(dio).submit(task);
+```
+
+### FakeSubmittable / FakeProvider 替代手写 mock
+
+```dart
+import '../_harness/fake_providers.dart';
+
+final FakeProvider fp = FakeProvider(
+  capabilities: fakeImageCapabilities(id: 'my-fake'),
+  statuses: [
+    const JobStatus.inProgress(progress: 0.5),
+    const JobStatus.success(remoteUrls: ['https://x/y.png']),
+  ],
+);
+expect(fp.submitCallCount, 0);
+await fp.submit(task);
+expect(fp.submitCallCount, 1);
 ```
 
 ## 反模式（不要这样写）
