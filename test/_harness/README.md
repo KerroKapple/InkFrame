@@ -24,11 +24,12 @@ InkFrame 测试基础设施。所有 widget / provider / controller test 共享�
 | `fake_clock.dart` | `FakeClock(initial).advance(d)` 实现 `Clock` 接口 |
 | `fake_secure_storage.dart` | `FakeSecureStorage([seed])` 实现 `SecureStorageService` |
 | `fake_repositories.dart` | `InMemoryProjectRepository / InMemoryCanvasRepository / InMemoryNodeRepository / InMemoryEdgeRepository` |
+| `golden_scaffold.dart` | `pumpGoldenScene(tester, child, size:, overrides:, ...)` 固定 surface + 真字体 |
 | `_harness_test.dart` | test_app + fixtures 契约测试 |
 | `_fakes_test.dart` | fake_dio + fake_providers 契约测试 |
 | `_persistence_fakes_test.dart` | fake_clock + fake_secure_storage + fake_repositories 契约测试 |
 
-> 其余 golden_scaffold.dart 在 Task 4 落地。
+字体加载走 `test/flutter_test_config.dart` 全局 `loadAppFonts()`（golden_toolkit）——所有 test 启动前注册 pubspec assets/fonts 下的真实字体。
 
 ## 用法
 

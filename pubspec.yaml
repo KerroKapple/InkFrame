@@ -70,6 +70,9 @@ dev_dependencies:
   # Provider 层 HTTP mock
   http_mock_adapter: ^0.6.1
 
+  # Golden test 字体加载（默认 Ahem 字体看不出真实效果）
+  golden_toolkit: ^0.15.0
+
 flutter:
   uses-material-design: true
   generate: true  # 启用 flutter gen-l10n
