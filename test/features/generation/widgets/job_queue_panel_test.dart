@@ -9,8 +9,8 @@ import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/features/generation/widgets/job_queue_panel.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
-import 'package:inkframe/theme/app_theme.dart';
+
+import '../../../_harness/test_app.dart';
 
 class _NoopQueue implements JobQueueService {
   String? cancelled;
@@ -25,36 +25,30 @@ class _NoopQueue implements JobQueueService {
   void dispose() {}
 }
 
-Future<void> _pump(WidgetTester tester, List<Override> overrides) async {
-  await tester.pumpWidget(
-    ProviderScope(
-      overrides: overrides,
-      child: MaterialApp(
-        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('en'),
-        home: const Scaffold(body: JobQueuePanel()),
-      ),
-    ),
-  );
-  await tester.pump();
-}
-
 void main() {
   testWidgets('empty state shows placeholder', (tester) async {
-    await _pump(tester, [
-      jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
-    ]);
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: JobQueuePanel()),
+      overrides: [
+        jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
+      ],
+    );
+    await tester.pump();
     expect(find.text('No active jobs'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 
   testWidgets('active job shows progress bar + cancel button', (tester) async {
     final queue = _NoopQueue();
-    await _pump(tester, [
-      jobQueueServiceProvider.overrideWithValue(queue),
-    ]);
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: JobQueuePanel()),
+      overrides: [
+        jobQueueServiceProvider.overrideWithValue(queue),
+      ],
+    );
+    await tester.pump();
     final container = ProviderScope.containerOf(
       tester.element(find.byType(JobQueuePanel)),
     );
@@ -80,21 +74,14 @@ void main() {
   testWidgets('failed job shows error message + retry when retryable',
       (tester) async {
     String? retried;
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: [
-          jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
-        ],
-        child: MaterialApp(
-          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('en'),
-          home: Scaffold(
-            body: JobQueuePanel(onRetry: (id) => retried = id),
-          ),
-        ),
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: JobQueuePanel(onRetry: (id) => retried = id),
       ),
+      overrides: [
+        jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
+      ],
     );
     await tester.pump();
     final container = ProviderScope.containerOf(
@@ -119,9 +106,14 @@ void main() {
   });
 
   testWidgets('non-retryable failure hides retry button', (tester) async {
-    await _pump(tester, [
-      jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
-    ]);
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: JobQueuePanel()),
+      overrides: [
+        jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
+      ],
+    );
+    await tester.pump();
     final container = ProviderScope.containerOf(
       tester.element(find.byType(JobQueuePanel)),
     );

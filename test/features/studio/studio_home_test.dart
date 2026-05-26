@@ -10,34 +10,23 @@ import 'package:inkframe/features/studio/widgets/studio_top_chrome.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
-Widget _wrap({required List<Override> overrides}) {
-  return ProviderScope(
-    overrides: overrides,
-    child: MaterialApp(
-      theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: const StudioHomeScreen(),
-    ),
-  );
-}
+import '../../_harness/test_app.dart';
 
 void main() {
-  setUp(() async {
-    // 大画布避免 layout overflow
-  });
-
   testWidgets('StudioHome 数据态：渲染 sidebar + Recent Projects 标题 + 卡片 + FAB',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(_wrap(overrides: <Override>[
-      workspaceProjectsProvider.overrideWith(
-        (_) async => const <ProjectWithCanvases>[
-          ProjectWithCanvases(id: 'p1', name: 'Alpha', canvases: <CanvasRef>[]),
-        ],
-      ),
-    ]));
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => const <ProjectWithCanvases>[
+            ProjectWithCanvases(id: 'p1', name: 'Alpha', canvases: <CanvasRef>[]),
+          ],
+        ),
+      ],
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('LIBRARY'), findsOneWidget);
@@ -49,13 +38,16 @@ void main() {
 
   testWidgets('StudioHome 空态：渲染 empty card + CTA + 隐藏 FAB',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(_wrap(overrides: <Override>[
-      workspaceProjectsProvider.overrideWith(
-        (_) async => const <ProjectWithCanvases>[],
-      ),
-    ]));
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => const <ProjectWithCanvases>[],
+        ),
+      ],
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('No projects yet'), findsOneWidget);
@@ -69,28 +61,34 @@ void main() {
 
   testWidgets('StudioHome loading 态：CircularProgressIndicator',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
     final completer = Completer<List<ProjectWithCanvases>>();
     addTearDown(() => completer.complete(const <ProjectWithCanvases>[]));
-    await tester.pumpWidget(_wrap(overrides: <Override>[
-      workspaceProjectsProvider.overrideWith((_) => completer.future),
-    ]));
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith((_) => completer.future),
+      ],
+    );
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsWidgets);
   });
 
   testWidgets('StudioHome 错误态：渲染 InkErrorBanner + Retry 按钮可点',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(_wrap(overrides: <Override>[
-      workspaceProjectsProvider.overrideWith(
-        (_) => Future<List<ProjectWithCanvases>>.error(
-          StateError('boom'),
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) => Future<List<ProjectWithCanvases>>.error(
+            StateError('boom'),
+          ),
         ),
-      ),
-    ]));
+      ],
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to load projects'), findsOneWidget);
@@ -132,13 +130,16 @@ void main() {
 
   testWidgets('StudioHome empty CTA 点击：打开 New Project Dialog 并校验空名',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(_wrap(overrides: <Override>[
-      workspaceProjectsProvider.overrideWith(
-        (_) async => const <ProjectWithCanvases>[],
-      ),
-    ]));
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => const <ProjectWithCanvases>[],
+        ),
+      ],
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('New Project'));

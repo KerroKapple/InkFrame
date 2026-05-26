@@ -1,8 +1,5 @@
 // GeminiImageProvider 单元测试：基于 http_mock_adapter 回放 fixture。
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -14,12 +11,10 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/providers/gemini_image_provider.dart';
 import 'package:inkframe/providers/rate_limiter.dart';
 
-Map<String, Object?> _loadFixture(String name) {
-  final file = File(
-    'test/fixtures/providers/gemini-image/$name.json',
-  );
-  return jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
-}
+import '../_harness/fixtures.dart';
+
+Map<String, Object?> _loadFixture(String name) =>
+    loadProviderFixture('gemini-image', name);
 
 GeminiImageProvider _buildProvider(Dio dio, {String key = 'test-key'}) {
   return GeminiImageProvider(

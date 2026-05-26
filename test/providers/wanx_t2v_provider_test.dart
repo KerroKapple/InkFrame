@@ -3,9 +3,6 @@
 // 公共行为（auth / 状态机 / 错误码 / validateApiKey）已在
 // dashscope_async_provider_base_test.dart 覆盖，本文件不重复。
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -16,6 +13,8 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/providers/dashscope_async_provider_base.dart';
 import 'package:inkframe/providers/rate_limiter.dart';
 import 'package:inkframe/providers/wanx_t2v_provider.dart';
+
+import '../_harness/fixtures.dart';
 
 GenerationTask _task({
   Resolution resolution = Resolution.p720,
@@ -42,10 +41,8 @@ WanxT2VProvider _build(Dio dio, {String key = 'sk-test'}) => WanxT2VProvider(
       dio: dio,
     );
 
-Future<Map<String, Object?>> _loadFixture(String name) async {
-  final file = File('test/fixtures/providers/wanx-t2v/$name');
-  return jsonDecode(await file.readAsString()) as Map<String, Object?>;
-}
+Future<Map<String, Object?>> _loadFixture(String name) async =>
+    loadProviderFixture('wanx-t2v', name.replaceFirst(RegExp(r'\.json$'), ''));
 
 void main() {
   group('WanxT2VProvider.capabilities', () {

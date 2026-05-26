@@ -9,26 +9,19 @@ import 'package:inkframe/features/studio/widgets/library_sidebar.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
-void main() {
-  Widget harness(List<Override> overrides) {
-    return ProviderScope(
-      overrides: overrides,
-      child: MaterialApp(
-        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const Scaffold(body: LibrarySidebar()),
-      ),
-    );
-  }
+import '../../../_harness/test_app.dart';
 
+void main() {
   testWidgets('LibrarySidebar 渲染 section labels + footer icons (空 projects)',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(400, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(harness(<Override>[
-      workspaceProjectsProvider.overrideWith((_) async => const []),
-    ]));
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: LibrarySidebar()),
+      surfaceSize: const Size(400, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith((_) async => const []),
+      ],
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('LIBRARY'), findsOneWidget);
@@ -82,13 +75,16 @@ void main() {
 
   testWidgets('LibrarySidebar loading 状态展示 CircularProgressIndicator',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(400, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
     final completer = Completer<List<ProjectWithCanvases>>();
     addTearDown(() => completer.complete(const <ProjectWithCanvases>[]));
-    await tester.pumpWidget(harness(<Override>[
-      workspaceProjectsProvider.overrideWith((_) => completer.future),
-    ]));
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: LibrarySidebar()),
+      surfaceSize: const Size(400, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith((_) => completer.future),
+      ],
+    );
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
   });

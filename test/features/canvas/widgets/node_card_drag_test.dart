@@ -3,14 +3,13 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/services/file_resolver_service.dart';
-import 'package:inkframe/theme/app_theme.dart';
+
+import '../../../_harness/test_app.dart';
 
 class _FakeResolver implements FileResolverService {
   _FakeResolver(this.dir);
@@ -37,19 +36,6 @@ class _FakeResolver implements FileResolverService {
       source.path;
 }
 
-Widget _host(Widget child) => ProviderScope(
-      overrides: <Override>[
-        fileResolverServiceProvider
-            .overrideWithValue(_FakeResolver(Directory.systemTemp)),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-        home: Scaffold(body: Center(child: child)),
-      ),
-    );
-
 void main() {
   testWidgets('pan 开始 → AnimatedScale 切到 1.02；pan 结束 → 回到 1.0',
       (tester) async {
@@ -59,13 +45,22 @@ void main() {
       label: 'Drag me',
       type: CanvasNodeType.image,
     );
-    await tester.pumpWidget(
-      _host(NodeCard(
-        node: n,
-        selected: false,
-        onTap: () {},
-        onPanUpdate: (d) => accumulated += d,
-      )),
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: Center(
+          child: NodeCard(
+            node: n,
+            selected: false,
+            onTap: () {},
+            onPanUpdate: (d) => accumulated += d,
+          ),
+        ),
+      ),
+      overrides: [
+        fileResolverServiceProvider
+            .overrideWithValue(_FakeResolver(Directory.systemTemp)),
+      ],
     );
     await tester.pumpAndSettle();
 
