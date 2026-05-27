@@ -51,6 +51,7 @@ dependencies:
 
   # 无边框窗口管理（Amber Noir frameless chrome）
   window_manager: ^0.4.3
+  package_info_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
@@ -68,6 +69,9 @@ dev_dependencies:
 
   # Provider 层 HTTP mock
   http_mock_adapter: ^0.6.1
+
+  # Golden test 字体加载（默认 Ahem 字体看不出真实效果）
+  golden_toolkit: ^0.15.0
 
 flutter:
   uses-material-design: true

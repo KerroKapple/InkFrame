@@ -11,7 +11,8 @@ import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
+
+import '../../_harness/test_app.dart';
 
 class _FakeSecure implements SecureStorageService {
   final Map<String, String> _data = {};
@@ -51,22 +52,11 @@ const _fakeCaps = caps.ProviderCapabilities(
 );
 
 void main() {
-  Widget host(Widget child) => MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: child),
-      );
-
-  ProviderScope scope(Widget child, {SecureStorageService? secure}) {
-    return ProviderScope(
-      overrides: [
+  List<Override> overridesWith({SecureStorageService? secure}) => [
         providerCapabilitiesListProvider.overrideWith((ref) => [_fakeCaps]),
         if (secure != null)
           secureStorageServiceProvider.overrideWithValue(secure),
-      ],
-      child: child,
-    );
-  }
+      ];
 
   const configNode = CanvasNode(
     id: 'cfg1',
@@ -75,7 +65,11 @@ void main() {
   );
 
   testWidgets('渲染标题 / prompt 输入 / Provider 下拉', (tester) async {
-    await tester.pumpWidget(scope(host(const ImageConfigInspector(node: configNode))));
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      overrides: overridesWith(),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('Config'), findsOneWidget);
@@ -84,7 +78,11 @@ void main() {
   });
 
   testWidgets('Generate 初始 disabled（prompt 空）', (tester) async {
-    await tester.pumpWidget(scope(host(const ImageConfigInspector(node: configNode))));
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      overrides: overridesWith(),
+    );
     await tester.pumpAndSettle();
 
     final btn = tester.widget<FilledButton>(find.byType(FilledButton));
@@ -95,8 +93,10 @@ void main() {
       (tester) async {
     final secure = _FakeSecure();
     await secure.store('provider.test-provider.api_key', 'sk-xxx');
-    await tester.pumpWidget(
-      scope(host(const ImageConfigInspector(node: configNode)), secure: secure),
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      overrides: overridesWith(secure: secure),
     );
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), 'a cat');
@@ -114,8 +114,10 @@ void main() {
       type: CanvasNodeType.image,
       typeConfig: <String, Object?>{'prompt': 'existing prompt'},
     );
-    await tester.pumpWidget(
-      scope(host(const ImageConfigInspector(node: nodeWithPrompt))),
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: nodeWithPrompt)),
+      overrides: overridesWith(),
     );
     await tester.pumpAndSettle();
 

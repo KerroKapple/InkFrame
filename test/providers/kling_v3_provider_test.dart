@@ -1,8 +1,5 @@
 // KlingV3Provider 单测：聚焦子类三个 override + fixture 回放。
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -13,6 +10,8 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/providers/dashscope_async_provider_base.dart';
 import 'package:inkframe/providers/kling_v3_provider.dart';
 import 'package:inkframe/providers/rate_limiter.dart';
+
+import '../_harness/fixtures.dart';
 
 GenerationTask _task({
   GenerationMode mode = GenerationMode.textToVideo,
@@ -40,10 +39,8 @@ KlingV3Provider _build(Dio dio, {String key = 'sk-test'}) => KlingV3Provider(
       dio: dio,
     );
 
-Future<Map<String, Object?>> _loadFixture(String name) async {
-  final file = File('test/fixtures/providers/kling-v3/$name');
-  return jsonDecode(await file.readAsString()) as Map<String, Object?>;
-}
+Future<Map<String, Object?>> _loadFixture(String name) async =>
+    loadProviderFixture('kling-v3', name.replaceFirst(RegExp(r'\.json$'), ''));
 
 void main() {
   group('KlingV3Provider.capabilities', () {

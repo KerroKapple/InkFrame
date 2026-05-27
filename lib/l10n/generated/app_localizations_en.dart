@@ -192,6 +192,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorSelectSingleHint => 'Select a single config node to edit';
 
   @override
+  String get inspectorStatusSubmitting => 'Submitting...';
+
+  @override
+  String get inspectorStatusRunning => 'Generating...';
+
+  @override
+  String inspectorStatusRunningWithProgress(int percent) {
+    return 'Generating... $percent%';
+  }
+
+  @override
+  String get inspectorStatusErrorTitle => 'Generation failed';
+
+  @override
+  String get inspectorRetry => 'Retry';
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override
@@ -223,6 +240,71 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsApiKeyCleared => 'Cleared';
 
   @override
+  String get settingsThemeSection => 'Theme';
+
+  @override
+  String get settingsThemeDark => 'Dark';
+
+  @override
+  String get settingsThemeLight => 'Light';
+
+  @override
+  String get settingsThemeHighContrast => 'High contrast';
+
+  @override
+  String get settingsThemeTextScale => 'Text size';
+
+  @override
+  String get settingsLanguageSection => 'Language';
+
+  @override
+  String get settingsLanguageEn => 'English';
+
+  @override
+  String get settingsLanguageZh => '中文';
+
+  @override
+  String get settingsStorageSection => 'Storage';
+
+  @override
+  String get settingsStorageReadOnlyHint =>
+      'Database location is fixed in this release. Changing it requires a migration not yet implemented.';
+
+  @override
+  String get settingsStorageDatabasePathLabel => 'Database directory';
+
+  @override
+  String get settingsStorageCopyPath => 'Copy path';
+
+  @override
+  String get settingsStoragePathCopied => 'Path copied to clipboard';
+
+  @override
+  String get settingsAboutSection => 'About';
+
+  @override
+  String get settingsAboutAppNameLabel => 'Application';
+
+  @override
+  String get settingsAboutVersionLabel => 'Version';
+
+  @override
+  String get settingsAboutSecureStorageLabel => 'Secure storage';
+
+  @override
+  String get settingsAboutSecureStorageProbing => 'Checking…';
+
+  @override
+  String settingsAboutSecureStorageAvailable(String backend) {
+    return 'Available ($backend)';
+  }
+
+  @override
+  String settingsAboutSecureStorageUnavailable(String reason) {
+    return 'Unavailable: $reason';
+  }
+
+  @override
   String get generationSuccess => 'Generated';
 
   @override
@@ -238,6 +320,47 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generationProviderNotRegistered => 'Provider not registered';
+
+  @override
+  String get generationQueueTitle => 'Render Queue';
+
+  @override
+  String get generationQueueEmpty => 'No active jobs';
+
+  @override
+  String get generationQueueClearTerminated => 'Clear completed';
+
+  @override
+  String get generationQueueRemove => 'Dismiss';
+
+  @override
+  String get generationQueueCancel => 'Cancel job';
+
+  @override
+  String get generationQueueRetry => 'Retry';
+
+  @override
+  String get generationStatusQueued => 'Queued';
+
+  @override
+  String get generationStatusSubmitting => 'Submitting';
+
+  @override
+  String get generationStatusRunning => 'Running';
+
+  @override
+  String get generationStatusSucceeded => 'Done';
+
+  @override
+  String get generationStatusFailed => 'Failed';
+
+  @override
+  String get generationStatusCancelled => 'Cancelled';
+
+  @override
+  String generationCountActive(int count) {
+    return '$count active';
+  }
 
   @override
   String get resultNodePending => 'Waiting for generation';
@@ -338,4 +461,179 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lightboxPlayPause => 'Play / Pause';
+
+  @override
+  String get lockTagline => 'A DESK FOR STORYBOARDERS';
+
+  @override
+  String get lockKeyPlaceholder => 'Paste provider key...';
+
+  @override
+  String get lockKeyHelpLine1 =>
+      'Get your API key from your provider dashboard.';
+
+  @override
+  String get lockKeyHelpLine2 => 'We never store your key on our servers.';
+
+  @override
+  String get lockUnlock => 'Unlock';
+
+  @override
+  String get lockKeyInvalid => 'Key invalid or network error. Try again.';
+
+  @override
+  String get studioRecentProjects => 'Recent Projects';
+
+  @override
+  String get studioNewProject => 'New Project';
+
+  @override
+  String get studioLibrary => 'LIBRARY';
+
+  @override
+  String get studioArchive => 'ARCHIVE';
+
+  @override
+  String get studioArchivedProjects => 'Archived Projects';
+
+  @override
+  String get studioBreadcrumbAll => 'All Projects';
+
+  @override
+  String get studioEmptyTitle => 'No projects yet';
+
+  @override
+  String get studioEmptySubtitle =>
+      'Create your first project to start building storyboards.';
+
+  @override
+  String get studioErrorTitle => 'Failed to load projects';
+
+  @override
+  String get studioErrorRetry => 'Retry';
+
+  @override
+  String get studioOpenSettings => 'Open settings';
+
+  @override
+  String get studioNewProjectDialogTitle => 'Create new project';
+
+  @override
+  String get studioNewProjectNameLabel => 'Project name';
+
+  @override
+  String get studioNewProjectNameHint => 'e.g. Sunset Heist';
+
+  @override
+  String get studioNewProjectErrorEmpty => 'Project name is required';
+
+  @override
+  String get studioNewProjectErrorTooLong =>
+      'Project name must be 60 characters or fewer';
+
+  @override
+  String get studioNewProjectErrorDuplicate =>
+      'A project with this name already exists';
+
+  @override
+  String get studioNewProjectFailed => 'Failed to create project';
+
+  @override
+  String get studioCreate => 'Create';
+
+  @override
+  String get canvasInspectorTransform => 'Transform';
+
+  @override
+  String get canvasInspectorCamera => 'Camera';
+
+  @override
+  String get canvasInspectorComposition => 'Composition';
+
+  @override
+  String get canvasInspectorMetadata => 'Metadata';
+
+  @override
+  String get canvasInspectorNotes => 'Notes';
+
+  @override
+  String get canvasInspectorAddAttribute => 'Add Attribute';
+
+  @override
+  String get canvasRenderQueue => 'Render Queue';
+
+  @override
+  String get canvasNodeTypeCharacter => 'Character';
+
+  @override
+  String get canvasNodeTypeScene => 'Scene';
+
+  @override
+  String get canvasNodeTypeCamera => 'Camera';
+
+  @override
+  String get canvasNodeTypeProp => 'Prop';
+
+  @override
+  String get canvasNodeTypeShot => 'Shot';
+
+  @override
+  String get canvasNodeTypeImageGen => 'Image Gen';
+
+  @override
+  String get canvasBreadcrumbProject => 'Project';
+
+  @override
+  String get canvasBreadcrumbCanvas => 'Canvas';
+
+  @override
+  String get canvasBackToStudio => 'Studio';
+
+  @override
+  String get canvasEmptyTitle => 'This canvas is empty';
+
+  @override
+  String get canvasEmptySubtitle =>
+      'Add your first node to start storyboarding.';
+
+  @override
+  String get canvasEmptyAddImage => 'Add image node';
+
+  @override
+  String get canvasEmptyAddVideo => 'Add video node';
+
+  @override
+  String canvasSelectionCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get canvasInspectorKindCamera => 'Camera Node';
+
+  @override
+  String get canvasInspectorMockTitle => 'Wide Shot';
+
+  @override
+  String get canvasInspectorMockId => 'cam_0021';
+
+  @override
+  String get canvasRenderQueueJobWatch => 'Watch Closeup';
+
+  @override
+  String get canvasRenderQueueJobHarbor => 'Harbor Docks';
+
+  @override
+  String get canvasRenderQueueJobNocturne => 'Nocturne Teaser';
+
+  @override
+  String get canvasRenderQueueStatusQueued => 'Queued';
+
+  @override
+  String get windowMinimize => 'Minimize';
+
+  @override
+  String get windowMaximize => 'Maximize';
+
+  @override
+  String get windowClose => 'Close';
 }

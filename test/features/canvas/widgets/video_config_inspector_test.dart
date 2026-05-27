@@ -2,14 +2,14 @@
 // 渲染 prompt / duration / camera 控件；Generate 按钮初始 disabled。
 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/video_config_inspector.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
+
+import '../../../_harness/test_app.dart';
 
 const _fakeVideoCaps = caps.ProviderCapabilities(
   providerId: 'wanx-t2v',
@@ -36,19 +36,6 @@ const _fakeVideoCaps = caps.ProviderCapabilities(
   burst: 1,
 );
 
-Widget _host(Widget child, List<caps.ProviderCapabilities> fakeCaps) =>
-    ProviderScope(
-      overrides: [
-        providerCapabilitiesListProvider.overrideWith((ref) => fakeCaps),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        locale: const Locale('zh'),
-        home: Scaffold(body: child),
-      ),
-    );
-
 void main() {
   testWidgets('prompt / duration / camera 控件渲染', (tester) async {
     const node = CanvasNode(
@@ -57,8 +44,13 @@ void main() {
       type: CanvasNodeType.video,
       role: NodeRole.config,
     );
-    await tester.pumpWidget(
-      _host(const VideoConfigInspector(node: node), [_fakeVideoCaps]),
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: VideoConfigInspector(node: node)),
+      locale: const Locale('zh'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fakeVideoCaps]),
+      ],
     );
     await tester.pumpAndSettle();
     expect(find.text('视频提示词'), findsOneWidget);
@@ -73,8 +65,13 @@ void main() {
       type: CanvasNodeType.video,
       role: NodeRole.config,
     );
-    await tester.pumpWidget(
-      _host(const VideoConfigInspector(node: node), [_fakeVideoCaps]),
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: VideoConfigInspector(node: node)),
+      locale: const Locale('zh'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fakeVideoCaps]),
+      ],
     );
     await tester.pumpAndSettle();
 
@@ -97,8 +94,13 @@ void main() {
       type: CanvasNodeType.video,
       role: NodeRole.config,
     );
-    await tester.pumpWidget(
-      _host(const VideoConfigInspector(node: node), [_fakeVideoCaps]),
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: VideoConfigInspector(node: node)),
+      locale: const Locale('zh'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fakeVideoCaps]),
+      ],
     );
     await tester.pumpAndSettle();
     final btn = tester.widget<FilledButton>(find.byType(FilledButton));

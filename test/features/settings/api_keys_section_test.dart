@@ -10,7 +10,8 @@ import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/settings/widgets/api_keys_section.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
+
+import '../../_harness/test_app.dart';
 
 class _FakeSecure implements SecureStorageService {
   final Map<String, String> _data = {};
@@ -49,26 +50,19 @@ const _fake = caps.ProviderCapabilities(
   burst: 1,
 );
 
-Widget host(Widget child) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: SingleChildScrollView(child: child)),
-    );
-
-ProviderScope scope(Widget child, SecureStorageService secure) {
-  return ProviderScope(
-    overrides: [
+List<Override> _overrides(SecureStorageService secure) => [
       providerCapabilitiesListProvider.overrideWith((ref) => [_fake]),
       secureStorageServiceProvider.overrideWithValue(secure),
-    ],
-    child: child,
-  );
-}
+    ];
 
 void main() {
   testWidgets('初始态未配置，Clear 按钮 disabled', (tester) async {
     final secure = _FakeSecure();
-    await tester.pumpWidget(scope(host(const ApiKeysSection()), secure));
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: _overrides(secure),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('test-provider'), findsOneWidget);
@@ -81,7 +75,11 @@ void main() {
 
   testWidgets('Save 写入 SecureStorage 并切换到已配置', (tester) async {
     final secure = _FakeSecure();
-    await tester.pumpWidget(scope(host(const ApiKeysSection()), secure));
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: _overrides(secure),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'sk-abc');
@@ -98,7 +96,11 @@ void main() {
     final storedKey = SecureStorageKeys.providerApiKey('test-provider');
     await secure.store(storedKey, 'sk-existing');
 
-    await tester.pumpWidget(scope(host(const ApiKeysSection()), secure));
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: _overrides(secure),
+    );
     await tester.pumpAndSettle();
     expect(find.text('Set'), findsOneWidget);
 

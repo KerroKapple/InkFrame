@@ -4,9 +4,6 @@
 // 公共行为（auth header / 状态机 6 分支 / 错误码映射 / validateApiKey）已在
 // dashscope_async_provider_base_test.dart 覆盖，本文件不重复。
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -17,6 +14,8 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/providers/dashscope_async_provider_base.dart';
 import 'package:inkframe/providers/rate_limiter.dart';
 import 'package:inkframe/providers/wanx_image_provider.dart';
+
+import '../_harness/fixtures.dart';
 
 GenerationTask _t2iTask({
   AspectRatio ratio = AspectRatio.r16x9,
@@ -47,10 +46,9 @@ WanxImageProvider _build(Dio dio, {String key = 'sk-test'}) =>
       dio: dio,
     );
 
-Future<Map<String, Object?>> _loadFixture(String name) async {
-  final file = File('test/fixtures/providers/wanx-image/$name');
-  return jsonDecode(await file.readAsString()) as Map<String, Object?>;
-}
+Future<Map<String, Object?>> _loadFixture(String name) async =>
+    loadProviderFixture(
+        'wanx-image', name.replaceFirst(RegExp(r'\.json$'), ''));
 
 void main() {
   group('WanxImageProvider.capabilities', () {

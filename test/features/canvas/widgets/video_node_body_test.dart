@@ -14,19 +14,13 @@ import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/video_node_body.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
-Widget _host(Widget child, {AppPaths? paths}) => ProviderScope(
-      overrides: [
-        if (paths != null) appPathsProvider.overrideWithValue(paths),
-      ],
-      child: MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(body: child),
-      ),
-    );
+import '../../../_harness/test_app.dart';
+
+List<Override> _overridesFor(AppPaths? paths) => [
+      if (paths != null) appPathsProvider.overrideWithValue(paths),
+    ];
 
 void main() {
   group('VideoNodeBody', () {
@@ -38,7 +32,10 @@ void main() {
         role: NodeRole.result,
         sourceNodeId: 'c1',
       );
-      await tester.pumpWidget(_host(const VideoNodeBody(node: node)));
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: VideoNodeBody(node: node)),
+      );
       expect(find.byIcon(Icons.hourglass_empty_outlined), findsOneWidget);
       expect(find.byIcon(Icons.broken_image_outlined), findsNothing);
       expect(find.byIcon(Icons.play_circle_outline), findsNothing);
@@ -64,8 +61,10 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(
-        _host(const VideoNodeBody(node: node), paths: paths),
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: VideoNodeBody(node: node)),
+        overrides: _overridesFor(paths),
       );
       await tester.pump();
       expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
@@ -96,8 +95,10 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(
-        _host(const VideoNodeBody(node: node), paths: paths),
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: VideoNodeBody(node: node)),
+        overrides: _overridesFor(paths),
       );
       expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
       expect(find.byIcon(Icons.hourglass_empty_outlined), findsNothing);
