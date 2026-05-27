@@ -1,7 +1,6 @@
 // FakeClock + FakeSecureStorage + InMemory*Repository 契约测试。
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/project_repository.dart';

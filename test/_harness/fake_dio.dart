@@ -112,13 +112,13 @@ class FakeDio {
   static void _register(DioAdapter adapter, FakeRoute r) {
     // 不标注参数类型——MockServer 是 http_mock_adapter 内部类型，
     // 公共 API 未导出；用闭包让 Dart 自行推断。
-    final void Function(dynamic req) reply = (req) {
+    void reply(dynamic req) {
       if (r.error != null) {
         req.throws(r.error!.response?.statusCode ?? 0, r.error!);
       } else {
         req.reply(r.replyStatus!, r.replyBody);
       }
-    };
+    }
 
     switch (r.method) {
       case HttpMethod.get:

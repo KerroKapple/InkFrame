@@ -13,7 +13,7 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'fake_dio.dart';
 import 'fake_providers.dart';
 
-GenerationTask _task() => GenerationTask(
+GenerationTask _task() => const GenerationTask(
       providerId: 'fake-image',
       jobId: 'job-1',
       mode: GenerationMode.textToImage,
