@@ -93,6 +93,23 @@ a { color: inherit; text-decoration: none; }
 .crumbs .chev { color: var(--fg-4); }
 .crumbs .here { color: var(--fg-1); }
 
+/* Episode 跨视图切换栏（Canvas / Storyboard / Script / Generation / Queue） */
+.chrome .view-nav {
+  display: flex; align-items: center; gap: 2px;
+  margin-left: 18px;
+  font-family: var(--ff-mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.chrome .view-nav a {
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  color: var(--fg-3);
+  white-space: nowrap;
+}
+.chrome .view-nav a:hover { color: var(--fg-1); background: var(--surface-2); }
+.chrome .view-nav a.active { color: var(--accent); background: var(--surface-2); }
+
 .chrome .spacer { flex: 1; }
 
 .chrome .actions { display: flex; align-items: center; gap: 6px; }

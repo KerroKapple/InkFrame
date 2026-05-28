@@ -19,6 +19,15 @@ const PAGES = [
   ["12-error-states",    "12"],
 ];
 
+// 同一 Episode 下的并列视图，供 ink-chrome 的 views 开关渲染跨视图切换栏。
+const EPISODE_VIEWS = [
+  ["03-canvas",           "Canvas"],
+  ["05-storyboard",       "Storyboard"],
+  ["06-script-editor",    "Script"],
+  ["08-asset-generation", "Generation"],
+  ["04-task-queue",       "Queue"],
+];
+
 // ============================================================================
 // ink-page — semantic wrapper around .page (full viewport, vertical flex)
 // ============================================================================
@@ -34,11 +43,13 @@ customElements.define("ink-page", class extends HTMLElement {
 //   avatar      initial in the round avatar (default "J", omit to hide)
 //   no-window   set to skip the — / ▢ / ✕ chrome controls
 //   no-logo     set to skip the Ink/Frame brand
+//   views       set to render the Episode 跨视图切换栏（Canvas/Storyboard/…），
+//               当前视图按文件名自动高亮
 // Anything between <ink-chrome>…</ink-chrome> is treated as slotted actions
 // (rendered between the kbd hint and the avatar in the actions row).
 // ============================================================================
 customElements.define("ink-chrome", class extends HTMLElement {
-  static observedAttributes = ["breadcrumb", "kbd", "avatar", "no-window", "no-logo"];
+  static observedAttributes = ["breadcrumb", "kbd", "avatar", "no-window", "no-logo", "views"];
   connectedCallback() {
     // Capture user-provided slot content once, then re-render in place.
     if (this._slot === undefined) this._slot = this.innerHTML;
@@ -73,10 +84,20 @@ customElements.define("ink-chrome", class extends HTMLElement {
         }</div>`
       : "";
 
+    const current = (location.pathname.split("/").pop() || "").replace(".html", "");
+    const viewNavHtml = this.hasAttribute("views")
+      ? `<nav class="view-nav">${
+          EPISODE_VIEWS.map(([file, label]) =>
+            `<a href="${file}.html"${file === current ? ' class="active"' : ""}>${label}</a>`
+          ).join("")
+        }</nav>`
+      : "";
+
     this.classList.add("chrome");
     this.innerHTML = `
       ${noLogo ? "" : `<a class="logo" href="02-studio-home.html" title="Studio Home">Ink<span class="sep">/</span>Frame</a>`}
       ${crumbsHtml}
+      ${viewNavHtml}
       <div class="spacer"></div>
       ${actionsHtml}
       ${noWindow ? "" : `<ink-win-ctrl></ink-win-ctrl>`}
