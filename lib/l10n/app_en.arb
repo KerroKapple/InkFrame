@@ -238,6 +238,15 @@
   "studioNewProjectFailed": "Failed to create project",
   "studioCreate": "Create",
 
+  "studioNoProviderMessage": "No provider configured. Generation actions are disabled until you set one up.",
+  "@studioNoProviderMessage": {
+    "description": "Studio home warning banner: no generation provider configured"
+  },
+  "studioNoProviderAction": "Set up provider",
+  "@studioNoProviderAction": {
+    "description": "Studio home warning banner: action label to open Settings"
+  },
+
   "canvasInspectorTransform": "Transform",
   "canvasInspectorCamera": "Camera",
   "canvasInspectorComposition": "Composition",

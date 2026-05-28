@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/current_screen.dart';
 import '../../core/di/repositories.dart';
+import '../../core/di/secure_storage.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/components/ink_error_banner.dart';
@@ -19,7 +20,11 @@ import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
+import 'widgets/studio_provider_banner.dart';
 import 'widgets/studio_top_chrome.dart';
+
+/// 本次会话内横幅已关闭的状态（默认未关闭）。
+final studioProviderBannerDismissedProvider = StateProvider<bool>((_) => false);
 
 class StudioHomeScreen extends ConsumerWidget {
   const StudioHomeScreen({super.key});
@@ -61,6 +66,13 @@ class _StudioMainArea extends ConsumerWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final projectsAsync = ref.watch(workspaceProjectsProvider);
+    // 横幅：provider 未配置 && 本次会话未关闭
+    final apiKeyAsync = ref.watch(apiKeyUnlockedProvider);
+    final bannerDismissed = ref.watch(studioProviderBannerDismissedProvider);
+    final showBanner = apiKeyAsync.maybeWhen(
+      data: (unlocked) => !unlocked && !bannerDismissed,
+      orElse: () => false,
+    );
     final showFab = projectsAsync.maybeWhen(
       data: (p) => p.isNotEmpty,
       orElse: () => false,
@@ -79,6 +91,25 @@ class _StudioMainArea extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
+                if (showBanner) ...<Widget>[
+                  StudioProviderBanner(
+                    message: context.l10n.studioNoProviderMessage,
+                    actionLabel: context.l10n.studioNoProviderAction,
+                    dismissTooltip: context.l10n.commonClose,
+                    onAction: () =>
+                        ref.read(currentScreenProvider.notifier).state =
+                            AppScreen.settings,
+                    onDismiss: () =>
+                        ref
+                                .read(
+                                  studioProviderBannerDismissedProvider
+                                      .notifier,
+                                )
+                                .state =
+                            true,
+                  ),
+                  const SizedBox(height: InkSpacing.lg),
+                ],
                 Padding(
                   padding: const EdgeInsets.only(bottom: InkSpacing.lg),
                   child: Text(
@@ -93,8 +124,7 @@ class _StudioMainArea extends ConsumerWidget {
                   child: projectsAsync.when(
                     loading: () => const _StudioLoadingState(),
                     error: (e, _) => _StudioErrorState(
-                      onRetry: () =>
-                          ref.invalidate(workspaceProjectsProvider),
+                      onRetry: () => ref.invalidate(workspaceProjectsProvider),
                     ),
                     data: (projects) => projects.isEmpty
                         ? _StudioEmptyState(
@@ -134,8 +164,9 @@ class _StudioMainArea extends ConsumerWidget {
     WidgetRef ref,
     List<ProjectWithCanvases> existing,
   ) async {
-    final existingNames =
-        existing.map((p) => p.name.trim().toLowerCase()).toSet();
+    final existingNames = existing
+        .map((p) => p.name.trim().toLowerCase())
+        .toSet();
     final name = await showDialog<String>(
       context: context,
       barrierColor: context.inkColors.scrim,
@@ -146,10 +177,7 @@ class _StudioMainArea extends ConsumerWidget {
       final projects = await ref.read(projectRepositoryProvider.future);
       final canvases = await ref.read(canvasRepositoryProvider.future);
       final projectId = await projects.create(name: name);
-      await canvases.create(
-        projectId: projectId,
-        name: 'Canvas 1',
-      );
+      await canvases.create(projectId: projectId, name: 'Canvas 1');
       ref.invalidate(workspaceProjectsProvider);
     } catch (_) {
       if (!context.mounted) return;
@@ -363,10 +391,7 @@ class _NewProjectDialogState extends State<_NewProjectDialog> {
               ),
               if (error != null) ...<Widget>[
                 const SizedBox(height: InkSpacing.sm),
-                Text(
-                  error,
-                  style: typo.caption.copyWith(color: colors.danger),
-                ),
+                Text(error, style: typo.caption.copyWith(color: colors.danger)),
               ],
               const SizedBox(height: InkSpacing.lg),
               Row(

@@ -523,6 +523,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioCreate => '创建';
 
   @override
+  String get studioNoProviderMessage => '尚未配置生成 provider，配置后才能使用生成功能。';
+
+  @override
+  String get studioNoProviderAction => '去配置';
+
+  @override
   String get canvasInspectorTransform => '变换';
 
   @override

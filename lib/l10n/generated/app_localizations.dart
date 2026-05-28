@@ -1094,6 +1094,18 @@ abstract class AppLocalizations {
   /// **'Create'**
   String get studioCreate;
 
+  /// Studio home warning banner: no generation provider configured
+  ///
+  /// In en, this message translates to:
+  /// **'No provider configured. Generation actions are disabled until you set one up.'**
+  String get studioNoProviderMessage;
+
+  /// Studio home warning banner: action label to open Settings
+  ///
+  /// In en, this message translates to:
+  /// **'Set up provider'**
+  String get studioNoProviderAction;
+
   /// No description provided for @canvasInspectorTransform.
   ///
   /// In en, this message translates to:

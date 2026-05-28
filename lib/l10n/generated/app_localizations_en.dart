@@ -542,6 +542,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioCreate => 'Create';
 
   @override
+  String get studioNoProviderMessage =>
+      'No provider configured. Generation actions are disabled until you set one up.';
+
+  @override
+  String get studioNoProviderAction => 'Set up provider';
+
+  @override
   String get canvasInspectorTransform => 'Transform';
 
   @override

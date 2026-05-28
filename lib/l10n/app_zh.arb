@@ -222,6 +222,9 @@
   "studioNewProjectFailed": "项目创建失败",
   "studioCreate": "创建",
 
+  "studioNoProviderMessage": "尚未配置生成 provider，配置后才能使用生成功能。",
+  "studioNoProviderAction": "去配置",
+
   "canvasInspectorTransform": "变换",
   "canvasInspectorCamera": "镜头",
   "canvasInspectorComposition": "构图",
