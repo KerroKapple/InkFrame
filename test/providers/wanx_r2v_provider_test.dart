@@ -1,8 +1,5 @@
 // WanxR2VProvider 单测：聚焦子类三个 override + fixture 回放。
 
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -13,6 +10,8 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/providers/dashscope_async_provider_base.dart';
 import 'package:inkframe/providers/rate_limiter.dart';
 import 'package:inkframe/providers/wanx_r2v_provider.dart';
+
+import '../_harness/fixtures.dart';
 
 GenerationTask _task({
   List<String> refs = const ['https://x/ref1.png'],
@@ -41,10 +40,8 @@ WanxR2VProvider _build(Dio dio, {String key = 'sk-test'}) => WanxR2VProvider(
       dio: dio,
     );
 
-Future<Map<String, Object?>> _loadFixture(String name) async {
-  final file = File('test/fixtures/providers/wanx-r2v/$name');
-  return jsonDecode(await file.readAsString()) as Map<String, Object?>;
-}
+Future<Map<String, Object?>> _loadFixture(String name) async =>
+    loadProviderFixture('wanx-r2v', name.replaceFirst(RegExp(r'\.json$'), ''));
 
 void main() {
   group('WanxR2VProvider.capabilities', () {

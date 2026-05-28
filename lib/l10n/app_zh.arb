@@ -70,6 +70,16 @@
   "inspectorGenerateDisabledNoKey": "请在设置中配置 API Key",
   "inspectorGenerateNotWiredYet": "生成流程将在下个切片接入",
   "inspectorSelectSingleHint": "选中一个配置节点以编辑",
+  "inspectorStatusSubmitting": "提交中...",
+  "inspectorStatusRunning": "生成中...",
+  "inspectorStatusRunningWithProgress": "生成中... {percent}%",
+  "@inspectorStatusRunningWithProgress": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "inspectorStatusErrorTitle": "生成失败",
+  "inspectorRetry": "重试",
 
   "settingsTitle": "设置",
   "settingsApiKeysSection": "API Keys",
@@ -82,6 +92,40 @@
   "settingsApiKeySaved": "已保存",
   "settingsApiKeyCleared": "已清除",
 
+  "settingsThemeSection": "主题",
+  "settingsThemeDark": "深色",
+  "settingsThemeLight": "浅色",
+  "settingsThemeHighContrast": "高对比度",
+  "settingsThemeTextScale": "字号缩放",
+
+  "settingsLanguageSection": "语言",
+  "settingsLanguageEn": "English",
+  "settingsLanguageZh": "中文",
+
+  "settingsStorageSection": "存储",
+  "settingsStorageReadOnlyHint": "本版本数据库目录固定，后续版本会提供迁移流程。",
+  "settingsStorageDatabasePathLabel": "数据库目录",
+  "settingsStorageCopyPath": "复制路径",
+  "settingsStoragePathCopied": "路径已复制到剪贴板",
+
+  "settingsAboutSection": "关于",
+  "settingsAboutAppNameLabel": "应用",
+  "settingsAboutVersionLabel": "版本",
+  "settingsAboutSecureStorageLabel": "安全存储",
+  "settingsAboutSecureStorageProbing": "检测中…",
+  "settingsAboutSecureStorageAvailable": "可用（{backend}）",
+  "@settingsAboutSecureStorageAvailable": {
+    "placeholders": {
+      "backend": { "type": "String" }
+    }
+  },
+  "settingsAboutSecureStorageUnavailable": "不可用：{reason}",
+  "@settingsAboutSecureStorageUnavailable": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+
   "generationSuccess": "生成完成",
   "generationFailure": "生成失败",
   "generationMissingKey": "API Key 未配置",
@@ -92,6 +136,25 @@
     }
   },
   "generationProviderNotRegistered": "Provider 未注册",
+
+  "generationQueueTitle": "渲染队列",
+  "generationQueueEmpty": "暂无活跃任务",
+  "generationQueueClearTerminated": "清理已完成",
+  "generationQueueRemove": "移除",
+  "generationQueueCancel": "取消任务",
+  "generationQueueRetry": "重试",
+  "generationStatusQueued": "排队中",
+  "generationStatusSubmitting": "提交中",
+  "generationStatusRunning": "生成中",
+  "generationStatusSucceeded": "已完成",
+  "generationStatusFailed": "失败",
+  "generationStatusCancelled": "已取消",
+  "generationCountActive": "{count} 个进行中",
+  "@generationCountActive": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "resultNodePending": "等待生成",
   "resultNodeImageMissing": "图像文件缺失",
@@ -130,5 +193,70 @@
   "inspectorVideoGenerate": "生成视频",
 
   "lightboxClose": "关闭",
-  "lightboxPlayPause": "播放 / 暂停"
+  "lightboxPlayPause": "播放 / 暂停",
+
+  "lockTagline": "为分镜师而生的工作台",
+  "lockKeyPlaceholder": "粘贴 Provider Key...",
+  "lockKeyHelpLine1": "从你的 Provider 后台获取 API Key。",
+  "lockKeyHelpLine2": "我们不会把 Key 存到服务器。",
+  "lockUnlock": "解锁",
+  "lockKeyInvalid": "Key 无效或网络错误，请重试。",
+
+  "studioRecentProjects": "最近项目",
+  "studioNewProject": "新建项目",
+  "studioLibrary": "工作库",
+  "studioArchive": "归档",
+  "studioArchivedProjects": "已归档项目",
+  "studioBreadcrumbAll": "全部项目",
+  "studioEmptyTitle": "还没有项目",
+  "studioEmptySubtitle": "新建一个项目开始你的分镜创作。",
+  "studioErrorTitle": "项目列表加载失败",
+  "studioErrorRetry": "重试",
+  "studioOpenSettings": "打开设置",
+  "studioNewProjectDialogTitle": "新建项目",
+  "studioNewProjectNameLabel": "项目名",
+  "studioNewProjectNameHint": "例如：日落劫案",
+  "studioNewProjectErrorEmpty": "请填写项目名",
+  "studioNewProjectErrorTooLong": "项目名不超过 60 个字符",
+  "studioNewProjectErrorDuplicate": "已存在同名项目",
+  "studioNewProjectFailed": "项目创建失败",
+  "studioCreate": "创建",
+
+  "canvasInspectorTransform": "变换",
+  "canvasInspectorCamera": "镜头",
+  "canvasInspectorComposition": "构图",
+  "canvasInspectorMetadata": "元数据",
+  "canvasInspectorNotes": "备注",
+  "canvasInspectorAddAttribute": "添加属性",
+  "canvasRenderQueue": "渲染队列",
+  "canvasNodeTypeCharacter": "角色",
+  "canvasNodeTypeScene": "场景",
+  "canvasNodeTypeCamera": "镜头",
+  "canvasNodeTypeProp": "道具",
+  "canvasNodeTypeShot": "分镜",
+  "canvasNodeTypeImageGen": "图像生成",
+  "canvasBreadcrumbProject": "项目",
+  "canvasBreadcrumbCanvas": "画布",
+  "canvasBackToStudio": "Studio",
+  "canvasEmptyTitle": "当前画布为空",
+  "canvasEmptySubtitle": "添加第一个节点，开始分镜。",
+  "canvasEmptyAddImage": "添加图片节点",
+  "canvasEmptyAddVideo": "添加视频节点",
+  "canvasSelectionCount": "已选 {count} 个",
+  "@canvasSelectionCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "canvasInspectorKindCamera": "镜头节点",
+  "canvasInspectorMockTitle": "宽景镜头",
+  "canvasInspectorMockId": "cam_0021",
+  "canvasRenderQueueJobWatch": "怀表特写",
+  "canvasRenderQueueJobHarbor": "港口码头",
+  "canvasRenderQueueJobNocturne": "夜曲预告",
+  "canvasRenderQueueStatusQueued": "排队中",
+
+  "windowMinimize": "最小化",
+  "windowMaximize": "最大化",
+  "windowClose": "关闭"
 }

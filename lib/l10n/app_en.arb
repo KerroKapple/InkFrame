@@ -73,6 +73,16 @@
   "inspectorGenerateDisabledNoKey": "Configure API key in Settings",
   "inspectorGenerateNotWiredYet": "Generation wiring ships in the next slice",
   "inspectorSelectSingleHint": "Select a single config node to edit",
+  "inspectorStatusSubmitting": "Submitting...",
+  "inspectorStatusRunning": "Generating...",
+  "inspectorStatusRunningWithProgress": "Generating... {percent}%",
+  "@inspectorStatusRunningWithProgress": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
+  "inspectorStatusErrorTitle": "Generation failed",
+  "inspectorRetry": "Retry",
 
   "settingsTitle": "Settings",
   "settingsApiKeysSection": "API Keys",
@@ -85,6 +95,40 @@
   "settingsApiKeySaved": "Saved",
   "settingsApiKeyCleared": "Cleared",
 
+  "settingsThemeSection": "Theme",
+  "settingsThemeDark": "Dark",
+  "settingsThemeLight": "Light",
+  "settingsThemeHighContrast": "High contrast",
+  "settingsThemeTextScale": "Text size",
+
+  "settingsLanguageSection": "Language",
+  "settingsLanguageEn": "English",
+  "settingsLanguageZh": "中文",
+
+  "settingsStorageSection": "Storage",
+  "settingsStorageReadOnlyHint": "Database location is fixed in this release. Changing it requires a migration not yet implemented.",
+  "settingsStorageDatabasePathLabel": "Database directory",
+  "settingsStorageCopyPath": "Copy path",
+  "settingsStoragePathCopied": "Path copied to clipboard",
+
+  "settingsAboutSection": "About",
+  "settingsAboutAppNameLabel": "Application",
+  "settingsAboutVersionLabel": "Version",
+  "settingsAboutSecureStorageLabel": "Secure storage",
+  "settingsAboutSecureStorageProbing": "Checking…",
+  "settingsAboutSecureStorageAvailable": "Available ({backend})",
+  "@settingsAboutSecureStorageAvailable": {
+    "placeholders": {
+      "backend": { "type": "String" }
+    }
+  },
+  "settingsAboutSecureStorageUnavailable": "Unavailable: {reason}",
+  "@settingsAboutSecureStorageUnavailable": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
+
   "generationSuccess": "Generated",
   "generationFailure": "Generation failed",
   "generationMissingKey": "API key is missing",
@@ -95,6 +139,25 @@
     }
   },
   "generationProviderNotRegistered": "Provider not registered",
+
+  "generationQueueTitle": "Render Queue",
+  "generationQueueEmpty": "No active jobs",
+  "generationQueueClearTerminated": "Clear completed",
+  "generationQueueRemove": "Dismiss",
+  "generationQueueCancel": "Cancel job",
+  "generationQueueRetry": "Retry",
+  "generationStatusQueued": "Queued",
+  "generationStatusSubmitting": "Submitting",
+  "generationStatusRunning": "Running",
+  "generationStatusSucceeded": "Done",
+  "generationStatusFailed": "Failed",
+  "generationStatusCancelled": "Cancelled",
+  "generationCountActive": "{count} active",
+  "@generationCountActive": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "resultNodePending": "Waiting for generation",
   "resultNodeImageMissing": "Image file missing",
@@ -146,5 +209,82 @@
   "lightboxPlayPause": "Play / Pause",
   "@lightboxPlayPause": {
     "description": "Video lightbox play/pause tooltip"
+  },
+
+  "lockTagline": "A DESK FOR STORYBOARDERS",
+  "lockKeyPlaceholder": "Paste provider key...",
+  "lockKeyHelpLine1": "Get your API key from your provider dashboard.",
+  "lockKeyHelpLine2": "We never store your key on our servers.",
+  "lockUnlock": "Unlock",
+  "lockKeyInvalid": "Key invalid or network error. Try again.",
+
+  "studioRecentProjects": "Recent Projects",
+  "studioNewProject": "New Project",
+  "studioLibrary": "LIBRARY",
+  "studioArchive": "ARCHIVE",
+  "studioArchivedProjects": "Archived Projects",
+  "studioBreadcrumbAll": "All Projects",
+  "studioEmptyTitle": "No projects yet",
+  "studioEmptySubtitle": "Create your first project to start building storyboards.",
+  "studioErrorTitle": "Failed to load projects",
+  "studioErrorRetry": "Retry",
+  "studioOpenSettings": "Open settings",
+  "studioNewProjectDialogTitle": "Create new project",
+  "studioNewProjectNameLabel": "Project name",
+  "studioNewProjectNameHint": "e.g. Sunset Heist",
+  "studioNewProjectErrorEmpty": "Project name is required",
+  "studioNewProjectErrorTooLong": "Project name must be 60 characters or fewer",
+  "studioNewProjectErrorDuplicate": "A project with this name already exists",
+  "studioNewProjectFailed": "Failed to create project",
+  "studioCreate": "Create",
+
+  "canvasInspectorTransform": "Transform",
+  "canvasInspectorCamera": "Camera",
+  "canvasInspectorComposition": "Composition",
+  "canvasInspectorMetadata": "Metadata",
+  "canvasInspectorNotes": "Notes",
+  "canvasInspectorAddAttribute": "Add Attribute",
+  "canvasRenderQueue": "Render Queue",
+  "canvasNodeTypeCharacter": "Character",
+  "canvasNodeTypeScene": "Scene",
+  "canvasNodeTypeCamera": "Camera",
+  "canvasNodeTypeProp": "Prop",
+  "canvasNodeTypeShot": "Shot",
+  "canvasNodeTypeImageGen": "Image Gen",
+  "canvasBreadcrumbProject": "Project",
+  "canvasBreadcrumbCanvas": "Canvas",
+  "canvasBackToStudio": "Studio",
+  "@canvasBackToStudio": {
+    "description": "Canvas top chrome — labeled affordance to return to the Studio home"
+  },
+  "canvasEmptyTitle": "This canvas is empty",
+  "canvasEmptySubtitle": "Add your first node to start storyboarding.",
+  "canvasEmptyAddImage": "Add image node",
+  "canvasEmptyAddVideo": "Add video node",
+  "canvasSelectionCount": "{count} selected",
+  "@canvasSelectionCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "canvasInspectorKindCamera": "Camera Node",
+  "canvasInspectorMockTitle": "Wide Shot",
+  "canvasInspectorMockId": "cam_0021",
+  "canvasRenderQueueJobWatch": "Watch Closeup",
+  "canvasRenderQueueJobHarbor": "Harbor Docks",
+  "canvasRenderQueueJobNocturne": "Nocturne Teaser",
+  "canvasRenderQueueStatusQueued": "Queued",
+
+  "windowMinimize": "Minimize",
+  "@windowMinimize": {
+    "description": "Window chrome minimize button a11y label"
+  },
+  "windowMaximize": "Maximize",
+  "@windowMaximize": {
+    "description": "Window chrome maximize/restore button a11y label"
+  },
+  "windowClose": "Close",
+  "@windowClose": {
+    "description": "Window chrome close button a11y label"
   }
 }
