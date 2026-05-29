@@ -9,7 +9,7 @@ final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
   return PlatformSecureStorageService();
 });
 
-/// 至少存在一把 provider API key 即视为已解锁；Lock 屏据此决定是否放行。
+/// 至少存在一把 provider API key 即视为已配置；Studio 横幅据此决定是否软提示去配置。
 final apiKeyUnlockedProvider = FutureProvider<bool>((ref) async {
   final storage = ref.watch(secureStorageServiceProvider);
   for (final providerId in const <String>[
@@ -22,7 +22,7 @@ final apiKeyUnlockedProvider = FutureProvider<bool>((ref) async {
         return true;
       }
     } catch (_) {
-      // storage 异常视作"未解锁"，由 LockScreen 提示用户重试。
+      // storage 异常视作"未配置"，由 Studio 横幅提示用户去配置。
     }
   }
   return false;

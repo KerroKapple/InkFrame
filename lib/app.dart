@@ -4,7 +4,8 @@
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
 // - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
-// - 锁屏后路由：currentCanvasId 优先；否则按 currentScreenProvider 在 Studio / Settings 切换
+// - 首页恒为 Studio shell：currentCanvasId 优先；否则按 currentScreenProvider 在 Studio / Settings 切换
+//   （不再以 provider key 为启动门禁；未配置时由 Studio 横幅软提示）
 // - 新增节点 FAB 已下沉到 CanvasScreen 内部，本文件不再托管
 
 import 'package:flutter/material.dart';
@@ -12,18 +13,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/current_screen.dart';
 import 'core/di/locale.dart';
-import 'core/di/secure_storage.dart';
 import 'core/di/theme.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
 import 'features/generation/services/toast_service.dart';
-import 'features/lock/lock_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/studio/studio_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
-import 'theme/components/ink_window_chrome.dart';
 
 class InkFrameApp extends ConsumerStatefulWidget {
   const InkFrameApp({super.key});
@@ -66,40 +64,8 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       scaffoldMessengerKey: messengerKey,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const _HomeScaffold(),
+      home: const _UnlockedShell(),
       debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-class _HomeScaffold extends ConsumerWidget {
-  const _HomeScaffold();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final unlockedAsync = ref.watch(apiKeyUnlockedProvider);
-    return unlockedAsync.when(
-      loading: () => const _LockSplash(),
-      error: (_, _) => const LockScreen(),
-      data: (unlocked) =>
-          unlocked ? const _UnlockedShell() : const LockScreen(),
-    );
-  }
-}
-
-class _LockSplash extends StatelessWidget {
-  const _LockSplash();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.inkColors.surfaceCanvas,
-      body: const Column(
-        children: <Widget>[
-          InkWindowChrome(),
-          Expanded(child: Center(child: CircularProgressIndicator())),
-        ],
-      ),
     );
   }
 }

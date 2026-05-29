@@ -266,6 +266,15 @@
   "@canvasBackToStudio": {
     "description": "Canvas top chrome — labeled affordance to return to the Studio home"
   },
+  "episodeViewCanvas": "Canvas",
+  "episodeViewStoryboard": "Storyboard",
+  "episodeViewScript": "Script",
+  "episodeViewGeneration": "Generation",
+  "episodeViewQueue": "Queue",
+  "episodeViewComingSoon": "{view} view is under construction.",
+  "@episodeViewComingSoon": {
+    "placeholders": { "view": { "type": "String" } }
+  },
   "canvasEmptyTitle": "This canvas is empty",
   "canvasEmptySubtitle": "Add your first node to start storyboarding.",
   "canvasEmptyAddImage": "Add image node",

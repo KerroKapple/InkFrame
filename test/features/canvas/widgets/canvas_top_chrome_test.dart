@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_top_chrome.dart';
+import 'package:inkframe/features/canvas/widgets/episode_view_nav.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
@@ -19,6 +20,7 @@ void main() {
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'c1'),
       ],
+      surfaceSize: const Size(1400, 900),
     );
     await tester.pumpAndSettle();
 
@@ -29,6 +31,8 @@ void main() {
   });
 
   testWidgets('点击 Studio 按钮清空 currentCanvasIdProvider', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     final container = ProviderContainer();
     addTearDown(container.dispose);
     container.read(currentCanvasIdProvider.notifier).state = 'c1';
@@ -57,5 +61,29 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pump(const Duration(milliseconds: 400));
     expect(container.read(currentCanvasIdProvider), isNull);
+  });
+
+  testWidgets('CanvasTopChrome 含 EpisodeViewNav', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final container = ProviderContainer(
+      overrides: <Override>[
+        currentCanvasIdProvider.overrideWith((ref) => 'c1'),
+      ],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1.0),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const Scaffold(body: CanvasTopChrome(canvasName: 'Ep 02')),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(EpisodeViewNav), findsOneWidget);
   });
 }

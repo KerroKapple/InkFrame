@@ -34,7 +34,7 @@ void main() {
     expect(find.text('LIBRARY'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
-  testWidgets('InkFrameApp shows LockScreen when not unlocked',
+  testWidgets('InkFrameApp boots into workspace even when no provider configured',
       (tester) async {
     final Directory tmp = Directory.systemTemp.createTempSync('ink_lock_');
     addTearDown(() => tmp.deleteSync(recursive: true));
@@ -52,6 +52,8 @@ void main() {
     );
     await tester.pump();
     await tester.pump();
-    expect(find.text('Unlock'), findsOneWidget);
+    // 首页恒为 Studio：未配置 provider 时用横幅软提示，而非拦截到输入 key 的锁屏
+    expect(find.text('LIBRARY'), findsOneWidget);
+    expect(find.text('Set up provider'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

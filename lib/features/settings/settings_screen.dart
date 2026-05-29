@@ -6,12 +6,12 @@
 
 import 'package:flutter/material.dart';
 
-import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
 import 'widgets/language_section.dart';
+import 'widgets/settings_top_chrome.dart';
 import 'widgets/storage_path_section.dart';
 import 'widgets/theme_section.dart';
 
@@ -23,28 +23,32 @@ class SettingsScreen extends StatelessWidget {
     final colors = context.inkColors;
     return Scaffold(
       backgroundColor: colors.surface1,
-      appBar: AppBar(
-        title: Text(context.l10n.settingsTitle),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(InkSpacing.lg),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ApiKeysSection(),
-              SizedBox(height: InkSpacing.xl),
-              ThemeSection(),
-              SizedBox(height: InkSpacing.xl),
-              LanguageSection(),
-              SizedBox(height: InkSpacing.xl),
-              StoragePathSection(),
-              SizedBox(height: InkSpacing.xl),
-              AboutSection(),
-            ],
+      body: Column(
+        children: <Widget>[
+          const SettingsTopChrome(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(InkSpacing.lg),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 720),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    ApiKeysSection(),
+                    SizedBox(height: InkSpacing.xl),
+                    ThemeSection(),
+                    SizedBox(height: InkSpacing.xl),
+                    LanguageSection(),
+                    SizedBox(height: InkSpacing.xl),
+                    StoragePathSection(),
+                    SizedBox(height: InkSpacing.xl),
+                    AboutSection(),
+                  ],
+                ),
+              ),
+            ),
           ),
-        ),
+        ],
       ),
     );
   }

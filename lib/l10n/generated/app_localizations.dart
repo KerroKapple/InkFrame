@@ -1202,6 +1202,42 @@ abstract class AppLocalizations {
   /// **'Studio'**
   String get canvasBackToStudio;
 
+  /// No description provided for @episodeViewCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get episodeViewCanvas;
+
+  /// No description provided for @episodeViewStoryboard.
+  ///
+  /// In en, this message translates to:
+  /// **'Storyboard'**
+  String get episodeViewStoryboard;
+
+  /// No description provided for @episodeViewScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Script'**
+  String get episodeViewScript;
+
+  /// No description provided for @episodeViewGeneration.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation'**
+  String get episodeViewGeneration;
+
+  /// No description provided for @episodeViewQueue.
+  ///
+  /// In en, this message translates to:
+  /// **'Queue'**
+  String get episodeViewQueue;
+
+  /// No description provided for @episodeViewComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'{view} view is under construction.'**
+  String episodeViewComingSoon(String view);
+
   /// No description provided for @canvasEmptyTitle.
   ///
   /// In en, this message translates to:

@@ -577,6 +577,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasBackToStudio => 'Studio';
 
   @override
+  String get episodeViewCanvas => '画布';
+
+  @override
+  String get episodeViewStoryboard => '分镜';
+
+  @override
+  String get episodeViewScript => '剧本';
+
+  @override
+  String get episodeViewGeneration => '生成';
+
+  @override
+  String get episodeViewQueue => '队列';
+
+  @override
+  String episodeViewComingSoon(String view) {
+    return '$view 视图建设中。';
+  }
+
+  @override
   String get canvasEmptyTitle => '当前画布为空';
 
   @override

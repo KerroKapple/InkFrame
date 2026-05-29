@@ -597,6 +597,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasBackToStudio => 'Studio';
 
   @override
+  String get episodeViewCanvas => 'Canvas';
+
+  @override
+  String get episodeViewStoryboard => 'Storyboard';
+
+  @override
+  String get episodeViewScript => 'Script';
+
+  @override
+  String get episodeViewGeneration => 'Generation';
+
+  @override
+  String get episodeViewQueue => 'Queue';
+
+  @override
+  String episodeViewComingSoon(String view) {
+    return '$view view is under construction.';
+  }
+
+  @override
   String get canvasEmptyTitle => 'This canvas is empty';
 
   @override
