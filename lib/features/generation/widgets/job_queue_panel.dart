@@ -266,9 +266,9 @@ class _JobRow extends ConsumerWidget {
     return widgets;
   }
 
-  void _cancel(WidgetRef ref, String jobId) {
-    final queue = ref.read(jobQueueServiceProvider);
-    queue.cancel(jobId);
+  Future<void> _cancel(WidgetRef ref, String jobId) async {
+    final queue = await ref.read(jobQueueServiceProvider.future);
+    await queue.cancel(jobId);
   }
 
   String _statusLabel(BuildContext context, JobState job) {
