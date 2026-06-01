@@ -7,16 +7,20 @@
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../interfaces/batch_result_repository.dart';
 import '../interfaces/canvas_repository.dart';
 import '../interfaces/edge_repository.dart';
 import '../interfaces/job_repository.dart';
 import '../interfaces/node_repository.dart';
 import '../interfaces/project_repository.dart';
+import '../interfaces/style_lane_repository.dart';
+import '../../storage/repositories/postgres_batch_result_repository.dart';
 import '../../storage/repositories/postgres_canvas_repository.dart';
 import '../../storage/repositories/postgres_edge_repository.dart';
 import '../../storage/repositories/postgres_job_repository.dart';
 import '../../storage/repositories/postgres_node_repository.dart';
 import '../../storage/repositories/postgres_project_repository.dart';
+import '../../storage/repositories/postgres_style_lane_repository.dart';
 import 'database.dart';
 
 final projectRepositoryProvider = FutureProvider<ProjectRepository>(
@@ -57,4 +61,20 @@ final jobRepositoryProvider = FutureProvider<JobRepository>(
     return PostgresJobRepository(conn);
   },
   name: 'jobRepositoryProvider',
+);
+
+final styleLaneRepositoryProvider = FutureProvider<StyleLaneRepository>(
+  (ref) async {
+    final conn = await ref.watch(pgMigratedConnectionProvider.future);
+    return PostgresStyleLaneRepository(conn);
+  },
+  name: 'styleLaneRepositoryProvider',
+);
+
+final batchResultRepositoryProvider = FutureProvider<BatchResultRepository>(
+  (ref) async {
+    final conn = await ref.watch(pgMigratedConnectionProvider.future);
+    return PostgresBatchResultRepository(conn);
+  },
+  name: 'batchResultRepositoryProvider',
 );
