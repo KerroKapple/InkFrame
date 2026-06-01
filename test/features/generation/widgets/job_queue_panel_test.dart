@@ -31,7 +31,7 @@ void main() {
       tester,
       const Scaffold(body: JobQueuePanel()),
       overrides: [
-        jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
+        jobQueueServiceProvider.overrideWith((ref) async => _NoopQueue()),
       ],
     );
     await tester.pump();
@@ -45,7 +45,7 @@ void main() {
       tester,
       const Scaffold(body: JobQueuePanel()),
       overrides: [
-        jobQueueServiceProvider.overrideWithValue(queue),
+        jobQueueServiceProvider.overrideWith((ref) async => queue),
       ],
     );
     await tester.pump();
@@ -80,7 +80,7 @@ void main() {
         body: JobQueuePanel(onRetry: (id) => retried = id),
       ),
       overrides: [
-        jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
+        jobQueueServiceProvider.overrideWith((ref) async => _NoopQueue()),
       ],
     );
     await tester.pump();
@@ -110,7 +110,7 @@ void main() {
       tester,
       const Scaffold(body: JobQueuePanel()),
       overrides: [
-        jobQueueServiceProvider.overrideWithValue(_NoopQueue()),
+        jobQueueServiceProvider.overrideWith((ref) async => _NoopQueue()),
       ],
     );
     await tester.pump();
