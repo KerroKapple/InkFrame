@@ -1094,6 +1094,18 @@ abstract class AppLocalizations {
   /// **'Create'**
   String get studioCreate;
 
+  /// No description provided for @canvasDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled Canvas'**
+  String get canvasDefaultName;
+
+  /// No description provided for @studioOpenCanvasFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open canvas'**
+  String get studioOpenCanvasFailed;
+
   /// No description provided for @canvasInspectorTransform.
   ///
   /// In en, this message translates to:

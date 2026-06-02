@@ -542,6 +542,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioCreate => 'Create';
 
   @override
+  String get canvasDefaultName => 'Untitled Canvas';
+
+  @override
+  String get studioOpenCanvasFailed => 'Couldn\'t open canvas';
+
+  @override
   String get canvasInspectorTransform => 'Transform';
 
   @override
