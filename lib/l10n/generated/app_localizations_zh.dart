@@ -523,6 +523,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioCreate => '创建';
 
   @override
+  String get canvasDefaultName => '未命名画布';
+
+  @override
+  String get studioOpenCanvasFailed => '打开画布失败';
+
+  @override
   String get canvasInspectorTransform => '变换';
 
   @override
