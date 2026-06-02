@@ -56,6 +56,7 @@ void main() {
           const JobState.running(
             jobId: 'job-1',
             providerId: 'gemini-image',
+            canvasId: 'cv-1',
             progress: 0.4,
           ),
         );
@@ -91,6 +92,7 @@ void main() {
           const JobState.failed(
             jobId: 'job-2',
             providerId: 'wanx-image',
+            canvasId: 'cv-1',
             error: NetworkError(code: InkErrorCode.networkTimeout),
           ),
         );
@@ -121,6 +123,7 @@ void main() {
           const JobState.failed(
             jobId: 'job-3',
             providerId: 'gemini-image',
+            canvasId: 'cv-1',
             error: ProviderError(code: InkErrorCode.invalidKey),
           ),
         );

@@ -13,10 +13,10 @@ void main() {
 
   test('upsert 追加新 job，重复 jobId 原位更新', () {
     final notifier = container.read(jobsRegistryProvider.notifier);
-    notifier.upsert(const JobState.queued(jobId: 'a', providerId: 'p'));
-    notifier.upsert(const JobState.queued(jobId: 'b', providerId: 'p'));
+    notifier.upsert(const JobState.queued(jobId: 'a', providerId: 'p', canvasId: 'cv-1'));
+    notifier.upsert(const JobState.queued(jobId: 'b', providerId: 'p', canvasId: 'cv-1'));
     notifier.upsert(
-      const JobState.running(jobId: 'a', providerId: 'p', progress: 0.3),
+      const JobState.running(jobId: 'a', providerId: 'p', canvasId: 'cv-1', progress: 0.3),
     );
     final state = container.read(jobsRegistryProvider);
     expect(state.map((e) => e.jobId).toList(), ['a', 'b']);
@@ -25,7 +25,7 @@ void main() {
 
   test('remove 删除指定 jobId，不存在的 jobId 静默', () {
     final notifier = container.read(jobsRegistryProvider.notifier);
-    notifier.upsert(const JobState.queued(jobId: 'a', providerId: 'p'));
+    notifier.upsert(const JobState.queued(jobId: 'a', providerId: 'p', canvasId: 'cv-1'));
     notifier.remove('does-not-exist');
     expect(container.read(jobsRegistryProvider).length, 1);
     notifier.remove('a');
@@ -34,11 +34,12 @@ void main() {
 
   test('clearTerminated 清掉所有终态条目', () {
     final notifier = container.read(jobsRegistryProvider.notifier);
-    notifier.upsert(const JobState.running(jobId: 'a', providerId: 'p'));
+    notifier.upsert(const JobState.running(jobId: 'a', providerId: 'p', canvasId: 'cv-1'));
     notifier.upsert(
       const JobState.succeeded(
         jobId: 'b',
         providerId: 'p',
+        canvasId: 'cv-1',
         artifactPath: 'images/b.png',
       ),
     );
@@ -46,10 +47,11 @@ void main() {
       const JobState.failed(
         jobId: 'c',
         providerId: 'p',
+        canvasId: 'cv-1',
         error: UnknownError(cause: 'boom'),
       ),
     );
-    notifier.upsert(const JobState.cancelled(jobId: 'd', providerId: 'p'));
+    notifier.upsert(const JobState.cancelled(jobId: 'd', providerId: 'p', canvasId: 'cv-1'));
     notifier.clearTerminated();
     final state = container.read(jobsRegistryProvider);
     expect(state.length, 1);
