@@ -17,6 +17,8 @@
 // 本文件仅一次性生成（文生图）；imageToImage / video 未来扩展时加入
 // refImages / duration / camera 等字段 mapping 即可。
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/secure_storage_keys.dart';
@@ -25,6 +27,7 @@ import '../../core/di/job_queue.dart';
 import '../../core/di/providers.dart';
 import '../../core/di/repositories.dart';
 import '../../core/di/secure_storage.dart';
+import '../../core/errors/ink_error.dart';
 import '../../core/interfaces/edge_repository.dart';
 import '../../core/interfaces/job_queue_service.dart';
 import '../../core/interfaces/job_repository.dart';
@@ -36,6 +39,8 @@ import '../../core/models/provider_capabilities.dart';
 import '../../providers/gemini_image_provider.dart';
 import '../../providers/provider_registry.dart';
 import '../../services/file_resolver_service.dart';
+import 'models/job_state.dart';
+import 'providers/jobs_registry.dart';
 
 final generationControllerProvider = FutureProvider<GenerationController>(
   (ref) async {
@@ -46,6 +51,9 @@ final generationControllerProvider = FutureProvider<GenerationController>(
     final queue = await ref.watch(jobQueueServiceProvider.future);
     final registry = ref.watch(providerRegistryProvider);
     final resolver = ref.watch(fileResolverServiceProvider);
+    // jobsRegistryProvider 是 keepAlive：用 read 拿实例，controller 持有它，
+    // 后台 _track future 全程不再触碰 ref。
+    final jobsRegistry = ref.read(jobsRegistryProvider.notifier);
     return GenerationController(
       nodes: nodes,
       edges: edges,
@@ -54,6 +62,7 @@ final generationControllerProvider = FutureProvider<GenerationController>(
       queue: queue,
       registry: registry,
       resolver: resolver,
+      jobsRegistry: jobsRegistry,
     );
   },
   name: 'generationControllerProvider',
@@ -85,19 +94,6 @@ class ProviderNotRegisteredError extends GenerationError {
   String toString() => 'ProviderNotRegisteredError(provider=$providerId)';
 }
 
-/// 生成完成后返回的聚合句柄——UI 层按需读 resultNodeId / jobId。
-class GenerationOutcome {
-  const GenerationOutcome({
-    required this.jobId,
-    required this.resultNodeId,
-    required this.status,
-  });
-  final String jobId;
-  final String resultNodeId;
-  final JobStatus status;
-  bool get succeeded => status.isSuccess;
-}
-
 class GenerationController {
   GenerationController({
     required this.nodes,
@@ -107,6 +103,7 @@ class GenerationController {
     required this.queue,
     required this.registry,
     required this.resolver,
+    required this.jobsRegistry,
   });
 
   final NodeRepository nodes;
@@ -116,9 +113,11 @@ class GenerationController {
   final JobQueueService queue;
   final ProviderRegistry registry;
   final FileResolverService resolver;
+  final JobsRegistry jobsRegistry;
 
-  /// 从 config 节点发起一次文生图。阻塞到终态返回。
-  Future<GenerationOutcome> submitFromConfigNode(String configNodeId) async {
+  /// 从 config 节点发起一次生成。fire-and-forget：提交成功即返回 jobId，
+  /// 后台 [_track] 推进 JobsRegistry 状态机；终态结果由 registry listener 反映。
+  Future<String> submitFromConfigNode(String configNodeId) async {
     final cfgRow = await nodes.findById(configNodeId);
     if (cfgRow == null) {
       throw const InvalidGenerationConfigError('config node not found');
@@ -194,9 +193,8 @@ class GenerationController {
       sourceNodeId: configNodeId,
     );
 
-    String? jobId;
     try {
-      jobId = await jobs.create(
+      final jobId = await jobs.create(
         canvasId: canvasId,
         sourceNodeId: configNodeId,
         resultNodeId: resultNodeId,
@@ -236,22 +234,101 @@ class GenerationController {
       );
 
       final handle = await queue.submit(task);
-      final finalStatus = await handle.done;
-
-      if (!finalStatus.isSuccess) {
-        await nodes.softDelete(resultNodeId);
-      }
-
-      return GenerationOutcome(
-        jobId: jobId,
-        resultNodeId: resultNodeId,
-        status: finalStatus,
+      jobsRegistry.upsert(
+        JobState.queued(
+          jobId: jobId,
+          providerId: providerId,
+          canvasId: canvasId,
+        ),
       );
+      unawaited(_track(
+        handle,
+        canvasId: canvasId,
+        resultNodeId: resultNodeId,
+        providerId: providerId,
+      ));
+      return jobId;
     } catch (_) {
       // 预创建了 result 但下游挂了（jobs.create / queue.submit 等）——清孤儿。
       await nodes.softDelete(resultNodeId);
       rethrow;
     }
+  }
+
+  /// 后台跟踪一个已提交 job 的状态流 + 终态，推进 JobsRegistry。
+  ///
+  /// 不在 submitFromConfigNode 中 await——fire-and-forget。失败/取消时清理孤儿 result。
+  Future<void> _track(
+    JobHandle handle, {
+    required String canvasId,
+    required String resultNodeId,
+    required String providerId,
+  }) async {
+    final sub = handle.status.listen((s) {
+      if (s is JobInProgress) {
+        jobsRegistry.upsert(
+          JobState.running(
+            jobId: handle.jobId,
+            providerId: providerId,
+            canvasId: canvasId,
+            progress: s.progress,
+          ),
+        );
+      }
+    });
+    try {
+      final status = await handle.done;
+      if (status is JobSuccess) {
+        final path = await _readArtifactPath(resultNodeId);
+        jobsRegistry.upsert(
+          JobState.succeeded(
+            jobId: handle.jobId,
+            providerId: providerId,
+            canvasId: canvasId,
+            artifactPath: path,
+          ),
+        );
+      } else if (status is JobFailure) {
+        await nodes.softDelete(resultNodeId);
+        if (status.error is CancelledError) {
+          jobsRegistry.upsert(
+            JobState.cancelled(
+              jobId: handle.jobId,
+              providerId: providerId,
+              canvasId: canvasId,
+            ),
+          );
+        } else {
+          jobsRegistry.upsert(
+            JobState.failed(
+              jobId: handle.jobId,
+              providerId: providerId,
+              canvasId: canvasId,
+              error: status.error,
+            ),
+          );
+        }
+      }
+    } catch (e, st) {
+      await nodes.softDelete(resultNodeId);
+      jobsRegistry.upsert(
+        JobState.failed(
+          jobId: handle.jobId,
+          providerId: providerId,
+          canvasId: canvasId,
+          error: UnknownError(cause: e, stackTrace: st),
+        ),
+      );
+    } finally {
+      await sub.cancel();
+    }
+  }
+
+  /// 读 result 节点落盘后的相对路径（image_url / video_url）。
+  Future<String> _readArtifactPath(String resultNodeId) async {
+    final row = await nodes.findById(resultNodeId);
+    final tc = _readTypeConfig(row?['type_config']);
+    return (tc['image_url'] ?? tc['video_url'] ?? '').toString();
   }
 
   /// 读入 configNode 的所有 data 入连线，把源节点的 image_url 解析为绝对路径。
@@ -363,11 +440,4 @@ class _RefImages {
   final List<String> refImagePaths;
   final String? firstFramePath;
   final String? lastFramePath;
-}
-
-extension on JobStatus {
-  bool get isSuccess => maybeMap(
-        success: (_) => true,
-        orElse: () => false,
-      );
 }

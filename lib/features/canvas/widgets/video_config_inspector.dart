@@ -15,7 +15,6 @@ import '../../../core/constants/secure_storage_keys.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/di/secure_storage.dart';
-import '../../../core/models/job_status.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../features/generation/generation_controller.dart';
 import '../../../l10n/l10n_x.dart';
@@ -23,7 +22,6 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
-import '../providers/canvas_nodes_controller.dart';
 import 'inspector_status_panel.dart';
 
 class VideoConfigInspector extends ConsumerStatefulWidget {
@@ -140,21 +138,11 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
       if (!mounted) return;
       setState(() => _view = const InspectorJobRunning());
       final controller = await ref.read(generationControllerProvider.future);
-      final outcome = await controller.submitFromConfigNode(widget.node.id);
+      await controller.submitFromConfigNode(widget.node.id);
       if (!mounted) return;
-      if (outcome.succeeded) {
-        setState(() => _view = const InspectorJobIdle());
-        final canvasId = widget.node.canvasId;
-        if (canvasId != null) {
-          ref.invalidate(canvasNodesControllerProvider(canvasId));
-        }
-      } else {
-        final code = outcome.status.maybeMap(
-          failure: (f) => f.error.code.name,
-          orElse: () => 'unknown',
-        );
-        setState(() => _view = InspectorJobError(code: code));
-      }
+      // fire-and-forget：提交成功即收起；进度看画布渲染队列面板，
+      // 终态结果/失败由 CanvasScreen 的 registry listener 反映（刷新画布 / toast）。
+      setState(() => _view = const InspectorJobIdle());
     } on MissingApiKeyError {
       if (mounted) {
         setState(() => _view = const InspectorJobError(code: 'missingApiKey'));

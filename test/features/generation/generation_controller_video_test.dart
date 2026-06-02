@@ -17,6 +17,8 @@ import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
+import 'package:inkframe/features/generation/models/job_state.dart';
+import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 import 'package:inkframe/services/file_resolver_service.dart';
 
@@ -152,15 +154,17 @@ class _FakeSecure implements SecureStorageService {
   Future<bool> exists(String k) async => _data.containsKey(k);
 }
 
-class _FakeJobHandle implements JobHandle {
-  _FakeJobHandle(this.jobId, this._status);
+class _FakeHandle implements JobHandle {
+  _FakeHandle(this._jobId, this._statuses, this._done);
+  final String _jobId;
+  final List<JobStatus> _statuses;
+  final JobStatus _done;
   @override
-  final String jobId;
-  final JobStatus _status;
+  String get jobId => _jobId;
   @override
-  Stream<JobStatus> get status => Stream.value(_status);
+  Stream<JobStatus> get status => Stream<JobStatus>.fromIterable(_statuses);
   @override
-  Future<JobStatus> get done async => _status;
+  Future<JobStatus> get done => Future<JobStatus>.microtask(() => _done);
 }
 
 class _FakeJobQueue implements JobQueueService {
@@ -171,12 +175,24 @@ class _FakeJobQueue implements JobQueueService {
   @override
   Future<JobHandle> submit(GenerationTask task) async {
     lastTask = task;
-    return _FakeJobHandle(task.jobId, finalStatus);
+    return _FakeHandle(
+      task.jobId,
+      const [JobStatus.inProgress(progress: 0.4)],
+      finalStatus,
+    );
   }
   @override
   Future<void> cancel(String jobId) async {}
   @override
   void dispose() {}
+}
+
+class _RecordingRegistry extends JobsRegistry {
+  final List<JobState> events = [];
+  @override
+  void upsert(JobState job) {
+    events.add(job);
+  }
 }
 
 class _FakeEdgeRepo implements EdgeRepository {
@@ -241,6 +257,7 @@ void main() {
   late _FakeJobQueue queue;
   late ProviderRegistry registry;
   late _FakeResolver resolver;
+  late _RecordingRegistry jobsRegistry;
 
   GenerationController buildCtrl() => GenerationController(
         nodes: nodes,
@@ -250,6 +267,7 @@ void main() {
         queue: queue,
         registry: registry,
         resolver: resolver,
+        jobsRegistry: jobsRegistry,
       );
 
   setUp(() {
@@ -262,6 +280,7 @@ void main() {
     registry = ProviderRegistry({
       providerId: () => throw UnimplementedError('not called in tests'),
     });
+    jobsRegistry = _RecordingRegistry();
   });
 
   Future<String> seedVideoConfigNode({
@@ -324,9 +343,8 @@ void main() {
       'sk-test',
     );
 
-    final outcome = await buildCtrl().submitFromConfigNode(cfg);
+    await buildCtrl().submitFromConfigNode(cfg);
 
-    expect(outcome.succeeded, isTrue);
     // 预创建 result 节点 type 必须是 video
     expect(nodes.creates, hasLength(1));
     expect(nodes.creates.first['type'], 'video');
@@ -352,9 +370,8 @@ void main() {
     seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
     seedDataEdge(sourceId: 'img1', targetId: cfg);
 
-    final outcome = await buildCtrl().submitFromConfigNode(cfg);
+    await buildCtrl().submitFromConfigNode(cfg);
 
-    expect(outcome.succeeded, isTrue);
     final task = queue.lastTask!;
     expect(task.mode, GenerationMode.imageToVideo);
     expect(task.refImagePaths, hasLength(1));
@@ -372,9 +389,8 @@ void main() {
     seedRefImageNode(id: 'ff', imageUrl: 'images/first.png');
     seedDataEdge(sourceId: 'ff', targetId: cfg, role: 'first_frame');
 
-    final outcome = await buildCtrl().submitFromConfigNode(cfg);
+    await buildCtrl().submitFromConfigNode(cfg);
 
-    expect(outcome.succeeded, isTrue);
     final task = queue.lastTask!;
     expect(task.mode, GenerationMode.imageToVideo);
     expect(task.firstFramePath, contains('images/first.png'));
