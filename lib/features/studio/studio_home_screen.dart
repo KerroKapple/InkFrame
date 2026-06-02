@@ -17,9 +17,11 @@ import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
 import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
+import 'open_canvas.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
 import 'widgets/studio_top_chrome.dart';
+import '../generation/services/toast_service.dart';
 
 class StudioHomeScreen extends ConsumerWidget {
   const StudioHomeScreen({super.key});
@@ -392,13 +394,13 @@ class _NewProjectDialogState extends State<_NewProjectDialog> {
   }
 }
 
-class _ProjectGrid extends StatelessWidget {
+class _ProjectGrid extends ConsumerWidget {
   const _ProjectGrid({required this.projects});
 
   final List<ProjectWithCanvases> projects;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final cols = constraints.maxWidth >= 1280 ? 4 : 3;
@@ -416,8 +418,30 @@ class _ProjectGrid extends StatelessWidget {
             return StudioProjectCard(
               name: p.name,
               metaLine: 'EP 01 · 2026.05 · ${_box()} ${p.canvases.length}',
-              onTap: () {
-                // Task 11/13 接 open canvas
+              onTap: () async {
+                final defaultName = context.l10n.canvasDefaultName;
+                final failedMsg = context.l10n.studioOpenCanvasFailed;
+                try {
+                  await openProjectCanvas(
+                    ref.read,
+                    p,
+                    createCanvas: (projectId) async {
+                      final repo =
+                          await ref.read(canvasRepositoryProvider.future);
+                      return repo.create(
+                        projectId: projectId,
+                        name: defaultName,
+                      );
+                    },
+                  );
+                } catch (_) {
+                  if (context.mounted) {
+                    ref.read(toastServiceProvider).show(
+                          failedMsg,
+                          kind: ToastKind.error,
+                        );
+                  }
+                }
               },
             );
           },
