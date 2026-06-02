@@ -617,13 +617,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasInspectorMockId => 'cam_0021';
 
   @override
-  String get canvasRenderQueueJobWatch => 'Watch Closeup';
-
-  @override
-  String get canvasRenderQueueJobHarbor => 'Harbor Docks';
-
-  @override
-  String get canvasRenderQueueJobNocturne => 'Nocturne Teaser';
+  String get canvasRenderQueueEmpty => 'No active renders';
 
   @override
   String get canvasRenderQueueStatusQueued => 'Queued';

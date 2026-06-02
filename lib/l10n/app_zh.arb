@@ -251,9 +251,7 @@
   "canvasInspectorKindCamera": "镜头节点",
   "canvasInspectorMockTitle": "宽景镜头",
   "canvasInspectorMockId": "cam_0021",
-  "canvasRenderQueueJobWatch": "怀表特写",
-  "canvasRenderQueueJobHarbor": "港口码头",
-  "canvasRenderQueueJobNocturne": "夜曲预告",
+  "canvasRenderQueueEmpty": "暂无渲染任务",
   "canvasRenderQueueStatusQueued": "排队中",
 
   "windowMinimize": "最小化",

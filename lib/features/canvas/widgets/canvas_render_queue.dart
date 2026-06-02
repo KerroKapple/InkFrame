@@ -1,20 +1,32 @@
-// CanvasRenderQueue：Inspector 下方折叠面板 — 标题 + N 条进度行（mock 数据）。
-//
-// 本轮为视觉占位，Task 13 起接 jobQueueService 真数据。
+// CanvasRenderQueue：Inspector 下方折叠面板 — 标题 + 当前画布活跃任务进度行。
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/models/job_state.dart';
+import '../../generation/providers/jobs_registry.dart';
+import '../providers/current_canvas_id.dart';
 
-class CanvasRenderQueue extends StatelessWidget {
+class CanvasRenderQueue extends ConsumerWidget {
   const CanvasRenderQueue({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final l = context.l10n;
+
+    final canvasId = ref.watch(currentCanvasIdProvider);
+    final jobs = canvasId == null
+        ? const <JobState>[]
+        : ref
+            .watch(jobsRegistryProvider)
+            .where((s) => s.canvasId == canvasId && !s.isTerminal)
+            .toList();
+    final running = jobs.whereType<JobRunning>().length;
+
     return Container(
       decoration: BoxDecoration(
         color: colors.surface1,
@@ -46,7 +58,7 @@ class CanvasRenderQueue extends StatelessWidget {
                 ),
               ),
               Text(
-                '3 · 2 ▾',
+                '$running · ${jobs.length} ▾',
                 style: typo.caption.copyWith(
                   fontFamily: 'JetBrainsMono',
                   color: colors.fg3,
@@ -55,11 +67,20 @@ class CanvasRenderQueue extends StatelessWidget {
             ],
           ),
           const SizedBox(height: InkSpacing.sm + 2),
-          _JobRow(name: l.canvasRenderQueueJobWatch, percent: 0.45, running: true),
-          const SizedBox(height: InkSpacing.sm),
-          _JobRow(name: l.canvasRenderQueueJobHarbor, percent: 0.18, running: true),
-          const SizedBox(height: InkSpacing.sm),
-          _JobRow(name: l.canvasRenderQueueJobNocturne, percent: 0, running: false),
+          if (jobs.isEmpty)
+            Text(
+              l.canvasRenderQueueEmpty,
+              style: typo.caption.copyWith(color: colors.fg4),
+            )
+          else
+            for (final job in jobs) ...<Widget>[
+              _JobRow(
+                name: job.jobId,
+                percent: job.progressValue,
+                running: job is JobRunning,
+              ),
+              const SizedBox(height: InkSpacing.sm),
+            ],
         ],
       ),
     );
