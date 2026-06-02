@@ -43,7 +43,7 @@ final generationControllerProvider = FutureProvider<GenerationController>(
     final edges = await ref.watch(edgeRepositoryProvider.future);
     final jobs = await ref.watch(jobRepositoryProvider.future);
     final secure = ref.watch(secureStorageServiceProvider);
-    final queue = ref.watch(jobQueueServiceProvider);
+    final queue = await ref.watch(jobQueueServiceProvider.future);
     final registry = ref.watch(providerRegistryProvider);
     final resolver = ref.watch(fileResolverServiceProvider);
     return GenerationController(
