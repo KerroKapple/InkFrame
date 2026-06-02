@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
-# pre-push: 跑全量测试。失败阻断 push。
+# pre-push: 先全量静态分析（catch 编译错误 / stale 生成物），再跑全量测试。失败阻断 push。
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
+
+# flutter test 只编译被测试触达的文件——未被任何测试 import 的破文件（含 stale l10n
+# 生成物引发的 undefined getter）会溜过。analyze 全量扫，堵住这道闸。
+echo "[pre-push] flutter analyze"
+flutter analyze lib test
 
 echo "[pre-push] flutter test"
 flutter test
