@@ -45,4 +45,8 @@ class JobsRegistry extends Notifier<List<JobState>> {
     if (remaining.length == state.length) return;
     state = List<JobState>.unmodifiable(remaining);
   }
+
+  /// 某画布的活跃任务（非终态），按插入序——CanvasRenderQueue 消费。
+  List<JobState> forCanvas(String canvasId) =>
+      state.where((e) => e.canvasId == canvasId && !e.isTerminal).toList();
 }

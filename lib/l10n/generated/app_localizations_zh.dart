@@ -597,13 +597,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasInspectorMockId => 'cam_0021';
 
   @override
-  String get canvasRenderQueueJobWatch => '怀表特写';
-
-  @override
-  String get canvasRenderQueueJobHarbor => '港口码头';
-
-  @override
-  String get canvasRenderQueueJobNocturne => '夜曲预告';
+  String get canvasRenderQueueEmpty => '暂无渲染任务';
 
   @override
   String get canvasRenderQueueStatusQueued => '排队中';

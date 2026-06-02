@@ -237,6 +237,8 @@
   "studioNewProjectErrorDuplicate": "A project with this name already exists",
   "studioNewProjectFailed": "Failed to create project",
   "studioCreate": "Create",
+  "canvasDefaultName": "Untitled Canvas",
+  "studioOpenCanvasFailed": "Couldn't open canvas",
 
   "canvasInspectorTransform": "Transform",
   "canvasInspectorCamera": "Camera",
@@ -270,9 +272,7 @@
   "canvasInspectorKindCamera": "Camera Node",
   "canvasInspectorMockTitle": "Wide Shot",
   "canvasInspectorMockId": "cam_0021",
-  "canvasRenderQueueJobWatch": "Watch Closeup",
-  "canvasRenderQueueJobHarbor": "Harbor Docks",
-  "canvasRenderQueueJobNocturne": "Nocturne Teaser",
+  "canvasRenderQueueEmpty": "No active renders",
   "canvasRenderQueueStatusQueued": "Queued",
 
   "windowMinimize": "Minimize",

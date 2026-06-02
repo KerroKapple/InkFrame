@@ -1238,23 +1238,11 @@ abstract class AppLocalizations {
   /// **'cam_0021'**
   String get canvasInspectorMockId;
 
-  /// No description provided for @canvasRenderQueueJobWatch.
+  /// No description provided for @canvasRenderQueueEmpty.
   ///
   /// In en, this message translates to:
-  /// **'Watch Closeup'**
-  String get canvasRenderQueueJobWatch;
-
-  /// No description provided for @canvasRenderQueueJobHarbor.
-  ///
-  /// In en, this message translates to:
-  /// **'Harbor Docks'**
-  String get canvasRenderQueueJobHarbor;
-
-  /// No description provided for @canvasRenderQueueJobNocturne.
-  ///
-  /// In en, this message translates to:
-  /// **'Nocturne Teaser'**
-  String get canvasRenderQueueJobNocturne;
+  /// **'No active renders'**
+  String get canvasRenderQueueEmpty;
 
   /// No description provided for @canvasRenderQueueStatusQueued.
   ///

@@ -27,18 +27,21 @@ sealed class JobState with _$JobState {
   const factory JobState.queued({
     required String jobId,
     required String providerId,
+    required String canvasId,
   }) = JobQueued;
 
   /// 已取到 slot，正在调 Provider.submit——pending → submitted。
   const factory JobState.submitting({
     required String jobId,
     required String providerId,
+    required String canvasId,
   }) = JobSubmitting;
 
   /// 轮询中，progress ∈ [0,1]——polling 状态。Provider 不提供进度时 progress=0。
   const factory JobState.running({
     required String jobId,
     required String providerId,
+    required String canvasId,
     @Default(0.0) double progress,
   }) = JobRunning;
 
@@ -46,6 +49,7 @@ sealed class JobState with _$JobState {
   const factory JobState.succeeded({
     required String jobId,
     required String providerId,
+    required String canvasId,
     required String artifactPath,
   }) = JobSucceeded;
 
@@ -53,6 +57,7 @@ sealed class JobState with _$JobState {
   const factory JobState.failed({
     required String jobId,
     required String providerId,
+    required String canvasId,
     required InkError error,
   }) = JobFailed;
 
@@ -60,10 +65,20 @@ sealed class JobState with _$JobState {
   const factory JobState.cancelled({
     required String jobId,
     required String providerId,
+    required String canvasId,
   }) = JobCancelled;
 }
 
 extension JobStateX on JobState {
+  String get canvasId => switch (this) {
+        JobQueued(:final canvasId) => canvasId,
+        JobSubmitting(:final canvasId) => canvasId,
+        JobRunning(:final canvasId) => canvasId,
+        JobSucceeded(:final canvasId) => canvasId,
+        JobFailed(:final canvasId) => canvasId,
+        JobCancelled(:final canvasId) => canvasId,
+      };
+
   String get jobId => switch (this) {
         JobQueued(:final jobId) => jobId,
         JobSubmitting(:final jobId) => jobId,

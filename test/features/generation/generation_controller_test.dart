@@ -23,6 +23,8 @@ import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
+import 'package:inkframe/features/generation/models/job_state.dart';
+import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 import 'package:inkframe/services/file_resolver_service.dart';
 
@@ -163,15 +165,19 @@ class _FakeSecure implements SecureStorageService {
   Future<bool> exists(String k) async => _data.containsKey(k);
 }
 
-class _FakeJobHandle implements JobHandle {
-  _FakeJobHandle(this.jobId, this._status);
+class _FakeHandle implements JobHandle {
+  _FakeHandle(this._jobId, this._statuses, this._done);
+  final String _jobId;
+  final List<JobStatus> _statuses;
+  final JobStatus _done;
   @override
-  final String jobId;
-  final JobStatus _status;
+  String get jobId => _jobId;
   @override
-  Stream<JobStatus> get status => Stream.value(_status);
+  Stream<JobStatus> get status => Stream<JobStatus>.fromIterable(_statuses);
+  // done 延后一个 microtask 完成，保证 status 流先 emit，再到终态——
+  // 避免 fire-and-forget 下 JobRunning 事件因竞态丢失。
   @override
-  Future<JobStatus> get done async => _status;
+  Future<JobStatus> get done => Future<JobStatus>.microtask(() => _done);
 }
 
 class _FakeJobQueue implements JobQueueService {
@@ -183,12 +189,28 @@ class _FakeJobQueue implements JobQueueService {
   @override
   Future<JobHandle> submit(GenerationTask task) async {
     lastTask = task;
-    return _FakeJobHandle(task.jobId, finalStatus);
+    return _FakeHandle(
+      task.jobId,
+      const [JobStatus.inProgress(progress: 0.4)],
+      finalStatus,
+    );
   }
   @override
   Future<void> cancel(String jobId) async {}
   @override
   void dispose() {}
+}
+
+/// 记录所有 upsert 事件的 JobsRegistry——单测断言状态机推进序列。
+///
+/// Notifier 未挂到 ProviderContainer 时 `super.upsert` 会因 state 未初始化抛错，
+/// 故仅记录 events，不调 super。
+class _RecordingRegistry extends JobsRegistry {
+  final List<JobState> events = [];
+  @override
+  void upsert(JobState job) {
+    events.add(job);
+  }
 }
 
 class _FakeEdgeRepo implements EdgeRepository {
@@ -266,6 +288,7 @@ void main() {
   late _FakeJobQueue queue;
   late ProviderRegistry registry;
   late _FakeResolver resolver;
+  late _RecordingRegistry jobsRegistry;
 
   GenerationController buildCtrl() => GenerationController(
         nodes: nodes,
@@ -275,6 +298,7 @@ void main() {
         queue: queue,
         registry: registry,
         resolver: resolver,
+        jobsRegistry: jobsRegistry,
       );
 
   setUp(() {
@@ -287,6 +311,7 @@ void main() {
     registry = ProviderRegistry({
       providerId: () => throw UnimplementedError('not called in tests'),
     });
+    jobsRegistry = _RecordingRegistry();
   });
 
   Future<String> seedConfigNode({
@@ -339,22 +364,35 @@ void main() {
     });
   }
 
-  test('成功路径：预创建 result + jobs.create + submit + 等 done', () async {
+  test('成功路径（fire-and-forget）：立即返回 jobId，后台推进 queued→running→succeeded',
+      () async {
     final cfg = await seedConfigNode();
     await secure.store(
       SecureStorageKeys.providerApiKey(providerId),
       'sk-test',
     );
 
-    final outcome = await buildCtrl().submitFromConfigNode(cfg);
+    final jobId = await buildCtrl().submitFromConfigNode(cfg);
 
-    expect(outcome.succeeded, isTrue);
+    // 同步契约：提交即返回非空 jobId + result 节点已预创建。
+    expect(jobId, isNotEmpty);
     expect(nodes.creates, hasLength(1));
     expect(nodes.creates.first['node_role'], 'result');
     expect(nodes.creates.first['source_node_id'], cfg);
     expect(jobs.creates, hasLength(1));
-    expect(jobs.creates.first['result_node_id'], outcome.resultNodeId);
+    expect(
+      jobs.creates.first['result_node_id'],
+      nodes.creates.first['id'],
+    );
     expect(queue.lastTask?.prompt, 'a cat');
+
+    // 排空后台 _track future。
+    await pumpEventQueue();
+
+    final types = jobsRegistry.events.map((e) => e.runtimeType).toList();
+    expect(types.first, JobQueued);
+    expect(types, contains(JobRunning));
+    expect(types.last, JobSucceeded);
     expect(nodes.softDeleted, isEmpty);
   });
 
@@ -411,7 +449,7 @@ void main() {
     expect(nodes.creates, isEmpty);
   });
 
-  test('Provider 失败（JobHandle.done = failure）→ result 节点 softDelete',
+  test('Provider 失败（done = failure）→ 末态 JobFailed + result 节点 softDelete',
       () async {
     final cfg = await seedConfigNode();
     await secure.store(
@@ -422,9 +460,29 @@ void main() {
       error: ProviderError(code: InkErrorCode.providerServer),
     );
 
-    final outcome = await buildCtrl().submitFromConfigNode(cfg);
-    expect(outcome.succeeded, isFalse);
-    expect(nodes.softDeleted, contains(outcome.resultNodeId));
+    await buildCtrl().submitFromConfigNode(cfg);
+    await pumpEventQueue();
+
+    expect(jobsRegistry.events.last, isA<JobFailed>());
+    expect(nodes.softDeleted, contains(nodes.creates.first['id']));
+  });
+
+  test('取消（done = failure，error 为 CancelledError）→ 末态 JobCancelled + softDelete',
+      () async {
+    final cfg = await seedConfigNode();
+    await secure.store(
+      SecureStorageKeys.providerApiKey(providerId),
+      'sk',
+    );
+    queue.finalStatus = const JobStatus.failure(
+      error: CancelledError.byUser(),
+    );
+
+    await buildCtrl().submitFromConfigNode(cfg);
+    await pumpEventQueue();
+
+    expect(jobsRegistry.events.last, isA<JobCancelled>());
+    expect(nodes.softDeleted, contains(nodes.creates.first['id']));
   });
 
   test('jobs.create 抛错 → 预创建的 result 被清 + rethrow', () async {
@@ -455,8 +513,7 @@ void main() {
       seedDataEdge(sourceId: 'img1', targetId: cfg);
       seedDataEdge(sourceId: 'img2', targetId: cfg);
 
-      final outcome = await buildCtrl().submitFromConfigNode(cfg);
-      expect(outcome.succeeded, isTrue);
+      await buildCtrl().submitFromConfigNode(cfg);
       final task = queue.lastTask!;
       expect(task.mode, GenerationMode.imageToImage);
       expect(task.refImagePaths, hasLength(2));
@@ -476,8 +533,7 @@ void main() {
       seedDataEdge(sourceId: 'lf', targetId: cfg, role: 'last_frame');
       seedDataEdge(sourceId: 'r1', targetId: cfg);
 
-      final outcome = await buildCtrl().submitFromConfigNode(cfg);
-      expect(outcome.succeeded, isTrue);
+      await buildCtrl().submitFromConfigNode(cfg);
       final task = queue.lastTask!;
       expect(task.firstFramePath, contains('images/first.png'));
       expect(task.lastFramePath, contains('images/last.png'));
@@ -498,8 +554,7 @@ void main() {
       seedDataEdge(sourceId: 'img2', targetId: cfg);
       seedDataEdge(sourceId: 'img3-missing', targetId: cfg);
 
-      final outcome = await buildCtrl().submitFromConfigNode(cfg);
-      expect(outcome.succeeded, isTrue);
+      await buildCtrl().submitFromConfigNode(cfg);
       final task = queue.lastTask!;
       expect(task.refImagePaths, hasLength(1));
     });
@@ -513,11 +568,10 @@ void main() {
       seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
       seedDataEdge(sourceId: 'img1', targetId: cfg);
 
-      final outcome = await buildCtrl().submitFromConfigNode(cfg);
+      await buildCtrl().submitFromConfigNode(cfg);
       final task = queue.lastTask!;
       expect(task.refImagePaths, isEmpty);
       expect(task.mode, GenerationMode.textToImage);
-      expect(outcome.succeeded, isTrue);
     });
 
     test('narrative / generation_source edge 不参与 refImages', () async {
@@ -537,10 +591,9 @@ void main() {
         'role': 'reference',
       });
 
-      final outcome = await buildCtrl().submitFromConfigNode(cfg);
+      await buildCtrl().submitFromConfigNode(cfg);
       expect(queue.lastTask!.refImagePaths, isEmpty);
       expect(queue.lastTask!.mode, GenerationMode.textToImage);
-      expect(outcome.succeeded, isTrue);
     });
   });
 }
