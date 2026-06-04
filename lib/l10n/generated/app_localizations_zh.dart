@@ -448,24 +448,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get lightboxPlayPause => '播放 / 暂停';
 
   @override
-  String get lockTagline => '为分镜师而生的工作台';
-
-  @override
-  String get lockKeyPlaceholder => '粘贴 Provider Key...';
-
-  @override
-  String get lockKeyHelpLine1 => '从你的 Provider 后台获取 API Key。';
-
-  @override
-  String get lockKeyHelpLine2 => '我们不会把 Key 存到服务器。';
-
-  @override
-  String get lockUnlock => '解锁';
-
-  @override
-  String get lockKeyInvalid => 'Key 无效或网络错误，请重试。';
-
-  @override
   String get studioRecentProjects => '最近项目';
 
   @override
