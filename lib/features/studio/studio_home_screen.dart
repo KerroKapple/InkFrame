@@ -20,6 +20,7 @@ import 'models/project_with_canvases.dart';
 import 'open_canvas.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
+import 'widgets/studio_provider_banner.dart';
 import 'widgets/studio_top_chrome.dart';
 import '../generation/services/toast_service.dart';
 
@@ -41,6 +42,7 @@ class StudioHomeScreen extends ConsumerWidget {
                 ref.read(currentScreenProvider.notifier).state =
                     AppScreen.settings,
           ),
+          const StudioProviderBanner(),
           const Expanded(
             child: Row(
               children: <Widget>[

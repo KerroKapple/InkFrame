@@ -463,25 +463,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get lightboxPlayPause => 'Play / Pause';
 
   @override
-  String get lockTagline => 'A DESK FOR STORYBOARDERS';
-
-  @override
-  String get lockKeyPlaceholder => 'Paste provider key...';
-
-  @override
-  String get lockKeyHelpLine1 =>
-      'Get your API key from your provider dashboard.';
-
-  @override
-  String get lockKeyHelpLine2 => 'We never store your key on our servers.';
-
-  @override
-  String get lockUnlock => 'Unlock';
-
-  @override
-  String get lockKeyInvalid => 'Key invalid or network error. Try again.';
-
-  @override
   String get studioRecentProjects => 'Recent Projects';
 
   @override
@@ -546,6 +527,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get studioOpenCanvasFailed => 'Couldn\'t open canvas';
+
+  @override
+  String get studioNoKeyBannerText =>
+      'No provider API key configured — generation needs one.';
+
+  @override
+  String get studioNoKeyBannerAction => 'Configure in Settings';
 
   @override
   String get canvasInspectorTransform => 'Transform';

@@ -944,42 +944,6 @@ abstract class AppLocalizations {
   /// **'Play / Pause'**
   String get lightboxPlayPause;
 
-  /// No description provided for @lockTagline.
-  ///
-  /// In en, this message translates to:
-  /// **'A DESK FOR STORYBOARDERS'**
-  String get lockTagline;
-
-  /// No description provided for @lockKeyPlaceholder.
-  ///
-  /// In en, this message translates to:
-  /// **'Paste provider key...'**
-  String get lockKeyPlaceholder;
-
-  /// No description provided for @lockKeyHelpLine1.
-  ///
-  /// In en, this message translates to:
-  /// **'Get your API key from your provider dashboard.'**
-  String get lockKeyHelpLine1;
-
-  /// No description provided for @lockKeyHelpLine2.
-  ///
-  /// In en, this message translates to:
-  /// **'We never store your key on our servers.'**
-  String get lockKeyHelpLine2;
-
-  /// No description provided for @lockUnlock.
-  ///
-  /// In en, this message translates to:
-  /// **'Unlock'**
-  String get lockUnlock;
-
-  /// No description provided for @lockKeyInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'Key invalid or network error. Try again.'**
-  String get lockKeyInvalid;
-
   /// No description provided for @studioRecentProjects.
   ///
   /// In en, this message translates to:
@@ -1105,6 +1069,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t open canvas'**
   String get studioOpenCanvasFailed;
+
+  /// No description provided for @studioNoKeyBannerText.
+  ///
+  /// In en, this message translates to:
+  /// **'No provider API key configured — generation needs one.'**
+  String get studioNoKeyBannerText;
+
+  /// No description provided for @studioNoKeyBannerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure in Settings'**
+  String get studioNoKeyBannerAction;
 
   /// No description provided for @canvasInspectorTransform.
   ///

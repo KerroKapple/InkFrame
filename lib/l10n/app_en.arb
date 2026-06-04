@@ -211,12 +211,6 @@
     "description": "Video lightbox play/pause tooltip"
   },
 
-  "lockTagline": "A DESK FOR STORYBOARDERS",
-  "lockKeyPlaceholder": "Paste provider key...",
-  "lockKeyHelpLine1": "Get your API key from your provider dashboard.",
-  "lockKeyHelpLine2": "We never store your key on our servers.",
-  "lockUnlock": "Unlock",
-  "lockKeyInvalid": "Key invalid or network error. Try again.",
 
   "studioRecentProjects": "Recent Projects",
   "studioNewProject": "New Project",
@@ -239,6 +233,8 @@
   "studioCreate": "Create",
   "canvasDefaultName": "Untitled Canvas",
   "studioOpenCanvasFailed": "Couldn't open canvas",
+  "studioNoKeyBannerText": "No provider API key configured — generation needs one.",
+  "studioNoKeyBannerAction": "Configure in Settings",
 
   "canvasInspectorTransform": "Transform",
   "canvasInspectorCamera": "Camera",

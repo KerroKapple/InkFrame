@@ -23,7 +23,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
-          apiKeyUnlockedProvider.overrideWith((_) async => true),
+          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
         ],
         child: const InkFrameApp(),
       ),
@@ -32,26 +32,5 @@ void main() {
     await tester.pump();
     // 解锁态首屏为 StudioHomeScreen，顶部 chrome 中显示 LIBRARY section
     expect(find.text('LIBRARY'), findsOneWidget);
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  testWidgets('InkFrameApp shows LockScreen when not unlocked',
-      (tester) async {
-    final Directory tmp = Directory.systemTemp.createTempSync('ink_lock_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final AppPaths paths = DefaultAppPaths.forRoot(tmp);
-    await tester.runAsync(() => paths.ensureInitialized());
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          appPathsProvider.overrideWithValue(paths),
-          apiKeyUnlockedProvider.overrideWith((_) async => false),
-        ],
-        child: const InkFrameApp(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-    expect(find.text('Unlock'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

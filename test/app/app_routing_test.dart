@@ -32,7 +32,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
-          apiKeyUnlockedProvider.overrideWith((_) async => true),
+          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.studio),
           currentCanvasIdProvider.overrideWith((_) => null),
         ],
@@ -55,7 +55,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
-          apiKeyUnlockedProvider.overrideWith((_) async => true),
+          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.settings),
           currentCanvasIdProvider.overrideWith((_) => null),
         ],

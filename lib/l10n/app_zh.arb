@@ -195,12 +195,6 @@
   "lightboxClose": "关闭",
   "lightboxPlayPause": "播放 / 暂停",
 
-  "lockTagline": "为分镜师而生的工作台",
-  "lockKeyPlaceholder": "粘贴 Provider Key...",
-  "lockKeyHelpLine1": "从你的 Provider 后台获取 API Key。",
-  "lockKeyHelpLine2": "我们不会把 Key 存到服务器。",
-  "lockUnlock": "解锁",
-  "lockKeyInvalid": "Key 无效或网络错误，请重试。",
 
   "studioRecentProjects": "最近项目",
   "studioNewProject": "新建项目",
@@ -256,6 +250,8 @@
 
   "canvasDefaultName": "未命名画布",
   "studioOpenCanvasFailed": "打开画布失败",
+  "studioNoKeyBannerText": "尚未配置任何 provider API key — 生成需要先配置。",
+  "studioNoKeyBannerAction": "去 Settings 配置",
 
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",

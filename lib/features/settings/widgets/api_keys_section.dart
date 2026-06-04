@@ -102,6 +102,8 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
     final v = _ctrl.text.trim();
     if (v.isEmpty) return;
     await _secure.store(_key, v);
+    // key 集合变化 → 让 Studio 软 banner 重新评估是否已配置。
+    ref.invalidate(anyProviderKeyConfiguredProvider);
     if (!mounted) return;
     _ctrl.clear();
     setState(() => _isSet = true);
@@ -110,6 +112,7 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
 
   Future<void> _clear() async {
     await _secure.delete(_key);
+    ref.invalidate(anyProviderKeyConfiguredProvider);
     if (!mounted) return;
     setState(() => _isSet = false);
     _showToast(context.l10n.settingsApiKeyCleared);

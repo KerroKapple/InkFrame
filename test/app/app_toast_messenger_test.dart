@@ -27,7 +27,7 @@ void main() {
     final container = ProviderContainer(
       overrides: <Override>[
         appPathsProvider.overrideWithValue(paths),
-        apiKeyUnlockedProvider.overrideWith((_) async => true),
+        anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
         currentCanvasIdProvider.overrideWith((_) => null),
       ],
     );
