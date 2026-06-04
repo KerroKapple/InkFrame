@@ -12,18 +12,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/current_screen.dart';
 import 'core/di/locale.dart';
-import 'core/di/secure_storage.dart';
 import 'core/di/theme.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
 import 'features/generation/services/toast_service.dart';
-import 'features/lock/lock_screen.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/studio/studio_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
-import 'theme/components/ink_window_chrome.dart';
 
 class InkFrameApp extends ConsumerStatefulWidget {
   const InkFrameApp({super.key});
@@ -66,40 +63,8 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       scaffoldMessengerKey: messengerKey,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const _HomeScaffold(),
+      home: const _UnlockedShell(),
       debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-class _HomeScaffold extends ConsumerWidget {
-  const _HomeScaffold();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final unlockedAsync = ref.watch(apiKeyUnlockedProvider);
-    return unlockedAsync.when(
-      loading: () => const _LockSplash(),
-      error: (_, _) => const LockScreen(),
-      data: (unlocked) =>
-          unlocked ? const _UnlockedShell() : const LockScreen(),
-    );
-  }
-}
-
-class _LockSplash extends StatelessWidget {
-  const _LockSplash();
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: context.inkColors.surfaceCanvas,
-      body: const Column(
-        children: <Widget>[
-          InkWindowChrome(),
-          Expanded(child: Center(child: CircularProgressIndicator())),
-        ],
-      ),
     );
   }
 }

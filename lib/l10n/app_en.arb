@@ -239,6 +239,8 @@
   "studioCreate": "Create",
   "canvasDefaultName": "Untitled Canvas",
   "studioOpenCanvasFailed": "Couldn't open canvas",
+  "studioNoKeyBannerText": "No provider API key configured — generation needs one.",
+  "studioNoKeyBannerAction": "Configure in Settings",
 
   "canvasInspectorTransform": "Transform",
   "canvasInspectorCamera": "Camera",

@@ -27,17 +27,17 @@ class _FakeStorage implements SecureStorageService {
 }
 
 void main() {
-  test('apiKeyUnlockedProvider 无任何 key 返回 false', () async {
+  test('anyProviderKeyConfiguredProvider 无任何 key 返回 false', () async {
     final container = ProviderContainer(overrides: <Override>[
       secureStorageServiceProvider.overrideWithValue(_FakeStorage()),
     ]);
     addTearDown(container.dispose);
 
-    final unlocked = await container.read(apiKeyUnlockedProvider.future);
+    final unlocked = await container.read(anyProviderKeyConfiguredProvider.future);
     expect(unlocked, isFalse);
   });
 
-  test('apiKeyUnlockedProvider 任意 provider key 存在即解锁', () async {
+  test('anyProviderKeyConfiguredProvider 任意 provider key 存在即解锁', () async {
     final container = ProviderContainer(overrides: <Override>[
       secureStorageServiceProvider.overrideWithValue(_FakeStorage(
         present: <String>{SecureStorageKeys.providerApiKey('gemini-image')},
@@ -45,11 +45,11 @@ void main() {
     ]);
     addTearDown(container.dispose);
 
-    final unlocked = await container.read(apiKeyUnlockedProvider.future);
+    final unlocked = await container.read(anyProviderKeyConfiguredProvider.future);
     expect(unlocked, isTrue);
   });
 
-  test('apiKeyUnlockedProvider 吃掉 exists 抛错，继续看后续 provider', () async {
+  test('anyProviderKeyConfiguredProvider 吃掉 exists 抛错，继续看后续 provider', () async {
     final container = ProviderContainer(overrides: <Override>[
       secureStorageServiceProvider.overrideWithValue(_FakeStorage(
         throwOn: SecureStorageKeys.providerApiKey('gemini-image'),
@@ -58,7 +58,7 @@ void main() {
     ]);
     addTearDown(container.dispose);
 
-    final unlocked = await container.read(apiKeyUnlockedProvider.future);
+    final unlocked = await container.read(anyProviderKeyConfiguredProvider.future);
     expect(unlocked, isTrue);
   });
 }

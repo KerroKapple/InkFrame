@@ -529,6 +529,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioOpenCanvasFailed => '打开画布失败';
 
   @override
+  String get studioNoKeyBannerText => '尚未配置任何 provider API key — 生成需要先配置。';
+
+  @override
+  String get studioNoKeyBannerAction => '去 Settings 配置';
+
+  @override
   String get canvasInspectorTransform => '变换';
 
   @override

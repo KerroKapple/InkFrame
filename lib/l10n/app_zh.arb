@@ -256,6 +256,8 @@
 
   "canvasDefaultName": "未命名画布",
   "studioOpenCanvasFailed": "打开画布失败",
+  "studioNoKeyBannerText": "尚未配置任何 provider API key — 生成需要先配置。",
+  "studioNoKeyBannerAction": "去 Settings 配置",
 
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",

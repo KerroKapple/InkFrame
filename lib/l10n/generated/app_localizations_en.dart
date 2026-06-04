@@ -548,6 +548,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioOpenCanvasFailed => 'Couldn\'t open canvas';
 
   @override
+  String get studioNoKeyBannerText =>
+      'No provider API key configured — generation needs one.';
+
+  @override
+  String get studioNoKeyBannerAction => 'Configure in Settings';
+
+  @override
   String get canvasInspectorTransform => 'Transform';
 
   @override

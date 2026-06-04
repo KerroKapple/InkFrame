@@ -9,8 +9,9 @@ final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
   return PlatformSecureStorageService();
 });
 
-/// 至少存在一把 provider API key 即视为已解锁；Lock 屏据此决定是否放行。
-final apiKeyUnlockedProvider = FutureProvider<bool>((ref) async {
+/// 是否已配置至少一把 provider API key。Studio 软 banner 据此提示去配置；
+/// 不再作为进入应用的硬门槛（首屏 Lock 已移除）。
+final anyProviderKeyConfiguredProvider = FutureProvider<bool>((ref) async {
   final storage = ref.watch(secureStorageServiceProvider);
   for (final providerId in const <String>[
     'gemini-image',
@@ -22,7 +23,7 @@ final apiKeyUnlockedProvider = FutureProvider<bool>((ref) async {
         return true;
       }
     } catch (_) {
-      // storage 异常视作"未解锁"，由 LockScreen 提示用户重试。
+      // storage 异常视作未配置，由 banner 提示用户去 Settings 配置。
     }
   }
   return false;

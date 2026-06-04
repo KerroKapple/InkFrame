@@ -1106,6 +1106,18 @@ abstract class AppLocalizations {
   /// **'Couldn\'t open canvas'**
   String get studioOpenCanvasFailed;
 
+  /// No description provided for @studioNoKeyBannerText.
+  ///
+  /// In en, this message translates to:
+  /// **'No provider API key configured — generation needs one.'**
+  String get studioNoKeyBannerText;
+
+  /// No description provided for @studioNoKeyBannerAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure in Settings'**
+  String get studioNoKeyBannerAction;
+
   /// No description provided for @canvasInspectorTransform.
   ///
   /// In en, this message translates to:
