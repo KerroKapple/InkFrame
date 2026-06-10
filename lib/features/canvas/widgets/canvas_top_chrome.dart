@@ -83,9 +83,9 @@ class _BackToStudioButtonState extends State<_BackToStudioButton> {
     final label = l.canvasBackToStudio;
     return Semantics(
       button: true,
-      label: l.workspaceBackToWorkspace,
+      label: l.canvasBackToStudio,
       child: Tooltip(
-        message: l.workspaceBackToWorkspace,
+        message: l.canvasBackToStudio,
         child: FocusableActionDetector(
           mouseCursor: SystemMouseCursors.click,
           actions: <Type, Action<Intent>>{

@@ -118,49 +118,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasSampleCanvasName => 'Canvas 1';
 
   @override
-  String get workspaceTitle => 'Workspace';
-
-  @override
-  String get workspaceHeroTagline => 'AI-driven storyboard desktop tool';
-
-  @override
-  String get workspaceHeroSubtitle =>
-      'Runs locally with privacy control; integrates multiple model providers; one canvas stitches text, image and video';
-
-  @override
-  String get workspaceProjectsHeader => 'My Projects';
-
-  @override
-  String get workspaceProjectsEmpty =>
-      'No projects yet. Tap the FAB to create your first one.';
-
-  @override
-  String get workspaceNewProject => 'New project';
-
-  @override
-  String get workspaceNewProjectHint => 'Project name';
-
-  @override
-  String get workspaceNewCanvas => 'New canvas';
-
-  @override
-  String get workspaceNewCanvasHint => 'Canvas name';
-
-  @override
-  String workspaceCanvasCount(int count) {
-    return '$count canvas(es)';
-  }
-
-  @override
-  String get workspaceOpenCanvas => 'Open';
-
-  @override
-  String get workspaceBackToWorkspace => 'Back to workspace';
-
-  @override
-  String get workspaceLoadError => 'Failed to load project list';
-
-  @override
   String get inspectorTitle => 'Config';
 
   @override

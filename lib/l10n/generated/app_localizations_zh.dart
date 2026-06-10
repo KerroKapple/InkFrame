@@ -110,47 +110,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasSampleCanvasName => '画布 1';
 
   @override
-  String get workspaceTitle => '工作台';
-
-  @override
-  String get workspaceHeroTagline => 'AI 驱动的分镜创作桌面工具';
-
-  @override
-  String get workspaceHeroSubtitle => '本地运行、隐私可控；集成多个模型 Provider，一个画布把图文视频串起来';
-
-  @override
-  String get workspaceProjectsHeader => '我的项目';
-
-  @override
-  String get workspaceProjectsEmpty => '还没有项目。点右下角按钮新建第一个。';
-
-  @override
-  String get workspaceNewProject => '新建项目';
-
-  @override
-  String get workspaceNewProjectHint => '项目名';
-
-  @override
-  String get workspaceNewCanvas => '新建画布';
-
-  @override
-  String get workspaceNewCanvasHint => '画布名';
-
-  @override
-  String workspaceCanvasCount(int count) {
-    return '$count 个画布';
-  }
-
-  @override
-  String get workspaceOpenCanvas => '打开';
-
-  @override
-  String get workspaceBackToWorkspace => '返回工作台';
-
-  @override
-  String get workspaceLoadError => '项目列表加载失败';
-
-  @override
   String get inspectorTitle => '配置';
 
   @override
