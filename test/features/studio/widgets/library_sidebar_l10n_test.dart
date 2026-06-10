@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/widgets/library_sidebar.dart';
 
-import '../../_harness/test_app.dart';
+import '../../../_harness/test_app.dart';
 
 void main() {
   testWidgets('zh locale 下 Projects 节点显示本地化文案"项目"', (tester) async {
