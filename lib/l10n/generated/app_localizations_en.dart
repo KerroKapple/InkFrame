@@ -429,6 +429,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioLibrary => 'LIBRARY';
 
   @override
+  String get studioLibraryProjects => 'Projects';
+
+  @override
   String get studioArchive => 'ARCHIVE';
 
   @override

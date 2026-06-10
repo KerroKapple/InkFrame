@@ -99,7 +99,7 @@ class _LibraryTree extends StatelessWidget {
           indent: 1,
           twirl: '▾',
           icon: Icons.folder_open_outlined,
-          label: 'Projects',
+          label: context.l10n.studioLibraryProjects,
           trailing: '${projects.length}',
           selected: selectedId == null,
           onTap: () => onSelect(null),

@@ -884,6 +884,12 @@ abstract class AppLocalizations {
   /// **'LIBRARY'**
   String get studioLibrary;
 
+  /// No description provided for @studioLibraryProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get studioLibraryProjects;
+
   /// No description provided for @studioArchive.
   ///
   /// In en, this message translates to:
