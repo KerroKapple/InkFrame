@@ -1,7 +1,8 @@
 // ThumbnailService 抽象：从本地视频抽首帧缩略图。
 //
-// T5-S3 只声明接口 + 占位 Provider（返回 null）；
-// T5-S4 换 media_kit 实现。
+// 实现：MediaKitThumbnailService（Player.screenshot 抽帧）。
+// thumbnailServiceProvider 类型保持可空——null 是 JobQueueService 的
+// 跳过抽帧开关（headless / 测试场景），并非"未实现占位"。
 
 import 'dart:io';
 
