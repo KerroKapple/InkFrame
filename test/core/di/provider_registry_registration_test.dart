@@ -1,7 +1,7 @@
-// providerRegistryProvider 注册验证——断言 Registry 暴露全部 7 款 Provider。
+// providerRegistryProvider 注册验证——断言 Registry 暴露全部 8 款 Provider。
 //
 // 新 Provider 接入时务必同步本测试的 expected ids 清单，守住"Plan 里承诺的
-// 7 款"不被悄悄砍掉。
+// 8 款"不被悄悄砍掉。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +21,7 @@ class _NoopSecure implements SecureStorageService {
 }
 
 void main() {
-  test('providerRegistryProvider 暴露全部 7 款 Provider', () {
+  test('providerRegistryProvider 暴露全部 8 款 Provider', () {
     final container = ProviderContainer(
       overrides: [
         secureStorageServiceProvider.overrideWithValue(_NoopSecure()),
@@ -32,6 +32,7 @@ void main() {
     final ids = container.read(providerRegistryProvider).ids.toSet();
     expect(ids, <String>{
       'gemini-image',
+      'openai-image',
       'wanx-image',
       'wanx-t2v',
       'wanx-i2v',
@@ -52,6 +53,7 @@ void main() {
     final caps = container.read(providerCapabilitiesListProvider);
     expect(caps.map((c) => c.providerId).toList(), [
       'gemini-image',
+      'openai-image',
       'wanx-image',
       'wanx-t2v',
       'wanx-i2v',

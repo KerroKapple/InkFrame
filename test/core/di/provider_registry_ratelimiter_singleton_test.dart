@@ -13,6 +13,7 @@ import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/providers/dashscope_async_provider_base.dart';
 import 'package:inkframe/providers/gemini_image_provider.dart';
+import 'package:inkframe/providers/openai_image_provider.dart';
 import 'package:inkframe/providers/rate_limiter.dart';
 
 class _NoopSecure implements SecureStorageService {
@@ -28,6 +29,7 @@ class _NoopSecure implements SecureStorageService {
 
 ProviderRateLimiter _limiterOf(Object provider) {
   if (provider is GeminiImageProvider) return provider.rateLimiterForTesting;
+  if (provider is OpenAIImageProvider) return provider.rateLimiterForTesting;
   if (provider is DashScopeAsyncProviderBase) {
     return provider.rateLimiterForTesting;
   }
