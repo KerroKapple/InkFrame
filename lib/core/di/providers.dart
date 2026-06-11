@@ -2,6 +2,7 @@
 //
 // 已注册：
 //   - gemini-image      (PRD §10.2.1, 同步文生图)
+//   - openai-image      (OpenAI gpt-image-1, 同步文生图)
 //   - wanx-image        (阿里万相，异步文生图)
 //   - wanx-t2v          (阿里万相，异步文生视频)
 //   - wanx-i2v          (阿里万相，异步图生视频)
@@ -20,6 +21,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/gemini_image_provider.dart';
 import '../../providers/kling_v3_omni_provider.dart';
 import '../../providers/kling_v3_provider.dart';
+import '../../providers/openai_image_provider.dart';
 import '../../providers/provider_registry.dart';
 import '../../providers/rate_limiter.dart';
 import '../../providers/wanx_i2v_provider.dart';
@@ -56,6 +58,10 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
     qps: kGeminiImageCapabilities.qps,
     burst: kGeminiImageCapabilities.burst,
   );
+  final openAIImageRl = ProviderRateLimiter(
+    qps: kOpenAIImageCapabilities.qps,
+    burst: kOpenAIImageCapabilities.burst,
+  );
   final wanxImageRl = ProviderRateLimiter(
     qps: kWanxImageCapabilities.qps,
     burst: kWanxImageCapabilities.burst,
@@ -85,6 +91,10 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
     kGeminiImageCapabilities.providerId: () => GeminiImageProvider(
           keySource: keyFor(kGeminiImageCapabilities.providerId),
           rateLimiter: geminiImageRl,
+        ),
+    kOpenAIImageCapabilities.providerId: () => OpenAIImageProvider(
+          keySource: keyFor(kOpenAIImageCapabilities.providerId),
+          rateLimiter: openAIImageRl,
         ),
     kWanxImageCapabilities.providerId: () => WanxImageProvider(
           keySource: keyFor(kWanxImageCapabilities.providerId),
