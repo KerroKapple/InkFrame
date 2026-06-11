@@ -5,6 +5,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/file_resolver_service.dart';
 import 'package:path/path.dart' as p;

@@ -15,6 +15,7 @@ import 'package:inkframe/core/interfaces/generation_provider.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/generation_task.dart';
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/core/paths/app_paths.dart';

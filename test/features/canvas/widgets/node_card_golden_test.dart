@@ -15,9 +15,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
-import 'package:inkframe/services/file_resolver_service.dart';
 
 import '../../../_harness/golden_scaffold.dart';
 

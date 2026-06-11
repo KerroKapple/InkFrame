@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
@@ -20,7 +21,6 @@ import 'package:inkframe/features/generation/generation_controller.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/providers/provider_registry.dart';
-import 'package:inkframe/services/file_resolver_service.dart';
 
 // ---- fakes ------------------------------------------------------------
 

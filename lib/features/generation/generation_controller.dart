@@ -21,6 +21,7 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/constants/default_providers.dart';
 import '../../core/constants/secure_storage_keys.dart';
 import '../../core/di/file_resolver.dart';
 import '../../core/di/job_queue.dart';
@@ -29,6 +30,7 @@ import '../../core/di/repositories.dart';
 import '../../core/di/secure_storage.dart';
 import '../../core/errors/ink_error.dart';
 import '../../core/interfaces/edge_repository.dart';
+import '../../core/interfaces/file_resolver_service.dart';
 import '../../core/interfaces/job_queue_service.dart';
 import '../../core/interfaces/job_repository.dart';
 import '../../core/interfaces/node_repository.dart';
@@ -36,9 +38,7 @@ import '../../core/interfaces/secure_storage_service.dart';
 import '../../core/models/generation_task.dart';
 import '../../core/models/job_status.dart';
 import '../../core/models/provider_capabilities.dart';
-import '../../providers/gemini_image_provider.dart';
 import '../../providers/provider_registry.dart';
-import '../../services/file_resolver_service.dart';
 import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
 
@@ -135,8 +135,8 @@ class GenerationController {
     if (prompt.isEmpty) {
       throw const InvalidGenerationConfigError('prompt is empty');
     }
-    final providerId = (typeConfig['provider_id'] as String?) ??
-        kGeminiImageCapabilities.providerId;
+    final providerId =
+        (typeConfig['provider_id'] as String?) ?? kDefaultImageProviderId;
     if (!registry.contains(providerId)) {
       throw ProviderNotRegisteredError(providerId);
     }
