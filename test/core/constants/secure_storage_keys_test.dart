@@ -53,5 +53,12 @@ void main() {
     test('未登记 family → 回 scope 本身', () {
       expect(SecureStorageKeys.displayNameOf('gemini-image'), 'gemini-image');
     });
+
+    test('stability-image-core → Stable Image Core', () {
+      expect(
+        SecureStorageKeys.displayNameOf('stability-image-core'),
+        'Stable Image Core',
+      );
+    });
   });
 }

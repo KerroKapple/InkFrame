@@ -20,6 +20,7 @@ class SecureStorageKeys {
   /// 每个 Provider 家族的显示名——Settings UI 渲染用。
   static const Map<String, String> _familyDisplayNames = <String, String>{
     'dashscope': 'DashScope',
+    'stability-image-core': 'Stable Image Core',
   };
 
   /// 解析 providerId → storage scope（家族成员共用 scope）。
