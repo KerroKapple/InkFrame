@@ -367,6 +367,7 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 | providerId | 真实模型 ID | Base URL | 鉴权 | 提交端点 | 轮询端点 | 阶段 |
 |---|---|---|---|---|---|---|
 | `gemini-image` | `gemini-2.5-flash-image-preview` | `https://generativelanguage.googleapis.com/v1beta` | `?key=` query | `POST /models/{model}:generateContent` | 同步，无轮询 | P0-Alpha |
+| `openai-image` | `gpt-image-1` | `https://api.openai.com/v1` | Bearer Token | `POST /images/generations` | 同步，无轮询 | P1-GA |
 | `jimeng-4.5` | `jimeng-4.5` | `https://visual.volcengineapi.com` | HMAC-SHA256 签名 | `POST /?Action=CVSync2AsyncSubmitTask` | `POST /?Action=CVSync2AsyncGetResult` | P0-Beta |
 | `kling-image` | `kling-v1` | `https://api.klingai.com` | JWT Bearer | `POST /v1/images/generations` | `GET /v1/images/generations/{task_id}` | P0-Beta |
 | `kling-3.0` | `kling-v1-6` | 同上 | 同上 | `POST /v1/videos/text2video` / `/v1/videos/image2video` | `GET /v1/videos/text2video/{task_id}` | P0-Beta |
@@ -374,20 +375,20 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 
 ### 9.2 能力差异速查
 
-| 能力 | gemini-image | jimeng-4.5 | kling-image | kling-3.0 | hailuo-2.3 |
-|---|:-:|:-:|:-:|:-:|:-:|
-| 模式 | T2I | T2I | T2I / I2I | T2V / I2V | T2V / I2V |
-| 分辨率 | 1080p | 1080p / 2K | 1080p | 1080p | 720p / 1080p |
-| 视频时长 | — | — | — | 5s / 10s | 4s / 8s |
-| 运镜 | — | — | — | ✅ | 有限 |
-| 参考图 | 0 | 1 | 1 | — | — |
-| 批量 | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 负向 prompt | ❌ | ✅ | ✅ | ✅ | ✅ |
-| Seed | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 取消 | N/A（同步） | ❌ | ✅ | ✅ | ❌ |
-| 轮询 | ❌（同步） | ✅ | ✅ | ✅ | ✅ |
-| QPS / Burst | 2 / 10 | 1 / 3 | 2 / 5 | 2 / 5 | 2 / 5 |
-| 并发 | 1 | 2 | 2 | 2 | 2 |
+| 能力 | gemini-image | openai-image | jimeng-4.5 | kling-image | kling-3.0 | hailuo-2.3 |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|
+| 模式 | T2I | T2I | T2I | T2I / I2I | T2V / I2V | T2V / I2V |
+| 分辨率 | 1080p | 1080p | 1080p / 2K | 1080p | 1080p | 720p / 1080p |
+| 视频时长 | — | — | — | — | 5s / 10s | 4s / 8s |
+| 运镜 | — | — | — | — | ✅ | 有限 |
+| 参考图 | 0 | 0 | 1 | 1 | — | — |
+| 批量 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 负向 prompt | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ |
+| Seed | ✅ | ❌ | ✅ | ✅ | ❌ | ❌ |
+| 取消 | N/A（同步） | N/A（同步） | ❌ | ✅ | ✅ | ❌ |
+| 轮询 | ❌（同步） | ❌（同步） | ✅ | ✅ | ✅ | ✅ |
+| QPS / Burst | 2 / 10 | 2 / 5 | 1 / 3 | 2 / 5 | 2 / 5 | 2 / 5 |
+| 并发 | 1 | 1 | 2 | 2 | 2 | 2 |
 
 ### 9.3 已知陷阱
 
