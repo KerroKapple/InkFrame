@@ -21,6 +21,7 @@ class SecureStorageKeys {
   static const Map<String, String> _familyDisplayNames = <String, String>{
     'dashscope': 'DashScope',
     'openai-image': 'OpenAI',
+    'stability-image-core': 'Stable Image Core',
   };
 
   /// 解析 providerId → storage scope（家族成员共用 scope）。

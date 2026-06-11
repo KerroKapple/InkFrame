@@ -57,5 +57,12 @@ void main() {
     test('openai-image → OpenAI（友好标签）', () {
       expect(SecureStorageKeys.displayNameOf('openai-image'), 'OpenAI');
     });
+
+    test('stability-image-core → Stable Image Core', () {
+      expect(
+        SecureStorageKeys.displayNameOf('stability-image-core'),
+        'Stable Image Core',
+      );
+    });
   });
 }
