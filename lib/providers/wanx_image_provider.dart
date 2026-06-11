@@ -96,12 +96,12 @@ class WanxImageProvider extends DashScopeAsyncProviderBase {
       'model': kWanxImageModel,
       'input': <String, Object?>{
         'messages': [
-          <String, Object?>{'role': 'user', 'content': content},
+          <String, Object?>{kDashScopeFieldRole: 'user', 'content': content},
         ],
       },
       'parameters': <String, Object?>{
         'size': size,
-        'n': task.batchSize,
+        kDashScopeFieldN: task.batchSize,
         if (task.negativePrompt != null && task.negativePrompt!.isNotEmpty)
           'negative_prompt': task.negativePrompt,
         if (task.seed != null) 'seed': task.seed,
