@@ -6,6 +6,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/repositories.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/edge_repository.dart';
 import '../models/canvas_edge.dart';
 
@@ -63,7 +64,7 @@ class CanvasEdgesController
       );
       state = AsyncData([...previous, edge]);
       return edge;
-    } catch (_) {
+    } on InkError catch (_) {
       state = AsyncData(previous);
       rethrow;
     }
@@ -74,7 +75,7 @@ class CanvasEdgesController
     state = AsyncData(previous.where((e) => e.id != id).toList(growable: false));
     try {
       await _repo.softDelete(id);
-    } catch (_) {
+    } on InkError catch (_) {
       state = AsyncData(previous);
       rethrow;
     }
@@ -93,7 +94,7 @@ class CanvasEdgesController
       await _repo.update(id, <String, Object?>{
         'role': CanvasEdgeMapping.roleToDb(role),
       });
-    } catch (_) {
+    } on InkError catch (_) {
       state = AsyncData(previous);
       rethrow;
     }
