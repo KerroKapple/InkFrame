@@ -46,23 +46,6 @@
   "canvasSampleProjectName": "Sample Project",
   "canvasSampleCanvasName": "Canvas 1",
 
-  "workspaceTitle": "Workspace",
-  "workspaceHeroTagline": "AI-driven storyboard desktop tool",
-  "workspaceHeroSubtitle": "Runs locally with privacy control; integrates multiple model providers; one canvas stitches text, image and video",
-  "workspaceProjectsHeader": "My Projects",
-  "workspaceProjectsEmpty": "No projects yet. Tap the FAB to create your first one.",
-  "workspaceNewProject": "New project",
-  "workspaceNewProjectHint": "Project name",
-  "workspaceNewCanvas": "New canvas",
-  "workspaceNewCanvasHint": "Canvas name",
-  "workspaceCanvasCount": "{count} canvas(es)",
-  "@workspaceCanvasCount": {
-    "placeholders": { "count": { "type": "int" } }
-  },
-  "workspaceOpenCanvas": "Open",
-  "workspaceBackToWorkspace": "Back to workspace",
-  "workspaceLoadError": "Failed to load project list",
-
   "inspectorTitle": "Config",
   "inspectorPromptLabel": "Prompt",
   "inspectorPromptHint": "Describe the image you want...",
@@ -215,6 +198,7 @@
   "studioRecentProjects": "Recent Projects",
   "studioNewProject": "New Project",
   "studioLibrary": "LIBRARY",
+  "studioLibraryProjects": "Projects",
   "studioArchive": "ARCHIVE",
   "studioArchivedProjects": "Archived Projects",
   "studioBreadcrumbAll": "All Projects",

@@ -14,11 +14,17 @@
 
 | Tag | 主题 / Theme | 日期 |
 |-----|--------------|------|
+| alpha.9 | UI Sprint 1+2 — CineFlow tokens + 9 primitives + 开源准备（README / LICENSE / MIT） | 2026-04 |
 | alpha.8 | T5 video node UI loop — 5 款视频 Provider UI 接入 + Lightbox | 2026-04 |
 | alpha.7 | canvas UX 收口 — 节点删除 / Inspector autosave / FAB | 2026-04 |
 | alpha.6 | secure-storage：DashScope 系 6 款 Provider 共用 Key | 2026-04 |
 | alpha.5 | canvas 点击选中连线 + midpoint 删除按钮 | 2026-04 |
 | earlier | alpha.1 ~ alpha.4 — 基础 canvas / DI / i18n 骨架（见 `git tag`） | — |
+
+> **已合并 main，未打 tag（→ alpha.10）/ Merged on main, untagged (→ alpha.10):**
+> Amber Noir shell 重写（frameless chrome + Studio + Canvas，取代 CineFlow，#100/#101）·
+> 生成流程接入 canvas（open-canvas + 实时 job 进度 + 去 mock 渲染队列，#104/#105）·
+> 移除 Lock 启动闸门，直接进入 Studio（#108）。
 
 ## 🛠 In Progress (Maintainer)
 
