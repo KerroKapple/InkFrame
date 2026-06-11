@@ -6,6 +6,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -48,7 +49,7 @@ class _FakeNodeRepository implements NodeRepository {
       'height': height,
     });
     if (createError != null) {
-      throw StateError(createError!);
+      throw LocalIOError(extra: {'op': 'create', 'table': 'nodes', 'msg': createError});
     }
     final id = 'n${++_idCounter}';
     rows.add(<String, Object?>{
@@ -76,7 +77,8 @@ class _FakeNodeRepository implements NodeRepository {
   @override
   Future<int> softDelete(String id) async {
     if (softDeleteError != null) {
-      throw StateError(softDeleteError!);
+      throw LocalIOError(
+          extra: {'op': 'softDelete', 'table': 'nodes', 'msg': softDeleteError});
     }
     softDeleted.add(id);
     rows.removeWhere((r) => r['id'] == id);
@@ -216,7 +218,7 @@ void main() {
 
       await expectLater(
         ctrl.addNode(label: 'X', type: CanvasNodeType.image),
-        throwsStateError,
+        throwsA(isA<LocalIOError>()),
       );
       final state = container.read(canvasNodesControllerProvider(canvasId));
       expect(state.valueOrNull, isEmpty);
@@ -262,7 +264,7 @@ void main() {
       final n = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
       repo.softDeleteError = 'nope';
 
-      await expectLater(ctrl.removeNode(n.id), throwsStateError);
+      await expectLater(ctrl.removeNode(n.id), throwsA(isA<LocalIOError>()));
       final state = container.read(canvasNodesControllerProvider(canvasId));
       expect(state.valueOrNull, hasLength(1));
       expect(state.valueOrNull!.first.id, n.id);
