@@ -42,10 +42,11 @@ void main() {
     });
 
     testWidgets('有 thumbnail_url 但文件缺失 → broken_image 占位', (tester) async {
-      final tmp = await Directory.systemTemp.createTemp('video_node_body_');
-      addTearDown(() => tmp.delete(recursive: true));
+      // testWidgets body 内不能 await 真实 dart:io 异步 Future（binding zone 不
+      // 抽水其完成回调，会永久挂起）——一律用 *Sync 文件 API。
+      final tmp = Directory.systemTemp.createTempSync('video_node_body_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
       final paths = DefaultAppPaths.forRoot(tmp);
-      await paths.ensureInitialized();
 
       const node = CanvasNode(
         id: 'n2',
@@ -66,21 +67,19 @@ void main() {
         const Scaffold(body: VideoNodeBody(node: node)),
         overrides: _overridesFor(paths),
       );
-      await tester.pump();
       expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
-      // TD-003：widget test 进入 fileResolverServiceProvider 后 pump 不收敛，挂死 20min+；跟进单独查，S4 不阻塞。
-    }, skip: true);
+    });
 
     testWidgets('有 video_url 无 thumbnail_url → play_circle_outline', (tester) async {
-      final tmp = await Directory.systemTemp.createTemp('video_node_body_');
-      addTearDown(() => tmp.delete(recursive: true));
+      // 同上：testWidgets body 内只用 *Sync 文件 API，避免真实异步 I/O 挂起。
+      final tmp = Directory.systemTemp.createTempSync('video_node_body_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
       final paths = DefaultAppPaths.forRoot(tmp);
-      await paths.ensureInitialized();
       // 视频占位文件可有可无，本分支不读 videoUrl 文件。
       final canvasDir = Directory(
         p.join(tmp.path, 'projects', 'proj-1', 'canvases', 'canvas-1', 'videos'),
       );
-      await canvasDir.create(recursive: true);
+      canvasDir.createSync(recursive: true);
 
       const node = CanvasNode(
         id: 'n3',
@@ -103,7 +102,6 @@ void main() {
       expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
       expect(find.byIcon(Icons.hourglass_empty_outlined), findsNothing);
       expect(find.byIcon(Icons.broken_image_outlined), findsNothing);
-      // TD-003：同上，skip 解锁 S4。
-    }, skip: true);
+    });
   });
 }

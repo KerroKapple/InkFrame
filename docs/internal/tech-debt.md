@@ -31,3 +31,15 @@
 - **关联**：`CONTRIBUTING.md §69`（Rebase & merge 强制条款），PR #48（事故 release）
 - **修复 (2026-04-22)**：`scripts/release-tag.sh` 落地，护栏 #1（PR 标题断言，exit 10）+ 护栏 #2（SHA 入参，exit 11）以强断言形式实现。CONTRIBUTING §Tag & Release 已改为脚本优先 + 手工兜底。集成测试 `test/scripts/release_tag_test.sh` 覆盖 17 个断言：arg 校验、guardrail negative、happy path（prerelease + stable）。护栏 3（软约束 reviewer 盯 merge method）保留为人肉约定，不改 repo 级设置以避免与 §67 打架。
 
+---
+
+## S4 (2026-06-11)
+
+### TD-003 — VideoNodeBody thumbnail/play widget test 挂死 ✅ 已修复（test only, 2026-06-11）
+
+- **位置**：`test/features/canvas/widgets/video_node_body_test.dart` 后两个 testWidgets（broken_image / play_circle），曾标 `skip: true`。
+- **原 skip 注释（误诊）**：声称「widget test 进入 `fileResolverServiceProvider` 后 pump 不收敛，挂死 20min+」。
+- **真实根因**：与 `fileResolverServiceProvider` / pump 无关。挂死发生在测试 setup 第一行 `await Directory.systemTemp.createTemp(...)`——在 `testWidgets` body 内 `await` 真实 `dart:io` 异步 Future，其完成回调被调度到 binding 控制的事件循环但永不被抽水，`await` 永久阻塞。隔离实验证实：同一 `createTemp` 在 plain `test()` 内秒过，仅在 `testWidgets()` body 内挂死；`createTempSync()` 在两种 test 内均秒过。
+- **修复**：两个 test 的 setup 改用同步文件 API（`createTempSync` / `createSync` / `deleteSync`），并去掉无谓的 `await paths.ensureInitialized()`（resolver 只做 `existsSync()`，父目录不必预建）。断言意图不变（broken_image / play_circle）。
+- **教训**：`testWidgets` body 内禁止 `await` 真实异步 `dart:io`；一律用 `*Sync` 变体（确需异步时应包 `tester.runAsync`，但本次未走该路径）。
+
