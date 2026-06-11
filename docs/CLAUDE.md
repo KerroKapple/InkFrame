@@ -206,17 +206,25 @@ lib/
 │   ├── interfaces/                    # Abstract service / repository contracts
 │   ├── logging/                       # InkLogger interface
 │   ├── models/                        # Domain models (freezed, immutable)
-│   └── paths/                         # FileResolverService interface
+│   └── paths/                         # AppPaths — app directory layout definitions
 ├── features/                          # Feature modules (vertical slices)
 │   ├── canvas/                        # Node canvas
 │   │   ├── models/
 │   │   ├── providers/                 # Riverpod ViewModels
 │   │   ├── util/
 │   │   └── widgets/
-│   ├── debug/                         # Internal debug surfaces
 │   ├── generation/                    # Generation flow UI + state
+│   │   ├── models/                    # Job state models
+│   │   ├── providers/                 # Jobs registry
+│   │   ├── services/                  # Toast service
+│   │   ├── widgets/                   # Job queue panel
+│   │   └── generation_controller.dart
 │   ├── settings/                      # Settings surfaces
-│   └── workspace/                     # Project / workspace shell
+│   │   └── widgets/                   # About / API keys / language / storage / theme sections
+│   └── studio/                        # Project / workspace shell (home + open-canvas)
+│       ├── controllers/
+│       ├── models/
+│       └── widgets/
 ├── providers/                         # AI provider adapters (see docs/PROVIDER-API.md)
 │   ├── provider_registry.dart         # providerId → factory mapping
 │   ├── rate_limiter.dart              # Per-provider token bucket
