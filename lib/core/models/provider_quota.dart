@@ -1,4 +1,4 @@
-// ProviderQuota：Provider 账户配额信息（QuotaAware 接口返回值）。
+// ProviderQuota：Provider 账户配额信息（配额展示模型）。
 //
 // 面向设置页 / 任务中心展示；业务流不依赖这个字段做调度。
 

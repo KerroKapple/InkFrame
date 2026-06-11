@@ -11,7 +11,6 @@ import '../models/generation_task.dart';
 import '../models/job_status.dart';
 import '../models/key_validation_result.dart';
 import '../models/provider_capabilities.dart';
-import '../models/provider_quota.dart';
 
 /// Provider 侧任务 ID（透传自 API 响应）。同步 Provider 允许 `local://` 前缀。
 typedef JobId = String;
@@ -42,11 +41,6 @@ abstract class Pollable {
 /// 取消失败（网络超时 / task 已完成）静默吞掉，不抛错。
 abstract class Cancellable {
   Future<void> cancel(JobId id);
-}
-
-/// 可查询配额的 Provider（可选）。
-abstract class QuotaAware {
-  Future<ProviderQuota> getQuota();
 }
 
 /// 可验证 Key 的 Provider——所有 Provider 必须实现。
