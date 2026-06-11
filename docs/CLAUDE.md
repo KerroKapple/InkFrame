@@ -235,6 +235,7 @@ lib/
 │   ├── dashscope_async_provider_base.dart  # Shared base for DashScope async tasks
 │   ├── gemini_image_provider.dart
 │   ├── openai_image_provider.dart
+│   ├── stability_image_core_provider.dart
 │   ├── kling_v3_provider.dart
 │   ├── kling_v3_omni_provider.dart
 │   ├── wanx_image_provider.dart
