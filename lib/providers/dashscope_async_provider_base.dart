@@ -13,6 +13,7 @@ import '../core/interfaces/generation_provider.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../core/models/key_validation_result.dart';
+import '../core/models/provider_capabilities.dart';
 import 'dio_error_mapper.dart';
 import 'rate_limiter.dart';
 
@@ -21,6 +22,30 @@ const String kDashScopeBaseUrl = 'https://dashscope.aliyuncs.com/api/v1';
 
 /// 任务查询 endpoint 模板（GET）。
 const String kDashScopeTasksPath = '/tasks';
+
+/// 视频默认时长（秒）：task.durationSeconds<=0 时的兜底值。
+const int kDashScopeDefaultDurationSeconds = 5;
+
+/// (Resolution, AspectRatio) → DashScope `parameters.size`（视频档共用）。
+const Map<Resolution, Map<AspectRatio, String>> kDashScopeVideoSizeMatrix = {
+  Resolution.p720: {
+    AspectRatio.r16x9: '1280*720',
+    AspectRatio.r9x16: '720*1280',
+    AspectRatio.r1x1: '720*720',
+  },
+  Resolution.p1080: {
+    AspectRatio.r16x9: '1920*1080',
+    AspectRatio.r9x16: '1080*1920',
+    AspectRatio.r1x1: '1080*1080',
+  },
+};
+
+// ---- DashScope 请求体字段名（网络协议字面量，保持英文常量） --------------
+const String kDashScopeFieldImgUrl = 'img_url';
+const String kDashScopeFieldLastFrameUrl = 'last_frame_url';
+const String kDashScopeFieldRefImages = 'ref_images';
+const String kDashScopeFieldN = 'n';
+const String kDashScopeFieldRole = 'role';
 
 /// API Key getter 协议——延迟读取，避免 Provider 持久化 Key。
 typedef DashScopeKeySource = Future<String> Function();
