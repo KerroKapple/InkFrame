@@ -1,42 +1,13 @@
-// FileResolverService：唯一拥有绝对路径的服务（PRD §12.6 相对路径契约）。
+// DefaultFileResolverService：FileResolverService 的磁盘实现。
 //
-// 约束：
-//   - DB 只存 canvas 相对路径（形如 images/{uuid}.png）
-//   - Widget / ViewModel 禁止直接 new File(...)；必须经本服务
-//   - 所有绝对路径回写必须校验在 canvas 根目录之内，拒绝 '..' 穿越、绝对路径、空串、控制字符
-//   - 同盘 rename / 跨盘 copy+verify+rm 由 toRelative 的调用方在迁移流程里处理，本服务不涉
-//
-// 根目录布局（与 AppPaths.projects 一致）：
-//   ~/InkFrame/projects/{project-id}/canvases/{canvas-id}/
+// 接口契约（含 PathSecurityError）在 lib/core/interfaces/file_resolver_service.dart。
+// 实现可依赖 core 接口；本文件只负责落地路径转换 + 边界校验。
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../core/interfaces/file_resolver_service.dart';
 import '../core/paths/app_paths.dart';
-
-abstract class FileResolverService {
-  /// 相对路径 → 绝对 File。相对路径非法时抛 [PathSecurityError]。
-  File resolve({
-    required String projectId,
-    required String canvasId,
-    required String relativePath,
-  });
-
-  /// 绝对路径 → 相对路径；源路径不在指定 canvas 根目录内时抛 [PathSecurityError]。
-  String toRelative({
-    required String projectId,
-    required String canvasId,
-    required File source,
-  });
-
-  /// 返回 canvas 根目录绝对路径（不保证存在）。
-  Directory canvasRoot({required String projectId, required String canvasId});
-}
-
-/// 非法路径（穿越 / 绝对 / 空 / 控制字符等）。
-class PathSecurityError extends ArgumentError {
-  PathSecurityError(super.message);
-}
 
 class DefaultFileResolverService implements FileResolverService {
   const DefaultFileResolverService(this._paths);
