@@ -4,6 +4,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
@@ -27,7 +28,9 @@ class _FakeEdgeRepo implements EdgeRepository {
     String role = 'reference',
     int sortOrder = 0,
   }) async {
-    if (createThrows) throw StateError('create boom');
+    if (createThrows) {
+      throw const LocalIOError(extra: {'op': 'create', 'table': 'edges'});
+    }
     final id = 'e${++_seq}';
     createCalls.add(<String, Object?>{
       'id': id,
@@ -56,7 +59,9 @@ class _FakeEdgeRepo implements EdgeRepository {
 
   @override
   Future<int> softDelete(String id) async {
-    if (softDeleteThrows) throw StateError('soft delete boom');
+    if (softDeleteThrows) {
+      throw const LocalIOError(extra: {'op': 'softDelete', 'table': 'edges'});
+    }
     softDeleted.add(id);
     rows.removeWhere((r) => r['id'] == id);
     return 1;
@@ -71,7 +76,9 @@ class _FakeEdgeRepo implements EdgeRepository {
   Future<List<Map<String, Object?>>> listIncoming(String t) async => [];
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
-    if (updateThrows) throw StateError('update boom');
+    if (updateThrows) {
+      throw const LocalIOError(extra: {'op': 'update', 'table': 'edges'});
+    }
     updateCalls.add({'id': id, ...patch});
     final idx = rows.indexWhere((r) => r['id'] == id);
     if (idx >= 0) rows[idx] = {...rows[idx], ...patch};
@@ -149,7 +156,7 @@ void main() {
 
       await expectLater(
         ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b'),
-        throwsStateError,
+        throwsA(isA<LocalIOError>()),
       );
       expect(container
               .read(canvasEdgesControllerProvider(canvasId))
@@ -197,7 +204,7 @@ void main() {
 
       await expectLater(
         ctrl.updateRole(e.id, EdgeRole.lastFrame),
-        throwsStateError,
+        throwsA(isA<LocalIOError>()),
       );
       final updated = container
           .read(canvasEdgesControllerProvider(canvasId))
@@ -213,7 +220,7 @@ void main() {
       final e = await ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
       repo.softDeleteThrows = true;
 
-      await expectLater(ctrl.removeEdge(e.id), throwsStateError);
+      await expectLater(ctrl.removeEdge(e.id), throwsA(isA<LocalIOError>()));
       final state =
           container.read(canvasEdgesControllerProvider(canvasId));
       expect(state.valueOrNull, hasLength(1));

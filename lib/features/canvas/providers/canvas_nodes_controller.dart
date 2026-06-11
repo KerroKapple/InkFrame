@@ -14,6 +14,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/repositories.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/edge_repository.dart';
 import '../../../core/interfaces/node_repository.dart';
 import '../models/canvas_node.dart';
@@ -92,7 +93,7 @@ class CanvasNodesController
       );
       state = AsyncData([...previous, inserted]);
       return inserted;
-    } catch (_) {
+    } on InkError catch (_) {
       // 保底：确保 state 停在 previous，不被外层框架翻成 AsyncError。
       state = AsyncData(previous);
       rethrow;
@@ -121,7 +122,7 @@ class CanvasNodesController
 
     try {
       await _repo.softDelete(id);
-    } catch (_) {
+    } on InkError catch (_) {
       state = AsyncData(previous);
       rethrow;
     }
@@ -136,8 +137,8 @@ class CanvasNodesController
     try {
       outgoing = await edgeRepo.listOutgoing(nodeId);
       incoming = await edgeRepo.listIncoming(nodeId);
-    } catch (_) {
-      return; // 列表失败就放弃级联，不阻断节点删除。
+    } on InkError catch (_) {
+      return; // 列表失败就放弃级联，不阻断节点删除（best-effort）。
     }
     final ids = <String>{
       for (final r in outgoing) r['id']!.toString(),
@@ -146,7 +147,7 @@ class CanvasNodesController
     for (final eid in ids) {
       try {
         await edgeRepo.softDelete(eid);
-      } catch (_) {
+      } on InkError catch (_) {
         // 单条失败不阻断其他——best-effort。
       }
     }

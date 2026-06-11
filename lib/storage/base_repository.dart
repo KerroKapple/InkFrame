@@ -5,9 +5,39 @@
 // CI 的 check-updated-at.sh 扫描 UPDATE 语句强制执行。
 import 'package:postgres/postgres.dart';
 
+import '../core/errors/ink_error.dart';
+
 /// Repository 共享工具集。
 mixin BaseRepository {
   Session get session;
+
+  /// 翻译边界：把一段 DB 操作中冒出的 postgres 异常统一翻成 LocalIOError，
+  /// 阻止裸 PgException/ServerException 冒泡到 UI（docs/CLAUDE.md）。
+  ///
+  /// PgException 是 postgres 包异常基类——既覆盖服务端错误（ServerException，
+  /// 带 pg code）也覆盖连接/socket 失败（无 code）。已是 InkError 的原样透传，
+  /// 不二次包裹。原异常进 cause（仅供诊断，不暴露 UI），pg code 进 extra.db_code。
+  Future<T> guard<T>(
+    String op,
+    String table,
+    Future<T> Function() run,
+  ) async {
+    try {
+      return await run();
+    } on InkError {
+      rethrow;
+    } on PgException catch (e, st) {
+      throw LocalIOError(
+        extra: <String, Object?>{
+          'op': op,
+          'table': table,
+          if (e is ServerException && e.code != null) 'db_code': e.code,
+        },
+        cause: e,
+        stackTrace: st,
+      );
+    }
+  }
 
   /// 给 patch 注入 updated_at = 当前 UTC ISO8601（TIMESTAMPTZ 会自动解析）。
   Map<String, Object?> withUpdatedAt(Map<String, Object?> patch) {

@@ -66,20 +66,6 @@ const ProviderCapabilities kWanxR2VCapabilities = ProviderCapabilities(
   burst: 2,
 );
 
-/// (Resolution, AspectRatio) → DashScope `parameters.size`。
-const Map<Resolution, Map<AspectRatio, String>> _kSizeMatrix = {
-  Resolution.p720: {
-    AspectRatio.r16x9: '1280*720',
-    AspectRatio.r9x16: '720*1280',
-    AspectRatio.r1x1: '720*720',
-  },
-  Resolution.p1080: {
-    AspectRatio.r16x9: '1920*1080',
-    AspectRatio.r9x16: '1080*1920',
-    AspectRatio.r1x1: '1080*1080',
-  },
-};
-
 class WanxR2VProvider extends DashScopeAsyncProviderBase {
   WanxR2VProvider({
     required super.keySource,
@@ -95,19 +81,21 @@ class WanxR2VProvider extends DashScopeAsyncProviderBase {
 
   @override
   Map<String, Object?> buildRequestBody(GenerationTask task) {
-    final size = _kSizeMatrix[task.resolution]?[task.aspectRatio] ??
-        _kSizeMatrix[Resolution.p720]![AspectRatio.r16x9]!;
+    final size = kDashScopeVideoSizeMatrix[task.resolution]?[task.aspectRatio] ??
+        kDashScopeVideoSizeMatrix[Resolution.p720]![AspectRatio.r16x9]!;
     // DashScope 上限 3 张；超出丢弃保持客户端宽容、服务端做最终裁决。
     final refs = task.refImagePaths.take(kWanxR2VMaxRefImages).toList();
     return <String, Object?>{
       'model': kWanxR2VModel,
       'input': <String, Object?>{
         'prompt': task.prompt,
-        if (refs.isNotEmpty) 'ref_images': refs,
+        if (refs.isNotEmpty) kDashScopeFieldRefImages: refs,
       },
       'parameters': <String, Object?>{
         'size': size,
-        'duration': task.durationSeconds > 0 ? task.durationSeconds : 5,
+        'duration': task.durationSeconds > 0
+            ? task.durationSeconds
+            : kDashScopeDefaultDurationSeconds,
         if (task.negativePrompt != null && task.negativePrompt!.isNotEmpty)
           'negative_prompt': task.negativePrompt,
         if (task.seed != null) 'seed': task.seed,

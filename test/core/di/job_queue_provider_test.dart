@@ -5,10 +5,10 @@ import 'package:inkframe/core/di/job_queue.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/di/thumbnail.dart';
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
-import 'package:inkframe/services/file_resolver_service.dart';
 import 'package:inkframe/services/job_queue_service.dart';
 
 class _NoopSecure implements SecureStorageService {
