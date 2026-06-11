@@ -10,11 +10,13 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/constants/default_providers.dart';
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'dart:io';
 
 import 'package:inkframe/core/interfaces/edge_repository.dart';
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
@@ -26,7 +28,6 @@ import 'package:inkframe/features/generation/generation_controller.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/providers/provider_registry.dart';
-import 'package:inkframe/services/file_resolver_service.dart';
 
 // ---- fakes ------------------------------------------------------------
 
@@ -394,6 +395,19 @@ void main() {
     expect(types, contains(JobRunning));
     expect(types.last, JobSucceeded);
     expect(nodes.softDeleted, isEmpty);
+  });
+
+  test('未指定 provider_id → 默认走 kDefaultImageProviderId', () async {
+    final cfg = await seedConfigNode(); // typeConfig 不含 provider_id
+    await secure.store(
+      SecureStorageKeys.providerApiKey(kDefaultImageProviderId),
+      'sk-test',
+    );
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    expect(jobs.creates.first['provider_id'], kDefaultImageProviderId);
+    expect(queue.lastTask?.providerId, kDefaultImageProviderId);
   });
 
   test('config 节点不存在 → InvalidGenerationConfigError', () async {
