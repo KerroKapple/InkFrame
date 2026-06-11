@@ -1,7 +1,7 @@
-// providerRegistryProvider 注册验证——断言 Registry 暴露全部 7 款 Provider。
+// providerRegistryProvider 注册验证——断言 Registry 暴露全部已接 Provider（9 款）。
 //
-// 新 Provider 接入时务必同步本测试的 expected ids 清单，守住"Plan 里承诺的
-// 7 款"不被悄悄砍掉。
+// 新 Provider 接入时务必同步本测试的 expected ids 清单与有序列表，守住"Plan 里
+// 承诺的 Provider 集合 + 注册顺序"不被悄悄砍掉。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -21,7 +21,7 @@ class _NoopSecure implements SecureStorageService {
 }
 
 void main() {
-  test('providerRegistryProvider 暴露全部 7 款 Provider', () {
+  test('providerRegistryProvider 暴露全部已接 Provider（9 款）', () {
     final container = ProviderContainer(
       overrides: [
         secureStorageServiceProvider.overrideWithValue(_NoopSecure()),
@@ -32,12 +32,14 @@ void main() {
     final ids = container.read(providerRegistryProvider).ids.toSet();
     expect(ids, <String>{
       'gemini-image',
+      'openai-image',
       'wanx-image',
       'wanx-t2v',
       'wanx-i2v',
       'wanx-r2v',
       'kling-v3',
       'kling-v3-omni',
+      'stability-image-core',
     });
   });
 
@@ -52,12 +54,14 @@ void main() {
     final caps = container.read(providerCapabilitiesListProvider);
     expect(caps.map((c) => c.providerId).toList(), [
       'gemini-image',
+      'openai-image',
       'wanx-image',
       'wanx-t2v',
       'wanx-i2v',
       'wanx-r2v',
       'kling-v3',
       'kling-v3-omni',
+      'stability-image-core',
     ]);
   });
 }

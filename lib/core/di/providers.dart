@@ -2,12 +2,14 @@
 //
 // 已注册：
 //   - gemini-image      (PRD §10.2.1, 同步文生图)
+//   - openai-image      (OpenAI gpt-image-1, 同步文生图)
 //   - wanx-image        (阿里万相，异步文生图)
 //   - wanx-t2v          (阿里万相，异步文生视频)
 //   - wanx-i2v          (阿里万相，异步图生视频)
 //   - wanx-r2v          (阿里万相，异步参考生视频)
 //   - kling-v3          (快手 Kling v3，DashScope 渠道，异步)
 //   - kling-v3-omni     (快手 Kling v3 Omni，DashScope 渠道，异步)
+//   - stability-image-core (Stability AI Stable Image Core，同步文生图，multipart)
 //
 // keySource 统一走 SecureStorage，按 providerId 独立存 Key。
 // DashScope 系列 6 款虽然都用 DashScope API Key，但当前架构每个 providerId 一把 Key；
@@ -20,8 +22,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/gemini_image_provider.dart';
 import '../../providers/kling_v3_omni_provider.dart';
 import '../../providers/kling_v3_provider.dart';
+import '../../providers/openai_image_provider.dart';
 import '../../providers/provider_registry.dart';
 import '../../providers/rate_limiter.dart';
+import '../../providers/stability_image_core_provider.dart';
 import '../../providers/wanx_i2v_provider.dart';
 import '../../providers/wanx_image_provider.dart';
 import '../../providers/wanx_r2v_provider.dart';
@@ -56,6 +60,10 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
     qps: kGeminiImageCapabilities.qps,
     burst: kGeminiImageCapabilities.burst,
   );
+  final openAIImageRl = ProviderRateLimiter(
+    qps: kOpenAIImageCapabilities.qps,
+    burst: kOpenAIImageCapabilities.burst,
+  );
   final wanxImageRl = ProviderRateLimiter(
     qps: kWanxImageCapabilities.qps,
     burst: kWanxImageCapabilities.burst,
@@ -80,11 +88,19 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
     qps: kKlingV3OmniCapabilities.qps,
     burst: kKlingV3OmniCapabilities.burst,
   );
+  final stabilityImageCoreRl = ProviderRateLimiter(
+    qps: kStabilityImageCoreCapabilities.qps,
+    burst: kStabilityImageCoreCapabilities.burst,
+  );
 
   return ProviderRegistry(<String, ProviderFactory>{
     kGeminiImageCapabilities.providerId: () => GeminiImageProvider(
           keySource: keyFor(kGeminiImageCapabilities.providerId),
           rateLimiter: geminiImageRl,
+        ),
+    kOpenAIImageCapabilities.providerId: () => OpenAIImageProvider(
+          keySource: keyFor(kOpenAIImageCapabilities.providerId),
+          rateLimiter: openAIImageRl,
         ),
     kWanxImageCapabilities.providerId: () => WanxImageProvider(
           keySource: keyFor(kWanxImageCapabilities.providerId),
@@ -109,6 +125,11 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
     kKlingV3OmniCapabilities.providerId: () => KlingV3OmniProvider(
           keySource: keyFor(kKlingV3OmniCapabilities.providerId),
           rateLimiter: klingV3OmniRl,
+        ),
+    kStabilityImageCoreCapabilities.providerId: () =>
+        StabilityImageCoreProvider(
+          keySource: keyFor(kStabilityImageCoreCapabilities.providerId),
+          rateLimiter: stabilityImageCoreRl,
         ),
   });
 });

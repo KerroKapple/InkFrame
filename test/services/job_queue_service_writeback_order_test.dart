@@ -1,5 +1,7 @@
 // 不变量：成功路径必须先 patchTypeConfig(url) 落库，再 emit/complete success。
 // 用 Completer 卡住写库，断言期间不出现 success；放开后才出现。
+// 等待用条件信号而非固定 pumpEventQueue：reachedGate 标志服务已推进到落盘调用点，
+// handle.done 标志 persist 之后的确定性终态，二者均无墙钟/泵次数依赖。
 //
 // 使用 inlineBytes 成功路径（最简单且直接调用 patchTypeConfig 的路径）：
 //   _persistInlineBytes → file.writeAsBytes → nodeRepo.patchTypeConfig → return null
@@ -28,10 +30,12 @@ import 'package:inkframe/services/job_queue_service.dart';
 
 class _GatedNodeRepo implements NodeRepository {
   final gate = Completer<void>();
+  final reachedGate = Completer<void>(); // 服务推进到落盘调用点、即将被 gate 卡住
   bool urlWritten = false;
 
   @override
   Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async {
+    if (!reachedGate.isCompleted) reachedGate.complete();
     await gate.future; // 卡住直到测试放开
     if (patch.containsKey('image_url') || patch.containsKey('video_url')) {
       urlWritten = true;
@@ -168,9 +172,9 @@ void main() {
       if (s is JobSuccess) sawSuccess = true;
     });
 
-    // 让事件循环跑完所有同步步骤（submit + poll + 文件写 + patchTypeConfig 挂起中）。
-    // pumpEventQueue 多次以耗尽所有微任务/宏任务直到 gate 卡住为止。
-    await pumpEventQueue(times: 50);
+    // 条件等待：服务推进到 patchTypeConfig 调用点并被 gate 卡住时确定性触发，
+    // 替代固定 pumpEventQueue（依赖真实 poll Timer + 磁盘写耗时，CPU 抢占下漂移）。
+    await nodeRepo.reachedGate.future.timeout(const Duration(seconds: 10));
 
     expect(nodeRepo.urlWritten, isFalse,
         reason: 'patchTypeConfig 应被 gate 卡住，尚未写入 url');
@@ -179,12 +183,13 @@ void main() {
 
     // 放开 gate → patchTypeConfig 继续执行 → _persistTransition → emit/complete success
     nodeRepo.gate.complete();
-    await pumpEventQueue(times: 50);
+    // handle.done 在 _complete 完成、紧随 _emit，是 persist 之后才发生的确定性终态信号，无墙钟依赖。
+    final terminal = await handle.done.timeout(const Duration(seconds: 10));
 
     expect(nodeRepo.urlWritten, isTrue,
         reason: 'gate 放开后 patchTypeConfig 应已写入 url');
-    expect(sawSuccess, isTrue,
-        reason: '落库完成后应 emit success');
+    expect(terminal, isA<JobSuccess>(),
+        reason: '落库完成后应进入 success 终态（emit 在 persist 之后）');
 
     svc.dispose();
   });
