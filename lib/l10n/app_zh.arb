@@ -147,6 +147,7 @@
   "linkCreated": "连线已创建",
   "linkAlreadyExists": "连线已存在",
   "linkSelfNotAllowed": "不能连到自己",
+  "linkCreateFailed": "连线创建失败",
 
   "nodeDelete": "删除节点",
   "nodeDeleted": "节点已删除",

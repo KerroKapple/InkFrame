@@ -716,6 +716,12 @@ abstract class AppLocalizations {
   /// **'Cannot link a node to itself'**
   String get linkSelfNotAllowed;
 
+  /// No description provided for @linkCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create link'**
+  String get linkCreateFailed;
+
   /// No description provided for @nodeDelete.
   ///
   /// In en, this message translates to:
