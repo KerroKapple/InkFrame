@@ -184,15 +184,23 @@ void main() {
       ))
           .first[0]!
           .toString();
+      // 关键：result_node_id 必须真实指向 result 节点，
+      // 否则 SET NULL 断言对天然为 NULL 的列永真（TD-001 假绿）。
       final job = (await h.conn.execute(
         Sql.named(
-          'INSERT INTO jobs (canvas_id, source_node_id, provider_id, job_type, full_prompt, user_prompt) '
-          "VALUES (@c, @s, 'kling', 'image', 'fp', 'up') RETURNING id",
+          'INSERT INTO jobs (canvas_id, source_node_id, result_node_id, provider_id, job_type, full_prompt, user_prompt) '
+          "VALUES (@c, @s, @r, 'kling', 'image', 'fp', 'up') RETURNING id",
         ),
-        parameters: {'c': cid, 's': config},
+        parameters: {'c': cid, 's': config, 'r': resultNode},
       ))
           .first[0]!
           .toString();
+      final before = await h.conn.execute(
+        Sql.named('SELECT result_node_id FROM jobs WHERE id = @j'),
+        parameters: {'j': job},
+      );
+      expect(before.first[0], isNotNull,
+          reason: '前置：jobs.result_node_id 已真实指向 result 节点');
       await h.conn.execute(
         Sql.named(
           'INSERT INTO batch_results (node_id, job_id, slot_index, status) '

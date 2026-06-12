@@ -1,0 +1,5 @@
+{
+  "id": "FIXTURE_REQUEST_ID",
+  "message": "Incorrect API key provided: FIXTURE_REDACTED_KEY. You can find your API key at https://stability.ai.",
+  "name": "unauthorized"
+}

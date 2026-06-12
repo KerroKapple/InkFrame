@@ -1,0 +1,9 @@
+{
+  "error": {
+    "message": "Incorrect API key provided: FIXTURE_REDACTED_KEY. You can find your API key at https://platform.openai.com/account/api-keys.",
+    "type": "invalid_request_error",
+    "code": "invalid_api_key",
+    "param": null
+  },
+  "status": 401
+}

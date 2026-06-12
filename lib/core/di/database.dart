@@ -10,10 +10,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../storage/pg_binary_locator.dart';
+import '../../storage/migrations/app_migrations.dart';
 import '../../storage/migrations/migration_runner.dart';
 import '../../storage/pg_controller.dart';
-import '../../storage/schema/schema_v1.dart';
-import '../../storage/schema/schema_v2.dart';
 import 'paths.dart';
 
 /// 二进制定位器——默认按平台探测；单测可以覆盖为指向测试 fixture。
@@ -76,13 +75,7 @@ final pgMigratedConnectionProvider = FutureProvider<Connection>(
       // 23505 并发竞争；其余重抛。
       if (e.code != '23505') rethrow;
     }
-    final runner = MigrationRunner(
-      conn,
-      migrations: const [
-        Migration(version: 1, sql: kSchemaV1),
-        Migration(version: 2, sql: kSchemaV2),
-      ],
-    );
+    final runner = MigrationRunner(conn, migrations: kAppMigrations);
     await runner.migrate();
     return conn;
   },
