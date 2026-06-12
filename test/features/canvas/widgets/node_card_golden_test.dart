@@ -68,7 +68,7 @@ void main() {
           node: _sample,
           selected: false,
           onTap: () {},
-          onPanUpdate: (_) {},
+          onDragEnd: (_) {},
         ),
         size: _surface,
         overrides: <Override>[
@@ -92,7 +92,7 @@ void main() {
           node: _sample,
           selected: true,
           onTap: () {},
-          onPanUpdate: (_) {},
+          onDragEnd: (_) {},
           onStartLink: () {},
           onDelete: () {},
         ),
@@ -119,7 +119,7 @@ void main() {
           selected: true,
           isLinkSource: true,
           onTap: () {},
-          onPanUpdate: (_) {},
+          onDragEnd: (_) {},
         ),
         size: _surface,
         overrides: <Override>[

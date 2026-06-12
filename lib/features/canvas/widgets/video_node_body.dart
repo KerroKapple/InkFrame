@@ -50,6 +50,7 @@ class VideoNodeBody extends ConsumerWidget {
         projectId: projectId,
         canvasId: canvasId,
         thumbnailUrl: thumbnailUrl,
+        decodeWidth: node.size.width,
       );
     }
 
@@ -59,12 +60,16 @@ class VideoNodeBody extends ConsumerWidget {
 
 /// 有 thumbnail_url 的分支：解析相对路径 → 存在则 Image.file + play overlay，
 /// 缺失 / PathSecurityError → broken 占位。
-class _ThumbnailOrBroken extends StatelessWidget {
+///
+/// ME-25：解析 + existsSync 只在路径变化时做一次并缓存，不在每次 build 重复
+/// 同步 IO（Image.file 自身的解码失败仍由 errorBuilder 兜底）。
+class _ThumbnailOrBroken extends StatefulWidget {
   const _ThumbnailOrBroken({
     required this.resolver,
     required this.projectId,
     required this.canvasId,
     required this.thumbnailUrl,
+    required this.decodeWidth,
   });
 
   final FileResolverService resolver;
@@ -72,23 +77,50 @@ class _ThumbnailOrBroken extends StatelessWidget {
   final String canvasId;
   final String thumbnailUrl;
 
+  /// 逻辑像素宽（节点卡片宽），供 cacheWidth 计算。
+  final double decodeWidth;
+
+  @override
+  State<_ThumbnailOrBroken> createState() => _ThumbnailOrBrokenState();
+}
+
+class _ThumbnailOrBrokenState extends State<_ThumbnailOrBroken> {
+  File? _file; // null = 路径非法或文件缺失 → broken 占位
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveOnce();
+  }
+
+  @override
+  void didUpdateWidget(covariant _ThumbnailOrBroken old) {
+    super.didUpdateWidget(old);
+    if (old.thumbnailUrl != widget.thumbnailUrl ||
+        old.projectId != widget.projectId ||
+        old.canvasId != widget.canvasId ||
+        old.resolver != widget.resolver) {
+      _resolveOnce();
+    }
+  }
+
+  void _resolveOnce() {
+    try {
+      final f = widget.resolver.resolve(
+        projectId: widget.projectId,
+        canvasId: widget.canvasId,
+        relativePath: widget.thumbnailUrl,
+      );
+      _file = f.existsSync() ? f : null;
+    } on PathSecurityError {
+      _file = null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    File file;
-    try {
-      file = resolver.resolve(
-        projectId: projectId,
-        canvasId: canvasId,
-        relativePath: thumbnailUrl,
-      );
-    } on PathSecurityError {
-      return _VideoPlaceholder(
-        icon: Icons.broken_image_outlined,
-        text: context.l10n.resultNodeImageMissing,
-      );
-    }
-
-    if (!file.existsSync()) {
+    final file = _file;
+    if (file == null) {
       return _VideoPlaceholder(
         icon: Icons.broken_image_outlined,
         text: context.l10n.resultNodeImageMissing,
@@ -104,6 +136,10 @@ class _ThumbnailOrBroken extends StatelessWidget {
           Image.file(
             file,
             fit: BoxFit.cover,
+            // ME-26：按卡片宽度解码，避免原图全尺寸进 image cache。
+            cacheWidth:
+                (widget.decodeWidth * MediaQuery.devicePixelRatioOf(context))
+                    .round(),
             errorBuilder: (_, _, _) => _VideoPlaceholder(
               icon: Icons.broken_image_outlined,
               text: context.l10n.resultNodeImageMissing,

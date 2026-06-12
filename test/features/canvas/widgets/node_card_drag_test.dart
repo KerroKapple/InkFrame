@@ -1,5 +1,7 @@
-// NodeCard 拖拽视觉态：onPanStart → onPanEnd 之间 _dragging=true，
-// 表现为 AnimatedScale.scale 由 1.0 抬升到 1.02，且阴影切到 InkShadow.elevated。
+// NodeCard 拖拽：
+//   1) 视觉态：onPanStart → onPanEnd 之间 AnimatedScale 1.0 → 1.02；
+//   2) HI-13 落点提交：拖拽中位移只在卡片内部 Transform.translate 局部累积
+//      （不每帧推 controller），onPanEnd 一次性回调 onDragEnd(累计位移)。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -37,23 +39,20 @@ class _FakeResolver implements FileResolverService {
 }
 
 void main() {
-  testWidgets('pan 开始 → AnimatedScale 切到 1.02；pan 结束 → 回到 1.0',
-      (tester) async {
-    Offset accumulated = Offset.zero;
-    const n = CanvasNode(
-      id: 'n1',
-      label: 'Drag me',
-      type: CanvasNodeType.image,
-    );
+  Future<void> pumpCard(
+    WidgetTester tester, {
+    required CanvasNode node,
+    required void Function(Offset) onDragEnd,
+  }) async {
     await pumpInkApp(
       tester,
       Scaffold(
         body: Center(
           child: NodeCard(
-            node: n,
+            node: node,
             selected: false,
             onTap: () {},
-            onPanUpdate: (d) => accumulated += d,
+            onDragEnd: onDragEnd,
           ),
         ),
       ),
@@ -63,6 +62,16 @@ void main() {
       ],
     );
     await tester.pumpAndSettle();
+  }
+
+  testWidgets('pan 开始 → AnimatedScale 切到 1.02；pan 结束 → 回到 1.0',
+      (tester) async {
+    const n = CanvasNode(
+      id: 'n1',
+      label: 'Drag me',
+      type: CanvasNodeType.image,
+    );
+    await pumpCard(tester, node: n, onDragEnd: (_) {});
 
     AnimatedScale scaleWidget() => tester
         .widget<AnimatedScale>(find.byType(AnimatedScale).first);
@@ -77,7 +86,57 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
     expect(scaleWidget().scale, 1.0);
-    // 注：onPanUpdate 的累计值不在本测试范围（驱动器对 pan 事件分发的细节会
-    // 影响 accumulated 是否落到 onPanUpdate），重点是 _dragging 视觉态切换。
+  });
+
+  testWidgets('拖拽中位移局部累积（Transform），onDragEnd 仅在落点回调一次',
+      (tester) async {
+    final commits = <Offset>[];
+    const n = CanvasNode(
+      id: 'n2',
+      label: 'Drag me',
+      type: CanvasNodeType.image,
+    );
+    await pumpCard(tester, node: n, onDragEnd: commits.add);
+
+    Transform translateWidget() =>
+        tester.widget<Transform>(find.byType(Transform).first);
+    final idleTransform = translateWidget().transform;
+
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.text('Drag me')));
+    await gesture.moveBy(const Offset(30, 40));
+    await gesture.moveBy(const Offset(10, -5));
+    await tester.pump();
+
+    // 拖拽中：不提交 controller，位移体现在局部 Transform 上。
+    expect(commits, isEmpty);
+    expect(translateWidget().transform, isNot(equals(idleTransform)));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    // 落点：恰好一次提交，且 Transform 归零（位置交还上层 Positioned）。
+    expect(commits, hasLength(1));
+    expect(commits.single, isNot(Offset.zero));
+    expect(translateWidget().transform, equals(idleTransform));
+  });
+
+  testWidgets('pan 取消 → 不提交 onDragEnd，位移归零', (tester) async {
+    final commits = <Offset>[];
+    const n = CanvasNode(
+      id: 'n3',
+      label: 'Drag me',
+      type: CanvasNodeType.image,
+    );
+    await pumpCard(tester, node: n, onDragEnd: commits.add);
+
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.text('Drag me')));
+    await gesture.moveBy(const Offset(30, 40));
+    await tester.pump();
+    await gesture.cancel();
+    await tester.pumpAndSettle();
+
+    expect(commits, isEmpty);
   });
 }
