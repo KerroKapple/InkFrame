@@ -112,8 +112,6 @@
     }
   },
 
-  "generationSuccess": "Generated",
-  "generationFailure": "Generation failed",
   "generationMissingKey": "API key is missing",
   "generationInvalidConfig": "Invalid configuration: {reason}",
   "@generationInvalidConfig": {
@@ -178,6 +176,15 @@
     }
   },
   "inspectorVideoCameraLabel": "Camera movement",
+  "cameraStatic": "Static",
+  "cameraPushIn": "Push in",
+  "cameraPullOut": "Pull out",
+  "cameraPanLeft": "Pan left",
+  "cameraPanRight": "Pan right",
+  "cameraTiltUp": "Tilt up",
+  "cameraTiltDown": "Tilt down",
+  "cameraOrbit": "Orbit",
+  "cameraHandheld": "Handheld",
   "inspectorVideoModeAuto": "Mode: auto-detected from inputs",
   "inspectorVideoModeT2v": "Text-to-video",
   "inspectorVideoModeI2v": "Image-to-video",

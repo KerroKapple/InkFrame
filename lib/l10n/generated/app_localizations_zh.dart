@@ -251,12 +251,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get generationSuccess => '生成完成';
-
-  @override
-  String get generationFailure => '生成失败';
-
-  @override
   String get generationMissingKey => 'API Key 未配置';
 
   @override
@@ -381,6 +375,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inspectorVideoCameraLabel => '运镜';
+
+  @override
+  String get cameraStatic => '固定机位';
+
+  @override
+  String get cameraPushIn => '推进';
+
+  @override
+  String get cameraPullOut => '拉远';
+
+  @override
+  String get cameraPanLeft => '左摇';
+
+  @override
+  String get cameraPanRight => '右摇';
+
+  @override
+  String get cameraTiltUp => '上仰';
+
+  @override
+  String get cameraTiltDown => '下俯';
+
+  @override
+  String get cameraOrbit => '环绕';
+
+  @override
+  String get cameraHandheld => '手持';
 
   @override
   String get inspectorVideoModeAuto => '生成模式：根据输入自动识别';

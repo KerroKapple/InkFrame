@@ -109,8 +109,6 @@
     }
   },
 
-  "generationSuccess": "生成完成",
-  "generationFailure": "生成失败",
   "generationMissingKey": "API Key 未配置",
   "generationInvalidConfig": "配置无效：{reason}",
   "@generationInvalidConfig": {
@@ -168,6 +166,15 @@
   "inspectorVideoDurationLabel": "时长（秒）",
   "inspectorVideoDurationOption": "{seconds} 秒",
   "inspectorVideoCameraLabel": "运镜",
+  "cameraStatic": "固定机位",
+  "cameraPushIn": "推进",
+  "cameraPullOut": "拉远",
+  "cameraPanLeft": "左摇",
+  "cameraPanRight": "右摇",
+  "cameraTiltUp": "上仰",
+  "cameraTiltDown": "下俯",
+  "cameraOrbit": "环绕",
+  "cameraHandheld": "手持",
   "inspectorVideoModeAuto": "生成模式：根据输入自动识别",
   "inspectorVideoModeT2v": "文生视频",
   "inspectorVideoModeI2v": "图生视频",

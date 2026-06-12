@@ -3,26 +3,38 @@
 // 控件：prompt / provider / duration / camera 下拉 + 自动持久化 + 四态状态面板。
 // mode（t2v vs i2v）在 GenerationController 根据 incoming data edges 自动推断。
 //
-// 状态面板复用 InspectorStatusPanel，绑定点与 ImageConfigInspector 一致：
-// agent-generation 落 JobState 后改为 `ref.watch(jobStateProvider(node.id))`。
-
-import 'dart:async';
+// 纯 UI 层：持久化与提交状态机委托 InspectorSubmitController(nodeId)，
+// 与 ImageConfigInspector 共享同一控制器和 InspectorStatusBinding。
+// camera 枚举经 ARB 映射展示，不直出枚举名。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/secure_storage_keys.dart';
 import '../../../core/di/providers.dart';
-import '../../../core/di/repositories.dart';
-import '../../../core/di/secure_storage.dart';
 import '../../../core/models/provider_capabilities.dart';
-import '../../../features/generation/generation_controller.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
+import '../providers/inspector_submit_controller.dart';
 import 'inspector_status_panel.dart';
+
+/// CameraMovement → 用户可读文案。exhaustive switch，新枚举漏映射编译期报错。
+String cameraMovementLabel(BuildContext context, CameraMovement camera) {
+  final l = context.l10n;
+  return switch (camera) {
+    CameraMovement.static_ => l.cameraStatic,
+    CameraMovement.pushIn => l.cameraPushIn,
+    CameraMovement.pullOut => l.cameraPullOut,
+    CameraMovement.panLeft => l.cameraPanLeft,
+    CameraMovement.panRight => l.cameraPanRight,
+    CameraMovement.tiltUp => l.cameraTiltUp,
+    CameraMovement.tiltDown => l.cameraTiltDown,
+    CameraMovement.orbit => l.cameraOrbit,
+    CameraMovement.handheld => l.cameraHandheld,
+  };
+}
 
 class VideoConfigInspector extends ConsumerStatefulWidget {
   const VideoConfigInspector({super.key, required this.node});
@@ -39,13 +51,9 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
   String? _providerId;
   int? _durationSec;
   CameraMovement? _camera;
-  InspectorJobView _view = const InspectorJobIdle();
-  Timer? _promptDebounce;
 
-  static const _debounceDuration = Duration(milliseconds: 500);
-
-  bool get _busy =>
-      _view is InspectorJobSubmitting || _view is InspectorJobRunning;
+  InspectorSubmitController get _submitCtrl => ref
+      .read(inspectorSubmitControllerProvider(widget.node.id).notifier);
 
   @override
   void initState() {
@@ -73,7 +81,6 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
 
   @override
   void dispose() {
-    _promptDebounce?.cancel();
     _promptCtrl.dispose();
     super.dispose();
   }
@@ -101,67 +108,20 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     return null;
   }
 
-  Future<void> _patchTypeConfig(Map<String, Object?> patch) async {
-    try {
-      final nodes = await ref.read(nodeRepositoryProvider.future);
-      await nodes.patchTypeConfig(widget.node.id, patch);
-    } catch (_) {
-      // 静默——下次覆盖
-    }
-  }
-
   void _onPromptChanged(String value) {
     setState(() {});
-    _promptDebounce?.cancel();
-    _promptDebounce = Timer(_debounceDuration, () {
-      _patchTypeConfig(<String, Object?>{'prompt': value});
-    });
+    _submitCtrl.savePromptDebounced(value);
   }
 
-  Future<bool> _hasApiKey(String providerId) async {
-    final secure = ref.read(secureStorageServiceProvider);
-    return secure.exists(SecureStorageKeys.providerApiKey(providerId));
-  }
-
-  Future<void> _submit() async {
+  void _submit() {
     final prompt = _promptCtrl.text.trim();
-    if (prompt.isEmpty || _providerId == null || _busy) return;
-    setState(() => _view = const InspectorJobSubmitting());
-    try {
-      final nodes = await ref.read(nodeRepositoryProvider.future);
-      await nodes.patchTypeConfig(widget.node.id, <String, Object?>{
-        'prompt': prompt,
-        'provider_id': _providerId,
-        if (_durationSec != null) 'duration_ms': _durationSec! * 1000,
-        if (_camera != null) 'camera': _camera!.name,
-      });
-      if (!mounted) return;
-      setState(() => _view = const InspectorJobRunning());
-      final controller = await ref.read(generationControllerProvider.future);
-      await controller.submitFromConfigNode(widget.node.id);
-      if (!mounted) return;
-      // fire-and-forget：提交成功即收起；进度看画布渲染队列面板，
-      // 终态结果/失败由 CanvasScreen 的 registry listener 反映（刷新画布 / toast）。
-      setState(() => _view = const InspectorJobIdle());
-    } on MissingApiKeyError {
-      if (mounted) {
-        setState(() => _view = const InspectorJobError(code: 'missingApiKey'));
-      }
-    } on InvalidGenerationConfigError catch (e) {
-      if (mounted) {
-        setState(() =>
-            _view = InspectorJobError(code: 'invalidConfig: ${e.reason}'));
-      }
-    } on ProviderNotRegisteredError {
-      if (mounted) {
-        setState(() =>
-            _view = const InspectorJobError(code: 'providerNotRegistered'));
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _view = InspectorJobError(code: e.toString()));
-      }
-    }
+    if (prompt.isEmpty || _providerId == null) return;
+    _submitCtrl.submit(<String, Object?>{
+      'prompt': prompt,
+      'provider_id': _providerId,
+      if (_durationSec != null) 'duration_ms': _durationSec! * 1000,
+      if (_camera != null) 'camera': _camera!.name,
+    });
   }
 
   @override
@@ -170,6 +130,10 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     final selected = _selectedCaps(caps);
     final colors = context.inkColors;
     final typo = context.inkTypography;
+    final submitState =
+        ref.watch(inspectorSubmitControllerProvider(widget.node.id));
+    final busy = submitState is InspectorSubmitSubmitting ||
+        submitState is InspectorSubmitRunning;
 
     return Container(
       width: 320,
@@ -214,7 +178,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                   child: Text(c.providerId),
                 ),
             ],
-            onChanged: _busy
+            onChanged: busy
                 ? null
                 : (v) {
                     if (v == null) return;
@@ -231,7 +195,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                       _durationSec = newDuration;
                       _camera = newCamera;
                     });
-                    _patchTypeConfig(<String, Object?>{
+                    _submitCtrl.saveConfig(<String, Object?>{
                       'provider_id': v,
                       if (newDuration != null)
                         'duration_ms': newDuration * 1000,
@@ -256,12 +220,12 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                     child: Text(context.l10n.inspectorVideoDurationOption(d)),
                   ),
             ],
-            onChanged: _busy
+            onChanged: busy
                 ? null
                 : (v) {
                     if (v == null) return;
                     setState(() => _durationSec = v);
-                    _patchTypeConfig(
+                    _submitCtrl.saveConfig(
                       <String, Object?>{'duration_ms': v * 1000},
                     );
                   },
@@ -278,14 +242,17 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             items: [
               if (selected != null)
                 for (final c in selected.supportedCameras)
-                  DropdownMenuItem(value: c, child: Text(c.name)),
+                  DropdownMenuItem(
+                    value: c,
+                    child: Text(cameraMovementLabel(context, c)),
+                  ),
             ],
-            onChanged: _busy
+            onChanged: busy
                 ? null
                 : (v) {
                     if (v == null) return;
                     setState(() => _camera = v);
-                    _patchTypeConfig(
+                    _submitCtrl.saveConfig(
                       <String, Object?>{'camera': v.name},
                     );
                   },
@@ -296,58 +263,19 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             style: typo.caption.copyWith(color: colors.fg3),
           ),
           const SizedBox(height: InkSpacing.lg),
-          _VideoStatusBinding(
+          InspectorStatusBinding(
+            nodeId: widget.node.id,
             providerId: _providerId,
             promptEmpty: _promptCtrl.text.trim().isEmpty,
-            hasApiKeyFuture: _providerId == null
-                ? Future<bool>.value(false)
-                : _hasApiKey(_providerId!),
-            view: _view,
+            generateLabel: context.l10n.inspectorVideoGenerate,
+            disabledEmptyPromptText:
+                context.l10n.inspectorVideoGenerateDisabledEmptyPrompt,
+            disabledNoKeyText:
+                context.l10n.inspectorVideoGenerateDisabledNoKey,
             onSubmit: _submit,
           ),
         ],
       ),
-    );
-  }
-}
-
-class _VideoStatusBinding extends StatelessWidget {
-  const _VideoStatusBinding({
-    required this.providerId,
-    required this.promptEmpty,
-    required this.hasApiKeyFuture,
-    required this.view,
-    required this.onSubmit,
-  });
-
-  final String? providerId;
-  final bool promptEmpty;
-  final Future<bool> hasApiKeyFuture;
-  final InspectorJobView view;
-  final VoidCallback onSubmit;
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder<bool>(
-      future: hasApiKeyFuture,
-      builder: (context, snap) {
-        final hasKey = snap.data ?? false;
-        String? disabledReason;
-        if (promptEmpty) {
-          disabledReason =
-              context.l10n.inspectorVideoGenerateDisabledEmptyPrompt;
-        } else if (providerId == null || !hasKey) {
-          disabledReason = context.l10n.inspectorVideoGenerateDisabledNoKey;
-        }
-        final canSubmit = !promptEmpty && providerId != null && hasKey;
-        return InspectorStatusPanel(
-          view: view,
-          generateLabel: context.l10n.inspectorVideoGenerate,
-          canSubmit: canSubmit,
-          disabledReason: disabledReason,
-          onSubmit: onSubmit,
-        );
-      },
     );
   }
 }
