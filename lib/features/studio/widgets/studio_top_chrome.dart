@@ -2,6 +2,7 @@
 // trailing=⌘K + Settings + Avatar。
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/shortcut_labels.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
@@ -32,7 +33,10 @@ class StudioTopChrome extends StatelessWidget implements PreferredSizeWidget {
         studioName: studioName,
         breadcrumbTail: breadcrumbTail,
       ),
-      trailing: _ChromeTrailing(onOpenSettings: onOpenSettings),
+      trailing: _ChromeTrailing(
+        studioName: studioName,
+        onOpenSettings: onOpenSettings,
+      ),
     );
   }
 }
@@ -90,7 +94,7 @@ class _Breadcrumb extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
             child: Text('›', style: chev),
           ),
-          Text('Projects', style: base),
+          Text(context.l10n.studioLibraryProjects, style: base),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
             child: Text('›', style: chev),
@@ -103,9 +107,15 @@ class _Breadcrumb extends StatelessWidget {
 }
 
 class _ChromeTrailing extends StatelessWidget {
-  const _ChromeTrailing({this.onOpenSettings});
+  const _ChromeTrailing({required this.studioName, this.onOpenSettings});
 
+  final String studioName;
   final VoidCallback? onOpenSettings;
+
+  String get _avatarInitial {
+    final trimmed = studioName.trim();
+    return trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +136,7 @@ class _ChromeTrailing extends StatelessWidget {
             border: Border.all(color: colors.borderSubtle),
           ),
           child: Text(
-            '⌘ K',
+            commandPaletteShortcutLabel(),
             style: typo.caption.copyWith(color: colors.fg3),
           ),
         ),
@@ -143,7 +153,7 @@ class _ChromeTrailing extends StatelessWidget {
             border: Border.all(color: colors.borderSubtle),
           ),
           child: Text(
-            'K',
+            _avatarInitial,
             style: typo.label.copyWith(color: colors.accent),
           ),
         ),

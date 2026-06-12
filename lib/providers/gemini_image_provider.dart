@@ -38,6 +38,7 @@ const String kGeminiValidatePath = '/models';
 // ---- 能力声明（PROVIDER-API.md §9.2） -----------------------------------
 const ProviderCapabilities kGeminiImageCapabilities = ProviderCapabilities(
   providerId: 'gemini-image',
+  displayName: 'Gemini Image',
   region: ProviderRegion.global,
   modes: [GenerationMode.textToImage],
   supportedRatios: [

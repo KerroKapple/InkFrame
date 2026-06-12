@@ -32,6 +32,7 @@ const String kKlingV3SubmitPath =
 // ---- 能力声明 -----------------------------------------------------------
 const ProviderCapabilities kKlingV3Capabilities = ProviderCapabilities(
   providerId: 'kling-v3',
+  displayName: 'Kling v3',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToVideo, GenerationMode.imageToVideo],
   supportedRatios: [

@@ -29,7 +29,7 @@ class CanvasEdgesController
     final async = ref.read(edgeRepositoryProvider);
     final repo = async.valueOrNull;
     if (repo == null) {
-      throw StateError('edgeRepositoryProvider 尚未就绪');
+      throw StateError('edgeRepositoryProvider is not ready');
     }
     return repo;
   }

@@ -33,6 +33,7 @@ const int kKlingV3OmniMaxRefImages = 4;
 // ---- 能力声明 -----------------------------------------------------------
 const ProviderCapabilities kKlingV3OmniCapabilities = ProviderCapabilities(
   providerId: 'kling-v3-omni',
+  displayName: 'Kling v3 Omni',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToVideo],
   supportedRatios: [

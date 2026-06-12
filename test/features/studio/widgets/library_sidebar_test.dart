@@ -27,7 +27,8 @@ void main() {
     expect(find.text('LIBRARY'), findsOneWidget);
     expect(find.text('ARCHIVE'), findsOneWidget);
     expect(find.text('Archived Projects'), findsOneWidget);
-    expect(find.text('Kerro Studio'), findsOneWidget);
+    // currentStudioProvider 默认 null → en 兜底 studioDefaultName。
+    expect(find.text('My Studio'), findsOneWidget);
     expect(find.text('Projects'), findsOneWidget);
 
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);

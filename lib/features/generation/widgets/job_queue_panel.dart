@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/job_queue.dart';
+import '../../../core/di/providers.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -169,6 +170,7 @@ class _JobRow extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
+    final displayNames = ref.watch(providerDisplayNamesProvider);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.surface2,
@@ -187,7 +189,7 @@ class _JobRow extends ConsumerWidget {
                 const SizedBox(width: InkSpacing.sm),
                 Expanded(
                   child: Text(
-                    job.providerId,
+                    displayNames[job.providerId] ?? job.providerId,
                     style: typo.body.copyWith(color: colors.fg1),
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -276,8 +278,9 @@ class _JobRow extends ConsumerWidget {
     return switch (job) {
       JobQueued() => l.generationStatusQueued,
       JobSubmitting() => l.generationStatusSubmitting,
-      JobRunning(:final progress) =>
-        '${l.generationStatusRunning} ${(progress.clamp(0.0, 1.0) * 100).round()}%',
+      JobRunning(:final progress) => l.generationStatusRunningWithProgress(
+          (progress.clamp(0.0, 1.0) * 100).round(),
+        ),
       JobSucceeded() => l.generationStatusSucceeded,
       JobFailed() => l.generationStatusFailed,
       JobCancelled() => l.generationStatusCancelled,

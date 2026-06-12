@@ -39,6 +39,7 @@ enum CameraMovement {
 abstract class ProviderCapabilities with _$ProviderCapabilities {
   const factory ProviderCapabilities({
     required String providerId,
+    String? displayName,
     required ProviderRegion region,
     required List<GenerationMode> modes,
     required List<AspectRatio> supportedRatios,

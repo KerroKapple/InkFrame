@@ -18,7 +18,8 @@ class LibrarySidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final projectsAsync = ref.watch(workspaceProjectsProvider);
-    final studioName = ref.watch(currentStudioProvider);
+    final studioName =
+        ref.watch(currentStudioProvider) ?? context.l10n.studioDefaultName;
     final selectedId = ref.watch(selectedProjectIdProvider);
     return Container(
       width: 280,

@@ -208,7 +208,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
               for (final c in caps)
                 DropdownMenuItem(
                   value: c.providerId,
-                  child: Text(c.providerId),
+                  child: Text(c.displayName ?? c.providerId),
                 ),
             ],
             onChanged: _busy

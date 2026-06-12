@@ -30,7 +30,8 @@ class StudioHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    final studioName = ref.watch(currentStudioProvider);
+    final studioName =
+        ref.watch(currentStudioProvider) ?? context.l10n.studioDefaultName;
     return ColoredBox(
       color: colors.surfaceCanvas,
       child: Column(
