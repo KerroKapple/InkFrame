@@ -52,12 +52,17 @@ Adding a new AI provider does not require understanding the whole codebase — r
 |----------|-------------|---------------|--------|
 | Stable Diffusion (local ComfyUI) | image | 🟢 Open | High |
 | Midjourney (Discord API) | image | 🟢 Open | Medium |
-| OpenAI DALL-E 3 / GPT-Image | image | 🟢 Open | Medium |
+| OpenAI DALL-E 3 | image | 🟢 Open | Medium |
 | Runway Gen-3 / Gen-4 | video | 🟢 Open | High |
 | Pika Labs | video | 🟢 Open | Medium |
 | Luma Dream Machine | video | 🟢 Open | Medium |
+| Jimeng (Volcengine 即梦) | image | 🟢 Open | Medium |
+| Hailuo (MiniMax 海螺) | video | 🟢 Open | Medium |
+| Kling 官方 API（非 DashScope 渠道） | image / video | 🟢 Open | Low |
 
-已实现 / Implemented: Gemini Image · Kling V3 / V3 Omni · Wanx (image / i2v / r2v / t2v).
+已实现 / Implemented: Gemini Image · OpenAI GPT-Image (`gpt-image-1`) · Stability Stable Image Core · Kling V3 / V3 Omni (DashScope) · Wanx (image / i2v / r2v / t2v)。共 9 款，差异矩阵见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) §9。
+
+> 相关 Planned 基建（设计已写入文档、待实现）：成本预估 `estimateCost` + UI 成本展示（PROVIDER-API §4）· 配额展示（原 `QuotaAware` 接口，已删待重立项）· 自定义 Provider 配置源 `custom_providers.json`（PROVIDER-API §13）· JobQueue 自动重试与下载续传（ARCHITECTURE §5.3 / §8）· 性能降级控制器（ARCHITECTURE §10）。
 
 ### 🎨 Canvas / Editor
 

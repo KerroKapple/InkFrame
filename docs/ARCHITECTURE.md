@@ -68,8 +68,9 @@ lib/
 │   ├── errors/          # InkError sealed hierarchy
 │   ├── constants/       # 枚举、常量（无副作用）
 │   ├── di/              # Riverpod Provider 定义（DI 接线）
-│   ├── logging/         # InkLogger（Infrastructure 接口）
-│   └── paths/           # FileResolverService 接口
+│   ├── models/          # 领域模型（freezed）
+│   ├── logging/         # LoggerService（接口 + FileLoggerService 实现）
+│   └── paths/           # AppPaths —— app 已知目录
 ├── features/
 │   └── {feature}/
 │       ├── widgets/     # Widget Layer
@@ -88,9 +89,10 @@ lib/
 
 Feature 之间**不得互相 import**。跨 feature 通信通过以下方式：
 
-1. **共享 Riverpod Provider**：定义在 `lib/core/di/` 或 `lib/services/`，双方都 watch 同一个 Provider。
-2. **事件总线**：`lib/services/event_bus.dart`，用于一对多广播（如"生成完成"通知画布刷新）。
-3. **导航参数**：通过路由传递简单值（ID、枚举），不传复杂对象。
+1. **共享 Riverpod Provider**：定义在 `lib/core/di/` 或 `lib/services/`，双方都 watch 同一个 Provider。当前唯一手段——"生成完成"等跨 feature 通知也走共享 Provider 的 Stream（如 `JobHandle.statusStream`）。
+2. **导航参数**：通过路由传递简单值（ID、枚举），不传复杂对象。
+
+> **Planned**：独立事件总线（`lib/services/event_bus.dart`）尚未实现；确有一对多广播需求时再立项，不提前造设施。
 
 ---
 
@@ -201,20 +203,16 @@ class TempProvider extends _$TempProvider {
 通过接口扩展，不修改已有代码。
 
 ```dart
-// 添加新 Provider = 新建一个文件，零改动现有代码
-abstract class GenerationProvider {
-  Future<JobId> submit(GenerationTask task);
-  Future<JobStatus> poll(JobId id);
-  Future<KeyValidationResult> validateApiKey(String key);
-}
+// 添加新 Provider = 新建一个文件 + 在 core/di/providers.dart 注册一行，
+// 零改动既有 Provider / Service 代码（接口见下方 I 节的四接口拆分）
 
 // ✅ 新增 Provider 只需新建文件
-class SeedanceProvider implements GenerationProvider { ... }
+class SeedanceProvider implements Submittable, Pollable, KeyValidatable { ... }
 
 // ❌ 违反 OCP：在现有逻辑里加分支
 Future<JobId> submit(task) {
   if (task.providerId == 'seedance') { ... }  // 每次加 Provider 都要改这里
-  else if (task.providerId == 'kling') { ... }
+  else if (task.providerId == 'kling-v3') { ... }
 }
 ```
 
@@ -237,21 +235,24 @@ class SimpleProvider implements GenerationProvider {
 按能力维度拆分接口，不强迫实现类实现它不支持的方法。
 
 ```dart
-// lib/core/interfaces/generation_provider.dart
-abstract class Submittable  { Future<JobId> submit(GenerationTask task); }
+// lib/core/interfaces/generation_provider.dart（真实四接口）
+abstract class Submittable {
+  ProviderCapabilities get capabilities;
+  Future<JobId> submit(GenerationTask task);
+}
 abstract class Pollable     { Future<JobStatus> poll(JobId id); }
 abstract class Cancellable  { Future<void> cancel(JobId id); }
-abstract class QuotaAware   { Future<ProviderQuota> getQuota(); }
 abstract class KeyValidatable {
   Future<KeyValidationResult> validateApiKey(String key);
 }
 
-// Kling 支持全部能力
-class KlingProvider implements Submittable, Pollable, Cancellable, QuotaAware, KeyValidatable {}
+// 当前所有 Provider 都实现这三个（同步 Provider 的 poll 走 inlineBytes cache）
+class OpenAIImageProvider implements Submittable, Pollable, KeyValidatable {}
 
-// 简单 Provider 只实现它支持的
-class SimpleProvider implements Submittable, Pollable, KeyValidatable {}
+// 支持取消的 Provider 再加 Cancellable（目前没有，接口保留为扩展点）
 ```
+
+> 历史版本曾有第 5 个接口 `QuotaAware`，已删除；配额展示属 ROADMAP。
 
 ### D — 依赖倒置
 
@@ -434,7 +435,8 @@ final result = ref.watch(someProvider).value!; // 可能是 loading 或 error �
 全局并发上限（构造参数 globalConcurrency，默认 2）
       ↕ min()
 Per-Provider 并发上限（ProviderCapabilities.maxConcurrentJobs）
-  Gemini=1 / Kling=2 / 海螺=2 / Jimeng=1
+  gemini-image=1 / openai-image=1 / stability-image-core=1
+  wanx-image=2 / 视频系（wanx-t2v/i2v/r2v、kling-v3、kling-v3-omni）=1
 
 实际可调度数 = min(全局剩余槽位, per-provider 剩余槽位)
 ```
@@ -471,7 +473,7 @@ pending ──► submitted ──► polling ──► success
 每个 Provider 客户端内置独立的 Token Bucket，防止超出 Provider 的 QPS 限制。
 
 ```dart
-// lib/providers/shared/provider_rate_limiter.dart
+// lib/providers/rate_limiter.dart
 class ProviderRateLimiter {
   final int qps;
   final int burst;
@@ -479,11 +481,10 @@ class ProviderRateLimiter {
   Future<void> acquire(); // 阻塞直到拿到 token，不抛错，不计入 retry_count
 }
 
-// P0 默认值（来自 §10.7.1）
-// Gemini  = 2 QPS / 10 burst
-// Kling   = 2 QPS / 5 burst
-// 海螺    = 2 QPS / 5 burst
-// Jimeng  = 1 QPS / 3 burst
+// 各 Provider 当前值的唯一事实源是其 capabilities.qps / burst，
+// 速查表见 docs/PROVIDER-API.md §7.1（gemini-image 2/10、openai-image 2/5、
+// stability-image-core 1/3、DashScope 系 1/2）。
+// 实例在 lib/core/di/providers.dart 按 providerId 预创建并被 factory 闭包共享。
 ```
 
 `acquire()` 等待期间：日志记录 DEBUG 级等待时长，对用户透明，不显示任何 UI。
@@ -491,21 +492,24 @@ class ProviderRateLimiter {
 ### 5.3 轮询参数（全局默认，Provider 可覆盖）
 
 ```dart
-// lib/core/constants/network.dart
-const Duration kPollInitialInterval  = Duration(seconds: 3);
-const double   kPollBackoffMultiplier = 2.0;
-const Duration kPollMaxInterval      = Duration(seconds: 30);
-const double   kPollJitter           = 0.2;   // ±20%
-const Duration kPollTimeout          = Duration(minutes: 30);
-const int      kMaxRetries           = 3;     // 仅网络错误重试
+// lib/services/job_queue_service.dart —— InMemoryJobQueueService 构造参数默认值
+InMemoryJobQueueService({
+  // ...
+  Duration pollInitialInterval = const Duration(seconds: 3),
+  Duration pollMaxInterval = const Duration(seconds: 30),
+  double pollBackoffMultiplier = 2.0,
+  Duration pollTimeout = const Duration(minutes: 30),
+});
 
 // Provider 可在 ProviderCapabilities 中声明覆盖值
-// pollInterval: Duration(seconds: 5)  → 覆盖 kPollInitialInterval
-// pollTimeout:  Duration(minutes: 10) → 覆盖 kPollTimeout
+// pollInterval: Duration(seconds: 5)  → 覆盖 pollInitialInterval
+// pollTimeout:  Duration(minutes: 10) → 覆盖 pollTimeout
 ```
 
-**可重试白名单：** `network_timeout / network_offline / provider_5xx / provider_busy / download_failed`。
+**可重试白名单：** `network_timeout / network_offline / provider_5xx / provider_busy / download_failed`（事实源：`ink_error.dart` 的 `_retryable` 表，消费侧读 `InkError.retryable`）。
 **不可重试：** `invalid_key / insufficient_balance / content_policy / invalid_parameter / poll_timeout / local_io_error / cancelled_by_user / cancelled_on_exit / unknown`。
+
+> **Planned**：自动重试调度（次数上限 + 指数退避）尚未实现（`job_queue_service.dart` 顶部 `b3.1 ⏳`）；当前可重试错误进 `error` 终态后由 UI "重试"人工触发。
 
 ---
 
@@ -527,55 +531,49 @@ const int      kMaxRetries           = 3;     // 仅网络错误重试
 ### 6.2 FileResolverService 接口
 
 ```dart
-// lib/core/paths/file_resolver_service.dart
+// lib/core/interfaces/file_resolver_service.dart（真实签名）
 abstract class FileResolverService {
-  /// 将画布相对路径解析为绝对路径
-  String resolve({
+  /// 相对路径 → 绝对 File。相对路径非法时抛 [PathSecurityError]。
+  File resolve({
     required String projectId,
     required String canvasId,
     required String relativePath,
   });
 
-  /// 将绝对路径转为相对路径（存入数据库前调用）
+  /// 绝对路径 → 相对路径；源路径不在指定 canvas 根目录内时抛 [PathSecurityError]。
   String toRelative({
     required String projectId,
     required String canvasId,
-    required String absolutePath,
+    required File source,
   });
 
-  /// 获取画布的媒体目录（images / videos / thumbnails）
-  String mediaDir({
-    required String projectId,
-    required String canvasId,
-    required MediaType type,
-  });
+  /// 返回 canvas 根目录绝对路径（不保证存在）。
+  Directory canvasRoot({required String projectId, required String canvasId});
 }
 
-enum MediaType { images, videos, thumbnails }
+/// 非法路径（穿越 / 绝对 / 空 / 控制字符 / 越界）→ 抛这个
+class PathSecurityError extends ArgumentError { ... }
 ```
+
+安全边界：所有绝对路径回写必须校验在 canvas 根目录之内，拒绝 `..` 穿越、绝对路径、空串、控制字符。实现在 `lib/services/file_resolver_service.dart`（`DefaultFileResolverService`）。
 
 ### 6.3 dataDir 来源
 
 ```dart
-// dataDir 来自 SettingsService，不硬编码
-// 默认值：~/InkFrame（展开后为绝对路径）
-// 用户可在"设置 → 存储"修改
+// lib/core/di/file_resolver.dart（真实接线）
+// 根目录来自 AppPaths（main.dart 在 runApp 前预创建并 override appPathsProvider）
+final fileResolverServiceProvider = Provider<FileResolverService>(
+  (ref) => DefaultFileResolverService(ref.watch(appPathsProvider)),
+);
 
-@Riverpod(keepAlive: true)
-FileResolverService fileResolver(FileResolverRef ref) {
-  final settings = ref.watch(settingsServiceProvider);
-  return DefaultFileResolverService(dataDir: settings.dataDir);
-}
+// 默认根：~/InkFrame（AppPaths 展开为绝对路径）
 ```
+
+> **Planned**：用户在"设置 → 存储"自定义 dataDir 尚未实现，当前固定走 `AppPaths` 默认根。
 
 ### 6.4 文件名清理规则
 
-写入磁盘前，所有文件名必须经过 `FileNameSanitizer.sanitize()`：
-
-- 移除路径分隔符（`/`、`\`）、控制字符、前导点号
-- 保留 Unicode 字符（中日韩）
-- 超过 200 字符截断（保留扩展名）
-- 冲突时追加 `_1`、`_2` 后缀
+> **Planned**：独立的 `FileNameSanitizer` 尚未实现。当前落盘文件名由系统按 `{uuid}.{ext}` 生成（不含用户输入），非法路径防护由 §6.2 的 `PathSecurityError` 校验兜底。届时规则：移除路径分隔符 / 控制字符 / 前导点号；保留 CJK；超 200 字符截断保留扩展名；冲突追加 `_1`、`_2` 后缀。
 
 ---
 
@@ -804,27 +802,20 @@ abstract class SecureStorageService {
 
 ### 9.3 Key 验证缓存
 
-```dart
-// lib/core/constants/network.dart
-const Duration kApiKeyValidationCacheTtl = Duration(hours: 1);
-
-// 缓存失效条件：
-// 1. TTL 到期
-// 2. 用户手动点"重新验证"
-// 3. Key 被修改或删除
-// 缓存有效期内不重复调用 Provider 验证接口（节省配额）
-```
+> **Planned**：验证结果缓存尚未实现——当前每次点"验证"都实调 Provider 轻量端点（`validateApiKey` 本身不消耗生成配额）。届时设计：TTL 1 小时；失效条件 = TTL 到期 / 手动重新验证 / Key 被修改删除。
 
 ---
 
 ## 10. 性能降级控制器
+
+> ⚠️ **Planned —— 本章整体未实现。** `PerformanceTier` / `PerformanceDegradationController` / `FpsMonitor` 在 repo 中均不存在（见 `ROADMAP.md` "稳定 alpha → beta" 性能基线方向，及 `job_queue_service.dart` 顶部 `b4 ⏳`）。以下为设计蓝图，实现时以本节为验收基准，落地后删除本横幅。
 
 ### 10.1 PerformanceDegradationController
 
 单例 keepAlive，监听系统信号，自动切换 effectiveTier。
 
 ```dart
-// lib/services/performance_degradation_controller.dart
+// lib/services/performance_degradation_controller.dart（规划路径）
 @Riverpod(keepAlive: true)
 class PerformanceDegradationController
     extends _$PerformanceDegradationController {
@@ -870,7 +861,7 @@ final config = kPerformanceConfig[settings.performanceTier]!; // 可能忽略了
 帧率用 **3 秒滑动平均**，不用瞬时帧率。单帧 spike 不触发降级。
 
 ```dart
-// lib/services/fps_monitor.dart
+// lib/services/fps_monitor.dart（规划路径）
 class FpsMonitor {
   static const _windowDuration = Duration(seconds: 3);
   // 维护一个 3s 内的帧时间戳队列，计算平均 FPS
@@ -943,9 +934,7 @@ FocusableActionDetector(
 
 **P0-Beta 前必须满足：** 所有鼠标操作有等价键盘路径（框选除外，用 Tab 遍历替代）。
 
-CI Hook `scripts/hooks/check-keyboard-semantics.sh`：
-- 扫描 `lib/features/` 下的 `GestureDetector` 和 `InkWell`
-- 若无对应的 `onKey` / `KeyboardListener` / `Shortcuts` 覆盖，exit 1
+> **Planned**：键盘覆盖检查 hook（`scripts/hooks/check-keyboard-semantics.sh`）尚未编写——设计为扫描 `lib/features/` 下的 `GestureDetector` / `InkWell`，无对应 `onKey` / `KeyboardListener` / `Shortcuts` 覆盖即 exit 1。
 
 **VoiceOver / Narrator 验收：** 人工验证 + 录屏归档（Sprint 1 T4 验收条件），不做自动化（Flutter Semantics 测试无法覆盖实际朗读行为）。
 
@@ -958,12 +947,13 @@ CI Hook `scripts/hooks/check-keyboard-semantics.sh`：
 | 层 | 工具 | 范围 | 覆盖率门槛 |
 |----|------|------|----------|
 | core / utils | `flutter_test` (Dart 单测) | 纯函数，无 mock | 70% |
-| Service 层 | `flutter_test` + `mockito` | mock Repository 接口 | 70% |
-| Repository 层 | `flutter_test` + pg_test_harness | 真实 PG（测试 schema）| **75%** |
-| Riverpod Provider | `riverpod_test` + `ProviderContainer` | override Provider | 70% |
+| Service 层 | `flutter_test` + 手写 Fake（`test/_harness/`，接口实现，无 mock 框架） | fake Repository / Provider 接口 | 70% |
+| Provider 层 | `flutter_test` + `http_mock_adapter` + fixture（`test/fixtures/providers/`） | HTTP 层 mock | 70% |
+| Repository 层 | `flutter_test` + `test/storage/schema/pg_test_harness.dart` | 真实 PG（`TEST_PG_URL`，本地无 PG 时 skip） | **75%** |
+| Riverpod Provider | `ProviderContainer` + override | override Provider | 70% |
 | Widget | `flutter_test` + `ProviderScope` overrides | 渲染 + 交互 | 70% |
 | Golden | `golden_toolkit` | UI 回归 | 关键 Widget 必须有 |
-| E2E | 手动（场景 A-H，§29.1） | 核心闭环 | Sprint 2 收口 |
+| E2E | `test/e2e/`（fixture 回放）+ 手动场景 | 核心闭环 | Sprint 2 收口 |
 
 **数据层（Repository + schema）门槛 75% 的理由：** 数据层是基座，bug 向上传播代价最高，必须更严格。
 
@@ -979,15 +969,20 @@ CI Hook `scripts/hooks/check-keyboard-semantics.sh`：
 
 ### 12.3 Mock 边界规则
 
+本项目不用 mock 框架——测试替身是手写 Fake（实现 `core/interfaces/` 的抽象接口，集中在 `test/_harness/`）。
+
 ```dart
-// ✅ Mock 接口，不 mock 具体类
-when(mockNodeRepo.findById(any)).thenAnswer((_) async => fakeNode);
+// ✅ Fake 实现接口，不替换具体类
+class FakeNodeRepository implements NodeRepository {
+  @override
+  Future<Node> findById(String id) async => fakeNode;
+}
 
-// ❌ 不 mock 具体类（意味着你依赖了具体实现）
-when(mockPostgresNodeRepo.findById(any))... // 违规
+// ❌ 不 extends / 替换具体类（意味着你依赖了具体实现）
+class FakePostgresNodeRepository extends PostgresNodeRepository { ... } // 违规
 
-// ❌ 不 mock 被测对象的内部方法
-// 如果你需要 mock 一个私有方法，说明设计有问题，先重构
+// ❌ 不替换被测对象的内部方法
+// 如果你需要 stub 一个私有方法，说明设计有问题，先重构
 ```
 
 ### 12.4 集成测试配置
@@ -1048,7 +1043,7 @@ flutter test --exclude-tags integration
 ```
 storage.postgres       → 数据库连接与查询
 storage.migration      → Schema 迁移
-provider.{id}          → 具体 Provider（provider.kling, provider.gemini）
+provider.{id}          → 具体 Provider（provider.kling-v3, provider.gemini-image）
 job_queue              → 任务队列调度
 file_resolver          → 文件路径解析
 canvas.autosave        → 自动保存
@@ -1059,17 +1054,21 @@ app.lifecycle          → 启动 / 退出
 ### 13.3 使用规范
 
 ```dart
-// lib/core/logging/ink_logger.dart
-abstract class InkLogger {
-  void error(String module, String msg, {Object? cause, Map<String, Object> extra = const {}});
-  void warn (String module, String msg, {Map<String, Object> extra = const {}});
-  void info (String module, String msg, {Map<String, Object> extra = const {}});
-  void debug(String module, String msg, {Map<String, Object> extra = const {}});
+// lib/core/logging/logger_service.dart（真实接口）
+abstract class LoggerService {
+  void debug(String module, String msg, {Map<String, Object?>? extra});
+  void info(String module, String msg, {Map<String, Object?>? extra});
+  void warn(String module, String msg, {Map<String, Object?>? extra});
+  void error(String module, String msg,
+      {Map<String, Object?>? extra, Object? cause, StackTrace? stackTrace});
+  Future<void> flush();
+  Future<void> close();
 }
+// 落盘实现：FileLoggerService（同步写，保证行序；轮转 + 限流 + 脱敏内置）
 
 // 使用示例
 _logger.error(
-  'provider.kling',
+  'provider.kling-v3',
   'poll timeout',
   cause: e,
   extra: {'job_id': jobId, 'retry_count': retryCount},
@@ -1082,14 +1081,14 @@ debugPrint('job failed');
 
 ### 13.4 敏感字段打码规则
 
-以下字段**禁止**出现在日志中，必须打码：
+敏感字段**禁止**明文出现在日志中。`FileLoggerService` 对 `extra` 按 key 名打码（不区分大小写），命中即替换为 `***`：
 
-| 字段 | 打码方式 |
-|------|---------|
-| API Key | 显示前 4 位 + `****`，如 `sk-a1b2****` |
-| prompt | 截断至前 50 字符 + `...`（防止版权/隐私） |
-| 用户文件路径 | 替换 home 目录为 `~` |
-| 代理密码 | 完全替换为 `[REDACTED]` |
+```
+key / api_key / apikey / token / authorization / authorisation /
+prompt / password / proxy_password / proxypassword / secret
+```
+
+调用方仍负有第一责任：不要把敏感值塞进 `msg`（msg 是固定英文短语，变量只进 `extra`）。
 
 ### 13.5 日志轮转
 
@@ -1132,30 +1131,16 @@ strategy:
 
 ### 14.3 PG 二进制获取流程
 
-PG 二进制**不进代码仓库**，CI 从对象存储拉取：
+PG 二进制**不进代码仓库**。当前现状：
 
-```bash
-# scripts/fetch-pg-binaries.sh
-PG_VERSION=$(cat scripts/pg-version.txt)  # 固定 PostgreSQL 17.x
+- **CI 测试**：`.github/workflows/ci.yml` 用 `postgres:17-alpine` service container（`TEST_PG_URL` 注入），不打包二进制。
+- **本地开发**：`PgBinaryLocator`（`lib/storage/pg_binary_locator.dart`）按约定目录发现本机 PG；找不到时 storage 集成测试 `markTestSkipped`。
 
-# 按平台拉取
-case $PLATFORM in
-  macos-arm64)
-    aws s3 cp s3://inkframe-build/pg/${PG_VERSION}/macos-arm64/ \
-      macos/Runner/Resources/pg/ --recursive ;;
-  macos-x64)
-    aws s3 cp s3://inkframe-build/pg/${PG_VERSION}/macos-x64/ \
-      macos/Runner/Resources/pg/ --recursive ;;
-  windows-x64)
-    aws s3 cp s3://inkframe-build/pg/${PG_VERSION}/windows-x64/ \
-      windows/runner/resources/pg/ --recursive ;;
-esac
-
-# 校验版本一致性
-./pg/bin/postgres --version | grep -F "${PG_VERSION}" || exit 1
-```
+> **Planned**：Release 构建打包内嵌 PG 二进制的拉取脚本（`scripts/fetch-pg-binaries.sh` + `scripts/pg-version.txt`，从对象存储按平台拉取并校验版本）尚未编写——Release 流水线立项时一并实现。
 
 ### 14.4 构建步骤
+
+> **Planned**：Release 流水线（含 `fetch-pg-binaries.sh` / `sign-and-notarize.sh`）尚未搭建；当前 CI 只跑 PR 检查（analyze + test + coverage）。以下为 Release 蓝图：
 
 ```bash
 # 完整 Release 构建流程
@@ -1208,7 +1193,8 @@ signtool sign /tr http://timestamp.digicert.com /td sha256 \
 | `check-disposable-cleanup.sh` | StreamSubscription / Timer / Controller 未 dispose | exit 1 打回 |
 | `check-i18n-coverage.sh` | ARB key 不一致 / 空值 | exit 1 打回 |
 | `check-updated-at.sh` | UPDATE 语句缺少 `updated_at` | exit 1 打回 |
-| `check-keybindings.sh` | 默认快捷键命中 OS 保留键 | exit 1 打回 |
+
+> **Planned**：`check-keybindings.sh`（默认快捷键命中 OS 保留键检测）尚未编写。
 
 **pre-commit（本地 git hook）：** analyze + ARB check + 5 个快速 hook（秒级完成）。
 **pre-push（本地 git hook）：** flutter test 完整单测。
