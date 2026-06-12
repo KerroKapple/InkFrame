@@ -4,12 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/current_screen.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
+import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 import 'package:inkframe/features/studio/widgets/studio_top_chrome.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
+import '../../_harness/fake_repositories.dart';
 import '../../_harness/test_app.dart';
 
 void main() {
@@ -21,8 +24,13 @@ void main() {
       surfaceSize: const Size(1440, 900),
       overrides: <Override>[
         workspaceProjectsProvider.overrideWith(
-          (_) async => const <ProjectWithCanvases>[
-            ProjectWithCanvases(id: 'p1', name: 'Alpha', canvases: <CanvasRef>[]),
+          (_) async => <ProjectWithCanvases>[
+            ProjectWithCanvases(
+              id: 'p1',
+              name: 'Alpha',
+              createdAt: DateTime.utc(2026, 5, 1),
+              canvases: const <CanvasRef>[],
+            ),
           ],
         ),
       ],
@@ -34,6 +42,41 @@ void main() {
     expect(find.text('New Project'), findsOneWidget); // FAB
     // Alpha 既出现在 sidebar tree row 也出现在 ProjectCard
     expect(find.text('Alpha'), findsNWidgets(2));
+  });
+
+  testWidgets('ProjectCard meta 行：真实 createdAt 月份 + 画布数（无捏造 EP/日期）',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => <ProjectWithCanvases>[
+            ProjectWithCanvases(
+              id: 'p1',
+              name: 'Alpha',
+              createdAt: DateTime.utc(2026, 5, 12),
+              canvases: const <CanvasRef>[
+                CanvasRef(id: 'c1', name: 'A'),
+                CanvasRef(id: 'c2', name: 'B'),
+              ],
+            ),
+            ProjectWithCanvases(
+              id: 'p2',
+              name: 'Beta',
+              createdAt: DateTime.utc(2025, 11, 3),
+              canvases: const <CanvasRef>[CanvasRef(id: 'c3', name: 'C')],
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('May 2026 · 2 canvases'), findsOneWidget);
+    expect(find.text('Nov 2025 · 1 canvas'), findsOneWidget);
+    expect(find.textContaining('EP 01'), findsNothing);
   });
 
   testWidgets('StudioHome 空态：渲染 empty card + CTA + 隐藏 FAB',
@@ -157,5 +200,33 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.text('Create new project'), findsNothing);
+  });
+
+  testWidgets('create 流程：dialog 提交 → controller 建项目 + 首画布并刷新列表',
+      (tester) async {
+    final projects = InMemoryProjectRepository();
+    final canvases = InMemoryCanvasRepository();
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        projectRepositoryProvider.overrideWith((_) async => projects),
+        canvasRepositoryProvider.overrideWith((_) async => canvases),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('New Project'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Heist');
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    // 编排在 controller：项目 + 首画布（i18n 默认名）一起建出
+    expect(projects.rows.values.single['name'], 'Heist');
+    expect(canvases.rows.values.single['name'], 'Untitled Canvas');
+    // 列表刷新后卡片可见（sidebar + card 各一处）
+    expect(find.text('Heist'), findsNWidgets(2));
   });
 }

@@ -87,6 +87,35 @@ void main() {
     }
   });
 
+  test('CanvasRepository.listByProjects 一次取多项目画布 + 过滤软删', () async {
+    try {
+      final h = req();
+      final projRepo = PostgresProjectRepository(h.conn);
+      final repo = PostgresCanvasRepository(h.conn);
+      final p1 = await projRepo.create(name: 'P1');
+      final p2 = await projRepo.create(name: 'P2');
+      final c1 = await repo.create(projectId: p1, name: 'C1');
+      await repo.create(projectId: p2, name: 'C2');
+      final c3 = await repo.create(projectId: p2, name: 'C3');
+      await repo.softDelete(c3);
+
+      final rows = await repo.listByProjects([p1, p2]);
+      expect(rows, hasLength(2));
+      expect(
+        rows.map((r) => r['name']),
+        containsAll(<String>['C1', 'C2']),
+      );
+
+      expect(await repo.listByProjects([p1]), hasLength(1));
+      expect(
+        (await repo.listByProjects([p1])).single['id'].toString(),
+        c1,
+      );
+    } on _Skip {
+      return;
+    }
+  });
+
   test('StyleLaneRepository 全链路', () async {
     try {
       final h = req();

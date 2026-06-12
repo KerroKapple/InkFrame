@@ -70,6 +70,17 @@ void main() {
       expect(spy.lastSql, contains('project_id = @pid'));
       expect(spy.lastSql, contains('ORDER BY created_at ASC'));
     });
+
+    test('listByProjects 单条 ANY(@pids) 批量查询（反 N+1）', () async {
+      final spy = _SpySession();
+      await PostgresCanvasRepository(spy)
+          .listByProjects(const ['p1', 'p2']);
+      expect(spy.lastSql, contains('project_id = ANY(@pids)'));
+      expect(spy.lastSql, contains('deleted_at IS NULL'));
+      expect(spy.lastSql,
+          contains('ORDER BY project_id ASC, created_at ASC'));
+      expect(spy.lastParams?['pids'], const ['p1', 'p2']);
+    });
   });
 
   group('NodeRepository SQL', () {

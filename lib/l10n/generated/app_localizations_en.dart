@@ -512,6 +512,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioCreate => 'Create';
 
   @override
+  String studioProjectMetaLine(DateTime date, int count) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count canvases',
+      one: '1 canvas',
+    );
+    return '$dateString · $_temp0';
+  }
+
+  @override
   String get canvasDefaultName => 'Untitled Canvas';
 
   @override

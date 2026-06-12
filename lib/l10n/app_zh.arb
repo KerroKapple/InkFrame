@@ -208,6 +208,13 @@
   "studioNewProjectErrorDuplicate": "已存在同名项目",
   "studioNewProjectFailed": "项目创建失败",
   "studioCreate": "创建",
+  "studioProjectMetaLine": "{date} · {count, plural, other{{count} 个画布}}",
+  "@studioProjectMetaLine": {
+    "placeholders": {
+      "date": { "type": "DateTime", "format": "yMMM" },
+      "count": { "type": "int" }
+    }
+  },
 
   "canvasInspectorTransform": "变换",
   "canvasInspectorCamera": "镜头",
