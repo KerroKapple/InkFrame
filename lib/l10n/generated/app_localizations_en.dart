@@ -270,12 +270,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get generationSuccess => 'Generated';
-
-  @override
-  String get generationFailure => 'Generation failed';
-
-  @override
   String get generationMissingKey => 'API key is missing';
 
   @override
@@ -401,6 +395,33 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inspectorVideoCameraLabel => 'Camera movement';
+
+  @override
+  String get cameraStatic => 'Static';
+
+  @override
+  String get cameraPushIn => 'Push in';
+
+  @override
+  String get cameraPullOut => 'Pull out';
+
+  @override
+  String get cameraPanLeft => 'Pan left';
+
+  @override
+  String get cameraPanRight => 'Pan right';
+
+  @override
+  String get cameraTiltUp => 'Tilt up';
+
+  @override
+  String get cameraTiltDown => 'Tilt down';
+
+  @override
+  String get cameraOrbit => 'Orbit';
+
+  @override
+  String get cameraHandheld => 'Handheld';
 
   @override
   String get inspectorVideoModeAuto => 'Mode: auto-detected from inputs';

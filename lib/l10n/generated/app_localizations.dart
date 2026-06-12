@@ -578,18 +578,6 @@ abstract class AppLocalizations {
   /// **'Unavailable: {reason}'**
   String settingsAboutSecureStorageUnavailable(String reason);
 
-  /// No description provided for @generationSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Generated'**
-  String get generationSuccess;
-
-  /// No description provided for @generationFailure.
-  ///
-  /// In en, this message translates to:
-  /// **'Generation failed'**
-  String get generationFailure;
-
   /// No description provided for @generationMissingKey.
   ///
   /// In en, this message translates to:
@@ -829,6 +817,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Camera movement'**
   String get inspectorVideoCameraLabel;
+
+  /// No description provided for @cameraStatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Static'**
+  String get cameraStatic;
+
+  /// No description provided for @cameraPushIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Push in'**
+  String get cameraPushIn;
+
+  /// No description provided for @cameraPullOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull out'**
+  String get cameraPullOut;
+
+  /// No description provided for @cameraPanLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan left'**
+  String get cameraPanLeft;
+
+  /// No description provided for @cameraPanRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan right'**
+  String get cameraPanRight;
+
+  /// No description provided for @cameraTiltUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt up'**
+  String get cameraTiltUp;
+
+  /// No description provided for @cameraTiltDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt down'**
+  String get cameraTiltDown;
+
+  /// No description provided for @cameraOrbit.
+  ///
+  /// In en, this message translates to:
+  /// **'Orbit'**
+  String get cameraOrbit;
+
+  /// No description provided for @cameraHandheld.
+  ///
+  /// In en, this message translates to:
+  /// **'Handheld'**
+  String get cameraHandheld;
 
   /// No description provided for @inspectorVideoModeAuto.
   ///
