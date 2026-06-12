@@ -59,7 +59,7 @@ void main() {
     return ProviderContainer(overrides: [
       secureStorageServiceProvider.overrideWithValue(secure),
       providerRegistryProvider.overrideWithValue(
-        ProviderRegistry({providerId: () => fake}),
+        CachingProviderRegistry({providerId: () => fake}),
       ),
     ]);
   }

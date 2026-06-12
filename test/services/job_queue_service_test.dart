@@ -154,7 +154,7 @@ GenerationTask _task(String jobId, String providerId) => GenerationTask(
     );
 
 ProviderRegistry _registryOf(Map<String, FakeProvider> providers) {
-  return ProviderRegistry({
+  return CachingProviderRegistry({
     for (final entry in providers.entries) entry.key: () => entry.value,
   });
 }
@@ -378,7 +378,7 @@ class _BenchNoopProvider implements Submittable {
 
 InMemoryJobQueueService _buildBenchSvc() {
   return InMemoryJobQueueService(
-    registry: ProviderRegistry({'bench-noop': () => _BenchNoopProvider()}),
+    registry: CachingProviderRegistry({'bench-noop': () => _BenchNoopProvider()}),
   );
 }
 

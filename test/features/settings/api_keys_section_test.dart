@@ -39,7 +39,7 @@ List<Override> _overrides(
   );
   return [
     providerRegistryProvider
-        .overrideWithValue(ProviderRegistry({_id: () => fake})),
+        .overrideWithValue(CachingProviderRegistry({_id: () => fake})),
     secureStorageServiceProvider.overrideWithValue(secure),
   ];
 }

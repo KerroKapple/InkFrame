@@ -61,4 +61,35 @@ void main() {
     final unlocked = await container.read(anyProviderKeyConfiguredProvider.future);
     expect(unlocked, isTrue);
   });
+
+  test('候选列表从 registry 派生：非早期硬编码 Provider 的 key 也能解锁', () async {
+    // 历史 bug：列表硬编码 gemini/wanx/kling 三款，后接的 Provider
+    // （openai-image / stability-image-core）配了 key 仍提示未配置。
+    final container = ProviderContainer(overrides: <Override>[
+      secureStorageServiceProvider.overrideWithValue(_FakeStorage(
+        present: <String>{
+          SecureStorageKeys.providerApiKey('stability-image-core'),
+        },
+      )),
+    ]);
+    addTearDown(container.dispose);
+
+    final unlocked =
+        await container.read(anyProviderKeyConfiguredProvider.future);
+    expect(unlocked, isTrue);
+  });
+
+  test('DashScope 家族 key（scope 折叠）存在即解锁', () async {
+    final container = ProviderContainer(overrides: <Override>[
+      secureStorageServiceProvider.overrideWithValue(_FakeStorage(
+        // wanx-t2v 经 scopeOf 折叠到 provider.dashscope.api_key
+        present: <String>{SecureStorageKeys.providerApiKey('wanx-t2v')},
+      )),
+    ]);
+    addTearDown(container.dispose);
+
+    final unlocked =
+        await container.read(anyProviderKeyConfiguredProvider.future);
+    expect(unlocked, isTrue);
+  });
 }

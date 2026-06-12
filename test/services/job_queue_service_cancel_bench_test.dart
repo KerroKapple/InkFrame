@@ -57,7 +57,7 @@ GenerationTask _task(int i) => GenerationTask(
 
 Future<int> _benchCancel(int n, String pattern) async {
   final svc = InMemoryJobQueueService(
-    registry: ProviderRegistry({'bench-noop': () => _NoopProvider()}),
+    registry: CachingProviderRegistry({'bench-noop': () => _NoopProvider()}),
   );
   final ids = <String>[];
   for (var i = 0; i < n; i++) {

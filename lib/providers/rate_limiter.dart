@@ -1,6 +1,7 @@
 // ProviderRateLimiter：Per-Provider Token Bucket（PRD §10.7.1 / PROVIDER-API.md §7）。
 //
-// 每个 providerId 独立实例，由 Riverpod keepAlive provider 持有。
+// 每个 providerId 独立实例，由 Riverpod keepAlive provider 持有，
+// 并在 DI 层经 ref.onDispose 随容器销毁。
 // submit() 必须在发 HTTP 前 await acquire()；poll() / cancel() 不过 bucket。
 
 import 'dart:async';
@@ -10,28 +11,34 @@ import 'dart:async';
 /// 算法：
 /// - 桶容量 = [burst]；每 1s 补充 [qps] 个 token
 /// - acquire() 立即拿一个 token；不够时等待到能拿为止
+/// - 计时基于 Stopwatch 单调时钟——系统墙钟回拨/前跳不影响补充速率
 /// - 日志由调用方记录（DEBUG 级），本类只负责节流
 class ProviderRateLimiter {
   ProviderRateLimiter({
     required this.qps,
     required this.burst,
-    DateTime Function()? clock,
+    Stopwatch? stopwatch,
   })  : assert(qps > 0, 'qps must be positive'),
         assert(burst > 0, 'burst must be positive'),
-        _clock = clock ?? DateTime.now,
-        _tokens = burst.toDouble(),
-        _lastRefill = (clock ?? DateTime.now)();
+        _watch = (stopwatch ?? Stopwatch())..start(),
+        _tokens = burst.toDouble();
 
   final int qps;
   final int burst;
-  final DateTime Function() _clock;
+
+  /// 单调时钟；测试可注入伪 Stopwatch 控制 elapsed。
+  final Stopwatch _watch;
 
   double _tokens;
-  DateTime _lastRefill;
+  int _lastRefillUs = 0;
+  bool _disposed = false;
   final _waiters = <Completer<void>>[];
 
-  /// 拿一个 token；不够就阻塞等待。
+  /// 拿一个 token；不够就阻塞等待。dispose 后调用抛 StateError。
   Future<void> acquire() async {
+    if (_disposed) {
+      throw StateError('RateLimiter disposed');
+    }
     _refill();
     if (_tokens >= 1) {
       _tokens -= 1;
@@ -44,13 +51,13 @@ class ProviderRateLimiter {
   }
 
   void _refill() {
-    final now = _clock();
-    final elapsed = now.difference(_lastRefill).inMicroseconds / 1e6;
+    final nowUs = _watch.elapsedMicroseconds;
+    final elapsed = (nowUs - _lastRefillUs) / 1e6;
     if (elapsed <= 0) {
       return;
     }
     _tokens = (_tokens + elapsed * qps).clamp(0, burst.toDouble());
-    _lastRefill = now;
+    _lastRefillUs = nowUs;
     _drainWaiters();
   }
 
@@ -73,9 +80,12 @@ class ProviderRateLimiter {
     });
   }
 
-  /// 测试/关闭时调用。
+  /// 由 DI 层 ref.onDispose / 测试调用。幂等。
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     _wakeTimer?.cancel();
+    _wakeTimer = null;
     for (final w in _waiters) {
       if (!w.isCompleted) w.completeError(StateError('RateLimiter disposed'));
     }
