@@ -43,7 +43,7 @@ void main() {
     expect(find.textContaining('90'), findsNothing);
   });
 
-  testWidgets('任务行标题显示 providerId 而非 jobId(UUID)', (tester) async {
+  testWidgets('任务行标题显示 provider displayName 而非 jobId(UUID)', (tester) async {
     await tester.pumpWidget(_host([
       const JobState.running(
         jobId: 'a1b2c3d4-uuid',
@@ -53,7 +53,8 @@ void main() {
       ),
     ], 'c1'));
     await tester.pump();
-    expect(find.text('gemini-image'), findsOneWidget);
+    // FIX-013 x FIX-010：行标题取 displayName（未声明时回退 providerId）。
+    expect(find.text('Gemini Image'), findsOneWidget);
     expect(find.text('a1b2c3d4-uuid'), findsNothing);
   });
 
