@@ -342,6 +342,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get linkSelfNotAllowed => 'Cannot link a node to itself';
 
   @override
+  String get linkCreateFailed => 'Failed to create link';
+
+  @override
   String get nodeDelete => 'Delete node';
 
   @override

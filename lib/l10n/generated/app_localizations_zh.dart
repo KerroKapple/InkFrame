@@ -330,6 +330,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get linkSelfNotAllowed => '不能连到自己';
 
   @override
+  String get linkCreateFailed => '连线创建失败';
+
+  @override
   String get nodeDelete => '删除节点';
 
   @override

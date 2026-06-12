@@ -150,6 +150,7 @@
   "linkCreated": "Link created",
   "linkAlreadyExists": "Link already exists",
   "linkSelfNotAllowed": "Cannot link a node to itself",
+  "linkCreateFailed": "Failed to create link",
 
   "nodeDelete": "Delete node",
   "nodeDeleted": "Node deleted",
