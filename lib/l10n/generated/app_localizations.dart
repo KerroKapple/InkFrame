@@ -440,6 +440,18 @@ abstract class AppLocalizations {
   /// **'Saved'**
   String get settingsApiKeySaved;
 
+  /// No description provided for @settingsApiKeySavedUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved, but the key could not be verified due to a network issue.'**
+  String get settingsApiKeySavedUnverified;
+
+  /// No description provided for @settingsApiKeyRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider rejected this key. It was not saved.'**
+  String get settingsApiKeyRejected;
+
   /// No description provided for @settingsApiKeyCleared.
   ///
   /// In en, this message translates to:

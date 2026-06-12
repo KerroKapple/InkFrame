@@ -194,6 +194,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsApiKeySaved => 'Saved';
 
   @override
+  String get settingsApiKeySavedUnverified =>
+      'Saved, but the key could not be verified due to a network issue.';
+
+  @override
+  String get settingsApiKeyRejected =>
+      'The provider rejected this key. It was not saved.';
+
+  @override
   String get settingsApiKeyCleared => 'Cleared';
 
   @override
