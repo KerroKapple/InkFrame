@@ -12,18 +12,17 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../util/node_position.dart';
 
 class CanvasAddNodeFab extends ConsumerWidget {
-  const CanvasAddNodeFab({super.key, required this.canvasId});
+  const CanvasAddNodeFab({super.key, required this.canvasId, this.random});
 
   final String canvasId;
 
-  static final _rand = Random();
+  /// 随机源注入口（测试用）；null 时每次取系统熵。
+  final Random? random;
 
-  Offset _pickPosition() => Offset(
-        200 + _rand.nextDouble() * 400,
-        200 + _rand.nextDouble() * 400,
-      );
+  Offset _pickPosition() => pickRandomNodePosition(random ?? Random());
 
   Future<void> _addNode(
     BuildContext context,

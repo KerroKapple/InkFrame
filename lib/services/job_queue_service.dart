@@ -2,8 +2,8 @@
 //
 // b1 ✅ 内存调度 + Provider 集成
 // b2 ✅ JobRepository 持久化 + 启动恢复
-// b3 ✅ FileResolverService 落盘集成（仅 inlineBytes，本次）
-// b3.1 ⏳ remoteUrls HTTP 下载 + 重试 + 续传
+// b3 ✅ FileResolverService 落盘集成（inlineBytes）
+// b3.1 ✅ remoteUrls HTTP 下载（T5-S3；重试 / 续传未实现）
 // b4 ⏳ 性能档位 → globalConcurrency 联动
 
 import 'dart:async';

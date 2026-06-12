@@ -17,14 +17,11 @@
 //   - 接入参数写死在本文件顶部 const 区
 //   - 抛出 InkError 子类，禁止裸 DioException
 
-import 'package:dio/dio.dart';
-
 import '../core/models/generation_task.dart';
 import '../core/models/cost_model.dart';
 import '../core/models/job_status.dart';
 import '../core/models/provider_capabilities.dart';
 import 'dashscope_async_provider_base.dart';
-import 'rate_limiter.dart';
 
 // ---- 接入参数（ADR-0005 锁定） -------------------------------------------
 const String kWanxImageModel = 'wan2.7-image-pro';
@@ -130,15 +127,3 @@ class WanxImageProvider extends DashScopeAsyncProviderBase {
     return JobStatus.success(remoteUrls: urls);
   }
 }
-
-/// Provider 工厂：DI 层注入（registry 注册见后续 PR）。
-WanxImageProvider buildWanxImageProvider({
-  required DashScopeKeySource keySource,
-  required ProviderRateLimiter rateLimiter,
-  Dio? dio,
-}) =>
-    WanxImageProvider(
-      keySource: keySource,
-      rateLimiter: rateLimiter,
-      dio: dio,
-    );

@@ -3,12 +3,12 @@
 // 所有 Provider 必须在 lib/core/di/providers.dart 注册到全局 registry。
 // UI / Service 层取 Provider 只走 registry.get(id)，不 import 具体实现。
 //
-// 启动期自检——同 providerId 出现两个实现直接 AssertionError，不让过。
+// 启动期断言 providerId 非空；同 id 重复由 Map 键唯一性天然排除。
 
 import '../core/interfaces/generation_provider.dart';
 import '../core/models/provider_capabilities.dart';
 
-/// Provider 工厂签名：给定 Key，返回已接线好 RateLimiter 的实例。
+/// Provider 工厂签名：无参；返回已接好 keySource / RateLimiter 的实例。
 typedef ProviderFactory = Submittable Function();
 
 class ProviderRegistry {

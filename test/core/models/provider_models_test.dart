@@ -7,7 +7,6 @@ import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
-import 'package:inkframe/core/models/provider_quota.dart';
 
 void main() {
   group('CostModel sealed', () {
@@ -121,15 +120,6 @@ void main() {
       expect(t.batchSize, 1);
       expect(t.refImagePaths, isEmpty);
       expect(t.negativePrompt, isNull);
-    });
-  });
-
-  group('ProviderQuota', () {
-    test('可空字段', () {
-      const q = ProviderQuota(currency: 'USD');
-      expect(q.remaining, isNull);
-      expect(q.total, isNull);
-      expect(q.currency, 'USD');
     });
   });
 }

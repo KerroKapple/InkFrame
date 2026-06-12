@@ -1,7 +1,7 @@
 // ProviderCapabilities：Provider 能力声明（PRD §10.1）。
 //
 // 每个 Provider 通过一个 const 实例声明自己支持的参数组合。
-// UI 内联面板、JobQueueService、estimateCost 都只依赖这个字段。
+// UI 内联面板、JobQueueService 都只依赖这个声明。
 // 禁止从 .env / DB / 网络下发——必须 const，编译期固定。
 
 import 'package:freezed_annotation/freezed_annotation.dart';
