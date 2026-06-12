@@ -1,5 +1,5 @@
 // AppTeardown 单测：窗口关闭路径的有序回收。
-// 顺序契约：JobQueue.dispose → Connection.close → PgController.stop → container.dispose。
+// 顺序契约：JobQueue.dispose → Pool.close → PgController.stop → container.dispose。
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -34,8 +34,8 @@ void main() {
         jobQueueServiceProvider.overrideWith(
           (ref) async => _FakeJobQueue(() => order.add('jobQueue.dispose')),
         ),
-        pgConnectionProvider.overrideWith(
-          (ref) async => _FakeConnection(() => order.add('conn.close')),
+        pgPoolProvider.overrideWith(
+          (ref) async => _FakePool(() => order.add('pool.close')),
         ),
         pgControllerProvider.overrideWithValue(
           _RecordingPgController(
@@ -51,13 +51,13 @@ void main() {
     final container = buildContainer();
     // 模拟 app 正常运行：三层全部已被解析
     await container.read(jobQueueServiceProvider.future);
-    await container.read(pgConnectionProvider.future);
+    await container.read(pgPoolProvider.future);
     container.read(pgControllerProvider);
 
     final teardown = AppTeardown();
     await teardown.run(container);
 
-    expect(order, <String>['jobQueue.dispose', 'conn.close', 'pg.stop']);
+    expect(order, <String>['jobQueue.dispose', 'pool.close', 'pg.stop']);
     // 容器已 dispose：再读 provider 必抛
     expect(() => container.read(pgControllerProvider), throwsStateError);
   });
@@ -94,8 +94,8 @@ class _FakeJobQueue implements JobQueueService {
       throw UnimplementedError('${invocation.memberName}');
 }
 
-class _FakeConnection implements Connection {
-  _FakeConnection(this.onClose);
+class _FakePool implements Pool<void> {
+  _FakePool(this.onClose);
   final void Function() onClose;
 
   @override

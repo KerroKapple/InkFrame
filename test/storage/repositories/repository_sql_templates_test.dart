@@ -178,6 +178,8 @@ void main() {
       );
       expect(spy.lastSql, contains('@params::jsonb'));
       expect(spy.lastParams?['params'], contains('"model":"kling"'));
+      // 死列处置：retry 由 JobQueue 内存退避负责，INSERT 不再写 max_retries
+      expect(spy.lastSql, isNot(contains('max_retries')));
     });
 
     test('listDuePolling 过滤 polling + next_poll_at', () async {
@@ -212,12 +214,17 @@ void main() {
       expect(spy.lastParams?['days'], 30);
     });
 
-    test('purgePerCanvasCap 使用 ROW_NUMBER PARTITION BY', () async {
+    test('purgePerCanvasCap 使用 ROW_NUMBER PARTITION BY，且只清终态行', () async {
       final spy = _SpySession();
       await PostgresJobRepository(spy).purgePerCanvasCap(cap: 500);
       expect(spy.lastSql, contains('ROW_NUMBER() OVER'));
       expect(spy.lastSql, contains('PARTITION BY canvas_id'));
       expect(spy.lastParams?['cap'], 500);
+      // ME-32：在途 job（pending/submitted/polling）绝不被限额清除
+      expect(
+        spy.lastSql,
+        contains("status IN ('success','error','cancelled','timeout')"),
+      );
     });
 
     test('update 对 parameters 做 ::jsonb cast', () async {

@@ -10,7 +10,6 @@ abstract class JobRepository {
     required String userPrompt,
     Map<String, Object?> parameters = const <String, Object?>{},
     int batchSize = 1,
-    int maxRetries = 3,
     DateTime? timeoutAt,
   });
 
@@ -38,7 +37,8 @@ abstract class JobRepository {
   /// 按 PRD §21 retention：清 30 天前终态 job，排除孤儿 result 依赖。
   Future<int> purgeExpired({required Duration retention});
 
-  /// 按 canvas 限额 500，排除孤儿 result 依赖。
+  /// 按 canvas 限额 500——只清终态行（在途 job 不占槽位也不被删），
+  /// 排除孤儿 result 依赖。
   Future<int> purgePerCanvasCap({required int cap});
 
   Future<int> hardDelete(String id);

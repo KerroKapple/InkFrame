@@ -1,7 +1,7 @@
 // Repository DI — 把 Postgres 实现注入到 app scope。
 //
-// 所有 Repository 绑定到 pgMigratedConnectionProvider：首次解析时完成 PG start +
-// schema migrate，后续 watch 直接拿到已就绪 Connection。
+// 所有 Repository 绑定到 pgMigratedPoolProvider：首次解析时完成 PG start +
+// schema migrate，后续 watch 直接拿到已就绪 Pool（Pool 实现 Session，断线自动换新连接）。
 //
 // ViewModels / Controllers 只依赖抽象接口；单测用 Riverpod override 打 mock。
 
@@ -25,56 +25,56 @@ import 'database.dart';
 
 final projectRepositoryProvider = FutureProvider<ProjectRepository>(
   (ref) async {
-    final conn = await ref.watch(pgMigratedConnectionProvider.future);
-    return PostgresProjectRepository(conn);
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresProjectRepository(pool);
   },
   name: 'projectRepositoryProvider',
 );
 
 final canvasRepositoryProvider = FutureProvider<CanvasRepository>(
   (ref) async {
-    final conn = await ref.watch(pgMigratedConnectionProvider.future);
-    return PostgresCanvasRepository(conn);
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresCanvasRepository(pool);
   },
   name: 'canvasRepositoryProvider',
 );
 
 final nodeRepositoryProvider = FutureProvider<NodeRepository>(
   (ref) async {
-    final conn = await ref.watch(pgMigratedConnectionProvider.future);
-    return PostgresNodeRepository(conn);
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresNodeRepository(pool);
   },
   name: 'nodeRepositoryProvider',
 );
 
 final edgeRepositoryProvider = FutureProvider<EdgeRepository>(
   (ref) async {
-    final conn = await ref.watch(pgMigratedConnectionProvider.future);
-    return PostgresEdgeRepository(conn);
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresEdgeRepository(pool);
   },
   name: 'edgeRepositoryProvider',
 );
 
 final jobRepositoryProvider = FutureProvider<JobRepository>(
   (ref) async {
-    final conn = await ref.watch(pgMigratedConnectionProvider.future);
-    return PostgresJobRepository(conn);
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresJobRepository(pool);
   },
   name: 'jobRepositoryProvider',
 );
 
 final styleLaneRepositoryProvider = FutureProvider<StyleLaneRepository>(
   (ref) async {
-    final conn = await ref.watch(pgMigratedConnectionProvider.future);
-    return PostgresStyleLaneRepository(conn);
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresStyleLaneRepository(pool);
   },
   name: 'styleLaneRepositoryProvider',
 );
 
 final batchResultRepositoryProvider = FutureProvider<BatchResultRepository>(
   (ref) async {
-    final conn = await ref.watch(pgMigratedConnectionProvider.future);
-    return PostgresBatchResultRepository(conn);
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresBatchResultRepository(pool);
   },
   name: 'batchResultRepositoryProvider',
 );
