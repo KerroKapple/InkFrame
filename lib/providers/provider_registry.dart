@@ -7,6 +7,8 @@
 // - Dio 每个 Provider 只建一次，不再每次 get() 泄漏新连接池
 // - 同步 Provider 的 _inlineCache（submit 暂存 / poll 消费）跨调用方一致
 // - RateLimiter 单例不变量由缓存天然保证
+//
+// 启动期断言 providerId 非空；同 id 重复由 Map 键唯一性天然排除。
 
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';

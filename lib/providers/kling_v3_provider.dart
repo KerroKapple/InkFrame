@@ -16,14 +16,11 @@
 // 注：首帧本地路径由基类在 submit 前内联为 base64 data URI（HI-05）；
 // http(s)/data 引用原样透传。
 
-import 'package:dio/dio.dart';
-
 import '../core/models/cost_model.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../core/models/provider_capabilities.dart';
 import 'dashscope_async_provider_base.dart';
-import 'rate_limiter.dart';
 
 // ---- 接入参数（ADR-0005 锁定） -------------------------------------------
 const String kKlingV3Model = 'kling/kling-v3-video-generation';
@@ -106,15 +103,3 @@ class KlingV3Provider extends DashScopeAsyncProviderBase {
   JobStatus parseSuccessOutput(Map<String, Object?> output) =>
       parseSingleVideoUrlOutput(output);
 }
-
-/// Provider 工厂：DI 层注入（registry 注册见后续 PR）。
-KlingV3Provider buildKlingV3Provider({
-  required DashScopeKeySource keySource,
-  required ProviderRateLimiter rateLimiter,
-  Dio? dio,
-}) =>
-    KlingV3Provider(
-      keySource: keySource,
-      rateLimiter: rateLimiter,
-      dio: dio,
-    );

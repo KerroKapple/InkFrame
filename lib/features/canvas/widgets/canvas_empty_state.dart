@@ -14,12 +14,14 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../util/node_position.dart';
 
 class CanvasEmptyState extends ConsumerWidget {
   const CanvasEmptyState({
     super.key,
     required this.canvasId,
     required this.onBackgroundTap,
+    this.random,
   });
 
   final String canvasId;
@@ -27,12 +29,10 @@ class CanvasEmptyState extends ConsumerWidget {
   /// 点击空白区域（非 CTA）时的回调：用于退出连线模式 + 清选中。
   final VoidCallback onBackgroundTap;
 
-  static final _rand = Random();
+  /// 随机源注入口（测试用）；null 时每次取系统熵。
+  final Random? random;
 
-  Offset _pickPosition() => Offset(
-        200 + _rand.nextDouble() * 400,
-        200 + _rand.nextDouble() * 400,
-      );
+  Offset _pickPosition() => pickRandomNodePosition(random ?? Random());
 
   Future<void> _addNode(
     BuildContext context,

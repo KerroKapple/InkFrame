@@ -14,14 +14,11 @@
 // 注：参考图本地路径由基类在 submit 前内联为 base64 data URI（HI-05）；
 // http(s)/data 引用原样透传。
 
-import 'package:dio/dio.dart';
-
 import '../core/models/cost_model.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../core/models/provider_capabilities.dart';
 import 'dashscope_async_provider_base.dart';
-import 'rate_limiter.dart';
 
 // ---- 接入参数（ADR-0005 锁定） -------------------------------------------
 const String kWanxR2VModel = 'wan2.7-r2v';
@@ -109,15 +106,3 @@ class WanxR2VProvider extends DashScopeAsyncProviderBase {
   JobStatus parseSuccessOutput(Map<String, Object?> output) =>
       parseSingleVideoUrlOutput(output);
 }
-
-/// Provider 工厂：DI 层注入（registry 注册见后续 PR）。
-WanxR2VProvider buildWanxR2VProvider({
-  required DashScopeKeySource keySource,
-  required ProviderRateLimiter rateLimiter,
-  Dio? dio,
-}) =>
-    WanxR2VProvider(
-      keySource: keySource,
-      rateLimiter: rateLimiter,
-      dio: dio,
-    );
