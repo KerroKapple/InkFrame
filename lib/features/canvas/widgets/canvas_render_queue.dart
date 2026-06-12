@@ -75,7 +75,9 @@ class CanvasRenderQueue extends ConsumerWidget {
           else
             for (final job in jobs) ...<Widget>[
               _JobRow(
-                name: job.jobId,
+                // 行标题用 providerId（与 JobQueuePanel / Inspector 下拉一致），
+                // 不暴露 jobId(UUID) 给用户。
+                name: job.providerId,
                 percent: job.progressValue,
                 running: job is JobRunning,
               ),

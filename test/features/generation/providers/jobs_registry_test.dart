@@ -58,6 +58,72 @@ void main() {
     expect(state.single.jobId, 'a');
   });
 
+  test('upsert 相同状态跳过，不触发通知', () {
+    final notifier = container.read(jobsRegistryProvider.notifier);
+    var notifications = 0;
+    container.listen(
+      jobsRegistryProvider,
+      (_, _) => notifications++,
+      fireImmediately: false,
+    );
+    const job = JobState.running(
+      jobId: 'a',
+      providerId: 'p',
+      canvasId: 'cv-1',
+      progress: 0.5,
+    );
+    notifier.upsert(job);
+    expect(notifications, 1);
+    notifier.upsert(job); // 值相等 → 跳过
+    expect(notifications, 1);
+    notifier.upsert(const JobState.running(
+      jobId: 'a',
+      providerId: 'p',
+      canvasId: 'cv-1',
+      progress: 0.6,
+    ));
+    expect(notifications, 2);
+  });
+
+  test('终态条目超过上限时剔除最旧终态', () {
+    final notifier = container.read(jobsRegistryProvider.notifier);
+    for (var i = 0; i < kJobsRegistryMaxTerminal + 3; i++) {
+      notifier.upsert(JobState.succeeded(
+        jobId: 'job-$i',
+        providerId: 'p',
+        canvasId: 'cv-1',
+        artifactPath: 'images/$i.png',
+      ));
+    }
+    final state = container.read(jobsRegistryProvider);
+    expect(state.length, kJobsRegistryMaxTerminal);
+    // 最旧的 3 条被剔除，最新的保留
+    expect(state.first.jobId, 'job-3');
+    expect(state.last.jobId, 'job-${kJobsRegistryMaxTerminal + 2}');
+  });
+
+  test('活跃条目不受终态保留上限影响', () {
+    final notifier = container.read(jobsRegistryProvider.notifier);
+    notifier.upsert(const JobState.running(
+      jobId: 'active-1',
+      providerId: 'p',
+      canvasId: 'cv-1',
+    ));
+    for (var i = 0; i < kJobsRegistryMaxTerminal + 5; i++) {
+      notifier.upsert(JobState.cancelled(
+        jobId: 'term-$i',
+        providerId: 'p',
+        canvasId: 'cv-1',
+      ));
+    }
+    final state = container.read(jobsRegistryProvider);
+    expect(state.where((e) => !e.isTerminal).single.jobId, 'active-1');
+    expect(
+      state.where((e) => e.isTerminal).length,
+      kJobsRegistryMaxTerminal,
+    );
+  });
+
   test('forCanvas 只返回指定画布的活跃任务，按插入序', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
