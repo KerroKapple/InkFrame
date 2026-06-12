@@ -366,7 +366,9 @@ class _CanvasBody extends ConsumerWidget {
                   child: GestureDetector(
                     behavior: HitTestBehavior.translucent,
                     onTapDown: onEdgeLayerTap,
-                    child: CustomPaint(
+                    // HI-15：连线层独立 layer，节点局部动画不连带边层重绘。
+                    child: RepaintBoundary(
+                      child: CustomPaint(
                       painter: EdgePainter(
                         edges: edges,
                         nodes: nodes,
@@ -376,19 +378,25 @@ class _CanvasBody extends ConsumerWidget {
                         selectedColor: colors.brand,
                         selectedEdgeId: selectedEdgeId,
                       ),
+                      ),
                     ),
                   ),
                 ),
                   for (final node in nodes)
                     Positioned(
+                      key: ValueKey('node-card-${node.id}'),
                       left: node.position.dx,
                       top: node.position.dy,
-                      child: NodeCard(
+                      // HI-13/HI-15：拖拽位移在 NodeCard 内部局部累积，落点
+                      // 一次性提交 moveNode；RepaintBoundary 把拖拽重绘隔离
+                      // 在本卡片 layer，不放大到全画布。
+                      child: RepaintBoundary(
+                        child: NodeCard(
                         node: node,
                         selected: selected.contains(node.id),
                         onTap: () => handleTap(node),
-                        onPanUpdate: (delta) =>
-                            nodesCtrl.moveNode(node.id, delta),
+                        onDragEnd: (totalDelta) =>
+                            nodesCtrl.moveNode(node.id, totalDelta),
                         onStartLink: () => linkCtrl.start(node.id),
                         onDelete: () async {
                           final nodeId = node.id;
@@ -417,6 +425,7 @@ class _CanvasBody extends ConsumerWidget {
                         isLinkSource: linkSourceId == node.id,
                         isLinkCandidate:
                             linkSourceId != null && linkSourceId != node.id,
+                        ),
                       ),
                     ),
                   if (selectedEdge != null &&

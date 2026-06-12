@@ -22,18 +22,24 @@ class CanvasBootstrapController {
   final Ref _ref;
 
   /// 创建示例 Project + Canvas 并切换到该画布。返回新画布 id。
+  ///
+  /// ME-27：本 provider 是 autoDispose，await 期间可能被 dispose——所有
+  /// _ref.read 在入口同步完成，await 之后不再触 _ref。
   Future<String> createSample({
     required String projectName,
     required String canvasName,
   }) async {
-    final projects = await _ref.read(projectRepositoryProvider.future);
-    final canvases = await _ref.read(canvasRepositoryProvider.future);
+    final projectsFuture = _ref.read(projectRepositoryProvider.future);
+    final canvasesFuture = _ref.read(canvasRepositoryProvider.future);
+    final currentCanvasId = _ref.read(currentCanvasIdProvider.notifier);
+    final projects = await projectsFuture;
+    final canvases = await canvasesFuture;
     final projectId = await projects.create(name: projectName);
     final canvasId = await canvases.create(
       projectId: projectId,
       name: canvasName,
     );
-    _ref.read(currentCanvasIdProvider.notifier).state = canvasId;
+    currentCanvasId.state = canvasId;
     return canvasId;
   }
 }

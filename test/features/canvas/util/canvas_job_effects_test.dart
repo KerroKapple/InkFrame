@@ -41,4 +41,19 @@ void main() {
     final r = CanvasJobEffects.diff(prev: [_run('a', 'c1', 0.5)], next: [_run('a', 'c1', 0.5)], canvasId: 'c1');
     expect(r.shouldReloadNodes, isFalse);
   });
+  // HI-14：进度 tick / 中间态流转 / 终态 job 被清理都不该 invalidate 节点，
+  // 否则内存中的拖拽位置每个 tick 回弹一次。
+  test('running 进度变化 → 不重拉', () {
+    final r = CanvasJobEffects.diff(prev: [_run('a', 'c1', 0.3)], next: [_run('a', 'c1', 0.6)], canvasId: 'c1');
+    expect(r.shouldReloadNodes, isFalse);
+  });
+  test('queued → running 中间态流转 → 不重拉', () {
+    const queued = JobState.queued(jobId: 'a', providerId: 'p', canvasId: 'c1');
+    final r = CanvasJobEffects.diff(prev: const [queued], next: [_run('a', 'c1', 0.0)], canvasId: 'c1');
+    expect(r.shouldReloadNodes, isFalse);
+  });
+  test('终态 job 被注册表清理 → 不重拉', () {
+    final r = CanvasJobEffects.diff(prev: [_ok('a', 'c1')], next: const [], canvasId: 'c1');
+    expect(r.shouldReloadNodes, isFalse);
+  });
 }
