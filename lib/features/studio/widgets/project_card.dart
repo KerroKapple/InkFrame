@@ -49,7 +49,7 @@ class StudioProjectCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               InkSpacing.md,
-              InkSpacing.md - 2,
+              InkSpacing.s14,
               InkSpacing.md,
               InkSpacing.md,
             ),

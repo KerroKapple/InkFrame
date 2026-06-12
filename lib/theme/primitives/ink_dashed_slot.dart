@@ -65,10 +65,10 @@ class _InkDashedSlotState extends State<InkDashedSlot> {
 
     final animated = AnimatedScale(
       scale: scale,
-      duration: const Duration(milliseconds: 100),
+      duration: InkMotion.fast,
       curve: Curves.easeOut,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 120),
+        duration: InkMotion.fast,
         decoration: BoxDecoration(
           color: _hover && enabled
               ? colors.surface2.withValues(alpha: 0.5)

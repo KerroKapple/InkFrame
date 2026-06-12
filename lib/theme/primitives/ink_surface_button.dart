@@ -85,12 +85,12 @@ class _InkSurfaceButtonState extends State<InkSurfaceButton> {
 
     final decorated = AnimatedScale(
       scale: scale,
-      duration: const Duration(milliseconds: 100),
+      duration: InkMotion.fast,
       curve: Curves.easeOut,
       child: Opacity(
         opacity: enabled ? 1 : 0.4,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
+          duration: InkMotion.fast,
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(InkRadius.md),

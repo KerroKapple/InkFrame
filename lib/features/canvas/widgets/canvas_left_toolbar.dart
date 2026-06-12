@@ -18,7 +18,7 @@ class CanvasLeftToolbar extends StatelessWidget {
         color: colors.surface1,
         border: Border(right: BorderSide(color: colors.borderSubtle)),
       ),
-      padding: const EdgeInsets.symmetric(vertical: InkSpacing.sm + 2),
+      padding: const EdgeInsets.symmetric(vertical: InkSpacing.s10),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: <Widget>[

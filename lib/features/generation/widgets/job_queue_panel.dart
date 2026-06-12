@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/job_queue.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_progress_bar.dart';
 import '../../../theme/tokens.dart';
 import '../models/job_state.dart';
 import '../providers/jobs_registry.dart';
@@ -89,11 +90,7 @@ class _PanelHeader extends ConsumerWidget {
               children: <Widget>[
                 Text(
                   l.generationQueueTitle.toUpperCase(),
-                  style: typo.caption.copyWith(
-                    fontFamily: 'JetBrainsMono',
-                    color: colors.fg3,
-                    letterSpacing: 1.8,
-                  ),
+                  style: typo.overline.copyWith(color: colors.fg3),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -176,7 +173,7 @@ class _JobRow extends ConsumerWidget {
         border: Border.all(color: colors.borderSubtle),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(InkSpacing.sm + 2),
+        padding: const EdgeInsets.all(InkSpacing.s10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           mainAxisSize: MainAxisSize.min,
@@ -195,7 +192,6 @@ class _JobRow extends ConsumerWidget {
                 Text(
                   _statusLabel(context, job),
                   style: typo.caption.copyWith(
-                    fontFamily: 'JetBrainsMono',
                     color: _statusColor(context, job),
                   ),
                 ),
@@ -205,16 +201,8 @@ class _JobRow extends ConsumerWidget {
                 job is JobQueued ||
                 job is JobSubmitting) ...<Widget>[
               const SizedBox(height: InkSpacing.sm),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(2),
-                child: SizedBox(
-                  height: 3,
-                  child: LinearProgressIndicator(
-                    value: job is JobRunning ? job.progressValue : null,
-                    backgroundColor: colors.surface3,
-                    valueColor: AlwaysStoppedAnimation<Color>(colors.cta),
-                  ),
-                ),
+              InkProgressBar(
+                value: job is JobRunning ? job.progressValue : null,
               ),
             ],
             if (job case final JobFailed failed) ...<Widget>[

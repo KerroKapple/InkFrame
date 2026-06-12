@@ -44,10 +44,7 @@ class _MiniLogo extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final base = typo.headline.copyWith(
-      fontSize: 18,
-      color: colors.fg1,
-    );
+    final base = typo.headlineSm.copyWith(color: colors.fg1);
     return Padding(
       padding: const EdgeInsets.only(right: InkSpacing.lg),
       child: Row(

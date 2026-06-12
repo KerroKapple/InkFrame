@@ -37,9 +37,9 @@ class CanvasInspector extends StatelessWidget {
             // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(
-                InkSpacing.md + 2,
-                InkSpacing.md + 2,
-                InkSpacing.md + 2,
+                InkSpacing.s18,
+                InkSpacing.s18,
+                InkSpacing.s18,
                 InkSpacing.sm,
               ),
               child: Column(
@@ -52,11 +52,7 @@ class CanvasInspector extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     '${nodeKindLabel.toUpperCase()} · $nodeId',
-                    style: typo.nano.copyWith(
-                      fontFamily: 'JetBrainsMono',
-                      color: colors.fg3,
-                      letterSpacing: 1.2,
-                    ),
+                    style: typo.monoNano.copyWith(color: colors.fg3),
                   ),
                 ],
               ),
@@ -115,11 +111,7 @@ class CanvasInspector extends StatelessWidget {
                 onTap: () {},
                 child: Text(
                   '+ ${l.canvasInspectorAddAttribute}',
-                  style: typo.caption.copyWith(
-                    fontFamily: 'JetBrainsMono',
-                    color: colors.accent,
-                    letterSpacing: 0.6,
-                  ),
+                  style: typo.caption.copyWith(color: colors.accent),
                 ),
               ),
             ),
@@ -166,9 +158,9 @@ class _CollapseSectionState extends State<_CollapseSection> {
       ),
       padding: const EdgeInsets.fromLTRB(
         InkSpacing.md,
-        InkSpacing.sm + 4,
+        InkSpacing.s12,
         InkSpacing.md,
-        InkSpacing.sm + 4,
+        InkSpacing.s12,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -181,11 +173,7 @@ class _CollapseSectionState extends State<_CollapseSection> {
                 Expanded(
                   child: Text(
                     widget.title.toUpperCase(),
-                    style: typo.caption.copyWith(
-                      fontFamily: 'JetBrainsMono',
-                      color: colors.fg3,
-                      letterSpacing: 1.8,
-                    ),
+                    style: typo.overline.copyWith(color: colors.fg3),
                   ),
                 ),
                 Text(
@@ -209,11 +197,7 @@ class _CollapseSectionState extends State<_CollapseSection> {
                     ),
                     Text(
                       r.value,
-                      style: typo.caption.copyWith(
-                        fontFamily: 'JetBrainsMono',
-                        color: colors.fg1,
-                        letterSpacing: 0.4,
-                      ),
+                      style: typo.caption.copyWith(color: colors.fg1),
                     ),
                   ],
                 ),

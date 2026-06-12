@@ -91,11 +91,7 @@ class CanvasNodeCard extends StatelessWidget {
               ),
               child: Text(
                 type.label(context),
-                style: typo.nano.copyWith(
-                  fontFamily: 'JetBrainsMono',
-                  color: colors.fg3,
-                  letterSpacing: 1.8,
-                ),
+                style: typo.monoNano.copyWith(color: colors.fg3),
               ),
             ),
             Padding(
@@ -107,7 +103,7 @@ class CanvasNodeCard extends StatelessWidget {
               ),
               child: Text(
                 title,
-                style: typo.headline.copyWith(fontSize: 18, color: colors.fg1),
+                style: typo.headlineSm.copyWith(color: colors.fg1),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -130,24 +126,18 @@ class CanvasNodeCard extends StatelessWidget {
                 InkSpacing.md,
                 InkSpacing.sm,
                 InkSpacing.md,
-                InkSpacing.sm + 2,
+                InkSpacing.s10,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: <Widget>[
                   Text(
                     id,
-                    style: typo.micro.copyWith(
-                      fontFamily: 'JetBrainsMono',
-                      color: colors.fg3,
-                    ),
+                    style: typo.monoMicro.copyWith(color: colors.fg3),
                   ),
                   Text(
                     resolution,
-                    style: typo.micro.copyWith(
-                      fontFamily: 'JetBrainsMono',
-                      color: colors.fg3,
-                    ),
+                    style: typo.monoMicro.copyWith(color: colors.fg3),
                   ),
                 ],
               ),
