@@ -22,7 +22,7 @@ import '../core/interfaces/video_download_service.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../core/models/provider_capabilities.dart';
-import '../providers/provider_registry.dart';
+import '../core/interfaces/provider_registry.dart';
 
 // 数据结构：
 //   _pending      = Queue<_PendingJob>，保持 FIFO；只追加 / 队头出队

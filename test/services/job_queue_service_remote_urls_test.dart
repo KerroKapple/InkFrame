@@ -265,7 +265,7 @@ void main() {
           JobStatus.success(remoteUrls: ['https://fake/v.mp4']),
         ],
       );
-      final registry = ProviderRegistry({'fake': () => provider});
+      final registry = CachingProviderRegistry({'fake': () => provider});
       final repo = _FakeJobRepo()..seedPending('jv');
       final nodeRepo = _FakeNodeRepo();
       final downloader = _RecordingDownloader();
@@ -308,7 +308,7 @@ void main() {
           JobStatus.success(remoteUrls: ['https://fake/i.png']),
         ],
       );
-      final registry = ProviderRegistry({'fake': () => provider});
+      final registry = CachingProviderRegistry({'fake': () => provider});
       final repo = _FakeJobRepo()..seedPending('ji');
       final nodeRepo = _FakeNodeRepo();
       final downloader = _RecordingDownloader();
@@ -343,7 +343,7 @@ void main() {
           JobStatus.success(remoteUrls: ['https://fake/404.mp4']),
         ],
       );
-      final registry = ProviderRegistry({'fake': () => provider});
+      final registry = CachingProviderRegistry({'fake': () => provider});
       final repo = _FakeJobRepo()..seedPending('jerr');
       final nodeRepo = _FakeNodeRepo();
       final failing = _FailingDownloader();
@@ -379,7 +379,7 @@ void main() {
           JobStatus.success(remoteUrls: ['https://fake/v.mp4']),
         ],
       );
-      final registry = ProviderRegistry({'fake': () => provider});
+      final registry = CachingProviderRegistry({'fake': () => provider});
       final repo = _FakeJobRepo()..seedPending('jt');
       final nodeRepo = _FakeNodeRepo();
       final thumbnail = _RecordingThumbnail();
@@ -417,7 +417,7 @@ void main() {
           JobStatus.success(remoteUrls: ['https://fake/v.mp4']),
         ],
       );
-      final registry = ProviderRegistry({'fake': () => provider});
+      final registry = CachingProviderRegistry({'fake': () => provider});
       final repo = _FakeJobRepo()..seedPending('jtf');
       final nodeRepo = _FakeNodeRepo();
 

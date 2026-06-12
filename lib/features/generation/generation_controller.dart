@@ -38,7 +38,7 @@ import '../../core/interfaces/secure_storage_service.dart';
 import '../../core/models/generation_task.dart';
 import '../../core/models/job_status.dart';
 import '../../core/models/provider_capabilities.dart';
-import '../../providers/provider_registry.dart';
+import '../../core/interfaces/provider_registry.dart';
 import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
 

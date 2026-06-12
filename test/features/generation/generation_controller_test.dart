@@ -309,7 +309,7 @@ void main() {
     jobs = _FakeJobRepo();
     secure = _FakeSecure();
     queue = _FakeJobQueue(const JobStatus.success(remoteUrls: []));
-    registry = ProviderRegistry({
+    registry = CachingProviderRegistry({
       providerId: () => throw UnimplementedError('not called in tests'),
     });
     jobsRegistry = _RecordingRegistry();

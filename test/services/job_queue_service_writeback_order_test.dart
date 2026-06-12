@@ -160,7 +160,7 @@ void main() {
     );
     final nodeRepo = _GatedNodeRepo();
     final svc = _build(
-      ProviderRegistry({'fake': () => fake}),
+      CachingProviderRegistry({'fake': () => fake}),
       nodeRepo: nodeRepo,
       fileResolver: fileResolver,
     );

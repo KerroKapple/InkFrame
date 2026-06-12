@@ -11,11 +11,12 @@
 //   - kling-v3-omni     (快手 Kling v3 Omni，DashScope 渠道，异步)
 //   - stability-image-core (Stability AI Stable Image Core，同步文生图，multipart)
 //
-// keySource 统一走 SecureStorage，按 providerId 独立存 Key。
-// DashScope 系列 6 款虽然都用 DashScope API Key，但当前架构每个 providerId 一把 Key；
-// 未来可优化成 "family key" 让用户只填一次 DashScope Key。
+// keySource 统一走 SecureStorage；DashScope 家族经 SecureStorageKeys.scopeOf
+// 折叠到同一把 Key。
 //
-// RateLimiter 每个 Provider 独立一把，按 capabilities.qps / burst 限速。
+// 生命周期不变量（CachingProviderRegistry 保证）：
+// - 每个 providerId 的实例 / Dio / RateLimiter 全 app 生命周期只建一次
+// - RateLimiter 随 ProviderContainer 销毁统一 dispose（ref.onDispose）
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -31,13 +32,11 @@ import '../../providers/wanx_image_provider.dart';
 import '../../providers/wanx_r2v_provider.dart';
 import '../../providers/wanx_t2v_provider.dart';
 import '../constants/secure_storage_keys.dart';
+import '../errors/ink_error.dart';
 import '../models/provider_capabilities.dart';
 import 'secure_storage.dart';
 
 /// 真实 ProviderRegistry —— keepAlive 全局一份。
-///
-/// factory 每次 get() 新建 Submittable 实例；共享 RateLimiter 以遵守
-/// capabilities.qps / burst 上限。
 final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
   final secure = ref.watch(secureStorageServiceProvider);
 
@@ -46,90 +45,62 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
           SecureStorageKeys.providerApiKey(providerId),
         );
         if (key == null || key.isEmpty) {
-          throw StateError(
-            '$providerId API key not configured in SecureStorage.',
+          // 未配置 Key 走统一 InkError 链路（errorInvalidKey 文案），
+          // 不再抛裸 StateError 落进 UnknownError 兜底。
+          throw ProviderError(
+            code: InkErrorCode.invalidKey,
+            extra: {'provider_id': providerId, 'reason': 'key_not_configured'},
           );
         }
         return key;
       };
 
-  // RateLimiter 必须按 providerId 共享：token bucket 持有 _tokens/_waiters
-  // 等可变状态，每次 get() 新建实例会让限速形同虚设。提前实例化，由 factory
-  // 闭包捕获共享引用。
-  final geminiImageRl = ProviderRateLimiter(
-    qps: kGeminiImageCapabilities.qps,
-    burst: kGeminiImageCapabilities.burst,
-  );
-  final openAIImageRl = ProviderRateLimiter(
-    qps: kOpenAIImageCapabilities.qps,
-    burst: kOpenAIImageCapabilities.burst,
-  );
-  final wanxImageRl = ProviderRateLimiter(
-    qps: kWanxImageCapabilities.qps,
-    burst: kWanxImageCapabilities.burst,
-  );
-  final wanxT2VRl = ProviderRateLimiter(
-    qps: kWanxT2VCapabilities.qps,
-    burst: kWanxT2VCapabilities.burst,
-  );
-  final wanxI2VRl = ProviderRateLimiter(
-    qps: kWanxI2VCapabilities.qps,
-    burst: kWanxI2VCapabilities.burst,
-  );
-  final wanxR2VRl = ProviderRateLimiter(
-    qps: kWanxR2VCapabilities.qps,
-    burst: kWanxR2VCapabilities.burst,
-  );
-  final klingV3Rl = ProviderRateLimiter(
-    qps: kKlingV3Capabilities.qps,
-    burst: kKlingV3Capabilities.burst,
-  );
-  final klingV3OmniRl = ProviderRateLimiter(
-    qps: kKlingV3OmniCapabilities.qps,
-    burst: kKlingV3OmniCapabilities.burst,
-  );
-  final stabilityImageCoreRl = ProviderRateLimiter(
-    qps: kStabilityImageCoreCapabilities.qps,
-    burst: kStabilityImageCoreCapabilities.burst,
-  );
+  // factory 只会被 CachingProviderRegistry 调用一次（实例缓存），
+  // 故 limiter 在 factory 内创建即满足"每 providerId 单例"不变量；
+  // dispose 挂到 container 生命周期，杜绝 Timer / waiter 泄漏。
+  ProviderRateLimiter limiterFor(ProviderCapabilities caps) {
+    final limiter = ProviderRateLimiter(qps: caps.qps, burst: caps.burst);
+    ref.onDispose(limiter.dispose);
+    return limiter;
+  }
 
-  return ProviderRegistry(<String, ProviderFactory>{
+  return CachingProviderRegistry(<String, ProviderFactory>{
     kGeminiImageCapabilities.providerId: () => GeminiImageProvider(
           keySource: keyFor(kGeminiImageCapabilities.providerId),
-          rateLimiter: geminiImageRl,
+          rateLimiter: limiterFor(kGeminiImageCapabilities),
         ),
     kOpenAIImageCapabilities.providerId: () => OpenAIImageProvider(
           keySource: keyFor(kOpenAIImageCapabilities.providerId),
-          rateLimiter: openAIImageRl,
+          rateLimiter: limiterFor(kOpenAIImageCapabilities),
         ),
     kWanxImageCapabilities.providerId: () => WanxImageProvider(
           keySource: keyFor(kWanxImageCapabilities.providerId),
-          rateLimiter: wanxImageRl,
+          rateLimiter: limiterFor(kWanxImageCapabilities),
         ),
     kWanxT2VCapabilities.providerId: () => WanxT2VProvider(
           keySource: keyFor(kWanxT2VCapabilities.providerId),
-          rateLimiter: wanxT2VRl,
+          rateLimiter: limiterFor(kWanxT2VCapabilities),
         ),
     kWanxI2VCapabilities.providerId: () => WanxI2VProvider(
           keySource: keyFor(kWanxI2VCapabilities.providerId),
-          rateLimiter: wanxI2VRl,
+          rateLimiter: limiterFor(kWanxI2VCapabilities),
         ),
     kWanxR2VCapabilities.providerId: () => WanxR2VProvider(
           keySource: keyFor(kWanxR2VCapabilities.providerId),
-          rateLimiter: wanxR2VRl,
+          rateLimiter: limiterFor(kWanxR2VCapabilities),
         ),
     kKlingV3Capabilities.providerId: () => KlingV3Provider(
           keySource: keyFor(kKlingV3Capabilities.providerId),
-          rateLimiter: klingV3Rl,
+          rateLimiter: limiterFor(kKlingV3Capabilities),
         ),
     kKlingV3OmniCapabilities.providerId: () => KlingV3OmniProvider(
           keySource: keyFor(kKlingV3OmniCapabilities.providerId),
-          rateLimiter: klingV3OmniRl,
+          rateLimiter: limiterFor(kKlingV3OmniCapabilities),
         ),
     kStabilityImageCoreCapabilities.providerId: () =>
         StabilityImageCoreProvider(
           keySource: keyFor(kStabilityImageCoreCapabilities.providerId),
-          rateLimiter: stabilityImageCoreRl,
+          rateLimiter: limiterFor(kStabilityImageCoreCapabilities),
         ),
   });
 });

@@ -203,7 +203,7 @@ void main() {
 
       final jobRepo = _InMemoryJobRepository()..seedPending(jobId);
       final provider = _inlineBytesProvider(providerId: providerId, bytes: bytes);
-      final registry = ProviderRegistry({providerId: () => provider});
+      final registry = CachingProviderRegistry({providerId: () => provider});
 
       final queue = _buildQueue(
         registry,
@@ -285,7 +285,7 @@ void main() {
       const badProjectId = '..escape';
       final jobRepo = _InMemoryJobRepository()..seedPending(jobId);
       final provider = _inlineBytesProvider(providerId: providerId, bytes: bytes);
-      final registry = ProviderRegistry({providerId: () => provider});
+      final registry = CachingProviderRegistry({providerId: () => provider});
       final queue = _buildQueue(
         registry,
         repo: jobRepo,
