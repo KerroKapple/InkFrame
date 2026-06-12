@@ -8,12 +8,13 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'key_validation_result.freezed.dart';
 
 /// 无效原因：必须在 PRD §10.6 的错误码子集内。
+///
+/// ME-10：网络超时/离线属于 [KeyValidationResult.networkError]——
+/// 无法判定 Key 本身，不在「无效」原因之列。
 enum KeyInvalidReason {
   invalidKey,
   insufficientBalance,
   contentPolicy,
-  networkTimeout,
-  networkOffline,
 }
 
 @freezed

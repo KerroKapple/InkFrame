@@ -97,12 +97,8 @@ class WanxT2VProvider extends DashScopeAsyncProviderBase {
   }
 
   @override
-  JobStatus parseSuccessOutput(Map<String, Object?> output) {
-    final url = output['video_url'] as String?;
-    return JobStatus.success(
-      remoteUrls: url != null && url.isNotEmpty ? [url] : const [],
-    );
-  }
+  JobStatus parseSuccessOutput(Map<String, Object?> output) =>
+      parseSingleVideoUrlOutput(output);
 }
 
 /// Provider 工厂：DI 层注入（registry 注册见后续 PR）。

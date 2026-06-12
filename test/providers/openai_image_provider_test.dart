@@ -178,7 +178,8 @@ void main() {
       expect((r as KeyInvalid).reason, KeyInvalidReason.insufficientBalance);
     });
 
-    test('connectionTimeout → KeyInvalid(networkTimeout)', () async {
+    // ME-10：超时/离线无法判定 Key 本身 → 统一 KeyNetworkError（对齐三态语义）。
+    test('connectionTimeout → KeyNetworkError', () async {
       final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
       final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
       adapter.onGet(
@@ -193,11 +194,10 @@ void main() {
       );
 
       final r = await _buildProvider(dio).validateApiKey('x');
-      expect(r, isA<KeyInvalid>());
-      expect((r as KeyInvalid).reason, KeyInvalidReason.networkTimeout);
+      expect(r, isA<KeyNetworkError>());
     });
 
-    test('connectionError → KeyInvalid(networkOffline)', () async {
+    test('connectionError → KeyNetworkError', () async {
       final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
       final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
       adapter.onGet(
@@ -212,8 +212,7 @@ void main() {
       );
 
       final r = await _buildProvider(dio).validateApiKey('x');
-      expect(r, isA<KeyInvalid>());
-      expect((r as KeyInvalid).reason, KeyInvalidReason.networkOffline);
+      expect(r, isA<KeyNetworkError>());
     });
 
     test('500 → KeyNetworkError(message contains 500)', () async {
@@ -242,6 +241,30 @@ void main() {
 
       final jobId = await _buildProvider(dio).submit(_task());
       expect(jobId, startsWith(kOpenAILocalJobPrefix));
+    });
+
+    // HI-06：gpt-image-1 不接受 response_format 参数（带上即 400）。
+    test('请求体不含 response_format（gpt-image-1 拒绝该参数）', () async {
+      final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
+      Object? sentBody;
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (o, h) {
+          sentBody = o.data;
+          h.next(o);
+        },
+      ));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kOpenAIImagePath,
+        (req) => req.reply(200, _inlineSubmitSuccess()),
+      );
+
+      await _buildProvider(dio).submit(_task());
+
+      final body = sentBody! as Map;
+      expect(body.containsKey('response_format'), isFalse);
+      expect(body['model'], kOpenAIModel);
+      expect(body['size'], '1024x1024');
     });
 
     test('401 → ProviderError(invalidKey)', () async {

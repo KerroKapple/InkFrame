@@ -19,6 +19,7 @@
 
 import 'package:dio/dio.dart';
 
+import '../core/errors/ink_error.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/cost_model.dart';
 import '../core/models/job_status.dart';
@@ -126,6 +127,16 @@ class WanxImageProvider extends DashScopeAsyncProviderBase {
           if (url != null && url.isNotEmpty) urls.add(url);
         }
       }
+    }
+    // HI-04：SUCCEEDED 但解析不出任何 URL 不许标 success。
+    if (urls.isEmpty) {
+      throw ProviderError(
+        code: InkErrorCode.providerServer,
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'empty_output_url',
+        },
+      );
     }
     return JobStatus.success(remoteUrls: urls);
   }

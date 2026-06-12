@@ -64,6 +64,49 @@ void main() {
       expect(jobId, startsWith(kGeminiLocalJobPrefix));
     });
 
+    // LO-13 + HI-07 + HI-27：Key 走 x-goog-api-key 头（不进 URL）；
+    // aspectRatio 接入 imageConfig；responseModalities 必须 TEXT+IMAGE。
+    test('请求体/头：x-goog-api-key 头 + imageConfig.aspectRatio + TEXT,IMAGE',
+        () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      Object? sentBody;
+      Map<String, dynamic>? sentHeaders;
+      Map<String, dynamic>? sentQuery;
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (o, h) {
+          sentBody = o.data;
+          sentHeaders = o.headers;
+          sentQuery = o.queryParameters;
+          h.next(o);
+        },
+      ));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kGeminiSubmitPath,
+        (req) => req.reply(200, _loadFixture('submit_success')),
+      );
+
+      await _buildProvider(dio, key: 'secret-key').submit(const GenerationTask(
+        providerId: 'gemini-image',
+        jobId: 'job-1',
+        mode: GenerationMode.textToImage,
+        prompt: 'mountains',
+        resolution: Resolution.p1080,
+        aspectRatio: AspectRatio.r16x9,
+      ));
+
+      // LO-13：Key 只进请求头，绝不进 URL query（防日志/代理泄露）。
+      expect(sentHeaders![kGeminiApiKeyHeader], 'secret-key');
+      expect(sentQuery!.containsKey('key'), isFalse);
+
+      final body = sentBody! as Map;
+      final genCfg = body['generationConfig'] as Map;
+      // HI-27：image-preview 模型要求 TEXT+IMAGE 双模态。
+      expect(genCfg['responseModalities'], ['TEXT', 'IMAGE']);
+      // HI-07：aspectRatio 不能被忽略。
+      expect((genCfg['imageConfig'] as Map)['aspectRatio'], '16:9');
+    });
+
     test('401 invalid_key → ProviderError.invalidKey', () async {
       final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
       final adapter = DioAdapter(
@@ -256,6 +299,54 @@ void main() {
 
       final r = await _buildProvider(dio).validateApiKey('good');
       expect(r, isA<KeyValid>());
+    });
+
+    // LO-13：校验请求同样走 x-goog-api-key 头，不进 URL query。
+    test('Key 经 x-goog-api-key 头发送，不出现在 query', () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      Map<String, dynamic>? sentHeaders;
+      Map<String, dynamic>? sentQuery;
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (o, h) {
+          sentHeaders = o.headers;
+          sentQuery = o.queryParameters;
+          h.next(o);
+        },
+      ));
+      final adapter = DioAdapter(
+        dio: dio,
+        matcher: const UrlRequestMatcher(),
+      );
+      adapter.onGet(
+        kGeminiValidatePath,
+        (req) => req.reply(200, _loadFixture('models_list_success')),
+      );
+
+      await _buildProvider(dio).validateApiKey('secret-key');
+      expect(sentHeaders![kGeminiApiKeyHeader], 'secret-key');
+      expect(sentQuery!.containsKey('key'), isFalse);
+    });
+
+    // ME-10：超时无法判定 Key 本身 → KeyNetworkError。
+    test('connectionTimeout → KeyNetworkError', () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      final adapter = DioAdapter(
+        dio: dio,
+        matcher: const UrlRequestMatcher(),
+      );
+      adapter.onGet(
+        kGeminiValidatePath,
+        (req) => req.throws(
+          0,
+          DioException(
+            requestOptions: RequestOptions(path: kGeminiValidatePath),
+            type: DioExceptionType.connectionTimeout,
+          ),
+        ),
+      );
+
+      final r = await _buildProvider(dio).validateApiKey('x');
+      expect(r, isA<KeyNetworkError>());
     });
 
     test('401 → invalid(invalidKey)', () async {

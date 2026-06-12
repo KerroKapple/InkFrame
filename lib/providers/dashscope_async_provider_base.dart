@@ -6,6 +6,10 @@
 //
 // 所有阿里百炼下挂的异步模型都用同一个 sk-xxx Key + 同一套 task 状态机。
 
+import 'dart:convert';
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 
 import '../core/errors/ink_error.dart';
@@ -99,12 +103,14 @@ abstract class DashScopeAsyncProviderBase
 
   @override
   Future<JobId> submit(GenerationTask task) async {
+    // HI-05：本地图片路径不许直发远端——先内联为 base64 data URI。
+    final prepared = await _inlineLocalImages(task);
     await _rateLimiter.acquire();
     final key = await _keySource();
     try {
       final resp = await _dio.post<dynamic>(
         submitEndpoint,
-        data: buildRequestBody(task),
+        data: buildRequestBody(prepared),
         options: Options(
           headers: {
             'Authorization': 'Bearer $key',
@@ -206,20 +212,31 @@ abstract class DashScopeAsyncProviderBase
   // ---- KeyValidatable ----------------------------------------------------
 
   /// 默认实现：GET /tasks/{bogus}。
-  /// - 401/403 → invalidKey
+  /// - 401/403 → invalidKey（HI-03：validateStatus 放行后必须显式查 statusCode）
   /// - 200/404 → valid（key 通过鉴权，task 不存在不影响）
-  /// - 其他 → networkError
+  /// - 其他 → networkError（含超时/离线——无法判定 Key 本身，ME-10）
   @override
   Future<KeyValidationResult> validateApiKey(String key) async {
     try {
-      await _dio.get<dynamic>(
+      final resp = await _dio.get<dynamic>(
         '$kDashScopeTasksPath/inkframe-validation-bogus-id',
         options: Options(
           headers: {'Authorization': 'Bearer $key'},
           validateStatus: (s) => s != null && s < 500,
         ),
       );
-      return const KeyValidationResult.valid();
+      final status = resp.statusCode ?? 0;
+      if (status == 401 || status == 403) {
+        return const KeyValidationResult.invalid(
+          reason: KeyInvalidReason.invalidKey,
+        );
+      }
+      if (status == 200 || status == 404) {
+        return const KeyValidationResult.valid();
+      }
+      return KeyValidationResult.networkError(
+        message: 'unexpected status $status',
+      );
     } on DioException catch (e) {
       final code = e.response?.statusCode;
       if (code == 401 || code == 403) {
@@ -233,7 +250,90 @@ abstract class DashScopeAsyncProviderBase
     }
   }
 
+  // ---- 子类共用 helper ----------------------------------------------------
+
+  /// 视频类 Provider 共用：解析 `output.video_url` 单一 URL。
+  ///
+  /// HI-04：SUCCEEDED 但缺产物 URL 不许标 success——直接抛 ProviderError，
+  /// 上层按失败处理（可重试）。
+  JobStatus parseSingleVideoUrlOutput(Map<String, Object?> output) {
+    final url = output['video_url'] as String?;
+    if (url == null || url.isEmpty) {
+      throw ProviderError(
+        code: InkErrorCode.providerServer,
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'empty_output_url',
+        },
+      );
+    }
+    return JobStatus.success(remoteUrls: [url]);
+  }
+
   // ---- 内部 helper -------------------------------------------------------
+
+  /// HI-05：把 task 中本地文件引用内联为 base64 data URI。
+  /// http(s)/data 引用原样透传；DashScope 各端点均接受
+  /// `data:{MIME};base64,{data}` 形式的图片输入。
+  Future<GenerationTask> _inlineLocalImages(GenerationTask task) async {
+    if (task.refImagePaths.isEmpty &&
+        task.firstFramePath == null &&
+        task.lastFramePath == null) {
+      return task;
+    }
+    return task.copyWith(
+      refImagePaths: [
+        for (final p in task.refImagePaths) await _toDataUriIfLocal(p),
+      ],
+      firstFramePath: task.firstFramePath == null
+          ? null
+          : await _toDataUriIfLocal(task.firstFramePath!),
+      lastFramePath: task.lastFramePath == null
+          ? null
+          : await _toDataUriIfLocal(task.lastFramePath!),
+    );
+  }
+
+  Future<String> _toDataUriIfLocal(String ref) async {
+    final lower = ref.toLowerCase();
+    if (lower.startsWith('http://') ||
+        lower.startsWith('https://') ||
+        lower.startsWith('data:')) {
+      return ref;
+    }
+    final Uint8List bytes;
+    try {
+      bytes = await File(ref).readAsBytes();
+    } on FileSystemException catch (e) {
+      throw LocalIOError(
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'ref_image_unreadable',
+          'path': ref,
+        },
+        cause: e,
+      );
+    }
+    return 'data:${_mimeForPath(lower)};base64,${base64Encode(bytes)}';
+  }
+
+  String _mimeForPath(String lowerPath) {
+    final dot = lowerPath.lastIndexOf('.');
+    final ext = dot >= 0 ? lowerPath.substring(dot + 1) : '';
+    switch (ext) {
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'webp':
+        return 'image/webp';
+      case 'bmp':
+        return 'image/bmp';
+      case 'gif':
+        return 'image/gif';
+      default:
+        return 'image/png';
+    }
+  }
 
   String? _extractTaskId(Map<String, Object?>? data) {
     if (data == null) return null;

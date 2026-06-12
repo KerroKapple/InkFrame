@@ -4,7 +4,8 @@
 //   Base URL : https://api.openai.com/v1
 //   Model ID : gpt-image-1（DALL-E 3 已于 2026-03-04 下线，改用 gpt-image-1）
 //   Auth     : Authorization: Bearer <key>（从 keySource 读取）
-//   Submit   : POST /images/generations（同步，response_format=b64_json）
+//   Submit   : POST /images/generations（同步，gpt-image-1 固定返回 b64_json，
+//              不接受 response_format 参数）
 //   Validate : GET /models（零生成配额）
 //   Poll     : 无（同步返回，走 ADR-0004 inline-bytes 通道）
 //
@@ -138,7 +139,8 @@ class OpenAIImageProvider implements Submittable, Pollable, KeyValidatable {
       'n': 1,
       'size': _sizeFor(task.aspectRatio),
       'quality': 'medium',
-      'response_format': 'b64_json',
+      // HI-06：gpt-image-1 不接受 response_format（带上即 400），
+      // 该模型固定返回 b64_json。
     };
 
     try {
@@ -178,19 +180,16 @@ class OpenAIImageProvider implements Submittable, Pollable, KeyValidatable {
       return const KeyValidationResult.valid();
     } on DioException catch (e) {
       switch (e.type) {
+        // ME-10：超时/离线无法判定 Key 本身 → networkError（与全 Provider 统一）。
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
-          return const KeyValidationResult.invalid(
-            reason: KeyInvalidReason.networkTimeout,
-            detail: 'validation timeout',
+          return const KeyValidationResult.networkError(
+            message: 'validation timeout',
           );
         case DioExceptionType.connectionError:
         case DioExceptionType.badCertificate:
-          return const KeyValidationResult.invalid(
-            reason: KeyInvalidReason.networkOffline,
-            detail: 'no network',
-          );
+          return const KeyValidationResult.networkError(message: 'no network');
         case DioExceptionType.badResponse:
           final status = e.response?.statusCode ?? 0;
           if (status == 401 || status == 403) {
