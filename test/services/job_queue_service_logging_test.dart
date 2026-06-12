@@ -92,7 +92,7 @@ GenerationTask _task(String jobId) => GenerationTask(
 
 InMemoryJobQueueService _build(_FakeProvider provider, RecordingLogger log) =>
     InMemoryJobQueueService(
-      registry: ProviderRegistry({'fake': () => provider}),
+      registry: CachingProviderRegistry({'fake': () => provider}),
       logger: log,
       pollInitialInterval: const Duration(milliseconds: 1),
       pollMaxInterval: const Duration(milliseconds: 5),
