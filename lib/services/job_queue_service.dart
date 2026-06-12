@@ -82,17 +82,20 @@ class InMemoryJobQueueService implements JobQueueService {
   Future<void> init() async {
     final repo = _repo;
     if (repo == null) return;
-    final orphan = await repo.listByStatus(const ['submitted', 'polling']);
+    // ME-02：pending 也在回收范围——建行后未 submit / dispose 前未跑的行
+    // 否则永远没有出口。
+    const orphanStatuses = ['pending', 'submitted', 'polling'];
+    final orphan = await repo.listByStatus(orphanStatuses);
     for (final row in orphan) {
       final id = row['id'] as String?;
       if (id == null) continue;
       await repo.transitionStatus(
         id: id,
-        fromStatuses: const ['submitted', 'polling'],
+        fromStatuses: orphanStatuses,
         toStatus: 'cancelled',
         extra: {
           'error_code': InkErrorCode.cancelledOnExit.wire,
-          'error_message': 'app exited while job was running',
+          'error_message': 'app exited while job was not finished',
         },
       );
     }
@@ -131,6 +134,7 @@ class InMemoryJobQueueService implements JobQueueService {
     if (running == null) return; // idempotent
     running.cancelled = true;
     await _persistCancel(jobId, fromStatuses: const ['submitted', 'polling']);
+    running.wake(); // ME-01：中断退避睡眠，让 _pollLoop 立即收敛到 cancelled
     final provider = running.provider;
     if (provider is Cancellable) {
       try {
@@ -147,12 +151,19 @@ class InMemoryJobQueueService implements JobQueueService {
     _disposed = true;
     for (final p in _pending) {
       if (p.cancelled) continue; // 已 cancel 的事件已发过
+      // dispose 是同步接口，持久化只能 fire-and-forget；init() 的 pending 回收兜底。
+      unawaited(_persistCancel(p.task.jobId, fromStatuses: const ['pending']));
       _emitFailure(p.handle, _cancelledError(p.task.jobId));
     }
     _pending.clear();
     _pendingIndex.clear();
     for (final entry in _running.entries) {
-      entry.value.cancelled = true;
+      final running = entry.value;
+      running.cancelled = true;
+      running.wake();
+      // ME-01：立即终结 handle，不等 _pollLoop 推进到下个检查点
+      // （可能正挂在 provider.poll 上）。行状态由 init() 的 orphan 回收兜底。
+      _emitFailure(running.handle, _cancelledError(entry.key));
     }
   }
 
@@ -207,7 +218,7 @@ class InMemoryJobQueueService implements JobQueueService {
 
   Future<void> _runJob(GenerationTask task, _Handle handle) async {
     final provider = _registry.get(task.providerId);
-    final running = _RunningJob(provider: provider);
+    final running = _RunningJob(provider: provider, handle: handle);
     _running[task.jobId] = running;
 
     try {
@@ -236,8 +247,18 @@ class InMemoryJobQueueService implements JobQueueService {
       }
       await _pollLoop(provider as Pollable, providerJobId, task, handle, running);
     } on InkError catch (e) {
-      await _persistFailure(task.jobId, e);
-      _emitFailure(handle, e);
+      final rows = await _persistFailure(task.jobId, e);
+      _emitFailure(handle, _arbitrate(rows, running, e, task.jobId));
+    } catch (e, st) {
+      // HI-01 兜底：非 InkError（provider bug / 库异常）逃逸会让 handle 永挂。
+      // 队列边界统一翻译成 UnknownError，保证 handle 一定终结。
+      final err = UnknownError(
+        cause: e,
+        stackTrace: st,
+        extra: {'job_id': task.jobId},
+      );
+      await _persistFailure(task.jobId, err);
+      _emitFailure(handle, err);
     } finally {
       _running.remove(task.jobId);
       _release(task.providerId);
@@ -256,10 +277,28 @@ class InMemoryJobQueueService implements JobQueueService {
     var interval = _pollInitial;
     var enteredPolling = false;
 
+    // 退避 + jitter；可中断（cancel/dispose wake 后立即返回）。
+    Future<void> backoff() {
+      final jitter = 1.0 + (_random.nextDouble() - 0.5) * 0.4; // ±20%
+      final nextMs =
+          (interval.inMilliseconds * _pollMultiplier * jitter).round();
+      interval =
+          Duration(milliseconds: nextMs.clamp(0, _pollMax.inMilliseconds));
+      return _sleepInterruptible(running, interval);
+    }
+
+    // cancel 收敛：幂等补写 cancelled（cancel 主路径已写过则 0 行），persist 先于 emit。
+    Future<void> emitCancelled() async {
+      await _persistCancel(
+        task.jobId,
+        fromStatuses: const ['submitted', 'polling'],
+      );
+      _emitFailure(handle, _cancelledError(task.jobId));
+    }
+
     while (true) {
       if (running.cancelled) {
-        // cancel 路径已写过 transitionStatus → cancelled，这里不再写
-        _emitFailure(handle, _cancelledError(task.jobId));
+        await emitCancelled();
         return;
       }
       if (DateTime.now().isAfter(deadline)) {
@@ -267,12 +306,20 @@ class InMemoryJobQueueService implements JobQueueService {
           code: InkErrorCode.pollTimeout,
           extra: {'provider_id': task.providerId, 'job_id': task.jobId},
         );
-        await _persistTimeout(task.jobId, timeoutErr);
-        _emitFailure(handle, timeoutErr);
+        final rows = await _persistTimeout(task.jobId, timeoutErr);
+        _emitFailure(handle, _arbitrate(rows, running, timeoutErr, task.jobId));
         return;
       }
 
-      final JobStatus status = await provider.poll(providerJobId);
+      final JobStatus status;
+      try {
+        status = await provider.poll(providerJobId);
+      } on InkError catch (e) {
+        if (!e.retryable) rethrow; // 不可重试 → _runJob 统一落 error
+        // ME-04：瞬时错误（网络抖动 / 5xx / busy）退避重试，pollTimeout deadline 兜底
+        await backoff();
+        continue;
+      }
       switch (status) {
         case JobInProgress(:final progress):
           if (!enteredPolling) {
@@ -288,6 +335,11 @@ class InMemoryJobQueueService implements JobQueueService {
           }
           handle._emit(status);
         case JobSuccess(:final inlineBytes, :final remoteUrls):
+          // HI-02：cancel 已落库则不再做落盘/下载，直接收敛 cancelled。
+          if (running.cancelled) {
+            await emitCancelled();
+            return;
+          }
           // b3：inlineBytes 落盘到 {canvasRoot}/images/{jobId}-{idx}.png
           //     成功后更新 node.type_config.image_url。失败转 LocalIOError。
           if (inlineBytes != null && inlineBytes.isNotEmpty) {
@@ -303,12 +355,12 @@ class InMemoryJobQueueService implements JobQueueService {
           if (remoteUrls.isNotEmpty) {
             final err = await _persistRemoteUrls(task, remoteUrls);
             if (err != null) {
-              await _persistFailure(task.jobId, err);
-              _emitFailure(handle, err);
+              final rows = await _persistFailure(task.jobId, err);
+              _emitFailure(handle, _arbitrate(rows, running, err, task.jobId));
               return;
             }
           }
-          await _persistTransition(
+          final rows = await _persistTransition(
             task.jobId,
             from: const ['submitted', 'polling'],
             to: 'success',
@@ -317,21 +369,55 @@ class InMemoryJobQueueService implements JobQueueService {
               'progress': 1.0,
             },
           );
+          // HI-02：affectedRows==0 = cancel 抢先把行落成 cancelled
+          // → 对外以 cancelled 为准，绝不补发 success。
+          if (_lostToCancel(rows, running)) {
+            _emitFailure(handle, _cancelledError(task.jobId));
+            return;
+          }
           handle._emit(status);
           handle._complete(status);
           return;
         case JobFailure(:final error):
-          await _persistFailure(task.jobId, error);
-          _emitFailure(handle, error);
+          final rows = await _persistFailure(task.jobId, error);
+          _emitFailure(handle, _arbitrate(rows, running, error, task.jobId));
           return;
       }
 
-      // 退避 + jitter
-      final jitter = 1.0 + (_random.nextDouble() - 0.5) * 0.4; // ±20%
-      final nextMs = (interval.inMilliseconds * _pollMultiplier * jitter).round();
-      interval = Duration(milliseconds: nextMs.clamp(0, _pollMax.inMilliseconds));
-      await Future<void>.delayed(interval);
+      await backoff();
     }
+  }
+
+  // ---- cancel 竞态裁决 ------------------------------------------------------
+
+  /// 终态写库被 cancel 抢先：有 repo 时以 affectedRows==0 为准；
+  /// 无 repo（纯内存）时退化为内存 cancelled 标志。
+  bool _lostToCancel(int? rows, _RunningJob running) {
+    if (!running.cancelled) return false;
+    return rows == null || rows == 0;
+  }
+
+  /// 终态裁决：cancel 赢 → 对外发 cancelled，否则用原终态错误。
+  InkError _arbitrate(
+    int? rows,
+    _RunningJob running,
+    InkError original,
+    String jobId,
+  ) =>
+      _lostToCancel(rows, running) ? _cancelledError(jobId) : original;
+
+  /// ME-01：可中断睡眠——cancel/dispose 通过 [_RunningJob.wake] 提前唤醒，
+  /// 避免最长 pollMaxInterval（默认 30s）的不可中断等待。
+  Future<void> _sleepInterruptible(_RunningJob running, Duration duration) {
+    final completer = Completer<void>();
+    final timer = Timer(duration, () {
+      if (!completer.isCompleted) completer.complete();
+    });
+    running.sleeper = completer;
+    return completer.future.whenComplete(() {
+      timer.cancel();
+      running.sleeper = null;
+    });
   }
 
   void _emitFailure(_Handle handle, InkError error) {
@@ -345,15 +431,17 @@ class InMemoryJobQueueService implements JobQueueService {
 
   // ---- 持久化 helpers (null repo 时全部 no-op) ----------------------------
 
-  Future<void> _persistTransition(
+  /// 返回 affectedRows：0 = 行不存在或 status 不在 from 集合（如已被 cancel 抢写），
+  /// null = 未注入 repo（纯内存模式，无行数信息）。调用方据此裁决对外 emit。
+  Future<int?> _persistTransition(
     String jobId, {
     required List<String> from,
     required String to,
     Map<String, Object?> extra = const <String, Object?>{},
   }) async {
     final repo = _repo;
-    if (repo == null) return;
-    await repo.transitionStatus(
+    if (repo == null) return null;
+    return repo.transitionStatus(
       id: jobId,
       fromStatuses: from,
       toStatus: to,
@@ -367,8 +455,8 @@ class InMemoryJobQueueService implements JobQueueService {
     await repo.update(jobId, patch);
   }
 
-  Future<void> _persistFailure(String jobId, InkError error) async {
-    await _persistTransition(
+  Future<int?> _persistFailure(String jobId, InkError error) {
+    return _persistTransition(
       jobId,
       from: const ['pending', 'submitted', 'polling'],
       to: 'error',
@@ -380,8 +468,8 @@ class InMemoryJobQueueService implements JobQueueService {
     );
   }
 
-  Future<void> _persistTimeout(String jobId, InkError error) async {
-    await _persistTransition(
+  Future<int?> _persistTimeout(String jobId, InkError error) {
+    return _persistTransition(
       jobId,
       from: const ['submitted', 'polling'],
       to: 'timeout',
@@ -392,11 +480,11 @@ class InMemoryJobQueueService implements JobQueueService {
     );
   }
 
-  Future<void> _persistCancel(
+  Future<int?> _persistCancel(
     String jobId, {
     required List<String> fromStatuses,
-  }) async {
-    await _persistTransition(
+  }) {
+    return _persistTransition(
       jobId,
       from: fromStatuses,
       to: 'cancelled',
@@ -475,7 +563,7 @@ class InMemoryJobQueueService implements JobQueueService {
   /// 并更新 node.type_config 里 video_url / image_url（可选 thumbnail_url）。
   ///
   /// 失败映射：
-  ///   - [VideoDownloadError] → [ProviderError]（`providerServer`，extra 带 http_status / url）
+  ///   - [VideoDownloadError] → [DownloadError]（可重试，extra 带 http_status / url）
   ///   - [FileSystemException] → [LocalIOError]
   ///   - [PathSecurityError]   → [LocalIOError]
   ///
@@ -545,8 +633,10 @@ class InMemoryJobQueueService implements JobQueueService {
       await nodeRepo.patchTypeConfig(resultNodeId, patch);
       return null;
     } on VideoDownloadError catch (e) {
-      return ProviderError(
-        code: InkErrorCode.providerServer,
+      // ME-05：产物下载失败是 DownloadError 域（downloadFailed，可重试），
+      // 误归 providerServer 会把"取文件失败"错报成"生成服务 5xx"。
+      return DownloadError(
+        cause: e,
         extra: {
           'job_id': task.jobId,
           'reason': 'remote_url_download_failed',
@@ -590,10 +680,19 @@ class _PendingJob {
 }
 
 class _RunningJob {
-  _RunningJob({required this.provider});
+  _RunningJob({required this.provider, required this.handle});
   final Submittable provider;
+  final _Handle handle;
   String? providerJobId;
   bool cancelled = false;
+
+  /// 当前退避睡眠的句柄；cancel/dispose 经 [wake] 提前唤醒。
+  Completer<void>? sleeper;
+
+  void wake() {
+    final s = sleeper;
+    if (s != null && !s.isCompleted) s.complete();
+  }
 }
 
 class _Handle implements JobHandle {
@@ -603,16 +702,44 @@ class _Handle implements JobHandle {
   final StreamController<JobStatus> _controller;
   final Completer<JobStatus> _done;
 
+  /// ME-03：last-value cache——迟到订阅者先收到最近一次状态（含终态）。
+  JobStatus? _last;
+
   @override
   String get jobId => _jobId;
 
   @override
-  Stream<JobStatus> get status => _controller.stream;
+  Stream<JobStatus> get status {
+    // 尚无可重放状态且流仍开放 → 直接给广播流（零开销，事件时序与广播一致）。
+    if (_last == null && !_controller.isClosed) return _controller.stream;
+    // 迟到订阅：返回一条新流，onListen 同步建桥（无丢事件窗口），
+    // 先重放 _last 再转发广播；广播已关闭则补发终态后立即 done。
+    StreamSubscription<JobStatus>? bridge;
+    late final StreamController<JobStatus> out;
+    out = StreamController<JobStatus>(
+      onListen: () {
+        final last = _last;
+        if (last != null) out.add(last);
+        if (_controller.isClosed) {
+          out.close();
+          return;
+        }
+        bridge = _controller.stream.listen(
+          out.add,
+          onError: out.addError,
+          onDone: out.close,
+        );
+      },
+      onCancel: () => bridge?.cancel(),
+    );
+    return out.stream;
+  }
 
   @override
   Future<JobStatus> get done => _done.future;
 
   void _emit(JobStatus s) {
+    _last = s;
     if (!_controller.isClosed) _controller.add(s);
   }
 

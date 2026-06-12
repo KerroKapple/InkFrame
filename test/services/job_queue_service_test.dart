@@ -1,5 +1,6 @@
 // JobQueueService 内存实现单元测试：FakeProvider 覆盖核心路径。
 
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -30,6 +31,7 @@ class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable
     this.pollSequence = const [],
     this.pollDelay = Duration.zero,
     this.pollError,
+    this.pollErrors = const [],
     this.cancelHandler,
   }) : _capabilities = ProviderCapabilities(
           providerId: providerId,
@@ -62,6 +64,8 @@ class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable
   final List<JobStatus> pollSequence;
   final Duration pollDelay;
   final InkError? pollError;
+  // 第 n 次 poll（1-based）依次抛出，抛完后回落到 pollSequence——重试场景用。
+  final List<InkError> pollErrors;
   final Future<void> Function(String)? cancelHandler;
 
   int submitCalls = 0;
@@ -94,6 +98,9 @@ class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable
     if (pollDelay > Duration.zero) {
       await Future<void>.delayed(pollDelay);
     }
+    if (pollCalls <= pollErrors.length) {
+      throw pollErrors[pollCalls - 1];
+    }
     if (pollError != null) {
       currentRunning--;
       throw pollError!;
@@ -122,6 +129,21 @@ class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable
       const KeyValidationResult.valid();
 }
 
+/// FIX-003 gate 式确定性竞态用：poll 挂起在 [gate] 上，由测试方控制返回时机。
+/// [reachedPoll] 标志服务已推进到 poll 调用点（condition-based waiting）。
+class _GatedProvider extends FakeProvider {
+  _GatedProvider() : super(providerId: 'gated');
+
+  final reachedPoll = Completer<void>();
+  final gate = Completer<JobStatus>();
+
+  @override
+  Future<JobStatus> poll(JobId id) {
+    if (!reachedPoll.isCompleted) reachedPoll.complete();
+    return gate.future;
+  }
+}
+
 GenerationTask _task(String jobId, String providerId) => GenerationTask(
       providerId: providerId,
       jobId: jobId,
@@ -143,6 +165,9 @@ InMemoryJobQueueService _build(
   JobRepository? repo,
   FileResolverService? fileResolver,
   NodeRepository? nodeRepo,
+  Duration pollInitialInterval = const Duration(milliseconds: 1),
+  Duration pollMaxInterval = const Duration(milliseconds: 5),
+  Duration pollTimeout = const Duration(seconds: 2),
 }) {
   return InMemoryJobQueueService(
     registry: registry,
@@ -150,10 +175,10 @@ InMemoryJobQueueService _build(
     fileResolver: fileResolver,
     nodeRepo: nodeRepo,
     globalConcurrency: globalConcurrency,
-    pollInitialInterval: const Duration(milliseconds: 1),
-    pollMaxInterval: const Duration(milliseconds: 5),
+    pollInitialInterval: pollInitialInterval,
+    pollMaxInterval: pollMaxInterval,
     pollBackoffMultiplier: 1.0,
-    pollTimeout: const Duration(seconds: 2),
+    pollTimeout: pollTimeout,
   );
 }
 
@@ -668,12 +693,13 @@ void main() {
       svc.dispose();
     });
 
-    test('init() 把 submitted/polling orphan 标 cancelledOnExit', () async {
+    test('init() 把 pending/submitted/polling orphan 标 cancelledOnExit', () async {
       final repo = FakeJobRepository()
         ..seedRow('orphan-1', 'submitted')
         ..seedRow('orphan-2', 'polling')
-        ..seedRow('completed', 'success')
-        ..seedRow('untouched', 'pending');
+        // ME-02：pending 行（上次会话建行后未 submit / dispose 前未跑）也要有出口
+        ..seedRow('orphan-3', 'pending')
+        ..seedRow('completed', 'success');
       final svc = _build(_registryOf({}), repo: repo);
       await svc.init();
 
@@ -681,9 +707,10 @@ void main() {
       expect(repo.rows['orphan-1']!['error_code'], 'cancelled_on_exit');
       expect(repo.rows['orphan-2']!['status'], 'cancelled');
       expect(repo.rows['orphan-2']!['error_code'], 'cancelled_on_exit');
-      // success / pending 不动
+      expect(repo.rows['orphan-3']!['status'], 'cancelled');
+      expect(repo.rows['orphan-3']!['error_code'], 'cancelled_on_exit');
+      // 终态不动
       expect(repo.rows['completed']!['status'], 'success');
-      expect(repo.rows['untouched']!['status'], 'pending');
       svc.dispose();
     });
   });
@@ -807,6 +834,189 @@ void main() {
       // jobs 表也写 error
       expect(repo.rows['jx']!['status'], 'error');
       expect(repo.rows['jx']!['error_code'], 'local_io_error');
+      svc.dispose();
+    });
+  });
+
+  // FIX-003：状态机加固——非 InkError 兜底 / cancel 竞态裁决（affectedRows）/
+  // 可中断退避 / poll 重试 / last-value 重放 / timeout 落库。
+  // 全部 condition-based waiting（Completer gate / handle.done），无固定泵等待。
+  group('InMemoryJobQueueService 状态机加固 (FIX-003)', () {
+    test('poll 抛非 InkError（StateError）→ handle 以 JobFailure(unknown) 终结',
+        () async {
+      // FakeProvider pollSequence 为空时 poll 抛 StateError —— 正好模拟逃逸异常
+      final fake = FakeProvider(providerId: 'fake');
+      final repo = FakeJobRepository()..seedPending('j1');
+      final svc = _build(_registryOf({'fake': fake}), repo: repo);
+      final h = await svc.submit(_task('j1', 'fake'));
+      // HI-01：修复前 handle 永挂，这里会 TimeoutException
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.unknown);
+      expect(repo.rows['j1']!['status'], 'error');
+      expect(repo.rows['j1']!['error_code'], 'unknown');
+      svc.dispose();
+    });
+
+    test('可重试 InkError（networkTimeout）→ 退避重试直至成功', () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollErrors: const [
+          NetworkError(code: InkErrorCode.networkTimeout),
+          NetworkError(code: InkErrorCode.networkTimeout),
+        ],
+        pollSequence: const [JobStatus.success(remoteUrls: ['ok'])],
+      );
+      final svc = _build(_registryOf({'fake': fake}));
+      final h = await svc.submit(_task('j1', 'fake'));
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobSuccess>());
+      expect(fake.pollCalls, 3); // 2 次瞬时错误 + 1 次成功
+      svc.dispose();
+    });
+
+    test('不可重试 InkError（invalidKey）→ 不重试直接 error', () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollErrors: const [ProviderError(code: InkErrorCode.invalidKey)],
+        pollSequence: const [JobStatus.success(remoteUrls: ['never'])],
+      );
+      final repo = FakeJobRepository()..seedPending('j1');
+      final svc = _build(_registryOf({'fake': fake}), repo: repo);
+      final h = await svc.submit(_task('j1', 'fake'));
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.invalidKey);
+      expect(fake.pollCalls, 1);
+      expect(repo.rows['j1']!['status'], 'error');
+      svc.dispose();
+    });
+
+    test('pollTimeout → JobFailure(pollTimeout) + 行落 timeout', () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [JobStatus.inProgress(progress: 0.1)],
+      );
+      final repo = FakeJobRepository()..seedPending('j1');
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        repo: repo,
+        pollTimeout: const Duration(milliseconds: 50),
+      );
+      final h = await svc.submit(_task('j1', 'fake'));
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.pollTimeout);
+      expect(repo.rows['j1']!['status'], 'timeout');
+      expect(repo.rows['j1']!['error_code'], 'poll_timeout');
+      svc.dispose();
+    });
+
+    test('gate 式 cancel/success 竞态：cancel 先落库 → 终态 cancelled、success 不覆盖行',
+        () async {
+      final gated = _GatedProvider();
+      final repo = FakeJobRepository()..seedPending('j1');
+      final svc = _build(_registryOf({'gated': gated}), repo: repo);
+      final h = await svc.submit(_task('j1', 'gated'));
+      final emitted = <JobStatus>[];
+      h.status.listen(emitted.add);
+
+      // 条件等待：服务确定性推进到 poll 挂起点
+      await gated.reachedPoll.future.timeout(const Duration(seconds: 5));
+      await svc.cancel('j1');
+      expect(repo.rows['j1']!['status'], 'cancelled');
+
+      // 放 gate：poll 返回 success，但 cancel 已赢——不得对外发 success
+      gated.gate.complete(const JobStatus.success(remoteUrls: ['late']));
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.cancelledByUser);
+      expect(repo.rows['j1']!['status'], 'cancelled');
+      await pumpEventQueue();
+      expect(emitted.whereType<JobSuccess>(), isEmpty,
+          reason: 'cancel 落库后绝不能再对外 emit success');
+      svc.dispose();
+    });
+
+    test('gate 式 cancel/failure 竞态：affectedRows==0 → 对外裁决为 cancelled',
+        () async {
+      final gated = _GatedProvider();
+      final repo = FakeJobRepository()..seedPending('j1');
+      final svc = _build(_registryOf({'gated': gated}), repo: repo);
+      final h = await svc.submit(_task('j1', 'gated'));
+
+      await gated.reachedPoll.future.timeout(const Duration(seconds: 5));
+      await svc.cancel('j1'); // 行已落 cancelled
+      gated.gate.complete(const JobStatus.failure(
+        error: ProviderError(code: InkErrorCode.providerServer),
+      ));
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      // HI-02：error 写库 affectedRows==0（cancel 已抢写）→ 以 cancelled 为准
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.cancelledByUser);
+      expect(repo.rows['j1']!['status'], 'cancelled');
+      svc.dispose();
+    });
+
+    test('dispose 立即终结 running handle（不等 poll 返回）', () async {
+      final gated = _GatedProvider();
+      final svc = _build(_registryOf({'gated': gated}));
+      final h = await svc.submit(_task('j1', 'gated'));
+      await gated.reachedPoll.future.timeout(const Duration(seconds: 5));
+
+      svc.dispose(); // gate 永不放开——修复前 handle 永挂
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.cancelledByUser);
+    });
+
+    test('cancel 可中断退避睡眠（30s interval 下仍秒级收敛）', () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [
+          JobStatus.inProgress(progress: 0.2),
+          JobStatus.success(remoteUrls: ['never']),
+        ],
+      );
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        pollInitialInterval: const Duration(seconds: 30),
+        pollMaxInterval: const Duration(seconds: 30),
+        pollTimeout: const Duration(minutes: 5),
+      );
+      final h = await svc.submit(_task('j1', 'fake'));
+      // 条件等待：首个 inProgress 说明已进入 30s 退避窗口
+      await h.status
+          .firstWhere((s) => s is JobInProgress)
+          .timeout(const Duration(seconds: 5));
+      await svc.cancel('j1');
+      // ME-01：修复前要睡满 30s 才收敛 → 这里 5s 即超时失败
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.cancelledByUser);
+      svc.dispose();
+    });
+
+    test('last-value 重放：终态后订阅 status 仍收到终态（ME-03 契约）', () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [JobStatus.success(remoteUrls: ['ok'])],
+      );
+      final svc = _build(_registryOf({'fake': fake}));
+      final h = await svc.submit(_task('j1', 'fake'));
+      await h.done;
+
+      // 修复前 broadcast 流已关闭且无重放 → .first 抛 "No element"
+      final replayed = await h.status.first.timeout(const Duration(seconds: 5));
+      expect(replayed, isA<JobSuccess>());
       svc.dispose();
     });
   });
