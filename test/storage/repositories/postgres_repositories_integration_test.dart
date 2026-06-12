@@ -5,6 +5,8 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/paths/app_paths.dart';
+import 'package:inkframe/services/file_resolver_service.dart';
 import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
@@ -132,6 +134,30 @@ void main() {
       );
       expect(await repo.listByCanvas(cid), hasLength(2));
       expect(await repo.listOrphanResults(cid), isEmpty);
+
+      // CR-01：所有读路径行内必须带非空 project_id（JOIN canvases 带出），
+      // 否则生成链路读 null → 产物静默丢弃但 job 标 success。
+      final cfgRow = await repo.findById(config);
+      expect(cfgRow?['project_id'], isNotNull);
+      expect(cfgRow?['project_id'].toString(), pid);
+      for (final r in await repo.listByCanvas(cid)) {
+        expect(r['project_id'].toString(), pid);
+      }
+
+      // 行内 project_id 必须能直接喂给 FileResolverService 解析产物落盘路径。
+      final tmp = await Directory.systemTemp.createTemp('inkframe-cr01-');
+      addTearDown(() => tmp.delete(recursive: true));
+      final resolver =
+          DefaultFileResolverService(DefaultAppPaths.forRoot(tmp));
+      final artifact = resolver.resolve(
+        projectId: cfgRow!['project_id'].toString(),
+        canvasId: cfgRow['canvas_id'].toString(),
+        relativePath: 'outputs/result.png',
+      );
+      expect(
+        artifact.path.replaceAll('\\', '/'),
+        contains('/projects/$pid/canvases/$cid/outputs/result.png'),
+      );
 
       await repo.patchTypeConfig(result, {'progress': 0.5});
       final row = await repo.findById(result);

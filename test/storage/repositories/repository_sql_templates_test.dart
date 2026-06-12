@@ -94,6 +94,31 @@ void main() {
       expect(spy.lastSql, contains("node_role = 'result'"));
       expect(spy.lastSql, contains('source_node_id IS NULL'));
     });
+
+    // CR-01：nodes 行必须带 project_id（来自 canvases JOIN），
+    // 否则生成链路读到 null → 产物静默丢弃。
+    test('findById JOIN canvases 带出 project_id', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).findById('n1');
+      expect(spy.lastSql, contains('c.project_id'));
+      expect(spy.lastSql, contains('JOIN canvases c ON c.id = n.canvas_id'));
+      expect(spy.lastSql, contains('n.deleted_at IS NULL'));
+    });
+
+    test('listByCanvas JOIN canvases 带出 project_id 并保持排序', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).listByCanvas('c1');
+      expect(spy.lastSql, contains('c.project_id'));
+      expect(spy.lastSql, contains('JOIN canvases c ON c.id = n.canvas_id'));
+      expect(spy.lastSql, contains('ORDER BY n.z_index ASC, n.created_at ASC'));
+    });
+
+    test('listOrphanResults JOIN canvases 带出 project_id', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).listOrphanResults('c1');
+      expect(spy.lastSql, contains('c.project_id'));
+      expect(spy.lastSql, contains('JOIN canvases c ON c.id = n.canvas_id'));
+    });
   });
 
   group('EdgeRepository SQL', () {
