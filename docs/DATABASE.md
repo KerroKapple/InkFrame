@@ -4,14 +4,16 @@
 
 ## Schema 版本管理
 
-- 首版 `schema_version.version = 1`
-- 真相源：`lib/storage/schema/schema_v1.dart`
-- 文档镜像：`lib/storage/schema/001_init.sql`（不被运行时加载）
-- `MigrationRunner`（`lib/storage/migrations/migration_runner.dart`）按版本扫描 `002_*.sql`、`003_*.sql`……
+- 当前版本 `schema_version.version = 3`
+- 真相源：`lib/storage/schema/schema_v1.dart` / `schema_v2.dart` / `schema_v3.dart`
+- 文档镜像：`lib/storage/schema/00N_*.sql`（不被运行时加载）
+- `MigrationRunner`（`lib/storage/migrations/migration_runner.dart`）由 `database.dart` 组装迁移列表
 - 数据库版本 > 应用期望 → 抛 `SchemaMigrationError`，提示升级应用
-- 数据库版本 < 应用期望 → 按序执行，每步单独事务，v ≥ 2 由 runner 统一 UPSERT `schema_version`
+- 数据库版本 < 应用期望 → 按序执行；每条迁移的 DDL 与 `schema_version` UPSERT 在 **同一事务**（runTx）内，失败整体回滚，版本号统一由 runner 写（迁移 SQL 不自写）
 
-`CREATE EXTENSION IF NOT EXISTS pgcrypto` 在 `pgMigratedConnectionProvider` 里独立执行，DDL 本身不含扩展语句——并发情形下减少 `23505 duplicate_object` 冲突。
+`CREATE EXTENSION IF NOT EXISTS pgcrypto` 在 `pgMigratedPoolProvider` 里独立执行，DDL 本身不含扩展语句——并发情形下减少 `23505 duplicate_object` 冲突。
+
+连接层为 `Pool`（`pgPoolProvider`，上限 4 连接）：连接懒建、断线后下一次执行自动换新连接；仓储层持 `Pool`（实现 `Session`）。
 
 ## 表关系图
 
@@ -46,6 +48,7 @@ erDiagram
 | style_lanes | nodes | lane_id | SET NULL |  |
 | nodes | jobs | source_node_id | CASCADE |  |
 | nodes | jobs | result_node_id | SET NULL | v=2 修（原 v=1 为 NO ACTION，见 schema_v2.dart） |
+| nodes | projects | cover_node_id | SET NULL | v=3 补 FK（原悬空无约束，见 schema_v3.dart） |
 | jobs | batch_results | job_id | CASCADE |  |
 | nodes | batch_results | node_id | CASCADE |  |
 | nodes | batch_results | promoted_node_id | SET NULL |  |
@@ -92,7 +95,7 @@ JSONB 内字段长度不落 DB CHECK（路径查询开销大），由 freezed + 
 |------|------|
 | jobs.progress CHECK BETWEEN 0.0 AND 1.0 | 进度必须在 [0,1] |
 | nodes chk_grid_consistency | `parent_grid_id IS NOT NULL` 蕴含 `is_grid_generation=false` 且 `grid_children=[]`（PRD §4.6.1） |
-| edges UNIQUE(source_node_id, target_node_id, edge_type) | 同向同类型连线唯一 |
+| edges 部分唯一索引 uq_edges_live (source_node_id, target_node_id, edge_type) WHERE deleted_at IS NULL | 同向同类型 **活** 连线唯一；软删行不占槽位（v=3，原 v=1 为表级 UNIQUE） |
 | batch_results UNIQUE(node_id, slot_index) | 同 batch 节点内 slot 不重复 |
 
 ## 索引
@@ -126,18 +129,19 @@ PRD §21 硬规则：**应用层维护，禁止 DB trigger**。
 
 ## Retention 策略（PRD §21）
 
-Jobs 表的 30 天保留 + 单 canvas 500 条上限：
+Jobs 表的 30 天保留 + 单 canvas 500 条上限（常量：`lib/core/constants/job_housekeeping.dart`）：
 
-- 启动时异步执行，不阻塞主流程
+- `JobQueueService.init()` 在启动 orphan 回收后接线执行；purge 失败不阻断启动
+- 只清终态行（success/error/cancelled/timeout）——在途 job 绝不被删
 - 排除"孤儿 result 节点依赖"的 job（§4.5.1 要求 jobs 是真相源）
 - 实现：`PostgresJobRepository.purgeExpired` + `purgePerCanvasCap`
 
 ## Migration 命名规范
 
 ```
-lib/storage/schema/001_init.sql         # v=1 文档镜像（运行时不加载）
-lib/storage/migrations/002_xxx.sql      # v=2 首个增量
-lib/storage/migrations/003_yyy.sql
+lib/storage/schema/001_init.sql                              # v=1 文档镜像（运行时不加载）
+lib/storage/schema/002_jobs_result_node_id_set_null.sql      # v=2 增量镜像
+lib/storage/schema/003_edges_unique_cover_fk_retry_drop.sql  # v=3 增量镜像
 ```
 
 文件名格式：`<三位版本号>_<短描述>.sql`，版本号必须单调递增无缺口。

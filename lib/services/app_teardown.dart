@@ -2,12 +2,12 @@
 //
 // 顺序契约（时序敏感，勿调整）：
 //   1) JobQueue.dispose —— 先停调度，避免回收期间新任务写库
-//   2) Connection.close —— 关闭 PG 连接
+//   2) Pool.close —— 关闭 PG 连接池
 //   3) PgController.stop —— pg_ctl stop，杜绝孤儿 postmaster
 //   4) container.dispose —— 触发其余 provider 的 onDispose（各步均幂等）
 //
 // 只回收"已实例化"的 provider：关闭路径绝不反向拉起 PG / 队列。
-// JobQueue / Connection 仍在异步初始化中（valueOrNull == null）时跳过显式
+// JobQueue / Pool 仍在异步初始化中（valueOrNull == null）时跳过显式
 // 回收——第 3 步的 pg_ctl stop -m fast 会兜底断开半建连接。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -27,10 +27,10 @@ class AppTeardown {
       container.read(jobQueueServiceProvider).valueOrNull?.dispose();
     }
 
-    if (_isMounted(container, pgConnectionProvider)) {
-      final conn = container.read(pgConnectionProvider).valueOrNull;
-      if (conn != null) {
-        await conn.close();
+    if (_isMounted(container, pgPoolProvider)) {
+      final pool = container.read(pgPoolProvider).valueOrNull;
+      if (pool != null) {
+        await pool.close();
       }
     }
 

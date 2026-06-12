@@ -263,13 +263,26 @@ class FakeJobRepository implements JobRepository {
   Future<List<Map<String, Object?>>> listDuePolling(int limit) =>
       throw UnimplementedError();
 
-  @override
-  Future<int> purgeExpired({required Duration retention}) =>
-      throw UnimplementedError();
+  /// purge 调用审计（init 接线断言用）。
+  final List<Duration> purgeExpiredCalls = <Duration>[];
+  final List<int> purgePerCanvasCapCalls = <int>[];
+
+  /// 模拟存储层 purge 失败（启动不阻断断言用）。
+  bool purgeThrows = false;
 
   @override
-  Future<int> purgePerCanvasCap({required int cap}) =>
-      throw UnimplementedError();
+  Future<int> purgeExpired({required Duration retention}) async {
+    if (purgeThrows) throw const LocalIOError();
+    purgeExpiredCalls.add(retention);
+    return 0;
+  }
+
+  @override
+  Future<int> purgePerCanvasCap({required int cap}) async {
+    if (purgeThrows) throw const LocalIOError();
+    purgePerCanvasCapCalls.add(cap);
+    return 0;
+  }
 
   @override
   Future<int> hardDelete(String id) => throw UnimplementedError();
@@ -711,6 +724,23 @@ void main() {
       expect(repo.rows['orphan-3']!['error_code'], 'cancelled_on_exit');
       // 终态不动
       expect(repo.rows['completed']!['status'], 'success');
+      svc.dispose();
+    });
+
+    test('init() 接线 purge：retention 30 天 + per-canvas cap 500（ME-32）', () async {
+      final repo = FakeJobRepository();
+      final svc = _build(_registryOf({}), repo: repo);
+      await svc.init();
+
+      expect(repo.purgeExpiredCalls, const [Duration(days: 30)]);
+      expect(repo.purgePerCanvasCapCalls, const [500]);
+      svc.dispose();
+    });
+
+    test('init() purge 抛 LocalIOError 不阻断启动', () async {
+      final repo = FakeJobRepository()..purgeThrows = true;
+      final svc = _build(_registryOf({}), repo: repo);
+      await expectLater(svc.init(), completes);
       svc.dispose();
     });
   });

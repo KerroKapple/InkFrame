@@ -11,6 +11,7 @@ import 'dart:collection';
 import 'dart:io';
 import 'dart:math';
 
+import '../core/constants/job_housekeeping.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/interfaces/job_queue_service.dart';
@@ -98,6 +99,14 @@ class InMemoryJobQueueService implements JobQueueService {
           'error_message': 'app exited while job was not finished',
         },
       );
+    }
+    // ME-32：jobs 表清理在启动时接线（retention + per-canvas cap）。
+    // 清理是 housekeeping——失败只放弃本次，绝不阻断启动。
+    try {
+      await repo.purgeExpired(retention: kJobRetention);
+      await repo.purgePerCanvasCap(cap: kJobPerCanvasCap);
+    } on LocalIOError {
+      // 下次启动重试；orphan 回收已完成，不影响队列可用性。
     }
   }
 

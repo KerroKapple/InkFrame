@@ -1,8 +1,9 @@
 // Schema v=1 — InkFrame 数据库首版 DDL。
 //
 // 真相源；`lib/storage/schema/001_init.sql` 是文档镜像，不参与运行时加载。
-// 生命周期：MigrationRunner 在应用启动时检测 schema_version = 0（空库）→ 执行本 SQL 一次，
-// 完成后 UPSERT schema_version.version = 1。零向后兼容；schema 升级走 002_*.sql。
+// 生命周期：MigrationRunner 在应用启动时检测 schema_version = 0（空库）→ 单事务内
+// 执行本 SQL + UPSERT schema_version.version = 1（版本号统一由 runner 写，ME-31）。
+// 零向后兼容；schema 升级走 002_*.sql / 003_*.sql。
 //
 // 字段/约束全量覆盖 PRD：
 //   §21   projects / canvases / style_lanes / nodes / edges / jobs / batch_results / schema_version
@@ -228,12 +229,4 @@ CREATE TABLE batch_results (
 
 CREATE INDEX idx_batch_results_node_id ON batch_results(node_id);
 CREATE INDEX idx_batch_results_job_id  ON batch_results(job_id);
-
--- =====================================================================
--- schema_version 写入首版
--- =====================================================================
-INSERT INTO schema_version (id, version) VALUES (1, 1)
-ON CONFLICT (id) DO UPDATE
-  SET version    = EXCLUDED.version,
-      applied_at = now();
 ''';

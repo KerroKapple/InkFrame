@@ -23,15 +23,14 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
     required String userPrompt,
     Map<String, Object?> parameters = const <String, Object?>{},
     int batchSize = 1,
-    int maxRetries = 3,
     DateTime? timeoutAt,
   }) {
     return guard('create', 'jobs', () async {
       final r = await session.execute(
         Sql.named(
           'INSERT INTO jobs (canvas_id, source_node_id, result_node_id, provider_id, '
-          'job_type, full_prompt, user_prompt, parameters, batch_size, max_retries, timeout_at) '
-          'VALUES (@cid, @src, @rn, @pid, @jt, @fp, @up, @params::jsonb, @bs, @mr, @toa) '
+          'job_type, full_prompt, user_prompt, parameters, batch_size, timeout_at) '
+          'VALUES (@cid, @src, @rn, @pid, @jt, @fp, @up, @params::jsonb, @bs, @toa) '
           'RETURNING id',
         ),
         parameters: <String, Object?>{
@@ -44,7 +43,6 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
           'up': userPrompt,
           'params': jsonEncode(parameters),
           'bs': batchSize,
-          'mr': maxRetries,
           'toa': timeoutAt?.toUtc().toIso8601String(),
         },
       );
@@ -193,12 +191,15 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
   @override
   Future<int> purgePerCanvasCap({required int cap}) {
     return guard('purgePerCanvasCap', 'jobs', () async {
+      // ME-32：只对终态行排名和清除——在途 job（pending/submitted/polling）
+      // 既不占限额槽位也绝不被删。
       final r = await session.execute(
         Sql.named(
           'WITH ranked AS ( '
           '  SELECT id, ROW_NUMBER() OVER ( '
           '    PARTITION BY canvas_id ORDER BY created_at DESC) AS rn, '
-          '    result_node_id FROM jobs) '
+          '    result_node_id FROM jobs '
+          "  WHERE status IN ('success','error','cancelled','timeout')) "
           'DELETE FROM jobs WHERE id IN ( '
           '  SELECT r.id FROM ranked r WHERE r.rn > @cap '
           '  AND NOT EXISTS ( '
