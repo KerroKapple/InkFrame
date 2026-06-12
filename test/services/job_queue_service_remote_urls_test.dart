@@ -335,7 +335,7 @@ void main() {
       svc.dispose();
     });
 
-    test('downloader 抛 VideoDownloadError → JobFailure(providerServer)',
+    test('downloader 抛 VideoDownloadError → JobFailure(downloadFailed)',
         () async {
       final provider = _FakeProvider(
         providerId: 'fake',
@@ -362,11 +362,112 @@ void main() {
       final terminal = await h.done;
 
       expect(terminal, isA<JobFailure>());
-      expect((terminal as JobFailure).error.code, InkErrorCode.providerServer);
+      // ME-05：产物下载失败属 DownloadError（可重试），不是 provider 5xx
+      expect((terminal as JobFailure).error, isA<DownloadError>());
+      expect(terminal.error.code, InkErrorCode.downloadFailed);
       expect(repo.rows['jerr']!['status'], 'error');
+      expect(repo.rows['jerr']!['error_code'], 'download_failed');
+      svc.dispose();
+    });
+
+    // ME-34：thumbnail 路径补测（成功补 thumbnail_url / 失败不阻断 success）
+    test('video 模式 + thumbnailService：patch 含 thumbnail_url 且缩略图落盘',
+        () async {
+      final provider = _FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [
+          JobStatus.success(remoteUrls: ['https://fake/v.mp4']),
+        ],
+      );
+      final registry = ProviderRegistry({'fake': () => provider});
+      final repo = _FakeJobRepo()..seedPending('jt');
+      final nodeRepo = _FakeNodeRepo();
+      final thumbnail = _RecordingThumbnail();
+
+      final svc = _build(
+        registry: registry,
+        repo: repo,
+        nodeRepo: nodeRepo,
+        fileResolver: fileResolver,
+        downloader: _RecordingDownloader(),
+        thumbnail: thumbnail,
+      );
+
+      final h = await svc.submit(
+        _task(jobId: 'jt', mode: GenerationMode.textToVideo),
+      );
+      final terminal = await h.done;
+
+      expect(terminal, isA<JobSuccess>());
+      expect(thumbnail.calls, 1);
+      final patch = nodeRepo.patches['node-1']!.first;
+      expect(patch['video_url'], 'videos/jt.mp4');
+      expect(patch['thumbnail_url'], 'videos/jt.jpg');
+      final thumbFile = File(
+        '${tmp.path}/projects/proj-1/canvases/canvas-1/videos/jt.jpg',
+      );
+      expect(thumbFile.existsSync(), isTrue);
+      svc.dispose();
+    });
+
+    test('thumbnail 抽帧失败 → 任务仍 success，patch 无 thumbnail_url', () async {
+      final provider = _FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [
+          JobStatus.success(remoteUrls: ['https://fake/v.mp4']),
+        ],
+      );
+      final registry = ProviderRegistry({'fake': () => provider});
+      final repo = _FakeJobRepo()..seedPending('jtf');
+      final nodeRepo = _FakeNodeRepo();
+
+      final svc = _build(
+        registry: registry,
+        repo: repo,
+        nodeRepo: nodeRepo,
+        fileResolver: fileResolver,
+        downloader: _RecordingDownloader(),
+        thumbnail: _FailingThumbnail(),
+      );
+
+      final h = await svc.submit(
+        _task(jobId: 'jtf', mode: GenerationMode.textToVideo),
+      );
+      final terminal = await h.done;
+
+      expect(terminal, isA<JobSuccess>());
+      expect(repo.rows['jtf']!['status'], 'success');
+      final patch = nodeRepo.patches['node-1']!.first;
+      expect(patch['video_url'], 'videos/jtf.mp4');
+      expect(patch.keys, isNot(contains('thumbnail_url')));
       svc.dispose();
     });
   });
+}
+
+class _RecordingThumbnail implements ThumbnailService {
+  int calls = 0;
+
+  @override
+  Future<File> extractFirstFrame({
+    required String videoPath,
+    required File destination,
+  }) async {
+    calls++;
+    await destination.parent.create(recursive: true);
+    await destination.writeAsBytes(const [0xFF, 0xD8], flush: true); // JPEG sig
+    return destination;
+  }
+}
+
+class _FailingThumbnail implements ThumbnailService {
+  @override
+  Future<File> extractFirstFrame({
+    required String videoPath,
+    required File destination,
+  }) async {
+    throw const ThumbnailError('decode_failed');
+  }
 }
 
 class _FailingDownloader implements VideoDownloadService {
