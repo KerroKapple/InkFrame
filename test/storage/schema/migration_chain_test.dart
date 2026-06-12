@@ -50,7 +50,7 @@ void main() {
       final h = req();
       final r = await h.conn.execute(
         Sql.named(
-          'SELECT confdeltype FROM pg_constraint '
+          'SELECT confdeltype::text FROM pg_constraint '
           "WHERE conname = 'jobs_result_node_id_fkey' "
           'AND connamespace = @s::regnamespace',
         ),
