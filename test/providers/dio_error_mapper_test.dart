@@ -65,6 +65,47 @@ void main() {
         InkErrorCode.invalidParameter);
   });
 
+  test('badResponse body 只留截断 code/message，不携带原始响应体', () {
+    final e = DioException(
+      requestOptions: _ro(),
+      type: DioExceptionType.badResponse,
+      response: Response<dynamic>(
+        requestOptions: _ro(),
+        statusCode: 400,
+        data: <String, Object?>{
+          'error': <String, Object?>{
+            'code': 'invalid_request',
+            'message': 'm' * 1000,
+          },
+          'echo_key': 'sk-raw-body-secret-000111',
+        },
+      ),
+    );
+    final err = mapDioError(e, providerId: 'p');
+    expect(err.extra.containsKey('body'), isFalse);
+    expect(err.extra['body_code'], 'invalid_request');
+    expect((err.extra['body_message'] as String).length,
+        lessThanOrEqualTo(300));
+    expect(err.extra.toString().contains('sk-raw-body-secret-000111'),
+        isFalse);
+  });
+
+  test('badResponse 非 Map body → 截断字符串摘要', () {
+    final e = DioException(
+      requestOptions: _ro(),
+      type: DioExceptionType.badResponse,
+      response: Response<dynamic>(
+        requestOptions: _ro(),
+        statusCode: 422,
+        data: 'plain failure text ${'x' * 1000}',
+      ),
+    );
+    final err = mapDioError(e, providerId: 'p');
+    expect(err.extra.containsKey('body'), isFalse);
+    expect((err.extra['body_message'] as String).length,
+        lessThanOrEqualTo(300));
+  });
+
   test('providerId 写入 extra', () {
     final err = mapDioError(_badResponse(429), providerId: 'wanx-image');
     expect(err.extra['provider_id'], 'wanx-image');

@@ -14,6 +14,7 @@ import 'dart:math';
 import '../core/constants/job_housekeeping.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
+import '../core/logging/logger_service.dart';
 import '../core/interfaces/job_queue_service.dart';
 import '../core/interfaces/job_repository.dart';
 import '../core/interfaces/node_repository.dart';
@@ -39,6 +40,7 @@ class InMemoryJobQueueService implements JobQueueService {
     NodeRepository? nodeRepo,
     VideoDownloadService? videoDownloader,
     ThumbnailService? thumbnailService,
+    LoggerService? logger,
     int globalConcurrency = 2,
     Duration pollInitialInterval = const Duration(seconds: 3),
     Duration pollMaxInterval = const Duration(seconds: 30),
@@ -51,6 +53,7 @@ class InMemoryJobQueueService implements JobQueueService {
         _nodeRepo = nodeRepo,
         _videoDownloader = videoDownloader,
         _thumbnail = thumbnailService,
+        _logger = logger,
         _globalConcurrency = globalConcurrency,
         _pollInitial = pollInitialInterval,
         _pollMax = pollMaxInterval,
@@ -64,7 +67,10 @@ class InMemoryJobQueueService implements JobQueueService {
   final NodeRepository? _nodeRepo;
   final VideoDownloadService? _videoDownloader;
   final ThumbnailService? _thumbnail;
+  final LoggerService? _logger;
   final int _globalConcurrency;
+
+  static const String _logModule = 'jobqueue';
   final Duration _pollInitial;
   final Duration _pollMax;
   final double _pollMultiplier;
@@ -87,6 +93,10 @@ class InMemoryJobQueueService implements JobQueueService {
     // 否则永远没有出口。
     const orphanStatuses = ['pending', 'submitted', 'polling'];
     final orphan = await repo.listByStatus(orphanStatuses);
+    if (orphan.isNotEmpty) {
+      _logger?.info(_logModule, 'startup recovery: orphan jobs cancelled',
+          extra: {'count': orphan.length});
+    }
     for (final row in orphan) {
       final id = row['id'] as String?;
       if (id == null) continue;
@@ -122,6 +132,10 @@ class InMemoryJobQueueService implements JobQueueService {
     final doneCompleter = Completer<JobStatus>();
     final handle = _Handle(task.jobId, controller, doneCompleter);
 
+    _logger?.debug(_logModule, 'job queued', extra: {
+      'job_id': task.jobId,
+      'provider_id': task.providerId,
+    });
     final pendingJob = _PendingJob(task: task, handle: handle);
     _pending.add(pendingJob);
     _pendingIndex[task.jobId] = pendingJob;
@@ -148,8 +162,10 @@ class InMemoryJobQueueService implements JobQueueService {
     if (provider is Cancellable) {
       try {
         await (provider as Cancellable).cancel(running.providerJobId ?? jobId);
-      } on InkError {
-        // 按 PROVIDER-API §5.4：cancel 失败不抛
+      } on InkError catch (e) {
+        // 按 PROVIDER-API §5.4：cancel 失败不抛——但必须留日志痕迹。
+        _logger?.warn(_logModule, 'provider cancel failed (swallowed)',
+            extra: {'job_id': jobId, 'error_code': e.code.wire});
       }
     }
   }
@@ -465,6 +481,13 @@ class InMemoryJobQueueService implements JobQueueService {
   }
 
   Future<int?> _persistFailure(String jobId, InkError error) {
+    // 所有失败终态的统一漏斗：在此落 ERROR 日志。
+    _logger?.error(
+      _logModule,
+      'job failed',
+      extra: {'job_id': jobId, 'error_code': error.code.wire},
+      cause: error,
+    );
     return _persistTransition(
       jobId,
       from: const ['pending', 'submitted', 'polling'],
@@ -478,6 +501,11 @@ class InMemoryJobQueueService implements JobQueueService {
   }
 
   Future<int?> _persistTimeout(String jobId, InkError error) {
+    _logger?.error(
+      _logModule,
+      'job poll timeout',
+      extra: {'job_id': jobId, 'error_code': error.code.wire},
+    );
     return _persistTransition(
       jobId,
       from: const ['submitted', 'polling'],
@@ -630,12 +658,18 @@ class InMemoryJobQueueService implements JobQueueService {
             destination: thumbFile,
           );
           patch['thumbnail_url'] = thumbRel;
-        } on ThumbnailError {
+        } on ThumbnailError catch (e) {
           // 抽帧失败不阻断视频可用，仅没有 thumbnail_url。
-        } on FileSystemException {
+          _logger?.warn(_logModule, 'thumbnail extraction failed (swallowed)',
+              extra: {'job_id': task.jobId, 'reason': e.toString()});
+        } on FileSystemException catch (e) {
           // 同上。
+          _logger?.warn(_logModule, 'thumbnail io failed (swallowed)',
+              extra: {'job_id': task.jobId, 'reason': e.message});
         } on PathSecurityError {
           // 同上。
+          _logger?.warn(_logModule, 'thumbnail unsafe path (swallowed)',
+              extra: {'job_id': task.jobId});
         }
       }
 

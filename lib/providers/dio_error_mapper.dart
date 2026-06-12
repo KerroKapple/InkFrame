@@ -66,8 +66,27 @@ InkError mapDioError(DioException e, {required String providerId}) {
       }
       return ProviderError(
         code: InkErrorCode.invalidParameter,
-        extra: {...extra, 'status': status, 'body': e.response?.data},
+        extra: {...extra, 'status': status, ..._bodyBrief(e.response?.data)},
         cause: e,
       );
   }
 }
+
+// 响应体只保留截断后的 code / message 摘要，绝不携带原始 body
+// （原始 body 可能回显 api key / prompt 等敏感内容）。
+Map<String, Object?> _bodyBrief(Object? data) {
+  if (data == null) return const <String, Object?>{};
+  if (data is Map) {
+    final err = data['error'];
+    final Map<dynamic, dynamic> inner = err is Map ? err : data;
+    final code = inner['code'] ?? inner['error_code'];
+    final message = inner['message'] ?? inner['msg'];
+    return <String, Object?>{
+      if (code != null) 'body_code': _clip(code.toString(), 100),
+      if (message != null) 'body_message': _clip(message.toString(), 300),
+    };
+  }
+  return <String, Object?>{'body_message': _clip(data.toString(), 300)};
+}
+
+String _clip(String s, int max) => s.length <= max ? s : s.substring(0, max);

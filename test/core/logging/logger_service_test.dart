@@ -112,6 +112,133 @@ void main() {
     });
   });
 
+  group('recursive redaction + key-shaped value masking', () {
+    test('redacts sensitive keys inside nested maps and lists', () async {
+      final tmp = await _makeTmpRoot();
+      final paths = DefaultAppPaths.forRoot(tmp);
+      await paths.ensureInitialized();
+      final logger = FileLoggerService(
+        paths: paths,
+        clock: const SystemClock(),
+      );
+
+      logger.info('provider', 'request sent', extra: <String, Object?>{
+        'request': <String, Object?>{
+          'api_key': 'sk-nested-secret-aaaa1111',
+          'job_id': 'J-9',
+          'headers': <Object?>[
+            <String, Object?>{'authorization': 'Bearer deep.token.value'},
+          ],
+        },
+      });
+      await logger.flush();
+
+      final lines = await _readActiveLog(paths.logs);
+      final raw = lines.first;
+      expect(raw.contains('sk-nested-secret-aaaa1111'), isFalse);
+      expect(raw.contains('deep.token.value'), isFalse);
+      final parsed = jsonDecode(raw) as Map<String, Object?>;
+      final extra = parsed['extra'] as Map<String, Object?>;
+      final request = extra['request'] as Map<String, Object?>;
+      expect(request['api_key'], '***');
+      expect(request['job_id'], 'J-9');
+      final headers = request['headers'] as List<Object?>;
+      expect((headers.first as Map<String, Object?>)['authorization'], '***');
+
+      await logger.close();
+      await tmp.delete(recursive: true);
+    });
+
+    test('masks key-shaped strings embedded in plain values', () async {
+      final tmp = await _makeTmpRoot();
+      final paths = DefaultAppPaths.forRoot(tmp);
+      await paths.ensureInitialized();
+      final logger = FileLoggerService(
+        paths: paths,
+        clock: const SystemClock(),
+      );
+
+      logger.info('provider', 'retry', extra: <String, Object?>{
+        'note': 'retry with sk-abc123DEF456ghi789 now',
+        'header_echo': 'Authorization: Bearer aa.bb.cc',
+        'query_echo': 'https://x.example/?api_key=raw-query-secret&x=1',
+        'job_id': 'J-1',
+      });
+      await logger.flush();
+
+      final lines = await _readActiveLog(paths.logs);
+      final raw = lines.first;
+      expect(raw.contains('sk-abc123DEF456ghi789'), isFalse);
+      expect(raw.contains('aa.bb.cc'), isFalse);
+      expect(raw.contains('raw-query-secret'), isFalse);
+      final parsed = jsonDecode(raw) as Map<String, Object?>;
+      final extra = parsed['extra'] as Map<String, Object?>;
+      expect(extra['job_id'], 'J-1');
+
+      await logger.close();
+      await tmp.delete(recursive: true);
+    });
+
+    test('error() redacts cause and stackTrace strings', () async {
+      final tmp = await _makeTmpRoot();
+      final paths = DefaultAppPaths.forRoot(tmp);
+      await paths.ensureInitialized();
+      final logger = FileLoggerService(
+        paths: paths,
+        clock: const SystemClock(),
+      );
+
+      logger.error(
+        'jobqueue',
+        'job failed',
+        cause: Exception('DioException: api_key=sk-cause-secret-123456'),
+        stackTrace: StackTrace.fromString(
+          '#0 frame (token: Bearer stack.secret.token)\n#1 other',
+        ),
+      );
+      await logger.flush();
+
+      final lines = await _readActiveLog(paths.logs);
+      final raw = lines.first;
+      expect(raw.contains('sk-cause-secret-123456'), isFalse);
+      expect(raw.contains('stack.secret.token'), isFalse);
+      final parsed = jsonDecode(raw) as Map<String, Object?>;
+      final extra = parsed['extra'] as Map<String, Object?>;
+      expect(extra['cause'], contains('***'));
+      expect(extra['stack'], contains('***'));
+
+      await logger.close();
+      await tmp.delete(recursive: true);
+    });
+
+    test('error() truncates oversized cause and stack', () async {
+      final tmp = await _makeTmpRoot();
+      final paths = DefaultAppPaths.forRoot(tmp);
+      await paths.ensureInitialized();
+      final logger = FileLoggerService(
+        paths: paths,
+        clock: const SystemClock(),
+      );
+
+      logger.error(
+        'jobqueue',
+        'huge failure',
+        cause: 'c' * 10000,
+        stackTrace: StackTrace.fromString('s' * 20000),
+      );
+      await logger.flush();
+
+      final lines = await _readActiveLog(paths.logs);
+      final parsed = jsonDecode(lines.first) as Map<String, Object?>;
+      final extra = parsed['extra'] as Map<String, Object?>;
+      expect((extra['cause'] as String).length, lessThanOrEqualTo(2000));
+      expect((extra['stack'] as String).length, lessThanOrEqualTo(4000));
+
+      await logger.close();
+      await tmp.delete(recursive: true);
+    });
+  });
+
   group('rotation', () {
     test('rotates when active log exceeds maxFileBytes', () async {
       final tmp = await _makeTmpRoot();
@@ -151,7 +278,9 @@ void main() {
       await tmp.delete(recursive: true);
     });
 
-    test('11MB write triggers rotation (acceptance line)', () async {
+    // 12MB 同步落盘在带实时杀软扫描的 Windows 上可超默认 30s——放宽到 2 分钟。
+    test('11MB write triggers rotation (acceptance line)',
+        timeout: const Timeout(Duration(minutes: 2)), () async {
       final tmp = await _makeTmpRoot();
       final paths = DefaultAppPaths.forRoot(tmp);
       await paths.ensureInitialized();
@@ -258,6 +387,63 @@ void main() {
       );
       expect(total <= 60 * 1024 + 200, isTrue,
           reason: 'expected reclaim below target, got $total bytes');
+
+      await logger.close();
+      await tmp.delete(recursive: true);
+    });
+  });
+
+  group('disk budget timing (LO-09)', () {
+    test('reclaim runs at startup and on rotation, not on every line',
+        () async {
+      final tmp = await _makeTmpRoot();
+      final paths = DefaultAppPaths.forRoot(tmp);
+      await paths.ensureInitialized();
+      final clock = _FakeClock(DateTime.utc(2026, 4, 13));
+      final logger = FileLoggerService(
+        paths: paths,
+        clock: clock,
+        config: const LoggerConfig(
+          maxFileBytes: 4 * 1024,
+          totalDiskBudgetBytes: 100 * 1024,
+          emergencyReclaimTargetBytes: 60 * 1024,
+        ),
+      );
+
+      // 首条写入消耗启动期检查。
+      logger.info('boot', 'first line');
+      await logger.flush();
+
+      // 启动检查后才出现的超预算旧文件。
+      for (var i = 0; i < 3; i++) {
+        final f = File(
+            p.join(paths.logs.path, 'inkframe.2026010${i}T000000.log'));
+        await f.writeAsBytes(List<int>.filled(40 * 1024, 65));
+        await f.setLastModified(DateTime(2026, 1, 1 + i));
+      }
+
+      // 普通小行不触发轮转 → 不应触发预算回收（无每行全目录扫描）。
+      logger.info('probe', 'small line');
+      await logger.flush();
+      final beforeRotation = paths.logs
+          .listSync()
+          .whereType<File>()
+          .where((f) => p.basename(f.path).startsWith('inkframe.2026010'))
+          .length;
+      expect(beforeRotation, 3,
+          reason: 'non-rotating write must not run budget reclaim');
+
+      // 写一条大行触发轮转 → 轮转分支执行预算回收。
+      clock.advance(const Duration(seconds: 1));
+      logger.info('big', 'x' * (5 * 1024));
+      await logger.flush();
+      final afterRotation = paths.logs
+          .listSync()
+          .whereType<File>()
+          .where((f) => p.basename(f.path).startsWith('inkframe.2026010'))
+          .length;
+      expect(afterRotation, lessThan(3),
+          reason: 'rotation must trigger budget reclaim');
 
       await logger.close();
       await tmp.delete(recursive: true);

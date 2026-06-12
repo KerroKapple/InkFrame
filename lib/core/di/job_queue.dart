@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../interfaces/job_queue_service.dart';
 import '../../services/job_queue_service.dart';
 import 'file_resolver.dart';
+import 'logger.dart';
 import 'providers.dart';
 import 'repositories.dart';
 import 'thumbnail.dart';
@@ -28,6 +29,7 @@ final jobQueueServiceProvider = FutureProvider<JobQueueService>((ref) async {
     nodeRepo: nodeRepo,
     videoDownloader: downloader,
     thumbnailService: thumbnail,
+    logger: ref.watch(loggerProvider),
   );
   await service.init();
   ref.onDispose(service.dispose);

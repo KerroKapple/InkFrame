@@ -18,6 +18,7 @@ import '../../storage/pg_controller.dart';
 import '../../storage/schema/schema_v1.dart';
 import '../../storage/schema/schema_v2.dart';
 import '../../storage/schema/schema_v3.dart';
+import 'logger.dart';
 import 'paths.dart';
 
 /// 二进制定位器——默认按平台探测；单测可以覆盖为指向测试 fixture。
@@ -32,6 +33,7 @@ final pgControllerProvider = Provider<PgController>(
     final controller = PgController(
       paths: ref.watch(appPathsProvider),
       locator: ref.watch(pgBinaryLocatorProvider),
+      logger: ref.watch(loggerProvider),
     );
     ref.onDispose(() async {
       try {

@@ -19,6 +19,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
 import 'pg_binary_locator.dart';
 
@@ -144,15 +145,20 @@ class PgController {
     required PgBinaryLocator locator,
     PgProcessRunner runner = const SystemPgProcessRunner(),
     Future<int> Function()? portPicker,
+    LoggerService? logger,
   })  : _paths = paths,
         _locator = locator,
         _runner = runner,
-        _portPicker = portPicker ?? _defaultPortPicker;
+        _portPicker = portPicker ?? _defaultPortPicker,
+        _logger = logger;
 
   final AppPaths _paths;
   final PgBinaryLocator _locator;
   final PgProcessRunner _runner;
   final Future<int> Function() _portPicker;
+  final LoggerService? _logger;
+
+  static const String _logModule = 'storage.pg';
 
   PgRuntime? _runtime;
   PgRuntime? get runtime => _runtime;
@@ -189,15 +195,19 @@ class PgController {
     }
 
     final binLocation = _locator.locate();
+    _logger?.info(_logModule, 'initdb start');
     final result = await _runner.initdb(
       initdbBin: binLocation.initdb,
       dataDir: dataDir,
     );
     if (result.exitCode != 0) {
+      _logger?.error(_logModule, 'initdb failed',
+          extra: {'exit_code': result.exitCode});
       throw PgLifecycleError(
         'initdb failed (exit ${result.exitCode}): ${result.stderr}',
       );
     }
+    _logger?.info(_logModule, 'initdb done');
   }
 
   /// 启动：存活复用 / 崩溃恢复 + pg_ctl start；写端口文件；返回 runtime。
@@ -230,6 +240,8 @@ class PgController {
       logFile: logFile,
     );
     if (result.exitCode != 0) {
+      _logger?.error(_logModule, 'pg_ctl start failed',
+          extra: {'exit_code': result.exitCode, 'port': port});
       throw PgLifecycleError(
         'pg_ctl start failed (exit ${result.exitCode}): ${result.stderr}',
       );
@@ -237,6 +249,7 @@ class PgController {
 
     portFile.writeAsStringSync('$port\n');
     _runtime = PgRuntime(host: '127.0.0.1', port: port, dataDir: dataDir);
+    _logger?.info(_logModule, 'postgres started', extra: {'port': port});
     return _runtime!;
   }
 
@@ -253,17 +266,23 @@ class PgController {
     }
     final pid = int.tryParse(lines.first.trim()) ?? -1;
     if (!_runner.isProcessAlive(pid)) {
+      _logger?.warn(_logModule, 'stale postmaster.pid removed (crash recovery)',
+          extra: {'pid': pid});
       _postmasterPid.deleteSync();
       return null;
     }
     // postmaster.pid 格式：pid / datadir / start-time / port / socket-dir / ...
     final port = lines.length >= 4 ? int.tryParse(lines[3].trim()) : null;
     if (port == null || port <= 0) {
+      _logger?.error(_logModule, 'live postmaster without parsable port',
+          extra: {'pid': pid});
       throw PgLifecycleError(
         'A postgres instance (pid=$pid) is alive against ${dataDir.path} '
         'but its postmaster.pid lacks a parsable port; cannot reuse it.',
       );
     }
+    _logger?.info(_logModule, 'live postmaster detected; reusing instance',
+        extra: {'pid': pid, 'port': port});
     return PgRuntime(host: '127.0.0.1', port: port, dataDir: dataDir);
   }
 
@@ -279,11 +298,14 @@ class PgController {
       dataDir: dataDir,
     );
     if (result.exitCode != 0) {
+      _logger?.error(_logModule, 'pg_ctl stop failed',
+          extra: {'exit_code': result.exitCode});
       throw PgLifecycleError(
         'pg_ctl stop failed (exit ${result.exitCode}): ${result.stderr}',
       );
     }
     _runtime = null;
+    _logger?.info(_logModule, 'postgres stopped');
   }
 
   /// 轻量探测：postmaster.pid 存在 + pid 进程活着。
