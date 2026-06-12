@@ -215,6 +215,14 @@
   "studioNewProjectErrorDuplicate": "A project with this name already exists",
   "studioNewProjectFailed": "Failed to create project",
   "studioCreate": "Create",
+  "studioProjectMetaLine": "{date} · {count, plural, =1{1 canvas} other{{count} canvases}}",
+  "@studioProjectMetaLine": {
+    "description": "Project card meta line: real creation month + canvas count",
+    "placeholders": {
+      "date": { "type": "DateTime", "format": "yMMM" },
+      "count": { "type": "int" }
+    }
+  },
   "canvasDefaultName": "Untitled Canvas",
   "studioOpenCanvasFailed": "Couldn't open canvas",
   "studioNoKeyBannerText": "No provider API key configured — generation needs one.",

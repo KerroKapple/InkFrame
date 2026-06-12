@@ -1,20 +1,21 @@
 // ProjectWithCanvases / CanvasRef：Studio Home / LibrarySidebar 共用的
 // 工作库列表数据模型，强类型流过 sidebar / grid。
 //
-// workspaceProjectsProvider 在此处定义。
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import '../../../core/di/repositories.dart';
-
+// 纯模型，无 Riverpod 依赖；workspaceProjectsProvider 在
+// providers/workspace_projects_provider.dart。
 class ProjectWithCanvases {
   const ProjectWithCanvases({
     required this.id,
     required this.name,
+    required this.createdAt,
     required this.canvases,
   });
 
   final String id;
   final String name;
+
+  /// 项目真实创建时间（UTC），来自 projects.created_at —— 卡片 meta 行的数据源。
+  final DateTime createdAt;
   final List<CanvasRef> canvases;
 }
 
@@ -24,32 +25,3 @@ class CanvasRef {
   final String id;
   final String name;
 }
-
-final workspaceProjectsProvider =
-    FutureProvider.autoDispose<List<ProjectWithCanvases>>((ref) async {
-  final projects = await ref.watch(projectRepositoryProvider.future);
-  final canvases = await ref.watch(canvasRepositoryProvider.future);
-  final rows = await projects.listAll();
-  final result = <ProjectWithCanvases>[];
-  for (final row in rows) {
-    final id = row['id']?.toString();
-    final name = row['name']?.toString();
-    if (id == null || name == null) continue;
-    final list = await canvases.listByProject(id);
-    result.add(
-      ProjectWithCanvases(
-        id: id,
-        name: name,
-        canvases: list
-            .map(
-              (c) => CanvasRef(
-                id: c['id']!.toString(),
-                name: c['name']?.toString() ?? '',
-              ),
-            )
-            .toList(),
-      ),
-    );
-  }
-  return result;
-});

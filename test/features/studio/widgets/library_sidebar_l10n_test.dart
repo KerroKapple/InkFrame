@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
+import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/widgets/library_sidebar.dart';
 
 import '../../../_harness/test_app.dart';
@@ -15,11 +16,12 @@ void main() {
       locale: const Locale('zh'),
       overrides: <Override>[
         workspaceProjectsProvider.overrideWith(
-          (ref) async => const <ProjectWithCanvases>[
+          (ref) async => <ProjectWithCanvases>[
             ProjectWithCanvases(
               id: 'p1',
               name: 'Demo',
-              canvases: <CanvasRef>[],
+              createdAt: DateTime.utc(2026, 5, 1),
+              canvases: const <CanvasRef>[],
             ),
           ],
         ),

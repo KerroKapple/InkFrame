@@ -10,6 +10,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../controllers/studio_state.dart';
 import '../models/project_with_canvases.dart';
+import '../providers/workspace_projects_provider.dart';
 
 class LibrarySidebar extends ConsumerWidget {
   const LibrarySidebar({super.key});

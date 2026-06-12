@@ -467,6 +467,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioCreate => '创建';
 
   @override
+  String studioProjectMetaLine(DateTime date, int count) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个画布',
+    );
+    return '$dateString · $_temp0';
+  }
+
+  @override
   String get canvasDefaultName => '未命名画布';
 
   @override

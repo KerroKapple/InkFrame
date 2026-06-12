@@ -986,6 +986,12 @@ abstract class AppLocalizations {
   /// **'Create'**
   String get studioCreate;
 
+  /// Project card meta line: real creation month + canvas count
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · {count, plural, =1{1 canvas} other{{count} canvases}}'**
+  String studioProjectMetaLine(DateTime date, int count);
+
   /// No description provided for @canvasDefaultName.
   ///
   /// In en, this message translates to:

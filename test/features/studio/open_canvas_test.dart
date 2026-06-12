@@ -10,10 +10,15 @@ void main() {
     addTearDown(container.dispose);
     await openProjectCanvas(
       container.read,
-      const ProjectWithCanvases(id: 'p1', name: 'P', canvases: [
-        CanvasRef(id: 'cv-a', name: 'A'),
-        CanvasRef(id: 'cv-b', name: 'B'),
-      ]),
+      ProjectWithCanvases(
+        id: 'p1',
+        name: 'P',
+        createdAt: DateTime.utc(2026, 5, 1),
+        canvases: const [
+          CanvasRef(id: 'cv-a', name: 'A'),
+          CanvasRef(id: 'cv-b', name: 'B'),
+        ],
+      ),
       createCanvas: (_) async => fail('不该建画布'),
     );
     expect(container.read(currentCanvasIdProvider), 'cv-a');
@@ -24,7 +29,12 @@ void main() {
     addTearDown(container.dispose);
     await openProjectCanvas(
       container.read,
-      const ProjectWithCanvases(id: 'p1', name: 'P', canvases: []),
+      ProjectWithCanvases(
+        id: 'p1',
+        name: 'P',
+        createdAt: DateTime.utc(2026, 5, 1),
+        canvases: const [],
+      ),
       createCanvas: (projectId) async => 'cv-new',
     );
     expect(container.read(currentCanvasIdProvider), 'cv-new');
@@ -36,7 +46,12 @@ void main() {
     await expectLater(
       openProjectCanvas(
         container.read,
-        const ProjectWithCanvases(id: 'p1', name: 'P', canvases: []),
+        ProjectWithCanvases(
+        id: 'p1',
+        name: 'P',
+        createdAt: DateTime.utc(2026, 5, 1),
+        canvases: const [],
+      ),
         createCanvas: (_) async => throw StateError('boom'),
       ),
       throwsStateError,

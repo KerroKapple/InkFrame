@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/studio/controllers/studio_state.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
+import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/widgets/library_sidebar.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
@@ -41,8 +42,18 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(400, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final projects = <ProjectWithCanvases>[
-      const ProjectWithCanvases(id: 'p1', name: 'Alpha Project', canvases: []),
-      const ProjectWithCanvases(id: 'p2', name: 'Beta Project', canvases: []),
+      ProjectWithCanvases(
+        id: 'p1',
+        name: 'Alpha Project',
+        createdAt: DateTime.utc(2026, 5, 1),
+        canvases: const [],
+      ),
+      ProjectWithCanvases(
+        id: 'p2',
+        name: 'Beta Project',
+        createdAt: DateTime.utc(2026, 5, 2),
+        canvases: const [],
+      ),
     ];
     final container = ProviderContainer(overrides: <Override>[
       workspaceProjectsProvider.overrideWith((_) async => projects),
