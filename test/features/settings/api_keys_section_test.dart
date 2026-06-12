@@ -1,4 +1,5 @@
-// ApiKeysSection widget 测试 —— FakeSecureStorage 覆盖 save / clear 往返。
+// ApiKeysSection widget 测试 —— FakeSecureStorage + FakeProvider 覆盖
+// save（valid / rejected / networkError）与 clear 往返。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,10 +8,11 @@ import 'package:inkframe/core/constants/secure_storage_keys.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
-import 'package:inkframe/core/models/cost_model.dart';
-import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
+import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/features/settings/widgets/api_keys_section.dart';
+import 'package:inkframe/providers/provider_registry.dart';
 
+import '../../_harness/fake_providers.dart';
 import '../../_harness/test_app.dart';
 
 class _FakeSecure implements SecureStorageService {
@@ -25,35 +27,22 @@ class _FakeSecure implements SecureStorageService {
   Future<bool> exists(String k) async => _data.containsKey(k);
 }
 
-const _fake = caps.ProviderCapabilities(
-  providerId: 'test-provider',
-  region: caps.ProviderRegion.global,
-  modes: [caps.GenerationMode.textToImage],
-  supportedRatios: [caps.AspectRatio.r1x1],
-  supportedResolutions: [caps.Resolution.p1080],
-  supportedDurations: [],
-  supportedCameras: [],
-  maxBatchSize: 1,
-  maxRefImages: 0,
-  refImagesIncludeKeyframes: false,
-  supportsFirstFrame: false,
-  supportsLastFrame: false,
-  supportsNegativePrompt: false,
-  supportsSeed: false,
-  supportsSound: false,
-  supportsBatch: false,
-  supportsCancellation: false,
-  supportsPolling: false,
-  costModel: CostModel.perCall(usdPerCall: 0),
-  maxConcurrentJobs: 1,
-  qps: 1,
-  burst: 1,
-);
+const _id = 'test-provider';
 
-List<Override> _overrides(SecureStorageService secure) => [
-      providerCapabilitiesListProvider.overrideWith((ref) => [_fake]),
-      secureStorageServiceProvider.overrideWithValue(secure),
-    ];
+List<Override> _overrides(
+  SecureStorageService secure, {
+  Future<KeyValidationResult> Function(String)? onValidate,
+}) {
+  final fake = FakeProvider(
+    capabilities: fakeImageCapabilities(id: _id),
+    onValidate: onValidate,
+  );
+  return [
+    providerRegistryProvider
+        .overrideWithValue(ProviderRegistry({_id: () => fake})),
+    secureStorageServiceProvider.overrideWithValue(secure),
+  ];
+}
 
 void main() {
   testWidgets('初始态未配置，Clear 按钮 disabled', (tester) async {
@@ -65,15 +54,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('test-provider'), findsOneWidget);
+    expect(find.text(_id), findsOneWidget);
     expect(find.text('Not set'), findsOneWidget);
     // Clear 按钮 disabled
-    final clearBtn =
-        tester.widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Clear'));
+    final clearBtn = tester
+        .widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Clear'));
     expect(clearBtn.onPressed, isNull);
   });
 
-  testWidgets('Save 写入 SecureStorage 并切换到已配置', (tester) async {
+  testWidgets('Save（验证通过）写入 SecureStorage 并切换到已配置', (tester) async {
     final secure = _FakeSecure();
     await pumpInkApp(
       tester,
@@ -86,14 +75,74 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Save'));
     await tester.pumpAndSettle();
 
-    final storedKey = SecureStorageKeys.providerApiKey('test-provider');
+    final storedKey = SecureStorageKeys.providerApiKey(_id);
     expect(await secure.retrieve(storedKey), 'sk-abc');
     expect(find.text('Set'), findsOneWidget);
   });
 
+  testWidgets('Save（验证拒绝）不落盘，保持未配置并提示', (tester) async {
+    final secure = _FakeSecure();
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: _overrides(
+        secure,
+        onValidate: (_) async => const KeyValidationResult.invalid(
+          reason: KeyInvalidReason.invalidKey,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'sk-bad');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    final storedKey = SecureStorageKeys.providerApiKey(_id);
+    expect(await secure.retrieve(storedKey), isNull);
+    expect(find.text('Not set'), findsOneWidget);
+    expect(
+      find.text('The provider rejected this key. It was not saved.'),
+      findsOneWidget,
+    );
+    // 输入框保留原文，便于用户修改重试。
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'sk-bad',
+    );
+  });
+
+  testWidgets('Save（网络不可判定）照常落盘并提示未验证', (tester) async {
+    final secure = _FakeSecure();
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: _overrides(
+        secure,
+        onValidate: (_) async =>
+            const KeyValidationResult.networkError(message: 'offline'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'sk-maybe');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    final storedKey = SecureStorageKeys.providerApiKey(_id);
+    expect(await secure.retrieve(storedKey), 'sk-maybe');
+    expect(find.text('Set'), findsOneWidget);
+    expect(
+      find.text(
+        'Saved, but the key could not be verified due to a network issue.',
+      ),
+      findsOneWidget,
+    );
+  });
+
   testWidgets('Clear 删除 SecureStorage 并切回未配置', (tester) async {
     final secure = _FakeSecure();
-    final storedKey = SecureStorageKeys.providerApiKey('test-provider');
+    final storedKey = SecureStorageKeys.providerApiKey(_id);
     await secure.store(storedKey, 'sk-existing');
 
     await pumpInkApp(

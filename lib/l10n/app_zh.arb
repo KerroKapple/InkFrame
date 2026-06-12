@@ -73,6 +73,8 @@
   "settingsApiKeySet": "已配置",
   "settingsApiKeyNotSet": "未配置",
   "settingsApiKeySaved": "已保存",
+  "settingsApiKeySavedUnverified": "已保存，但网络问题导致 Key 暂时无法验证。",
+  "settingsApiKeyRejected": "Provider 拒绝了该 Key，未保存。",
   "settingsApiKeyCleared": "已清除",
 
   "settingsThemeSection": "主题",

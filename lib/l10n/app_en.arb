@@ -76,6 +76,8 @@
   "settingsApiKeySet": "Set",
   "settingsApiKeyNotSet": "Not set",
   "settingsApiKeySaved": "Saved",
+  "settingsApiKeySavedUnverified": "Saved, but the key could not be verified due to a network issue.",
+  "settingsApiKeyRejected": "The provider rejected this key. It was not saved.",
   "settingsApiKeyCleared": "Cleared",
 
   "settingsThemeSection": "Theme",

@@ -184,6 +184,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsApiKeySaved => '已保存';
 
   @override
+  String get settingsApiKeySavedUnverified => '已保存，但网络问题导致 Key 暂时无法验证。';
+
+  @override
+  String get settingsApiKeyRejected => 'Provider 拒绝了该 Key，未保存。';
+
+  @override
   String get settingsApiKeyCleared => '已清除';
 
   @override
