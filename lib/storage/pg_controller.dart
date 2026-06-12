@@ -200,10 +200,17 @@ class PgController {
     }
   }
 
-  /// 启动：崩溃恢复 + pg_ctl start；写端口文件；返回 runtime。
+  /// 启动：存活复用 / 崩溃恢复 + pg_ctl start；写端口文件；返回 runtime。
   Future<PgRuntime> start() async {
     await ensureInitialized();
-    await _recoverStaleLock();
+
+    // 上次会话遗留的存活实例（如非正常退出）→ 直接复用其端口，禁止二次启动。
+    final reused = _reuseAliveInstanceOrCleanStale();
+    if (reused != null) {
+      portFile.writeAsStringSync('${reused.port}\n');
+      _runtime = reused;
+      return reused;
+    }
 
     final binLocation = _locator.locate();
     final port = await _portPicker();
@@ -233,23 +240,31 @@ class PgController {
     return _runtime!;
   }
 
-  /// 崩溃恢复：postmaster.pid 存在但进程已死 → 删 pid 文件。
-  Future<void> _recoverStaleLock() async {
-    if (!_postmasterPid.existsSync()) return;
+  /// postmaster.pid 处理：
+  ///   - 进程仍活 → 解析 pid 文件第 4 行端口并复用（PGDATA 为本应用独占，
+  ///     存活实例只可能是上次会话的孤儿 PG）；
+  ///   - 进程已死 → 删 stale pid 文件，返回 null 走正常 pg_ctl start。
+  PgRuntime? _reuseAliveInstanceOrCleanStale() {
+    if (!_postmasterPid.existsSync()) return null;
     final lines = _postmasterPid.readAsLinesSync();
     if (lines.isEmpty) {
       _postmasterPid.deleteSync();
-      return;
+      return null;
     }
     final pid = int.tryParse(lines.first.trim()) ?? -1;
-    if (_runner.isProcessAlive(pid)) {
-      // 进程仍在：可能是其他实例，拒绝抢占。
+    if (!_runner.isProcessAlive(pid)) {
+      _postmasterPid.deleteSync();
+      return null;
+    }
+    // postmaster.pid 格式：pid / datadir / start-time / port / socket-dir / ...
+    final port = lines.length >= 4 ? int.tryParse(lines[3].trim()) : null;
+    if (port == null || port <= 0) {
       throw PgLifecycleError(
-        'Another postgres instance (pid=$pid) is already running against '
-        '${dataDir.path}. Refusing to start to avoid data corruption.',
+        'A postgres instance (pid=$pid) is alive against ${dataDir.path} '
+        'but its postmaster.pid lacks a parsable port; cannot reuse it.',
       );
     }
-    _postmasterPid.deleteSync();
+    return PgRuntime(host: '127.0.0.1', port: port, dataDir: dataDir);
   }
 
   /// 停止 PG，幂等：未启动时 no-op。

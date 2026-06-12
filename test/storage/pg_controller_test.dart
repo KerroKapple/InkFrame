@@ -100,7 +100,24 @@ void main() {
       expect(runner.pgCtlStartCalls, 1);
     });
 
-    test('postmaster 进程仍活 → 拒绝抢占', () async {
+    test('二次启动：postmaster 进程仍活 → 复用其端口，不再 pg_ctl start', () async {
+      // 模拟上次会话未清理的存活 PG（CR-02 场景）。
+      File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
+      File(p.join(paths.database.path, 'postmaster.pid')).writeAsStringSync(
+        '12345\n${paths.database.path}\n1718000000\n54399\n\'\'\n127.0.0.1\n  1 2\nready\n',
+      );
+      runner.aliveForPid = <int>{12345};
+
+      final ctl = PgController(paths: paths, locator: locator, runner: runner);
+      final rt = await ctl.start();
+      expect(rt.port, 54399);
+      expect(rt.host, '127.0.0.1');
+      expect(runner.pgCtlStartCalls, 0, reason: '存活实例必须复用，不得重复启动');
+      expect(ctl.portFile.readAsStringSync().trim(), '54399');
+      expect(ctl.runtime, isNotNull);
+    });
+
+    test('存活实例但 postmaster.pid 无法解析端口 → PgLifecycleError', () async {
       File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
       File(p.join(paths.database.path, 'postmaster.pid'))
           .writeAsStringSync('12345\n');
@@ -108,6 +125,7 @@ void main() {
 
       final ctl = PgController(paths: paths, locator: locator, runner: runner);
       await expectLater(ctl.start, throwsA(isA<PgLifecycleError>()));
+      expect(runner.pgCtlStartCalls, 0);
     });
 
     test('stop 幂等：未启动时 no-op', () async {
