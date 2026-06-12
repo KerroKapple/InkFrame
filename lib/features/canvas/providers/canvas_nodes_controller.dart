@@ -46,7 +46,7 @@ class CanvasNodesController
     final async = ref.read(nodeRepositoryProvider);
     final repo = async.valueOrNull;
     if (repo == null) {
-      throw StateError('nodeRepositoryProvider 尚未就绪');
+      throw StateError('nodeRepositoryProvider is not ready');
     }
     return repo;
   }
@@ -78,7 +78,7 @@ class CanvasNodesController
   }) async {
     assert(
       role != NodeRole.result || sourceNodeId != null,
-      'result 节点必须带 sourceNodeId（§4.5.1）',
+      'result node requires sourceNodeId (PRD 4.5.1)',
     );
     final repo = _repo; // 入口一次性解析，await 后不再触 ref
     final previous = state.valueOrNull ?? const <CanvasNode>[];

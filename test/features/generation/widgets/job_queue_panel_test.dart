@@ -62,7 +62,7 @@ void main() {
         );
     await tester.pump();
 
-    expect(find.text('gemini-image'), findsOneWidget);
+    expect(find.text('Gemini Image'), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(find.text('Cancel job'), findsOneWidget);
     expect(find.textContaining('40%'), findsOneWidget);

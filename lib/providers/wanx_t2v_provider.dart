@@ -31,6 +31,7 @@ const String kWanxT2VSubmitPath =
 // ---- 能力声明 -----------------------------------------------------------
 const ProviderCapabilities kWanxT2VCapabilities = ProviderCapabilities(
   providerId: 'wanx-t2v',
+  displayName: 'Wanx Text-to-Video',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToVideo],
   supportedRatios: [

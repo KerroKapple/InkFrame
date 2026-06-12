@@ -5,13 +5,7 @@
     "description": "Application display name"
   },
 
-  "commonOk": "OK",
   "commonCancel": "Cancel",
-  "commonRetry": "Retry",
-  "commonClose": "Close",
-  "commonSave": "Save",
-  "commonDelete": "Delete",
-  "commonConfirm": "Confirm",
 
   "errorInvalidKey": "API key is invalid. Check your provider settings.",
   "errorInsufficientBalance": "Provider account has insufficient balance.",
@@ -28,17 +22,8 @@
   "errorCancelledOnExit": "Cancelled because the application is exiting.",
   "errorUnknown": "An unknown error occurred.",
 
-  "canvasEmptyHint": "Right-click or press + to add a node",
   "canvasNodeDefaultLabel": "New Node",
   "canvasNodeImageType": "Image",
-  "canvasAddNode": "Add Node",
-  "canvasDeleteNode": "Delete Node",
-  "canvasNodesSelected": "{count} node(s) selected",
-  "@canvasNodesSelected": {
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
 
   "canvasNoCanvasOpen": "No canvas is open",
   "canvasCreateSampleCanvas": "Create sample canvas",
@@ -54,8 +39,6 @@
   "inspectorGenerate": "Generate",
   "inspectorGenerateDisabledEmptyPrompt": "Write a prompt first",
   "inspectorGenerateDisabledNoKey": "Configure API key in Settings",
-  "inspectorGenerateNotWiredYet": "Generation wiring ships in the next slice",
-  "inspectorSelectSingleHint": "Select a single config node to edit",
   "inspectorStatusSubmitting": "Submitting...",
   "inspectorStatusRunning": "Generating...",
   "inspectorStatusRunningWithProgress": "Generating... {percent}%",
@@ -132,6 +115,12 @@
   "generationStatusQueued": "Queued",
   "generationStatusSubmitting": "Submitting",
   "generationStatusRunning": "Running",
+  "generationStatusRunningWithProgress": "Running {percent}%",
+  "@generationStatusRunningWithProgress": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
   "generationStatusSucceeded": "Done",
   "generationStatusFailed": "Failed",
   "generationStatusCancelled": "Cancelled",
@@ -189,8 +178,6 @@
   "cameraOrbit": "Orbit",
   "cameraHandheld": "Handheld",
   "inspectorVideoModeAuto": "Mode: auto-detected from inputs",
-  "inspectorVideoModeT2v": "Text-to-video",
-  "inspectorVideoModeI2v": "Image-to-video",
   "inspectorVideoGenerateDisabledEmptyPrompt": "Prompt required",
   "inspectorVideoGenerateDisabledNoKey": "API key required in Settings",
   "inspectorVideoGenerate": "Generate video",
@@ -205,6 +192,10 @@
   },
 
 
+  "studioDefaultName": "My Studio",
+  "@studioDefaultName": {
+    "description": "Fallback workspace name shown before the user names their studio"
+  },
   "studioRecentProjects": "Recent Projects",
   "studioNewProject": "New Project",
   "studioLibrary": "LIBRARY",

@@ -175,7 +175,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
               for (final c in caps)
                 DropdownMenuItem(
                   value: c.providerId,
-                  child: Text(c.providerId),
+                  child: Text(c.displayName ?? c.providerId),
                 ),
             ],
             onChanged: busy

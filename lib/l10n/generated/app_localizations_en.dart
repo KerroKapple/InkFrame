@@ -12,25 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'InkFrame';
 
   @override
-  String get commonOk => 'OK';
-
-  @override
   String get commonCancel => 'Cancel';
-
-  @override
-  String get commonRetry => 'Retry';
-
-  @override
-  String get commonClose => 'Close';
-
-  @override
-  String get commonSave => 'Save';
-
-  @override
-  String get commonDelete => 'Delete';
-
-  @override
-  String get commonConfirm => 'Confirm';
 
   @override
   String get errorInvalidKey =>
@@ -83,24 +65,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorUnknown => 'An unknown error occurred.';
 
   @override
-  String get canvasEmptyHint => 'Right-click or press + to add a node';
-
-  @override
   String get canvasNodeDefaultLabel => 'New Node';
 
   @override
   String get canvasNodeImageType => 'Image';
-
-  @override
-  String get canvasAddNode => 'Add Node';
-
-  @override
-  String get canvasDeleteNode => 'Delete Node';
-
-  @override
-  String canvasNodesSelected(int count) {
-    return '$count node(s) selected';
-  }
 
   @override
   String get canvasNoCanvasOpen => 'No canvas is open';
@@ -140,13 +108,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inspectorGenerateDisabledNoKey => 'Configure API key in Settings';
-
-  @override
-  String get inspectorGenerateNotWiredYet =>
-      'Generation wiring ships in the next slice';
-
-  @override
-  String get inspectorSelectSingleHint => 'Select a single config node to edit';
 
   @override
   String get inspectorStatusSubmitting => 'Submitting...';
@@ -308,6 +269,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generationStatusRunning => 'Running';
 
   @override
+  String generationStatusRunningWithProgress(int percent) {
+    return 'Running $percent%';
+  }
+
+  @override
   String get generationStatusSucceeded => 'Done';
 
   @override
@@ -430,12 +396,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorVideoModeAuto => 'Mode: auto-detected from inputs';
 
   @override
-  String get inspectorVideoModeT2v => 'Text-to-video';
-
-  @override
-  String get inspectorVideoModeI2v => 'Image-to-video';
-
-  @override
   String get inspectorVideoGenerateDisabledEmptyPrompt => 'Prompt required';
 
   @override
@@ -450,6 +410,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lightboxPlayPause => 'Play / Pause';
+
+  @override
+  String get studioDefaultName => 'My Studio';
 
   @override
   String get studioRecentProjects => 'Recent Projects';

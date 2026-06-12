@@ -4,10 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/shortcut_labels.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
+import '../../studio/controllers/studio_state.dart';
 import '../providers/current_canvas_id.dart';
 
 class CanvasTopChrome extends ConsumerWidget implements PreferredSizeWidget {
@@ -170,13 +172,18 @@ class _Breadcrumb extends StatelessWidget {
       );
 }
 
-class _Trailing extends StatelessWidget {
+class _Trailing extends ConsumerWidget {
   const _Trailing();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
+    final studioName =
+        ref.watch(currentStudioProvider) ?? context.l10n.studioDefaultName;
+    final trimmed = studioName.trim();
+    final avatarInitial =
+        trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
@@ -190,7 +197,7 @@ class _Trailing extends StatelessWidget {
             border: Border.all(color: colors.borderSubtle),
           ),
           child: Text(
-            '⌘ K',
+            commandPaletteShortcutLabel(),
             style: typo.caption.copyWith(color: colors.fg3),
           ),
         ),
@@ -207,7 +214,7 @@ class _Trailing extends StatelessWidget {
             border: Border.all(color: colors.borderSubtle),
           ),
           child: Text(
-            'K',
+            avatarInitial,
             style: typo.label.copyWith(color: colors.accent),
           ),
         ),

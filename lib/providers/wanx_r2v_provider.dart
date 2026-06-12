@@ -34,6 +34,7 @@ const int kWanxR2VMaxRefImages = 3;
 // ---- 能力声明 -----------------------------------------------------------
 const ProviderCapabilities kWanxR2VCapabilities = ProviderCapabilities(
   providerId: 'wanx-r2v',
+  displayName: 'Wanx Reference-to-Video',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToVideo],
   supportedRatios: [

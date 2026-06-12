@@ -43,6 +43,7 @@ const String kOpenAILocalJobPrefix = 'local://openai-image/';
 // ---- 能力声明（PROVIDER-API.md §9.2） -----------------------------------
 const ProviderCapabilities kOpenAIImageCapabilities = ProviderCapabilities(
   providerId: 'openai-image',
+  displayName: 'OpenAI Image',
   region: ProviderRegion.global,
   modes: [GenerationMode.textToImage],
   // gpt-image-1 仅三种 size：1024x1024 / 1536x1024 / 1024x1536。

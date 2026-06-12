@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/providers.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_progress_bar.dart';
@@ -27,6 +28,7 @@ class CanvasRenderQueue extends ConsumerWidget {
             .where((s) => s.canvasId == canvasId && !s.isTerminal)
             .toList();
     final running = jobs.whereType<JobRunning>().length;
+    final displayNames = ref.watch(providerDisplayNamesProvider);
 
     return Container(
       decoration: BoxDecoration(
@@ -69,9 +71,9 @@ class CanvasRenderQueue extends ConsumerWidget {
           else
             for (final job in jobs) ...<Widget>[
               _JobRow(
-                // 行标题用 providerId（与 JobQueuePanel / Inspector 下拉一致），
-                // 不暴露 jobId(UUID) 给用户。
-                name: job.providerId,
+                // 行标题用 provider displayName（与 JobQueuePanel / Inspector
+                // 下拉一致），不暴露 jobId(UUID) 给用户。
+                name: displayNames[job.providerId] ?? job.providerId,
                 percent: job.progressValue,
                 running: job is JobRunning,
               ),

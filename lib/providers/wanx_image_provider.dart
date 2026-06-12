@@ -35,6 +35,7 @@ const String kWanxImageSubmitPath =
 // ---- 能力声明（PROVIDER-API.md §9.2 + DashScope 控制台档位） -------------
 const ProviderCapabilities kWanxImageCapabilities = ProviderCapabilities(
   providerId: 'wanx-image',
+  displayName: 'Wanx Image',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToImage, GenerationMode.imageToImage],
   supportedRatios: [

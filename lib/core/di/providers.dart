@@ -113,3 +113,14 @@ final providerCapabilitiesListProvider = Provider<List<ProviderCapabilities>>(
   },
   name: 'providerCapabilitiesListProvider',
 );
+
+/// providerId → 用户可读显示名。未声明 displayName 的回退 providerId。
+final providerDisplayNamesProvider = Provider<Map<String, String>>(
+  (ref) {
+    final caps = ref.watch(providerCapabilitiesListProvider);
+    return <String, String>{
+      for (final c in caps) c.providerId: c.displayName ?? c.providerId,
+    };
+  },
+  name: 'providerDisplayNamesProvider',
+);

@@ -31,6 +31,7 @@ const String kWanxI2VSubmitPath =
 // ---- 能力声明 -----------------------------------------------------------
 const ProviderCapabilities kWanxI2VCapabilities = ProviderCapabilities(
   providerId: 'wanx-i2v',
+  displayName: 'Wanx Image-to-Video',
   region: ProviderRegion.cn,
   modes: [GenerationMode.imageToVideo],
   supportedRatios: [

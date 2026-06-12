@@ -104,47 +104,11 @@ abstract class AppLocalizations {
   /// **'InkFrame'**
   String get appTitle;
 
-  /// No description provided for @commonOk.
-  ///
-  /// In en, this message translates to:
-  /// **'OK'**
-  String get commonOk;
-
   /// No description provided for @commonCancel.
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get commonCancel;
-
-  /// No description provided for @commonRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get commonRetry;
-
-  /// No description provided for @commonClose.
-  ///
-  /// In en, this message translates to:
-  /// **'Close'**
-  String get commonClose;
-
-  /// No description provided for @commonSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get commonSave;
-
-  /// No description provided for @commonDelete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get commonDelete;
-
-  /// No description provided for @commonConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm'**
-  String get commonConfirm;
 
   /// No description provided for @errorInvalidKey.
   ///
@@ -230,12 +194,6 @@ abstract class AppLocalizations {
   /// **'An unknown error occurred.'**
   String get errorUnknown;
 
-  /// No description provided for @canvasEmptyHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Right-click or press + to add a node'**
-  String get canvasEmptyHint;
-
   /// No description provided for @canvasNodeDefaultLabel.
   ///
   /// In en, this message translates to:
@@ -247,24 +205,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Image'**
   String get canvasNodeImageType;
-
-  /// No description provided for @canvasAddNode.
-  ///
-  /// In en, this message translates to:
-  /// **'Add Node'**
-  String get canvasAddNode;
-
-  /// No description provided for @canvasDeleteNode.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Node'**
-  String get canvasDeleteNode;
-
-  /// No description provided for @canvasNodesSelected.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} node(s) selected'**
-  String canvasNodesSelected(int count);
 
   /// No description provided for @canvasNoCanvasOpen.
   ///
@@ -343,18 +283,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Configure API key in Settings'**
   String get inspectorGenerateDisabledNoKey;
-
-  /// No description provided for @inspectorGenerateNotWiredYet.
-  ///
-  /// In en, this message translates to:
-  /// **'Generation wiring ships in the next slice'**
-  String get inspectorGenerateNotWiredYet;
-
-  /// No description provided for @inspectorSelectSingleHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Select a single config node to edit'**
-  String get inspectorSelectSingleHint;
 
   /// No description provided for @inspectorStatusSubmitting.
   ///
@@ -650,6 +578,12 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get generationStatusRunning;
 
+  /// No description provided for @generationStatusRunningWithProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Running {percent}%'**
+  String generationStatusRunningWithProgress(int percent);
+
   /// No description provided for @generationStatusSucceeded.
   ///
   /// In en, this message translates to:
@@ -884,18 +818,6 @@ abstract class AppLocalizations {
   /// **'Mode: auto-detected from inputs'**
   String get inspectorVideoModeAuto;
 
-  /// No description provided for @inspectorVideoModeT2v.
-  ///
-  /// In en, this message translates to:
-  /// **'Text-to-video'**
-  String get inspectorVideoModeT2v;
-
-  /// No description provided for @inspectorVideoModeI2v.
-  ///
-  /// In en, this message translates to:
-  /// **'Image-to-video'**
-  String get inspectorVideoModeI2v;
-
   /// No description provided for @inspectorVideoGenerateDisabledEmptyPrompt.
   ///
   /// In en, this message translates to:
@@ -925,6 +847,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Play / Pause'**
   String get lightboxPlayPause;
+
+  /// Fallback workspace name shown before the user names their studio
+  ///
+  /// In en, this message translates to:
+  /// **'My Studio'**
+  String get studioDefaultName;
 
   /// No description provided for @studioRecentProjects.
   ///
