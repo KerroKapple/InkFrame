@@ -11,7 +11,8 @@
 //   - 模式仅 textToVideo——参考图语义是角色/场景/镜头的组合锁定
 //   - 不支持首末帧
 //
-// 注：参考图 URL 由上层完成本地路径→可访问 URL 转换，Provider 层仅透传。
+// 注：参考图本地路径由基类在 submit 前内联为 base64 data URI（HI-05）；
+// http(s)/data 引用原样透传。
 
 import 'package:dio/dio.dart';
 
@@ -103,12 +104,8 @@ class KlingV3OmniProvider extends DashScopeAsyncProviderBase {
   }
 
   @override
-  JobStatus parseSuccessOutput(Map<String, Object?> output) {
-    final url = output['video_url'] as String?;
-    return JobStatus.success(
-      remoteUrls: url != null && url.isNotEmpty ? [url] : const [],
-    );
-  }
+  JobStatus parseSuccessOutput(Map<String, Object?> output) =>
+      parseSingleVideoUrlOutput(output);
 }
 
 /// Provider 工厂：DI 层注入（registry 注册见后续 PR）。

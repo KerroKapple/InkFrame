@@ -1,5 +1,8 @@
 // DashScopeAsyncProviderBase 单元测试：用 FakeDashScopeProvider 覆盖基类逻辑。
 
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
@@ -53,7 +56,15 @@ class FakeDashScopeProvider extends DashScopeAsyncProviderBase {
   @override
   Map<String, Object?> buildRequestBody(GenerationTask task) => {
         'model': 'fake-model',
-        'input': {'prompt': task.prompt},
+        'input': {
+          'prompt': task.prompt,
+          if (task.refImagePaths.isNotEmpty)
+            kDashScopeFieldRefImages: task.refImagePaths,
+          if (task.firstFramePath != null)
+            kDashScopeFieldImgUrl: task.firstFramePath,
+          if (task.lastFramePath != null)
+            kDashScopeFieldLastFrameUrl: task.lastFramePath,
+        },
       };
 
   @override
@@ -134,6 +145,92 @@ void main() {
         throwsA(isA<InkError>()
             .having((e) => e.code, 'code', InkErrorCode.invalidKey)),
       );
+    });
+  });
+
+  // HI-05：本地绝对路径不许直发远端——submit 前转 base64 data URI。
+  group('DashScopeAsyncProviderBase.submit 参考图内联', () {
+    late Directory tmpDir;
+
+    setUp(() {
+      tmpDir = Directory.systemTemp.createTempSync('inkframe_ds_test');
+    });
+
+    tearDown(() {
+      tmpDir.deleteSync(recursive: true);
+    });
+
+    Dio captureDio(void Function(Object?) onBody) {
+      final dio = Dio(BaseOptions(baseUrl: kDashScopeBaseUrl));
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (o, h) {
+          onBody(o.data);
+          h.next(o);
+        },
+      ));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onPost(
+        kFakeEndpoint,
+        (req) => req.reply(200, {
+          'output': {'task_id': 't1', 'task_status': 'PENDING'},
+        }),
+      );
+      return dio;
+    }
+
+    test('本地文件路径 → data:image/png;base64 内联；URL 原样透传', () async {
+      final f = File('${tmpDir.path}${Platform.pathSeparator}ref.png')
+        ..writeAsBytesSync([1, 2, 3, 4]);
+      Object? body;
+      final dio = captureDio((b) => body = b);
+
+      await _build(dio).submit(_task().copyWith(
+        refImagePaths: [f.path, 'https://x/keep.png'],
+        firstFramePath: f.path,
+        lastFramePath: 'https://x/last.png',
+      ));
+
+      final input = (body! as Map)['input'] as Map;
+      final refs = (input[kDashScopeFieldRefImages] as List).cast<String>();
+      expect(refs.first, 'data:image/png;base64,${base64Encode([1, 2, 3, 4])}');
+      expect(refs.last, 'https://x/keep.png');
+      expect(input[kDashScopeFieldImgUrl], startsWith('data:image/png;base64,'));
+      expect(input[kDashScopeFieldLastFrameUrl], 'https://x/last.png');
+    });
+
+    test('jpg 扩展名 → image/jpeg mime', () async {
+      final f = File('${tmpDir.path}${Platform.pathSeparator}ref.jpg')
+        ..writeAsBytesSync([9, 9]);
+      Object? body;
+      final dio = captureDio((b) => body = b);
+
+      await _build(dio).submit(_task().copyWith(refImagePaths: [f.path]));
+
+      final input = (body! as Map)['input'] as Map;
+      final refs = (input[kDashScopeFieldRefImages] as List).cast<String>();
+      expect(refs.single, startsWith('data:image/jpeg;base64,'));
+    });
+
+    test('data: URI 已内联 → 原样透传', () async {
+      const uri = 'data:image/png;base64,AQID';
+      Object? body;
+      final dio = captureDio((b) => body = b);
+
+      await _build(dio).submit(_task().copyWith(refImagePaths: [uri]));
+
+      final input = (body! as Map)['input'] as Map;
+      expect((input[kDashScopeFieldRefImages] as List).single, uri);
+    });
+
+    test('本地文件不可读 → LocalIOError，不发请求', () async {
+      final missing = '${tmpDir.path}${Platform.pathSeparator}gone.png';
+      var sent = false;
+      final dio = captureDio((_) => sent = true);
+
+      await expectLater(
+        _build(dio).submit(_task().copyWith(refImagePaths: [missing])),
+        throwsA(isA<LocalIOError>()),
+      );
+      expect(sent, isFalse);
     });
   });
 
@@ -249,6 +346,57 @@ void main() {
       );
       final r = await _build(dio).validateApiKey('sk-good');
       expect(r, isA<KeyValid>());
+    });
+
+    // HI-03：validateStatus<500 时 401/403 不抛 DioException，
+    // 必须显式查 statusCode，否则坏 Key 被误判 valid。
+    test('401 经 validateStatus 放行（不抛异常）→ invalid(invalidKey)', () async {
+      final dio = Dio(BaseOptions(baseUrl: kDashScopeBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onGet(
+        '/tasks/inkframe-validation-bogus-id',
+        (req) => req.reply(401, {'code': 'InvalidApiKey'}),
+      );
+      final r = await _build(dio, key: 'bad').validateApiKey('bad');
+      expect(r, isA<KeyInvalid>());
+      expect((r as KeyInvalid).reason, KeyInvalidReason.invalidKey);
+    });
+
+    test('403 经 validateStatus 放行（不抛异常）→ invalid(invalidKey)', () async {
+      final dio = Dio(BaseOptions(baseUrl: kDashScopeBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onGet(
+        '/tasks/inkframe-validation-bogus-id',
+        (req) => req.reply(403, {'code': 'AccessDenied'}),
+      );
+      final r = await _build(dio, key: 'bad').validateApiKey('bad');
+      expect(r, isA<KeyInvalid>());
+      expect((r as KeyInvalid).reason, KeyInvalidReason.invalidKey);
+    });
+
+    test('404（key 通过鉴权、task 不存在）→ valid', () async {
+      final dio = Dio(BaseOptions(baseUrl: kDashScopeBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onGet(
+        '/tasks/inkframe-validation-bogus-id',
+        (req) => req.reply(404, {'code': 'TaskNotFound'}),
+      );
+      final r = await _build(dio).validateApiKey('sk-good');
+      expect(r, isA<KeyValid>());
+    });
+
+    // ME-10：超时/离线统一 networkError——无法判定 Key 本身，不许说 invalid。
+    test('connectionTimeout → KeyNetworkError', () async {
+      final dio = Dio(BaseOptions(baseUrl: kDashScopeBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onGet(
+        '/tasks/inkframe-validation-bogus-id',
+        (req) => req.throws(
+          0,
+          DioException(
+            requestOptions: RequestOptions(path: '/tasks/x'),
+            type: DioExceptionType.connectionTimeout,
+          ),
+        ),
+      );
+      final r = await _build(dio).validateApiKey('sk-good');
+      expect(r, isA<KeyNetworkError>());
     });
 
     test('401 → invalid(invalidKey)', () async {
