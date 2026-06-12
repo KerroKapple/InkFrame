@@ -25,6 +25,7 @@ import '../../core/constants/default_providers.dart';
 import '../../core/constants/secure_storage_keys.dart';
 import '../../core/di/file_resolver.dart';
 import '../../core/di/job_queue.dart';
+import '../../core/di/logger.dart';
 import '../../core/di/providers.dart';
 import '../../core/di/repositories.dart';
 import '../../core/di/secure_storage.dart';
@@ -35,6 +36,7 @@ import '../../core/interfaces/job_queue_service.dart';
 import '../../core/interfaces/job_repository.dart';
 import '../../core/interfaces/node_repository.dart';
 import '../../core/interfaces/secure_storage_service.dart';
+import '../../core/logging/logger_service.dart';
 import '../../core/models/generation_task.dart';
 import '../../core/models/job_status.dart';
 import '../../core/models/provider_capabilities.dart';
@@ -63,6 +65,7 @@ final generationControllerProvider = FutureProvider<GenerationController>(
       registry: registry,
       resolver: resolver,
       jobsRegistry: jobsRegistry,
+      logger: ref.watch(loggerProvider),
     );
   },
   name: 'generationControllerProvider',
@@ -104,6 +107,7 @@ class GenerationController {
     required this.registry,
     required this.resolver,
     required this.jobsRegistry,
+    this.logger,
   });
 
   final NodeRepository nodes;
@@ -114,6 +118,9 @@ class GenerationController {
   final ProviderRegistry registry;
   final FileResolverService resolver;
   final JobsRegistry jobsRegistry;
+  final LoggerService? logger;
+
+  static const String _logModule = 'generation.controller';
 
   /// 从 config 节点发起一次生成。fire-and-forget：提交成功即返回 jobId，
   /// 后台 [_track] 推进 JobsRegistry 状态机；终态结果由 registry listener 反映。
@@ -234,6 +241,11 @@ class GenerationController {
       );
 
       final handle = await queue.submit(task);
+      logger?.info(_logModule, 'job submitted', extra: {
+        'job_id': jobId,
+        'provider_id': providerId,
+        'mode': mode.name,
+      });
       jobsRegistry.upsert(
         JobState.queued(
           jobId: jobId,
@@ -248,8 +260,15 @@ class GenerationController {
         providerId: providerId,
       ));
       return jobId;
-    } catch (_) {
+    } catch (e, st) {
       // 预创建了 result 但下游挂了（jobs.create / queue.submit 等）——清孤儿。
+      logger?.error(
+        _logModule,
+        'submit rolled back: orphan result cleaned',
+        extra: {'result_node_id': resultNodeId, 'provider_id': providerId},
+        cause: e,
+        stackTrace: st,
+      );
       await nodes.softDelete(resultNodeId);
       rethrow;
     }
@@ -299,6 +318,16 @@ class GenerationController {
             ),
           );
         } else {
+          logger?.error(
+            _logModule,
+            'job failed',
+            extra: {
+              'job_id': handle.jobId,
+              'provider_id': providerId,
+              'error_code': status.error.code.wire,
+            },
+            cause: status.error,
+          );
           jobsRegistry.upsert(
             JobState.failed(
               jobId: handle.jobId,
@@ -310,6 +339,13 @@ class GenerationController {
         }
       }
     } catch (e, st) {
+      logger?.error(
+        _logModule,
+        'job tracking crashed',
+        extra: {'job_id': handle.jobId, 'provider_id': providerId},
+        cause: e,
+        stackTrace: st,
+      );
       await nodes.softDelete(resultNodeId);
       jobsRegistry.upsert(
         JobState.failed(
@@ -344,7 +380,9 @@ class GenerationController {
     final List<Map<String, Object?>> incoming;
     try {
       incoming = await edges.listIncoming(configNodeId);
-    } catch (_) {
+    } catch (e) {
+      logger?.warn(_logModule, 'listIncoming failed; refs skipped (swallowed)',
+          extra: {'config_node_id': configNodeId, 'reason': e.toString()});
       return const _RefImages.empty();
     }
 
@@ -361,7 +399,9 @@ class GenerationController {
       final Map<String, Object?>? srcRow;
       try {
         srcRow = await nodes.findById(srcId);
-      } catch (_) {
+      } catch (e) {
+        logger?.warn(_logModule, 'ref source lookup failed (swallowed)',
+            extra: {'source_node_id': srcId, 'reason': e.toString()});
         continue;
       }
       if (srcRow == null) continue;
@@ -379,7 +419,9 @@ class GenerationController {
               relativePath: relPath,
             )
             .path;
-      } catch (_) {
+      } catch (e) {
+        logger?.warn(_logModule, 'ref path resolve failed (swallowed)',
+            extra: {'source_node_id': srcId, 'reason': e.toString()});
         continue;
       }
 

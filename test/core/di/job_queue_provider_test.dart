@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/job_queue.dart';
+import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/di/thumbnail.dart';
@@ -10,6 +11,8 @@ import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/services/job_queue_service.dart';
+
+import '../../helpers/recording_logger.dart';
 
 class _NoopSecure implements SecureStorageService {
   @override
@@ -70,6 +73,7 @@ void main() {
         nodeRepositoryProvider.overrideWith((ref) async => _FakeNodeRepo()),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
         thumbnailServiceProvider.overrideWithValue(null),
+        loggerProvider.overrideWithValue(RecordingLogger()),
       ],
     );
     addTearDown(container.dispose);
