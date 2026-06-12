@@ -24,7 +24,7 @@ Future<void> showVideoLightbox(
 }) =>
     showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.9),
+      barrierColor: context.inkColors.scrim,
       builder: (_) => Dialog(
         insetPadding: const EdgeInsets.all(InkSpacing.xl),
         backgroundColor: Colors.transparent,
@@ -67,6 +67,7 @@ class _VideoLightboxState extends ConsumerState<VideoLightboxContent> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = context.inkColors;
     return Stack(
       children: [
         Column(
@@ -75,7 +76,7 @@ class _VideoLightboxState extends ConsumerState<VideoLightboxContent> {
               child: (_opened && _videoController != null)
                   ? Video(controller: _videoController!)
                   : Container(
-                      color: Colors.black,
+                      color: colors.surfaceCanvas,
                       alignment: Alignment.center,
                       child: const CircularProgressIndicator(),
                     ),
@@ -84,11 +85,11 @@ class _VideoLightboxState extends ConsumerState<VideoLightboxContent> {
           ],
         ),
         Positioned(
-          top: 8,
-          right: 8,
+          top: InkSpacing.sm,
+          right: InkSpacing.sm,
           child: IconButton(
             tooltip: context.l10n.lightboxClose,
-            icon: const Icon(Icons.close, color: Colors.white),
+            icon: Icon(Icons.close, color: colors.fg1),
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
@@ -140,15 +141,10 @@ class _ControlsBar extends StatelessWidget {
                 return StreamBuilder<Duration?>(
                   stream: handle.durationStream,
                   builder: (context, durSnap) {
-                    final pos = posSnap.data ?? Duration.zero;
-                    final dur = durSnap.data ?? Duration.zero;
-                    final total =
-                        dur.inMilliseconds > 0 ? dur.inMilliseconds : 1;
-                    return Slider(
-                      value: pos.inMilliseconds.clamp(0, total).toDouble(),
-                      max: total.toDouble(),
-                      onChanged: (v) =>
-                          handle.seek(Duration(milliseconds: v.toInt())),
+                    return LightboxScrubSlider(
+                      position: posSnap.data ?? Duration.zero,
+                      duration: durSnap.data ?? Duration.zero,
+                      onSeek: handle.seek,
                     );
                   },
                 );
@@ -173,6 +169,52 @@ class _ControlsBar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 进度条：拖动期间只更新本地值，松手（onChangeEnd）才真正 seek，
+/// 避免每个拖动 tick 都打到播放器（LO-10）。
+class LightboxScrubSlider extends StatefulWidget {
+  const LightboxScrubSlider({
+    super.key,
+    required this.position,
+    required this.duration,
+    required this.onSeek,
+  });
+
+  final Duration position;
+  final Duration duration;
+  final ValueChanged<Duration> onSeek;
+
+  @override
+  State<LightboxScrubSlider> createState() => _LightboxScrubSliderState();
+}
+
+class _LightboxScrubSliderState extends State<LightboxScrubSlider> {
+  // 拖动中的本地值；null 表示未在拖动，跟随外部 position。
+  double? _dragValue;
+
+  @override
+  Widget build(BuildContext context) {
+    final totalMs = widget.duration.inMilliseconds;
+    final enabled = totalMs > 0;
+    final max = enabled ? totalMs.toDouble() : 1.0;
+    final value = (_dragValue ??
+            widget.position.inMilliseconds.clamp(0, totalMs).toDouble())
+        .clamp(0.0, max)
+        .toDouble();
+    return Slider(
+      value: value,
+      max: max,
+      onChangeStart: enabled ? (v) => setState(() => _dragValue = v) : null,
+      onChanged: enabled ? (v) => setState(() => _dragValue = v) : null,
+      onChangeEnd: enabled
+          ? (v) {
+              setState(() => _dragValue = null);
+              widget.onSeek(Duration(milliseconds: v.toInt()));
+            }
+          : null,
     );
   }
 }
