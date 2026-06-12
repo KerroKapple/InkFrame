@@ -117,6 +117,40 @@ void main() {
       expect(InkRadius.bento, 10);
       expect(InkRadius.bentoBtn, 6);
     });
+
+    test('半阶间距档位（ME-17：消除 token 算术）', () {
+      expect(InkSpacing.s10, 10);
+      expect(InkSpacing.s12, 12);
+      expect(InkSpacing.s14, 14);
+      expect(InkSpacing.s18, 18);
+      expect(InkSpacing.s28, 28);
+    });
+
+    test('radius xs 档位（细进度条裁切）', () {
+      expect(InkRadius.xs, 2);
+    });
+  });
+
+  group('inputFill token（ME-18）', () {
+    test('三变体均暴露半透明 inputFill', () {
+      for (final InkColors c in <InkColors>[
+        InkColors.dark(),
+        InkColors.light(),
+        InkColors.highContrast(),
+      ]) {
+        expect(c.inputFill, isA<Color>());
+        expect(c.inputFill.a, lessThan(1.0)); // 必须半透明（与父面板层叠）
+      }
+    });
+
+    test('暗色用白色提亮，浅色用深色压暗（不再固定白 overlay）', () {
+      // 暗色：fill 比纯黑亮 → 基色是亮色
+      final dark = InkColors.dark().inputFill;
+      expect(dark.computeLuminance(), greaterThan(0.5));
+      // 浅色：fill 基色是暗色
+      final light = InkColors.light().inputFill;
+      expect(light.computeLuminance(), lessThan(0.5));
+    });
   });
 
   group('InkTypography scaling', () {

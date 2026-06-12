@@ -35,7 +35,7 @@ class StudioProviderBanner extends ConsumerWidget {
         margin: const EdgeInsets.fromLTRB(
           InkSpacing.lg, InkSpacing.md, InkSpacing.lg, 0),
         padding: const EdgeInsets.symmetric(
-          horizontal: InkSpacing.md, vertical: InkSpacing.sm + 2),
+          horizontal: InkSpacing.md, vertical: InkSpacing.s10),
         decoration: BoxDecoration(
           color: colors.surface2,
           border: Border.all(color: colors.warning, width: 1),

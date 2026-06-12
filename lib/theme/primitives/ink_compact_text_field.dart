@@ -1,8 +1,8 @@
-// InkCompactTextField：紧凑 textarea（bg-white/0.04 + rounded-lg +
+// InkCompactTextField：紧凑 textarea（inputFill 半透明底 + rounded-lg +
 // ring-1 focus 细边）。单行/多行通用，配合 minLines/maxLines。
 //
-// 背景半透明白（与父面板层叠出微差异），聚焦时用 borderHover 做细 ring，
-// placeholder 用 fg3。
+// 背景取 inputFill token（暗色提亮 / 浅色压暗，与父面板层叠出微差异），
+// 聚焦时用 borderHover 做细 ring，placeholder 用 fg3。
 import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
@@ -61,13 +61,13 @@ class _InkCompactTextFieldState extends State<InkCompactTextField> {
     final typo = context.inkTypography;
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 120),
+      duration: InkMotion.fast,
       padding: const EdgeInsets.symmetric(
         horizontal: InkSpacing.md,
         vertical: InkSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: colors.inputFill,
         borderRadius: BorderRadius.circular(InkRadius.md),
         border: Border.all(
           color: _focused ? colors.borderHover : Colors.transparent,

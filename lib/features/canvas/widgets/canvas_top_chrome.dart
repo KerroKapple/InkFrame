@@ -39,7 +39,7 @@ class _LeadingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final base = typo.headline.copyWith(fontSize: 16, color: colors.fg1);
+    final base = typo.headlineXs.copyWith(color: colors.fg1);
     return Padding(
       padding: const EdgeInsets.only(right: InkSpacing.lg),
       child: Row(

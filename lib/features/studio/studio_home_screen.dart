@@ -76,7 +76,7 @@ class _StudioMainArea extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               InkSpacing.xl,
-              InkSpacing.xl - 4,
+              InkSpacing.s28,
               InkSpacing.xl,
               InkSpacing.xl,
             ),

@@ -202,10 +202,7 @@ class _ErrorPanel extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       code,
-                      style: typo.caption.copyWith(
-                        fontFamily: 'JetBrainsMono',
-                        color: colors.fg3,
-                      ),
+                      style: typo.caption.copyWith(color: colors.fg3),
                     ),
                   ],
                 ),
