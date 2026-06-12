@@ -5,6 +5,7 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/storage/migrations/app_migrations.dart';
 import 'package:inkframe/storage/migrations/migration_runner.dart';
 import 'package:postgres/postgres.dart';
 
@@ -161,7 +162,7 @@ void main() {
       final broken = MigrationRunner(
         h.conn,
         migrations: [
-          ...kAllMigrations,
+          ...kAppMigrations,
           const Migration(
             version: 4,
             sql: 'CREATE TABLE half_done (id INT); SELECT broken(',

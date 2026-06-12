@@ -13,11 +13,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../storage/pg_binary_locator.dart';
+import '../../storage/migrations/app_migrations.dart';
 import '../../storage/migrations/migration_runner.dart';
 import '../../storage/pg_controller.dart';
-import '../../storage/schema/schema_v1.dart';
-import '../../storage/schema/schema_v2.dart';
-import '../../storage/schema/schema_v3.dart';
 import 'logger.dart';
 import 'paths.dart';
 
@@ -89,14 +87,7 @@ final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
       // 23505 并发竞争；其余重抛。
       if (e.code != '23505') rethrow;
     }
-    final runner = MigrationRunner(
-      pool,
-      migrations: const [
-        Migration(version: 1, sql: kSchemaV1),
-        Migration(version: 2, sql: kSchemaV2),
-        Migration(version: 3, sql: kSchemaV3),
-      ],
-    );
+    final runner = MigrationRunner(pool, migrations: kAppMigrations);
     await runner.migrate();
     return pool;
   },

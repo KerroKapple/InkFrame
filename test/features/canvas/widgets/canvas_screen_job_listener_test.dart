@@ -1,10 +1,14 @@
-// CanvasScreen job-listener smoke test：
-// 验证 jobsRegistry 推入 JobFailed → toast error path 触发。
-// 纯决策逻辑由 canvas_job_effects_test.dart 全覆盖；此处只跑端到端冒烟。
+// CanvasJobListener 真实 widget 测试：pump 生产代码本体（非手抄副本）。
+// 验证 jobsRegistry 变化 → toast / 节点重拉两条副作用都走真实接线。
+// 纯决策矩阵由 canvas_job_effects_test.dart 覆盖。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/node_repository.dart';
+import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_job_listener.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
@@ -12,7 +16,7 @@ import 'package:inkframe/features/generation/services/toast_service.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
-// ── fake ToastService ──────────────────────────────────────────────────────
+// ── fakes ──────────────────────────────────────────────────────────────────
 class _FakeToastService implements ToastService {
   final List<({String message, ToastKind kind})> calls = [];
 
@@ -22,59 +26,74 @@ class _FakeToastService implements ToastService {
   }
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────
-const _err = NetworkError(code: InkErrorCode.networkOffline);
-
-// 尽量轻量：只放 jobsRegistry + currentCanvasId + toastService。
-// CanvasScreen 需要 DB providers 等重依赖，直接 pump 整个 CanvasScreen
-// 在无 DB 环境下会 throw。改为只测 listener 本身：用一个自定义 ConsumerWidget
-// 复刻 CanvasScreen 里的 ref.listen 逻辑，而非依赖完整 CanvasScreen 的渲染树。
-//
-// 注：这样做完全合理——listener 逻辑已从 CanvasScreen 中提取到 CanvasJobEffects，
-// 单测级别验证 toast 路径；CanvasScreen 的 DB 渲染树走 integration test。
-
-class _ListenerHarness extends ConsumerWidget {
-  const _ListenerHarness();
+/// 只计数 listByCanvas 的 NodeRepository——invalidate → rebuild → 计数 +1。
+class _CountingNodeRepository implements NodeRepository {
+  int listByCanvasCalls = 0;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final canvasId = ref.watch(currentCanvasIdProvider);
-    ref.listen<List<JobState>>(jobsRegistryProvider, (prev, next) {
-      if (canvasId == null) return;
-      final toastErrors = <InkError>[];
-      final prevMap = {
-        for (final s in (prev ?? const <JobState>[]).where((e) => e.canvasId == canvasId))
-          s.jobId: s,
-      };
-      for (final s in next.where((e) => e.canvasId == canvasId)) {
-        if (s is JobFailed && prevMap[s.jobId] is! JobFailed) {
-          toastErrors.add(s.error);
-        }
-      }
-      for (final err in toastErrors) {
-        // 直接写 messageKey 的英文文本以避免 l10n 查表在单测里失败的风险。
-        // 实际 CanvasScreen 走 l10nError(context, err)，功能等价。
-        ref.read(toastServiceProvider).show(
-              err.messageKey,
-              kind: ToastKind.error,
-            );
-      }
-    });
-    return const SizedBox();
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async {
+    listByCanvasCalls++;
+    return const <Map<String, Object?>>[];
   }
+
+  @override
+  Future<String> create({
+    required String canvasId,
+    required String type,
+    required String nodeRole,
+    String label = '',
+    String? sourceNodeId,
+    String? laneId,
+    double positionX = 0,
+    double positionY = 0,
+    double width = 240,
+    double height = 240,
+    int zIndex = 0,
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) =>
+      throw UnimplementedError();
+
+  @override
+  Future<Map<String, Object?>?> findById(String id) =>
+      throw UnimplementedError();
+
+  @override
+  Future<List<Map<String, Object?>>> listOrphanResults(String canvasId) =>
+      throw UnimplementedError();
+
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) =>
+      throw UnimplementedError();
+
+  @override
+  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) =>
+      throw UnimplementedError();
+
+  @override
+  Future<int> softDelete(String id) => throw UnimplementedError();
+
+  @override
+  Future<int> restore(String id) => throw UnimplementedError();
+
+  @override
+  Future<int> hardDelete(String id) => throw UnimplementedError();
 }
 
-// ── tests ──────────────────────────────────────────────────────────────────
+const _err = NetworkError(code: InkErrorCode.networkOffline);
+
 void main() {
   late _FakeToastService fakeToast;
+  late _CountingNodeRepository fakeRepo;
   late ProviderContainer container;
 
   setUp(() {
     fakeToast = _FakeToastService();
+    fakeRepo = _CountingNodeRepository();
     container = ProviderContainer(
       overrides: [
         currentCanvasIdProvider.overrideWith((ref) => 'c1'),
         toastServiceProvider.overrideWithValue(fakeToast),
+        nodeRepositoryProvider.overrideWith((ref) async => fakeRepo),
       ],
     );
     addTearDown(container.dispose);
@@ -88,15 +107,23 @@ void main() {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-          home: const Scaffold(body: _ListenerHarness()),
+          home: const Scaffold(body: CanvasJobListener(child: SizedBox())),
         ),
       ),
     );
-    await tester.pump();
+    // 让 nodes controller 处于活跃订阅，invalidate 才会触发重建。
+    container.listen(
+      canvasNodesControllerProvider('c1'),
+      (_, _) {},
+      fireImmediately: true,
+    );
+    await tester.pumpAndSettle();
   }
 
-  testWidgets('JobFailed 推入 → toast error 触发一次', (tester) async {
+  testWidgets('JobFailed 推入 → toast error 一次 + 节点重拉', (tester) async {
     await pump(tester);
+    final baseline = fakeRepo.listByCanvasCalls;
+    expect(baseline, greaterThan(0), reason: '前置：controller 已完成首拉');
 
     container.read(jobsRegistryProvider.notifier).upsert(
           const JobState.failed(
@@ -106,14 +133,19 @@ void main() {
             error: _err,
           ),
         );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(fakeToast.calls, hasLength(1));
     expect(fakeToast.calls.first.kind, ToastKind.error);
+    // toast 文案是 l10n 后的用户文案，绝不应是 messageKey 本身。
+    expect(fakeToast.calls.first.message, isNot('errorNetworkOffline'));
+    expect(fakeRepo.listByCanvasCalls, greaterThan(baseline),
+        reason: 'invalidate 应触发节点重拉');
   });
 
-  testWidgets('JobCancelled 推入 → 不触发 toast', (tester) async {
+  testWidgets('JobCancelled 推入 → 不 toast 但节点重拉', (tester) async {
     await pump(tester);
+    final baseline = fakeRepo.listByCanvasCalls;
 
     container.read(jobsRegistryProvider.notifier).upsert(
           const JobState.cancelled(
@@ -122,13 +154,15 @@ void main() {
             canvasId: 'c1',
           ),
         );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(fakeToast.calls, isEmpty);
+    expect(fakeRepo.listByCanvasCalls, greaterThan(baseline));
   });
 
-  testWidgets('别的画布 JobFailed → 不触发 toast', (tester) async {
+  testWidgets('别的画布 JobFailed → 无 toast 无重拉', (tester) async {
     await pump(tester);
+    final baseline = fakeRepo.listByCanvasCalls;
 
     container.read(jobsRegistryProvider.notifier).upsert(
           const JobState.failed(
@@ -138,8 +172,9 @@ void main() {
             error: _err,
           ),
         );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(fakeToast.calls, isEmpty);
+    expect(fakeRepo.listByCanvasCalls, baseline);
   });
 }

@@ -548,27 +548,10 @@ void main() {
     });
   });
 
-  // ---- Task 6：fixture-replay E2E —— BLOCKED-pending-key ----
-  // 需要真实 OpenAI API Key 抓取并脱敏 fixture（PROVIDER-API.md §12.3 禁止手写
-  // 成功图片载荷）。Key 到位前整组 skip，不伪造 fixture、不创建 fixture 文件。
-  group('OpenAIImageProvider fixture-replay E2E', () {
-    test('submit_success fixture → local:// JobId + inlineBytes round-trip',
-        () async {
-      final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
-      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
-      adapter.onPost(
-        kOpenAIImagePath,
-        (req) => req.reply(200, _loadFixture('submit_success')),
-      );
-
-      final p = _buildProvider(dio);
-      final jobId = await p.submit(_task());
-      expect(jobId, startsWith(kOpenAILocalJobPrefix));
-      final status = await p.poll(jobId);
-      expect(status, isA<JobSuccess>());
-      expect((status as JobSuccess).inlineBytes!.first.isNotEmpty, isTrue);
-    });
-
+  // ---- Task 6a：fixture-replay E2E —— 无 Key 即可采集的 4xx 真实载荷 ----
+  // fixture 来源：以无效 Key 实拍 api.openai.com（2026-06-12 抓取，已脱敏：
+  // Key 片段 → FIXTURE_REDACTED_KEY）。符合 §12.3 真实 API 调用采集要求。
+  group('OpenAIImageProvider fixture-replay（keyless 可采集 4xx）', () {
     test('submit_invalid_key fixture → ProviderError(invalidKey)', () async {
       final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
       final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
@@ -585,6 +568,48 @@ void main() {
         throwsA(isA<ProviderError>()
             .having((e) => e.code, 'code', InkErrorCode.invalidKey)),
       );
+    });
+
+    test('validate_invalid_key fixture → validateApiKey returns KeyInvalid',
+        () async {
+      final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onGet(
+        kOpenAIValidatePath,
+        (req) => req.throws(
+          401,
+          _badResponse(
+            kOpenAIValidatePath,
+            401,
+            _loadFixture('validate_invalid_key'),
+          ),
+        ),
+      );
+
+      final r = await _buildProvider(dio).validateApiKey('bad');
+      expect(r, isA<KeyInvalid>());
+    });
+  });
+
+  // ---- Task 6b：fixture-replay E2E —— BLOCKED-pending-key ----
+  // 余下场景（成功载荷 / content_policy / 429 / models 列表）必须持有效 Key
+  // 实拍采集（PROVIDER-API.md §12.3 禁止手写成功载荷）。Key 到位前整组 skip。
+  group('OpenAIImageProvider fixture-replay E2E（需有效 Key）', () {
+    test('submit_success fixture → local:// JobId + inlineBytes round-trip',
+        () async {
+      final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kOpenAIImagePath,
+        (req) => req.reply(200, _loadFixture('submit_success')),
+      );
+
+      final p = _buildProvider(dio);
+      final jobId = await p.submit(_task());
+      expect(jobId, startsWith(kOpenAILocalJobPrefix));
+      final status = await p.poll(jobId);
+      expect(status, isA<JobSuccess>());
+      expect((status as JobSuccess).inlineBytes!.first.isNotEmpty, isTrue);
     });
 
     test('submit_content_policy fixture → ProviderError(contentPolicy)',
