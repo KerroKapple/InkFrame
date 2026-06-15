@@ -174,6 +174,8 @@ lcov --summary coverage/lcov.info      # 摘要
 
 ## 本地 PostgreSQL（T2 存储层）
 
+> Windows? See [docs/SETUP.md#dev-env-on-windows](docs/SETUP.md#dev-env-on-windows).
+
 InkFrame 使用嵌入式 PostgreSQL 17 作为本地存储。开发阶段有两种方式：
 
 ### 方式 A：Homebrew 本地 PG（推荐开发机）
