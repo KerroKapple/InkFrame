@@ -20,6 +20,7 @@ String l10nError(BuildContext context, InkError e) {
     'errorNetworkOffline' => l.errorNetworkOffline,
     'errorProviderServer' => l.errorProviderServer,
     'errorProviderBusy' => l.errorProviderBusy,
+    'errorProviderInvalidResponse' => l.errorProviderInvalidResponse,
     'errorPollTimeout' => l.errorPollTimeout,
     'errorDownloadFailed' => l.errorDownloadFailed,
     'errorLocalIO' => l.errorLocalIO,

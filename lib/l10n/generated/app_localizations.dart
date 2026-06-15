@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'The provider is busy. Please retry shortly.'**
   String get errorProviderBusy;
 
+  /// No description provided for @errorProviderInvalidResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider returned an invalid or empty result.'**
+  String get errorProviderInvalidResponse;
+
   /// No description provided for @errorPollTimeout.
   ///
   /// In en, this message translates to:

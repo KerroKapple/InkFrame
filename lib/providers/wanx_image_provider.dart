@@ -126,10 +126,11 @@ class WanxImageProvider extends DashScopeAsyncProviderBase {
         }
       }
     }
-    // HI-04：SUCCEEDED 但解析不出任何 URL 不许标 success。
+    // HI-04：SUCCEEDED 但解析不出任何 URL 不许标 success——终态确定性失败，
+    // 不可重试（providerInvalidResponse），避免轮询风暴。
     if (urls.isEmpty) {
       throw ProviderError(
-        code: InkErrorCode.providerServer,
+        code: InkErrorCode.providerInvalidResponse,
         extra: {
           'provider_id': capabilities.providerId,
           'reason': 'empty_output_url',

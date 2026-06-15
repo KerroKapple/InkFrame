@@ -39,6 +39,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorProviderBusy => 'Provider 繁忙，请稍后重试。';
 
   @override
+  String get errorProviderInvalidResponse => 'Provider 返回了无效或空的结果。';
+
+  @override
   String get errorPollTimeout => '生成任务超时未完成。';
 
   @override

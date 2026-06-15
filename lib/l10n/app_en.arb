@@ -15,6 +15,7 @@
   "errorNetworkOffline": "Network is offline. Check your connection.",
   "errorProviderServer": "The provider service is unavailable. Please retry.",
   "errorProviderBusy": "The provider is busy. Please retry shortly.",
+  "errorProviderInvalidResponse": "The provider returned an invalid or empty result.",
   "errorPollTimeout": "Generation did not complete within the time limit.",
   "errorDownloadFailed": "Failed to download the generated asset.",
   "errorLocalIO": "Local disk I/O error. Check space and permissions.",

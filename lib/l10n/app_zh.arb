@@ -12,6 +12,7 @@
   "errorNetworkOffline": "网络不可用，请检查连接。",
   "errorProviderServer": "Provider 服务暂不可用，请稍后重试。",
   "errorProviderBusy": "Provider 繁忙，请稍后重试。",
+  "errorProviderInvalidResponse": "Provider 返回了无效或空的结果。",
   "errorPollTimeout": "生成任务超时未完成。",
   "errorDownloadFailed": "下载生成产物失败。",
   "errorLocalIO": "本地磁盘 I/O 错误，请检查空间与权限。",

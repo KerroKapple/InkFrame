@@ -44,6 +44,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorProviderBusy => 'The provider is busy. Please retry shortly.';
 
   @override
+  String get errorProviderInvalidResponse =>
+      'The provider returned an invalid or empty result.';
+
+  @override
   String get errorPollTimeout =>
       'Generation did not complete within the time limit.';
 
