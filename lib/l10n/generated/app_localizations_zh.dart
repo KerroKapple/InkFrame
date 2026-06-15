@@ -39,6 +39,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorProviderBusy => 'Provider 繁忙，请稍后重试。';
 
   @override
+  String get errorProviderInvalidResponse => 'Provider 返回了无效或空的结果。';
+
+  @override
   String get errorPollTimeout => '生成任务超时未完成。';
 
   @override
@@ -61,6 +64,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasNodeImageType => '图片';
+
+  @override
+  String get canvasNodeTextType => '文本';
+
+  @override
+  String get canvasNodeVideoType => '视频';
+
+  @override
+  String get canvasNodeShotType => '分镜';
 
   @override
   String get canvasNoCanvasOpen => '当前没有打开的画布';

@@ -104,10 +104,6 @@ class _InMemoryJobRepository implements JobRepository {
       throw UnimplementedError();
 
   @override
-  Future<List<Map<String, Object?>>> listDuePolling(int limit) =>
-      throw UnimplementedError();
-
-  @override
   Future<int> purgeExpired({required Duration retention}) =>
       throw UnimplementedError();
 

@@ -192,10 +192,10 @@ abstract class DashScopeAsyncProviderBase
           );
         case DashScopeTaskStatus.unknown:
         default:
-          // task_id 24h 过期或未知状态
+          // task_id 24h 过期或未知状态——终态，不可重试。
           return JobStatus.failure(
             error: ProviderError(
-              code: InkErrorCode.providerServer,
+              code: InkErrorCode.providerInvalidResponse,
               extra: {
                 'provider_id': capabilities.providerId,
                 'reason': 'unknown_status',
@@ -254,13 +254,14 @@ abstract class DashScopeAsyncProviderBase
 
   /// 视频类 Provider 共用：解析 `output.video_url` 单一 URL。
   ///
-  /// HI-04：SUCCEEDED 但缺产物 URL 不许标 success——直接抛 ProviderError，
-  /// 上层按失败处理（可重试）。
+  /// HI-04：SUCCEEDED 但缺产物 URL 不许标 success——直接抛 ProviderError。
+  /// 这是远端报终态成功却无产物的确定性失败，不可重试（providerInvalidResponse），
+  /// 否则上层轮询会对一个不可变的终态响应反复重试直到 pollTimeout（约 30min）。
   JobStatus parseSingleVideoUrlOutput(Map<String, Object?> output) {
     final url = output['video_url'] as String?;
     if (url == null || url.isEmpty) {
       throw ProviderError(
-        code: InkErrorCode.providerServer,
+        code: InkErrorCode.providerInvalidResponse,
         extra: {
           'provider_id': capabilities.providerId,
           'reason': 'empty_output_url',

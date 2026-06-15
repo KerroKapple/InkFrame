@@ -1,6 +1,7 @@
 // InkError：所有业务层错误的统一抽象。
 //
-// 对齐 PRD §10.6「错误码统一枚举」，14 个 code 一字不差。
+// 对齐 PRD §10.6「错误码统一枚举」，在其基础上增加 providerInvalidResponse
+// （远端报终态成功却无产物 URL——确定性失败，不可重试，避免轮询风暴）。
 // 任何 Provider / Repository / Service 的失败路径最终都要翻译成一个 InkError
 // 子类，Widget 只消费 `messageKey` 走 i18n，从不直接看到裸 Exception。
 import 'package:flutter/foundation.dart';
@@ -15,6 +16,7 @@ enum InkErrorCode {
   networkOffline('network_offline'),
   providerServer('provider_5xx'),
   providerBusy('provider_busy'),
+  providerInvalidResponse('provider_invalid_response'),
   pollTimeout('poll_timeout'),
   downloadFailed('download_failed'),
   localIOError('local_io_error'),
@@ -45,6 +47,7 @@ const Map<InkErrorCode, String> _messageKeys = <InkErrorCode, String>{
   InkErrorCode.networkOffline: 'errorNetworkOffline',
   InkErrorCode.providerServer: 'errorProviderServer',
   InkErrorCode.providerBusy: 'errorProviderBusy',
+  InkErrorCode.providerInvalidResponse: 'errorProviderInvalidResponse',
   InkErrorCode.pollTimeout: 'errorPollTimeout',
   InkErrorCode.downloadFailed: 'errorDownloadFailed',
   InkErrorCode.localIOError: 'errorLocalIO',
@@ -108,6 +111,7 @@ final class ProviderError extends InkError {
               code == InkErrorCode.invalidParameter ||
               code == InkErrorCode.providerServer ||
               code == InkErrorCode.providerBusy ||
+              code == InkErrorCode.providerInvalidResponse ||
               code == InkErrorCode.pollTimeout,
           'ProviderError only wraps provider/account/poll codes',
         );

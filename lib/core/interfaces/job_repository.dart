@@ -15,11 +15,9 @@ abstract class JobRepository {
 
   Future<Map<String, Object?>?> findById(String id);
 
-  /// 按 status 过滤，常用于 JobQueueService 恢复扫描。
+  /// 按 status 过滤，用于 JobQueueService.init 的崩溃回收
+  /// （pending/submitted/polling → cancelled_on_exit；恢复语义为 cancel-on-restart）。
   Future<List<Map<String, Object?>>> listByStatus(List<String> statuses);
-
-  /// 下一个应轮询的 job（status='polling' AND next_poll_at <= now()），limit 条。
-  Future<List<Map<String, Object?>>> listDuePolling(int limit);
 
   /// 按画布列出，created_at DESC。
   Future<List<Map<String, Object?>>> listByCanvas(String canvasId, {int limit = 200});

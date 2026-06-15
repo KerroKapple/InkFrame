@@ -16,13 +16,15 @@ import '../core/di/job_queue.dart';
 import '../storage/pg_controller.dart';
 
 class AppTeardown {
-  bool _started = false;
+  Future<void>? _running;
 
-  /// 幂等：重复调用（如连点关闭按钮）只执行一次。
-  Future<void> run(ProviderContainer container) async {
-    if (_started) return;
-    _started = true;
+  /// 幂等且并发安全：重复 / 并发调用共享同一次回收 future，所有调用方都等到
+  /// 同一次完成。这对 macOS 尤其关键——Cmd+Q 经 applicationShouldTerminate
+  /// 触发的回收必须在 native terminate 前真正跑完，且不能与窗口关闭路径双跑。
+  Future<void> run(ProviderContainer container) =>
+      _running ??= _run(container);
 
+  Future<void> _run(ProviderContainer container) async {
     if (_isMounted(container, jobQueueServiceProvider)) {
       container.read(jobQueueServiceProvider).valueOrNull?.dispose();
     }

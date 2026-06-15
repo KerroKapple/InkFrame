@@ -322,7 +322,7 @@ void main() {
       expect((s as JobFailure).error.code, InkErrorCode.cancelledByUser);
     });
 
-    test('UNKNOWN → JobFailure(providerServer)', () async {
+    test('UNKNOWN → JobFailure(providerInvalidResponse) 终态不可重试', () async {
       final dio = Dio(BaseOptions(baseUrl: kDashScopeBaseUrl));
       DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onGet(
         '/tasks/expired',
@@ -331,7 +331,23 @@ void main() {
         }),
       );
       final s = await _build(dio).poll('expired');
-      expect((s as JobFailure).error.code, InkErrorCode.providerServer);
+      expect((s as JobFailure).error.code,
+          InkErrorCode.providerInvalidResponse);
+      expect(s.error.retryable, isFalse);
+    });
+
+    test('parseSingleVideoUrlOutput 空 URL → providerInvalidResponse 不可重试',
+        () {
+      final p = _build(Dio());
+      // SUCCEEDED 却无产物 URL 是终态确定性失败，必须不可重试，
+      // 否则 _pollLoop 会对不可变响应重试到 pollTimeout（~30min 风暴）。
+      expect(
+        () => p.parseSingleVideoUrlOutput(const <String, Object?>{}),
+        throwsA(isA<ProviderError>()
+            .having((e) => e.code, 'code',
+                InkErrorCode.providerInvalidResponse)
+            .having((e) => e.retryable, 'retryable', isFalse)),
+      );
     });
   });
 

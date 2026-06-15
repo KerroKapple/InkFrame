@@ -76,21 +76,6 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
   }
 
   @override
-  Future<List<Map<String, Object?>>> listDuePolling(int limit) {
-    return guard('listDuePolling', 'jobs', () async {
-      final r = await session.execute(
-        Sql.named(
-          "SELECT * FROM jobs WHERE status = 'polling' "
-          'AND (next_poll_at IS NULL OR next_poll_at <= now()) '
-          'ORDER BY next_poll_at ASC NULLS FIRST, created_at ASC LIMIT @lim',
-        ),
-        parameters: <String, Object?>{'lim': limit},
-      );
-      return allRows(r);
-    });
-  }
-
-  @override
   Future<List<Map<String, Object?>>> listByCanvas(
     String canvasId, {
     int limit = 200,

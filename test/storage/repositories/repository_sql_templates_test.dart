@@ -193,13 +193,6 @@ void main() {
       expect(spy.lastSql, isNot(contains('max_retries')));
     });
 
-    test('listDuePolling 过滤 polling + next_poll_at', () async {
-      final spy = _SpySession();
-      await PostgresJobRepository(spy).listDuePolling(10);
-      expect(spy.lastSql, contains("status = 'polling'"));
-      expect(spy.lastSql, contains('next_poll_at'));
-    });
-
     test('transitionStatus 使用 ANY(@from) 做原子跃迁', () async {
       final spy = _SpySession();
       await PostgresJobRepository(spy).transitionStatus(

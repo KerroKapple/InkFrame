@@ -293,7 +293,6 @@ void main() {
 
       await repo.update(id, {'progress': 0.5, 'parameters': {'model': 'k2'}});
       expect(await repo.listByStatus(const ['submitted']), hasLength(1));
-      expect(await repo.listDuePolling(10), isEmpty);
 
       // purge：status 不是终态 → 0 行；status=success + completed_at 足够老 → 1 行
       expect(await repo.purgeExpired(retention: const Duration(days: 30)), 0);

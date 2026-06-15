@@ -3,8 +3,8 @@ import 'package:inkframe/core/errors/ink_error.dart';
 
 void main() {
   group('InkErrorCode wire values', () {
-    test('14 codes match PRD §10.6 string wire format', () {
-      expect(InkErrorCode.values.length, 14);
+    test('15 codes match PRD §10.6 (+ providerInvalidResponse) wire format', () {
+      expect(InkErrorCode.values.length, 15);
       expect(InkErrorCode.invalidKey.wire, 'invalid_key');
       expect(InkErrorCode.insufficientBalance.wire, 'insufficient_balance');
       expect(InkErrorCode.contentPolicy.wire, 'content_policy');
@@ -13,6 +13,8 @@ void main() {
       expect(InkErrorCode.networkOffline.wire, 'network_offline');
       expect(InkErrorCode.providerServer.wire, 'provider_5xx');
       expect(InkErrorCode.providerBusy.wire, 'provider_busy');
+      expect(InkErrorCode.providerInvalidResponse.wire,
+          'provider_invalid_response');
       expect(InkErrorCode.pollTimeout.wire, 'poll_timeout');
       expect(InkErrorCode.downloadFailed.wire, 'download_failed');
       expect(InkErrorCode.localIOError.wire, 'local_io_error');

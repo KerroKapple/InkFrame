@@ -44,6 +44,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorProviderBusy => 'The provider is busy. Please retry shortly.';
 
   @override
+  String get errorProviderInvalidResponse =>
+      'The provider returned an invalid or empty result.';
+
+  @override
   String get errorPollTimeout =>
       'Generation did not complete within the time limit.';
 
@@ -69,6 +73,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get canvasNodeImageType => 'Image';
+
+  @override
+  String get canvasNodeTextType => 'Text';
+
+  @override
+  String get canvasNodeVideoType => 'Video';
+
+  @override
+  String get canvasNodeShotType => 'Shot';
 
   @override
   String get canvasNoCanvasOpen => 'No canvas is open';

@@ -191,7 +191,9 @@ class _NodeCardState extends ConsumerState<NodeCard> {
   static String _typeLabel(BuildContext context, CanvasNodeType type) =>
       switch (type) {
         CanvasNodeType.image => context.l10n.canvasNodeImageType,
-        _ => type.name,
+        CanvasNodeType.text => context.l10n.canvasNodeTextType,
+        CanvasNodeType.video => context.l10n.canvasNodeVideoType,
+        CanvasNodeType.shot => context.l10n.canvasNodeShotType,
       };
 }
 

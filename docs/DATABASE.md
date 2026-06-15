@@ -113,7 +113,6 @@ JSONB 内字段长度不落 DB CHECK（路径查询开销大），由 freezed + 
 | idx_edges_canvas_id / source / target / deleted | edges | canvas_id / source_node_id / target_node_id / deleted_at | 常规 / 常规 / 常规 / 部分 |
 | idx_jobs_status | jobs | status | 常规 |
 | idx_jobs_canvas_id | jobs | canvas_id | 常规 |
-| idx_jobs_next_poll | jobs | next_poll_at | 部分（WHERE status='polling'） |
 | idx_jobs_completed | jobs | completed_at | 部分（WHERE completed_at IS NOT NULL） |
 | idx_batch_results_node_id / job_id | batch_results | node_id / job_id | 常规 |
 | idx_projects_deleted | projects | deleted_at | 部分 |

@@ -158,6 +158,12 @@ abstract class AppLocalizations {
   /// **'The provider is busy. Please retry shortly.'**
   String get errorProviderBusy;
 
+  /// No description provided for @errorProviderInvalidResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider returned an invalid or empty result.'**
+  String get errorProviderInvalidResponse;
+
   /// No description provided for @errorPollTimeout.
   ///
   /// In en, this message translates to:
@@ -205,6 +211,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Image'**
   String get canvasNodeImageType;
+
+  /// No description provided for @canvasNodeTextType.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get canvasNodeTextType;
+
+  /// No description provided for @canvasNodeVideoType.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get canvasNodeVideoType;
+
+  /// No description provided for @canvasNodeShotType.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get canvasNodeShotType;
 
   /// No description provided for @canvasNoCanvasOpen.
   ///

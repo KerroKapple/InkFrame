@@ -5,6 +5,7 @@
 //   3) 解析 AppPaths 并 ensureInitialized（首次启动创建 ~/InkFrame 目录）
 //   4) 显式构造 ProviderContainer（退出时需要有序回收，不能交给隐式容器）
 //   5) runApp(UncontrolledProviderScope + InkFrameApp)
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:media_kit/media_kit.dart';
@@ -42,7 +43,20 @@ Future<void> main() async {
       appPathsProvider.overrideWithValue(paths),
     ],
   );
-  windowManager.addListener(_TeardownWindowListener(container, AppTeardown()));
+  final AppTeardown teardown = AppTeardown();
+  windowManager.addListener(_TeardownWindowListener(container, teardown));
+
+  // macOS Cmd+Q / 菜单 Quit 走 NSApp.terminate，绕过 window_manager 的
+  // windowShouldClose（setPreventClose 在此路径不生效）。AppDelegate 经此 channel
+  // 在 native terminate 前请求 Dart 完成 teardown，避免嵌入式 PG 孤儿化。
+  // 与窗口关闭路径共享同一个 AppTeardown 实例，回收至多执行一次。
+  const MethodChannel('inkframe/lifecycle')
+      .setMethodCallHandler((MethodCall call) async {
+    if (call.method == 'requestTerminate') {
+      await teardown.run(container);
+    }
+    return null;
+  });
 
   runApp(
     UncontrolledProviderScope(
