@@ -7,6 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/storage/migrations/migration_runner.dart';
 import 'package:inkframe/storage/schema/schema_v1.dart';
 import 'package:inkframe/storage/schema/schema_v3.dart';
+import 'package:inkframe/storage/schema/schema_v4.dart';
 import 'package:postgres/postgres.dart';
 
 void main() {
@@ -174,6 +175,12 @@ void main() {
       // 死列处置：retry 由 JobQueue 内存退避负责（FIX-003 ME-04），列删除
       expect(kSchemaV3, contains('DROP COLUMN retry_count'));
       expect(kSchemaV3, contains('DROP COLUMN max_retries'));
+    });
+
+    test('schema_v4 SQL 常量：删除续轮死列 next_poll_at + 死索引', () {
+      // 崩溃-续轮决策 B：cancel-on-restart 终态设计，续轮死列/索引删除
+      expect(kSchemaV4, contains('DROP INDEX IF EXISTS idx_jobs_next_poll'));
+      expect(kSchemaV4, contains('DROP COLUMN next_poll_at'));
     });
   });
 }

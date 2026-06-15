@@ -140,7 +140,7 @@ void main() {
     }
   }, tags: const ['pg']);
 
-  test('死列处置：jobs 表不再有 retry_count / max_retries', () async {
+  test('死列处置：jobs 表不再有 retry_count / max_retries / next_poll_at', () async {
     try {
       final h = req();
       final cols = await h.conn.execute(
@@ -150,6 +150,15 @@ void main() {
       final names = cols.map((r) => r[0].toString()).toSet();
       expect(names, isNot(contains('retry_count')));
       expect(names, isNot(contains('max_retries')));
+      // v4：cancel-on-restart 终态设计，续轮死列 next_poll_at 一并删除
+      expect(names, isNot(contains('next_poll_at')));
+      // 对应的部分索引也应随列删除
+      final idx = await h.conn.execute(
+        'SELECT indexname FROM pg_indexes '
+        "WHERE schemaname = current_schema() AND tablename = 'jobs'",
+      );
+      final idxNames = idx.map((r) => r[0].toString()).toSet();
+      expect(idxNames, isNot(contains('idx_jobs_next_poll')));
     } on _Skipped {
       return;
     }
@@ -158,13 +167,13 @@ void main() {
   test('ME-31：失败迁移整体回滚——版本号与半截 DDL 都不落库', () async {
     try {
       final h = req();
-      // v4 故意失败：先建表再撞语法错误；事务内两者都应回滚
+      // 故意失败的 v5：先建表再撞语法错误；事务内两者都应回滚
       final broken = MigrationRunner(
         h.conn,
         migrations: [
           ...kAppMigrations,
           const Migration(
-            version: 4,
+            version: 5,
             sql: 'CREATE TABLE half_done (id INT); SELECT broken(',
           ),
         ],
@@ -173,7 +182,7 @@ void main() {
       final v = await h.conn.execute(
         'SELECT version FROM schema_version WHERE id = 1',
       );
-      expect(v.first[0], 3, reason: '失败迁移不得推进版本号');
+      expect(v.first[0], 4, reason: '失败迁移不得推进版本号');
       final half = await h.conn.execute(
         'SELECT 1 FROM information_schema.tables '
         "WHERE table_schema = current_schema() AND table_name = 'half_done'",

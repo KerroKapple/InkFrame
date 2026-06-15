@@ -130,9 +130,6 @@ class _FakeJobRepo implements JobRepository {
   Future<List<Map<String, Object?>>> listByCanvas(String c, {int limit = 200}) =>
       throw UnimplementedError();
   @override
-  Future<List<Map<String, Object?>>> listDuePolling(int l) =>
-      throw UnimplementedError();
-  @override
   Future<int> purgeExpired({required Duration retention}) =>
       throw UnimplementedError();
   @override
