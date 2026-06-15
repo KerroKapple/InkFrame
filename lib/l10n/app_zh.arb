@@ -21,6 +21,9 @@
 
   "canvasNodeDefaultLabel": "新节点",
   "canvasNodeImageType": "图片",
+  "canvasNodeTextType": "文本",
+  "canvasNodeVideoType": "视频",
+  "canvasNodeShotType": "分镜",
 
   "canvasNoCanvasOpen": "当前没有打开的画布",
   "canvasCreateSampleCanvas": "新建示例画布",

@@ -130,4 +130,40 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Image file missing'), findsOneWidget);
   });
+
+  // 节点头类型标签必须走 l10n，不得泄漏裸 enum 名（i18n-1）。
+  for (final (CanvasNodeType type, String en, String zh) in const [
+    (CanvasNodeType.text, 'Text', '文本'),
+    (CanvasNodeType.video, 'Video', '视频'),
+    (CanvasNodeType.shot, 'Shot', '分镜'),
+  ]) {
+    testWidgets('${type.name} config 节点头渲染本地化类型标签 (en/zh)',
+        (tester) async {
+      final n = CanvasNode(id: 'c1', label: 'L', type: type);
+      Widget card() => Scaffold(
+            body: Center(
+              child: NodeCard(
+                node: n,
+                selected: false,
+                onTap: () {},
+                onDragEnd: (_) {},
+              ),
+            ),
+          );
+      final overrides = [
+        fileResolverServiceProvider
+            .overrideWithValue(_FakeResolver(Directory.systemTemp)),
+      ];
+
+      await pumpInkApp(tester, card(), overrides: overrides);
+      await tester.pumpAndSettle();
+      expect(find.text(en), findsOneWidget);
+      expect(find.text(type.name), findsNothing);
+
+      await pumpInkApp(tester, card(),
+          overrides: overrides, locale: const Locale('zh'));
+      await tester.pumpAndSettle();
+      expect(find.text(zh), findsOneWidget);
+    });
+  }
 }

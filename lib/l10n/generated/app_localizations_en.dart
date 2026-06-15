@@ -71,6 +71,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasNodeImageType => 'Image';
 
   @override
+  String get canvasNodeTextType => 'Text';
+
+  @override
+  String get canvasNodeVideoType => 'Video';
+
+  @override
+  String get canvasNodeShotType => 'Shot';
+
+  @override
   String get canvasNoCanvasOpen => 'No canvas is open';
 
   @override

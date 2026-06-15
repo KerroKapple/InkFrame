@@ -63,6 +63,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasNodeImageType => '图片';
 
   @override
+  String get canvasNodeTextType => '文本';
+
+  @override
+  String get canvasNodeVideoType => '视频';
+
+  @override
+  String get canvasNodeShotType => '分镜';
+
+  @override
   String get canvasNoCanvasOpen => '当前没有打开的画布';
 
   @override

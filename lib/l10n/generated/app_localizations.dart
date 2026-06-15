@@ -206,6 +206,24 @@ abstract class AppLocalizations {
   /// **'Image'**
   String get canvasNodeImageType;
 
+  /// No description provided for @canvasNodeTextType.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get canvasNodeTextType;
+
+  /// No description provided for @canvasNodeVideoType.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get canvasNodeVideoType;
+
+  /// No description provided for @canvasNodeShotType.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get canvasNodeShotType;
+
   /// No description provided for @canvasNoCanvasOpen.
   ///
   /// In en, this message translates to:

@@ -24,6 +24,9 @@
 
   "canvasNodeDefaultLabel": "New Node",
   "canvasNodeImageType": "Image",
+  "canvasNodeTextType": "Text",
+  "canvasNodeVideoType": "Video",
+  "canvasNodeShotType": "Shot",
 
   "canvasNoCanvasOpen": "No canvas is open",
   "canvasCreateSampleCanvas": "Create sample canvas",
