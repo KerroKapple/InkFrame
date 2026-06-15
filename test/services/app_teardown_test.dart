@@ -80,6 +80,20 @@ void main() {
 
     expect(order, <String>['pg.stop']);
   });
+
+  test('并发 run（窗口关闭 + macOS Cmd+Q 竞争）共享同一次回收，仅执行一次', () async {
+    final container = buildContainer();
+    container.read(pgControllerProvider);
+
+    final teardown = AppTeardown();
+    // 不 await 第一个就发起第二个，模拟两条退出路径同时触发。
+    final f1 = teardown.run(container);
+    final f2 = teardown.run(container);
+    expect(identical(f1, f2), isTrue, reason: '并发调用必须共享同一 future');
+    await Future.wait(<Future<void>>[f1, f2]);
+
+    expect(order, <String>['pg.stop']);
+  });
 }
 
 class _FakeJobQueue implements JobQueueService {
