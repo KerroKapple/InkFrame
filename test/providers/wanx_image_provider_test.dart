@@ -7,6 +7,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
@@ -161,10 +162,16 @@ void main() {
       expect((s as JobSuccess).remoteUrls, ['https://x/1.png', 'https://x/2.png']);
     });
 
-    test('choices 缺失 → success(remoteUrls=[])', () {
-      final s = p.parseSuccessOutput({'task_status': 'SUCCEEDED'});
-      expect(s, isA<JobSuccess>());
-      expect((s as JobSuccess).remoteUrls, isEmpty);
+    // HI-04：SUCCEEDED 但解析不出任何图片 URL 不许标 success——抛 ProviderError。
+    test('choices 缺失 → ProviderError(empty_output_url)', () {
+      expect(
+        () => p.parseSuccessOutput({'task_status': 'SUCCEEDED'}),
+        throwsA(isA<ProviderError>().having(
+          (e) => e.extra['reason'],
+          'reason',
+          'empty_output_url',
+        )),
+      );
     });
 
     test('content 中混有非 image 字段时跳过', () {

@@ -12,25 +12,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get appTitle => 'InkFrame';
 
   @override
-  String get commonOk => '确定';
-
-  @override
   String get commonCancel => '取消';
-
-  @override
-  String get commonRetry => '重试';
-
-  @override
-  String get commonClose => '关闭';
-
-  @override
-  String get commonSave => '保存';
-
-  @override
-  String get commonDelete => '删除';
-
-  @override
-  String get commonConfirm => '确认';
 
   @override
   String get errorInvalidKey => 'API Key 无效，请检查 Provider 设置。';
@@ -75,24 +57,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorUnknown => '未知错误。';
 
   @override
-  String get canvasEmptyHint => '右键或按 + 添加节点';
-
-  @override
   String get canvasNodeDefaultLabel => '新节点';
 
   @override
   String get canvasNodeImageType => '图片';
-
-  @override
-  String get canvasAddNode => '添加节点';
-
-  @override
-  String get canvasDeleteNode => '删除节点';
-
-  @override
-  String canvasNodesSelected(int count) {
-    return '已选择 $count 个节点';
-  }
 
   @override
   String get canvasNoCanvasOpen => '当前没有打开的画布';
@@ -132,12 +100,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inspectorGenerateDisabledNoKey => '请在设置中配置 API Key';
-
-  @override
-  String get inspectorGenerateNotWiredYet => '生成流程将在下个切片接入';
-
-  @override
-  String get inspectorSelectSingleHint => '选中一个配置节点以编辑';
 
   @override
   String get inspectorStatusSubmitting => '提交中...';
@@ -182,6 +144,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsApiKeySaved => '已保存';
+
+  @override
+  String get settingsApiKeySavedUnverified => '已保存，但网络问题导致 Key 暂时无法验证。';
+
+  @override
+  String get settingsApiKeyRejected => 'Provider 拒绝了该 Key，未保存。';
 
   @override
   String get settingsApiKeyCleared => '已清除';
@@ -251,12 +219,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get generationSuccess => '生成完成';
-
-  @override
-  String get generationFailure => '生成失败';
-
-  @override
   String get generationMissingKey => 'API Key 未配置';
 
   @override
@@ -295,6 +257,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generationStatusRunning => '生成中';
 
   @override
+  String generationStatusRunningWithProgress(int percent) {
+    return '生成中 $percent%';
+  }
+
+  @override
   String get generationStatusSucceeded => '已完成';
 
   @override
@@ -330,6 +297,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get linkSelfNotAllowed => '不能连到自己';
 
   @override
+  String get linkCreateFailed => '连线创建失败';
+
+  @override
   String get nodeDelete => '删除节点';
 
   @override
@@ -360,7 +330,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasAddImageNode => '添加图片节点';
 
   @override
-  String get canvasAddVideoNode => '新增视频节点';
+  String get canvasAddVideoNode => '添加视频节点';
 
   @override
   String get canvasAddNodeTooltip => '新建节点';
@@ -383,13 +353,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorVideoCameraLabel => '运镜';
 
   @override
+  String get cameraStatic => '固定机位';
+
+  @override
+  String get cameraPushIn => '推进';
+
+  @override
+  String get cameraPullOut => '拉远';
+
+  @override
+  String get cameraPanLeft => '左摇';
+
+  @override
+  String get cameraPanRight => '右摇';
+
+  @override
+  String get cameraTiltUp => '上仰';
+
+  @override
+  String get cameraTiltDown => '下俯';
+
+  @override
+  String get cameraOrbit => '环绕';
+
+  @override
+  String get cameraHandheld => '手持';
+
+  @override
   String get inspectorVideoModeAuto => '生成模式：根据输入自动识别';
-
-  @override
-  String get inspectorVideoModeT2v => '文生视频';
-
-  @override
-  String get inspectorVideoModeI2v => '图生视频';
 
   @override
   String get inspectorVideoGenerateDisabledEmptyPrompt => '请先填写提示词';
@@ -405,6 +396,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get lightboxPlayPause => '播放 / 暂停';
+
+  @override
+  String get studioDefaultName => '我的工作室';
 
   @override
   String get studioRecentProjects => '最近项目';
@@ -467,16 +461,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioCreate => '创建';
 
   @override
+  String studioProjectMetaLine(DateTime date, int count) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个画布',
+    );
+    return '$dateString · $_temp0';
+  }
+
+  @override
   String get canvasDefaultName => '未命名画布';
 
   @override
   String get studioOpenCanvasFailed => '打开画布失败';
 
   @override
-  String get studioNoKeyBannerText => '尚未配置任何 provider API key — 生成需要先配置。';
+  String get studioNoKeyBannerText => '尚未配置任何 Provider API Key——生成需要先配置。';
 
   @override
-  String get studioNoKeyBannerAction => '去 Settings 配置';
+  String get studioNoKeyBannerAction => '前往设置配置';
 
   @override
   String get canvasInspectorTransform => '变换';

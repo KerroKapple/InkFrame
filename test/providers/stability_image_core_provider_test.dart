@@ -21,6 +21,8 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/providers/rate_limiter.dart';
 import 'package:inkframe/providers/stability_image_core_provider.dart';
 
+import '../_harness/fixtures.dart';
+
 // 1x1 PNG 占位字节——非真实生成产物，仅供 mock bytes 响应使用。
 final Uint8List _kFakePng = Uint8List.fromList(<int>[
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG 签名
@@ -441,10 +443,63 @@ void main() {
     });
   });
 
-  // ---- Task 9：fixture-replay E2E —— BLOCKED-pending-stability-key --------
-  // 需真实 Stability API Key 抓取二进制响应 fixture（plan §12.3 禁止手写）。
-  // 无 Key 前整组 skip，绝不伪造成功图片 fixture。
-  group('StabilityImageCoreProvider fixture E2E', () {
+  // ---- Task 9a：fixture-replay —— 无 Key 即可采集的 4xx 真实载荷 -----------
+  // fixture 来源：以无效 Key 实拍 api.stability.ai（2026-06-12 抓取，已脱敏：
+  // 请求 id → FIXTURE_REQUEST_ID，Key 片段 → FIXTURE_REDACTED_KEY）。
+  group('StabilityImageCoreProvider fixture-replay（keyless 可采集 4xx）', () {
+    test('submit_invalid_key fixture → ProviderError(invalidKey)', () async {
+      final dio = _bytesDio();
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kStabilityCoreGeneratePath,
+        (req) => req.throws(
+          401,
+          _badResponse(
+            401,
+            body: loadProviderFixture('stability-image-core', 'submit_invalid_key'),
+          ),
+        ),
+      );
+
+      await expectLater(
+        _buildProvider(dio).submit(_task()),
+        throwsA(isA<ProviderError>()
+            .having((e) => e.code, 'code', InkErrorCode.invalidKey)),
+      );
+    });
+
+    test('balance_invalid_key fixture → validateApiKey returns KeyInvalid',
+        () async {
+      final dio = _bytesDio();
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onGet(
+        kStabilityBalancePath,
+        (req) => req.throws(
+          401,
+          DioException(
+            requestOptions: RequestOptions(path: kStabilityBalancePath),
+            response: Response(
+              statusCode: 401,
+              data: loadProviderFixture(
+                'stability-image-core',
+                'balance_invalid_key',
+              ),
+              requestOptions: RequestOptions(path: kStabilityBalancePath),
+            ),
+            type: DioExceptionType.badResponse,
+          ),
+        ),
+      );
+
+      final r = await _buildProvider(dio).validateApiKey('bad');
+      expect(r, isA<KeyInvalid>());
+    });
+  });
+
+  // ---- Task 9b：fixture-replay E2E —— BLOCKED-pending-stability-key -------
+  // 成功二进制图片 / content-filter 响应必须持有效 Key 实拍（§12.3 禁止手写
+  // 成功载荷）。Key 到位前保留 skip 占位，绝不伪造成功图片 fixture。
+  group('StabilityImageCoreProvider fixture E2E（需有效 Key）', () {
     // BLOCKED-pending-stability-key: skip until real fixtures captured
   }, skip: 'BLOCKED-pending-stability-key');
 }

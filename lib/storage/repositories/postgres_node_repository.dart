@@ -54,11 +54,19 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
     });
   }
 
+  // 读路径统一 JOIN canvases 带出 project_id（CR-01）：
+  // 生成链路 / CanvasNode.fromRow 依赖行内 project_id 解析产物落盘路径。
+  static const _selectWithProject =
+      'SELECT n.*, c.project_id FROM nodes n '
+      'JOIN canvases c ON c.id = n.canvas_id';
+
   @override
   Future<Map<String, Object?>?> findById(String id) {
     return guard('findById', 'nodes', () async {
       final r = await session.execute(
-        Sql.named('SELECT * FROM nodes WHERE id = @id AND deleted_at IS NULL'),
+        Sql.named(
+          '$_selectWithProject WHERE n.id = @id AND n.deleted_at IS NULL',
+        ),
         parameters: <String, Object?>{'id': id},
       );
       return firstRow(r);
@@ -70,8 +78,9 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
     return guard('listByCanvas', 'nodes', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM nodes WHERE canvas_id = @cid AND deleted_at IS NULL '
-          'ORDER BY z_index ASC, created_at ASC',
+          '$_selectWithProject '
+          'WHERE n.canvas_id = @cid AND n.deleted_at IS NULL '
+          'ORDER BY n.z_index ASC, n.created_at ASC',
         ),
         parameters: <String, Object?>{'cid': canvasId},
       );
@@ -84,8 +93,9 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
     return guard('listOrphanResults', 'nodes', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM nodes WHERE canvas_id = @cid AND deleted_at IS NULL '
-          "AND node_role = 'result' AND source_node_id IS NULL",
+          '$_selectWithProject '
+          'WHERE n.canvas_id = @cid AND n.deleted_at IS NULL '
+          "AND n.node_role = 'result' AND n.source_node_id IS NULL",
         ),
         parameters: <String, Object?>{'cid': canvasId},
       );

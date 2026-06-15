@@ -1,43 +1,60 @@
-// ProviderRegistry：providerId → Submittable 工厂的中心映射。
+// CachingProviderRegistry：providerId → Submittable 的缓存实现。
 //
 // 所有 Provider 必须在 lib/core/di/providers.dart 注册到全局 registry。
 // UI / Service 层取 Provider 只走 registry.get(id)，不 import 具体实现。
 //
-// 启动期自检——同 providerId 出现两个实现直接 AssertionError，不让过。
+// 实例按 providerId 缓存（app-scoped）：
+// - Dio 每个 Provider 只建一次，不再每次 get() 泄漏新连接池
+// - 同步 Provider 的 _inlineCache（submit 暂存 / poll 消费）跨调用方一致
+// - RateLimiter 单例不变量由缓存天然保证
+//
+// 启动期断言 providerId 非空；同 id 重复由 Map 键唯一性天然排除。
 
+import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
+import '../core/interfaces/provider_registry.dart';
 import '../core/models/provider_capabilities.dart';
 
-/// Provider 工厂签名：给定 Key，返回已接线好 RateLimiter 的实例。
-typedef ProviderFactory = Submittable Function();
+export '../core/interfaces/provider_registry.dart';
 
-class ProviderRegistry {
-  ProviderRegistry(Map<String, ProviderFactory> entries)
-      : _entries = Map.unmodifiable(entries) {
+class CachingProviderRegistry implements ProviderRegistry {
+  CachingProviderRegistry(Map<String, ProviderFactory> entries)
+      : _factories = Map.unmodifiable(entries) {
     assert(
       entries.keys.every((k) => k.isNotEmpty),
       'providerId must not be empty',
     );
   }
 
-  final Map<String, ProviderFactory> _entries;
+  final Map<String, ProviderFactory> _factories;
+  final Map<String, Submittable> _instances = {};
 
-  /// 按 id 取 Provider。不存在抛 ArgumentError。
+  @override
   Submittable get(String providerId) {
-    final factory = _entries[providerId];
+    final cached = _instances[providerId];
+    if (cached != null) return cached;
+    final factory = _factories[providerId];
     if (factory == null) {
-      throw ArgumentError.value(providerId, 'providerId', 'not registered');
+      // providerId 来自持久化任务 / 画布配置——属运行期数据错误，
+      // 走 InkError 链路冒泡到 UI，而非编程断言。
+      throw ProviderError(
+        code: InkErrorCode.invalidParameter,
+        extra: {
+          'provider_id': providerId,
+          'reason': 'provider_not_registered',
+        },
+      );
     }
-    return factory();
+    return _instances[providerId] = factory();
   }
 
-  /// 全部已注册 ID（按插入顺序）。
-  Iterable<String> get ids => _entries.keys;
+  @override
+  Iterable<String> get ids => _factories.keys;
 
-  /// 是否已注册。
-  bool contains(String providerId) => _entries.containsKey(providerId);
+  @override
+  bool contains(String providerId) => _factories.containsKey(providerId);
 
-  /// 列出所有 Provider 的 capabilities——UI 下拉菜单数据源。
+  @override
   List<ProviderCapabilities> listCapabilities() =>
-      _entries.values.map((f) => f().capabilities).toList(growable: false);
+      ids.map((id) => get(id).capabilities).toList(growable: false);
 }

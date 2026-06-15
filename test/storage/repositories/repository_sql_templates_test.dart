@@ -70,6 +70,17 @@ void main() {
       expect(spy.lastSql, contains('project_id = @pid'));
       expect(spy.lastSql, contains('ORDER BY created_at ASC'));
     });
+
+    test('listByProjects 单条 ANY(@pids) 批量查询（反 N+1）', () async {
+      final spy = _SpySession();
+      await PostgresCanvasRepository(spy)
+          .listByProjects(const ['p1', 'p2']);
+      expect(spy.lastSql, contains('project_id = ANY(@pids)'));
+      expect(spy.lastSql, contains('deleted_at IS NULL'));
+      expect(spy.lastSql,
+          contains('ORDER BY project_id ASC, created_at ASC'));
+      expect(spy.lastParams?['pids'], const ['p1', 'p2']);
+    });
   });
 
   group('NodeRepository SQL', () {
@@ -93,6 +104,31 @@ void main() {
       await PostgresNodeRepository(spy).listOrphanResults('c');
       expect(spy.lastSql, contains("node_role = 'result'"));
       expect(spy.lastSql, contains('source_node_id IS NULL'));
+    });
+
+    // CR-01：nodes 行必须带 project_id（来自 canvases JOIN），
+    // 否则生成链路读到 null → 产物静默丢弃。
+    test('findById JOIN canvases 带出 project_id', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).findById('n1');
+      expect(spy.lastSql, contains('c.project_id'));
+      expect(spy.lastSql, contains('JOIN canvases c ON c.id = n.canvas_id'));
+      expect(spy.lastSql, contains('n.deleted_at IS NULL'));
+    });
+
+    test('listByCanvas JOIN canvases 带出 project_id 并保持排序', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).listByCanvas('c1');
+      expect(spy.lastSql, contains('c.project_id'));
+      expect(spy.lastSql, contains('JOIN canvases c ON c.id = n.canvas_id'));
+      expect(spy.lastSql, contains('ORDER BY n.z_index ASC, n.created_at ASC'));
+    });
+
+    test('listOrphanResults JOIN canvases 带出 project_id', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).listOrphanResults('c1');
+      expect(spy.lastSql, contains('c.project_id'));
+      expect(spy.lastSql, contains('JOIN canvases c ON c.id = n.canvas_id'));
     });
   });
 
@@ -153,6 +189,8 @@ void main() {
       );
       expect(spy.lastSql, contains('@params::jsonb'));
       expect(spy.lastParams?['params'], contains('"model":"kling"'));
+      // 死列处置：retry 由 JobQueue 内存退避负责，INSERT 不再写 max_retries
+      expect(spy.lastSql, isNot(contains('max_retries')));
     });
 
     test('listDuePolling 过滤 polling + next_poll_at', () async {
@@ -187,12 +225,17 @@ void main() {
       expect(spy.lastParams?['days'], 30);
     });
 
-    test('purgePerCanvasCap 使用 ROW_NUMBER PARTITION BY', () async {
+    test('purgePerCanvasCap 使用 ROW_NUMBER PARTITION BY，且只清终态行', () async {
       final spy = _SpySession();
       await PostgresJobRepository(spy).purgePerCanvasCap(cap: 500);
       expect(spy.lastSql, contains('ROW_NUMBER() OVER'));
       expect(spy.lastSql, contains('PARTITION BY canvas_id'));
       expect(spy.lastParams?['cap'], 500);
+      // ME-32：在途 job（pending/submitted/polling）绝不被限额清除
+      expect(
+        spy.lastSql,
+        contains("status IN ('success','error','cancelled','timeout')"),
+      );
     });
 
     test('update 对 parameters 做 ::jsonb cast', () async {

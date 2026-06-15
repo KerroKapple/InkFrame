@@ -17,14 +17,12 @@
 //   - 接入参数写死在本文件顶部 const 区
 //   - 抛出 InkError 子类，禁止裸 DioException
 
-import 'package:dio/dio.dart';
-
+import '../core/errors/ink_error.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/cost_model.dart';
 import '../core/models/job_status.dart';
 import '../core/models/provider_capabilities.dart';
 import 'dashscope_async_provider_base.dart';
-import 'rate_limiter.dart';
 
 // ---- 接入参数（ADR-0005 锁定） -------------------------------------------
 const String kWanxImageModel = 'wan2.7-image-pro';
@@ -34,6 +32,7 @@ const String kWanxImageSubmitPath =
 // ---- 能力声明（PROVIDER-API.md §9.2 + DashScope 控制台档位） -------------
 const ProviderCapabilities kWanxImageCapabilities = ProviderCapabilities(
   providerId: 'wanx-image',
+  displayName: 'Wanx Image',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToImage, GenerationMode.imageToImage],
   supportedRatios: [
@@ -127,18 +126,16 @@ class WanxImageProvider extends DashScopeAsyncProviderBase {
         }
       }
     }
+    // HI-04：SUCCEEDED 但解析不出任何 URL 不许标 success。
+    if (urls.isEmpty) {
+      throw ProviderError(
+        code: InkErrorCode.providerServer,
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'empty_output_url',
+        },
+      );
+    }
     return JobStatus.success(remoteUrls: urls);
   }
 }
-
-/// Provider 工厂：DI 层注入（registry 注册见后续 PR）。
-WanxImageProvider buildWanxImageProvider({
-  required DashScopeKeySource keySource,
-  required ProviderRateLimiter rateLimiter,
-  Dio? dio,
-}) =>
-    WanxImageProvider(
-      keySource: keySource,
-      rateLimiter: rateLimiter,
-      dio: dio,
-    );

@@ -49,6 +49,7 @@ class InkColors {
     required this.focusRing,
     required this.overlay,
     required this.scrim,
+    required this.inputFill,
   });
 
   /// 深色主题（P0 默认）—— Amber Noir：电影暗室 + 琥珀金高光 + 哑光暖黑。
@@ -78,6 +79,7 @@ class InkColors {
         focusRing: Color(0xFFC9A85B),
         overlay: Color(0xCC0B0908),
         scrim: Color(0xB3000000),
+        inputFill: Color(0x0AFFFFFF),
       );
 
   /// 浅色主题—— Paper Ivory：暖白纸 + 琥珀金（与暗色形成对偶）。
@@ -107,6 +109,7 @@ class InkColors {
         focusRing: Color(0xFFA88340),
         overlay: Color(0xCCF5EFE3),
         scrim: Color(0x66000000),
+        inputFill: Color(0x0F2A2520),
       );
 
   /// 高对比度变体（A11y §20.1）—— 纯黑底 + 高饱琥珀。
@@ -136,6 +139,7 @@ class InkColors {
         focusRing: Color(0xFFFFCB52),
         overlay: Color(0xEE000000),
         scrim: Color(0xCC000000),
+        inputFill: Color(0x14FFFFFF),
       );
 
   final Color surface1; // 画布底
@@ -163,9 +167,13 @@ class InkColors {
   final Color info; // 语义信息蓝
   final Color borderSubtle;
   final Color borderHover;
+  final Color inputFill; // 输入框半透明底（暗色提亮 / 浅色压暗）
 }
 
-/// 间距（8 的倍数制）。
+/// 间距（8 的倍数主刻度 + 半阶档位）。
+///
+/// 半阶档位（s10/s12/s14/s18/s28）覆盖 mockup 的光学微调值，
+/// 禁止在 widget 内对 token 做加减算术拼间距。
 class InkSpacing {
   InkSpacing._();
   static const double xs = 4;
@@ -174,11 +182,18 @@ class InkSpacing {
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;
+  // 半阶档位
+  static const double s10 = 10;
+  static const double s12 = 12;
+  static const double s14 = 14;
+  static const double s18 = 18;
+  static const double s28 = 28;
 }
 
 /// 圆角。
 class InkRadius {
   InkRadius._();
+  static const double xs = 2; // 细进度条 / 微裁切
   static const double sm = 4;
   static const double md = 8;
   static const double lg = 12;

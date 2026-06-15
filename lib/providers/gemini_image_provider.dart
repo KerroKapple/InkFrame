@@ -3,7 +3,7 @@
 // PRD §10.2.1 接入参数：
 //   Base URL : https://generativelanguage.googleapis.com/v1beta
 //   Model ID : gemini-2.5-flash-image-preview
-//   Auth     : ?key= query 参数（从 keySource 读取）
+//   Auth     : x-goog-api-key 请求头（从 keySource 读取；LO-13 禁止进 URL）
 //   Submit   : POST /models/{model}:generateContent
 //   Poll     : 无（同步返回）
 //
@@ -35,9 +35,13 @@ const String kGeminiModel = 'gemini-2.5-flash-image-preview';
 const String kGeminiSubmitPath = '/models/$kGeminiModel:generateContent';
 const String kGeminiValidatePath = '/models';
 
+/// LO-13：API Key 经请求头传递，绝不进 URL query（防日志/代理泄露）。
+const String kGeminiApiKeyHeader = 'x-goog-api-key';
+
 // ---- 能力声明（PROVIDER-API.md §9.2） -----------------------------------
 const ProviderCapabilities kGeminiImageCapabilities = ProviderCapabilities(
   providerId: 'gemini-image',
+  displayName: 'Gemini Image',
   region: ProviderRegion.global,
   modes: [GenerationMode.textToImage],
   supportedRatios: [
@@ -140,16 +144,23 @@ class GeminiImageProvider implements Submittable, Pollable, KeyValidatable {
       ],
       'generationConfig': <String, Object?>{
         if (task.seed != null) 'seed': task.seed,
-        'responseModalities': ['IMAGE'],
+        // HI-27：image-preview 模型要求 TEXT+IMAGE 双模态，仅 IMAGE 会被拒。
+        'responseModalities': ['TEXT', 'IMAGE'],
+        // HI-07：aspectRatio 接入 imageConfig，不许静默忽略。
+        'imageConfig': <String, Object?>{
+          'aspectRatio': _aspectRatioFor(task.aspectRatio),
+        },
       },
     };
 
     try {
       final resp = await _dio.post<dynamic>(
         kGeminiSubmitPath,
-        queryParameters: {'key': key},
         data: body,
-        options: Options(contentType: 'application/json'),
+        options: Options(
+          contentType: 'application/json',
+          headers: {kGeminiApiKeyHeader: key},
+        ),
       );
       final data = resp.data is Map
           ? Map<String, Object?>.from(resp.data as Map)
@@ -173,24 +184,22 @@ class GeminiImageProvider implements Submittable, Pollable, KeyValidatable {
     try {
       await _dio.get<dynamic>(
         kGeminiValidatePath,
-        queryParameters: {'key': key, 'pageSize': 1},
+        queryParameters: {'pageSize': 1},
+        options: Options(headers: {kGeminiApiKeyHeader: key}),
       );
       return const KeyValidationResult.valid();
     } on DioException catch (e) {
       switch (e.type) {
+        // ME-10：超时/离线无法判定 Key 本身 → networkError（与全 Provider 统一）。
         case DioExceptionType.connectionTimeout:
         case DioExceptionType.sendTimeout:
         case DioExceptionType.receiveTimeout:
-          return const KeyValidationResult.invalid(
-            reason: KeyInvalidReason.networkTimeout,
-            detail: 'validation timeout',
+          return const KeyValidationResult.networkError(
+            message: 'validation timeout',
           );
         case DioExceptionType.connectionError:
         case DioExceptionType.badCertificate:
-          return const KeyValidationResult.invalid(
-            reason: KeyInvalidReason.networkOffline,
-            detail: 'no network',
-          );
+          return const KeyValidationResult.networkError(message: 'no network');
         case DioExceptionType.badResponse:
           final status = e.response?.statusCode ?? 0;
           if (status == 401 || status == 403) {
@@ -275,6 +284,25 @@ class GeminiImageProvider implements Submittable, Pollable, KeyValidatable {
       );
     }
     return JobStatus.success(remoteUrls: const [], inlineBytes: [bytes]);
+  }
+
+  /// AspectRatio 枚举 → Gemini imageConfig.aspectRatio 字面量。
+  /// capabilities 已收窄到前五种；r21x9 为防御性兜底。
+  String _aspectRatioFor(AspectRatio ratio) {
+    switch (ratio) {
+      case AspectRatio.r1x1:
+        return '1:1';
+      case AspectRatio.r16x9:
+        return '16:9';
+      case AspectRatio.r9x16:
+        return '9:16';
+      case AspectRatio.r4x3:
+        return '4:3';
+      case AspectRatio.r3x4:
+        return '3:4';
+      case AspectRatio.r21x9:
+        return '21:9';
+    }
   }
 
   bool _isContentPolicy(Object? body) {

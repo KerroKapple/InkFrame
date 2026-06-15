@@ -6,8 +6,11 @@
 //   - 当前版本 < 应用期望 → 顺序执行 002_*.sql、003_*.sql ...
 //   - 当前版本 > 应用期望 → 抛错提示用户升级
 //
-// 当前版本仅落 v=1：空库 → 运行 kSchemaV1 → schema_version.version = 1。
-// v=2 及以后通过 addMigration 注入；本 runner 不做 SQL 文件扫描，由调用方组装 migrations 列表。
+// ME-31：每条迁移的 DDL 与 schema_version UPSERT 必须原子——runTx 单事务包裹，
+// 失败回滚后版本号保持原值，下次启动重跑同一迁移。版本号统一由 runner 写，
+// 迁移 SQL 自身不写 schema_version。
+//
+// 本 runner 不做 SQL 文件扫描，由调用方组装 migrations 列表。
 import 'package:postgres/postgres.dart';
 
 /// 单条迁移：版本号递增 + SQL 语句块。
@@ -29,10 +32,11 @@ class SchemaMigrationError extends StateError {
 }
 
 class MigrationRunner {
-  MigrationRunner(this._session, {required this.migrations})
+  MigrationRunner(this._executor, {required this.migrations})
       : assert(migrations.isNotEmpty, 'migrations must be non-empty');
 
-  final Session _session;
+  /// Connection / Pool 皆可——runTx 保证单迁移落在同一条连接的单事务内。
+  final SessionExecutor _executor;
 
   /// 按版本升序的迁移列表；v=1 必须位于首位。
   final List<Migration> migrations;
@@ -43,8 +47,8 @@ class MigrationRunner {
   /// 读取数据库当前 schema 版本；空库返回 0（schema_version 表未建）。
   Future<int> currentVersion() async {
     try {
-      final r = await _session.execute(
-        'SELECT version FROM schema_version WHERE id = 1',
+      final r = await _executor.run(
+        (s) => s.execute('SELECT version FROM schema_version WHERE id = 1'),
       );
       if (r.isEmpty) return 0;
       final v = r.first[0];
@@ -59,7 +63,7 @@ class MigrationRunner {
     }
   }
 
-  /// 核心：运行所有缺少的迁移，每条单事务。
+  /// 核心：运行所有缺少的迁移，每条迁移 = DDL + 版本 UPSERT 同一事务。
   Future<void> migrate() async {
     final current = await currentVersion();
     final target = targetVersion;
@@ -86,18 +90,16 @@ class MigrationRunner {
     }
 
     for (final m in pending) {
-      // v=1 的 SQL 自身会 UPSERT schema_version.version=1。
-      // v≥2 的 SQL 不应自己写 schema_version；runner 负责统一 UPSERT。
-      await _session.execute(m.sql, queryMode: m.queryMode);
-      if (m.version > 1) {
+      await _executor.runTx((tx) async {
+        await tx.execute(m.sql, queryMode: m.queryMode);
         // version 由 runner 自身控制，用字符串插值而非绑定参数，
         // 便于测试断言 SQL 内容；无注入风险。
-        await _session.execute(
+        await tx.execute(
           'INSERT INTO schema_version (id, version) VALUES (1, ${m.version}) '
           'ON CONFLICT (id) DO UPDATE SET version = EXCLUDED.version, '
           'applied_at = now()',
         );
-      }
+      });
     }
   }
 }

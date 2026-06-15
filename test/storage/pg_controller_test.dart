@@ -3,10 +3,13 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:inkframe/storage/pg_controller.dart';
 import 'package:path/path.dart' as p;
+
+import '../helpers/recording_logger.dart';
 
 void main() {
   group('PgController', () {
@@ -100,7 +103,24 @@ void main() {
       expect(runner.pgCtlStartCalls, 1);
     });
 
-    test('postmaster 进程仍活 → 拒绝抢占', () async {
+    test('二次启动：postmaster 进程仍活 → 复用其端口，不再 pg_ctl start', () async {
+      // 模拟上次会话未清理的存活 PG（CR-02 场景）。
+      File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
+      File(p.join(paths.database.path, 'postmaster.pid')).writeAsStringSync(
+        '12345\n${paths.database.path}\n1718000000\n54399\n\'\'\n127.0.0.1\n  1 2\nready\n',
+      );
+      runner.aliveForPid = <int>{12345};
+
+      final ctl = PgController(paths: paths, locator: locator, runner: runner);
+      final rt = await ctl.start();
+      expect(rt.port, 54399);
+      expect(rt.host, '127.0.0.1');
+      expect(runner.pgCtlStartCalls, 0, reason: '存活实例必须复用，不得重复启动');
+      expect(ctl.portFile.readAsStringSync().trim(), '54399');
+      expect(ctl.runtime, isNotNull);
+    });
+
+    test('存活实例但 postmaster.pid 无法解析端口 → PgLifecycleError', () async {
       File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
       File(p.join(paths.database.path, 'postmaster.pid'))
           .writeAsStringSync('12345\n');
@@ -108,6 +128,7 @@ void main() {
 
       final ctl = PgController(paths: paths, locator: locator, runner: runner);
       await expectLater(ctl.start, throwsA(isA<PgLifecycleError>()));
+      expect(runner.pgCtlStartCalls, 0);
     });
 
     test('stop 幂等：未启动时 no-op', () async {
@@ -124,6 +145,45 @@ void main() {
       await ctl.stop();
       expect(runner.pgCtlStopCalls, 1);
       expect(ctl.runtime, isNull);
+    });
+
+    test('logger 注入点（FIX-016 / ME-21）：start / 崩溃恢复 / stop 落日志', () async {
+      final log = RecordingLogger();
+      File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
+      // 崩溃残留：pid 已死。
+      File(p.join(paths.database.path, 'postmaster.pid'))
+          .writeAsStringSync('12345\n');
+      runner.aliveForPid = <int>{};
+
+      final ctl = PgController(
+        paths: paths,
+        locator: locator,
+        runner: runner,
+        portPicker: () async => 7100,
+        logger: log,
+      );
+      runner.onPgCtlStart = () {
+        File(p.join(paths.database.path, 'postmaster.pid'))
+            .writeAsStringSync('777\n');
+      };
+
+      await ctl.start();
+      await ctl.stop();
+
+      final modules = log.byModule('storage.pg');
+      expect(modules, isNotEmpty);
+      // 崩溃恢复必须留 WARN 痕迹。
+      expect(
+        log.byLevel(InkLogLevel.warn).where((r) => r.module == 'storage.pg'),
+        isNotEmpty,
+      );
+      // 启动成功 INFO 带端口。
+      expect(
+        log
+            .byLevel(InkLogLevel.info)
+            .where((r) => r.extra?['port'] == 7100),
+        isNotEmpty,
+      );
     });
 
     test('isAlive 根据 pid 文件 + 进程存活判定', () async {

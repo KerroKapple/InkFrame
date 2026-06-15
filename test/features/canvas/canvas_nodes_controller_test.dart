@@ -3,6 +3,8 @@
 // 覆盖：初始 load、addNode 乐观更新 + DB create 参数透传、removeNode 乐观删除 +
 // DB 失败回滚、moveNode 内存位移不落盘。
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -101,6 +103,17 @@ class _FakeNodeRepository implements NodeRepository {
   Future<int> restore(String id) async => 0;
   @override
   Future<int> hardDelete(String id) async => 0;
+}
+
+/// softDelete 挂起在外部 gate 上——模拟 await 期间 provider 被 dispose（ME-27）。
+class _GatedNodeRepository extends _FakeNodeRepository {
+  final gate = Completer<void>();
+
+  @override
+  Future<int> softDelete(String id) async {
+    await gate.future;
+    return super.softDelete(id);
+  }
 }
 
 class _FakeEdgeRepo implements EdgeRepository {
@@ -321,6 +334,27 @@ void main() {
       final n = await ctrl.addNode(label: 'X', type: CanvasNodeType.image);
       await ctrl.removeNode(n.id);
       expect(repo.softDeleted, contains(n.id));
+    });
+
+    test('removeNode await 期间 provider dispose → 不抛 StateError（ME-27）',
+        () async {
+      final gated = _GatedNodeRepository();
+      final c = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) async => gated),
+      ]);
+
+      await c.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = c.read(canvasNodesControllerProvider(canvasId).notifier);
+      final n = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+
+      // softDelete 失败路径会在 await 之后回写 state——让它失败 + 中途 dispose。
+      gated.softDeleteError = 'late failure';
+      final pending = ctrl.removeNode(n.id);
+      c.dispose(); // await 挂起期间整个容器销毁
+      gated.gate.complete();
+
+      // dispose 后不得触 ref/state——只允许原始 InkError 冒泡，绝不 StateError。
+      await expectLater(pending, throwsA(isA<LocalIOError>()));
     });
 
     test('moveNode 仅改内存，不调 Repository', () async {

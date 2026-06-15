@@ -104,47 +104,11 @@ abstract class AppLocalizations {
   /// **'InkFrame'**
   String get appTitle;
 
-  /// No description provided for @commonOk.
-  ///
-  /// In en, this message translates to:
-  /// **'OK'**
-  String get commonOk;
-
   /// No description provided for @commonCancel.
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get commonCancel;
-
-  /// No description provided for @commonRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get commonRetry;
-
-  /// No description provided for @commonClose.
-  ///
-  /// In en, this message translates to:
-  /// **'Close'**
-  String get commonClose;
-
-  /// No description provided for @commonSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get commonSave;
-
-  /// No description provided for @commonDelete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete'**
-  String get commonDelete;
-
-  /// No description provided for @commonConfirm.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm'**
-  String get commonConfirm;
 
   /// No description provided for @errorInvalidKey.
   ///
@@ -230,12 +194,6 @@ abstract class AppLocalizations {
   /// **'An unknown error occurred.'**
   String get errorUnknown;
 
-  /// No description provided for @canvasEmptyHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Right-click or press + to add a node'**
-  String get canvasEmptyHint;
-
   /// No description provided for @canvasNodeDefaultLabel.
   ///
   /// In en, this message translates to:
@@ -247,24 +205,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Image'**
   String get canvasNodeImageType;
-
-  /// No description provided for @canvasAddNode.
-  ///
-  /// In en, this message translates to:
-  /// **'Add Node'**
-  String get canvasAddNode;
-
-  /// No description provided for @canvasDeleteNode.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete Node'**
-  String get canvasDeleteNode;
-
-  /// No description provided for @canvasNodesSelected.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} node(s) selected'**
-  String canvasNodesSelected(int count);
 
   /// No description provided for @canvasNoCanvasOpen.
   ///
@@ -343,18 +283,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Configure API key in Settings'**
   String get inspectorGenerateDisabledNoKey;
-
-  /// No description provided for @inspectorGenerateNotWiredYet.
-  ///
-  /// In en, this message translates to:
-  /// **'Generation wiring ships in the next slice'**
-  String get inspectorGenerateNotWiredYet;
-
-  /// No description provided for @inspectorSelectSingleHint.
-  ///
-  /// In en, this message translates to:
-  /// **'Select a single config node to edit'**
-  String get inspectorSelectSingleHint;
 
   /// No description provided for @inspectorStatusSubmitting.
   ///
@@ -439,6 +367,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Saved'**
   String get settingsApiKeySaved;
+
+  /// No description provided for @settingsApiKeySavedUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved, but the key could not be verified due to a network issue.'**
+  String get settingsApiKeySavedUnverified;
+
+  /// No description provided for @settingsApiKeyRejected.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider rejected this key. It was not saved.'**
+  String get settingsApiKeyRejected;
 
   /// No description provided for @settingsApiKeyCleared.
   ///
@@ -566,18 +506,6 @@ abstract class AppLocalizations {
   /// **'Unavailable: {reason}'**
   String settingsAboutSecureStorageUnavailable(String reason);
 
-  /// No description provided for @generationSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Generated'**
-  String get generationSuccess;
-
-  /// No description provided for @generationFailure.
-  ///
-  /// In en, this message translates to:
-  /// **'Generation failed'**
-  String get generationFailure;
-
   /// No description provided for @generationMissingKey.
   ///
   /// In en, this message translates to:
@@ -650,6 +578,12 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get generationStatusRunning;
 
+  /// No description provided for @generationStatusRunningWithProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Running {percent}%'**
+  String generationStatusRunningWithProgress(int percent);
+
   /// No description provided for @generationStatusSucceeded.
   ///
   /// In en, this message translates to:
@@ -715,6 +649,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cannot link a node to itself'**
   String get linkSelfNotAllowed;
+
+  /// No description provided for @linkCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create link'**
+  String get linkCreateFailed;
 
   /// No description provided for @nodeDelete.
   ///
@@ -818,23 +758,65 @@ abstract class AppLocalizations {
   /// **'Camera movement'**
   String get inspectorVideoCameraLabel;
 
+  /// No description provided for @cameraStatic.
+  ///
+  /// In en, this message translates to:
+  /// **'Static'**
+  String get cameraStatic;
+
+  /// No description provided for @cameraPushIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Push in'**
+  String get cameraPushIn;
+
+  /// No description provided for @cameraPullOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull out'**
+  String get cameraPullOut;
+
+  /// No description provided for @cameraPanLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan left'**
+  String get cameraPanLeft;
+
+  /// No description provided for @cameraPanRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan right'**
+  String get cameraPanRight;
+
+  /// No description provided for @cameraTiltUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt up'**
+  String get cameraTiltUp;
+
+  /// No description provided for @cameraTiltDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Tilt down'**
+  String get cameraTiltDown;
+
+  /// No description provided for @cameraOrbit.
+  ///
+  /// In en, this message translates to:
+  /// **'Orbit'**
+  String get cameraOrbit;
+
+  /// No description provided for @cameraHandheld.
+  ///
+  /// In en, this message translates to:
+  /// **'Handheld'**
+  String get cameraHandheld;
+
   /// No description provided for @inspectorVideoModeAuto.
   ///
   /// In en, this message translates to:
   /// **'Mode: auto-detected from inputs'**
   String get inspectorVideoModeAuto;
-
-  /// No description provided for @inspectorVideoModeT2v.
-  ///
-  /// In en, this message translates to:
-  /// **'Text-to-video'**
-  String get inspectorVideoModeT2v;
-
-  /// No description provided for @inspectorVideoModeI2v.
-  ///
-  /// In en, this message translates to:
-  /// **'Image-to-video'**
-  String get inspectorVideoModeI2v;
 
   /// No description provided for @inspectorVideoGenerateDisabledEmptyPrompt.
   ///
@@ -865,6 +847,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Play / Pause'**
   String get lightboxPlayPause;
+
+  /// Fallback workspace name shown before the user names their studio
+  ///
+  /// In en, this message translates to:
+  /// **'My Studio'**
+  String get studioDefaultName;
 
   /// No description provided for @studioRecentProjects.
   ///
@@ -985,6 +973,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Create'**
   String get studioCreate;
+
+  /// Project card meta line: real creation month + canvas count
+  ///
+  /// In en, this message translates to:
+  /// **'{date} · {count, plural, =1{1 canvas} other{{count} canvases}}'**
+  String studioProjectMetaLine(DateTime date, int count);
 
   /// No description provided for @canvasDefaultName.
   ///

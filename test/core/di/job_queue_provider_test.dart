@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/job_queue.dart';
+import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/di/thumbnail.dart';
@@ -10,6 +11,8 @@ import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/services/job_queue_service.dart';
+
+import '../../helpers/recording_logger.dart';
 
 class _NoopSecure implements SecureStorageService {
   @override
@@ -22,7 +25,7 @@ class _NoopSecure implements SecureStorageService {
   Future<bool> exists(String k) async => false;
 }
 
-/// 只实现 init() 用到的两个方法，其余成员走 noSuchMethod 抛错（测试不应触达）。
+/// 只实现 init() 用到的方法，其余成员走 noSuchMethod 抛错（测试不应触达）。
 class _FakeJobRepo implements JobRepository {
   _FakeJobRepo(this.orphans);
   final List<Map<String, Object?>> orphans;
@@ -42,6 +45,13 @@ class _FakeJobRepo implements JobRepository {
     transitioned.add('$id->$toStatus');
     return 1;
   }
+
+  // init() 的 housekeeping 路径（ME-32）也会触达——no-op 即可。
+  @override
+  Future<int> purgeExpired({required Duration retention}) async => 0;
+
+  @override
+  Future<int> purgePerCanvasCap({required int cap}) async => 0;
 
   @override
   dynamic noSuchMethod(Invocation i) =>
@@ -70,6 +80,7 @@ void main() {
         nodeRepositoryProvider.overrideWith((ref) async => _FakeNodeRepo()),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
         thumbnailServiceProvider.overrideWithValue(null),
+        loggerProvider.overrideWithValue(RecordingLogger()),
       ],
     );
     addTearDown(container.dispose);

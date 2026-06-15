@@ -28,8 +28,15 @@ final canvasNodesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
 
 class CanvasNodesController
     extends AutoDisposeFamilyAsyncNotifier<List<CanvasNode>, String> {
+  /// ME-27：autoDispose family 下，await 期间 provider 可能被 dispose——
+  /// 之后再触 ref / state 会抛 StateError。依赖在方法入口一次性解析，
+  /// await 之后的 ref / state 访问一律先查本标志。
+  bool _alive = false;
+
   @override
   Future<List<CanvasNode>> build(String canvasId) async {
+    _alive = true;
+    ref.onDispose(() => _alive = false);
     final repo = await ref.watch(nodeRepositoryProvider.future);
     final rows = await repo.listByCanvas(canvasId);
     return rows.map(CanvasNodeMapping.fromRow).toList(growable: false);
@@ -39,16 +46,22 @@ class CanvasNodesController
     final async = ref.read(nodeRepositoryProvider);
     final repo = async.valueOrNull;
     if (repo == null) {
-      throw StateError('nodeRepositoryProvider 尚未就绪');
+      throw StateError('nodeRepositoryProvider is not ready');
     }
     return repo;
   }
 
-  /// 按需拉 EdgeRepository。首次触发时走一次 future；未 override 的环境下
+  /// 按需拉 EdgeRepository。入口同步发起 read，未 override 的环境下
   /// 会抛（如离线单测），调用方应 catch 并 best-effort 跳过。
   Future<EdgeRepository?> _edgeRepoOrNull() async {
+    final Future<EdgeRepository> future;
     try {
-      return await ref.read(edgeRepositoryProvider.future);
+      future = ref.read(edgeRepositoryProvider.future);
+    } catch (_) {
+      return null;
+    }
+    try {
+      return await future;
     } catch (_) {
       return null;
     }
@@ -65,12 +78,13 @@ class CanvasNodesController
   }) async {
     assert(
       role != NodeRole.result || sourceNodeId != null,
-      'result 节点必须带 sourceNodeId（§4.5.1）',
+      'result node requires sourceNodeId (PRD 4.5.1)',
     );
+    final repo = _repo; // 入口一次性解析，await 后不再触 ref
     final previous = state.valueOrNull ?? const <CanvasNode>[];
     final canvasId = arg;
     try {
-      final id = await _repo.create(
+      final id = await repo.create(
         canvasId: canvasId,
         type: type.name,
         nodeRole: role.name,
@@ -91,11 +105,11 @@ class CanvasNodesController
         position: position,
         size: size,
       );
-      state = AsyncData([...previous, inserted]);
+      if (_alive) state = AsyncData([...previous, inserted]);
       return inserted;
     } on InkError catch (_) {
       // 保底：确保 state 停在 previous，不被外层框架翻成 AsyncError。
-      state = AsyncData(previous);
+      if (_alive) state = AsyncData(previous);
       rethrow;
     }
   }
@@ -109,6 +123,8 @@ class CanvasNodesController
   /// Node DB 失败 → 回滚内存；已删 edges 留孤儿，用户可重试 node 删除。
   /// 同时让 CanvasEdgesController(canvasId) 失效，UI 立即重新加载新边集。
   Future<void> removeNode(String id) async {
+    final repo = _repo; // 入口一次性解析，await 后不再触 ref
+    final canvasId = arg;
     final previous = state.valueOrNull ?? const <CanvasNode>[];
     final next = previous.where((n) => n.id != id).toList(growable: false);
     state = AsyncData(next);
@@ -116,14 +132,16 @@ class CanvasNodesController
     final edgeRepo = await _edgeRepoOrNull();
     if (edgeRepo != null) {
       await _softDeleteConnectedEdges(edgeRepo, id);
-      // invalidate edges controller 让 UI 同步。
-      ref.invalidate(canvasEdgesControllerProvider(arg));
+      // invalidate edges controller 让 UI 同步；dispose 后跳过（DB 已删成功）。
+      if (_alive) {
+        ref.invalidate(canvasEdgesControllerProvider(canvasId));
+      }
     }
 
     try {
-      await _repo.softDelete(id);
+      await repo.softDelete(id);
     } on InkError catch (_) {
-      state = AsyncData(previous);
+      if (_alive) state = AsyncData(previous);
       rethrow;
     }
   }

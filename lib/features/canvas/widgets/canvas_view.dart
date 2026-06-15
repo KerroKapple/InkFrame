@@ -1,13 +1,15 @@
 // CanvasView：画布主视图 — InteractiveViewer 视口 + Stack 节点渲染。
 //
-// 职责：渲染状态 + 分发手势。业务逻辑走 CanvasNodesController / CanvasSelectionController。
+// 职责切分（HI-18）：
+//   - _CanvasBody：状态装配 + 节点 tap 语义 + 连线事件 → snackbar 副作用（ref.listen）
+//   - _CanvasStage：InteractiveViewer 舞台（连线层 / 节点卡片 / 边删除按钮）
+//   - 可播放性 IO 判定在 playableVideoPathProvider；连线编排在 LinkActionController
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/di/file_resolver.dart';
-import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -18,14 +20,24 @@ import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/current_canvas_id.dart';
+import '../providers/link_action_controller.dart';
 import '../providers/link_mode_controller.dart';
+import '../providers/playable_video_path.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/edge_hit_test.dart';
 import 'canvas_empty_state.dart';
-import 'node_inspector_router.dart';
 import 'edge_painter.dart';
 import 'node_card.dart';
+import 'node_inspector_router.dart';
 import 'video_lightbox.dart';
+
+const _kSnackBarDuration = Duration(seconds: 2);
+
+void _showSnack(BuildContext context, String text) {
+  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+    SnackBar(content: Text(text), duration: _kSnackBarDuration),
+  );
+}
 
 class CanvasView extends ConsumerWidget {
   const CanvasView({super.key});
@@ -207,101 +219,72 @@ class _LoadError extends StatelessWidget {
   }
 }
 
+/// 状态装配层：连线事件 snackbar 副作用 + 节点 tap 语义 + 布局组合。
 class _CanvasBody extends ConsumerWidget {
   const _CanvasBody({required this.canvasId, required this.nodes});
 
   final String canvasId;
   final List<CanvasNode> nodes;
 
+  /// 连线结果事件 → snackbar 映射（ME-08：duplicate / failed 分流）。
+  void _onLinkEvent(BuildContext context, LinkActionEvent? event) {
+    if (event == null) return;
+    final l10n = context.l10n;
+    final text = switch (event.result) {
+      LinkActionResult.created => l10n.linkCreated,
+      LinkActionResult.selfLinkRejected => l10n.linkSelfNotAllowed,
+      LinkActionResult.duplicate => l10n.linkAlreadyExists,
+      LinkActionResult.failed => l10n.linkCreateFailed,
+    };
+    _showSnack(context, text);
+  }
+
+  Future<void> _handleNodeTap(
+    BuildContext context,
+    WidgetRef ref,
+    CanvasNode node,
+  ) async {
+    // link 模式：编排交给 LinkActionController，结果经 ref.listen 出 snackbar。
+    if (ref.read(linkModeControllerProvider) != null) {
+      await ref
+          .read(linkActionControllerProvider(canvasId).notifier)
+          .linkTo(node.id);
+      return;
+    }
+
+    final selectionCtrl = ref.read(canvasSelectionControllerProvider.notifier);
+
+    // 可播放 video result → 打开 Lightbox，不走常规多选。
+    final playablePath = ref.read(playableVideoPathProvider(node));
+    if (playablePath != null) {
+      selectionCtrl.select(node.id);
+      await showVideoLightbox(context, videoPath: playablePath);
+      return;
+    }
+
+    final keyboard = HardwareKeyboard.instance;
+    final modifierHeld = keyboard.isShiftPressed ||
+        keyboard.isControlPressed ||
+        keyboard.isMetaPressed;
+    selectionCtrl.select(node.id, toggle: modifierHeld);
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
+    ref.listen<LinkActionEvent?>(
+      linkActionControllerProvider(canvasId),
+      (_, next) => _onLinkEvent(context, next),
+    );
+
     final selected = ref.watch(canvasSelectionControllerProvider);
-    final selectionCtrl =
-        ref.read(canvasSelectionControllerProvider.notifier);
-    final nodesCtrl =
-        ref.read(canvasNodesControllerProvider(canvasId).notifier);
     final linkSourceId = ref.watch(linkModeControllerProvider);
-    final linkCtrl = ref.read(linkModeControllerProvider.notifier);
-    final selectedEdgeId = ref.watch(selectedEdgeControllerProvider);
-    final selectedEdgeCtrl = ref.read(selectedEdgeControllerProvider.notifier);
 
     void onEmptyTap() {
       if (linkSourceId != null) {
-        linkCtrl.cancel();
+        ref.read(linkModeControllerProvider.notifier).cancel();
       }
-      selectionCtrl.clear();
-      selectedEdgeCtrl.clear();
-    }
-
-    Future<void> handleTap(CanvasNode node) async {
-      // video result 节点且视频文件存在 → 打开 Lightbox；不走常规选中。
-      if (linkSourceId == null &&
-          node.type == CanvasNodeType.video &&
-          node.role == NodeRole.result &&
-          node.videoUrl != null &&
-          node.projectId != null &&
-          node.canvasId != null) {
-        final resolver = ref.read(fileResolverServiceProvider);
-        try {
-          final file = resolver.resolve(
-            projectId: node.projectId!,
-            canvasId: node.canvasId!,
-            relativePath: node.videoUrl!,
-          );
-          if (file.existsSync()) {
-            selectionCtrl.select(node.id);
-            await showVideoLightbox(context, videoPath: file.path);
-            return;
-          }
-        } on PathSecurityError {
-          // 路径不安全 —— 退到常规选中
-        }
-      }
-
-      final keyboard = HardwareKeyboard.instance;
-      final modifierHeld = keyboard.isShiftPressed ||
-          keyboard.isControlPressed ||
-          keyboard.isMetaPressed;
-
-      if (linkSourceId != null) {
-        if (node.id == linkSourceId) {
-          ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-            SnackBar(
-              content: Text(context.l10n.linkSelfNotAllowed),
-              duration: const Duration(seconds: 2),
-            ),
-          );
-          linkCtrl.cancel();
-          return;
-        }
-        try {
-          await ref
-              .read(canvasEdgesControllerProvider(canvasId).notifier)
-              .addEdge(sourceNodeId: linkSourceId, targetNodeId: node.id);
-          if (context.mounted) {
-            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-              SnackBar(
-                content: Text(context.l10n.linkCreated),
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        } catch (_) {
-          if (context.mounted) {
-            ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-              SnackBar(
-                content: Text(context.l10n.linkAlreadyExists),
-                duration: const Duration(seconds: 2),
-              ),
-            );
-          }
-        } finally {
-          linkCtrl.cancel();
-        }
-        return;
-      }
-      selectionCtrl.select(node.id, toggle: modifierHeld);
+      ref.read(canvasSelectionControllerProvider.notifier).clear();
+      ref.read(selectedEdgeControllerProvider.notifier).clear();
     }
 
     final Widget canvasArea;
@@ -311,138 +294,12 @@ class _CanvasBody extends ConsumerWidget {
         onBackgroundTap: onEmptyTap,
       );
     } else {
-      final edgesAsync =
-          ref.watch(canvasEdgesControllerProvider(canvasId));
-      final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
-      final edgesCtrl =
-          ref.read(canvasEdgesControllerProvider(canvasId).notifier);
-
-      void onEdgeLayerTap(TapDownDetails d) {
-        final hitId = hitTestEdge(
-          point: d.localPosition,
-          edges: edges,
-          nodes: nodes,
-        );
-        if (hitId != null) {
-          selectedEdgeCtrl.select(hitId);
-          return;
-        }
-        onEmptyTap();
-      }
-
-      // 定位当前选中边的端点节点，渲染删除按钮用。
-      CanvasEdge? selectedEdge;
-      CanvasNode? selSrc;
-      CanvasNode? selDst;
-      if (selectedEdgeId != null) {
-        for (final e in edges) {
-          if (e.id == selectedEdgeId) {
-            selectedEdge = e;
-            break;
-          }
-        }
-        if (selectedEdge != null) {
-          for (final n in nodes) {
-            if (n.id == selectedEdge.sourceNodeId) selSrc = n;
-            if (n.id == selectedEdge.targetNodeId) selDst = n;
-          }
-        }
-      }
-
-      canvasArea = Container(
-        color: colors.surface1,
-        child: InteractiveViewer(
-          constrained: false,
-          boundaryMargin: const EdgeInsets.all(2000),
-          minScale: 0.1,
-          maxScale: 3.0,
-          child: SizedBox(
-            width: 4000,
-            height: 4000,
-            child: Stack(
-              children: [
-                // 连线层（含点击命中）。GestureDetector translucent 让空白处也冒泡。
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTapDown: onEdgeLayerTap,
-                    child: CustomPaint(
-                      painter: EdgePainter(
-                        edges: edges,
-                        nodes: nodes,
-                        dataColor: colors.accent,
-                        narrativeColor: colors.fg3,
-                        generationSourceColor: colors.fg3,
-                        selectedColor: colors.brand,
-                        selectedEdgeId: selectedEdgeId,
-                      ),
-                    ),
-                  ),
-                ),
-                  for (final node in nodes)
-                    Positioned(
-                      left: node.position.dx,
-                      top: node.position.dy,
-                      child: NodeCard(
-                        node: node,
-                        selected: selected.contains(node.id),
-                        onTap: () => handleTap(node),
-                        onPanUpdate: (delta) =>
-                            nodesCtrl.moveNode(node.id, delta),
-                        onStartLink: () => linkCtrl.start(node.id),
-                        onDelete: () async {
-                          final nodeId = node.id;
-                          selectionCtrl.removed(nodeId);
-                          try {
-                            await nodesCtrl.removeNode(nodeId);
-                            if (context.mounted) {
-                              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                                SnackBar(
-                                  content: Text(context.l10n.nodeDeleted),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          } catch (_) {
-                            if (context.mounted) {
-                              ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                                SnackBar(
-                                  content: Text(context.l10n.nodeDeleteFailed),
-                                  duration: const Duration(seconds: 2),
-                                ),
-                              );
-                            }
-                          }
-                        },
-                        isLinkSource: linkSourceId == node.id,
-                        isLinkCandidate:
-                            linkSourceId != null && linkSourceId != node.id,
-                      ),
-                    ),
-                  if (selectedEdge != null &&
-                      selSrc != null &&
-                      selDst != null)
-                    Positioned(
-                      left: edgeMidpoint(source: selSrc, target: selDst).dx - 14,
-                      top: edgeMidpoint(source: selSrc, target: selDst).dy - 14,
-                      child: _EdgeDeleteButton(
-                        onPressed: () async {
-                          final id = selectedEdge!.id;
-                          selectedEdgeCtrl.clear();
-                          try {
-                            await edgesCtrl.removeEdge(id);
-                          } catch (_) {
-                            // 删失败时 SelectedEdge 已清，选择放手——
-                            // EdgesController 已回滚内存，用户可重试。
-                          }
-                        },
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
+      canvasArea = _CanvasStage(
+        canvasId: canvasId,
+        nodes: nodes,
+        onNodeTap: (node) => _handleNodeTap(context, ref, node),
+        onEmptyTap: onEmptyTap,
+      );
     }
 
     // Inspector 仅当单选且选中的是 config 节点时显示。
@@ -485,4 +342,186 @@ class _CanvasBody extends ConsumerWidget {
       ],
     );
   }
+}
+
+/// 舞台层：InteractiveViewer + 连线层 + 节点卡片 + 选中边删除按钮。
+class _CanvasStage extends ConsumerWidget {
+  const _CanvasStage({
+    required this.canvasId,
+    required this.nodes,
+    required this.onNodeTap,
+    required this.onEmptyTap,
+  });
+
+  final String canvasId;
+  final List<CanvasNode> nodes;
+  final void Function(CanvasNode node) onNodeTap;
+  final VoidCallback onEmptyTap;
+
+  Future<void> _handleNodeDelete(
+    BuildContext context,
+    WidgetRef ref,
+    String nodeId,
+  ) async {
+    ref.read(canvasSelectionControllerProvider.notifier).removed(nodeId);
+    final nodesCtrl =
+        ref.read(canvasNodesControllerProvider(canvasId).notifier);
+    try {
+      await nodesCtrl.removeNode(nodeId);
+      if (context.mounted) {
+        _showSnack(context, context.l10n.nodeDeleted);
+      }
+    } on InkError catch (_) {
+      if (context.mounted) {
+        _showSnack(context, context.l10n.nodeDeleteFailed);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final selected = ref.watch(canvasSelectionControllerProvider);
+    final linkSourceId = ref.watch(linkModeControllerProvider);
+    final selectedEdgeId = ref.watch(selectedEdgeControllerProvider);
+    final edges = ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+        const <CanvasEdge>[];
+
+    void onEdgeLayerTap(TapDownDetails d) {
+      final hitId = hitTestEdge(
+        point: d.localPosition,
+        edges: edges,
+        nodes: nodes,
+      );
+      if (hitId != null) {
+        ref.read(selectedEdgeControllerProvider.notifier).select(hitId);
+        return;
+      }
+      onEmptyTap();
+    }
+
+    final selectedGeometry = _selectedEdgeGeometry(
+      selectedEdgeId: selectedEdgeId,
+      edges: edges,
+      nodes: nodes,
+    );
+
+    return Container(
+      color: colors.surface1,
+      child: InteractiveViewer(
+        constrained: false,
+        boundaryMargin: const EdgeInsets.all(2000),
+        minScale: 0.1,
+        maxScale: 3.0,
+        child: SizedBox(
+          width: 4000,
+          height: 4000,
+          child: Stack(
+            children: [
+              // 连线层（含点击命中）。translucent 让空白处也冒泡。
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTapDown: onEdgeLayerTap,
+                  // HI-15：连线层独立 layer，节点局部动画不连带边层重绘。
+                  child: RepaintBoundary(
+                    child: CustomPaint(
+                      painter: EdgePainter(
+                        edges: edges,
+                        nodes: nodes,
+                        dataColor: colors.accent,
+                        narrativeColor: colors.fg3,
+                        generationSourceColor: colors.fg3,
+                        selectedColor: colors.brand,
+                        selectedEdgeId: selectedEdgeId,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              for (final node in nodes)
+                Positioned(
+                  key: ValueKey('node-card-${node.id}'),
+                  left: node.position.dx,
+                  top: node.position.dy,
+                  // HI-13/HI-15：拖拽位移在 NodeCard 内部局部累积，落点
+                  // 一次性提交 moveNode；RepaintBoundary 把拖拽重绘隔离
+                  // 在本卡片 layer，不放大到全画布。
+                  child: RepaintBoundary(
+                    child: NodeCard(
+                      node: node,
+                      selected: selected.contains(node.id),
+                      onTap: () => onNodeTap(node),
+                      onDragEnd: (totalDelta) => ref
+                          .read(canvasNodesControllerProvider(canvasId).notifier)
+                          .moveNode(node.id, totalDelta),
+                      onStartLink: () => ref
+                          .read(linkModeControllerProvider.notifier)
+                          .start(node.id),
+                      onDelete: () => _handleNodeDelete(context, ref, node.id),
+                      isLinkSource: linkSourceId == node.id,
+                      isLinkCandidate:
+                          linkSourceId != null && linkSourceId != node.id,
+                    ),
+                  ),
+                ),
+              if (selectedGeometry != null)
+                Positioned(
+                  left: edgeMidpoint(
+                        source: selectedGeometry.source,
+                        target: selectedGeometry.target,
+                      ).dx -
+                      14,
+                  top: edgeMidpoint(
+                        source: selectedGeometry.source,
+                        target: selectedGeometry.target,
+                      ).dy -
+                      14,
+                  child: _EdgeDeleteButton(
+                    onPressed: () async {
+                      final id = selectedGeometry.edge.id;
+                      ref.read(selectedEdgeControllerProvider.notifier).clear();
+                      try {
+                        await ref
+                            .read(canvasEdgesControllerProvider(canvasId)
+                                .notifier)
+                            .removeEdge(id);
+                      } on InkError catch (_) {
+                        // 删失败时 SelectedEdge 已清，EdgesController 已回滚内存，
+                        // 用户可重试。
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// 在 [edges]/[nodes] 中定位选中边及其端点节点；任一缺失返回 null。
+({CanvasEdge edge, CanvasNode source, CanvasNode target})? _selectedEdgeGeometry({
+  required String? selectedEdgeId,
+  required List<CanvasEdge> edges,
+  required List<CanvasNode> nodes,
+}) {
+  if (selectedEdgeId == null) return null;
+  CanvasEdge? edge;
+  for (final e in edges) {
+    if (e.id == selectedEdgeId) {
+      edge = e;
+      break;
+    }
+  }
+  if (edge == null) return null;
+  CanvasNode? source;
+  CanvasNode? target;
+  for (final n in nodes) {
+    if (n.id == edge.sourceNodeId) source = n;
+    if (n.id == edge.targetNodeId) target = n;
+  }
+  if (source == null || target == null) return null;
+  return (edge: edge, source: source, target: target);
 }

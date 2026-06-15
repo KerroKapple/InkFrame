@@ -3,6 +3,9 @@
 // 负责渲染 + 选中态视觉 + 拖拽手势。S4：result 节点若 typeConfig.image_url 存在
 // 渲染 Image.file（通过 FileResolverService 解析相对路径），尚无则显示
 // "等待生成" 占位；文件缺失（人为删除 / 落盘失败）时兜底到 "图像文件缺失" 文案。
+//
+// 拖拽（HI-13）：位移累积在本卡片局部状态（Transform.translate），每帧只重建
+// 自身；onPanEnd 把累计位移一次性回调 onDragEnd，由上层提交 controller。
 
 import 'dart:io';
 
@@ -23,7 +26,7 @@ class NodeCard extends ConsumerStatefulWidget {
     required this.node,
     required this.selected,
     required this.onTap,
-    required this.onPanUpdate,
+    required this.onDragEnd,
     this.onStartLink,
     this.onDelete,
     this.isLinkSource = false,
@@ -33,7 +36,9 @@ class NodeCard extends ConsumerStatefulWidget {
   final CanvasNode node;
   final bool selected;
   final VoidCallback onTap;
-  final void Function(Offset delta) onPanUpdate;
+
+  /// 拖拽结束时回调一次累计位移（落点提交）；拖拽中不触发。
+  final void Function(Offset totalDelta) onDragEnd;
 
   /// 选中后点击该回调 → 进入连线模式。null 代表不可发起连线（例如 result 节点）。
   final VoidCallback? onStartLink;
@@ -53,6 +58,20 @@ class NodeCard extends ConsumerStatefulWidget {
 
 class _NodeCardState extends ConsumerState<NodeCard> {
   bool _dragging = false;
+
+  /// 拖拽中的累计位移——只重建本卡片，不推全画布 state。
+  Offset _dragOffset = Offset.zero;
+
+  void _endDrag({required bool commit}) {
+    final total = _dragOffset;
+    setState(() {
+      _dragging = false;
+      _dragOffset = Offset.zero;
+    });
+    if (commit && total != Offset.zero) {
+      widget.onDragEnd(total);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -81,14 +100,19 @@ class _NodeCardState extends ConsumerState<NodeCard> {
         ? SystemMouseCursors.grabbing
         : SystemMouseCursors.grab;
 
-    return MouseRegion(
+    return Transform.translate(
+      offset: _dragOffset,
+      child: MouseRegion(
       cursor: cursor,
       child: GestureDetector(
         onTap: widget.onTap,
-        onPanStart: (_) => setState(() => _dragging = true),
-        onPanUpdate: (d) => widget.onPanUpdate(d.delta),
-        onPanEnd: (_) => setState(() => _dragging = false),
-        onPanCancel: () => setState(() => _dragging = false),
+        onPanStart: (_) => setState(() {
+          _dragging = true;
+          _dragOffset = Offset.zero;
+        }),
+        onPanUpdate: (d) => setState(() => _dragOffset += d.delta),
+        onPanEnd: (_) => _endDrag(commit: true),
+        onPanCancel: () => _endDrag(commit: false),
         child: Stack(
           clipBehavior: Clip.none,
           children: [
@@ -152,6 +176,7 @@ class _NodeCardState extends ConsumerState<NodeCard> {
               ),
           ],
         ),
+      ),
       ),
     );
   }
@@ -306,6 +331,9 @@ class _ResultBody extends StatelessWidget {
         fit: BoxFit.cover,
         width: double.infinity,
         height: double.infinity,
+        // ME-26：按卡片宽度解码，避免原图全尺寸进 image cache。
+        cacheWidth: (node.size.width * MediaQuery.devicePixelRatioOf(context))
+            .round(),
         errorBuilder: (_, _, _) => _Placeholder(
           icon: Icons.broken_image_outlined,
           text: context.l10n.resultNodeImageMissing,

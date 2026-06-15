@@ -9,14 +9,14 @@
 ## 目录
 
 1. [范围与非目标](#1-范围与非目标)
-2. [接口拓扑（ISP 五接口）](#2-接口拓扑isp-五接口)
+2. [接口拓扑（ISP 四接口）](#2-接口拓扑isp-四接口)
 3. [ProviderCapabilities 能力声明](#3-providercapabilities-能力声明)
 4. [CostModel 计费口径](#4-costmodel-计费口径)
 5. [生命周期契约（submit / poll / cancel）](#5-生命周期契约submit--poll--cancel)
 6. [错误契约（InkError ↔ 14 错误码）](#6-错误契约inkerror--14-错误码)
 7. [限流契约（Per-Provider Token Bucket）](#7-限流契约per-provider-token-bucket)
 8. [产物下载契约](#8-产物下载契约)
-9. [P0 Provider 差异矩阵](#9-p0-provider-差异矩阵)
+9. [已实现 Provider 差异矩阵](#9-已实现-provider-差异矩阵)
 10. [实现 checklist（新增 Provider 的 9 步）](#10-实现-checklist新增-provider-的-9-步)
 11. [文件结构与命名约定](#11-文件结构与命名约定)
 12. [测试契约（FakeProvider / fixture）](#12-测试契约fakeprovider--fixture)
@@ -30,7 +30,7 @@
 **本文锁定**：
 
 - `lib/providers/` 下所有具体 Provider 实现必须遵守的接口契约、生命周期、错误、限流、测试规范
-- P0 五家 Provider 的接入参数（真实模型 ID / Base URL / 鉴权 / 端点）——写死在各 provider 文件顶部 `const` 区
+- 当前已实现 9 款 Provider 的接入参数（真实模型 ID / Base URL / 鉴权 / 端点）——写死在各 provider 文件顶部 `const` 区
 - Provider 层与 `JobQueueService`、`NodeGenerationService`、`FileResolverService` 的边界
 
 **本文不讲**：
@@ -43,23 +43,28 @@
 
 ---
 
-## 2. 接口拓扑（ISP 五接口）
+## 2. 接口拓扑（ISP 四接口）
 
 定义位置：`lib/core/interfaces/generation_provider.dart`（纯 Dart，零 `dart:io` / 零 Flutter import）。
 
 ```dart
-// 最小生成能力
+/// Provider 侧任务 ID（透传自 API 响应）。同步 Provider 允许 `local://` 前缀。
+typedef JobId = String;
+
+// 所有 Provider 必须实现：基础生成能力 + 静态能力声明
 abstract class Submittable {
+  /// 静态能力声明——const 字段，编译期固定。
+  ProviderCapabilities get capabilities;
+
   /// 提交生成任务。成功返回 Provider 侧 task_id；同步 Provider（如 Gemini）
   /// 允许在 submit 内完成生成，但仍需返回稳定 JobId。
-  /// 抛出：[ProviderError]（永远是 InkError 子类，禁止裸 Exception）。
+  /// 抛出：InkError 子类（经 DioException 映射后），禁止裸 Exception。
   Future<JobId> submit(GenerationTask task);
 }
 
-// 异步 Provider 必须实现；同步 Provider（Gemini）可跳过——由 JobQueueService 检测
+// 单次轮询查询。同步 Provider 也实现（ADR-0004，详见 §5.5）
 abstract class Pollable {
   /// 单次轮询。实现方不要在内部 sleep/loop——退避由上层 JobQueueService 统一控制。
-  /// 返回 JobStatus.inProgress / JobStatus.success / JobStatus.failure。
   Future<JobStatus> poll(JobId id);
 }
 
@@ -70,11 +75,6 @@ abstract class Cancellable {
   Future<void> cancel(JobId id);
 }
 
-// 可选：用于任务中心/设置页展示
-abstract class QuotaAware {
-  Future<ProviderQuota> getQuota();
-}
-
 // 必须实现——设置页 Key 验证依赖这个
 abstract class KeyValidatable {
   /// 使用 Provider 最轻量的账户/配额查询接口，禁止消耗生成配额。
@@ -83,12 +83,16 @@ abstract class KeyValidatable {
 }
 ```
 
-**实现侧组合规则**：
+> **已删除**：早期版本曾有第 5 个接口 `QuotaAware`（`Future<ProviderQuota> getQuota()`），已在 cleanup 阶段删除。配额展示功能属 ROADMAP；`lib/core/models/provider_quota.dart` 模型保留备用。
 
-| Provider | 必实现 | 选实现 |
-|---|---|---|
-| 异步 Provider（Kling / Jimeng / Hailuo） | `Submittable` + `Pollable` + `KeyValidatable` | `Cancellable` + `QuotaAware` |
-| 同步 Provider（Gemini） | `Submittable` + `KeyValidatable` | — |
+**实现侧组合规则（当前真实阵容）**：
+
+| Provider | 实现组合 |
+|---|---|
+| 同步图片（gemini-image / openai-image / stability-image-core） | `Submittable` + `Pollable` + `KeyValidatable`（poll 走 inlineBytes cache，见 §5.5） |
+| DashScope 异步系（wanx-* / kling-v3 / kling-v3-omni，共享基类 `DashScopeAsyncProviderBase`） | `Submittable` + `Pollable` + `KeyValidatable` |
+
+当前没有任何 Provider 实现 `Cancellable`（所有 capabilities 的 `supportsCancellation` 均为 false）——接口保留作为扩展点。
 
 > **红线**：接口承诺但实现不了的方法，**必须拆接口，不准抛 `UnimplementedError`**（LSP）。
 
@@ -96,11 +100,11 @@ abstract class KeyValidatable {
 
 ## 3. ProviderCapabilities 能力声明
 
-**唯一事实源**：每个 Provider 实例必须暴露 `const ProviderCapabilities get capabilities`。UI 内联面板、`JobQueueService`、`estimateCost()` 都只通过这个字段决策。
+**唯一事实源**：每个 Provider 实例必须暴露 `const ProviderCapabilities get capabilities`（定义见 `lib/core/models/provider_capabilities.dart`）。UI 内联面板、`JobQueueService` 都只通过这个字段决策。
 
 ```dart
 @freezed
-class ProviderCapabilities with _$ProviderCapabilities {
+abstract class ProviderCapabilities with _$ProviderCapabilities {
   const factory ProviderCapabilities({
     required String providerId,            // 唯一标识，kebab-case
     required ProviderRegion region,        // cn / global
@@ -119,6 +123,7 @@ class ProviderCapabilities with _$ProviderCapabilities {
     required bool supportsSound,
     required bool supportsBatch,
     required bool supportsCancellation,
+    required bool supportsPolling,         // 同步 Provider 也为 true（ADR-0004）
     required CostModel costModel,
     required int maxConcurrentJobs,        // per-provider 并发上限
     required int qps,                      // token bucket 补充速率
@@ -131,7 +136,7 @@ class ProviderCapabilities with _$ProviderCapabilities {
 
 **硬约束**：
 
-- `providerId` 全小写 kebab-case，与 PRD §10.2 表对齐（`kling-image` 不是 `KlingImage`）
+- `providerId` 全小写 kebab-case，与 §9.1 表对齐（`wanx-image` 不是 `WanxImage`）
 - 枚举值只能用 `AspectRatio` / `Resolution` / `CameraMovement` / `GenerationMode`，禁止字符串
 - `capabilities` 必须是 `const` 字段；禁止运行时构造、禁止从配置文件/网络下发
 
@@ -141,31 +146,28 @@ class ProviderCapabilities with _$ProviderCapabilities {
 
 ## 4. CostModel 计费口径
 
+定义见 `lib/core/models/cost_model.dart`：
+
 ```dart
 @freezed
 sealed class CostModel with _$CostModel {
   const factory CostModel.perCall({
     required double usdPerCall,
-  }) = _PerCall;
+  }) = PerCall;
 
   const factory CostModel.perSecondVideo({
     required double usdPerSecondAt1080p,
     required Map<Resolution, double> resolutionMultiplier, // 720p=0.6, 2K=2.0
-  }) = _PerSecond;
+  }) = PerSecondVideo;
 
   const factory CostModel.perCharInput({
     required double usdPerKChar,
     required double usdPerImageOutput,
-  }) = _PerChar;
+  }) = PerCharInput;
 }
-
-double estimateCost(GenerationTask task, ProviderCapabilities caps);
 ```
 
-- 预估入口**只有** `estimateCost()` 一个——禁止在 UI 层散拼
-- 展示精度：USD 保留 3 位小数，CNY 保留 2 位小数
-- 中国区 Provider UI 显示 `≈¥X.XX`（汇率 7.2，可在设置覆盖）
-- 预估不准确不影响业务流；UI 文案明示"以 Provider 官方账单为准"
+> **Planned**：成本预估函数 `estimateCost(GenerationTask, ProviderCapabilities)` 与 UI 成本展示尚未实现（见 `ROADMAP.md`）。届时约束：预估入口只有一个，禁止在 UI 层散拼；展示精度 USD 3 位小数 / CNY 2 位小数；中国区显示 `≈¥X.XX`；UI 文案明示"以 Provider 官方账单为准"。
 
 ---
 
@@ -200,7 +202,7 @@ pending ──► submitted ──► polling ──► success / error / timeou
 ### 5.3 poll() 契约
 
 - **单次调用**：一次 HTTP 请求 → 一个 `JobStatus`；**禁止**在 `poll()` 内 loop
-- **退避由上层**：`kPollInitialInterval = 3s`, `kPollBackoffMultiplier = 2.0`, `kPollMaxInterval = 30s`, `kPollJitter = ±20%`, `kPollTimeout = 30min`（见 `lib/core/constants/network.dart`）
+- **退避由上层**：`pollInitialInterval = 3s`, `pollBackoffMultiplier = 2.0`, `pollMaxInterval = 30s`（含随机 jitter）, `pollTimeout = 30min`——均为 `InMemoryJobQueueService` 构造参数默认值（见 `lib/services/job_queue_service.dart`），Provider 可经 `capabilities.pollInterval` / `capabilities.pollTimeout` 覆盖
 - **阶段性信号**：`JobStatus.inProgress(progress: 0.0-1.0)` 允许；Provider 不返回进度就填 0
 - **HTTP 细节**：网络错误转 `network_timeout` / `network_offline`；5xx 转 `provider_5xx`；429 转 `provider_busy`
 
@@ -249,22 +251,26 @@ if (s case JobSuccess(:final inlineBytes, :final remoteUrls)) {
 
 ### 6.1 14 错误码映射
 
-| code | Dart 构造器 | 可重试 | 典型触发 |
+错误按域拆为 6 个 sealed 子类，code 经构造参数传入（子类构造器内 assert 限定合法 code 集合），而非每个 code 一个命名构造器：
+
+| code (`InkErrorCode.wire`) | 实际构造方式 | 可重试 | 典型触发 |
 |---|---|---|---|
-| `invalid_key` | `ProviderError.invalidKey()` | ❌ | 401 / Key 撤销 |
-| `insufficient_balance` | `ProviderError.insufficientBalance()` | ❌ | 402 |
-| `content_policy` | `ProviderError.contentPolicy(detail)` | ❌ | 审核拒绝 |
-| `invalid_parameter` | `ProviderError.invalidParameter(field)` | ❌ | 比例/分辨率/时长不合法 |
-| `network_timeout` | `ProviderError.networkTimeout(jobId)` | ✅ | 连接/读写超时 |
-| `network_offline` | `ProviderError.networkOffline()` | ✅ | 本机离线 |
-| `provider_5xx` | `ProviderError.providerServer(status)` | ✅ | 5xx |
-| `provider_busy` | `ProviderError.providerBusy(retryAfter)` | ✅ | 429 |
-| `poll_timeout` | `ProviderError.pollTimeout(jobId)` | ❌ | 超 30min |
-| `download_failed` | `ProviderError.downloadFailed(url)` | ✅ | 产物下载失败 |
-| `local_io_error` | `StorageError.localIo(path)` | ❌ | 磁盘满/权限 |
-| `cancelled_by_user` | `ProviderError.cancelledByUser()` | — | 用户取消 |
-| `cancelled_on_exit` | `ProviderError.cancelledOnExit()` | — | app 退出 |
-| `unknown` | `ProviderError.unknown(cause)` | ❌ | 未分类（必写日志） |
+| `invalid_key` | `ProviderError(code: InkErrorCode.invalidKey)` | ❌ | 401 / 403 / Key 撤销 |
+| `insufficient_balance` | `ProviderError(code: InkErrorCode.insufficientBalance)` | ❌ | 402 |
+| `content_policy` | `ProviderError(code: InkErrorCode.contentPolicy)` | ❌ | 审核拒绝 |
+| `invalid_parameter` | `ProviderError(code: InkErrorCode.invalidParameter)` | ❌ | 比例/分辨率/时长不合法 |
+| `provider_5xx` | `ProviderError(code: InkErrorCode.providerServer)` | ✅ | 5xx |
+| `provider_busy` | `ProviderError(code: InkErrorCode.providerBusy)` | ✅ | 429 |
+| `poll_timeout` | `ProviderError(code: InkErrorCode.pollTimeout)` | ❌ | 超 30min |
+| `network_timeout` | `NetworkError(code: InkErrorCode.networkTimeout)` | ✅ | 连接/读写超时 |
+| `network_offline` | `NetworkError(code: InkErrorCode.networkOffline)` | ✅ | 本机离线 / TLS |
+| `download_failed` | `DownloadError()` | ✅ | 产物下载失败 |
+| `local_io_error` | `LocalIOError()` | ❌ | 磁盘满/权限 |
+| `cancelled_by_user` | `CancelledError.byUser()` | — | 用户取消 |
+| `cancelled_on_exit` | `CancelledError.onExit()` | — | app 退出 |
+| `unknown` | `UnknownError(cause: e)` | ❌ | 未分类（cause 必填） |
+
+上下文（jobId / providerId / HTTP status / 字段名等）统一塞 `extra: Map<String, Object?>`，**禁止**含 API Key 等敏感值。
 
 ### 6.2 可重试白名单
 
@@ -272,37 +278,35 @@ if (s case JobSuccess(:final inlineBytes, :final remoteUrls)) {
 network_timeout / network_offline / provider_5xx / provider_busy / download_failed
 ```
 
-**其他一律不重试**。`kMaxRetries = 3`，指数退避 `3s / 9s / 27s`。
+**其他一律不重试**。白名单的唯一事实源是 `lib/core/errors/ink_error.dart` 顶层 `_retryable` 表，消费侧只读 `InkError.retryable`，禁止散落 switch。
+
+> **Planned**：JobQueueService 侧的自动重试调度（次数上限 + 指数退避）尚未实现（`job_queue_service.dart` 顶部 `b3.1 ⏳`）；当前可重试错误直接进 `error` 终态，由 UI "重试"按钮人工触发。
 
 ### 6.3 映射规则（HTTP → InkError）
 
-Provider 实现**必须**在 HTTP 层之上一层做统一映射，禁止业务代码见到裸 `DioException`：
+统一映射函数是 `lib/providers/dio_error_mapper.dart` 的顶层 `mapDioError`——所有 Provider 在 HTTP 层之上必须调用它，禁止业务代码见到裸 `DioException`：
 
 ```dart
-InkError _mapDioError(DioException e, {required String jobId}) {
-  switch (e.type) {
-    case DioExceptionType.connectionTimeout:
-    case DioExceptionType.sendTimeout:
-    case DioExceptionType.receiveTimeout:
-      return ProviderError.networkTimeout(jobId: jobId);
-    case DioExceptionType.connectionError:
-      return ProviderError.networkOffline();
-    case DioExceptionType.badResponse:
-      final code = e.response?.statusCode ?? 0;
-      if (code == 401) return ProviderError.invalidKey();
-      if (code == 402) return ProviderError.insufficientBalance();
-      if (code == 429) return ProviderError.providerBusy(
-        retryAfter: _parseRetryAfter(e.response),
-      );
-      if (code >= 500) return ProviderError.providerServer(status: code);
-      return ProviderError.invalidParameter(field: _parseErrField(e.response));
-    default:
-      return ProviderError.unknown(cause: e);
-  }
-}
+// lib/providers/dio_error_mapper.dart（真实签名）
+InkError mapDioError(DioException e, {required String providerId});
 ```
 
-**异常：** Provider 自有错误码（如 Kling 的 `content_review_fail`）必须在映射前识别，优先于 HTTP status。
+映射规则（与实现一一对应）：
+
+| DioExceptionType / HTTP status | 映射结果 |
+|---|---|
+| `connectionTimeout` / `sendTimeout` / `receiveTimeout` | `NetworkError(networkTimeout)` |
+| `connectionError` | `NetworkError(networkOffline)` |
+| `badCertificate` | `NetworkError(networkOffline, extra.reason='bad_certificate')` |
+| `cancel` | `CancelledError.byUser()` |
+| `unknown` | `UnknownError(cause: e)` |
+| `badResponse` 401 / 403 | `ProviderError(invalidKey)` |
+| `badResponse` 402 | `ProviderError(insufficientBalance)` |
+| `badResponse` 429 | `ProviderError(providerBusy)` |
+| `badResponse` ≥500 | `ProviderError(providerServer)` |
+| `badResponse` 其他 | `ProviderError(invalidParameter, extra.body=响应体)` |
+
+**异常：** Provider 自有业务错误码（如 DashScope `task_status = FAILED` 里的审核拒绝）必须在调 `mapDioError` 之前识别，优先于 HTTP status。
 
 ---
 
@@ -318,20 +322,22 @@ class ProviderRateLimiter {
 }
 ```
 
-### 7.1 P0 默认值
+### 7.1 当前默认值（来自各 provider `capabilities`，唯一事实源）
 
-| Provider | QPS | Burst |
+| providerId | QPS | Burst |
 |---|---|---|
-| Gemini | 2 | 10 |
-| Kling Image / Kling 3.0 | 2 | 5 |
-| Hailuo 2.3 | 2 | 5 |
-| Jimeng 4.5 | 1 | 3 |
+| `gemini-image` | 2 | 10 |
+| `openai-image` | 2 | 5 |
+| `stability-image-core` | 1 | 3 |
+| `wanx-image` | 1 | 2 |
+| `wanx-t2v` / `wanx-i2v` / `wanx-r2v` | 1 | 2 |
+| `kling-v3` / `kling-v3-omni` | 1 | 2 |
 
 ### 7.2 实现规则
 
-- 每个 `provider_id` 独立实例，由 Riverpod `keepAlive` provider 持有
+- 每个 `provider_id` 独享一个 `ProviderRateLimiter` 实例，在 `lib/core/di/providers.dart` 内预先创建并由 factory 闭包共享（factory 每次 `get()` 新建 Provider 实例，但限流器必须共享，否则 token bucket 形同虚设）
 - `acquire()` 撞限时**阻塞等待**，**不计入 `retry_count`**，**不抛错给用户**
-- 日志 DEBUG 级记录等待时长：`{msg: "rate limit wait", provider: "kling-image", wait_ms: 420}`
+- 日志 DEBUG 级记录等待时长：`{msg: "rate limit wait", provider: "wanx-image", wait_ms: 420}`
 - `submit()` 必须在真正发 HTTP 前 `await acquire()`
 - `poll()` 和 `cancel()` **不过** token bucket——轮询不消耗生成配额
 
@@ -339,18 +345,18 @@ class ProviderRateLimiter {
 
 ## 8. 产物下载契约
 
-生成成功后的 CDN URL 处理与生成流程**解耦**，归属 `AssetDownloadService`，不在 Provider 层做。
+生成成功后的 CDN URL 处理与生成流程**解耦**，由 `JobQueueService` 编排：远端 URL 经 `VideoDownloadService`（`lib/core/interfaces/video_download_service.dart`，实现 `lib/services/dio_video_download_service.dart`）落盘，同步 inlineBytes 经 `FileResolverService` 落盘——都不在 Provider 层做。
 
 ```
 polling ─success─► downloading ──► local_ready (node.status = success)
                       │
-                      ├─ HTTP 失败 ─► retry (3s/9s/27s × 3)
-                      │
-                      └─ 重试耗尽 ─► node.status = error
+                      └─ HTTP 失败 ─► node.status = error
                                      jobs.error_code = 'download_failed'
                                      jobs.parameters.remote_url 保留
-                                     UI 提供"重新下载"按钮
+                                     UI 提供"重试"入口
 ```
+
+> **Planned**：下载失败的自动重试 + 断点续传尚未实现（`job_queue_service.dart` 顶部 `b3.1 ⏳`）。
 
 **Provider 层**只需要：
 
@@ -360,43 +366,48 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 
 ---
 
-## 9. P0 Provider 差异矩阵
+## 9. 已实现 Provider 差异矩阵
+
+> 唯一事实源是各 provider 文件顶部的 `const k*Capabilities`；本节只是速查快照，改 capabilities 时同 commit 更新这里。注册清单见 `lib/core/di/providers.dart`。未接入的 Provider（Jimeng / Hailuo / Kling 官方 API / DALL-E 3 等）一律见 `ROADMAP.md`，不在本表。
 
 ### 9.1 接入参数（写死在各 provider 文件顶部 const 区）
 
-| providerId | 真实模型 ID | Base URL | 鉴权 | 提交端点 | 轮询端点 | 阶段 |
-|---|---|---|---|---|---|---|
-| `gemini-image` | `gemini-2.5-flash-image-preview` | `https://generativelanguage.googleapis.com/v1beta` | `?key=` query | `POST /models/{model}:generateContent` | 同步，无轮询 | P0-Alpha |
-| `openai-image` | `gpt-image-1` | `https://api.openai.com/v1` | Bearer Token | `POST /images/generations` | 同步，无轮询 | P1-GA |
-| `stability-image-core` | `stable-image-core`（v2beta） | `https://api.stability.ai` | Bearer Token | `POST /v2beta/stable-image/generate/core`（multipart） | 同步，无轮询 | P1-GA |
-| `jimeng-4.5` | `jimeng-4.5` | `https://visual.volcengineapi.com` | HMAC-SHA256 签名 | `POST /?Action=CVSync2AsyncSubmitTask` | `POST /?Action=CVSync2AsyncGetResult` | P0-Beta |
-| `kling-image` | `kling-v1` | `https://api.klingai.com` | JWT Bearer | `POST /v1/images/generations` | `GET /v1/images/generations/{task_id}` | P0-Beta |
-| `kling-3.0` | `kling-v1-6` | 同上 | 同上 | `POST /v1/videos/text2video` / `/v1/videos/image2video` | `GET /v1/videos/text2video/{task_id}` | P0-Beta |
-| `hailuo-2.3` | `MiniMax-Hailuo-02` | `https://api.minimax.chat` | Bearer + GroupId | `POST /v1/video_generation` | `GET /v1/query/video_generation?task_id=` | P0-Beta |
+| providerId | 真实模型 ID | Base URL | 鉴权 | 提交端点 | 轮询端点 |
+|---|---|---|---|---|---|
+| `gemini-image` | `gemini-2.5-flash-image-preview` | `https://generativelanguage.googleapis.com/v1beta` | `?key=` query | `POST /models/{model}:generateContent` | 同步（poll 走 inlineBytes cache） |
+| `openai-image` | `gpt-image-1` | `https://api.openai.com/v1` | Bearer | `POST /images/generations` | 同步（同上） |
+| `stability-image-core` | `stable-image-core`（v2beta） | `https://api.stability.ai` | Bearer | `POST /v2beta/stable-image/generate/core`（multipart） | 同步（同上）；Key 验证走 `GET /v1/user/balance` |
+| `wanx-image` | `wan2.7-image-pro` | `https://dashscope.aliyuncs.com/api/v1` | Bearer + `X-DashScope-Async: enable` | `POST /services/aigc/image-generation/generation` | `GET /tasks/{task_id}` |
+| `wanx-t2v` | `wan2.7-t2v` | 同上 | 同上 | `POST /services/aigc/video-generation/video-synthesis` | 同上 |
+| `wanx-i2v` | `wan2.7-i2v` | 同上 | 同上 | 同上 | 同上 |
+| `wanx-r2v` | `wan2.7-r2v` | 同上 | 同上 | 同上 | 同上 |
+| `kling-v3` | `kling/kling-v3-video-generation` | 同上（DashScope 渠道） | 同上 | 同上 | 同上 |
+| `kling-v3-omni` | `kling/kling-v3-omni-video-generation` | 同上（DashScope 渠道） | 同上 | 同上 | 同上 |
 
 ### 9.2 能力差异速查
 
-| 能力 | gemini-image | openai-image | stability-image-core | jimeng-4.5 | kling-image | kling-3.0 | hailuo-2.3 |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| 模式 | T2I | T2I | T2I | T2I | T2I / I2I | T2V / I2V | T2V / I2V |
-| 分辨率 | 1080p | 1080p | 1080p | 1080p / 2K | 1080p | 1080p | 720p / 1080p |
-| 视频时长 | — | — | — | — | — | 5s / 10s | 4s / 8s |
-| 运镜 | — | — | — | — | — | ✅ | 有限 |
-| 参考图 | 0 | 0 | 0 | 1 | 1 | — | — |
-| 批量 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| 负向 prompt | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ |
-| Seed | ✅ | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
-| 取消 | N/A（同步） | N/A（同步） | N/A（同步） | ❌ | ✅ | ✅ | ❌ |
-| 轮询 | ❌（同步） | ❌（同步） | ❌（同步） | ✅ | ✅ | ✅ | ✅ |
-| QPS / Burst | 2 / 10 | 2 / 5 | 1 / 3 | 1 / 3 | 2 / 5 | 2 / 5 | 2 / 5 |
-| 并发 | 1 | 1 | 1 | 2 | 2 | 2 | 2 |
+| 能力 | gemini-image | openai-image | stability-image-core | wanx-image | wanx-t2v | wanx-i2v | wanx-r2v | kling-v3 | kling-v3-omni |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| 模式 | T2I | T2I | T2I | T2I / I2I | T2V | I2V | T2V（参考图） | T2V / I2V | T2V（参考图） |
+| 分辨率 | 1080p | 1080p | 1080p | 1080p | 720p / 1080p | 720p / 1080p | 720p / 1080p | 720p / 1080p | 720p / 1080p |
+| 视频时长 | — | — | — | — | 5s / 10s | 5s / 10s | 5s / 10s | 5s / 10s | 5s / 10s |
+| 参考图 | 0 | 0 | 0 | 1 | 0 | 0（首末帧） | 3 | 0（首帧） | 4 |
+| 首帧 / 末帧 | — | — | — | — | — | ✅ / ✅ | — | ✅ / ❌ | — |
+| 批量 | ❌ | ❌ | ❌ | ✅（≤4） | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 负向 prompt | ❌ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| Seed | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| 取消 | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| 轮询 | ✅（同步 cache） | ✅（同步 cache） | ✅（同步 cache） | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| QPS / Burst | 2 / 10 | 2 / 5 | 1 / 3 | 1 / 2 | 1 / 2 | 1 / 2 | 1 / 2 | 1 / 2 | 1 / 2 |
+| 并发 | 1 | 1 | 1 | 2 | 1 | 1 | 1 | 1 | 1 |
 
 ### 9.3 已知陷阱
 
-- **Gemini**：同步返回，`polling` 状态直接跳过；但 `submitted → success` 必须经过一次状态写入（JobQueueService 兼容此路径）
-- **Jimeng**：HMAC 签名需要 `Timestamp` + `Nonce`，签名错误会被当作 `invalid_key`——签名代码**禁止**散落在各 provider，统一放 `lib/providers/auth/volc_signer.dart`
-- **Kling**：JWT Token 有效期 30 分钟；Provider 层自己续签，不暴露到上层
-- **Hailuo**：`GroupId` 不是 Key 的一部分，单独在设置页存；验证 Key 时两个都要传
+- **同步三家（gemini / openai / stability）**：`submit()` 内完成生成，inline bytes 暂存 instance cache；`poll()` 一次性消费，重复 poll 同一 jobId 抛 `ProviderError(providerServer, extra.reason='cache_miss_or_consumed')`（§5.5）
+- **openai-image**：`gpt-image-1` 仅 1024×1024 / 1536×1024 / 1024×1536 三种 size——`r4x3` / `r3x4` / `r21x9` 无精确映射，capabilities 不声明
+- **stability-image-core**：提交是 multipart/form-data，不是 JSON；Key 验证用余额端点（最轻量、零配额消耗）
+- **DashScope 系 6 款**：共享基类 `DashScopeAsyncProviderBase` + 同一把 sk-xxx Key（SecureStorage 按 `provider.dashscope.api_key` 折叠存储，见 ARCHITECTURE.md §9.2）；提交必须带 `X-DashScope-Async: enable` 头；`task_status` 字面量见基类 `DashScopeTaskStatus`
+- **wanx-r2v / kling-v3-omni**：参考图超上限（3 / 4）客户端静默截断，最终裁决交给服务端
 
 ---
 
@@ -406,11 +417,11 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 
 - [ ] **Step 1 · 能力声明先行**：在 `lib/providers/{id}_provider.dart` 顶部写 `const kCapabilities = ProviderCapabilities(...)`
 - [ ] **Step 2 · 接入参数常量**：同文件顶部 `const kBaseUrl`, `const kSubmitPath`, `const kPollPath` 等，不准散落到别处
-- [ ] **Step 3 · 选接口组合**：同步选 `Submittable + KeyValidatable`；异步选 `Submittable + Pollable + KeyValidatable`（+ 可选 `Cancellable` / `QuotaAware`）
+- [ ] **Step 3 · 选接口组合**：一律 `Submittable + Pollable + KeyValidatable`（同步 Provider 的 poll 走 inlineBytes cache，见 §5.5；支持取消再加 `Cancellable`）；DashScope 系直接 `extends DashScopeAsyncProviderBase`
 - [ ] **Step 4 · 实现 `validateApiKey`**：用最轻量端点，禁止消耗生成配额
 - [ ] **Step 5 · 实现 `submit`**：内置 `await rateLimiter.acquire()`，参数验证用 `capabilities` 字段
 - [ ] **Step 6 · 实现 `poll`**：单次请求；退避参数不能覆盖全局默认（如需覆盖，改 `capabilities.pollInterval`）
-- [ ] **Step 7 · 错误映射**：所有 `DioException` 经 `_mapDioError()`，所有业务错误码映射到 §6.1 14 码
+- [ ] **Step 7 · 错误映射**：所有 `DioException` 经 `mapDioError(e, providerId: ...)`（`lib/providers/dio_error_mapper.dart`），所有业务错误码映射到 §6.1 14 码
 - [ ] **Step 8 · 注册到 DI**：`lib/core/di/providers.dart` 加 `provider_id → factory` 映射，`ProviderRegistry` 扫描生效
 - [ ] **Step 9 · 测试三件套**：FakeProvider 单测 + 错误矩阵测试 + fixture 回放 E2E（见 §12）
 
@@ -430,35 +441,39 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 lib/
 ├── core/
 │   ├── interfaces/
-│   │   └── generation_provider.dart       # 5 接口 + 枚举
+│   │   └── generation_provider.dart       # 4 接口 + JobId typedef
 │   ├── models/
-│   │   ├── provider_capabilities.dart     # freezed
+│   │   ├── provider_capabilities.dart     # freezed + 枚举（Region/Mode/Ratio/Resolution/Camera）
 │   │   ├── cost_model.dart                # freezed sealed
 │   │   ├── generation_task.dart           # freezed
 │   │   ├── job_status.dart                # freezed sealed
-│   │   └── key_validation_result.dart     # freezed sealed
+│   │   ├── key_validation_result.dart     # freezed sealed
+│   │   └── provider_quota.dart            # freezed（配额展示模型，暂无消费方）
 │   └── errors/
-│       └── ink_error.dart                 # sealed + 14 构造器
+│       └── ink_error.dart                 # sealed hierarchy + InkErrorCode 14 码
 ├── providers/
 │   ├── provider_registry.dart             # id → factory
 │   ├── rate_limiter.dart                  # Per-Provider Token Bucket
-│   ├── auth/
-│   │   ├── volc_signer.dart               # Jimeng HMAC
-│   │   └── kling_jwt.dart                 # Kling JWT 续签
+│   ├── dio_error_mapper.dart              # mapDioError：DioException → InkError
+│   ├── dashscope_async_provider_base.dart # DashScope 系 6 款共享基类
 │   ├── gemini_image_provider.dart
-│   ├── jimeng_image_provider.dart
-│   ├── kling_image_provider.dart
-│   ├── kling_video_provider.dart
-│   └── hailuo_video_provider.dart
+│   ├── openai_image_provider.dart
+│   ├── stability_image_core_provider.dart
+│   ├── wanx_image_provider.dart
+│   ├── wanx_t2v_provider.dart
+│   ├── wanx_i2v_provider.dart
+│   ├── wanx_r2v_provider.dart
+│   ├── kling_v3_provider.dart
+│   └── kling_v3_omni_provider.dart
 └── core/di/
-    └── providers.dart                     # Riverpod 接线（keepAlive）
+    └── providers.dart                     # Riverpod 接线（registry + 共享 RateLimiter）
 ```
 
 **命名**：
 
-- 文件名 snake_case，`{provider}_{mode}_provider.dart`（`kling_video_provider.dart`）
-- 类名 PascalCase，`KlingVideoProvider`
-- `providerId` kebab-case，**与 PRD §10.2 表字面对齐**（`kling-3.0` 不是 `kling_3_0`）
+- 文件名 snake_case，`{provider}_{mode}_provider.dart`（`wanx_image_provider.dart`）
+- 类名 PascalCase，`WanxImageProvider`
+- `providerId` kebab-case，**与 §9.1 表字面对齐**（`kling-v3` 不是 `kling_v3`）
 
 ---
 
@@ -466,55 +481,39 @@ lib/
 
 ### 12.1 三层测试
 
-| 层 | 目标 | 工具 | 覆盖率门槛 |
+| 层 | 目标 | 工具 | 门槛 |
 |---|---|---|---|
-| 单元测试 | 每个 provider 的错误映射、签名、状态转换 | `test` + Mocktail + in-memory | ≥ 85% |
-| 契约测试 | 所有 Provider 对 `Submittable/Pollable/Cancellable` 契约合规 | 共享 `ProviderContractSuite` | 100% 必过 |
-| 回放 E2E | 用固定 fixture 重放真实 API 响应 | `http_mock_adapter` + `test/fixtures/providers/{id}/` | 5 家 × 5 场景 |
+| 单元测试 | 每个 provider 的错误映射、请求体构造、状态转换 | `flutter_test` + `http_mock_adapter` | 见 ARCHITECTURE.md §12 覆盖率门禁 |
+| 契约测试 | 每个 Provider 对 `Submittable/Pollable/KeyValidatable` 契约合规 | 各 provider 测试文件内的 `ProviderContractSuite: {id}` group（如 `test/providers/openai_image_provider_test.dart`） | 100% 必过 |
+| 回放测试 | 用固定 fixture 重放真实 API 响应 | `http_mock_adapter` + `test/fixtures/providers/{id}/` | 每家覆盖 submit 成功 + 至少一个失败场景 |
 
-### 12.2 FakeProvider 规范
+### 12.2 Fake 双件规范
 
-```dart
-// test/helpers/fake_provider.dart
-class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable {
-  FakeProvider({
-    this.submitDelay = Duration.zero,
-    this.pollResponses = const [],           // 顺序返回
-    this.submitError,
-    this.pollErrorAtIndex,
-  });
-
-  final Duration submitDelay;
-  final List<JobStatus> pollResponses;
-  final InkError? submitError;
-  final int? pollErrorAtIndex;
-  // ...
-}
-```
+测试替身集中在 `test/_harness/fake_providers.dart`：`FakeSubmittable` / `FakePollable` / `FakeKeyValidatable` 按单接口拆分，`FakeProvider` 组合三接口（可配置 poll 响应序列 / 注入 InkError）。
 
 **硬约束**：
 
-- 禁止在生产代码 (`lib/`) 里 import `FakeProvider`——只能 `test/` 下
-- `ProviderContractSuite` 对每个真实 Provider 跑一遍，验证：
+- 禁止在生产代码 (`lib/`) 里 import 任何 Fake——只能 `test/` 下
+- 契约用例对每个真实 Provider 验证：
   - `submit()` → `JobId` 非空
-  - `poll()` 直到 `success` / `failure` / `timeout` 的状态序列合法
+  - `poll()` 直到 `success` / `failure` 的状态序列合法
   - 错误码在 14 码白名单内
-  - `validateApiKey()` 三种结果齐全
+  - `validateApiKey()` 三种结果（valid / invalid / networkError）齐全
 
-### 12.3 Fixture 目录
+### 12.3 Fixture 目录（实际布局）
 
 ```
 test/fixtures/providers/
 ├── gemini-image/
+│   ├── models_list_success.json
 │   ├── submit_success.json
 │   ├── submit_invalid_key.json
 │   └── submit_content_policy.json
-├── kling-image/
+├── wanx-image/
 │   ├── submit_success.json
-│   ├── poll_in_progress.json
 │   ├── poll_success.json
-│   ├── poll_429.json
-│   └── cancel_success.json
+│   └── poll_failed_content_policy.json
+├── wanx-t2v/ · wanx-i2v/ · wanx-r2v/ · kling-v3/ · kling-v3-omni/
 └── ...
 ```
 
@@ -524,13 +523,13 @@ test/fixtures/providers/
 
 ## 13. 自定义 Provider 扩展点
 
-**P1 实现，P0 仅留扩展点**。
+> **Planned，未实现**。当前 `ProviderRegistry` 只接受 `lib/core/di/providers.dart` 传入的内置映射，无任何外部源合并逻辑。以下是设计预留：
 
-`ProviderRegistry` 启动时合并三个源：
+`ProviderRegistry` 未来启动时合并三个源：
 
-1. 内置 Provider（`lib/providers/*.dart` 中的 `providerId`）
-2. `~/InkFrame/config/custom_providers.json`（用户自定义）
-3. 未来：插件包（不在 P0/P1 范围）
+1. 内置 Provider（`lib/providers/*.dart` 中的 `providerId`）——**当前唯一来源**
+2. `~/InkFrame/config/custom_providers.json`（用户自定义）——Planned
+3. 插件包——更远期
 
 **自定义 Provider 协议白名单**（硬编码）：
 
@@ -548,11 +547,11 @@ test/fixtures/providers/
 
 > 以下任意一条出现在 PR 中，直接 block 合流。
 
-1. ❌ 在 Widget 里 `import 'package:inkframe/providers/kling_video_provider.dart'`
-   → 应通过 `ref.watch(providerRegistryProvider).get('kling-3.0')` 拿接口
+1. ❌ 在 Widget 里 `import 'package:inkframe/providers/kling_v3_provider.dart'`
+   → 应通过 `ref.watch(providerRegistryProvider).get('kling-v3')` 拿接口
 
 2. ❌ Provider 实现类里 `throw Exception('invalid key')`
-   → 应 `throw ProviderError.invalidKey()`
+   → 应 `throw ProviderError(code: InkErrorCode.invalidKey)`
 
 3. ❌ `poll()` 内部循环直到 success
    → 一次调用一次请求，退避由 JobQueueService
@@ -570,7 +569,7 @@ test/fixtures/providers/
    → 退避是 JobQueueService 的职责
 
 8. ❌ 同 providerId 出现两个实现类
-   → `ProviderRegistry` 启动期自检，发现冲突直接抛 `AssertionError`
+   → registry 映射在 `lib/core/di/providers.dart` 集中接线，map key 冲突在 review / 编译期暴露；新增 Provider 不准绕开这张表
 
 9. ❌ Provider 返回 `Map<String, dynamic>` 代替 `JobStatus`
    → 强类型接口，所有边界都是 freezed
@@ -585,3 +584,4 @@ test/fixtures/providers/
 | 日期 | 版本 | 内容 | 作者 |
 |---|---|---|---|
 | 2026-04-15 | v0.1.0 | 初版。对齐 PRD §10 + ARCHITECTURE §3 | P9 |
+| 2026-06-12 | v0.1.1 | 对齐真实代码：QuotaAware 删除（四接口）；§6 错误契约改为真实 sealed 子类 + `mapDioError` 签名；§9 矩阵替换为已实现 9 款；estimateCost / 自定义 Provider 标 Planned；§11/§12 文件与测试布局对齐 repo | FIX-019 |

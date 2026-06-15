@@ -54,7 +54,7 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
     final locale = ref.watch(localeControllerProvider);
     final messengerKey = ref.watch(toastMessengerKeyProvider);
     return MaterialApp(
-      title: 'InkFrame',
+      onGenerateTitle: (context) => context.l10n.appTitle,
       theme: buildAppTheme(
         variant: themeState.variant,
         textScale: themeState.textScale,
@@ -76,7 +76,7 @@ class _UnlockedShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasId = ref.watch(currentCanvasIdProvider);
     if (canvasId != null) {
-      return CanvasScreen(canvasName: context.l10n.appTitle);
+      return CanvasScreen(canvasName: context.l10n.canvasDefaultName);
     }
     final screen = ref.watch(currentScreenProvider);
     return switch (screen) {

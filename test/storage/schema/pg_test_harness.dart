@@ -1,10 +1,12 @@
 // PG 集成测试通用 harness：
 //   1) 读 TEST_PG_URL（缺失时 skip 整个测试文件）
-//   2) 每用例开独立 schema，跑 schema_v1 DDL
+//   2) 每用例开独立 schema，经 MigrationRunner 跑完整迁移链（kAppMigrations）
 //   3) 用例结束 DROP SCHEMA CASCADE
 //
-// 目的：在 CI / 本地 brew PG 上跑真实 SQL 断言，不互相污染。
-import 'package:inkframe/storage/schema/schema_v1.dart';
+// 目的：在 CI / 本地 brew PG 上跑真实 SQL 断言（与生产同一迁移路径），不互相污染。
+// 注意：必须与生产 DI 用同一份 kAppMigrations，schema 断言才反映真实库形态。
+import 'package:inkframe/storage/migrations/app_migrations.dart';
+import 'package:inkframe/storage/migrations/migration_runner.dart';
 import 'package:postgres/postgres.dart';
 
 class PgTestHarness {
@@ -31,8 +33,8 @@ class PgTestHarness {
         .replaceAll(RegExp(r'[^a-z0-9_]'), '');
     await conn.execute('CREATE SCHEMA "$schema"');
     await conn.execute('SET search_path TO "$schema"');
-    // schema_v1 含多条 DDL；postgres-dart extended 协议禁止多语句 → simple 协议。
-    await conn.execute(kSchemaV1, queryMode: QueryMode.simple);
+    // 与生产 DI 同路径：MigrationRunner 在事务内逐版本执行 + UPSERT schema_version。
+    await MigrationRunner(conn, migrations: kAppMigrations).migrate();
     return PgTestHarness._(conn, schema);
   }
 

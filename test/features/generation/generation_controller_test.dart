@@ -27,7 +27,10 @@ import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
+import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/providers/provider_registry.dart';
+
+import '../../helpers/recording_logger.dart';
 
 // ---- fakes ------------------------------------------------------------
 
@@ -290,6 +293,7 @@ void main() {
   late ProviderRegistry registry;
   late _FakeResolver resolver;
   late _RecordingRegistry jobsRegistry;
+  late RecordingLogger logger;
 
   GenerationController buildCtrl() => GenerationController(
         nodes: nodes,
@@ -300,6 +304,7 @@ void main() {
         registry: registry,
         resolver: resolver,
         jobsRegistry: jobsRegistry,
+        logger: logger,
       );
 
   setUp(() {
@@ -309,10 +314,11 @@ void main() {
     jobs = _FakeJobRepo();
     secure = _FakeSecure();
     queue = _FakeJobQueue(const JobStatus.success(remoteUrls: []));
-    registry = ProviderRegistry({
+    registry = CachingProviderRegistry({
       providerId: () => throw UnimplementedError('not called in tests'),
     });
     jobsRegistry = _RecordingRegistry();
+    logger = RecordingLogger();
   });
 
   Future<String> seedConfigNode({
@@ -512,6 +518,68 @@ void main() {
       throwsStateError,
     );
     expect(nodes.softDeleted, hasLength(1));
+  });
+
+  group('logger 注入点（FIX-016 / ME-21）', () {
+    test('job 终态失败 → ERROR 日志（module=generation.controller）', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+      queue.finalStatus = const JobStatus.failure(
+        error: ProviderError(code: InkErrorCode.providerServer),
+      );
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
+
+      final errors = logger.byLevel(InkLogLevel.error);
+      expect(errors, isNotEmpty);
+      expect(errors.first.module, 'generation.controller');
+      expect(errors.first.extra?['error_code'],
+          InkErrorCode.providerServer.wire);
+    });
+
+    test('jobs.create 抛错回滚 → ERROR 日志后照常 rethrow', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+      jobs.createThrows = true;
+
+      await expectLater(
+        buildCtrl().submitFromConfigNode(cfg),
+        throwsStateError,
+      );
+      expect(
+        logger
+            .byLevel(InkLogLevel.error)
+            .where((r) => r.module == 'generation.controller'),
+        isNotEmpty,
+      );
+    });
+
+    test('成功提交 → INFO 日志带 job_id / provider_id', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk',
+      );
+
+      final jobId = await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
+
+      final infos = logger.byLevel(InkLogLevel.info);
+      expect(
+        infos.where((r) =>
+            r.module == 'generation.controller' &&
+            r.extra?['job_id'] == jobId &&
+            r.extra?['provider_id'] == providerId),
+        isNotEmpty,
+      );
+    });
   });
 
   group('data edge → refImagePaths', () {

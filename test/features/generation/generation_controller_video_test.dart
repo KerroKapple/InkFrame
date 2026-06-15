@@ -277,7 +277,7 @@ void main() {
     jobs = _FakeJobRepo();
     secure = _FakeSecure();
     queue = _FakeJobQueue();
-    registry = ProviderRegistry({
+    registry = CachingProviderRegistry({
       providerId: () => throw UnimplementedError('not called in tests'),
     });
     jobsRegistry = _RecordingRegistry();

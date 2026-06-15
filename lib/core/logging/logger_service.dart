@@ -120,20 +120,51 @@ class FileLoggerService implements LoggerService {
     }
   }
 
+  // key 形态字符串掩码：值里内嵌的凭证（sk-xxx / Bearer xxx / key=xxx）也要打码。
+  static final List<RegExp> _valuePatterns = <RegExp>[
+    RegExp(r'sk-[A-Za-z0-9_\-]{8,}'),
+    RegExp(r'[Bb]earer\s+[A-Za-z0-9._~+/\-]+=*'),
+    RegExp(r'AIza[0-9A-Za-z_\-]{10,}'),
+    RegExp(
+      '(api[_-]?key|apikey|token|secret|password|authorization)'
+      r'''["']?\s*[=:]\s*["']?[^"'\s,;}&]+''',
+      caseSensitive: false,
+    ),
+  ];
+
+  String _maskString(String s) {
+    var out = s;
+    for (final re in _valuePatterns) {
+      out = out.replaceAll(re, '***');
+    }
+    return out;
+  }
+
+  // 递归脱敏：嵌套 Map / List 全深度处理；命中敏感 key 整值置 ***，
+  // 其余 String 值走 key 形态掩码。
+  Object? _redactValue(Object? v) {
+    if (v is String) return _maskString(v);
+    if (v is Map) {
+      final out = <String, Object?>{};
+      for (final entry in v.entries) {
+        final key = entry.key.toString();
+        out[key] = _redactKeys.contains(key.toLowerCase())
+            ? '***'
+            : _redactValue(entry.value);
+      }
+      return out;
+    }
+    if (v is Iterable) {
+      return <Object?>[for (final e in v) _redactValue(e)];
+    }
+    return v;
+  }
+
   Map<String, Object?> _redact(Map<String, Object?>? extra) {
     if (extra == null || extra.isEmpty) {
       return const <String, Object?>{};
     }
-    final out = <String, Object?>{};
-    for (final entry in extra.entries) {
-      final k = entry.key.toLowerCase();
-      if (_redactKeys.contains(k)) {
-        out[entry.key] = '***';
-      } else {
-        out[entry.key] = entry.value;
-      }
-    }
-    return out;
+    return _redactValue(extra)! as Map<String, Object?>;
   }
 
   String _serialize(
@@ -152,10 +183,16 @@ class FileLoggerService implements LoggerService {
     return jsonEncode(payload);
   }
 
+  // 写路径性能：缓存活跃文件字节数，避免每行 stat（首次写入时校准一次）。
+  int? _activeFileBytes;
+
   void _writeLine(String line) {
     _ensureDir();
+    _activeFileBytes ??=
+        _activeFile.existsSync() ? _activeFile.lengthSync() : 0;
     _activeFile.writeAsStringSync('$line\n',
         mode: FileMode.append, flush: false);
+    _activeFileBytes = _activeFileBytes! + utf8.encode(line).length + 1;
   }
 
   bool _debugWithinLimit() {
@@ -203,16 +240,21 @@ class FileLoggerService implements LoggerService {
     _maybeRotate();
   }
 
+  // LO-09：磁盘预算回收只在轮转分支 + 启动后首条日志执行；
+  // 普通写路径只 stat 活跃文件，不做全目录扫描。
+  bool _startupBudgetChecked = false;
+
   void _maybeRotate() {
-    final file = _activeFile;
-    if (!file.existsSync()) {
+    if ((_activeFileBytes ?? 0) >= _config.maxFileBytes) {
+      _rotateActiveFile();
+      _activeFileBytes = 0;
+      _enforceDiskBudget();
       return;
     }
-    final length = file.lengthSync();
-    if (length >= _config.maxFileBytes) {
-      _rotateActiveFile();
+    if (!_startupBudgetChecked) {
+      _startupBudgetChecked = true;
+      _enforceDiskBudget();
     }
-    _enforceDiskBudget();
   }
 
   void _rotateActiveFile() {
@@ -306,13 +348,16 @@ class FileLoggerService implements LoggerService {
     Object? cause,
     StackTrace? stackTrace,
   }) {
+    // cause / stack 截断后并入 extra，随 _redact 一起做递归脱敏 + 值掩码。
     final enriched = <String, Object?>{
       ...?extra,
-      if (cause != null) 'cause': cause.toString(),
-      if (stackTrace != null) 'stack': stackTrace.toString(),
+      if (cause != null) 'cause': _clip(cause.toString(), 2000),
+      if (stackTrace != null) 'stack': _clip(stackTrace.toString(), 4000),
     };
     _log(InkLogLevel.error, module, msg, enriched);
   }
+
+  String _clip(String s, int max) => s.length <= max ? s : s.substring(0, max);
 
   @override
   Future<void> flush() async {

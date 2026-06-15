@@ -208,10 +208,4 @@ CREATE TABLE batch_results (
 CREATE INDEX idx_batch_results_node_id ON batch_results(node_id);
 CREATE INDEX idx_batch_results_job_id  ON batch_results(job_id);
 
--- =====================================================================
--- schema_version 写入首版
--- =====================================================================
-INSERT INTO schema_version (id, version) VALUES (1, 1)
-ON CONFLICT (id) DO UPDATE
-  SET version    = EXCLUDED.version,
-      applied_at = now();
+-- 版本号由 MigrationRunner 在同一事务内统一 UPSERT（ME-31），本文件不自写。

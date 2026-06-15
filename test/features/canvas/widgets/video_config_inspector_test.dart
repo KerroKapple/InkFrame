@@ -87,6 +87,33 @@ void main() {
     expect(find.text('10'), findsNothing);
   });
 
+  testWidgets('camera dropdown 显示本地化运镜名（"固定机位" 而非 "static_"）', (tester) async {
+    const node = CanvasNode(
+      id: 'n1',
+      label: '',
+      type: CanvasNodeType.video,
+      role: NodeRole.config,
+    );
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: VideoConfigInspector(node: node)),
+      locale: const Locale('zh'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fakeVideoCaps]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(DropdownButton<caps.CameraMovement>));
+    await tester.pumpAndSettle();
+
+    expect(find.text('固定机位'), findsWidgets);
+    expect(find.text('推进'), findsWidgets);
+    // 不应直出枚举名
+    expect(find.text('static_'), findsNothing);
+    expect(find.text('pushIn'), findsNothing);
+  });
+
   testWidgets('Generate 按钮初始 disabled（prompt 空）', (tester) async {
     const node = CanvasNode(
       id: 'n1',

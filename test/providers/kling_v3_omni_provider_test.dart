@@ -3,6 +3,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http_mock_adapter/http_mock_adapter.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
@@ -135,9 +136,16 @@ void main() {
       expect((s as JobSuccess).remoteUrls, ['https://x/o.mp4']);
     });
 
-    test('video_url 缺失 → success(remoteUrls=[])', () {
-      final s = p.parseSuccessOutput({});
-      expect((s as JobSuccess).remoteUrls, isEmpty);
+    // HI-04：SUCCEEDED 但缺产物 URL 不许标 success——抛 ProviderError。
+    test('video_url 缺失 → ProviderError(empty_output_url)', () {
+      expect(
+        () => p.parseSuccessOutput({}),
+        throwsA(isA<ProviderError>().having(
+          (e) => e.extra['reason'],
+          'reason',
+          'empty_output_url',
+        )),
+      );
     });
   });
 

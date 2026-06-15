@@ -1,23 +1,23 @@
 // ApiKeysSection — 设置页内"API Keys"分节。
 //
 // 按 SecureStorageKeys.scopeOf 折叠家族。DashScope 的 6 款 Provider 合并为
-// 一行，共用一把 Key；Gemini 独占一行。保存写 SecureStorage；清除走 delete。
+// 一行，共用一把 Key；Gemini 独占一行。
 //
-// 本组件不做 key 格式校验——Provider 自身的 validate 调用留给 Controller 层
-// (后续 sprint)。此处只管"放进 / 取出 / 删除"三件事。
+// 存取/验证状态全部由 ApiKeyScopeController（family by providerId）承载，
+// 本组件只持有输入框 controller 并渲染 AsyncValue。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/secure_storage_keys.dart';
 import '../../../core/di/providers.dart';
-import '../../../core/di/secure_storage.dart';
-import '../../../core/interfaces/secure_storage_service.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../providers/api_key_scope_controller.dart';
 
 class ApiKeysSection extends ConsumerWidget {
   const ApiKeysSection({super.key});
@@ -67,21 +67,9 @@ class _ApiKeyRow extends ConsumerStatefulWidget {
 
 class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
   final TextEditingController _ctrl = TextEditingController();
-  bool _isSet = false;
-  bool _loading = true;
 
-  SecureStorageService get _secure =>
-      ref.read(secureStorageServiceProvider);
-
-  /// scope 下所有 Provider 共用同一 storage key——任选一成员解析即可。
-  String get _key =>
-      SecureStorageKeys.providerApiKey(widget.members.first.providerId);
-
-  @override
-  void initState() {
-    super.initState();
-    _refresh();
-  }
+  /// scope 下所有 Provider 共用同一把 Key——任选一成员做 family arg。
+  String get _providerId => widget.members.first.providerId;
 
   @override
   void dispose() {
@@ -89,33 +77,42 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
     super.dispose();
   }
 
-  Future<void> _refresh() async {
-    final has = await _secure.exists(_key);
-    if (!mounted) return;
-    setState(() {
-      _isSet = has;
-      _loading = false;
-    });
-  }
-
   Future<void> _save() async {
     final v = _ctrl.text.trim();
     if (v.isEmpty) return;
-    await _secure.store(_key, v);
-    // key 集合变化 → 让 Studio 软 banner 重新评估是否已配置。
-    ref.invalidate(anyProviderKeyConfiguredProvider);
-    if (!mounted) return;
-    _ctrl.clear();
-    setState(() => _isSet = true);
-    _showToast(context.l10n.settingsApiKeySaved);
+    final notifier =
+        ref.read(apiKeyScopeControllerProvider(_providerId).notifier);
+    try {
+      final outcome = await notifier.save(v);
+      if (!mounted) return;
+      switch (outcome) {
+        case ApiKeySaveOutcome.saved:
+          _ctrl.clear();
+          _showToast(context.l10n.settingsApiKeySaved);
+        case ApiKeySaveOutcome.savedUnverified:
+          _ctrl.clear();
+          _showToast(context.l10n.settingsApiKeySavedUnverified);
+        case ApiKeySaveOutcome.rejected:
+          // 不清输入框——用户可直接修改重试。
+          _showToast(context.l10n.settingsApiKeyRejected);
+      }
+    } on InkError catch (e) {
+      if (!mounted) return;
+      _showToast(l10nError(context, e));
+    }
   }
 
   Future<void> _clear() async {
-    await _secure.delete(_key);
-    ref.invalidate(anyProviderKeyConfiguredProvider);
-    if (!mounted) return;
-    setState(() => _isSet = false);
-    _showToast(context.l10n.settingsApiKeyCleared);
+    final notifier =
+        ref.read(apiKeyScopeControllerProvider(_providerId).notifier);
+    try {
+      await notifier.clear();
+      if (!mounted) return;
+      _showToast(context.l10n.settingsApiKeyCleared);
+    } on InkError catch (e) {
+      if (!mounted) return;
+      _showToast(l10nError(context, e));
+    }
   }
 
   void _showToast(String text) {
@@ -132,6 +129,9 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
+    final keyState = ref.watch(apiKeyScopeControllerProvider(_providerId));
+    final loading = keyState.isLoading;
+    final isSet = keyState.valueOrNull ?? false;
     final label = SecureStorageKeys.displayNameOf(widget.scope);
     final memberIds =
         widget.members.map((c) => c.providerId).join(' / ');
@@ -161,7 +161,7 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
                   ],
                 ),
               ),
-              _StatusChip(isSet: _loading ? null : _isSet),
+              _StatusChip(isSet: loading ? null : isSet),
             ],
           ),
           const SizedBox(height: InkSpacing.xs),
@@ -175,12 +175,12 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
               ),
               const SizedBox(width: InkSpacing.sm),
               FilledButton(
-                onPressed: _loading ? null : _save,
+                onPressed: loading ? null : _save,
                 child: Text(context.l10n.settingsApiKeySave),
               ),
               const SizedBox(width: InkSpacing.xs),
               OutlinedButton(
-                onPressed: (_loading || !_isSet) ? null : _clear,
+                onPressed: (loading || !isSet) ? null : _clear,
                 child: Text(context.l10n.settingsApiKeyClear),
               ),
             ],

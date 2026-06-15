@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/current_screen.dart';
 import '../../core/di/repositories.dart';
+import '../../core/errors/ink_error.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/components/ink_error_banner.dart';
@@ -15,9 +16,11 @@ import '../../theme/primitives/ink_compact_text_field.dart';
 import '../../theme/primitives/ink_ghost_button.dart';
 import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
+import 'controllers/studio_projects_controller.dart';
 import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
 import 'open_canvas.dart';
+import 'providers/workspace_projects_provider.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
 import 'widgets/studio_provider_banner.dart';
@@ -30,7 +33,8 @@ class StudioHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    final studioName = ref.watch(currentStudioProvider);
+    final studioName =
+        ref.watch(currentStudioProvider) ?? context.l10n.studioDefaultName;
     return ColoredBox(
       color: colors.surfaceCanvas,
       child: Column(
@@ -76,7 +80,7 @@ class _StudioMainArea extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(
               InkSpacing.xl,
-              InkSpacing.xl - 4,
+              InkSpacing.s28,
               InkSpacing.xl,
               InkSpacing.xl,
             ),
@@ -140,6 +144,7 @@ class _StudioMainArea extends ConsumerWidget {
   ) async {
     final existingNames =
         existing.map((p) => p.name.trim().toLowerCase()).toSet();
+    final firstCanvasName = context.l10n.canvasDefaultName;
     final name = await showDialog<String>(
       context: context,
       barrierColor: context.inkColors.scrim,
@@ -147,15 +152,11 @@ class _StudioMainArea extends ConsumerWidget {
     );
     if (name == null || name.isEmpty) return;
     try {
-      final projects = await ref.read(projectRepositoryProvider.future);
-      final canvases = await ref.read(canvasRepositoryProvider.future);
-      final projectId = await projects.create(name: name);
-      await canvases.create(
-        projectId: projectId,
-        name: 'Canvas 1',
-      );
-      ref.invalidate(workspaceProjectsProvider);
-    } catch (_) {
+      await ref.read(studioProjectsControllerProvider).createProject(
+            name: name,
+            firstCanvasName: firstCanvasName,
+          );
+    } on InkError {
       if (!context.mounted) return;
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
         SnackBar(
@@ -419,7 +420,10 @@ class _ProjectGrid extends ConsumerWidget {
             final p = projects[i];
             return StudioProjectCard(
               name: p.name,
-              metaLine: 'EP 01 · 2026.05 · ${_box()} ${p.canvases.length}',
+              metaLine: context.l10n.studioProjectMetaLine(
+                p.createdAt,
+                p.canvases.length,
+              ),
               onTap: () async {
                 final defaultName = context.l10n.canvasDefaultName;
                 final failedMsg = context.l10n.studioOpenCanvasFailed;
@@ -451,6 +455,4 @@ class _ProjectGrid extends ConsumerWidget {
       },
     );
   }
-
-  String _box() => '\u{1F4E6}';
 }

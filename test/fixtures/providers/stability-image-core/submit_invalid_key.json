@@ -1,0 +1,5 @@
+{
+  "errors": ["authorization: invalid or missing header value"],
+  "id": "FIXTURE_REQUEST_ID",
+  "name": "unauthorized"
+}

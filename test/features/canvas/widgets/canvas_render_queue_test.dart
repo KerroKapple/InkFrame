@@ -43,6 +43,21 @@ void main() {
     expect(find.textContaining('90'), findsNothing);
   });
 
+  testWidgets('任务行标题显示 provider displayName 而非 jobId(UUID)', (tester) async {
+    await tester.pumpWidget(_host([
+      const JobState.running(
+        jobId: 'a1b2c3d4-uuid',
+        providerId: 'gemini-image',
+        canvasId: 'c1',
+        progress: 0.3,
+      ),
+    ], 'c1'));
+    await tester.pump();
+    // FIX-013 x FIX-010：行标题取 displayName（未声明时回退 providerId）。
+    expect(find.text('Gemini Image'), findsOneWidget);
+    expect(find.text('a1b2c3d4-uuid'), findsNothing);
+  });
+
   testWidgets('当前画布无活跃任务 → 空态', (tester) async {
     await tester.pumpWidget(_host(const [], 'c1'));
     await tester.pump();

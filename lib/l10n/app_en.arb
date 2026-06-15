@@ -5,13 +5,7 @@
     "description": "Application display name"
   },
 
-  "commonOk": "OK",
   "commonCancel": "Cancel",
-  "commonRetry": "Retry",
-  "commonClose": "Close",
-  "commonSave": "Save",
-  "commonDelete": "Delete",
-  "commonConfirm": "Confirm",
 
   "errorInvalidKey": "API key is invalid. Check your provider settings.",
   "errorInsufficientBalance": "Provider account has insufficient balance.",
@@ -28,17 +22,8 @@
   "errorCancelledOnExit": "Cancelled because the application is exiting.",
   "errorUnknown": "An unknown error occurred.",
 
-  "canvasEmptyHint": "Right-click or press + to add a node",
   "canvasNodeDefaultLabel": "New Node",
   "canvasNodeImageType": "Image",
-  "canvasAddNode": "Add Node",
-  "canvasDeleteNode": "Delete Node",
-  "canvasNodesSelected": "{count} node(s) selected",
-  "@canvasNodesSelected": {
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
 
   "canvasNoCanvasOpen": "No canvas is open",
   "canvasCreateSampleCanvas": "Create sample canvas",
@@ -54,8 +39,6 @@
   "inspectorGenerate": "Generate",
   "inspectorGenerateDisabledEmptyPrompt": "Write a prompt first",
   "inspectorGenerateDisabledNoKey": "Configure API key in Settings",
-  "inspectorGenerateNotWiredYet": "Generation wiring ships in the next slice",
-  "inspectorSelectSingleHint": "Select a single config node to edit",
   "inspectorStatusSubmitting": "Submitting...",
   "inspectorStatusRunning": "Generating...",
   "inspectorStatusRunningWithProgress": "Generating... {percent}%",
@@ -76,6 +59,8 @@
   "settingsApiKeySet": "Set",
   "settingsApiKeyNotSet": "Not set",
   "settingsApiKeySaved": "Saved",
+  "settingsApiKeySavedUnverified": "Saved, but the key could not be verified due to a network issue.",
+  "settingsApiKeyRejected": "The provider rejected this key. It was not saved.",
   "settingsApiKeyCleared": "Cleared",
 
   "settingsThemeSection": "Theme",
@@ -112,8 +97,6 @@
     }
   },
 
-  "generationSuccess": "Generated",
-  "generationFailure": "Generation failed",
   "generationMissingKey": "API key is missing",
   "generationInvalidConfig": "Invalid configuration: {reason}",
   "@generationInvalidConfig": {
@@ -132,6 +115,12 @@
   "generationStatusQueued": "Queued",
   "generationStatusSubmitting": "Submitting",
   "generationStatusRunning": "Running",
+  "generationStatusRunningWithProgress": "Running {percent}%",
+  "@generationStatusRunningWithProgress": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
   "generationStatusSucceeded": "Done",
   "generationStatusFailed": "Failed",
   "generationStatusCancelled": "Cancelled",
@@ -150,6 +139,7 @@
   "linkCreated": "Link created",
   "linkAlreadyExists": "Link already exists",
   "linkSelfNotAllowed": "Cannot link a node to itself",
+  "linkCreateFailed": "Failed to create link",
 
   "nodeDelete": "Delete node",
   "nodeDeleted": "Node deleted",
@@ -178,9 +168,16 @@
     }
   },
   "inspectorVideoCameraLabel": "Camera movement",
+  "cameraStatic": "Static",
+  "cameraPushIn": "Push in",
+  "cameraPullOut": "Pull out",
+  "cameraPanLeft": "Pan left",
+  "cameraPanRight": "Pan right",
+  "cameraTiltUp": "Tilt up",
+  "cameraTiltDown": "Tilt down",
+  "cameraOrbit": "Orbit",
+  "cameraHandheld": "Handheld",
   "inspectorVideoModeAuto": "Mode: auto-detected from inputs",
-  "inspectorVideoModeT2v": "Text-to-video",
-  "inspectorVideoModeI2v": "Image-to-video",
   "inspectorVideoGenerateDisabledEmptyPrompt": "Prompt required",
   "inspectorVideoGenerateDisabledNoKey": "API key required in Settings",
   "inspectorVideoGenerate": "Generate video",
@@ -195,6 +192,10 @@
   },
 
 
+  "studioDefaultName": "My Studio",
+  "@studioDefaultName": {
+    "description": "Fallback workspace name shown before the user names their studio"
+  },
   "studioRecentProjects": "Recent Projects",
   "studioNewProject": "New Project",
   "studioLibrary": "LIBRARY",
@@ -215,6 +216,14 @@
   "studioNewProjectErrorDuplicate": "A project with this name already exists",
   "studioNewProjectFailed": "Failed to create project",
   "studioCreate": "Create",
+  "studioProjectMetaLine": "{date} · {count, plural, =1{1 canvas} other{{count} canvases}}",
+  "@studioProjectMetaLine": {
+    "description": "Project card meta line: real creation month + canvas count",
+    "placeholders": {
+      "date": { "type": "DateTime", "format": "yMMM" },
+      "count": { "type": "int" }
+    }
+  },
   "canvasDefaultName": "Untitled Canvas",
   "studioOpenCanvasFailed": "Couldn't open canvas",
   "studioNoKeyBannerText": "No provider API key configured — generation needs one.",

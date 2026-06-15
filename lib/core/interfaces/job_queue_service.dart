@@ -18,7 +18,8 @@ abstract class JobHandle {
 
   /// 状态推送：inProgress(0..1) → success / failure 后流关闭。
   ///
-  /// 多次订阅返回同一广播流；订阅后仍能收到已发出的最新状态（通过 last cache）。
+  /// 每次访问返回一条新流：订阅时先重放最近一次状态（last-value cache），
+  /// 再接收后续推送；终态后订阅也能收到终态并立即 done。
   Stream<JobStatus> get status;
 
   /// 终态 Future——success / failure 任一返回，cancelled 也归 failure。
@@ -26,7 +27,8 @@ abstract class JobHandle {
 }
 
 abstract class JobQueueService {
-  /// 启动初始化：扫描 jobs 表把卡在 submitted/polling 的任务标 cancelledOnExit。
+  /// 启动初始化：扫描 jobs 表把卡在 pending/submitted/polling 的任务标
+  /// cancelledOnExit（pending 行也回收——上次会话建行后未跑完即退出）。
   ///
   /// 必须在 app 启动早期调用（在用户能 submit 新任务之前）。
   /// 未注入 JobRepository 的实现允许 no-op。

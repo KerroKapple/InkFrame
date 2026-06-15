@@ -12,25 +12,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get appTitle => 'InkFrame';
 
   @override
-  String get commonOk => 'OK';
-
-  @override
   String get commonCancel => 'Cancel';
-
-  @override
-  String get commonRetry => 'Retry';
-
-  @override
-  String get commonClose => 'Close';
-
-  @override
-  String get commonSave => 'Save';
-
-  @override
-  String get commonDelete => 'Delete';
-
-  @override
-  String get commonConfirm => 'Confirm';
 
   @override
   String get errorInvalidKey =>
@@ -83,24 +65,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorUnknown => 'An unknown error occurred.';
 
   @override
-  String get canvasEmptyHint => 'Right-click or press + to add a node';
-
-  @override
   String get canvasNodeDefaultLabel => 'New Node';
 
   @override
   String get canvasNodeImageType => 'Image';
-
-  @override
-  String get canvasAddNode => 'Add Node';
-
-  @override
-  String get canvasDeleteNode => 'Delete Node';
-
-  @override
-  String canvasNodesSelected(int count) {
-    return '$count node(s) selected';
-  }
 
   @override
   String get canvasNoCanvasOpen => 'No canvas is open';
@@ -140,13 +108,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inspectorGenerateDisabledNoKey => 'Configure API key in Settings';
-
-  @override
-  String get inspectorGenerateNotWiredYet =>
-      'Generation wiring ships in the next slice';
-
-  @override
-  String get inspectorSelectSingleHint => 'Select a single config node to edit';
 
   @override
   String get inspectorStatusSubmitting => 'Submitting...';
@@ -192,6 +153,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsApiKeySaved => 'Saved';
+
+  @override
+  String get settingsApiKeySavedUnverified =>
+      'Saved, but the key could not be verified due to a network issue.';
+
+  @override
+  String get settingsApiKeyRejected =>
+      'The provider rejected this key. It was not saved.';
 
   @override
   String get settingsApiKeyCleared => 'Cleared';
@@ -262,12 +231,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get generationSuccess => 'Generated';
-
-  @override
-  String get generationFailure => 'Generation failed';
-
-  @override
   String get generationMissingKey => 'API key is missing';
 
   @override
@@ -306,6 +269,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generationStatusRunning => 'Running';
 
   @override
+  String generationStatusRunningWithProgress(int percent) {
+    return 'Running $percent%';
+  }
+
+  @override
   String get generationStatusSucceeded => 'Done';
 
   @override
@@ -340,6 +308,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get linkSelfNotAllowed => 'Cannot link a node to itself';
+
+  @override
+  String get linkCreateFailed => 'Failed to create link';
 
   @override
   String get nodeDelete => 'Delete node';
@@ -395,13 +366,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorVideoCameraLabel => 'Camera movement';
 
   @override
+  String get cameraStatic => 'Static';
+
+  @override
+  String get cameraPushIn => 'Push in';
+
+  @override
+  String get cameraPullOut => 'Pull out';
+
+  @override
+  String get cameraPanLeft => 'Pan left';
+
+  @override
+  String get cameraPanRight => 'Pan right';
+
+  @override
+  String get cameraTiltUp => 'Tilt up';
+
+  @override
+  String get cameraTiltDown => 'Tilt down';
+
+  @override
+  String get cameraOrbit => 'Orbit';
+
+  @override
+  String get cameraHandheld => 'Handheld';
+
+  @override
   String get inspectorVideoModeAuto => 'Mode: auto-detected from inputs';
-
-  @override
-  String get inspectorVideoModeT2v => 'Text-to-video';
-
-  @override
-  String get inspectorVideoModeI2v => 'Image-to-video';
 
   @override
   String get inspectorVideoGenerateDisabledEmptyPrompt => 'Prompt required';
@@ -418,6 +410,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get lightboxPlayPause => 'Play / Pause';
+
+  @override
+  String get studioDefaultName => 'My Studio';
 
   @override
   String get studioRecentProjects => 'Recent Projects';
@@ -481,6 +476,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get studioCreate => 'Create';
+
+  @override
+  String studioProjectMetaLine(DateTime date, int count) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
+    final String dateString = dateDateFormat.format(date);
+
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count canvases',
+      one: '1 canvas',
+    );
+    return '$dateString · $_temp0';
+  }
 
   @override
   String get canvasDefaultName => 'Untitled Canvas';

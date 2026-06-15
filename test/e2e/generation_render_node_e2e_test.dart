@@ -86,7 +86,7 @@ void main() {
               node: node,
               selected: false,
               onTap: () {},
-              onPanUpdate: (_) {},
+              onDragEnd: (_) {},
             ),
           ),
         ),
@@ -107,10 +107,13 @@ void main() {
       expect(find.text('Image file missing'), findsNothing);
 
       // 关键链路不变量：Image 的 FileImage 目标绝对路径 == 落盘文件绝对路径。
+      // ME-26：cacheWidth 让 Image.file 包一层 ResizeImage，先解包。
       final image = tester.widget<Image>(imageFinder);
       final provider = image.image;
-      expect(provider, isA<FileImage>());
-      final resolvedPath = (provider as FileImage).file.path;
+      expect(provider, isA<ResizeImage>());
+      final inner = (provider as ResizeImage).imageProvider;
+      expect(inner, isA<FileImage>());
+      final resolvedPath = (inner as FileImage).file.path;
       expect(p.equals(resolvedPath, landed.path), isTrue,
           reason: 'FileResolver 必须把相对 image_url 解析回落盘绝对路径');
       // 绝对路径确实指向真实存在的文件（链路端到端可读）。

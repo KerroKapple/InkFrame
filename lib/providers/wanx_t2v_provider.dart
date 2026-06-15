@@ -14,14 +14,11 @@
 //   - Response：`output.video_url` 单一 URL
 //   - 追加 duration / size（含视频分辨率）
 
-import 'package:dio/dio.dart';
-
 import '../core/models/cost_model.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../core/models/provider_capabilities.dart';
 import 'dashscope_async_provider_base.dart';
-import 'rate_limiter.dart';
 
 // ---- 接入参数（ADR-0005 锁定） -------------------------------------------
 const String kWanxT2VModel = 'wan2.7-t2v';
@@ -31,6 +28,7 @@ const String kWanxT2VSubmitPath =
 // ---- 能力声明 -----------------------------------------------------------
 const ProviderCapabilities kWanxT2VCapabilities = ProviderCapabilities(
   providerId: 'wanx-t2v',
+  displayName: 'Wanx Text-to-Video',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToVideo],
   supportedRatios: [
@@ -97,22 +95,6 @@ class WanxT2VProvider extends DashScopeAsyncProviderBase {
   }
 
   @override
-  JobStatus parseSuccessOutput(Map<String, Object?> output) {
-    final url = output['video_url'] as String?;
-    return JobStatus.success(
-      remoteUrls: url != null && url.isNotEmpty ? [url] : const [],
-    );
-  }
+  JobStatus parseSuccessOutput(Map<String, Object?> output) =>
+      parseSingleVideoUrlOutput(output);
 }
-
-/// Provider 工厂：DI 层注入（registry 注册见后续 PR）。
-WanxT2VProvider buildWanxT2VProvider({
-  required DashScopeKeySource keySource,
-  required ProviderRateLimiter rateLimiter,
-  Dio? dio,
-}) =>
-    WanxT2VProvider(
-      keySource: keySource,
-      rateLimiter: rateLimiter,
-      dio: dio,
-    );

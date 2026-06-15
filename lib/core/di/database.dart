@@ -1,19 +1,22 @@
-// Database providers：PgController + Postgres Connection 的 app-scoped 注入。
+// Database providers：PgController + Postgres Pool 的 app-scoped 注入。
 //
 // 生命周期（PRD §22.1）：
 //   - pgControllerProvider：keepAlive，持有 initdb/start/stop 策略
-//   - pgConnectionProvider：FutureProvider.keepAlive，首次读触发 start + 建连接
-//   - ref.onDispose：先 close connection，再 pg_ctl stop
+//   - pgPoolProvider：FutureProvider.keepAlive，首次读触发 start + 建池
+//   - ref.onDispose：先 close pool，再 pg_ctl stop（关闭窗口路径见 AppTeardown）
 //
-// 被 widget/viewmodel import 是反模式——仓储层才是 Connection 的直接使用者。
+// ME-33：单 Connection 断线即永久失联——改用 Pool，连接按需建立，
+// 断线后下一次执行自动换新连接，天然具备重连能力。
+//
+// 被 widget/viewmodel import 是反模式——仓储层才是 Pool 的直接使用者。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../storage/pg_binary_locator.dart';
+import '../../storage/migrations/app_migrations.dart';
 import '../../storage/migrations/migration_runner.dart';
 import '../../storage/pg_controller.dart';
-import '../../storage/schema/schema_v1.dart';
-import '../../storage/schema/schema_v2.dart';
+import 'logger.dart';
 import 'paths.dart';
 
 /// 二进制定位器——默认按平台探测；单测可以覆盖为指向测试 fixture。
@@ -28,6 +31,7 @@ final pgControllerProvider = Provider<PgController>(
     final controller = PgController(
       paths: ref.watch(appPathsProvider),
       locator: ref.watch(pgBinaryLocatorProvider),
+      logger: ref.watch(loggerProvider),
     );
     ref.onDispose(() async {
       try {
@@ -41,50 +45,51 @@ final pgControllerProvider = Provider<PgController>(
   name: 'pgControllerProvider',
 );
 
-/// Connection——首次读触发 PG 启动 + 建立单连接。
-final pgConnectionProvider = FutureProvider<Connection>(
+/// 内嵌 PG 是单机本地库——小池即可，上限防失控连接堆积。
+const int kPgMaxConnections = 4;
+
+/// Pool——首次读触发 PG 启动 + 建池；连接懒建，断线自动换新（ME-33）。
+final pgPoolProvider = FutureProvider<Pool<void>>(
   (ref) async {
     final controller = ref.watch(pgControllerProvider);
     final runtime = await controller.start();
-    final conn = await Connection.open(
-      Endpoint(
-        host: runtime.host,
-        port: runtime.port,
-        database: 'postgres',
-        username: 'inkframe',
+    final Pool<void> pool = Pool.withEndpoints(
+      [
+        Endpoint(
+          host: runtime.host,
+          port: runtime.port,
+          database: 'postgres',
+          username: 'inkframe',
+        ),
+      ],
+      settings: const PoolSettings(
+        sslMode: SslMode.disable,
+        maxConnectionCount: kPgMaxConnections,
       ),
-      settings: const ConnectionSettings(sslMode: SslMode.disable),
     );
     ref.onDispose(() async {
-      await conn.close();
+      await pool.close();
     });
-    return conn;
+    return pool;
   },
-  name: 'pgConnectionProvider',
+  name: 'pgPoolProvider',
 );
 
-
-/// Connection + schema migrated——应用层仓储层实际应该依赖的 provider。
-/// 首次读：启动 PG → 建连 → CREATE EXTENSION pgcrypto → MigrationRunner.migrate()。
-final pgMigratedConnectionProvider = FutureProvider<Connection>(
+/// Pool + schema migrated——应用层仓储层实际应该依赖的 provider。
+/// 首次读：启动 PG → 建池 → CREATE EXTENSION pgcrypto → MigrationRunner.migrate()。
+final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
   (ref) async {
-    final conn = await ref.watch(pgConnectionProvider.future);
+    final pool = await ref.watch(pgPoolProvider.future);
     // pgcrypto：gen_random_uuid() 依赖；IF NOT EXISTS 幂等。
     try {
-      await conn.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto');
+      await pool.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto');
     } on ServerException catch (e) {
       // 23505 并发竞争；其余重抛。
       if (e.code != '23505') rethrow;
     }
-    final runner = MigrationRunner(
-      conn,
-      migrations: const [
-        Migration(version: 1, sql: kSchemaV1),
-        Migration(version: 2, sql: kSchemaV2),
-      ],
-    );
+    final runner = MigrationRunner(pool, migrations: kAppMigrations);
     await runner.migrate();
-    return conn;
+    return pool;
   },
-  name: 'pgMigratedConnectionProvider',
+  name: 'pgMigratedPoolProvider',
 );

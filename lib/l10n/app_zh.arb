@@ -2,13 +2,7 @@
   "@@locale": "zh",
   "appTitle": "InkFrame",
 
-  "commonOk": "确定",
   "commonCancel": "取消",
-  "commonRetry": "重试",
-  "commonClose": "关闭",
-  "commonSave": "保存",
-  "commonDelete": "删除",
-  "commonConfirm": "确认",
 
   "errorInvalidKey": "API Key 无效，请检查 Provider 设置。",
   "errorInsufficientBalance": "Provider 账户余额不足。",
@@ -25,17 +19,8 @@
   "errorCancelledOnExit": "应用退出，已取消任务。",
   "errorUnknown": "未知错误。",
 
-  "canvasEmptyHint": "右键或按 + 添加节点",
   "canvasNodeDefaultLabel": "新节点",
   "canvasNodeImageType": "图片",
-  "canvasAddNode": "添加节点",
-  "canvasDeleteNode": "删除节点",
-  "canvasNodesSelected": "已选择 {count} 个节点",
-  "@canvasNodesSelected": {
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
 
   "canvasNoCanvasOpen": "当前没有打开的画布",
   "canvasCreateSampleCanvas": "新建示例画布",
@@ -51,8 +36,6 @@
   "inspectorGenerate": "生成",
   "inspectorGenerateDisabledEmptyPrompt": "请先填写提示词",
   "inspectorGenerateDisabledNoKey": "请在设置中配置 API Key",
-  "inspectorGenerateNotWiredYet": "生成流程将在下个切片接入",
-  "inspectorSelectSingleHint": "选中一个配置节点以编辑",
   "inspectorStatusSubmitting": "提交中...",
   "inspectorStatusRunning": "生成中...",
   "inspectorStatusRunningWithProgress": "生成中... {percent}%",
@@ -73,6 +56,8 @@
   "settingsApiKeySet": "已配置",
   "settingsApiKeyNotSet": "未配置",
   "settingsApiKeySaved": "已保存",
+  "settingsApiKeySavedUnverified": "已保存，但网络问题导致 Key 暂时无法验证。",
+  "settingsApiKeyRejected": "Provider 拒绝了该 Key，未保存。",
   "settingsApiKeyCleared": "已清除",
 
   "settingsThemeSection": "主题",
@@ -109,8 +94,6 @@
     }
   },
 
-  "generationSuccess": "生成完成",
-  "generationFailure": "生成失败",
   "generationMissingKey": "API Key 未配置",
   "generationInvalidConfig": "配置无效：{reason}",
   "@generationInvalidConfig": {
@@ -129,6 +112,12 @@
   "generationStatusQueued": "排队中",
   "generationStatusSubmitting": "提交中",
   "generationStatusRunning": "生成中",
+  "generationStatusRunningWithProgress": "生成中 {percent}%",
+  "@generationStatusRunningWithProgress": {
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  },
   "generationStatusSucceeded": "已完成",
   "generationStatusFailed": "失败",
   "generationStatusCancelled": "已取消",
@@ -147,6 +136,7 @@
   "linkCreated": "连线已创建",
   "linkAlreadyExists": "连线已存在",
   "linkSelfNotAllowed": "不能连到自己",
+  "linkCreateFailed": "连线创建失败",
 
   "nodeDelete": "删除节点",
   "nodeDeleted": "节点已删除",
@@ -160,7 +150,7 @@
   "inspectorRemoveInput": "移除输入",
 
   "canvasAddImageNode": "添加图片节点",
-  "canvasAddVideoNode": "新增视频节点",
+  "canvasAddVideoNode": "添加视频节点",
   "canvasAddNodeTooltip": "新建节点",
   "canvasAddNodeFailed": "添加节点失败",
 
@@ -168,9 +158,16 @@
   "inspectorVideoDurationLabel": "时长（秒）",
   "inspectorVideoDurationOption": "{seconds} 秒",
   "inspectorVideoCameraLabel": "运镜",
+  "cameraStatic": "固定机位",
+  "cameraPushIn": "推进",
+  "cameraPullOut": "拉远",
+  "cameraPanLeft": "左摇",
+  "cameraPanRight": "右摇",
+  "cameraTiltUp": "上仰",
+  "cameraTiltDown": "下俯",
+  "cameraOrbit": "环绕",
+  "cameraHandheld": "手持",
   "inspectorVideoModeAuto": "生成模式：根据输入自动识别",
-  "inspectorVideoModeT2v": "文生视频",
-  "inspectorVideoModeI2v": "图生视频",
   "inspectorVideoGenerateDisabledEmptyPrompt": "请先填写提示词",
   "inspectorVideoGenerateDisabledNoKey": "请在设置中配置 API Key",
   "inspectorVideoGenerate": "生成视频",
@@ -179,6 +176,7 @@
   "lightboxPlayPause": "播放 / 暂停",
 
 
+  "studioDefaultName": "我的工作室",
   "studioRecentProjects": "最近项目",
   "studioNewProject": "新建项目",
   "studioLibrary": "工作库",
@@ -199,6 +197,13 @@
   "studioNewProjectErrorDuplicate": "已存在同名项目",
   "studioNewProjectFailed": "项目创建失败",
   "studioCreate": "创建",
+  "studioProjectMetaLine": "{date} · {count, plural, other{{count} 个画布}}",
+  "@studioProjectMetaLine": {
+    "placeholders": {
+      "date": { "type": "DateTime", "format": "yMMM" },
+      "count": { "type": "int" }
+    }
+  },
 
   "canvasInspectorTransform": "变换",
   "canvasInspectorCamera": "镜头",
@@ -234,8 +239,8 @@
 
   "canvasDefaultName": "未命名画布",
   "studioOpenCanvasFailed": "打开画布失败",
-  "studioNoKeyBannerText": "尚未配置任何 provider API key — 生成需要先配置。",
-  "studioNoKeyBannerAction": "去 Settings 配置",
+  "studioNoKeyBannerText": "尚未配置任何 Provider API Key——生成需要先配置。",
+  "studioNoKeyBannerAction": "前往设置配置",
 
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",

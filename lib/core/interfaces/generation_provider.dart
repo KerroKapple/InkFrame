@@ -1,10 +1,10 @@
 // GenerationProvider 接口族（PROVIDER-API.md §2）。
 //
-// 按 ISP 原则拆成 5 个细粒度 abstract class，具体 Provider 选实现。
+// 按 ISP 原则拆成 4 个细粒度 abstract class，具体 Provider 选实现。
 // 抛出的错误必须是 InkError 子类——禁止裸 Exception / String。
 //
 // 所有 Provider 必须暴露 `const ProviderCapabilities get capabilities`——
-// 这是 Provider 的唯一事实源，UI / JobQueueService / estimateCost 都读这个。
+// 这是 Provider 的唯一事实源，UI / JobQueueService 都读这个。
 
 import '../errors/ink_error.dart';
 import '../models/generation_task.dart';

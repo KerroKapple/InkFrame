@@ -11,16 +11,14 @@
 //   - 模式仅 textToVideo——参考图语义是角色/场景/镜头的组合锁定
 //   - 不支持首末帧
 //
-// 注：参考图 URL 由上层完成本地路径→可访问 URL 转换，Provider 层仅透传。
-
-import 'package:dio/dio.dart';
+// 注：参考图本地路径由基类在 submit 前内联为 base64 data URI（HI-05）；
+// http(s)/data 引用原样透传。
 
 import '../core/models/cost_model.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../core/models/provider_capabilities.dart';
 import 'dashscope_async_provider_base.dart';
-import 'rate_limiter.dart';
 
 // ---- 接入参数（ADR-0005 锁定） -------------------------------------------
 const String kKlingV3OmniModel = 'kling/kling-v3-omni-video-generation';
@@ -33,6 +31,7 @@ const int kKlingV3OmniMaxRefImages = 4;
 // ---- 能力声明 -----------------------------------------------------------
 const ProviderCapabilities kKlingV3OmniCapabilities = ProviderCapabilities(
   providerId: 'kling-v3-omni',
+  displayName: 'Kling v3 Omni',
   region: ProviderRegion.cn,
   modes: [GenerationMode.textToVideo],
   supportedRatios: [
@@ -103,22 +102,6 @@ class KlingV3OmniProvider extends DashScopeAsyncProviderBase {
   }
 
   @override
-  JobStatus parseSuccessOutput(Map<String, Object?> output) {
-    final url = output['video_url'] as String?;
-    return JobStatus.success(
-      remoteUrls: url != null && url.isNotEmpty ? [url] : const [],
-    );
-  }
+  JobStatus parseSuccessOutput(Map<String, Object?> output) =>
+      parseSingleVideoUrlOutput(output);
 }
-
-/// Provider 工厂：DI 层注入（registry 注册见后续 PR）。
-KlingV3OmniProvider buildKlingV3OmniProvider({
-  required DashScopeKeySource keySource,
-  required ProviderRateLimiter rateLimiter,
-  Dio? dio,
-}) =>
-    KlingV3OmniProvider(
-      keySource: keySource,
-      rateLimiter: rateLimiter,
-      dio: dio,
-    );

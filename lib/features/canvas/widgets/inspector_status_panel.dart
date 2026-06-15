@@ -1,47 +1,75 @@
 // InspectorStatusPanel：image/video Inspector 共用的四态生成视图。
 //
-// 四态：idle / submitting / running(progress?) / error(code)。
-// idle 渲染 Generate 按钮（带 disabled 原因 tooltip），其它三态接管按钮位置
-// 显示进度 / 错误 + Retry。
+// 直接消费 InspectorSubmitController 的 sealed 状态：
+//   idle 渲染 Generate 按钮（带 disabled 原因 tooltip），其它三态接管按钮位置
+//   显示进度 / 本地化错误 + Retry。错误文案在本文件统一映射 ARB——
+//   原始错误结构留在 InspectorSubmitError，UI 绝不直出 toString / 枚举名。
 //
-// JobState 绑定点（agent-generation slice 落地后接线）：
-//   - features/generation/models/job_state.dart 提供 freezed JobState 后，
-//     ImageConfigInspector / VideoConfigInspector 应改为
-//     `ref.watch(jobStateProvider(nodeId))` 直接得到状态流，
-//     再 `.map(...)` 转成本文件的 InspectorJobView。
-//   - 本 sealed class 是临时 view-model，落地后可整体删除并由 JobState 替代。
+// InspectorStatusBinding：再包一层 hasApiKey（FutureProvider 缓存）+
+// disabled 原因分层（就近原则：prompt 空 / 无 API Key），两个 Inspector 复用。
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../providers/inspector_submit_controller.dart';
 
-sealed class InspectorJobView {
-  const InspectorJobView();
+/// InspectorSubmitError → 用户可读文案。exhaustive switch，新错误类型漏映射编译期报错。
+String inspectorSubmitErrorText(BuildContext context, InspectorSubmitError e) {
+  final l = context.l10n;
+  return switch (e) {
+    InspectorMissingApiKey() => l.generationMissingKey,
+    InspectorInvalidConfig(reason: final r) => l.generationInvalidConfig(r),
+    InspectorProviderNotRegistered() => l.generationProviderNotRegistered,
+    InspectorInkFailure(error: final err) => l10nError(context, err),
+  };
 }
 
-class InspectorJobIdle extends InspectorJobView {
-  const InspectorJobIdle();
-}
+/// hasApiKey 解析 + disabled 原因分层，再委托 InspectorStatusPanel。
+/// image / video Inspector 复用。
+class InspectorStatusBinding extends ConsumerWidget {
+  const InspectorStatusBinding({
+    super.key,
+    required this.nodeId,
+    required this.providerId,
+    required this.promptEmpty,
+    required this.generateLabel,
+    required this.disabledEmptyPromptText,
+    required this.disabledNoKeyText,
+    required this.onSubmit,
+  });
 
-class InspectorJobSubmitting extends InspectorJobView {
-  const InspectorJobSubmitting();
-}
+  final String nodeId;
+  final String? providerId;
+  final bool promptEmpty;
+  final String generateLabel;
+  final String disabledEmptyPromptText;
+  final String disabledNoKeyText;
+  final VoidCallback onSubmit;
 
-class InspectorJobRunning extends InspectorJobView {
-  const InspectorJobRunning({this.progress});
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(inspectorSubmitControllerProvider(nodeId));
+    final pid = providerId;
+    final hasKey = pid != null &&
+        (ref.watch(inspectorHasApiKeyProvider(pid)).valueOrNull ?? false);
 
-  /// [0.0, 1.0]；为 null 时渲染 indeterminate 进度条。
-  final double? progress;
-}
-
-class InspectorJobError extends InspectorJobView {
-  const InspectorJobError({required this.code});
-
-  /// 错误码标识（如 InkErrorCode.name 或 'unknown'）。
-  /// 详细描述由 l10n 层映射，本字段保留可观测原始码方便排查。
-  final String code;
+    String? disabledReason;
+    if (promptEmpty) {
+      disabledReason = disabledEmptyPromptText;
+    } else if (!hasKey) {
+      disabledReason = disabledNoKeyText;
+    }
+    return InspectorStatusPanel(
+      view: state,
+      generateLabel: generateLabel,
+      canSubmit: !promptEmpty && hasKey,
+      disabledReason: disabledReason,
+      onSubmit: onSubmit,
+    );
+  }
 }
 
 class InspectorStatusPanel extends StatelessWidget {
@@ -54,7 +82,7 @@ class InspectorStatusPanel extends StatelessWidget {
     this.disabledReason,
   });
 
-  final InspectorJobView view;
+  final InspectorSubmitState view;
   final String generateLabel;
   final bool canSubmit;
   final VoidCallback onSubmit;
@@ -65,18 +93,18 @@ class InspectorStatusPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return switch (view) {
-      InspectorJobIdle() => _IdleButton(
+      InspectorSubmitIdle() => _IdleButton(
           label: generateLabel,
           canSubmit: canSubmit,
           disabledReason: disabledReason,
           onPressed: onSubmit,
         ),
-      InspectorJobSubmitting() => _ProgressRow(
+      InspectorSubmitSubmitting() => _ProgressRow(
           label: context.l10n.inspectorStatusSubmitting,
         ),
-      InspectorJobRunning(progress: final p) => _RunningPanel(progress: p),
-      InspectorJobError(code: final code) => _ErrorPanel(
-          code: code,
+      InspectorSubmitRunning(progress: final p) => _RunningPanel(progress: p),
+      InspectorSubmitFailure(error: final e) => _ErrorPanel(
+          message: inspectorSubmitErrorText(context, e),
           onRetry: onSubmit,
         ),
     };
@@ -168,8 +196,10 @@ class _RunningPanel extends StatelessWidget {
 }
 
 class _ErrorPanel extends StatelessWidget {
-  const _ErrorPanel({required this.code, required this.onRetry});
-  final String code;
+  const _ErrorPanel({required this.message, required this.onRetry});
+
+  /// 已本地化的错误描述（inspectorSubmitErrorText 产出）。
+  final String message;
   final VoidCallback onRetry;
 
   @override
@@ -201,11 +231,8 @@ class _ErrorPanel extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      code,
-                      style: typo.caption.copyWith(
-                        fontFamily: 'JetBrainsMono',
-                        color: colors.fg3,
-                      ),
+                      message,
+                      style: typo.caption.copyWith(color: colors.fg3),
                     ),
                   ],
                 ),

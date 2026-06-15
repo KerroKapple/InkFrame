@@ -49,6 +49,7 @@ const String kStabilityOutputFormat = 'png';
 const ProviderCapabilities kStabilityImageCoreCapabilities =
     ProviderCapabilities(
   providerId: 'stability-image-core',
+      displayName: 'Stable Image Core',
   region: ProviderRegion.global,
   modes: [GenerationMode.textToImage],
   supportedRatios: [
