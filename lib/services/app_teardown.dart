@@ -7,8 +7,10 @@
 //   4) container.dispose —— 触发其余 provider 的 onDispose（各步均幂等）
 //
 // 只回收"已实例化"的 provider：关闭路径绝不反向拉起 PG / 队列。
-// JobQueue / Pool 仍在异步初始化中（valueOrNull == null）时跳过显式
-// 回收——第 3 步的 pg_ctl stop -m fast 会兜底断开半建连接。
+// 对"已挂载但仍在异步初始化中"的 FutureProvider（在途）：等待其 future 完成
+// 后再回收。否则 valueOrNull==null 会漏关，且 PgController.stop 可能在 start
+// 写 postmaster.pid 之前跑完变 no-op，随后 start 完成 → PG 进程孤儿化。
+// 等待由 AppDelegate 的 15s native 超时兜底，不会无限阻塞退出。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/di/database.dart';
@@ -25,17 +27,30 @@ class AppTeardown {
       _running ??= _run(container);
 
   Future<void> _run(ProviderContainer container) async {
+    // 1) JobQueue：已挂载则等其初始化完成（可能在途）再 dispose，避免漏回收在途实例。
+    //    初始化失败 → 无实例可收，吞掉异常继续。
     if (_isMounted(container, jobQueueServiceProvider)) {
-      container.read(jobQueueServiceProvider).valueOrNull?.dispose();
-    }
-
-    if (_isMounted(container, pgPoolProvider)) {
-      final pool = container.read(pgPoolProvider).valueOrNull;
-      if (pool != null) {
-        await pool.close();
+      try {
+        final queue = await container.read(jobQueueServiceProvider.future);
+        queue.dispose();
+      } on Object {
+        // 退出路径尽力而为：初始化失败不阻断后续 PG 回收。
       }
     }
 
+    // 2) Pool：等池建好（= PgController.start 已完成）再 close。
+    //    try-catch 保证即使 close 抛错也不跳过下面的 stop（否则 postmaster 孤儿）。
+    if (_isMounted(container, pgPoolProvider)) {
+      try {
+        final pool = await container.read(pgPoolProvider.future);
+        await pool.close();
+      } on Object {
+        // 初始化失败或 close 异常：进程交由 PgController.stop 兜底。
+      }
+    }
+
+    // 3) PgController.stop：上面已 await pgPool.future → start 必已完成、
+    //    postmaster.pid 已写，stop 可靠停掉 postmaster，杜绝 stop/start 竞争孤儿。
     if (_isMounted(container, pgControllerProvider)) {
       try {
         await container.read(pgControllerProvider).stop();
