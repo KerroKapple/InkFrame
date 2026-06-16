@@ -90,3 +90,7 @@ api-key*
 # IDE / debug 运行日志
 .vscode/
 /tmp/flutter_run_*.log
+
+# 嵌入式 PostgreSQL 二进制（由 scripts/pg/make-relocatable-macos.sh 生成或 CI 拉取，不入库）
+macos/Runner/Resources/pg/
+windows/runner/resources/pg/
