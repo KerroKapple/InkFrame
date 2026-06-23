@@ -1201,6 +1201,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get windowClose;
+
+  /// No description provided for @laneAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add lane'**
+  String get laneAdd;
+
+  /// No description provided for @laneNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New lane'**
+  String get laneNewTitle;
+
+  /// No description provided for @laneEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit lane'**
+  String get laneEditTitle;
+
+  /// No description provided for @laneNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get laneNameLabel;
+
+  /// No description provided for @laneNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lane name'**
+  String get laneNameHint;
+
+  /// No description provided for @laneStyleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Style description'**
+  String get laneStyleLabel;
+
+  /// No description provided for @laneStyleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. warm sunset lighting, candlelit'**
+  String get laneStyleHint;
+
+  /// No description provided for @laneTintLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Background color'**
+  String get laneTintLabel;
+
+  /// No description provided for @laneTintAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get laneTintAuto;
+
+  /// No description provided for @laneResetAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to auto'**
+  String get laneResetAuto;
+
+  /// No description provided for @laneSizeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Lane size'**
+  String get laneSizeLabel;
+
+  /// No description provided for @laneDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete lane'**
+  String get laneDelete;
+
+  /// No description provided for @laneDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this lane?'**
+  String get laneDeleteConfirmTitle;
+
+  /// No description provided for @laneDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nodes in this lane keep their position but lose the lane style.'**
+  String get laneDeleteConfirmBody;
+
+  /// No description provided for @laneDialogSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get laneDialogSave;
+
+  /// No description provided for @laneDialogCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get laneDialogCancel;
+
+  /// No description provided for @laneDirectionToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle lane direction'**
+  String get laneDirectionToggle;
+
+  /// No description provided for @laneUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled lane'**
+  String get laneUntitled;
+
+  /// No description provided for @laneCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create lane'**
+  String get laneCreateFailed;
+
+  /// No description provided for @laneUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update lane'**
+  String get laneUpdateFailed;
+
+  /// No description provided for @laneDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete lane'**
+  String get laneDeleteFailed;
+
+  /// No description provided for @inspectorPromptPreviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Final prompt preview'**
+  String get inspectorPromptPreviewLabel;
+
+  /// No description provided for @inspectorIgnoreLaneStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore lane style'**
+  String get inspectorIgnoreLaneStyle;
 }
 
 class _AppLocalizationsDelegate

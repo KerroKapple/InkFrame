@@ -606,4 +606,74 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get windowClose => 'Close';
+
+  @override
+  String get laneAdd => 'Add lane';
+
+  @override
+  String get laneNewTitle => 'New lane';
+
+  @override
+  String get laneEditTitle => 'Edit lane';
+
+  @override
+  String get laneNameLabel => 'Name';
+
+  @override
+  String get laneNameHint => 'Lane name';
+
+  @override
+  String get laneStyleLabel => 'Style description';
+
+  @override
+  String get laneStyleHint => 'e.g. warm sunset lighting, candlelit';
+
+  @override
+  String get laneTintLabel => 'Background color';
+
+  @override
+  String get laneTintAuto => 'Auto';
+
+  @override
+  String get laneResetAuto => 'Reset to auto';
+
+  @override
+  String get laneSizeLabel => 'Lane size';
+
+  @override
+  String get laneDelete => 'Delete lane';
+
+  @override
+  String get laneDeleteConfirmTitle => 'Delete this lane?';
+
+  @override
+  String get laneDeleteConfirmBody =>
+      'Nodes in this lane keep their position but lose the lane style.';
+
+  @override
+  String get laneDialogSave => 'Save';
+
+  @override
+  String get laneDialogCancel => 'Cancel';
+
+  @override
+  String get laneDirectionToggle => 'Toggle lane direction';
+
+  @override
+  String get laneUntitled => 'Untitled lane';
+
+  @override
+  String get laneCreateFailed => 'Failed to create lane';
+
+  @override
+  String get laneUpdateFailed => 'Failed to update lane';
+
+  @override
+  String get laneDeleteFailed => 'Failed to delete lane';
+
+  @override
+  String get inspectorPromptPreviewLabel => 'Final prompt preview';
+
+  @override
+  String get inspectorIgnoreLaneStyle => 'Ignore lane style';
 }
