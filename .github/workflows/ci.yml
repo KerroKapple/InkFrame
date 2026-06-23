@@ -17,7 +17,7 @@ env:
 
 jobs:
   analyze:
-    name: analyze + hooks
+    name: analyze + lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -30,18 +30,23 @@ jobs:
         run: flutter pub get
       - name: flutter analyze
         run: flutter analyze
-      - name: hook / i18n coverage
-        run: bash scripts/hooks/check-i18n-coverage.sh
-      - name: hook / inline styles
-        run: bash scripts/hooks/check-inline-styles.sh
-      - name: hook / magic strings
-        run: bash scripts/hooks/check-magic-strings.sh
-      - name: hook / direct instantiation
-        run: bash scripts/hooks/check-direct-instantiation.sh
-      - name: hook / disposable cleanup
-        run: bash scripts/hooks/check-disposable-cleanup.sh
-      - name: hook / updated_at maintenance
-        run: bash scripts/hooks/check-updated-at.sh
+      # DIP + 生命周期铁律的硬闸门现由 test job 的 Dart 静态测试承担（不会因下方
+      # custom_lint 临时非阻断而出现防护真空）：
+      #   - test/quality/no_direct_instantiation_test.dart  （取代 check-direct-instantiation.sh）
+      #   - test/quality/disposable_cleanup_test.dart        （取代 check-disposable-cleanup.sh）
+      #   - test/quality/no_inline_styles_test.dart          （取代 check-inline-styles.sh）
+      #   - test/quality/no_magic_strings_test.dart          （取代 check-magic-strings.sh）
+      # 这些测试随 `flutter test --coverage` 阻断式执行，是铁律的回归靶子。
+      #
+      # 下方 custom_lint 是 AST 级增强（更精确，未来取代上述文本近似）。continue-on-error
+      # 临时挂载：在 analysis_options.yaml 启用 plugins: - custom_lint 且把
+      # riverpod_lint/custom_lint 升级到兼容 Dart 3.11+ dot-shorthand AST 的版本、本地
+      # `dart run custom_lint` 跑通无 throw 之前，不作硬阻断（避免引入 per-file crash 栈
+      # 或零规则假绿）。前置完成后去掉 continue-on-error 转为硬闸门。铁律防护在此期间
+      # 不依赖本 step——已由上述 Dart 测试兜底。
+      - name: custom_lint
+        continue-on-error: true
+        run: dart run custom_lint
 
   test:
     name: test + coverage

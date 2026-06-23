@@ -28,6 +28,26 @@ flutter test            # full suite
 
 ---
 
+## Git hooks / Git 钩子
+
+After cloning, wire the version-controlled hooks in `scripts/hooks/` (pre-commit +
+pre-push) as your local git hooks — no manual symlink into `.git/hooks` needed:
+
+clone 后执行一次，把仓库内受版本控制的 `scripts/hooks/`（pre-commit + pre-push）接为本地
+git 钩子，无需手动 symlink 到 `.git/hooks`：
+
+```bash
+git config core.hooksPath scripts/hooks
+```
+
+- **pre-commit**: `flutter analyze` + `dart run custom_lint` + `flutter test test/quality/`
+  （定向质量测试，纯文件 IO，不连库，秒级）。
+- **pre-push**: `flutter analyze` + 全量 `flutter test`。
+
+> CONTRIBUTING.md 如有 hook 章节，请指回本节 —— SETUP.md 是开发环境的唯一真相源。
+
+---
+
 <a id="dev-env-on-windows"></a>
 
 ## Dev env on Windows / 开发环境 — Windows
