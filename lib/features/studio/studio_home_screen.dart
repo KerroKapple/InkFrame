@@ -91,8 +91,7 @@ class _StudioMainArea extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: InkSpacing.lg),
                   child: Text(
                     context.l10n.studioRecentProjects,
-                    style: typo.display.copyWith(
-                      fontSize: 32,
+                    style: typo.displayMd.copyWith(
                       color: colors.fg1,
                     ),
                   ),

@@ -1061,7 +1061,7 @@ abstract class AppLocalizations {
   /// No description provided for @canvasInspectorAddAttribute.
   ///
   /// In en, this message translates to:
-  /// **'Add Attribute'**
+  /// **'+ Add Attribute'**
   String get canvasInspectorAddAttribute;
 
   /// No description provided for @canvasRenderQueue.

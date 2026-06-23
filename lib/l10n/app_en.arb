@@ -238,7 +238,7 @@
   "canvasInspectorComposition": "Composition",
   "canvasInspectorMetadata": "Metadata",
   "canvasInspectorNotes": "Notes",
-  "canvasInspectorAddAttribute": "Add Attribute",
+  "canvasInspectorAddAttribute": "+ Add Attribute",
   "canvasRenderQueue": "Render Queue",
   "canvasNodeTypeCharacter": "Character",
   "canvasNodeTypeScene": "Scene",

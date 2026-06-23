@@ -513,7 +513,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasInspectorNotes => '备注';
 
   @override
-  String get canvasInspectorAddAttribute => '添加属性';
+  String get canvasInspectorAddAttribute => '+ 添加属性';
 
   @override
   String get canvasRenderQueue => '渲染队列';

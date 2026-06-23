@@ -533,7 +533,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasInspectorNotes => 'Notes';
 
   @override
-  String get canvasInspectorAddAttribute => 'Add Attribute';
+  String get canvasInspectorAddAttribute => '+ Add Attribute';
 
   @override
   String get canvasRenderQueue => 'Render Queue';

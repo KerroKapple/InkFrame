@@ -13,8 +13,10 @@ class InkDashedSlot extends StatefulWidget {
     super.key,
     required this.child,
     this.onPressed,
-    this.padding =
-        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    this.padding = const EdgeInsets.symmetric(
+      horizontal: InkSpacing.s10,
+      vertical: InkSpacing.s6,
+    ),
     this.borderRadius = const Radius.circular(InkRadius.md),
     this.dashLength = 6,
     this.gapLength = 4,
