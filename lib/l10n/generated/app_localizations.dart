@@ -1327,6 +1327,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ignore lane style'**
   String get inspectorIgnoreLaneStyle;
+
+  /// No description provided for @baseStyleEditTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Base style'**
+  String get baseStyleEditTooltip;
+
+  /// No description provided for @baseStyleEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project base style'**
+  String get baseStyleEditTitle;
+
+  /// No description provided for @baseStylePrefixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefix (prepended to every prompt)'**
+  String get baseStylePrefixLabel;
+
+  /// No description provided for @baseStylePrefixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. cinematic film still'**
+  String get baseStylePrefixHint;
+
+  /// No description provided for @baseStyleSuffixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suffix (appended to every prompt)'**
+  String get baseStyleSuffixLabel;
+
+  /// No description provided for @baseStyleSuffixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 8k, highly detailed'**
+  String get baseStyleSuffixHint;
+
+  /// No description provided for @baseStylePresetsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get baseStylePresetsLabel;
+
+  /// No description provided for @baseStylePresetCinematic.
+  ///
+  /// In en, this message translates to:
+  /// **'Cinematic'**
+  String get baseStylePresetCinematic;
+
+  /// No description provided for @baseStylePresetAnime.
+  ///
+  /// In en, this message translates to:
+  /// **'Anime'**
+  String get baseStylePresetAnime;
+
+  /// No description provided for @baseStylePresetGhibli.
+  ///
+  /// In en, this message translates to:
+  /// **'Ghibli'**
+  String get baseStylePresetGhibli;
+
+  /// No description provided for @baseStylePresetCyberpunk.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyberpunk'**
+  String get baseStylePresetCyberpunk;
+
+  /// No description provided for @baseStylePresetInkwash.
+  ///
+  /// In en, this message translates to:
+  /// **'Ink wash'**
+  String get baseStylePresetInkwash;
+
+  /// No description provided for @baseStylePresetPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photographic'**
+  String get baseStylePresetPhoto;
+
+  /// No description provided for @baseStylePreset3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3D animation'**
+  String get baseStylePreset3d;
 }
 
 class _AppLocalizationsDelegate

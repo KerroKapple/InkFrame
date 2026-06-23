@@ -270,5 +270,20 @@
   "laneUpdateFailed": "更新泳道失败",
   "laneDeleteFailed": "删除泳道失败",
   "inspectorPromptPreviewLabel": "最终 prompt 预览",
-  "inspectorIgnoreLaneStyle": "忽略区域风格"
+  "inspectorIgnoreLaneStyle": "忽略区域风格",
+
+  "baseStyleEditTooltip": "基底风格",
+  "baseStyleEditTitle": "项目基底风格",
+  "baseStylePrefixLabel": "前缀（加在所有 prompt 最前）",
+  "baseStylePrefixHint": "如：电影感画面",
+  "baseStyleSuffixLabel": "后缀（加在所有 prompt 最后）",
+  "baseStyleSuffixHint": "如：8k，高细节",
+  "baseStylePresetsLabel": "快速预设",
+  "baseStylePresetCinematic": "真人电影",
+  "baseStylePresetAnime": "国漫",
+  "baseStylePresetGhibli": "吉卜力",
+  "baseStylePresetCyberpunk": "赛博朋克",
+  "baseStylePresetInkwash": "水墨",
+  "baseStylePresetPhoto": "写实摄影",
+  "baseStylePreset3d": "3D动画"
 }

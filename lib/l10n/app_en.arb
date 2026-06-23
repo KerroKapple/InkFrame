@@ -301,5 +301,20 @@
   "laneUpdateFailed": "Failed to update lane",
   "laneDeleteFailed": "Failed to delete lane",
   "inspectorPromptPreviewLabel": "Final prompt preview",
-  "inspectorIgnoreLaneStyle": "Ignore lane style"
+  "inspectorIgnoreLaneStyle": "Ignore lane style",
+
+  "baseStyleEditTooltip": "Base style",
+  "baseStyleEditTitle": "Project base style",
+  "baseStylePrefixLabel": "Prefix (prepended to every prompt)",
+  "baseStylePrefixHint": "e.g. cinematic film still",
+  "baseStyleSuffixLabel": "Suffix (appended to every prompt)",
+  "baseStyleSuffixHint": "e.g. 8k, highly detailed",
+  "baseStylePresetsLabel": "Presets",
+  "baseStylePresetCinematic": "Cinematic",
+  "baseStylePresetAnime": "Anime",
+  "baseStylePresetGhibli": "Ghibli",
+  "baseStylePresetCyberpunk": "Cyberpunk",
+  "baseStylePresetInkwash": "Ink wash",
+  "baseStylePresetPhoto": "Photographic",
+  "baseStylePreset3d": "3D animation"
 }

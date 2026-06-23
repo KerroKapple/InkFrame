@@ -648,4 +648,46 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get inspectorIgnoreLaneStyle => '忽略区域风格';
+
+  @override
+  String get baseStyleEditTooltip => '基底风格';
+
+  @override
+  String get baseStyleEditTitle => '项目基底风格';
+
+  @override
+  String get baseStylePrefixLabel => '前缀（加在所有 prompt 最前）';
+
+  @override
+  String get baseStylePrefixHint => '如：电影感画面';
+
+  @override
+  String get baseStyleSuffixLabel => '后缀（加在所有 prompt 最后）';
+
+  @override
+  String get baseStyleSuffixHint => '如：8k，高细节';
+
+  @override
+  String get baseStylePresetsLabel => '快速预设';
+
+  @override
+  String get baseStylePresetCinematic => '真人电影';
+
+  @override
+  String get baseStylePresetAnime => '国漫';
+
+  @override
+  String get baseStylePresetGhibli => '吉卜力';
+
+  @override
+  String get baseStylePresetCyberpunk => '赛博朋克';
+
+  @override
+  String get baseStylePresetInkwash => '水墨';
+
+  @override
+  String get baseStylePresetPhoto => '写实摄影';
+
+  @override
+  String get baseStylePreset3d => '3D动画';
 }
