@@ -1,16 +1,19 @@
 // CanvasTopChrome：Canvas 顶栏 —— 复用 InkWindowChrome，三槽位
-// leading=Ink/Frame 小 logo，center=breadcrumb，trailing=⌘K + ▶ + avatar。
+// leading=Ink/Frame 小 logo，center=breadcrumb，trailing=调色板+⌘K + ▶ + avatar。
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/shortcut_labels.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
 import '../../studio/controllers/studio_state.dart';
+import '../providers/canvas_base_style.dart';
 import '../providers/current_canvas_id.dart';
+import 'base_style_editor_dialog.dart';
 
 class CanvasTopChrome extends ConsumerWidget implements PreferredSizeWidget {
   const CanvasTopChrome({super.key, required this.canvasName});
@@ -184,9 +187,14 @@ class _Trailing extends ConsumerWidget {
     final trimmed = studioName.trim();
     final avatarInitial =
         trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
+    final canvasId = ref.watch(currentCanvasIdProvider);
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
+        if (canvasId != null) ...<Widget>[
+          _BaseStyleButton(canvasId: canvasId),
+          const SizedBox(width: InkSpacing.sm),
+        ],
         Container(
           height: 26,
           padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
@@ -220,5 +228,47 @@ class _Trailing extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+class _BaseStyleButton extends ConsumerWidget {
+  const _BaseStyleButton({required this.canvasId});
+
+  final String canvasId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final l = context.l10n;
+    return Tooltip(
+      message: l.baseStyleEditTooltip,
+      child: IconButton(
+        icon: Icon(Icons.palette_outlined, size: 18, color: colors.fg2),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        splashRadius: 16,
+        onPressed: () => _openEditor(context, ref),
+      ),
+    );
+  }
+
+  Future<void> _openEditor(BuildContext context, WidgetRef ref) async {
+    final cur = ref.read(canvasBaseStyleProvider(canvasId)).valueOrNull ??
+        (prefix: '', suffix: '');
+    final r = await showBaseStyleEditorDialog(
+      context,
+      prefix: cur.prefix,
+      suffix: cur.suffix,
+    );
+    if (!context.mounted) return;
+    if (r == null) return;
+    try {
+      await setBaseStyle(ref, canvasId, prefix: r.prefix, suffix: r.suffix);
+    } on InkError catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.laneUpdateFailed)),
+      );
+    }
   }
 }
