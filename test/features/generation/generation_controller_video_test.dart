@@ -8,12 +8,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
+import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
+import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
@@ -224,6 +226,42 @@ class _FakeEdgeRepo implements EdgeRepository {
   Future<int> hardDelete(String id) async => 0;
 }
 
+class _FakeCanvasRepo implements CanvasRepository {
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => null;
+  @override
+  Future<String> create({required String projectId, required String name, String baseStylePrefix = '', String baseStyleSuffix = ''}) async => '';
+  @override
+  Future<List<Map<String, Object?>>> listByProject(String projectId) async => [];
+  @override
+  Future<List<Map<String, Object?>>> listByProjects(List<String> projectIds) async => [];
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async => 0;
+  @override
+  Future<int> softDelete(String id) async => 0;
+  @override
+  Future<int> restore(String id) async => 0;
+  @override
+  Future<int> hardDelete(String id) async => 0;
+}
+
+class _FakeLaneRepo implements StyleLaneRepository {
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => null;
+  @override
+  Future<String> create({required String canvasId, String label = '', String stylePrompt = '', int sortOrder = 0, String? tintColor, double size = 400.0}) async => '';
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async => [];
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async => 0;
+  @override
+  Future<int> softDelete(String id) async => 0;
+  @override
+  Future<int> restore(String id) async => 0;
+  @override
+  Future<int> hardDelete(String id) async => 0;
+}
+
 class _FakeResolver implements FileResolverService {
   @override
   Directory canvasRoot({required String projectId, required String canvasId}) =>
@@ -255,6 +293,8 @@ void main() {
   late _FakeJobQueue queue;
   late ProviderRegistry registry;
   late _FakeResolver resolver;
+  late _FakeCanvasRepo canvasRepo;
+  late _FakeLaneRepo laneRepo;
   late _RecordingRegistry jobsRegistry;
 
   GenerationController buildCtrl() => GenerationController(
@@ -265,6 +305,8 @@ void main() {
         queue: queue,
         registry: registry,
         resolver: resolver,
+        canvas: canvasRepo,
+        lanes: laneRepo,
         jobsRegistry: jobsRegistry,
       );
 
@@ -278,6 +320,8 @@ void main() {
     registry = CachingProviderRegistry({
       providerId: () => throw UnimplementedError('not called in tests'),
     });
+    canvasRepo = _FakeCanvasRepo();
+    laneRepo = _FakeLaneRepo();
     jobsRegistry = _RecordingRegistry();
   });
 
