@@ -101,7 +101,15 @@ class _BaseStyleEditorDialogState extends State<_BaseStyleEditorDialog> {
                 runSpacing: InkSpacing.xs,
                 children: kBaseStylePresets.map((preset) {
                   return ActionChip(
-                    label: Text(_presetLabel(context, preset.id)),
+                    label: Text(
+                      _presetLabel(context, preset.id),
+                      style: typography.caption.copyWith(color: colors.fg1),
+                    ),
+                    backgroundColor: colors.surface2,
+                    side: BorderSide(color: colors.borderSubtle),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(InkRadius.sm),
+                    ),
                     onPressed: () {
                       _prefixCtrl.text = preset.prompt;
                     },

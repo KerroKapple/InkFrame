@@ -474,6 +474,10 @@ class _CanvasStage extends ConsumerWidget {
                   ),
                 ),
               ),
+              // 泳道分界线拖拽条：置于节点层之下——节点手势优先；strip 用
+              // translucent，空白分界线处可拖、点击穿透到连线层（HI-1 fix）。
+              if (lanes.length >= 2)
+                ..._buildResizeDividers(ref, lanes, direction),
               for (final node in nodes)
                 Positioned(
                   key: ValueKey('node-card-${node.id}'),
@@ -514,9 +518,6 @@ class _CanvasStage extends ConsumerWidget {
               // 泳道标题栏：节点层之上，边删除按钮之下。
               if (lanes.isNotEmpty)
                 ..._buildLaneTitleBars(context, ref, lanes, direction, collapsedIds),
-              // 泳道分界线拖拽条：相邻泳道之间 ~10px 可拖调大小。
-              if (lanes.length >= 2)
-                ..._buildResizeDividers(ref, lanes, direction, colors),
               if (selectedGeometry != null)
                 Positioned(
                   left: edgeMidpoint(
@@ -595,22 +596,22 @@ class _CanvasStage extends ConsumerWidget {
           child: GestureDetector(
             onPanUpdate: (d) => dragOffset += d.delta,
             onPanEnd: (_) {
+              final moved = dragOffset;
+              dragOffset = Offset.zero;
+              if (moved.distance < 12) return; // 阈值：避免误触重排
               final dropPoint = direction == LaneDirection.horizontal
-                  ? Offset(0, rect.top + kTitleBarHeight / 2 + dragOffset.dy)
-                  : Offset(rect.left + kTitleBarWidth / 2 + dragOffset.dx, 0);
+                  ? Offset(0, rect.top + kTitleBarHeight / 2 + moved.dy)
+                  : Offset(rect.left + kTitleBarWidth / 2 + moved.dx, 0);
               final targetId = laneIdAtPoint(
                 point: dropPoint,
                 lanes: laneSlices,
                 direction: direction,
               );
-              dragOffset = Offset.zero;
-              if (targetId == null || targetId == lane.id) return;
-              final ids = [for (final l in lanes) l.id];
-              final fromIdx = ids.indexOf(lane.id);
-              final toIdx = ids.indexOf(targetId);
-              if (fromIdx < 0 || toIdx < 0) return;
-              ids.removeAt(fromIdx);
-              ids.insert(toIdx, lane.id);
+              final ids = reorderedLaneIds(
+                [for (final l in lanes) l.id],
+                lane.id,
+                targetId,
+              );
               ref
                   .read(canvasLanesControllerProvider(canvasId).notifier)
                   .reorderLanes(ids);
@@ -631,12 +632,11 @@ class _CanvasStage extends ConsumerWidget {
     return result;
   }
 
-  // 拖拽分界线调整相邻泳道大小（仅绘制 ~10px 感应条）。
+  // 拖拽分界线调整相邻泳道大小（~10px 透明感应条，仅命中不绘制）。
   List<Widget> _buildResizeDividers(
     WidgetRef ref,
     List<StyleLane> lanes,
     LaneDirection direction,
-    InkColors colors,
   ) {
     const double kStripThick = 10.0;
     final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
@@ -645,59 +645,45 @@ class _CanvasStage extends ConsumerWidget {
       direction: direction,
       canvasExtent: 4000,
     );
+    final horizontal = direction == LaneDirection.horizontal;
     final result = <Widget>[];
     // 相邻泳道之间各一条感应条，以 upper lane id 为键。
     for (var i = 1; i < lanes.length; i++) {
       final upperLane = lanes[i - 1];
-      final dividerPos = direction == LaneDirection.horizontal
-          ? rects[i].top
-          : rects[i].left;
+      final dividerPos = horizontal ? rects[i].top : rects[i].left;
       final upperLaneId = upperLane.id;
-      double delta = 0;
       final double currentSize = upperLane.size;
+      double delta = 0;
 
-      final strip = direction == LaneDirection.horizontal
-          ? Positioned(
-              left: 0,
-              top: dividerPos - kStripThick / 2,
-              width: 4000,
-              height: kStripThick,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.resizeRow,
-                child: GestureDetector(
-                  onPanUpdate: (d) => delta += d.delta.dy,
-                  onPanEnd: (_) {
-                    final newSize = (currentSize + delta).clamp(80.0, double.infinity);
-                    delta = 0;
-                    ref
-                        .read(canvasLanesControllerProvider(canvasId).notifier)
-                        .updateLane(upperLaneId, size: newSize);
-                  },
-                  child: Container(color: colors.borderSubtle.withValues(alpha: 0.0)),
-                ),
-              ),
-            )
-          : Positioned(
-              left: dividerPos - kStripThick / 2,
-              top: 0,
-              width: kStripThick,
-              height: 4000,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.resizeColumn,
-                child: GestureDetector(
-                  onPanUpdate: (d) => delta += d.delta.dx,
-                  onPanEnd: (_) {
-                    final newSize = (currentSize + delta).clamp(80.0, double.infinity);
-                    delta = 0;
-                    ref
-                        .read(canvasLanesControllerProvider(canvasId).notifier)
-                        .updateLane(upperLaneId, size: newSize);
-                  },
-                  child: Container(color: colors.borderSubtle.withValues(alpha: 0.0)),
-                ),
-              ),
-            );
-      result.add(strip);
+      void commit() {
+        final newSize = clampLaneSize(currentSize, delta);
+        delta = 0;
+        ref
+            .read(canvasLanesControllerProvider(canvasId).notifier)
+            .updateLane(upperLaneId, size: newSize)
+            .catchError((Object _) {});
+      }
+
+      result.add(
+        Positioned(
+          left: horizontal ? 0 : dividerPos - kStripThick / 2,
+          top: horizontal ? dividerPos - kStripThick / 2 : 0,
+          width: horizontal ? 4000 : kStripThick,
+          height: horizontal ? kStripThick : 4000,
+          child: MouseRegion(
+            cursor: horizontal
+                ? SystemMouseCursors.resizeRow
+                : SystemMouseCursors.resizeColumn,
+            // translucent：strip 接收拖拽，但 tap 等穿透到下方连线层。
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onPanUpdate: (d) =>
+                  delta += horizontal ? d.delta.dy : d.delta.dx,
+              onPanEnd: (_) => commit(),
+            ),
+          ),
+        ),
+      );
     }
     return result;
   }

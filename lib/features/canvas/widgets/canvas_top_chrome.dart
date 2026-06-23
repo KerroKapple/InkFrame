@@ -253,8 +253,15 @@ class _BaseStyleButton extends ConsumerWidget {
   }
 
   Future<void> _openEditor(BuildContext context, WidgetRef ref) async {
-    final cur = ref.read(canvasBaseStyleProvider(canvasId)).valueOrNull ??
-        (prefix: '', suffix: '');
+    // 必须 await 真实加载：provider 是 autoDispose，未被 inspector watch 时
+    // .valueOrNull 为 null，会用空值预填覆盖已存基底风格（数据丢失）。
+    ({String prefix, String suffix}) cur;
+    try {
+      cur = await ref.read(canvasBaseStyleProvider(canvasId).future);
+    } on InkError catch (_) {
+      cur = (prefix: '', suffix: '');
+    }
+    if (!context.mounted) return;
     final r = await showBaseStyleEditorDialog(
       context,
       prefix: cur.prefix,

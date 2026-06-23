@@ -26,6 +26,29 @@ List<Rect> laneRects({
   return rects;
 }
 
+/// 泳道尺寸下限（px）。
+const double kMinLaneSize = 80;
+
+/// 拖拽分界线后的新尺寸：当前 + delta，下限 [kMinLaneSize]。
+double clampLaneSize(double current, double delta) =>
+    (current + delta).clamp(kMinLaneSize, double.infinity);
+
+/// 把 [movedId] 移动到 [targetId] 所在位置后的 id 顺序；
+/// targetId 为 null / 等于 movedId / 任一不存在时返回原序（不变）。
+List<String> reorderedLaneIds(
+  List<String> ids,
+  String movedId,
+  String? targetId,
+) {
+  if (targetId == null || targetId == movedId) return ids;
+  final from = ids.indexOf(movedId);
+  final to = ids.indexOf(targetId);
+  if (from < 0 || to < 0) return ids;
+  final next = [...ids]..removeAt(from);
+  next.insert(to, movedId);
+  return next;
+}
+
 /// 点落在哪条泳道；越界 / 空返回 null。
 String? laneIdAtPoint({
   required Offset point,
