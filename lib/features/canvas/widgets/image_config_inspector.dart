@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/providers.dart';
-import '../../../core/di/repositories.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -19,22 +18,12 @@ import '../../generation/services/prompt_assembler.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/style_lane.dart';
+import '../providers/canvas_base_style.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_lanes_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import 'inspector_status_panel.dart';
-
-/// 读画布 base_style_prefix / base_style_suffix；失败降级为空字符串。
-final _canvasBaseStyleProvider = FutureProvider.autoDispose
-    .family<({String prefix, String suffix}), String>((ref, canvasId) async {
-  final repo = await ref.watch(canvasRepositoryProvider.future);
-  final row = await repo.findById(canvasId);
-  return (
-    prefix: (row?['base_style_prefix'] as String?) ?? '',
-    suffix: (row?['base_style_suffix'] as String?) ?? '',
-  );
-});
 
 class ImageConfigInspector extends ConsumerStatefulWidget {
   const ImageConfigInspector({super.key, required this.node});
@@ -403,7 +392,7 @@ class _PromptPreview extends ConsumerWidget {
 
     // 画布 base 前缀 / 后缀（失败降级为空字符串）
     final baseStyle = ref
-        .watch(_canvasBaseStyleProvider(canvasId))
+        .watch(canvasBaseStyleProvider(canvasId))
         .valueOrNull ?? (prefix: '', suffix: '');
 
     // 关联文本节点（data 边 → 源 text 节点，按边排列顺序）
