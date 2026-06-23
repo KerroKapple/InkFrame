@@ -318,5 +318,6 @@
   "baseStylePresetCyberpunk": "Cyberpunk",
   "baseStylePresetInkwash": "Ink wash",
   "baseStylePresetPhoto": "Photographic",
-  "baseStylePreset3d": "3D animation"
+  "baseStylePreset3d": "3D animation",
+  "baseStyleUpdateFailed": "Failed to update base style"
 }

@@ -1423,6 +1423,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'3D animation'**
   String get baseStylePreset3d;
+
+  /// No description provided for @baseStyleUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update base style'**
+  String get baseStyleUpdateFailed;
 }
 
 class _AppLocalizationsDelegate

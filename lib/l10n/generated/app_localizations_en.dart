@@ -718,4 +718,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get baseStylePreset3d => '3D animation';
+
+  @override
+  String get baseStyleUpdateFailed => 'Failed to update base style';
 }

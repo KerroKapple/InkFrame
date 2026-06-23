@@ -88,10 +88,11 @@ void main() {
     expect(find.byIcon(Icons.palette_outlined), findsNothing);
   });
 
-  testWidgets('调色板按钮已接线（onPressed 非空）', (tester) async {
-    // dialog 打开 + Save→update 由 base_style_editor_dialog_test 与
-    // canvas_base_style_test 分别覆盖；此处只验证 chrome 按钮接线（确定性）。
-    final repo = _FakeCanvasRepository();
+  testWidgets('调色板按钮 → 对话框用已存值预填 → 保存 → repo 收到 base_style patch',
+      (tester) async {
+    // 端到端覆盖 _openEditor：await provider.future 预填（防数据丢失 guard）→
+    // 编辑前缀 → Save → setBaseStyle 写库。这是用户真实路径。
+    final repo = _FakeCanvasRepository(prefix: 'old-pre', suffix: 'old-suf');
     await pumpInkApp(
       tester,
       const Scaffold(body: CanvasTopChrome(canvasName: 'X')),
@@ -102,12 +103,24 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final iconButton = tester.widget<IconButton>(
-      find.ancestor(
-        of: find.byIcon(Icons.palette_outlined),
-        matching: find.byType(IconButton),
-      ),
-    );
-    expect(iconButton.onPressed, isNotNull);
+    await tester.tap(find.byIcon(Icons.palette_outlined));
+    // DragToMoveArea 的 onDoubleTap 会把单击识别延迟 kDoubleTapTimeout(300ms)，
+    // 必须 pump 越过该窗口，onPressed 才会触发。
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    // 对话框已打开，且用已存值预填（验证 await .future 防数据丢失 guard）。
+    expect(find.text('Project base style'), findsOneWidget);
+    expect(find.text('old-pre'), findsOneWidget);
+
+    // 改前缀后保存。
+    await tester.enterText(find.byType(TextField).first, 'new-pre');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    // setBaseStyle → repo.update 收到正确列名与值；后缀保持不变。
+    expect(repo.lastPatch, isNotNull);
+    expect(repo.lastPatch!['base_style_prefix'], 'new-pre');
+    expect(repo.lastPatch!['base_style_suffix'], 'old-suf');
   });
 }

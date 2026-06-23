@@ -274,7 +274,7 @@ class _BaseStyleButton extends ConsumerWidget {
     } on InkError catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.l10n.laneUpdateFailed)),
+        SnackBar(content: Text(context.l10n.baseStyleUpdateFailed)),
       );
     }
   }

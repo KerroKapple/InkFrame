@@ -680,7 +680,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get baseStylePresetCinematic => '真人电影';
 
   @override
-  String get baseStylePresetAnime => '国漫';
+  String get baseStylePresetAnime => '日漫';
 
   @override
   String get baseStylePresetGhibli => '吉卜力';
@@ -696,4 +696,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get baseStylePreset3d => '3D动画';
+
+  @override
+  String get baseStyleUpdateFailed => '更新基底风格失败';
 }

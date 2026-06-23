@@ -106,4 +106,46 @@ void main() {
     expect(after.map((l) => l.id), before.map((l) => l.id));
     expect(after.map((l) => l.sortOrder), before.map((l) => l.sortOrder));
   });
+
+  test('reorderLanes 收到不完整 id 列表（少于现有数量）→ 状态不变、不重排', () async {
+    final repo = _FakeLaneRepo();
+    final c = ProviderContainer(overrides: [
+      styleLaneRepositoryProvider.overrideWith((ref) async => repo),
+    ]);
+    addTearDown(c.dispose);
+    await c.read(canvasLanesControllerProvider('cv').future);
+    final notifier = c.read(canvasLanesControllerProvider('cv').notifier);
+    final a = await notifier.createLane(label: 'a');
+    await notifier.createLane(label: 'b');
+    await notifier.createLane(label: 'c');
+    final before = c.read(canvasLanesControllerProvider('cv')).valueOrNull!;
+    // 只给 1 个 id（< 现有 3 条）→ 控制器早退保持原状（length 不匹配 guard）。
+    await notifier.reorderLanes([a.id]);
+    final after = c.read(canvasLanesControllerProvider('cv')).valueOrNull!;
+    expect(after.map((l) => l.id), before.map((l) => l.id));
+    expect(after.map((l) => l.sortOrder), before.map((l) => l.sortOrder));
+  });
+
+  test('updateLane → repo.update 抛 InkError 时回滚 size', () async {
+    final repo = _ThrowingOnUpdateRepo();
+    final c = ProviderContainer(overrides: [
+      styleLaneRepositoryProvider.overrideWith((ref) async => repo),
+    ]);
+    addTearDown(c.dispose);
+    await c.read(canvasLanesControllerProvider('cv').future);
+    final notifier = c.read(canvasLanesControllerProvider('cv').notifier);
+    final lane = await notifier.createLane(label: 'a');
+    final origSize = c
+        .read(canvasLanesControllerProvider('cv'))
+        .valueOrNull!
+        .firstWhere((l) => l.id == lane.id)
+        .size;
+    await expectLater(
+      notifier.updateLane(lane.id, size: origSize + 500),
+      throwsA(isA<InkError>()),
+    );
+    // 乐观写 size 已回滚。
+    final after = c.read(canvasLanesControllerProvider('cv')).valueOrNull!;
+    expect(after.firstWhere((l) => l.id == lane.id).size, origSize);
+  });
 }

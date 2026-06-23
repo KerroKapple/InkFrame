@@ -282,10 +282,11 @@
   "baseStyleSuffixHint": "如：8k，高细节",
   "baseStylePresetsLabel": "快速预设",
   "baseStylePresetCinematic": "真人电影",
-  "baseStylePresetAnime": "国漫",
+  "baseStylePresetAnime": "日漫",
   "baseStylePresetGhibli": "吉卜力",
   "baseStylePresetCyberpunk": "赛博朋克",
   "baseStylePresetInkwash": "水墨",
   "baseStylePresetPhoto": "写实摄影",
-  "baseStylePreset3d": "3D动画"
+  "baseStylePreset3d": "3D动画",
+  "baseStyleUpdateFailed": "更新基底风格失败"
 }

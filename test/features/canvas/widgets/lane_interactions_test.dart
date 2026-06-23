@@ -319,14 +319,7 @@ void main() {
     expect(sizeUpdates.last.patch['size'], 250.0);
   });
 
-  // ── (d) resize clamp：size < 80 时 clamp 到 80 ─────────────────────────────
-
-  test('updateLane size clamp 验证（纯逻辑）', () {
-    const clamp = 80.0;
-    const tooSmall = 30.0;
-    final clamped = tooSmall.clamp(clamp, double.infinity);
-    expect(clamped, clamp);
-  });
+  // ── (d) resize clamp：clampLaneSize 下限语义由 lane_geometry_test 覆盖 ───────
 
   // ── (e) 重排：reorderLanes → repo sort_order 更新 ──────────────────────────
 
