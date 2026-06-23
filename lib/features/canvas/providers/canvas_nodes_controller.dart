@@ -2,12 +2,11 @@
 //
 // 替代早期纯内存的 CanvasViewModel（S1a 之前）。按 canvasId 分族，每个画布一份状态。
 //
-// 持久化策略（S1b 范围）：
+// 持久化策略：
 //   - load / add / remove → 经 NodeRepository 过 DB
-//   - moveNode 本阶段只改内存，不落盘（避免每像素 UPDATE 风暴）
-//     S3 会补：pan 结束防抖 200ms 后 NodeRepository.update(position_x/y)
+//   - moveNode → 拖拽结束后持久化 position_x/y + lane_id（乐观更新 + 失败回滚）
 //
-// 失败策略：add/remove 采用"先改内存再持久化"。若 DB 失败则回滚内存并把错误
+// 失败策略：add/remove/move 采用"先改内存再持久化"。若 DB 失败则回滚内存并把错误
 // 冒泡到调用方；UI 层负责 toast（S4）。
 
 import 'package:flutter/painting.dart';
@@ -171,13 +170,33 @@ class CanvasNodesController
     }
   }
 
-  /// 本阶段纯内存位移——拖拽结束后持久化由 S3 处理。
-  void moveNode(String id, Offset delta) {
-    final previous = state.valueOrNull;
-    if (previous == null) return;
+  /// 拖动结束：持久化新位置 + 归属泳道（laneId 可为 null=移出所有泳道）。
+  /// 乐观更新内存，DB 失败回滚并上抛（UI toast）。
+  Future<void> moveNode(String id, Offset delta, {required String? laneId}) async {
+    final repo = _repo;
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    CanvasNode? target;
+    for (final n in previous) {
+      if (n.id == id) target = n;
+    }
+    if (target == null) return;
+    final newPos = target.position + delta;
     state = AsyncData([
       for (final n in previous)
-        if (n.id == id) n.copyWith(position: n.position + delta) else n,
+        if (n.id == id)
+          n.copyWith(position: newPos, laneId: laneId, clearLaneId: laneId == null)
+        else
+          n,
     ]);
+    try {
+      await repo.update(id, <String, Object?>{
+        'position_x': newPos.dx,
+        'position_y': newPos.dy,
+        'lane_id': laneId,
+      });
+    } on InkError catch (_) {
+      if (_alive) state = AsyncData(previous);
+      rethrow;
+    }
   }
 }
