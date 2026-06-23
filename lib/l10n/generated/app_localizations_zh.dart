@@ -614,12 +614,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneTintAuto => '自动';
 
   @override
-  String get laneResetAuto => '重置为自动';
-
-  @override
-  String get laneSizeLabel => '泳道尺寸';
-
-  @override
   String get laneDelete => '删除泳道';
 
   @override

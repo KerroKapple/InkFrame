@@ -635,12 +635,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get laneTintAuto => 'Auto';
 
   @override
-  String get laneResetAuto => 'Reset to auto';
-
-  @override
-  String get laneSizeLabel => 'Lane size';
-
-  @override
   String get laneDelete => 'Delete lane';
 
   @override

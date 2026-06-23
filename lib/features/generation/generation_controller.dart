@@ -478,13 +478,13 @@ class GenerationController {
       final c = await canvas.findById(canvasId);
       basePrefix = (c?['base_style_prefix'] as String?) ?? '';
       baseSuffix = (c?['base_style_suffix'] as String?) ?? '';
-    } catch (_) {}
+    } on InkError catch (_) {}
     var laneStyle = '';
     if (!ignoreLaneStyle && laneId != null) {
       try {
         final l = await lanes.findById(laneId);
         laneStyle = (l?['style_prompt'] as String?) ?? '';
-      } catch (_) {}
+      } on InkError catch (_) {}
     }
     final texts = await _resolveAssociatedTexts(configNodeId);
     return assemblePrompt(
@@ -502,7 +502,7 @@ class GenerationController {
     final List<Map<String, Object?>> incoming;
     try {
       incoming = await edges.listIncoming(configNodeId);
-    } catch (_) {
+    } on InkError catch (_) {
       return const [];
     }
     final rows = incoming.where((r) => r['edge_type'] == 'data').toList()
@@ -515,7 +515,7 @@ class GenerationController {
       Map<String, Object?>? src;
       try {
         src = await nodes.findById(srcId);
-      } catch (_) {
+      } on InkError catch (_) {
         continue;
       }
       if (src == null || src['type'] != 'text') continue;

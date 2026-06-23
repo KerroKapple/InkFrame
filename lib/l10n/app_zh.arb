@@ -259,8 +259,6 @@
   "laneStyleHint": "如：温暖的黄昏光线、烛光",
   "laneTintLabel": "背景色",
   "laneTintAuto": "自动",
-  "laneResetAuto": "重置为自动",
-  "laneSizeLabel": "泳道尺寸",
   "laneDelete": "删除泳道",
   "laneDeleteConfirmTitle": "确认删除该泳道？",
   "laneDeleteConfirmBody": "泳道内节点位置保留，但会失去该泳道风格。",

@@ -290,8 +290,6 @@
   "laneStyleHint": "e.g. warm sunset lighting, candlelit",
   "laneTintLabel": "Background color",
   "laneTintAuto": "Auto",
-  "laneResetAuto": "Reset to auto",
-  "laneSizeLabel": "Lane size",
   "laneDelete": "Delete lane",
   "laneDeleteConfirmTitle": "Delete this lane?",
   "laneDeleteConfirmBody": "Nodes in this lane keep their position but lose the lane style.",

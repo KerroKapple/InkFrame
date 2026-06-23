@@ -1256,18 +1256,6 @@ abstract class AppLocalizations {
   /// **'Auto'**
   String get laneTintAuto;
 
-  /// No description provided for @laneResetAuto.
-  ///
-  /// In en, this message translates to:
-  /// **'Reset to auto'**
-  String get laneResetAuto;
-
-  /// No description provided for @laneSizeLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Lane size'**
-  String get laneSizeLabel;
-
   /// No description provided for @laneDelete.
   ///
   /// In en, this message translates to:

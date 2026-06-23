@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -51,12 +52,7 @@ class LaneToolbar extends ConsumerWidget {
             ),
             tooltip: context.l10n.laneDirectionToggle,
             color: colors.fg1,
-            onPressed: () {
-              final flipped = dir == LaneDirection.horizontal
-                  ? LaneDirection.vertical
-                  : LaneDirection.horizontal;
-              setLaneDirection(ref, canvasId, flipped);
-            },
+            onPressed: () => _onToggleDirection(context, ref, dir),
           ),
         ],
       ),
@@ -78,7 +74,7 @@ class LaneToolbar extends ConsumerWidget {
               stylePrompt: r.stylePrompt,
               tintColor: r.tintColor,
             );
-      } catch (_) {
+      } on InkError catch (_) {
         if (!ctx.mounted) return;
         ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(
           SnackBar(
@@ -88,5 +84,27 @@ class LaneToolbar extends ConsumerWidget {
         );
       }
     }());
+  }
+
+  /// 切换方向并持久化；失败走 snackbar（与新增泳道一致的错误反馈）。
+  Future<void> _onToggleDirection(
+    BuildContext context,
+    WidgetRef ref,
+    LaneDirection dir,
+  ) async {
+    final flipped = dir == LaneDirection.horizontal
+        ? LaneDirection.vertical
+        : LaneDirection.horizontal;
+    try {
+      await setLaneDirection(ref, canvasId, flipped);
+    } on InkError catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(context.l10n.laneUpdateFailed),
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    }
   }
 }
