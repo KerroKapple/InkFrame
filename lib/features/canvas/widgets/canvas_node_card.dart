@@ -97,7 +97,7 @@ class CanvasNodeCard extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.fromLTRB(
                 InkSpacing.md,
-                2,
+                InkSpacing.s2,
                 InkSpacing.md,
                 InkSpacing.sm,
               ),

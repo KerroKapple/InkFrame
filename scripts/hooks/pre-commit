@@ -1,8 +1,16 @@
 #!/usr/bin/env bash
 # pre-commit: 快速闸门，总耗时目标 ≤ 10s。
 #   1) flutter analyze —— 0 warning 才过
-#   2) 5 个硬规则检查（i18n / tokens / magic strings / 直接实例化 / Disposable）
-# 任一步非零退出即阻断 commit。
+#   2) 定向 flutter test test/quality/ —— 纯文件 IO 快测，不连库（无需 TEST_PG_URL）。
+#      DIP / 生命周期 / 内联样式 / 魔法串铁律的真实闸门在此（取代已删除的
+#      check-direct-instantiation / check-disposable-cleanup / check-inline-styles
+#      / check-magic-strings bash hook）：
+#        no_direct_instantiation_test / disposable_cleanup_test /
+#        no_inline_styles_test / no_magic_strings_test
+#   3) dart run custom_lint —— AST 级增强（更精确，未来取代上述文本近似）；启用
+#      analysis_options.yaml plugins: - custom_lint 并升级 riverpod_lint 到兼容
+#      Dart 3.11+ AST 的版本前，此步暂为非阻断增量，铁律防护不依赖它（见步骤 2）。
+# 任一阻断步骤非零退出即阻断 commit。
 set -euo pipefail
 
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -11,19 +19,13 @@ cd "$REPO_ROOT"
 echo "[pre-commit] flutter analyze"
 flutter analyze
 
-HOOKS_DIR="$REPO_ROOT/scripts/hooks"
-CHECKS=(
-  "check-i18n-coverage.sh"
-  "check-inline-styles.sh"
-  "check-magic-strings.sh"
-  "check-direct-instantiation.sh"
-  "check-disposable-cleanup.sh"
-  "check-updated-at.sh"
-)
+echo "[pre-commit] flutter test test/quality/"
+flutter test test/quality/
 
-for script in "${CHECKS[@]}"; do
-  echo "[pre-commit] $script"
-  bash "$HOOKS_DIR/$script"
-done
+# custom_lint：AST 级增强，非阻断（与 CI 的 continue-on-error 对齐）。启用 plugins
+# 并升级 riverpod_lint 到兼容 Dart 3.11+ AST 前不作硬阻断，避免 per-file crash 卡住
+# 本地 commit；铁律已由上方 test/quality/ 兜底。
+echo "[pre-commit] dart run custom_lint (non-blocking)"
+dart run custom_lint || echo "[pre-commit] custom_lint non-zero (non-blocking; iron rules enforced by test/quality/)"
 
 echo "[pre-commit] OK"

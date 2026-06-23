@@ -92,7 +92,7 @@ class CanvasInspector extends StatelessWidget {
               expanded: true,
               rows: const <_KvRow>[],
               trailingBody: Padding(
-                padding: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.only(top: InkSpacing.s2),
                 child: Text(
                   'Establishing the docks. Hold for 4 s before pushing in.',
                   style: typo.body.copyWith(color: colors.fg2),
@@ -110,7 +110,7 @@ class CanvasInspector extends StatelessWidget {
                 behavior: HitTestBehavior.opaque,
                 onTap: () {},
                 child: Text(
-                  '+ ${l.canvasInspectorAddAttribute}',
+                  l.canvasInspectorAddAttribute,
                   style: typo.caption.copyWith(color: colors.accent),
                 ),
               ),
@@ -187,7 +187,7 @@ class _CollapseSectionState extends State<_CollapseSection> {
             const SizedBox(height: InkSpacing.sm),
             for (final r in widget.rows)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
+                padding: const EdgeInsets.symmetric(vertical: InkSpacing.s3),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: <Widget>[

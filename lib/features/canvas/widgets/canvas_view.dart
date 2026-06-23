@@ -33,6 +33,9 @@ import 'video_lightbox.dart';
 
 const _kSnackBarDuration = Duration(seconds: 2);
 
+// InteractiveViewer 平移越界余量（画布外延展空间，非视觉 token）
+const double kCanvasBoundaryMargin = 2000;
+
 void _showSnack(BuildContext context, String text) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(content: Text(text), duration: _kSnackBarDuration),
@@ -410,7 +413,7 @@ class _CanvasStage extends ConsumerWidget {
       color: colors.surface1,
       child: InteractiveViewer(
         constrained: false,
-        boundaryMargin: const EdgeInsets.all(2000),
+        boundaryMargin: const EdgeInsets.all(kCanvasBoundaryMargin),
         minScale: 0.1,
         maxScale: 3.0,
         child: SizedBox(

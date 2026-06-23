@@ -25,7 +25,10 @@ class InkAccentChip extends StatelessWidget {
     final typo = context.inkTypography;
 
     final body = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: InkSpacing.s10,
+        vertical: InkSpacing.xs,
+      ),
       decoration: BoxDecoration(
         color: colors.accent.withValues(alpha: 0.10),
         borderRadius: BorderRadius.circular(InkRadius.md),

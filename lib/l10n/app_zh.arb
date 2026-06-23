@@ -214,7 +214,7 @@
   "canvasInspectorComposition": "构图",
   "canvasInspectorMetadata": "元数据",
   "canvasInspectorNotes": "备注",
-  "canvasInspectorAddAttribute": "添加属性",
+  "canvasInspectorAddAttribute": "+ 添加属性",
   "canvasRenderQueue": "渲染队列",
   "canvasNodeTypeCharacter": "角色",
   "canvasNodeTypeScene": "场景",

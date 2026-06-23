@@ -29,6 +29,7 @@ const List<String> _monoFallback = <String>[
 class InkTypography {
   const InkTypography({
     required this.display,
+    required this.displayMd,
     required this.headline,
     required this.headlineSm,
     required this.headlineXs,
@@ -49,6 +50,14 @@ class InkTypography {
           fontFamily: 'CormorantGaramond',
           fontFamilyFallback: _serifFallback,
           fontSize: 48 * scale,
+          fontWeight: FontWeight.w300,
+          letterSpacing: 0.5,
+          height: 1.15,
+        ),
+        displayMd: TextStyle(
+          fontFamily: 'CormorantGaramond',
+          fontFamilyFallback: _serifFallback,
+          fontSize: 32 * scale,
           fontWeight: FontWeight.w300,
           letterSpacing: 0.5,
           height: 1.15,
@@ -140,6 +149,7 @@ class InkTypography {
       );
 
   final TextStyle display;
+  final TextStyle displayMd; // 衬线 32（studio 区段大标题，介于 display48 / headline22）
   final TextStyle headline;
   final TextStyle headlineSm; // 衬线 18（节点卡标题 / 顶栏 logo）
   final TextStyle headlineXs; // 衬线 16（画布顶栏 logo）
@@ -156,6 +166,7 @@ class InkTypography {
 
   InkTypography scaled(double scale) => InkTypography(
         display: _scale(display, 48, scale),
+        displayMd: _scale(displayMd, 32, scale),
         headline: _scale(headline, 22, scale),
         headlineSm: _scale(headlineSm, 18, scale),
         headlineXs: _scale(headlineXs, 16, scale),
