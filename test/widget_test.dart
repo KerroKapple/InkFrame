@@ -10,6 +10,8 @@ import 'package:inkframe/app.dart';
 import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
+import 'package:inkframe/features/studio/models/project_with_canvases.dart';
+import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 
 void main() {
   testWidgets('InkFrameApp boots into workspace when unlocked',
@@ -24,6 +26,9 @@ void main() {
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
+          // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
+          workspaceProjectsProvider
+              .overrideWith((_) async => const <ProjectWithCanvases>[]),
         ],
         child: const InkFrameApp(),
       ),

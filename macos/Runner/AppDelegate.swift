@@ -36,7 +36,14 @@ class AppDelegate: FlutterAppDelegate {
     let channel = FlutterMethodChannel(
       name: "inkframe/lifecycle",
       binaryMessenger: controller.engine.binaryMessenger)
-    channel.invokeMethod("requestTerminate", arguments: nil) { _ in
+    channel.invokeMethod("requestTerminate", arguments: nil) { result in
+      // 诊断：Dart teardown 抛错（FlutterError）或 handler 未注册（早退）时留痕，
+      // 否则失败会被静默吞掉。正常路径 result 为 nil。退出动作照常进行。
+      if let error = result as? FlutterError {
+        NSLog("[InkFrame] AppTeardown failed: \(error.code) \(error.message ?? "")")
+      } else if let r = result as? NSObject, r == FlutterMethodNotImplemented {
+        NSLog("[InkFrame] AppTeardown handler not registered; terminating without teardown")
+      }
       replyTerminateOnce()
     }
     // 兜底超时：Dart 若 15s 内未回调（channel 握手异常 / teardown 卡死），

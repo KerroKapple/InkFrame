@@ -90,3 +90,8 @@ api-key*
 # IDE / debug 运行日志
 .vscode/
 /tmp/flutter_run_*.log
+
+# 构建产物 / 可重建的嵌入式 PG 二进制(由 scripts/pg/fetch-binaries.sh 重建)
+dist/
+macos/Runner/Resources/pg/
+windows/runner/resources/pg/
