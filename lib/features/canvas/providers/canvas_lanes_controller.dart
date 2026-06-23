@@ -124,7 +124,8 @@ final canvasLaneDirectionProvider =
 });
 
 /// 切换并持久化泳道方向，然后失效方向 provider 触发重读。
-Future<void> setLaneDirection(Ref ref, String canvasId, LaneDirection dir) async {
+/// 取 WidgetRef（read/invalidate 即够用）——调用方均为 widget。
+Future<void> setLaneDirection(WidgetRef ref, String canvasId, LaneDirection dir) async {
   final repo = await ref.read(canvasRepositoryProvider.future);
   await repo.update(canvasId, {'lane_direction': laneDirectionToString(dir)});
   ref.invalidate(canvasLaneDirectionProvider(canvasId));
