@@ -666,6 +666,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get laneDeleteFailed => 'Failed to delete lane';
 
   @override
+  String get laneCollapse => 'Collapse lane';
+
+  @override
+  String get laneExpand => 'Expand lane';
+
+  @override
   String get inspectorPromptPreviewLabel => 'Final prompt preview';
 
   @override

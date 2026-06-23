@@ -1316,6 +1316,18 @@ abstract class AppLocalizations {
   /// **'Failed to delete lane'**
   String get laneDeleteFailed;
 
+  /// No description provided for @laneCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse lane'**
+  String get laneCollapse;
+
+  /// No description provided for @laneExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand lane'**
+  String get laneExpand;
+
   /// No description provided for @inspectorPromptPreviewLabel.
   ///
   /// In en, this message translates to:

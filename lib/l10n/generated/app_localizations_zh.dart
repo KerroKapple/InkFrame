@@ -644,6 +644,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneDeleteFailed => '删除泳道失败';
 
   @override
+  String get laneCollapse => '折叠泳道';
+
+  @override
+  String get laneExpand => '展开泳道';
+
+  @override
   String get inspectorPromptPreviewLabel => '最终 prompt 预览';
 
   @override

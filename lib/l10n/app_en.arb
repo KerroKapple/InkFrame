@@ -300,6 +300,8 @@
   "laneCreateFailed": "Failed to create lane",
   "laneUpdateFailed": "Failed to update lane",
   "laneDeleteFailed": "Failed to delete lane",
+  "laneCollapse": "Collapse lane",
+  "laneExpand": "Expand lane",
   "inspectorPromptPreviewLabel": "Final prompt preview",
   "inspectorIgnoreLaneStyle": "Ignore lane style",
 
