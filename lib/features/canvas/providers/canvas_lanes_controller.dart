@@ -102,6 +102,30 @@ class CanvasLanesController
     }
   }
 
+  /// 按给定 id 顺序重排泳道，sort_order=下标。乐观更新 + 失败回滚。
+  Future<void> reorderLanes(List<String> orderedIds) async {
+    final repo = _repo;
+    final previous = state.valueOrNull ?? const <StyleLane>[];
+    final byId = {for (final l in previous) l.id: l};
+    final reordered = <StyleLane>[];
+    for (var i = 0; i < orderedIds.length; i++) {
+      final lane = byId[orderedIds[i]];
+      if (lane != null) reordered.add(lane.copyWith(sortOrder: i));
+    }
+    if (reordered.length != previous.length) return; // 不完整顺序，跳过
+    state = AsyncData(reordered);
+    try {
+      for (var i = 0; i < reordered.length; i++) {
+        if (previous.firstWhere((l) => l.id == reordered[i].id).sortOrder != i) {
+          await repo.update(reordered[i].id, <String, Object?>{'sort_order': i});
+        }
+      }
+    } on InkError catch (_) {
+      if (_alive) state = AsyncData(previous);
+      rethrow;
+    }
+  }
+
   Future<void> deleteLane(String id) async {
     final repo = _repo;
     final previous = state.valueOrNull ?? const <StyleLane>[];
