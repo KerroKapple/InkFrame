@@ -248,5 +248,27 @@
 
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",
-  "windowClose": "关闭"
+  "windowClose": "关闭",
+
+  "laneAdd": "添加泳道",
+  "laneNewTitle": "新建泳道",
+  "laneEditTitle": "编辑泳道",
+  "laneNameLabel": "名称",
+  "laneNameHint": "泳道名称",
+  "laneStyleLabel": "风格描述",
+  "laneStyleHint": "如：温暖的黄昏光线、烛光",
+  "laneTintLabel": "背景色",
+  "laneTintAuto": "自动",
+  "laneDelete": "删除泳道",
+  "laneDeleteConfirmTitle": "确认删除该泳道？",
+  "laneDeleteConfirmBody": "泳道内节点位置保留，但会失去该泳道风格。",
+  "laneDialogSave": "保存",
+  "laneDialogCancel": "取消",
+  "laneDirectionToggle": "切换泳道方向",
+  "laneUntitled": "未命名泳道",
+  "laneCreateFailed": "创建泳道失败",
+  "laneUpdateFailed": "更新泳道失败",
+  "laneDeleteFailed": "删除泳道失败",
+  "inspectorPromptPreviewLabel": "最终 prompt 预览",
+  "inspectorIgnoreLaneStyle": "忽略区域风格"
 }

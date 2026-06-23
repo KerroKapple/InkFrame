@@ -30,12 +30,14 @@ import '../../core/di/providers.dart';
 import '../../core/di/repositories.dart';
 import '../../core/di/secure_storage.dart';
 import '../../core/errors/ink_error.dart';
+import '../../core/interfaces/canvas_repository.dart';
 import '../../core/interfaces/edge_repository.dart';
 import '../../core/interfaces/file_resolver_service.dart';
 import '../../core/interfaces/job_queue_service.dart';
 import '../../core/interfaces/job_repository.dart';
 import '../../core/interfaces/node_repository.dart';
 import '../../core/interfaces/secure_storage_service.dart';
+import '../../core/interfaces/style_lane_repository.dart';
 import '../../core/logging/logger_service.dart';
 import '../../core/models/generation_task.dart';
 import '../../core/models/job_status.dart';
@@ -43,6 +45,7 @@ import '../../core/models/provider_capabilities.dart';
 import '../../core/interfaces/provider_registry.dart';
 import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
+import 'services/prompt_assembler.dart';
 
 final generationControllerProvider = FutureProvider<GenerationController>(
   (ref) async {
@@ -53,6 +56,8 @@ final generationControllerProvider = FutureProvider<GenerationController>(
     final queue = await ref.watch(jobQueueServiceProvider.future);
     final registry = ref.watch(providerRegistryProvider);
     final resolver = ref.watch(fileResolverServiceProvider);
+    final canvas = await ref.watch(canvasRepositoryProvider.future);
+    final lanes = await ref.watch(styleLaneRepositoryProvider.future);
     // jobsRegistryProvider 是 keepAlive：用 read 拿实例，controller 持有它，
     // 后台 _track future 全程不再触碰 ref。
     final jobsRegistry = ref.read(jobsRegistryProvider.notifier);
@@ -64,6 +69,8 @@ final generationControllerProvider = FutureProvider<GenerationController>(
       queue: queue,
       registry: registry,
       resolver: resolver,
+      canvas: canvas,
+      lanes: lanes,
       jobsRegistry: jobsRegistry,
       logger: ref.watch(loggerProvider),
     );
@@ -106,6 +113,8 @@ class GenerationController {
     required this.queue,
     required this.registry,
     required this.resolver,
+    required this.canvas,
+    required this.lanes,
     required this.jobsRegistry,
     this.logger,
   });
@@ -117,6 +126,8 @@ class GenerationController {
   final JobQueueService queue;
   final ProviderRegistry registry;
   final FileResolverService resolver;
+  final CanvasRepository canvas;
+  final StyleLaneRepository lanes;
   final JobsRegistry jobsRegistry;
   final LoggerService? logger;
 
@@ -160,6 +171,16 @@ class GenerationController {
 
     final canvasId = cfgRow['canvas_id']!.toString();
     final projectId = cfgRow['project_id']?.toString();
+
+    final laneId = cfgRow['lane_id']?.toString();
+    final ignoreLane = typeConfig['ignore_lane_style'] == true;
+    final fullPrompt = await _assembleFullPrompt(
+      userPrompt: prompt,
+      canvasId: canvasId,
+      configNodeId: configNodeId,
+      laneId: laneId,
+      ignoreLaneStyle: ignoreLane,
+    );
 
     // 读入 data 连线作为参考图（PRD §8.2）。失败不阻断生成——refs 仍可为空。
     final refs = await _resolveRefImages(
@@ -207,7 +228,7 @@ class GenerationController {
         resultNodeId: resultNodeId,
         providerId: providerId,
         jobType: nodeType,
-        fullPrompt: prompt,
+        fullPrompt: fullPrompt,
         userPrompt: prompt,
         parameters: <String, Object?>{
           'resolution': resolution.name,
@@ -230,7 +251,7 @@ class GenerationController {
         canvasId: canvasId,
         resultNodeId: resultNodeId,
         mode: mode,
-        prompt: prompt,
+        prompt: fullPrompt,
         resolution: resolution,
         aspectRatio: aspect,
         durationSeconds: durationSeconds,
@@ -440,6 +461,71 @@ class GenerationController {
       firstFramePath: firstFrame,
       lastFramePath: lastFrame,
     );
+  }
+
+  /// PRD §7.4：组装 base前缀 + 泳道风格 + 关联文本 + userPrompt + base后缀。
+  /// 任一查询失败降级（仅用 userPrompt），不阻断生成。
+  Future<String> _assembleFullPrompt({
+    required String userPrompt,
+    required String canvasId,
+    required String configNodeId,
+    required String? laneId,
+    required bool ignoreLaneStyle,
+  }) async {
+    var basePrefix = '';
+    var baseSuffix = '';
+    try {
+      final c = await canvas.findById(canvasId);
+      basePrefix = (c?['base_style_prefix'] as String?) ?? '';
+      baseSuffix = (c?['base_style_suffix'] as String?) ?? '';
+    } on InkError catch (_) {}
+    var laneStyle = '';
+    if (!ignoreLaneStyle && laneId != null) {
+      try {
+        final l = await lanes.findById(laneId);
+        laneStyle = (l?['style_prompt'] as String?) ?? '';
+      } on InkError catch (_) {}
+    }
+    final texts = await _resolveAssociatedTexts(configNodeId);
+    return assemblePrompt(
+      baseStylePrefix: basePrefix,
+      laneStylePrompt: laneStyle,
+      associatedTexts: texts,
+      userPrompt: userPrompt,
+      baseStyleSuffix: baseSuffix,
+      ignoreLaneStyle: ignoreLaneStyle,
+    );
+  }
+
+  /// 连入的 data 边里的文本节点内容，按 edge.created_at 升序。
+  Future<List<String>> _resolveAssociatedTexts(String configNodeId) async {
+    final List<Map<String, Object?>> incoming;
+    try {
+      incoming = await edges.listIncoming(configNodeId);
+    } on InkError catch (_) {
+      return const [];
+    }
+    final rows = incoming.where((r) => r['edge_type'] == 'data').toList()
+      ..sort((a, b) => (a['created_at']?.toString() ?? '')
+          .compareTo(b['created_at']?.toString() ?? ''));
+    final out = <String>[];
+    for (final r in rows) {
+      final srcId = r['source_node_id']?.toString();
+      if (srcId == null) continue;
+      Map<String, Object?>? src;
+      try {
+        src = await nodes.findById(srcId);
+      } on InkError catch (_) {
+        continue;
+      }
+      if (src == null || src['type'] != 'text') continue;
+      final tc = _readTypeConfig(src['type_config']);
+      final text = (tc['text'] as String?)?.trim();
+      final label = (src['label'] as String?)?.trim();
+      final content = (text != null && text.isNotEmpty) ? text : (label ?? '');
+      if (content.isNotEmpty) out.add(content);
+    }
+    return out;
   }
 
   Map<String, Object?> _readTypeConfig(Object? raw) {

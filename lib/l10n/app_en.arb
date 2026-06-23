@@ -279,5 +279,27 @@
   "windowClose": "Close",
   "@windowClose": {
     "description": "Window chrome close button a11y label"
-  }
+  },
+
+  "laneAdd": "Add lane",
+  "laneNewTitle": "New lane",
+  "laneEditTitle": "Edit lane",
+  "laneNameLabel": "Name",
+  "laneNameHint": "Lane name",
+  "laneStyleLabel": "Style description",
+  "laneStyleHint": "e.g. warm sunset lighting, candlelit",
+  "laneTintLabel": "Background color",
+  "laneTintAuto": "Auto",
+  "laneDelete": "Delete lane",
+  "laneDeleteConfirmTitle": "Delete this lane?",
+  "laneDeleteConfirmBody": "Nodes in this lane keep their position but lose the lane style.",
+  "laneDialogSave": "Save",
+  "laneDialogCancel": "Cancel",
+  "laneDirectionToggle": "Toggle lane direction",
+  "laneUntitled": "Untitled lane",
+  "laneCreateFailed": "Failed to create lane",
+  "laneUpdateFailed": "Failed to update lane",
+  "laneDeleteFailed": "Failed to delete lane",
+  "inspectorPromptPreviewLabel": "Final prompt preview",
+  "inspectorIgnoreLaneStyle": "Ignore lane style"
 }

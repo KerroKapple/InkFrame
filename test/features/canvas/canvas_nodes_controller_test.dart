@@ -1,7 +1,7 @@
 // CanvasNodesController 单测 —— 用 fake NodeRepository 打桩，不接真 PG。
 //
 // 覆盖：初始 load、addNode 乐观更新 + DB create 参数透传、removeNode 乐观删除 +
-// DB 失败回滚、moveNode 内存位移不落盘。
+// DB 失败回滚、moveNode 持久化位置 + 泳道 + InkError 回滚。
 
 import 'dart:async';
 
@@ -18,9 +18,11 @@ class _FakeNodeRepository implements NodeRepository {
   final List<Map<String, Object?>> rows = <Map<String, Object?>>[];
   final List<Map<String, Object?>> createCalls = <Map<String, Object?>>[];
   final List<String> softDeleted = <String>[];
+  final List<Map<String, Object?>> updateCalls = <Map<String, Object?>>[];
 
   String? createError;
   String? softDeleteError;
+  String? updateError;
 
   int _idCounter = 0;
 
@@ -95,7 +97,15 @@ class _FakeNodeRepository implements NodeRepository {
   Future<List<Map<String, Object?>>> listOrphanResults(String canvasId) async =>
       const [];
   @override
-  Future<int> update(String id, Map<String, Object?> patch) async => 0;
+  Future<int> update(String id, Map<String, Object?> patch) async {
+    updateCalls.add(<String, Object?>{'id': id, ...patch});
+    if (updateError != null) {
+      throw LocalIOError(extra: {'op': 'update', 'table': 'nodes', 'msg': updateError});
+    }
+    final row = rows.firstWhere((r) => r['id'] == id, orElse: () => <String, Object?>{});
+    row.addAll(patch);
+    return 1;
+  }
   @override
   Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async =>
       0;
@@ -357,7 +367,7 @@ void main() {
       await expectLater(pending, throwsA(isA<LocalIOError>()));
     });
 
-    test('moveNode 仅改内存，不调 Repository', () async {
+    test('moveNode 更新内存位置', () async {
       await container
           .read(canvasNodesControllerProvider(canvasId).future);
       final ctrl = container
@@ -368,10 +378,61 @@ void main() {
         position: const Offset(10, 10),
       );
 
-      ctrl.moveNode(n.id, const Offset(5, -3));
+      await ctrl.moveNode(n.id, const Offset(5, -3), laneId: null);
       final state = container.read(canvasNodesControllerProvider(canvasId));
       final moved = state.valueOrNull!.firstWhere((x) => x.id == n.id);
       expect(moved.position, const Offset(15, 7));
+    });
+
+    test('moveNode 持久化 position + lane_id 并更新 state', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+      final n = await ctrl.addNode(
+        label: 'A',
+        type: CanvasNodeType.image,
+        position: const Offset(0, 0),
+      );
+
+      await ctrl.moveNode(n.id, const Offset(50, 60), laneId: 'lane-9');
+
+      // repo.update 收到正确的持久化负载
+      expect(repo.updateCalls, hasLength(1));
+      expect(repo.updateCalls.first['position_x'], 50.0);
+      expect(repo.updateCalls.first['position_y'], 60.0);
+      expect(repo.updateCalls.first['lane_id'], 'lane-9');
+
+      // state 已乐观更新
+      final state = container.read(canvasNodesControllerProvider(canvasId));
+      final moved = state.valueOrNull!.firstWhere((x) => x.id == n.id);
+      expect(moved.position, const Offset(50, 60));
+      expect(moved.laneId, 'lane-9');
+    });
+
+    test('moveNode DB 失败回滚内存位置', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+      final n = await ctrl.addNode(
+        label: 'A',
+        type: CanvasNodeType.image,
+        position: const Offset(10, 10),
+      );
+
+      repo.updateError = 'disk full';
+
+      await expectLater(
+        ctrl.moveNode(n.id, const Offset(50, 60), laneId: 'lane-9'),
+        throwsA(isA<LocalIOError>()),
+      );
+
+      // 内存回滚到移动前的坐标
+      final state = container.read(canvasNodesControllerProvider(canvasId));
+      final rolled = state.valueOrNull!.firstWhere((x) => x.id == n.id);
+      expect(rolled.position, const Offset(10, 10));
+      expect(rolled.laneId, isNull);
     });
   });
 }

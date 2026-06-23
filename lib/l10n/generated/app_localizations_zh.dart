@@ -585,4 +585,67 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get windowClose => '关闭';
+
+  @override
+  String get laneAdd => '添加泳道';
+
+  @override
+  String get laneNewTitle => '新建泳道';
+
+  @override
+  String get laneEditTitle => '编辑泳道';
+
+  @override
+  String get laneNameLabel => '名称';
+
+  @override
+  String get laneNameHint => '泳道名称';
+
+  @override
+  String get laneStyleLabel => '风格描述';
+
+  @override
+  String get laneStyleHint => '如：温暖的黄昏光线、烛光';
+
+  @override
+  String get laneTintLabel => '背景色';
+
+  @override
+  String get laneTintAuto => '自动';
+
+  @override
+  String get laneDelete => '删除泳道';
+
+  @override
+  String get laneDeleteConfirmTitle => '确认删除该泳道？';
+
+  @override
+  String get laneDeleteConfirmBody => '泳道内节点位置保留，但会失去该泳道风格。';
+
+  @override
+  String get laneDialogSave => '保存';
+
+  @override
+  String get laneDialogCancel => '取消';
+
+  @override
+  String get laneDirectionToggle => '切换泳道方向';
+
+  @override
+  String get laneUntitled => '未命名泳道';
+
+  @override
+  String get laneCreateFailed => '创建泳道失败';
+
+  @override
+  String get laneUpdateFailed => '更新泳道失败';
+
+  @override
+  String get laneDeleteFailed => '删除泳道失败';
+
+  @override
+  String get inspectorPromptPreviewLabel => '最终 prompt 预览';
+
+  @override
+  String get inspectorIgnoreLaneStyle => '忽略区域风格';
 }

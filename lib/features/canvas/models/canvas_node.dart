@@ -25,6 +25,7 @@ class CanvasNode {
     this.projectId,
     this.canvasId,
     this.sourceNodeId,
+    this.laneId,
     this.typeConfig = const <String, Object?>{},
     this.position = Offset.zero,
     this.size = const Size(200, 160),
@@ -41,6 +42,9 @@ class CanvasNode {
 
   /// result 节点的溯源 config 节点 id（config 节点恒为 null）。
   final String? sourceNodeId;
+
+  /// 所属泳道 id（schema nodes.lane_id）；不在任何泳道时为 null。
+  final String? laneId;
 
   /// 对应 schema nodes.type_config JSONB。常用键：
   ///   config 节点：prompt / provider_id / resolution / aspect_ratio
@@ -87,6 +91,9 @@ class CanvasNode {
     return v is String && v.isNotEmpty ? v : null;
   }
 
+  /// 该节点是否忽略所属泳道的风格（type_config.ignore_lane_style）。
+  bool get ignoreLaneStyle => typeConfig['ignore_lane_style'] == true;
+
   CanvasNode copyWith({
     String? label,
     CanvasNodeType? type,
@@ -94,6 +101,8 @@ class CanvasNode {
     String? projectId,
     String? canvasId,
     String? sourceNodeId,
+    String? laneId,
+    bool clearLaneId = false,
     Map<String, Object?>? typeConfig,
     Offset? position,
     Size? size,
@@ -106,6 +115,7 @@ class CanvasNode {
         projectId: projectId ?? this.projectId,
         canvasId: canvasId ?? this.canvasId,
         sourceNodeId: sourceNodeId ?? this.sourceNodeId,
+        laneId: clearLaneId ? null : (laneId ?? this.laneId),
         typeConfig: typeConfig ?? this.typeConfig,
         position: position ?? this.position,
         size: size ?? this.size,
@@ -122,6 +132,7 @@ class CanvasNode {
           projectId == other.projectId &&
           canvasId == other.canvasId &&
           sourceNodeId == other.sourceNodeId &&
+          laneId == other.laneId &&
           mapEquals(typeConfig, other.typeConfig) &&
           position == other.position &&
           size == other.size;
@@ -135,6 +146,7 @@ class CanvasNode {
         projectId,
         canvasId,
         sourceNodeId,
+        laneId,
         Object.hashAll(typeConfig.entries
             .map((e) => Object.hash(e.key, e.value))),
         position,
@@ -166,6 +178,7 @@ extension CanvasNodeMapping on CanvasNode {
       projectId: row['project_id'] as String?,
       canvasId: row['canvas_id']?.toString(),
       sourceNodeId: row['source_node_id']?.toString(),
+      laneId: row['lane_id']?.toString(),
       typeConfig: _parseTypeConfig(row['type_config']),
       position: Offset(
         _asDouble(row['position_x']) ?? 0,

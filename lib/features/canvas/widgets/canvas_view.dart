@@ -25,8 +25,15 @@ import '../providers/link_mode_controller.dart';
 import '../providers/playable_video_path.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/edge_hit_test.dart';
+import '../models/style_lane.dart';
+import '../providers/canvas_lanes_controller.dart';
+import '../util/lane_geometry.dart';
 import 'canvas_empty_state.dart';
 import 'edge_painter.dart';
+import 'lane_background.dart';
+import 'lane_edit_dialog.dart';
+import 'lane_title_bar.dart';
+import 'lane_toolbar.dart';
 import 'node_card.dart';
 import 'node_inspector_router.dart';
 import 'video_lightbox.dart';
@@ -331,6 +338,12 @@ class _CanvasBody extends ConsumerWidget {
             right: InkSpacing.md,
             child: _SelectionCountChip(count: selected.length),
           ),
+        // 泳道工具栏：左下角固定，位于链接提示条之下。
+        Positioned(
+          bottom: InkSpacing.md,
+          left: InkSpacing.md,
+          child: LaneToolbar(canvasId: canvasId),
+        ),
       ],
     );
 
@@ -389,6 +402,9 @@ class _CanvasStage extends ConsumerWidget {
     final selectedEdgeId = ref.watch(selectedEdgeControllerProvider);
     final edges = ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[];
+    // 泳道数据。
+    final lanes = ref.watch(canvasLanesControllerProvider(canvasId)).valueOrNull ?? const <StyleLane>[];
+    final direction = ref.watch(canvasLaneDirectionProvider(canvasId)).valueOrNull ?? LaneDirection.horizontal;
 
     void onEdgeLayerTap(TapDownDetails d) {
       final hitId = hitTestEdge(
@@ -421,6 +437,18 @@ class _CanvasStage extends ConsumerWidget {
           height: 4000,
           child: Stack(
             children: [
+              // 泳道背景层：最底部，不拦截事件。
+              if (lanes.isNotEmpty)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: LaneBackground(
+                      lanes: lanes,
+                      direction: direction,
+                      canvasExtent: 4000,
+                      dividerColor: colors.borderSubtle,
+                    ),
+                  ),
+                ),
               // 连线层（含点击命中）。translucent 让空白处也冒泡。
               Positioned.fill(
                 child: GestureDetector(
@@ -455,9 +483,20 @@ class _CanvasStage extends ConsumerWidget {
                       node: node,
                       selected: selected.contains(node.id),
                       onTap: () => onNodeTap(node),
-                      onDragEnd: (totalDelta) => ref
-                          .read(canvasNodesControllerProvider(canvasId).notifier)
-                          .moveNode(node.id, totalDelta),
+                      onDragEnd: (totalDelta) {
+                        // 拖拽落点中心 → 计算归属泳道，一并传给 moveNode。
+                        final center = node.position + totalDelta +
+                            Offset(node.size.width / 2, node.size.height / 2);
+                        final laneId = laneIdAtPoint(
+                          point: center,
+                          lanes: [for (final l in lanes) (id: l.id, size: l.size)],
+                          direction: direction,
+                        );
+                        ref
+                            .read(canvasNodesControllerProvider(canvasId).notifier)
+                            .moveNode(node.id, totalDelta, laneId: laneId)
+                            .catchError((Object _) {});
+                      },
                       onStartLink: () => ref
                           .read(linkModeControllerProvider.notifier)
                           .start(node.id),
@@ -468,6 +507,9 @@ class _CanvasStage extends ConsumerWidget {
                     ),
                   ),
                 ),
+              // 泳道标题栏：节点层之上，边删除按钮之下。
+              if (lanes.isNotEmpty)
+                ..._buildLaneTitleBars(context, ref, lanes, direction),
               if (selectedGeometry != null)
                 Positioned(
                   left: edgeMidpoint(
@@ -501,6 +543,116 @@ class _CanvasStage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// 为每条泳道生成标题栏 Positioned widget 列表。
+  List<Widget> _buildLaneTitleBars(
+    BuildContext context,
+    WidgetRef ref,
+    List<StyleLane> lanes,
+    LaneDirection direction,
+  ) {
+    const double kTitleBarHeight = 32.0;
+    const double kTitleBarWidth = 200.0;
+    final rects = laneRects(
+      lanes: [for (final l in lanes) (id: l.id, size: l.size)],
+      direction: direction,
+      canvasExtent: 4000,
+    );
+    final result = <Widget>[];
+    for (var i = 0; i < lanes.length; i++) {
+      final lane = lanes[i];
+      final rect = rects[i];
+      final double left;
+      final double top;
+      final double? width;
+      if (direction == LaneDirection.horizontal) {
+        left = 0;
+        top = rect.top;
+        width = 4000;
+      } else {
+        left = rect.left;
+        top = 0;
+        width = kTitleBarWidth;
+      }
+      result.add(
+        Positioned(
+          left: left,
+          top: top,
+          width: width,
+          height: kTitleBarHeight,
+          child: LaneTitleBar(
+            lane: lane,
+            onEdit: () => _onEditLane(context, ref, lane),
+            onDelete: () => _onDeleteLane(context, ref, lane),
+          ),
+        ),
+      );
+    }
+    return result;
+  }
+
+  Future<void> _onEditLane(
+    BuildContext context,
+    WidgetRef ref,
+    StyleLane lane,
+  ) async {
+    final r = await showLaneEditDialog(context, existing: lane);
+    if (r == null) return;
+    if (!context.mounted) return;
+    try {
+      await ref
+          .read(canvasLanesControllerProvider(canvasId).notifier)
+          .updateLane(
+            lane.id,
+            label: r.label,
+            stylePrompt: r.stylePrompt,
+            tintColor: r.tintColor,
+            clearTint: r.tintColor == null,
+          );
+    } on InkError catch (_) {
+      if (context.mounted) {
+        _showSnack(context, context.l10n.laneUpdateFailed);
+      }
+    }
+  }
+
+  Future<void> _onDeleteLane(
+    BuildContext context,
+    WidgetRef ref,
+    StyleLane lane,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        final l10n = ctx.l10n;
+        return AlertDialog(
+          title: Text(l10n.laneDeleteConfirmTitle),
+          content: Text(l10n.laneDeleteConfirmBody),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(false),
+              child: Text(l10n.laneDialogCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(true),
+              child: Text(l10n.laneDelete),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    try {
+      await ref
+          .read(canvasLanesControllerProvider(canvasId).notifier)
+          .deleteLane(lane.id);
+    } on InkError catch (_) {
+      if (context.mounted) {
+        _showSnack(context, context.l10n.laneDeleteFailed);
+      }
+    }
   }
 }
 

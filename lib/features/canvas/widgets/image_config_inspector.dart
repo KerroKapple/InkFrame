@@ -1,6 +1,6 @@
 // ImageConfigInspector：单选 image config 节点时展示的参数面板。
 //
-// 纯 UI 层：本地仅持有表单控件状态（prompt 控制器 / 下拉选中值）。
+// 纯 UI 层：本地仅持有表单控件状态（prompt 控制器 / 下拉选中值 / ignore-lane 开关）。
 // 持久化（含 prompt 防抖）与提交状态机全部委托
 // InspectorSubmitController(nodeId)；hasApiKey 经 inspectorHasApiKeyProvider
 // 缓存；四态渲染由 InspectorStatusBinding → InspectorStatusPanel 完成。
@@ -9,17 +9,32 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/providers.dart';
+import '../../../core/di/repositories.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/services/prompt_assembler.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
+import '../models/style_lane.dart';
 import '../providers/canvas_edges_controller.dart';
+import '../providers/canvas_lanes_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import 'inspector_status_panel.dart';
+
+/// 读画布 base_style_prefix / base_style_suffix；失败降级为空字符串。
+final _canvasBaseStyleProvider = FutureProvider.autoDispose
+    .family<({String prefix, String suffix}), String>((ref, canvasId) async {
+  final repo = await ref.watch(canvasRepositoryProvider.future);
+  final row = await repo.findById(canvasId);
+  return (
+    prefix: (row?['base_style_prefix'] as String?) ?? '',
+    suffix: (row?['base_style_suffix'] as String?) ?? '',
+  );
+});
 
 class ImageConfigInspector extends ConsumerStatefulWidget {
   const ImageConfigInspector({super.key, required this.node});
@@ -35,6 +50,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
   final TextEditingController _promptCtrl = TextEditingController();
   String? _providerId;
   Resolution? _resolution;
+  late bool _ignoreLane;
 
   InspectorSubmitController get _submitCtrl => ref
       .read(inspectorSubmitControllerProvider(widget.node.id).notifier);
@@ -55,6 +71,8 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
         ? selectedCaps.first.supportedResolutions.first
         : null;
     _resolution = savedResolution ?? defaultResolution;
+
+    _ignoreLane = widget.node.ignoreLaneStyle;
 
     final savedPrompt = tc['prompt'];
     if (savedPrompt is String) _promptCtrl.text = savedPrompt;
@@ -210,6 +228,32 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
           if (widget.node.canvasId != null) ...[
             const SizedBox(height: InkSpacing.lg),
             _InputsSection(targetNode: widget.node),
+            const SizedBox(height: InkSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    context.l10n.inspectorIgnoreLaneStyle,
+                    style: typo.body.copyWith(color: colors.fg1),
+                  ),
+                ),
+                Switch(
+                  value: _ignoreLane,
+                  onChanged: (v) {
+                    setState(() => _ignoreLane = v);
+                    _submitCtrl
+                        .saveConfig(<String, Object?>{'ignore_lane_style': v});
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: InkSpacing.md),
+            _PromptPreview(
+              node: widget.node,
+              canvasId: widget.node.canvasId!,
+              currentPrompt: _promptCtrl.text,
+              ignoreLane: _ignoreLane,
+            ),
           ],
         ],
       ),
@@ -324,6 +368,94 @@ class _InputRow extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// 最终 prompt 预览框：实时拼接 base 前缀 + 泳道风格 + 关联文本 + 用户 prompt。
+class _PromptPreview extends ConsumerWidget {
+  const _PromptPreview({
+    required this.node,
+    required this.canvasId,
+    required this.currentPrompt,
+    required this.ignoreLane,
+  });
+
+  final CanvasNode node;
+  final String canvasId;
+  final String currentPrompt;
+  final bool ignoreLane;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+
+    // 泳道风格
+    final lanes = ref.watch(canvasLanesControllerProvider(canvasId)).valueOrNull
+            ?? const <StyleLane>[];
+    final lane = node.laneId == null
+        ? null
+        : lanes
+            .where((l) => l.id == node.laneId)
+            .cast<StyleLane?>()
+            .firstWhere((_) => true, orElse: () => null);
+
+    // 画布 base 前缀 / 后缀（失败降级为空字符串）
+    final baseStyle = ref
+        .watch(_canvasBaseStyleProvider(canvasId))
+        .valueOrNull ?? (prefix: '', suffix: '');
+
+    // 关联文本节点（data 边 → 源 text 节点，按边排列顺序）
+    final edges = ref.watch(canvasEdgesControllerProvider(canvasId))
+            .valueOrNull ?? const <CanvasEdge>[];
+    final nodes = ref.watch(canvasNodesControllerProvider(canvasId))
+            .valueOrNull ?? const <CanvasNode>[];
+    final nodesById = {for (final n in nodes) n.id: n};
+    final dataEdges = edges
+        .where((e) => e.targetNodeId == node.id && e.edgeType == EdgeType.data)
+        .toList();
+    final texts = <String>[];
+    for (final e in dataEdges) {
+      final src = nodesById[e.sourceNodeId];
+      if (src == null || src.type != CanvasNodeType.text) continue;
+      final t = (src.typeConfig['text'] as String?)?.trim();
+      final l = src.label.trim();
+      final content = (t != null && t.isNotEmpty) ? t : (l.isNotEmpty ? l : null);
+      if (content != null) texts.add(content);
+    }
+
+    final preview = assemblePrompt(
+      baseStylePrefix: baseStyle.prefix,
+      laneStylePrompt: lane?.stylePrompt ?? '',
+      associatedTexts: texts,
+      userPrompt: currentPrompt,
+      baseStyleSuffix: baseStyle.suffix,
+      ignoreLaneStyle: ignoreLane,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.inspectorPromptPreviewLabel,
+          style: typo.caption.copyWith(color: colors.fg3),
+        ),
+        const SizedBox(height: InkSpacing.xs),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(InkSpacing.sm),
+          decoration: BoxDecoration(
+            color: colors.surface2,
+            borderRadius: BorderRadius.circular(InkRadius.md),
+            border: Border.all(color: colors.border),
+          ),
+          child: Text(
+            preview.isEmpty ? '—' : preview,
+            style: typo.caption.copyWith(color: colors.fg2),
+          ),
+        ),
+      ],
     );
   }
 }
