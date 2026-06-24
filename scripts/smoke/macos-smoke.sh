@@ -8,7 +8,8 @@
 # boot 检查等待秒数可调：BOOT_WAIT=20 bash scripts/smoke/macos-smoke.sh
 #
 # 设计：嵌入式 PG 不在启动关键路径（见 lib/main.dart），故 boot 检查不依赖 PG 二进制；
-# PG 集成测以 @Tags(['pg']) 排除（无 TEST_PG_URL 时本就 markTestSkipped）。
+# 排除 pg（@Tags(['pg'])，无 TEST_PG_URL 时本就 markTestSkipped）与 golden（像素基线锁
+# canonical ubuntu，mac/win 字体光栅化差异会 false-fail）两类，与 smoke.yml 一致。
 set -euo pipefail
 cd "$(cd "$(dirname "$0")/../.." && pwd)"
 
@@ -19,7 +20,7 @@ BOOT_ONLY=0
 if [[ "$BOOT_ONLY" -eq 0 ]]; then
   echo "→ flutter pub get";          "$FLUTTER" pub get
   echo "→ flutter analyze";          "$FLUTTER" analyze
-  echo "→ flutter test (no pg)";     "$FLUTTER" test --exclude-tags pg
+  echo "→ flutter test (no pg/golden)"; "$FLUTTER" test --exclude-tags "pg || golden"
   echo "→ flutter build macos";      "$FLUTTER" build macos --release
 fi
 

@@ -8,6 +8,12 @@
 // 跨平台字体光栅化差异会让本地 Windows/macOS 生成的 baseline 在 CI 上 false-fail。
 // 生成方式：手动触发 .github/workflows/update-goldens.yml（ubuntu 上 --update-goldens 后自动提交 PNG）。
 // 提交基线后测试自动激活，无需再改代码。
+//
+// @Tags(['golden'])：golden 像素基线锁定 canonical 平台（CI ubuntu）。跨平台 smoke
+// （mac/win，smoke.yml）以 --exclude-tags golden 排除，否则字体光栅化差异 false-fail。
+// ubuntu 的 golden job 按文件 glob 跑、test job 跑全量，均不依赖本 tag。
+@Tags(['golden'])
+library;
 
 import 'dart:io';
 

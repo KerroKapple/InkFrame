@@ -516,9 +516,11 @@ gh release create v0.1.0 \
 - **触发**：push 到 `main`（post-merge 闸门）+ `workflow_dispatch`（手动）。不在每个 PR 跑，
   控 mac/win runner 成本（见 `ci.yml` 头注「macOS/Windows 烟测放到 release 流水线」的成本决策）。
 - **job**：`macos`（macos-14）+ `windows`（windows-latest），各跑
-  `flutter pub get → analyze → test --exclude-tags pg → flutter build <平台> --release → boot 烟测`。
-- **无 secret**：PG 二进制与签名都不在烟测路径（嵌入式 PG 不在启动关键路径，见 `lib/main.dart`；
-  PG 集成测以 `@Tags(['pg'])` 排除，无 `TEST_PG_URL` 时本就 `markTestSkipped`）。fork PR 可直接跑。
+  `flutter pub get → analyze → test --exclude-tags "pg || golden" → flutter build <平台> --release → boot 烟测`。
+- **无 secret**：PG 二进制与签名都不在烟测路径（嵌入式 PG 不在启动关键路径，见 `lib/main.dart`）。fork PR 可直接跑。
+- **排除两类锁定 canonical 平台的用例**：`pg`（@Tags(['pg'])，需 postgres 服务容器，仅 Linux runner 可用，
+  无 `TEST_PG_URL` 时本就 `markTestSkipped`）与 `golden`（@Tags(['golden'])，像素基线锁 ubuntu，mac/win
+  字体光栅化差异约 1% diff 会 false-fail）；两者分别由 `ci.yml` 的 ubuntu `test`/`golden` job 覆盖。
 - **boot 烟测**：`scripts/smoke/{windows-smoke.ps1,macos-smoke.sh}` —— 启动构建产物，存活 N 秒
   视为「启动未崩溃」。`continue-on-error`（无显示会话偶发不应让闸门变红；硬信号靠 build+test）。
   Windows 脚本即 DoD #5 要求的「reproducible 脚本」，本地与 CI 同一份。
