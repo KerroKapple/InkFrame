@@ -209,12 +209,6 @@
     }
   },
 
-  "canvasInspectorTransform": "变换",
-  "canvasInspectorCamera": "镜头",
-  "canvasInspectorComposition": "构图",
-  "canvasInspectorMetadata": "元数据",
-  "canvasInspectorNotes": "备注",
-  "canvasInspectorAddAttribute": "+ 添加属性",
   "canvasRenderQueue": "渲染队列",
   "canvasNodeTypeCharacter": "角色",
   "canvasNodeTypeScene": "场景",
@@ -235,9 +229,6 @@
       "count": { "type": "int" }
     }
   },
-  "canvasInspectorKindCamera": "镜头节点",
-  "canvasInspectorMockTitle": "宽景镜头",
-  "canvasInspectorMockId": "cam_0021",
   "canvasRenderQueueEmpty": "暂无渲染任务",
   "canvasRenderQueueStatusQueued": "排队中",
 

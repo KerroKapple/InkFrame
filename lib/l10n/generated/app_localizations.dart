@@ -1028,42 +1028,6 @@ abstract class AppLocalizations {
   /// **'Configure in Settings'**
   String get studioNoKeyBannerAction;
 
-  /// No description provided for @canvasInspectorTransform.
-  ///
-  /// In en, this message translates to:
-  /// **'Transform'**
-  String get canvasInspectorTransform;
-
-  /// No description provided for @canvasInspectorCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera'**
-  String get canvasInspectorCamera;
-
-  /// No description provided for @canvasInspectorComposition.
-  ///
-  /// In en, this message translates to:
-  /// **'Composition'**
-  String get canvasInspectorComposition;
-
-  /// No description provided for @canvasInspectorMetadata.
-  ///
-  /// In en, this message translates to:
-  /// **'Metadata'**
-  String get canvasInspectorMetadata;
-
-  /// No description provided for @canvasInspectorNotes.
-  ///
-  /// In en, this message translates to:
-  /// **'Notes'**
-  String get canvasInspectorNotes;
-
-  /// No description provided for @canvasInspectorAddAttribute.
-  ///
-  /// In en, this message translates to:
-  /// **'+ Add Attribute'**
-  String get canvasInspectorAddAttribute;
-
   /// No description provided for @canvasRenderQueue.
   ///
   /// In en, this message translates to:
@@ -1153,24 +1117,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} selected'**
   String canvasSelectionCount(int count);
-
-  /// No description provided for @canvasInspectorKindCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera Node'**
-  String get canvasInspectorKindCamera;
-
-  /// No description provided for @canvasInspectorMockTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Wide Shot'**
-  String get canvasInspectorMockTitle;
-
-  /// No description provided for @canvasInspectorMockId.
-  ///
-  /// In en, this message translates to:
-  /// **'cam_0021'**
-  String get canvasInspectorMockId;
 
   /// No description provided for @canvasRenderQueueEmpty.
   ///

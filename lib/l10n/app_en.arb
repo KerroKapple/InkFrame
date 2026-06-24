@@ -233,12 +233,6 @@
   "studioNoKeyBannerText": "No provider API key configured — generation needs one.",
   "studioNoKeyBannerAction": "Configure in Settings",
 
-  "canvasInspectorTransform": "Transform",
-  "canvasInspectorCamera": "Camera",
-  "canvasInspectorComposition": "Composition",
-  "canvasInspectorMetadata": "Metadata",
-  "canvasInspectorNotes": "Notes",
-  "canvasInspectorAddAttribute": "+ Add Attribute",
   "canvasRenderQueue": "Render Queue",
   "canvasNodeTypeCharacter": "Character",
   "canvasNodeTypeScene": "Scene",
@@ -262,9 +256,6 @@
       "count": { "type": "int" }
     }
   },
-  "canvasInspectorKindCamera": "Camera Node",
-  "canvasInspectorMockTitle": "Wide Shot",
-  "canvasInspectorMockId": "cam_0021",
   "canvasRenderQueueEmpty": "No active renders",
   "canvasRenderQueueStatusQueued": "Queued",
 

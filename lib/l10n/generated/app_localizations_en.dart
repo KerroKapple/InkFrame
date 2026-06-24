@@ -518,24 +518,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioNoKeyBannerAction => 'Configure in Settings';
 
   @override
-  String get canvasInspectorTransform => 'Transform';
-
-  @override
-  String get canvasInspectorCamera => 'Camera';
-
-  @override
-  String get canvasInspectorComposition => 'Composition';
-
-  @override
-  String get canvasInspectorMetadata => 'Metadata';
-
-  @override
-  String get canvasInspectorNotes => 'Notes';
-
-  @override
-  String get canvasInspectorAddAttribute => '+ Add Attribute';
-
-  @override
   String get canvasRenderQueue => 'Render Queue';
 
   @override
@@ -582,15 +564,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String canvasSelectionCount(int count) {
     return '$count selected';
   }
-
-  @override
-  String get canvasInspectorKindCamera => 'Camera Node';
-
-  @override
-  String get canvasInspectorMockTitle => 'Wide Shot';
-
-  @override
-  String get canvasInspectorMockId => 'cam_0021';
 
   @override
   String get canvasRenderQueueEmpty => 'No active renders';

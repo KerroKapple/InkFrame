@@ -498,24 +498,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioNoKeyBannerAction => '前往设置配置';
 
   @override
-  String get canvasInspectorTransform => '变换';
-
-  @override
-  String get canvasInspectorCamera => '镜头';
-
-  @override
-  String get canvasInspectorComposition => '构图';
-
-  @override
-  String get canvasInspectorMetadata => '元数据';
-
-  @override
-  String get canvasInspectorNotes => '备注';
-
-  @override
-  String get canvasInspectorAddAttribute => '+ 添加属性';
-
-  @override
   String get canvasRenderQueue => '渲染队列';
 
   @override
@@ -561,15 +543,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String canvasSelectionCount(int count) {
     return '已选 $count 个';
   }
-
-  @override
-  String get canvasInspectorKindCamera => '镜头节点';
-
-  @override
-  String get canvasInspectorMockTitle => '宽景镜头';
-
-  @override
-  String get canvasInspectorMockId => 'cam_0021';
 
   @override
   String get canvasRenderQueueEmpty => '暂无渲染任务';
