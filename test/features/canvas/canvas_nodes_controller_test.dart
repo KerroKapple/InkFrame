@@ -14,6 +14,8 @@ import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 
+import '../../_harness/fake_unit_of_work.dart';
+
 class _FakeNodeRepository implements NodeRepository {
   final List<Map<String, Object?>> rows = <Map<String, Object?>>[];
   final List<Map<String, Object?>> createCalls = <Map<String, Object?>>[];
@@ -115,17 +117,6 @@ class _FakeNodeRepository implements NodeRepository {
   Future<int> hardDelete(String id) async => 0;
 }
 
-/// softDelete 挂起在外部 gate 上——模拟 await 期间 provider 被 dispose（ME-27）。
-class _GatedNodeRepository extends _FakeNodeRepository {
-  final gate = Completer<void>();
-
-  @override
-  Future<int> softDelete(String id) async {
-    await gate.future;
-    return super.softDelete(id);
-  }
-}
-
 class _FakeEdgeRepo implements EdgeRepository {
   final List<Map<String, Object?>> rows = [];
   final List<String> softDeleted = [];
@@ -177,13 +168,21 @@ class _FakeEdgeRepo implements EdgeRepository {
 
 void main() {
   late _FakeNodeRepository repo;
+  late _FakeEdgeRepo edgeRepo;
   late ProviderContainer container;
 
   setUp(() {
     repo = _FakeNodeRepository();
+    edgeRepo = _FakeEdgeRepo();
     container = ProviderContainer(
       overrides: [
         nodeRepositoryProvider.overrideWith((ref) async => repo),
+        edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+        unitOfWorkProvider.overrideWith(
+          (ref) async => FakeUnitOfWork(
+            FakeRepositoryScope(nodes: repo, edges: edgeRepo),
+          ),
+        ),
       ],
     );
   });
@@ -293,18 +292,10 @@ void main() {
       expect(state.valueOrNull!.first.id, n.id);
     });
 
-    test('removeNode 级联软删相邻 edges（入+出）', () async {
-      final edgeRepo = _FakeEdgeRepo();
-      final cascadeContainer = ProviderContainer(overrides: [
-        nodeRepositoryProvider.overrideWith((ref) async => repo),
-        edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
-      ]);
-      addTearDown(cascadeContainer.dispose);
-
-      await cascadeContainer
-          .read(canvasNodesControllerProvider(canvasId).future);
-      final ctrl = cascadeContainer
-          .read(canvasNodesControllerProvider(canvasId).notifier);
+    test('removeNode 级联软删相邻 edges（入+出）— 单事务', () async {
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl =
+          container.read(canvasNodesControllerProvider(canvasId).notifier);
       final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
       final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
       final c = await ctrl.addNode(label: 'C', type: CanvasNodeType.image);
@@ -335,33 +326,40 @@ void main() {
       expect(repo.softDeleted, contains(b.id));
     });
 
-    test('removeNode 无 EdgeRepository 依然成功（best-effort 级联跳过）',
-        () async {
-      // 仅 node repo override，不注 edge repo → controller 跳过级联
+    test('removeNode 无关联 edges → 只软删节点', () async {
       await container.read(canvasNodesControllerProvider(canvasId).future);
       final ctrl = container
           .read(canvasNodesControllerProvider(canvasId).notifier);
       final n = await ctrl.addNode(label: 'X', type: CanvasNodeType.image);
       await ctrl.removeNode(n.id);
       expect(repo.softDeleted, contains(n.id));
+      expect(edgeRepo.softDeleted, isEmpty);
     });
 
     test('removeNode await 期间 provider dispose → 不抛 StateError（ME-27）',
         () async {
-      final gated = _GatedNodeRepository();
+      final gate = Completer<void>();
+      final gnode = _FakeNodeRepository()..softDeleteError = 'late failure';
+      final gedge = _FakeEdgeRepo();
       final c = ProviderContainer(overrides: [
-        nodeRepositoryProvider.overrideWith((ref) async => gated),
+        nodeRepositoryProvider.overrideWith((ref) async => gnode),
+        edgeRepositoryProvider.overrideWith((ref) async => gedge),
+        unitOfWorkProvider.overrideWith(
+          (ref) async => GatedFakeUnitOfWork(
+            FakeRepositoryScope(nodes: gnode, edges: gedge),
+            gate.future,
+          ),
+        ),
       ]);
 
       await c.read(canvasNodesControllerProvider(canvasId).future);
       final ctrl = c.read(canvasNodesControllerProvider(canvasId).notifier);
       final n = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
 
-      // softDelete 失败路径会在 await 之后回写 state——让它失败 + 中途 dispose。
-      gated.softDeleteError = 'late failure';
+      // 事务在 gate 上挂起；dispose 后 gate 放行 → node softDelete 失败。
       final pending = ctrl.removeNode(n.id);
       c.dispose(); // await 挂起期间整个容器销毁
-      gated.gate.complete();
+      gate.complete();
 
       // dispose 后不得触 ref/state——只允许原始 InkError 冒泡，绝不 StateError。
       await expectLater(pending, throwsA(isA<LocalIOError>()));

@@ -14,6 +14,8 @@ import '../interfaces/job_repository.dart';
 import '../interfaces/node_repository.dart';
 import '../interfaces/project_repository.dart';
 import '../interfaces/style_lane_repository.dart';
+import '../interfaces/unit_of_work.dart';
+import '../../storage/postgres_unit_of_work.dart';
 import '../../storage/repositories/postgres_batch_result_repository.dart';
 import '../../storage/repositories/postgres_canvas_repository.dart';
 import '../../storage/repositories/postgres_edge_repository.dart';
@@ -77,4 +79,23 @@ final batchResultRepositoryProvider = FutureProvider<BatchResultRepository>(
     return PostgresBatchResultRepository(pool);
   },
   name: 'batchResultRepositoryProvider',
+);
+
+/// 事务工作单元——多步写入原子化（仓储绑定到同一 runTx 事务）。
+/// 具体仓储的装配（new）在此 DI 层完成，PostgresUnitOfWork 只依赖工厂抽象。
+final unitOfWorkProvider = FutureProvider<UnitOfWork>(
+  (ref) async {
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresUnitOfWork(
+      pool,
+      (s) => RepositoryScopeData(
+        nodes: PostgresNodeRepository(s),
+        edges: PostgresEdgeRepository(s),
+        canvas: PostgresCanvasRepository(s),
+        projects: PostgresProjectRepository(s),
+        jobs: PostgresJobRepository(s),
+      ),
+    );
+  },
+  name: 'unitOfWorkProvider',
 );

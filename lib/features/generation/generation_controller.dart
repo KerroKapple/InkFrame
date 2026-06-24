@@ -38,6 +38,7 @@ import '../../core/interfaces/job_repository.dart';
 import '../../core/interfaces/node_repository.dart';
 import '../../core/interfaces/secure_storage_service.dart';
 import '../../core/interfaces/style_lane_repository.dart';
+import '../../core/interfaces/unit_of_work.dart';
 import '../../core/logging/logger_service.dart';
 import '../../core/models/generation_task.dart';
 import '../../core/models/job_status.dart';
@@ -58,6 +59,7 @@ final generationControllerProvider = FutureProvider<GenerationController>(
     final resolver = ref.watch(fileResolverServiceProvider);
     final canvas = await ref.watch(canvasRepositoryProvider.future);
     final lanes = await ref.watch(styleLaneRepositoryProvider.future);
+    final uow = await ref.watch(unitOfWorkProvider.future);
     // jobsRegistryProvider 是 keepAlive：用 read 拿实例，controller 持有它，
     // 后台 _track future 全程不再触碰 ref。
     final jobsRegistry = ref.read(jobsRegistryProvider.notifier);
@@ -71,6 +73,7 @@ final generationControllerProvider = FutureProvider<GenerationController>(
       resolver: resolver,
       canvas: canvas,
       lanes: lanes,
+      uow: uow,
       jobsRegistry: jobsRegistry,
       logger: ref.watch(loggerProvider),
     );
@@ -115,6 +118,7 @@ class GenerationController {
     required this.resolver,
     required this.canvas,
     required this.lanes,
+    required this.uow,
     required this.jobsRegistry,
     this.logger,
   });
@@ -128,6 +132,7 @@ class GenerationController {
   final FileResolverService resolver;
   final CanvasRepository canvas;
   final StyleLaneRepository lanes;
+  final UnitOfWork uow;
   final JobsRegistry jobsRegistry;
   final LoggerService? logger;
 
@@ -213,37 +218,55 @@ class GenerationController {
           : GenerationMode.imageToImage;
     }
 
-    // 预创建 result 节点（R2 路径调整：B-b3 落盘要求 resultNodeId 先在）。
-    final resultNodeId = await nodes.create(
-      canvasId: canvasId,
-      type: nodeType,
-      nodeRole: 'result',
-      sourceNodeId: configNodeId,
-    );
+    // 预创建 result 节点 + 建 job 行——单事务原子（任一失败整体回滚，不留半行）。
+    final String resultNodeId;
+    final String jobId;
+    try {
+      final created = await uow.run((scope) async {
+        final rNode = await scope.nodes.create(
+          canvasId: canvasId,
+          type: nodeType,
+          nodeRole: 'result',
+          sourceNodeId: configNodeId,
+        );
+        final jId = await scope.jobs.create(
+          canvasId: canvasId,
+          sourceNodeId: configNodeId,
+          resultNodeId: rNode,
+          providerId: providerId,
+          jobType: nodeType,
+          fullPrompt: fullPrompt,
+          userPrompt: prompt,
+          parameters: <String, Object?>{
+            'resolution': resolution.name,
+            'aspect_ratio': aspect.name,
+            if (durationSeconds > 0) 'duration_seconds': durationSeconds,
+            if (cameraEnum != null) 'camera': cameraEnum.name,
+            if (refs.refImagePaths.isNotEmpty)
+              'ref_image_paths': refs.refImagePaths,
+            if (refs.firstFramePath != null)
+              'first_frame_path': refs.firstFramePath,
+            if (refs.lastFramePath != null)
+              'last_frame_path': refs.lastFramePath,
+          },
+        );
+        return (rNode, jId);
+      });
+      resultNodeId = created.$1;
+      jobId = created.$2;
+    } on InkError catch (e, st) {
+      // 创建事务失败 → 已回滚（无残留行），记日志后照常上抛。
+      logger?.error(
+        _logModule,
+        'create result+job tx rolled back',
+        extra: {'config_node_id': configNodeId, 'provider_id': providerId},
+        cause: e,
+        stackTrace: st,
+      );
+      rethrow;
+    }
 
     try {
-      final jobId = await jobs.create(
-        canvasId: canvasId,
-        sourceNodeId: configNodeId,
-        resultNodeId: resultNodeId,
-        providerId: providerId,
-        jobType: nodeType,
-        fullPrompt: fullPrompt,
-        userPrompt: prompt,
-        parameters: <String, Object?>{
-          'resolution': resolution.name,
-          'aspect_ratio': aspect.name,
-          if (durationSeconds > 0) 'duration_seconds': durationSeconds,
-          if (cameraEnum != null) 'camera': cameraEnum.name,
-          if (refs.refImagePaths.isNotEmpty)
-            'ref_image_paths': refs.refImagePaths,
-          if (refs.firstFramePath != null)
-            'first_frame_path': refs.firstFramePath,
-          if (refs.lastFramePath != null)
-            'last_frame_path': refs.lastFramePath,
-        },
-      );
-
       final task = GenerationTask(
         providerId: providerId,
         jobId: jobId,
@@ -282,15 +305,26 @@ class GenerationController {
       ));
       return jobId;
     } catch (e, st) {
-      // 预创建了 result 但下游挂了（jobs.create / queue.submit 等）——清孤儿。
+      // node+job 已提交，但 submit / registry 挂了——原子清掉两行，不留孤儿。
       logger?.error(
         _logModule,
-        'submit rolled back: orphan result cleaned',
-        extra: {'result_node_id': resultNodeId, 'provider_id': providerId},
+        'submit rolled back: orphan result + job cleaned',
+        extra: {
+          'result_node_id': resultNodeId,
+          'job_id': jobId,
+          'provider_id': providerId,
+        },
         cause: e,
         stackTrace: st,
       );
-      await nodes.softDelete(resultNodeId);
+      try {
+        await uow.run((scope) async {
+          await scope.jobs.hardDelete(jobId);
+          await scope.nodes.softDelete(resultNodeId);
+        });
+      } on InkError {
+        // 补偿失败：保留原始错误语义，残留行交给孤儿回收/清理路径。
+      }
       rethrow;
     }
   }
