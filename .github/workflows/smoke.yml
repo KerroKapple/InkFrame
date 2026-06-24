@@ -1,0 +1,85 @@
+# InkFrame 跨平台烟测 —— Beta DoD #5「Windows + macOS 双平台烟测通过」的 CI 闸门。
+#
+# 为什么独立于 ci.yml：
+#   ci.yml 三条 job（analyze/test/golden）全跑 ubuntu-latest 控成本（见 ci.yml 头注）。
+#   mac/win runner 计费 10×/2×，不适合每个 PR 都跑。本 workflow 把跨平台构建+测试
+#   放到「合入 main 后」与「手动触发」两个时机：post-merge 闸门能在一次合并内抓到
+#   平台特有回归（Windows 路径、macOS-only 代码、Process.runSync('uname') 等），
+#   又不为每个 PR 付双平台成本。
+#
+#   预算允许时给 PR 加 cross-platform 信号：在 on: 下加 pull_request 即可（可配 label 过滤）。
+#
+# 与 release.yml 的关系：release.yml 的 build-macos/build-windows 内含同一套
+#   build+test，所以能过 release 的 tag 必然过了本烟测；本 workflow 是「不等到发版
+#   就持续校验双平台」的前置网。
+#
+# 无 secret：fork PR / 任何贡献者都能跑，缺密钥不影响（PG 二进制、签名都不在烟测路径）。
+name: smoke
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: 3.41.6
+
+jobs:
+  macos:
+    name: smoke (macOS)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: enable macOS desktop
+        run: flutter config --enable-macos-desktop
+      - name: flutter pub get
+        run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze
+      # PG 集成测（@Tags(['pg'])）需 TEST_PG_URL + postgres 服务容器，服务容器仅
+      # Linux runner 可用 → 这里显式 --exclude-tags pg。PG 用例由 ci.yml 的 ubuntu
+      # test job（带 postgres:17-alpine 服务）覆盖；本烟测验证的是「非 PG 逻辑 +
+      # macOS 原生构建/链接（media_kit / window_manager）」。
+      - name: flutter test (exclude pg)
+        run: flutter test --exclude-tags pg
+      - name: flutter build macos (release)
+        run: flutter build macos --release
+      # boot 烟测：best-effort 启动构建产物，确认不在启动期崩溃。GH macOS runner 有
+      # windowserver，window_manager 可起；嵌入式 PG 不在启动关键路径（见 lib/main.dart），
+      # 故缺 PG 二进制也不阻止启动（PG 错误经 AsyncValue 渲染为错误态，进程存活）。
+      # 标记 continue-on-error：无显示会话下的偶发不应让闸门变红；真实回归靠 build+test。
+      - name: boot smoke (best-effort)
+        continue-on-error: true
+        run: bash scripts/smoke/macos-smoke.sh --boot-only
+
+  windows:
+    name: smoke (Windows)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: enable Windows desktop
+        run: flutter config --enable-windows-desktop
+      - name: flutter pub get
+        run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze
+      - name: flutter test (exclude pg)
+        run: flutter test --exclude-tags pg
+      - name: flutter build windows (release)
+        run: flutter build windows --release
+      # boot 烟测：见 macOS job 同名 step 说明。Windows 用 reproducible 脚本（DoD #5 明确
+      # 要求「Windows 有 reproducible 脚本」），本地与 CI 同一份。
+      - name: boot smoke (best-effort)
+        continue-on-error: true
+        shell: pwsh
+        run: ./scripts/smoke/windows-smoke.ps1 -BootOnly

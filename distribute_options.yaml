@@ -1,0 +1,22 @@
+# flutter_distributor 打包配置 —— BUILD-RELEASE §8（Windows MSIX）。
+# release.yml 的「package MSIX」步骤调用：
+#   flutter_distributor package --platform windows --targets msix
+#
+# 当前为骨架（release.yml 该步 continue-on-error）：MSIX 的 publisher 身份必须与 EV 代码
+# 签名证书 subject 完全一致；未签名/测试 MSIX 用占位 publisher，仅供开发者模式本地安装。
+# 拿到 EV 证书后，把 msix_config.publisher 填成证书 subject（CN=...），并去掉 continue-on-error。
+output: dist/
+releases:
+  - name: prod
+    jobs:
+      - name: release-windows-msix
+        package:
+          platform: windows
+          target: msix
+          msix_config:
+            display_name: InkFrame
+            publisher_display_name: Kerro Kapple
+            # publisher: 'CN=...'   # ← 填 EV 证书 subject；留空则 msix 工具用 pubspec 占位
+            identity_name: com.inkframe.app
+            capabilities: 'internetClient'
+            store: false
