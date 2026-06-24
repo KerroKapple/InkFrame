@@ -33,6 +33,7 @@ import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
 import '../../helpers/recording_logger.dart';
+import '../../_harness/fake_unit_of_work.dart';
 
 // ---- fakes ------------------------------------------------------------
 
@@ -104,6 +105,7 @@ class _FakeNodeRepo implements NodeRepository {
 
 class _FakeJobRepo implements JobRepository {
   final List<Map<String, Object?>> creates = [];
+  final List<String> hardDeleted = [];
   bool createThrows = false;
 
   @override
@@ -154,7 +156,10 @@ class _FakeJobRepo implements JobRepository {
   @override
   Future<int> purgePerCanvasCap({required int cap}) async => 0;
   @override
-  Future<int> hardDelete(String id) async => 0;
+  Future<int> hardDelete(String id) async {
+    hardDeleted.add(id);
+    return 1;
+  }
 }
 
 class _FakeSecure implements SecureStorageService {
@@ -188,10 +193,12 @@ class _FakeJobQueue implements JobQueueService {
   _FakeJobQueue(this.finalStatus);
   JobStatus finalStatus;
   GenerationTask? lastTask;
+  bool submitThrows = false;
   @override
   Future<void> init() async {}
   @override
   Future<JobHandle> submit(GenerationTask task) async {
+    if (submitThrows) throw StateError('submit boom');
     lastTask = task;
     return _FakeHandle(
       task.jobId,
@@ -343,6 +350,7 @@ void main() {
         resolver: resolver,
         canvas: canvasRepo,
         lanes: laneRepo,
+        uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
         jobsRegistry: jobsRegistry,
         logger: logger,
       );
@@ -547,7 +555,7 @@ void main() {
     expect(nodes.softDeleted, contains(nodes.creates.first['id']));
   });
 
-  test('jobs.create 抛错 → 预创建的 result 被清 + rethrow', () async {
+  test('jobs.create 抛错 → 创建事务回滚，submit 未触达，rethrow', () async {
     final cfg = await seedConfigNode();
     await secure.store(
       SecureStorageKeys.providerApiKey(providerId),
@@ -559,7 +567,21 @@ void main() {
       buildCtrl().submitFromConfigNode(cfg),
       throwsStateError,
     );
-    expect(nodes.softDeleted, hasLength(1));
+    // 事务回滚由真 PG 保证；此处断言 submit 阶段未触达（无 task）。
+    expect(queue.lastTask, isNull);
+  });
+
+  test('queue.submit 失败 → 清孤儿 result + job（补偿）后 rethrow', () async {
+    final cfg = await seedConfigNode();
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+    queue.submitThrows = true;
+
+    await expectLater(
+      buildCtrl().submitFromConfigNode(cfg),
+      throwsA(isA<StateError>()),
+    );
+    expect(nodes.softDeleted, contains(nodes.creates.first['id']));
+    expect(jobs.hardDeleted, contains(jobs.creates.first['id']));
   });
 
   group('logger 注入点（FIX-016 / ME-21）', () {

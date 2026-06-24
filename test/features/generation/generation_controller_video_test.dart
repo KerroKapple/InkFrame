@@ -24,6 +24,8 @@ import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
+import '../../_harness/fake_unit_of_work.dart';
+
 // ---- fakes ------------------------------------------------------------
 
 class _FakeNodeRepo implements NodeRepository {
@@ -307,6 +309,7 @@ void main() {
         resolver: resolver,
         canvas: canvasRepo,
         lanes: laneRepo,
+        uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
         jobsRegistry: jobsRegistry,
       );
 
