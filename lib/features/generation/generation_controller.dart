@@ -254,7 +254,7 @@ class GenerationController {
       });
       resultNodeId = created.$1;
       jobId = created.$2;
-    } catch (e, st) {
+    } on InkError catch (e, st) {
       // 创建事务失败 → 已回滚（无残留行），记日志后照常上抛。
       logger?.error(
         _logModule,

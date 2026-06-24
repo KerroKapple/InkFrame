@@ -5,6 +5,7 @@
 // 本类只依赖 RepositoryScope 抽象与一个 `Session → RepositoryScope` 工厂（DIP）。
 import 'package:postgres/postgres.dart';
 
+import '../core/errors/ink_error.dart';
 import '../core/interfaces/canvas_repository.dart';
 import '../core/interfaces/edge_repository.dart';
 import '../core/interfaces/job_repository.dart';
@@ -21,9 +22,23 @@ class PostgresUnitOfWork implements UnitOfWork {
   /// 由 DI 层注入：把单个事务 [Session] 装配成一组仓储。
   final RepositoryScope Function(Session session) _scopeOf;
 
+  /// 闭包内仓储的 PgException 已由 BaseRepository.guard 翻成 InkError；
+  /// 此处再兜住 runTx 自身（BEGIN/COMMIT/ROLLBACK）冒出的 PgException，
+  /// 保证事务边界对外只抛 InkError，绝不泄漏裸 PgException 到 UI。
   @override
-  Future<T> run<T>(Future<T> Function(RepositoryScope scope) action) =>
-      _executor.runTx((tx) => action(_scopeOf(tx)));
+  Future<T> run<T>(Future<T> Function(RepositoryScope scope) action) async {
+    try {
+      return await _executor.runTx((tx) => action(_scopeOf(tx)));
+    } on InkError {
+      rethrow;
+    } on PgException catch (e, st) {
+      throw LocalIOError(
+        extra: const <String, Object?>{'op': 'transaction'},
+        cause: e,
+        stackTrace: st,
+      );
+    }
+  }
 }
 
 /// RepositoryScope 的不可变持有者：只存已装配好的仓储，自身不 new 任何注入物。

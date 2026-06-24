@@ -8,11 +8,27 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/storage/postgres_unit_of_work.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
+import 'package:postgres/postgres.dart';
 
 import 'schema/pg_test_harness.dart';
 
 class _Skip implements Exception {}
+
+/// 与生产 DI 同构的工作单元装配（lib/core/di/repositories.dart）。
+PostgresUnitOfWork _uow(SessionExecutor exec) => PostgresUnitOfWork(
+      exec,
+      (s) => RepositoryScopeData(
+        nodes: PostgresNodeRepository(s),
+        edges: PostgresEdgeRepository(s),
+        canvas: PostgresCanvasRepository(s),
+        projects: PostgresProjectRepository(s),
+        jobs: PostgresJobRepository(s),
+      ),
+    );
 
 void main() {
   late PgTestHarness? harness;
@@ -36,7 +52,7 @@ void main() {
   test('闭包中途抛错 → 已写入的 project 行回滚（不残留）', () async {
     try {
       final h = req();
-      final uow = PostgresUnitOfWork(h.conn);
+      final uow = _uow(h.conn);
       final projects = PostgresProjectRepository(h.conn);
 
       await expectLater(
@@ -61,7 +77,7 @@ void main() {
   test('闭包全部成功 → project + canvas 双双提交', () async {
     try {
       final h = req();
-      final uow = PostgresUnitOfWork(h.conn);
+      final uow = _uow(h.conn);
       final projects = PostgresProjectRepository(h.conn);
       final canvases = PostgresCanvasRepository(h.conn);
 

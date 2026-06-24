@@ -122,7 +122,7 @@ class _FakeJobRepo implements JobRepository {
     int maxRetries = 3,
     DateTime? timeoutAt,
   }) async {
-    if (createThrows) throw StateError('jobs.create boom');
+    if (createThrows) throw const LocalIOError();
     final id = 'j${creates.length + 1}';
     creates.add({
       'id': id,
@@ -565,7 +565,7 @@ void main() {
 
     await expectLater(
       buildCtrl().submitFromConfigNode(cfg),
-      throwsStateError,
+      throwsA(isA<LocalIOError>()),
     );
     // 事务回滚由真 PG 保证；此处断言 submit 阶段未触达（无 task）。
     expect(queue.lastTask, isNull);
@@ -605,7 +605,8 @@ void main() {
           InkErrorCode.providerServer.wire);
     });
 
-    test('jobs.create 抛错回滚 → ERROR 日志后照常 rethrow', () async {
+    test('创建事务失败 → ERROR 日志（module=generation.controller）后照常 rethrow',
+        () async {
       final cfg = await seedConfigNode();
       await secure.store(
         SecureStorageKeys.providerApiKey(providerId),
@@ -615,7 +616,7 @@ void main() {
 
       await expectLater(
         buildCtrl().submitFromConfigNode(cfg),
-        throwsStateError,
+        throwsA(isA<LocalIOError>()),
       );
       expect(
         logger
