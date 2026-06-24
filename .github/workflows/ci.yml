@@ -90,6 +90,14 @@ jobs:
           #   - generated l10n
           #   - features/debug/**（kDebugMode-only Showcase，用户访问不到）
           exclude: 'lib/main.dart lib/features/canvas/widgets/video_lightbox.dart lib/services/media_kit_*.dart lib/core/di/video_player.dart lib/core/di/thumbnail.dart lib/l10n/generated/** lib/features/debug/**'
+      # 覆盖率证据：把 lcov.info 作为 build artifact 上传，固化“≥70% 已达成”的可核对证据。
+      - name: upload coverage report (evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: error
 
   golden:
     name: golden
@@ -103,11 +111,12 @@ jobs:
           cache: true
       - name: flutter pub get
         run: flutter pub get
-      # 跑 golden 测试 + 全 skip 告警：golden 基线未在 Linux runner 生成前测试整组
-      # skip，此时 job 绿灯不代表任何视觉验证——必须显式 ::warning:: 暴露空转状态。
-      # 注意：基线只允许在 canonical Linux runner 上生成（workflow_dispatch
+      # 跑 golden 测试 + 基线守卫：
+      #   - 已有基线 PNG 却 ran==0 → 基线被误删 / 测试被 skip → 硬失败（exit 1）。
+      #   - 还没有基线（bootstrap 期）→ ::warning:: 暴露空转，不阻断。
+      # 基线只允许在 canonical ubuntu runner 上生成（update-goldens.yml workflow_dispatch
       # --update-goldens），禁止提交 Windows / macOS 本地生成的基线。
-      - name: run golden tests + all-skip guard
+      - name: run golden tests + baseline guard
         run: |
           shopt -s globstar nullglob
           files=(test/**/*_golden_test.dart)
@@ -115,10 +124,15 @@ jobs:
             echo "::warning title=golden job idle::no golden test files exist — golden job verified nothing"
             exit 0
           fi
+          baselines=(test/**/goldens/*.png)
           flutter test "${files[@]}" --file-reporter "json:golden-report.json"
           ran=$(jq -s '[.[] | select(.type=="testDone" and .hidden != true and .skipped != true)] | length' golden-report.json)
           skipped=$(jq -s '[.[] | select(.type=="testDone" and .hidden != true and .skipped == true)] | length' golden-report.json)
-          echo "golden tests: ran=$ran skipped=$skipped"
+          echo "golden tests: ran=$ran skipped=$skipped baselines=${#baselines[@]}"
           if [ "$ran" -eq 0 ]; then
-            echo "::warning title=golden job idle::all $skipped golden tests are skipped — green light verifies nothing (baseline pending Linux --update-goldens, see test/features/canvas/widgets/node_card_golden_test.dart)"
+            if [ ${#baselines[@]} -gt 0 ]; then
+              echo "::error title=golden regression::${#baselines[@]} baseline PNG(s) exist but 0 golden tests ran — goldens were skipped or disabled; failing."
+              exit 1
+            fi
+            echo "::warning title=golden bootstrap pending::no baselines yet — run the update-goldens workflow on ubuntu to mint + commit them (see test/features/canvas/widgets/node_card_golden_test.dart)"
           fi
