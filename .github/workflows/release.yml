@@ -78,8 +78,8 @@ jobs:
         run: flutter pub get
       - name: flutter analyze
         run: flutter analyze
-      - name: flutter test (exclude pg)
-        run: flutter test --exclude-tags pg
+      - name: flutter test (exclude pg + golden)
+        run: flutter test --exclude-tags "pg || golden"
       - name: flutter build macos (release)
         run: flutter build macos --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
       - name: zip unsigned .app (always uploadable)
@@ -141,8 +141,8 @@ jobs:
         run: flutter pub get
       - name: flutter analyze
         run: flutter analyze
-      - name: flutter test (exclude pg)
-        run: flutter test --exclude-tags pg
+      - name: flutter test (exclude pg + golden)
+        run: flutter test --exclude-tags "pg || golden"
       - name: flutter build windows (release)
         shell: pwsh
         run: flutter build windows --release --build-name="$env:BUILD_NAME" --build-number="$env:BUILD_NUMBER"

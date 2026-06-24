@@ -41,12 +41,14 @@ jobs:
         run: flutter pub get
       - name: flutter analyze
         run: flutter analyze
-      # PG 集成测（@Tags(['pg'])）需 TEST_PG_URL + postgres 服务容器，服务容器仅
-      # Linux runner 可用 → 这里显式 --exclude-tags pg。PG 用例由 ci.yml 的 ubuntu
-      # test job（带 postgres:17-alpine 服务）覆盖；本烟测验证的是「非 PG 逻辑 +
-      # macOS 原生构建/链接（media_kit / window_manager）」。
-      - name: flutter test (exclude pg)
-        run: flutter test --exclude-tags pg
+      # 排除两类「锁定 canonical 平台」的用例：
+      #   - pg（@Tags(['pg'])）：需 TEST_PG_URL + postgres 服务容器，服务容器仅 Linux
+      #     runner 可用；由 ci.yml 的 ubuntu test job（postgres:17-alpine）覆盖。
+      #   - golden（@Tags(['golden'])）：像素基线锁定 ubuntu，mac/win 字体光栅化差异会
+      #     false-fail（~1% diff）；由 ci.yml 的 ubuntu golden job 覆盖。
+      # 本烟测验证「非 PG/非 golden 逻辑 + macOS 原生构建/链接（media_kit/window_manager）」。
+      - name: flutter test (exclude pg + golden)
+        run: flutter test --exclude-tags "pg || golden"
       - name: flutter build macos (release)
         run: flutter build macos --release
       # boot 烟测：best-effort 启动构建产物，确认不在启动期崩溃。GH macOS runner 有
@@ -73,8 +75,8 @@ jobs:
         run: flutter pub get
       - name: flutter analyze
         run: flutter analyze
-      - name: flutter test (exclude pg)
-        run: flutter test --exclude-tags pg
+      - name: flutter test (exclude pg + golden)
+        run: flutter test --exclude-tags "pg || golden"
       - name: flutter build windows (release)
         run: flutter build windows --release
       # boot 烟测：见 macOS job 同名 step 说明。Windows 用 reproducible 脚本（DoD #5 明确

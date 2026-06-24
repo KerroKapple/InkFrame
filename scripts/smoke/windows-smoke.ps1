@@ -7,7 +7,8 @@
 #   $env:FLUTTER = 'C:\Users\Kerro\flutter\bin\flutter.bat'; ./scripts/smoke/windows-smoke.ps1
 #
 # 设计：嵌入式 PG 不在启动关键路径（见 lib/main.dart），boot 检查不依赖 PG 二进制；
-# PG 集成测以 --exclude-tags pg 排除。
+# 排除 pg（无 TEST_PG_URL 时 markTestSkipped）与 golden（像素基线锁 canonical ubuntu，
+# mac/win 字体光栅化差异会 false-fail）两类，与 smoke.yml 一致。
 param(
   [switch]$BootOnly,
   [int]$BootWait = 12
@@ -26,7 +27,7 @@ function Invoke-Step($label, [scriptblock]$block) {
 if (-not $BootOnly) {
   Invoke-Step 'flutter pub get'       { & $flutter pub get }
   Invoke-Step 'flutter analyze'       { & $flutter analyze }
-  Invoke-Step 'flutter test (no pg)'  { & $flutter test --exclude-tags pg }
+  Invoke-Step 'flutter test (no pg/golden)' { & $flutter test --exclude-tags "pg || golden" }
   Invoke-Step 'flutter build windows' { & $flutter build windows --release }
 }
 
