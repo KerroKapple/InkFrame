@@ -28,6 +28,7 @@
 - [ ] **E2E 主链路**：至少覆盖 生成 → 落盘 → 渲染 一条贯穿用例（script→storyboard→export 完整链可留到 beta 后）。
 - [ ] **性能基线**：canvas 节点 > 200 的 frame drop 量化 + 阈值守卫。
 - [ ] **Windows 烟测自动化**：macOS 已手动跑，Windows 缺 reproducible 流程。
+  — 已补 `smoke.yml`（macos-14 + windows-latest：build + test + boot）与本地可复现脚本；待 CI 首跑验证。
 
 ### P1 — 广度铺量（收益高、可并行）
 - [ ] **Provider 试点**：DALL-E（`openai-image`）+ Stable Diffusion（`stability-image-core`）——计划已就绪并预审（`docs/superpowers/plans/2026-06-10-provider-{dalle,stable-diffusion}.md`）。
@@ -50,6 +51,7 @@ beta 资格 = 下列全绿：
 3. [ ] Golden 基线存在且 CI 校验
 4. [ ] 至少 1 条 E2E 主链路用例
 5. [ ] Windows + macOS 双平台烟测通过（Windows 有 reproducible 脚本）
+   — 流水线已落地：`.github/workflows/smoke.yml` + `scripts/smoke/{macos-smoke.sh,windows-smoke.ps1}`；待首次 CI 实跑绿后勾选。见 `docs/BUILD-RELEASE.md §13.1`。
 6. [ ] 性能基线文档化（节点规模 vs 帧率阈值）
 7. [ ] 覆盖率 ≥ 70%（ROADMAP 既定门槛）
 8. [ ] 无 P0 级 open bug

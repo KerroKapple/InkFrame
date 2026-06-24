@@ -509,51 +509,61 @@ gh release create v0.1.0 \
 
 ## 13. CI 发布流水线
 
-`.github/workflows/release.yml`（触发：push tag `v*`）：
+两个 workflow 分工（实际实现，本节为权威；下方描述与仓库 `.github/workflows/` 同步）：
 
-```yaml
-on:
-  push:
-    tags: ['v*']
+### 13.1 `smoke.yml` —— 跨平台烟测（Beta DoD #5 闸门）
 
-jobs:
-  build-macos:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with: { channel: stable }
-      - run: bash scripts/pg/fetch-binaries.sh
-      - run: flutter pub get && flutter gen-l10n && dart run build_runner build
-      - run: flutter analyze --fatal-infos
-      - run: flutter test
-      - run: flutter build macos --release --build-name=${GITHUB_REF_NAME#v} --build-number=${GITHUB_RUN_NUMBER}
-      - name: Sign + Notarize
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          TEAM_ID: ${{ secrets.TEAM_ID }}
-        run: bash scripts/sign-and-notarize-macos.sh
-      - uses: actions/upload-artifact@v4
-        with: { name: macos-dmg, path: dist/*.dmg }
+- **触发**：push 到 `main`（post-merge 闸门）+ `workflow_dispatch`（手动）。不在每个 PR 跑，
+  控 mac/win runner 成本（见 `ci.yml` 头注「macOS/Windows 烟测放到 release 流水线」的成本决策）。
+- **job**：`macos`（macos-14）+ `windows`（windows-latest），各跑
+  `flutter pub get → analyze → test --exclude-tags pg → flutter build <平台> --release → boot 烟测`。
+- **无 secret**：PG 二进制与签名都不在烟测路径（嵌入式 PG 不在启动关键路径，见 `lib/main.dart`；
+  PG 集成测以 `@Tags(['pg'])` 排除，无 `TEST_PG_URL` 时本就 `markTestSkipped`）。fork PR 可直接跑。
+- **boot 烟测**：`scripts/smoke/{windows-smoke.ps1,macos-smoke.sh}` —— 启动构建产物，存活 N 秒
+  视为「启动未崩溃」。`continue-on-error`（无显示会话偶发不应让闸门变红；硬信号靠 build+test）。
+  Windows 脚本即 DoD #5 要求的「reproducible 脚本」，本地与 CI 同一份。
 
-  build-windows:
-    runs-on: self-hosted-ev-dongle   # EV 证书 Dongle 机
-    # ... 同结构
+### 13.2 `release.yml` —— 发布流水线
 
-  release:
-    needs: [build-macos, build-windows]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/download-artifact@v4
-      - name: Create GitHub Release
-        run: |
-          gh release create ${GITHUB_REF_NAME} \
-            --title "InkFrame ${GITHUB_REF_NAME#v}" \
-            --notes-file CHANGELOG-${GITHUB_REF_NAME}.md \
-            dist/*
-      - name: Update manifest
-        run: python scripts/release/update-manifest.py
-```
+- **触发**：push tag `v*`（由 `scripts/release-tag.sh` 打 tag 后自动触发）+ `workflow_dispatch`（演练）。
+- **job**：
+  - `build-macos`（macos-14，arm64）/ `build-windows`（windows-latest）：
+    `(fetch PG, if vars.PG_ARTIFACT_BASE_URL) → pub get → analyze → test --exclude-tags pg →`
+    `flutter build → zip unsigned 产物（无条件上传）→ 签名/公证（缺凭据自跳过）→ 打包（best-effort）→ upload-artifact`
+  - `publish`（ubuntu，仅真实 tag）：download artifacts → `softprops/action-gh-release@v2` 幂等附加资产
+    到该 tag 的 Release（`--generate-notes`，不依赖 CHANGELOG 文件）。
+- **守卫模型**：
+  - PG 二进制 fetch：repo variable `PG_ARTIFACT_BASE_URL` 配置时才跑；缺则 `::warning::` 并继续
+    （产物不含嵌入式 PG，仅验证构建/链接）。
+  - 签名/公证/MSIX 签名：脚本自检环境，缺凭据 → 打印 `SKIPPED` 退出 0，不阻断。
+  - 原始构建产物（zip 的 `.app` / `Release` 目录）**无条件上传** —— 零密钥也有可下载工件。
+- **与 §13 早期愿景稿的差异（已就现实修正）**：
+  - actions 版本对齐 `ci.yml`（`@v5` / `flutter-action@v2` / `FLUTTER_VERSION 3.41.6`）。
+  - Windows 暂用 `windows-latest` + 守卫式软证书签名；EV Dongle 的 self-hosted runner 是后续（§7.2）。
+  - 不跑 `build_runner`：`.freezed.dart` 与 `lib/l10n/generated/**` 已入库，`ci.yml` 无 codegen 仍全绿。
+  - `update-manifest.py` / `updates.json`（§10 自动更新）依赖更新站点，未接入，后续单独落地。
+
+### 13.3 实现脚本
+
+| 脚本 | 作用 | 守卫 |
+|---|---|---|
+| `scripts/release/sign-and-notarize-macos.sh` | Developer ID 签名 + notarytool 公证 + staple | 缺 `MACOS_CERT_P12_BASE64` → SKIPPED |
+| `scripts/release/package-macos-dmg.sh` | create-dmg 打包 | best-effort（`continue-on-error`） |
+| `scripts/release/sign-windows.ps1` | signtool 签 exe + DLL | 缺 `WINDOWS_CERT_PFX_BASE64` → SKIPPED |
+| `distribute_options.yaml` | flutter_distributor MSIX 配置骨架 | publisher 待 EV 证书 subject |
+| `scripts/smoke/{macos-smoke.sh,windows-smoke.ps1}` | 双平台 boot 烟测（本地可复现） | — |
+
+### 13.4 待提供的机密 / 变量（流水线就绪前的唯一缺口）
+
+配齐后 release.yml 的签名/公证/PG 打包自动生效，无需改代码：
+
+| 名称 | 类型 | 用途 |
+|---|---|---|
+| `PG_ARTIFACT_BASE_URL` | repo **variable**（或改 secret） | 嵌入式 PG 二进制对象存储 base URL（`fetch-binaries.sh` 读） |
+| `MACOS_CERT_P12_BASE64` / `MACOS_CERT_PASSWORD` | secret | Developer ID Application 证书（.p12 base64）+ 密码 |
+| `MACOS_SIGN_IDENTITY` | secret | 签名身份串 `Developer ID Application: Name (TEAMID)` |
+| `APPLE_ID` / `APPLE_TEAM_ID` / `APPLE_APP_SPECIFIC_PASSWORD` | secret | notarytool 公证凭据 |
+| `WINDOWS_CERT_PFX_BASE64` / `WINDOWS_CERT_PASSWORD` | secret | Windows 软证书签名（EV Dongle 走 self-hosted runner，见 §7.2） |
 
 ---
 

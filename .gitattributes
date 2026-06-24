@@ -1,0 +1,6 @@
+# Shell 脚本必须保持 LF —— 在 macOS/Linux CI runner 上以 bash 运行，CRLF 会导致
+# `\r` 解析错误。不依赖贡献者本机 core.autocrlf 设置。
+*.sh text eol=lf
+
+# PowerShell 脚本固定 CRLF（仅在 Windows runner 运行）。
+*.ps1 text eol=crlf
