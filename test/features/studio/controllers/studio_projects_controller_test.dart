@@ -1,4 +1,5 @@
-// StudioProjectsController 单测：create 编排原子性 + 列表刷新 + 错误冒泡。
+// StudioProjectsController 单测：create 编排走 UnitOfWork + 列表刷新 + 错误冒泡。
+// 真正的事务回滚（项目不残留）由 transaction_integration_test.dart（真 PG）断言。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -7,6 +8,7 @@ import 'package:inkframe/features/studio/controllers/studio_projects_controller.
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_unit_of_work.dart';
 
 class _FailingCanvasCreateRepository extends InMemoryCanvasRepository {
   @override
@@ -28,6 +30,11 @@ ProviderContainer _containerWith(
     overrides: <Override>[
       projectRepositoryProvider.overrideWith((_) async => projects),
       canvasRepositoryProvider.overrideWith((_) async => canvases),
+      unitOfWorkProvider.overrideWith(
+        (_) async => FakeUnitOfWork(
+          FakeRepositoryScope(projects: projects, canvas: canvases),
+        ),
+      ),
     ],
   );
   addTearDown(c.dispose);
@@ -55,7 +62,7 @@ void main() {
       expect(list.single.canvases.single.name, 'Untitled Canvas');
     });
 
-    test('画布建失败：补偿删除刚建的项目（不留半成品），InkError 冒泡', () async {
+    test('画布建失败：InkError 原样冒泡（事务回滚由 pg 集成测覆盖）', () async {
       final projects = InMemoryProjectRepository();
       final canvases = _FailingCanvasCreateRepository();
       final c = _containerWith(projects, canvases);
@@ -67,9 +74,6 @@ void main() {
             ),
         throwsA(isA<LocalIOError>()),
       );
-
-      expect(projects.rows, isEmpty);
-      expect(canvases.rows, isEmpty);
     });
   });
 }
