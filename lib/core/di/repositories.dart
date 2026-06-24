@@ -82,10 +82,20 @@ final batchResultRepositoryProvider = FutureProvider<BatchResultRepository>(
 );
 
 /// 事务工作单元——多步写入原子化（仓储绑定到同一 runTx 事务）。
+/// 具体仓储的装配（new）在此 DI 层完成，PostgresUnitOfWork 只依赖工厂抽象。
 final unitOfWorkProvider = FutureProvider<UnitOfWork>(
   (ref) async {
     final pool = await ref.watch(pgMigratedPoolProvider.future);
-    return PostgresUnitOfWork(pool);
+    return PostgresUnitOfWork(
+      pool,
+      (s) => RepositoryScopeData(
+        nodes: PostgresNodeRepository(s),
+        edges: PostgresEdgeRepository(s),
+        canvas: PostgresCanvasRepository(s),
+        projects: PostgresProjectRepository(s),
+        jobs: PostgresJobRepository(s),
+      ),
+    );
   },
   name: 'unitOfWorkProvider',
 );
