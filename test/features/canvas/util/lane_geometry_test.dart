@@ -33,4 +33,27 @@ void main() {
     expect(laneDirectionFromString('garbage'), LaneDirection.horizontal);
     expect(laneDirectionToString(LaneDirection.vertical), 'vertical');
   });
+
+  group('clampLaneSize', () {
+    test('adds delta then clamps to kMinLaneSize floor', () {
+      expect(clampLaneSize(400, 50), 450);
+      expect(clampLaneSize(400, -50), 350);
+      expect(clampLaneSize(100, -500), kMinLaneSize); // 下限
+      expect(clampLaneSize(kMinLaneSize, -10), kMinLaneSize);
+    });
+  });
+
+  group('reorderedLaneIds', () {
+    final ids = ['a', 'b', 'c'];
+    test('moves id to target position', () {
+      expect(reorderedLaneIds(ids, 'c', 'a'), ['c', 'a', 'b']);
+      expect(reorderedLaneIds(ids, 'a', 'c'), ['b', 'c', 'a']);
+    });
+    test('no-op when target null / same / unknown', () {
+      expect(reorderedLaneIds(ids, 'a', null), ids);
+      expect(reorderedLaneIds(ids, 'a', 'a'), ids);
+      expect(reorderedLaneIds(ids, 'a', 'zzz'), ids);
+      expect(reorderedLaneIds(ids, 'zzz', 'a'), ids);
+    });
+  });
 }

@@ -518,24 +518,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioNoKeyBannerAction => 'Configure in Settings';
 
   @override
-  String get canvasInspectorTransform => 'Transform';
-
-  @override
-  String get canvasInspectorCamera => 'Camera';
-
-  @override
-  String get canvasInspectorComposition => 'Composition';
-
-  @override
-  String get canvasInspectorMetadata => 'Metadata';
-
-  @override
-  String get canvasInspectorNotes => 'Notes';
-
-  @override
-  String get canvasInspectorAddAttribute => '+ Add Attribute';
-
-  @override
   String get canvasRenderQueue => 'Render Queue';
 
   @override
@@ -582,15 +564,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String canvasSelectionCount(int count) {
     return '$count selected';
   }
-
-  @override
-  String get canvasInspectorKindCamera => 'Camera Node';
-
-  @override
-  String get canvasInspectorMockTitle => 'Wide Shot';
-
-  @override
-  String get canvasInspectorMockId => 'cam_0021';
 
   @override
   String get canvasRenderQueueEmpty => 'No active renders';
@@ -666,8 +639,59 @@ class AppLocalizationsEn extends AppLocalizations {
   String get laneDeleteFailed => 'Failed to delete lane';
 
   @override
+  String get laneCollapse => 'Collapse lane';
+
+  @override
+  String get laneExpand => 'Expand lane';
+
+  @override
   String get inspectorPromptPreviewLabel => 'Final prompt preview';
 
   @override
   String get inspectorIgnoreLaneStyle => 'Ignore lane style';
+
+  @override
+  String get baseStyleEditTooltip => 'Base style';
+
+  @override
+  String get baseStyleEditTitle => 'Project base style';
+
+  @override
+  String get baseStylePrefixLabel => 'Prefix (prepended to every prompt)';
+
+  @override
+  String get baseStylePrefixHint => 'e.g. cinematic film still';
+
+  @override
+  String get baseStyleSuffixLabel => 'Suffix (appended to every prompt)';
+
+  @override
+  String get baseStyleSuffixHint => 'e.g. 8k, highly detailed';
+
+  @override
+  String get baseStylePresetsLabel => 'Presets';
+
+  @override
+  String get baseStylePresetCinematic => 'Cinematic';
+
+  @override
+  String get baseStylePresetAnime => 'Anime';
+
+  @override
+  String get baseStylePresetGhibli => 'Ghibli';
+
+  @override
+  String get baseStylePresetCyberpunk => 'Cyberpunk';
+
+  @override
+  String get baseStylePresetInkwash => 'Ink wash';
+
+  @override
+  String get baseStylePresetPhoto => 'Photographic';
+
+  @override
+  String get baseStylePreset3d => '3D animation';
+
+  @override
+  String get baseStyleUpdateFailed => 'Failed to update base style';
 }

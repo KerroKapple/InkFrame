@@ -27,6 +27,7 @@ import '../providers/selected_edge_controller.dart';
 import '../util/edge_hit_test.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_lanes_controller.dart';
+import '../providers/lane_collapse_controller.dart';
 import '../util/lane_geometry.dart';
 import 'canvas_empty_state.dart';
 import 'edge_painter.dart';
@@ -405,6 +406,8 @@ class _CanvasStage extends ConsumerWidget {
     // 泳道数据。
     final lanes = ref.watch(canvasLanesControllerProvider(canvasId)).valueOrNull ?? const <StyleLane>[];
     final direction = ref.watch(canvasLaneDirectionProvider(canvasId)).valueOrNull ?? LaneDirection.horizontal;
+    // 折叠态（纯 UI，不持久化）。
+    final collapsedIds = ref.watch(laneCollapseProvider(canvasId));
 
     void onEdgeLayerTap(TapDownDetails d) {
       final hitId = hitTestEdge(
@@ -446,6 +449,7 @@ class _CanvasStage extends ConsumerWidget {
                       direction: direction,
                       canvasExtent: 4000,
                       dividerColor: colors.borderSubtle,
+                      collapsedIds: collapsedIds,
                     ),
                   ),
                 ),
@@ -470,6 +474,10 @@ class _CanvasStage extends ConsumerWidget {
                   ),
                 ),
               ),
+              // 泳道分界线拖拽条：置于节点层之下——节点手势优先；strip 用
+              // translucent，空白分界线处可拖、点击穿透到连线层（HI-1 fix）。
+              if (lanes.length >= 2)
+                ..._buildResizeDividers(ref, lanes, direction),
               for (final node in nodes)
                 Positioned(
                   key: ValueKey('node-card-${node.id}'),
@@ -509,7 +517,7 @@ class _CanvasStage extends ConsumerWidget {
                 ),
               // 泳道标题栏：节点层之上，边删除按钮之下。
               if (lanes.isNotEmpty)
-                ..._buildLaneTitleBars(context, ref, lanes, direction),
+                ..._buildLaneTitleBars(context, ref, lanes, direction, collapsedIds),
               if (selectedGeometry != null)
                 Positioned(
                   left: edgeMidpoint(
@@ -545,17 +553,19 @@ class _CanvasStage extends ConsumerWidget {
     );
   }
 
-  /// 为每条泳道生成标题栏 Positioned widget 列表。
+  /// 为每条泳道生成标题栏 Positioned widget 列表（含拖拽重排 + 折叠）。
   List<Widget> _buildLaneTitleBars(
     BuildContext context,
     WidgetRef ref,
     List<StyleLane> lanes,
     LaneDirection direction,
+    Set<String> collapsedIds,
   ) {
     const double kTitleBarHeight = 32.0;
     const double kTitleBarWidth = 200.0;
+    final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
     final rects = laneRects(
-      lanes: [for (final l in lanes) (id: l.id, size: l.size)],
+      lanes: laneSlices,
       direction: direction,
       canvasExtent: 4000,
     );
@@ -575,16 +585,102 @@ class _CanvasStage extends ConsumerWidget {
         top = 0;
         width = kTitleBarWidth;
       }
+      // 拖拽重排：记录拖拽偏移，pan end 时计算目标 lane 并 reorderLanes。
+      var dragOffset = Offset.zero;
       result.add(
         Positioned(
           left: left,
           top: top,
           width: width,
           height: kTitleBarHeight,
-          child: LaneTitleBar(
-            lane: lane,
-            onEdit: () => _onEditLane(context, ref, lane),
-            onDelete: () => _onDeleteLane(context, ref, lane),
+          child: GestureDetector(
+            onPanUpdate: (d) => dragOffset += d.delta,
+            onPanEnd: (_) {
+              final moved = dragOffset;
+              dragOffset = Offset.zero;
+              if (moved.distance < 12) return; // 阈值：避免误触重排
+              final dropPoint = direction == LaneDirection.horizontal
+                  ? Offset(0, rect.top + kTitleBarHeight / 2 + moved.dy)
+                  : Offset(rect.left + kTitleBarWidth / 2 + moved.dx, 0);
+              final targetId = laneIdAtPoint(
+                point: dropPoint,
+                lanes: laneSlices,
+                direction: direction,
+              );
+              final ids = reorderedLaneIds(
+                [for (final l in lanes) l.id],
+                lane.id,
+                targetId,
+              );
+              ref
+                  .read(canvasLanesControllerProvider(canvasId).notifier)
+                  .reorderLanes(ids);
+            },
+            child: LaneTitleBar(
+              lane: lane,
+              collapsed: collapsedIds.contains(lane.id),
+              onToggleCollapse: () => ref
+                  .read(laneCollapseProvider(canvasId).notifier)
+                  .toggle(lane.id),
+              onEdit: () => _onEditLane(context, ref, lane),
+              onDelete: () => _onDeleteLane(context, ref, lane),
+            ),
+          ),
+        ),
+      );
+    }
+    return result;
+  }
+
+  // 拖拽分界线调整相邻泳道大小（~10px 透明感应条，仅命中不绘制）。
+  List<Widget> _buildResizeDividers(
+    WidgetRef ref,
+    List<StyleLane> lanes,
+    LaneDirection direction,
+  ) {
+    const double kStripThick = 10.0;
+    final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
+    final rects = laneRects(
+      lanes: laneSlices,
+      direction: direction,
+      canvasExtent: 4000,
+    );
+    final horizontal = direction == LaneDirection.horizontal;
+    final result = <Widget>[];
+    // 相邻泳道之间各一条感应条，以 upper lane id 为键。
+    for (var i = 1; i < lanes.length; i++) {
+      final upperLane = lanes[i - 1];
+      final dividerPos = horizontal ? rects[i].top : rects[i].left;
+      final upperLaneId = upperLane.id;
+      final double currentSize = upperLane.size;
+      double delta = 0;
+
+      void commit() {
+        final newSize = clampLaneSize(currentSize, delta);
+        delta = 0;
+        ref
+            .read(canvasLanesControllerProvider(canvasId).notifier)
+            .updateLane(upperLaneId, size: newSize)
+            .catchError((Object _) {});
+      }
+
+      result.add(
+        Positioned(
+          left: horizontal ? 0 : dividerPos - kStripThick / 2,
+          top: horizontal ? dividerPos - kStripThick / 2 : 0,
+          width: horizontal ? 4000 : kStripThick,
+          height: horizontal ? kStripThick : 4000,
+          child: MouseRegion(
+            cursor: horizontal
+                ? SystemMouseCursors.resizeRow
+                : SystemMouseCursors.resizeColumn,
+            // translucent：strip 接收拖拽，但 tap 等穿透到下方连线层。
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onPanUpdate: (d) =>
+                  delta += horizontal ? d.delta.dy : d.delta.dx,
+              onPanEnd: (_) => commit(),
+            ),
           ),
         ),
       );

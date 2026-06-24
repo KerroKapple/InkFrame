@@ -278,9 +278,10 @@ void main() {
       await tmp.delete(recursive: true);
     });
 
-    // 12MB 同步落盘在带实时杀软扫描的 Windows 上可超默认 30s——放宽到 2 分钟。
-    test('11MB write triggers rotation (acceptance line)',
-        timeout: const Timeout(Duration(minutes: 2)), () async {
+    // 轮转验收：确定性地跨阈值触发轮转 + 钉死生产默认阈值。
+    // 旧版写 12MB 真实落盘，在带杀软的 Windows 上需 2 分钟超时——改用可注入的
+    // 小阈值 seam（与上面的 sibling 测试同源），杜绝 wall-clock / 大 I/O flake。
+    test('rotation acceptance: triggers at threshold + 生产默认 10MB', () async {
       final tmp = await _makeTmpRoot();
       final paths = DefaultAppPaths.forRoot(tmp);
       await paths.ensureInitialized();
@@ -288,25 +289,31 @@ void main() {
       final logger = FileLoggerService(
         paths: paths,
         clock: clock,
-        // 生产默认 10MB 阈值
+        config: const LoggerConfig(
+          maxFileBytes: 4 * 1024, // 4KB 阈值，无需 12MB 真实落盘
+          totalDiskBudgetBytes: 1024 * 1024,
+          emergencyReclaimTargetBytes: 512 * 1024,
+        ),
       );
 
-      // 每条 ~2KB，写 6000 条 ≈ 12MB，足够跨过 10MB 阈值。
-      final big = 'x' * 2000;
-      for (var i = 0; i < 6000; i++) {
-        clock.advance(const Duration(milliseconds: 10));
-        logger.info('bulk', 'msg$i', extra: <String, Object?>{'blob': big});
+      // 每条 ~150B，写 60 条 ≈ 12KB，确定性跨过 4KB 阈值；推进时钟保证轮转名唯一。
+      for (var i = 0; i < 60; i++) {
+        clock.advance(const Duration(seconds: 1));
+        logger.info('bulk', 'msg$i', extra: <String, Object?>{'pad': 'x' * 150});
+        await logger.flush();
       }
       await logger.flush();
-      // 等轮转异步动作
-      await Future<void>.delayed(const Duration(milliseconds: 200));
 
       final files = await paths.logs.list().toList();
       final rotated = files
           .map((e) => p.basename(e.path))
-          .where((n) => n != 'inkframe.log')
+          .where((n) => n != 'inkframe.log' && n.endsWith('.log'))
           .toList();
-      expect(rotated, isNotEmpty);
+      expect(rotated, isNotEmpty,
+          reason: 'expected at least one rotated file, got $rotated');
+
+      // 钉死生产默认阈值 = 10MB（纯常量校验，无 I/O，防默认被误改）。
+      expect(const LoggerConfig().maxFileBytes, 10 * 1024 * 1024);
 
       await logger.close();
       await tmp.delete(recursive: true);

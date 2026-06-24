@@ -1028,42 +1028,6 @@ abstract class AppLocalizations {
   /// **'Configure in Settings'**
   String get studioNoKeyBannerAction;
 
-  /// No description provided for @canvasInspectorTransform.
-  ///
-  /// In en, this message translates to:
-  /// **'Transform'**
-  String get canvasInspectorTransform;
-
-  /// No description provided for @canvasInspectorCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera'**
-  String get canvasInspectorCamera;
-
-  /// No description provided for @canvasInspectorComposition.
-  ///
-  /// In en, this message translates to:
-  /// **'Composition'**
-  String get canvasInspectorComposition;
-
-  /// No description provided for @canvasInspectorMetadata.
-  ///
-  /// In en, this message translates to:
-  /// **'Metadata'**
-  String get canvasInspectorMetadata;
-
-  /// No description provided for @canvasInspectorNotes.
-  ///
-  /// In en, this message translates to:
-  /// **'Notes'**
-  String get canvasInspectorNotes;
-
-  /// No description provided for @canvasInspectorAddAttribute.
-  ///
-  /// In en, this message translates to:
-  /// **'+ Add Attribute'**
-  String get canvasInspectorAddAttribute;
-
   /// No description provided for @canvasRenderQueue.
   ///
   /// In en, this message translates to:
@@ -1153,24 +1117,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} selected'**
   String canvasSelectionCount(int count);
-
-  /// No description provided for @canvasInspectorKindCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera Node'**
-  String get canvasInspectorKindCamera;
-
-  /// No description provided for @canvasInspectorMockTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Wide Shot'**
-  String get canvasInspectorMockTitle;
-
-  /// No description provided for @canvasInspectorMockId.
-  ///
-  /// In en, this message translates to:
-  /// **'cam_0021'**
-  String get canvasInspectorMockId;
 
   /// No description provided for @canvasRenderQueueEmpty.
   ///
@@ -1316,6 +1262,18 @@ abstract class AppLocalizations {
   /// **'Failed to delete lane'**
   String get laneDeleteFailed;
 
+  /// No description provided for @laneCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse lane'**
+  String get laneCollapse;
+
+  /// No description provided for @laneExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand lane'**
+  String get laneExpand;
+
   /// No description provided for @inspectorPromptPreviewLabel.
   ///
   /// In en, this message translates to:
@@ -1327,6 +1285,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ignore lane style'**
   String get inspectorIgnoreLaneStyle;
+
+  /// No description provided for @baseStyleEditTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Base style'**
+  String get baseStyleEditTooltip;
+
+  /// No description provided for @baseStyleEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project base style'**
+  String get baseStyleEditTitle;
+
+  /// No description provided for @baseStylePrefixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefix (prepended to every prompt)'**
+  String get baseStylePrefixLabel;
+
+  /// No description provided for @baseStylePrefixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. cinematic film still'**
+  String get baseStylePrefixHint;
+
+  /// No description provided for @baseStyleSuffixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suffix (appended to every prompt)'**
+  String get baseStyleSuffixLabel;
+
+  /// No description provided for @baseStyleSuffixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 8k, highly detailed'**
+  String get baseStyleSuffixHint;
+
+  /// No description provided for @baseStylePresetsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get baseStylePresetsLabel;
+
+  /// No description provided for @baseStylePresetCinematic.
+  ///
+  /// In en, this message translates to:
+  /// **'Cinematic'**
+  String get baseStylePresetCinematic;
+
+  /// No description provided for @baseStylePresetAnime.
+  ///
+  /// In en, this message translates to:
+  /// **'Anime'**
+  String get baseStylePresetAnime;
+
+  /// No description provided for @baseStylePresetGhibli.
+  ///
+  /// In en, this message translates to:
+  /// **'Ghibli'**
+  String get baseStylePresetGhibli;
+
+  /// No description provided for @baseStylePresetCyberpunk.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyberpunk'**
+  String get baseStylePresetCyberpunk;
+
+  /// No description provided for @baseStylePresetInkwash.
+  ///
+  /// In en, this message translates to:
+  /// **'Ink wash'**
+  String get baseStylePresetInkwash;
+
+  /// No description provided for @baseStylePresetPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photographic'**
+  String get baseStylePresetPhoto;
+
+  /// No description provided for @baseStylePreset3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3D animation'**
+  String get baseStylePreset3d;
+
+  /// No description provided for @baseStyleUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update base style'**
+  String get baseStyleUpdateFailed;
 }
 
 class _AppLocalizationsDelegate

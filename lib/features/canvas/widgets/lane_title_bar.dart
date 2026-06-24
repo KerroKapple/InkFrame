@@ -1,4 +1,5 @@
-// 泳道标题栏：半透明悬浮条，显示泳道名 + 编辑/删除操作。
+// 泳道标题栏：半透明悬浮条，显示泳道名 + 编辑/删除/折叠操作。
+// doubled-tap 或点击折叠图标触发 onToggleCollapse。
 import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_x.dart';
@@ -12,11 +13,17 @@ class LaneTitleBar extends StatelessWidget {
     required this.lane,
     required this.onEdit,
     required this.onDelete,
+    this.collapsed = false,
+    this.onToggleCollapse,
   });
 
   final StyleLane lane;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  /// 当前是否处于折叠态。
+  final bool collapsed;
+  /// 触发折叠/展开回调；null 表示不支持折叠。
+  final VoidCallback? onToggleCollapse;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +31,7 @@ class LaneTitleBar extends StatelessWidget {
     final typography = context.inkTypography;
     final l10n = context.l10n;
 
-    return Material(
+    final bar = Material(
       color: colors.surface3.withValues(alpha: 0.80),
       borderRadius: BorderRadius.circular(InkRadius.sm),
       child: Padding(
@@ -41,6 +48,16 @@ class LaneTitleBar extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
             ),
+            if (onToggleCollapse != null)
+              IconButton(
+                icon: Icon(collapsed ? Icons.unfold_more : Icons.unfold_less),
+                onPressed: onToggleCollapse,
+                tooltip: collapsed ? l10n.laneExpand : l10n.laneCollapse,
+                iconSize: InkSpacing.md,
+                color: colors.fg2,
+                padding: const EdgeInsets.all(InkSpacing.xs),
+                constraints: const BoxConstraints(),
+              ),
             IconButton(
               icon: const Icon(Icons.edit),
               onPressed: onEdit,
@@ -62,6 +79,14 @@ class LaneTitleBar extends StatelessWidget {
           ],
         ),
       ),
+    );
+
+    if (onToggleCollapse == null) return bar;
+
+    // 双击标题栏也触发折叠/展开。
+    return GestureDetector(
+      onDoubleTap: onToggleCollapse,
+      child: bar,
     );
   }
 }

@@ -498,24 +498,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioNoKeyBannerAction => '前往设置配置';
 
   @override
-  String get canvasInspectorTransform => '变换';
-
-  @override
-  String get canvasInspectorCamera => '镜头';
-
-  @override
-  String get canvasInspectorComposition => '构图';
-
-  @override
-  String get canvasInspectorMetadata => '元数据';
-
-  @override
-  String get canvasInspectorNotes => '备注';
-
-  @override
-  String get canvasInspectorAddAttribute => '+ 添加属性';
-
-  @override
   String get canvasRenderQueue => '渲染队列';
 
   @override
@@ -561,15 +543,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String canvasSelectionCount(int count) {
     return '已选 $count 个';
   }
-
-  @override
-  String get canvasInspectorKindCamera => '镜头节点';
-
-  @override
-  String get canvasInspectorMockTitle => '宽景镜头';
-
-  @override
-  String get canvasInspectorMockId => 'cam_0021';
 
   @override
   String get canvasRenderQueueEmpty => '暂无渲染任务';
@@ -644,8 +617,59 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneDeleteFailed => '删除泳道失败';
 
   @override
+  String get laneCollapse => '折叠泳道';
+
+  @override
+  String get laneExpand => '展开泳道';
+
+  @override
   String get inspectorPromptPreviewLabel => '最终 prompt 预览';
 
   @override
   String get inspectorIgnoreLaneStyle => '忽略区域风格';
+
+  @override
+  String get baseStyleEditTooltip => '基底风格';
+
+  @override
+  String get baseStyleEditTitle => '项目基底风格';
+
+  @override
+  String get baseStylePrefixLabel => '前缀（加在所有 prompt 最前）';
+
+  @override
+  String get baseStylePrefixHint => '如：电影感画面';
+
+  @override
+  String get baseStyleSuffixLabel => '后缀（加在所有 prompt 最后）';
+
+  @override
+  String get baseStyleSuffixHint => '如：8k，高细节';
+
+  @override
+  String get baseStylePresetsLabel => '快速预设';
+
+  @override
+  String get baseStylePresetCinematic => '真人电影';
+
+  @override
+  String get baseStylePresetAnime => '日漫';
+
+  @override
+  String get baseStylePresetGhibli => '吉卜力';
+
+  @override
+  String get baseStylePresetCyberpunk => '赛博朋克';
+
+  @override
+  String get baseStylePresetInkwash => '水墨';
+
+  @override
+  String get baseStylePresetPhoto => '写实摄影';
+
+  @override
+  String get baseStylePreset3d => '3D动画';
+
+  @override
+  String get baseStyleUpdateFailed => '更新基底风格失败';
 }

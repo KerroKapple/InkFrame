@@ -1,0 +1,48 @@
+# 手动触发：在 canonical ubuntu runner 上生成 golden 基线并自动提交。
+# 跨平台字体光栅化差异 → 基线必须在 CI 的 ubuntu 上生成，禁止提交本地 Windows/macOS 基线。
+# 用法：Actions → update-goldens → Run workflow（选目标分支）。跑完会把新增/变更的
+# test/**/goldens/*.png 提交回该分支；随后 node_card_golden_test 自动激活（_goldensPresent）。
+name: update-goldens
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  FLUTTER_VERSION: 3.41.6
+
+jobs:
+  update-goldens:
+    name: regenerate golden baselines (ubuntu)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: flutter pub get
+        run: flutter pub get
+      # --update-goldens 下 autoUpdateGoldenFiles=true，测试不再 skip（见 node_card_golden_test.dart）。
+      - name: regenerate baselines
+        run: |
+          shopt -s globstar nullglob
+          files=(test/**/*_golden_test.dart)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "no golden test files"; exit 0
+          fi
+          flutter test "${files[@]}" --update-goldens
+      - name: commit baselines
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A 'test/**/goldens/*.png'
+          if git diff --cached --quiet; then
+            echo "no golden changes to commit"
+          else
+            git commit -m "test(golden): regenerate baselines on ubuntu runner [skip ci]"
+            git push
+          fi
