@@ -136,3 +136,16 @@ jobs:
             fi
             echo "::warning title=golden bootstrap pending::no baselines yet — run the update-goldens workflow on ubuntu to mint + commit them (see test/features/canvas/widgets/node_card_golden_test.dart)"
           fi
+
+  release-scripts:
+    name: release scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # release-tag.sh 回归测试（gh 已 PATH-stub、git 身份 per-repo 设置）。
+      # 修复 S8-8：该测试此前无任何 workflow 调用，发布脚本回归零 CI 保护。
+      - name: release-tag.sh regression test
+        run: |
+          git config --global user.email "ci@inkframe.test"
+          git config --global user.name "InkFrame CI"
+          bash test/scripts/release_tag_test.sh
