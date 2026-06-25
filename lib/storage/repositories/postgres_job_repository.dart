@@ -155,6 +155,31 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
   }
 
   @override
+  Future<int> bulkTransition({
+    required List<String> fromStatuses,
+    required String toStatus,
+    Map<String, Object?> extra = const <String, Object?>{},
+  }) {
+    return guard('bulkTransition', 'jobs', () async {
+      final extraSet = <String>[];
+      final params = <String, Object?>{'from': fromStatuses, 'to': toStatus};
+      extra.forEach((k, v) {
+        final p = 'p_$k';
+        extraSet.add(', $k = @$p');
+        params[p] = v;
+      });
+      final r = await session.execute(
+        Sql.named(
+          'UPDATE jobs SET status = @to${extraSet.join()} '
+          'WHERE status = ANY(@from)',
+        ),
+        parameters: params,
+      );
+      return r.affectedRows;
+    });
+  }
+
+  @override
   Future<int> purgeExpired({required Duration retention}) {
     return guard('purgeExpired', 'jobs', () async {
       // PRD §21 retention：30 天终态 job，保留孤儿 result 依赖。
