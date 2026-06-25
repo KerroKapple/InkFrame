@@ -39,6 +39,24 @@ void main() {
       expect(c.modes, isNotEmpty, reason: '至少声明一种生成模式');
       expect(c.supportedRatios, isNotEmpty, reason: '至少支持一种比例');
     });
+
+    test('ProviderCapabilities 跨字段一致性：${entry.key}', () {
+      final c = entry.value;
+      expect(c.burst, greaterThanOrEqualTo(c.qps),
+          reason: 'burst 须 >= qps（令牌桶容量不小于速率）');
+      if (!c.supportsBatch) {
+        expect(c.maxBatchSize, 1, reason: '不支持批量 → maxBatchSize 必为 1');
+      }
+      final isVideo = c.modes.contains(GenerationMode.textToVideo) ||
+          c.modes.contains(GenerationMode.imageToVideo);
+      if (isVideo) {
+        expect(c.supportedDurations, isNotEmpty,
+            reason: '视频 Provider 须声明时长档');
+      } else {
+        expect(c.supportedDurations, isEmpty,
+            reason: '非视频 Provider 不应声明时长档');
+      }
+    });
   }
 
   test('providerId 全局唯一', () {
