@@ -136,6 +136,13 @@ class _FakeJobRepo implements JobRepository {
   Future<int> purgePerCanvasCap({required int cap}) =>
       throw UnimplementedError();
   @override
+  Future<int> bulkTransition({
+    required List<String> fromStatuses,
+    required String toStatus,
+    Map<String, Object?> extra = const <String, Object?>{},
+  }) async =>
+      0;
+  @override
   Future<int> hardDelete(String id) => throw UnimplementedError();
 }
 

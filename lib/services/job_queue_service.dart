@@ -13,7 +13,6 @@ import 'dart:math';
 
 import '../core/constants/job_housekeeping.dart';
 import '../core/db/columns.dart';
-import '../core/db/row_reader.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/logging/logger_service.dart';
@@ -94,23 +93,19 @@ class InMemoryJobQueueService implements JobQueueService {
     // ME-02：pending 也在回收范围——建行后未 submit / dispose 前未跑的行
     // 否则永远没有出口。
     const orphanStatuses = ['pending', 'submitted', 'polling'];
-    final orphan = await repo.listByStatus(orphanStatuses);
-    if (orphan.isNotEmpty) {
+    // 批量回收：一条 UPDATE 把所有遗留 in-flight job 终结为 cancelled，消除 N+1。
+    // 启动期无并发，无需 per-row from 守卫。
+    final cancelled = await repo.bulkTransition(
+      fromStatuses: orphanStatuses,
+      toStatus: 'cancelled',
+      extra: {
+        JobCol.errorCode: InkErrorCode.cancelledOnExit.wire,
+        JobCol.errorMessage: 'app exited while job was not finished',
+      },
+    );
+    if (cancelled > 0) {
       _logger?.info(_logModule, 'startup recovery: orphan jobs cancelled',
-          extra: {'count': orphan.length});
-    }
-    for (final row in orphan) {
-      final id = row.optId(JobCol.id);
-      if (id == null) continue;
-      await repo.transitionStatus(
-        id: id,
-        fromStatuses: orphanStatuses,
-        toStatus: 'cancelled',
-        extra: {
-          JobCol.errorCode: InkErrorCode.cancelledOnExit.wire,
-          JobCol.errorMessage: 'app exited while job was not finished',
-        },
-      );
+          extra: {'count': cancelled});
     }
     // ME-32：jobs 表清理在启动时接线（retention + per-canvas cap）。
     // 清理是 housekeeping——失败只放弃本次，绝不阻断启动。

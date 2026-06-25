@@ -235,6 +235,24 @@ class FakeJobRepository implements JobRepository {
   }
 
   @override
+  Future<int> bulkTransition({
+    required List<String> fromStatuses,
+    required String toStatus,
+    Map<String, Object?> extra = const <String, Object?>{},
+  }) async {
+    var n = 0;
+    for (final row in rows.values) {
+      final cur = row['status'] as String?;
+      if (cur == null || !fromStatuses.contains(cur)) continue;
+      transitions.add((id: row['id'] as String, from: cur, to: toStatus));
+      row['status'] = toStatus;
+      row.addAll(extra);
+      n++;
+    }
+    return n;
+  }
+
+  @override
   Future<Map<String, Object?>?> findById(String id) async => rows[id];
 
   // ---- 不被本测试覆盖的方法 ----------------------------------------------

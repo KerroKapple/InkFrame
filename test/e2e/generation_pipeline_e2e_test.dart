@@ -112,6 +112,14 @@ class _InMemoryJobRepository implements JobRepository {
       throw UnimplementedError();
 
   @override
+  Future<int> bulkTransition({
+    required List<String> fromStatuses,
+    required String toStatus,
+    Map<String, Object?> extra = const <String, Object?>{},
+  }) async =>
+      0;
+
+  @override
   Future<int> hardDelete(String id) => throw UnimplementedError();
 }
 

@@ -181,17 +181,19 @@ class GenerationController {
 
     final laneId = cfgRow.optId(NodeCol.laneId);
     final ignoreLane = typeConfig['ignore_lane_style'] == true;
+    // data 入连线取一次，参考图与关联文本共用，避免重复 listIncoming（评审 P1#5①）。
+    final incoming = await _incomingEdges(configNodeId);
     final fullPrompt = await _assembleFullPrompt(
       userPrompt: prompt,
       canvasId: canvasId,
-      configNodeId: configNodeId,
+      incoming: incoming,
       laneId: laneId,
       ignoreLaneStyle: ignoreLane,
     );
 
     // 读入 data 连线作为参考图（PRD §8.2）。失败不阻断生成——refs 仍可为空。
     final refs = await _resolveRefImages(
-      configNodeId: configNodeId,
+      incoming: incoming,
       projectId: projectId,
       canvasId: canvasId,
     );
@@ -319,13 +321,26 @@ class GenerationController {
         cause: e,
         stackTrace: st,
       );
-      try {
-        await uow.run((scope) async {
-          await scope.jobs.hardDelete(jobId);
-          await scope.nodes.softDelete(resultNodeId);
-        });
-      } on InkError {
-        // 补偿失败：保留原始错误语义，残留行交给孤儿回收/清理路径。
+      // 补偿：清 result + job；DB 抖动给一次重试，仍失败则交给孤儿回收（评审 P1#6）。
+      for (var attempt = 1; attempt <= 2; attempt++) {
+        try {
+          await uow.run((scope) async {
+            await scope.jobs.hardDelete(jobId);
+            await scope.nodes.softDelete(resultNodeId);
+          });
+          break;
+        } on InkError catch (cleanupErr) {
+          logger?.warn(
+            _logModule,
+            'orphan cleanup attempt failed',
+            extra: {
+              'attempt': attempt,
+              'job_id': jobId,
+              'reason': cleanupErr.toString(),
+            },
+          );
+          // 2 次用尽后不再抛——保留原始错误语义（下方 rethrow）。
+        }
       }
       rethrow;
     }
@@ -424,28 +439,33 @@ class GenerationController {
     return (tc['image_url'] ?? tc['video_url'] ?? '').toString();
   }
 
-  /// 读入 configNode 的所有 data 入连线，把源节点的 image_url 解析为绝对路径。
+  /// configNode 的 data 入连线取一次（refs + associatedTexts 共用）；失败 warn + 空。
+  Future<List<Map<String, Object?>>> _incomingEdges(String configNodeId) async {
+    try {
+      return await edges.listIncoming(configNodeId);
+    } on InkError catch (e) {
+      logger?.warn(
+          _logModule, 'listIncoming failed; refs+texts skipped (swallowed)',
+          extra: {'config_node_id': configNodeId, 'reason': e.toString()});
+      return const [];
+    }
+  }
+
+  /// 从给定 data 入连线把源节点 image_url 解析为绝对路径。
   ///
-  /// 失败策略：单条边解析失败（源节点已删 / image_url 空 / PathSecurityError）静默跳过，
+  /// 失败策略：单条边解析失败（源节点已删 / image_url 空 / 路径不安全）静默跳过，
   /// 不影响其他边。projectId 为空时所有解析跳过（单测场景）。
   Future<_RefImages> _resolveRefImages({
-    required String configNodeId,
+    required List<Map<String, Object?>> incoming,
     required String? projectId,
     required String canvasId,
   }) async {
     if (projectId == null) return const _RefImages.empty();
-    final List<Map<String, Object?>> incoming;
-    try {
-      incoming = await edges.listIncoming(configNodeId);
-    } catch (e) {
-      logger?.warn(_logModule, 'listIncoming failed; refs skipped (swallowed)',
-          extra: {'config_node_id': configNodeId, 'reason': e.toString()});
-      return const _RefImages.empty();
-    }
 
     final List<String> refs = [];
     String? firstFrame;
     String? lastFrame;
+    var failedResolves = 0;
 
     for (final row in incoming) {
       if (row[EdgeCol.edgeType] != 'data') continue;
@@ -477,6 +497,7 @@ class GenerationController {
             )
             .path;
       } catch (e) {
+        failedResolves++;
         logger?.warn(_logModule, 'ref path resolve failed (swallowed)',
             extra: {'source_node_id': srcId, 'reason': e.toString()});
         continue;
@@ -492,6 +513,18 @@ class GenerationController {
       }
     }
 
+    // 有参考图候选但全部解析失败 → 上层会静默退化为 t2i/t2v，显式 warn（评审 P1#6）。
+    if (failedResolves > 0 &&
+        refs.isEmpty &&
+        firstFrame == null &&
+        lastFrame == null) {
+      logger?.warn(
+        _logModule,
+        'all ref images failed to resolve; generation degraded to text-only',
+        extra: {'failed_count': failedResolves},
+      );
+    }
+
     return _RefImages(
       refImagePaths: List.unmodifiable(refs),
       firstFramePath: firstFrame,
@@ -504,7 +537,7 @@ class GenerationController {
   Future<String> _assembleFullPrompt({
     required String userPrompt,
     required String canvasId,
-    required String configNodeId,
+    required List<Map<String, Object?>> incoming,
     required String? laneId,
     required bool ignoreLaneStyle,
   }) async {
@@ -514,15 +547,23 @@ class GenerationController {
       final c = await canvas.findById(canvasId);
       basePrefix = c?.optString(CanvasCol.baseStylePrefix) ?? '';
       baseSuffix = c?.optString(CanvasCol.baseStyleSuffix) ?? '';
-    } on InkError catch (_) {}
+    } on InkError catch (e) {
+      logger?.warn(_logModule,
+          'base style lookup failed; degraded to empty (swallowed)',
+          extra: {'canvas_id': canvasId, 'reason': e.toString()});
+    }
     var laneStyle = '';
     if (!ignoreLaneStyle && laneId != null) {
       try {
         final l = await lanes.findById(laneId);
         laneStyle = l?.optString(StyleLaneCol.stylePrompt) ?? '';
-      } on InkError catch (_) {}
+      } on InkError catch (e) {
+        logger?.warn(_logModule,
+            'lane style lookup failed; degraded to empty (swallowed)',
+            extra: {'lane_id': laneId, 'reason': e.toString()});
+      }
     }
-    final texts = await _resolveAssociatedTexts(configNodeId);
+    final texts = await _resolveAssociatedTexts(incoming);
     return assemblePrompt(
       baseStylePrefix: basePrefix,
       laneStylePrompt: laneStyle,
@@ -533,14 +574,10 @@ class GenerationController {
     );
   }
 
-  /// 连入的 data 边里的文本节点内容，按 edge.created_at 升序。
-  Future<List<String>> _resolveAssociatedTexts(String configNodeId) async {
-    final List<Map<String, Object?>> incoming;
-    try {
-      incoming = await edges.listIncoming(configNodeId);
-    } on InkError catch (_) {
-      return const [];
-    }
+  /// 给定 data 入连线里的文本节点内容，按 edge.created_at 升序。
+  Future<List<String>> _resolveAssociatedTexts(
+    List<Map<String, Object?>> incoming,
+  ) async {
     final rows = incoming.where((r) => r[EdgeCol.edgeType] == 'data').toList()
       ..sort((a, b) => (a[EdgeCol.createdAt]?.toString() ?? '')
           .compareTo(b[EdgeCol.createdAt]?.toString() ?? ''));

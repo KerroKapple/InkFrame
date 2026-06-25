@@ -8,6 +8,7 @@ import 'package:inkframe/storage/migrations/migration_runner.dart';
 import 'package:inkframe/storage/schema/schema_v1.dart';
 import 'package:inkframe/storage/schema/schema_v3.dart';
 import 'package:inkframe/storage/schema/schema_v4.dart';
+import 'package:inkframe/storage/schema/schema_v5.dart';
 import 'package:postgres/postgres.dart';
 
 void main() {
@@ -181,6 +182,12 @@ void main() {
       // 崩溃-续轮决策 B：cancel-on-restart 终态设计，续轮死列/索引删除
       expect(kSchemaV4, contains('DROP INDEX IF EXISTS idx_jobs_next_poll'));
       expect(kSchemaV4, contains('DROP COLUMN next_poll_at'));
+    });
+
+    test('schema_v5 SQL 常量：jobs(canvas_id, created_at DESC) 复合索引', () {
+      expect(kSchemaV5,
+          contains('CREATE INDEX IF NOT EXISTS idx_jobs_canvas_created'));
+      expect(kSchemaV5, contains('jobs(canvas_id, created_at DESC)'));
     });
   });
 }

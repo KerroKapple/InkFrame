@@ -27,23 +27,18 @@ class _NoopSecure implements SecureStorageService {
 
 /// 只实现 init() 用到的方法，其余成员走 noSuchMethod 抛错（测试不应触达）。
 class _FakeJobRepo implements JobRepository {
-  _FakeJobRepo(this.orphans);
-  final List<Map<String, Object?>> orphans;
-  final List<String> transitioned = <String>[];
+  final List<({List<String> from, String to})> bulkCalls =
+      <({List<String> from, String to})>[];
 
+  // init() 启动孤儿回收：一条批量 bulkTransition（P1#5②）。
   @override
-  Future<List<Map<String, Object?>>> listByStatus(List<String> statuses) async =>
-      orphans;
-
-  @override
-  Future<int> transitionStatus({
-    required String id,
+  Future<int> bulkTransition({
     required List<String> fromStatuses,
     required String toStatus,
     Map<String, Object?> extra = const <String, Object?>{},
   }) async {
-    transitioned.add('$id->$toStatus');
-    return 1;
+    bulkCalls.add((from: fromStatuses, to: toStatus));
+    return 1; // 模拟清理了 1 个孤儿
   }
 
   // init() 的 housekeeping 路径（ME-32）也会触达——no-op 即可。
@@ -70,9 +65,7 @@ class _FakeResolver implements FileResolverService {
 
 void main() {
   test('jobQueueServiceProvider 注入 repo 且解析时跑 init() 清理孤儿', () async {
-    final fakeRepo = _FakeJobRepo(<Map<String, Object?>>[
-      <String, Object?>{'id': 'orphan-1'},
-    ]);
+    final fakeRepo = _FakeJobRepo();
     final container = ProviderContainer(
       overrides: <Override>[
         secureStorageServiceProvider.overrideWithValue(_NoopSecure()),
@@ -87,7 +80,12 @@ void main() {
 
     final service = await container.read(jobQueueServiceProvider.future);
     expect(service, isA<InMemoryJobQueueService>());
-    // init() 应把 submitted/polling 孤儿转 cancelled —— 证明 repo 已被真正注入。
-    expect(fakeRepo.transitioned, contains('orphan-1->cancelled'));
+    // init() 应批量把 pending/submitted/polling 孤儿转 cancelled —— 证明 repo 已被真正注入。
+    expect(fakeRepo.bulkCalls, hasLength(1));
+    expect(fakeRepo.bulkCalls.single.to, 'cancelled');
+    expect(
+      fakeRepo.bulkCalls.single.from,
+      containsAll(<String>['pending', 'submitted', 'polling']),
+    );
   });
 }

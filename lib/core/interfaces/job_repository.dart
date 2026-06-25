@@ -32,6 +32,14 @@ abstract class JobRepository {
     Map<String, Object?> extra = const <String, Object?>{},
   });
 
+  /// 批量状态跃迁：所有 status ∈ [fromStatuses] 的行一次性置 [toStatus]（+ extra 列），
+  /// 返回受影响行数。无 per-row 并发仲裁——用于启动期无并发的孤儿回收（单条 UPDATE，消除 N+1）。
+  Future<int> bulkTransition({
+    required List<String> fromStatuses,
+    required String toStatus,
+    Map<String, Object?> extra = const <String, Object?>{},
+  });
+
   /// 按 PRD §21 retention：清 30 天前终态 job，排除孤儿 result 依赖。
   Future<int> purgeExpired({required Duration retention});
 

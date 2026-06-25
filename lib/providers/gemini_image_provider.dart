@@ -162,7 +162,26 @@ class GeminiImageProvider extends SyncProviderBase {
         },
       );
     }
-    final parts = ((candidates.first as Map)['content'] as Map?)?['parts'];
+    // 远端 schema 漂移防御（评审 P1#4）：候选/内容形态异常 → providerInvalidResponse，
+    // 不让裸 `as Map` 炸成 _TypeError → UnknownError。
+    final first = candidates.first;
+    if (first is! Map) {
+      throw ProviderError(
+        code: InkErrorCode.providerInvalidResponse,
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'malformed_candidate',
+        },
+      );
+    }
+    final content = first['content'];
+    if (content is! Map) {
+      throw ProviderError(
+        code: InkErrorCode.providerInvalidResponse,
+        extra: {'provider_id': capabilities.providerId, 'reason': 'no_content'},
+      );
+    }
+    final parts = content['parts'];
     if (parts is! List) {
       throw ProviderError(
         code: InkErrorCode.providerServer,
@@ -171,9 +190,10 @@ class GeminiImageProvider extends SyncProviderBase {
     }
     for (final p in parts) {
       if (p is Map && p['inlineData'] is Map) {
-        final base64Str = (p['inlineData'] as Map)['data'] as String?;
-        if (base64Str != null) {
-          return base64Decode(base64Str);
+        // data 非字符串（schema 漂移）不抛 _TypeError——跳过，最终落 no_inline_data。
+        final dataVal = (p['inlineData'] as Map)['data'];
+        if (dataVal is String) {
+          return base64Decode(dataVal);
         }
       }
     }

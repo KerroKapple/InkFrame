@@ -124,6 +124,22 @@ void main() {
     );
   });
 
+  test('活跃条目超过硬上限时剔除最旧活跃（卡死非终态 job 兜底）', () {
+    final notifier = container.read(jobsRegistryProvider.notifier);
+    for (var i = 0; i < kJobsRegistryMaxActive + 4; i++) {
+      notifier.upsert(JobState.running(
+        jobId: 'stuck-$i',
+        providerId: 'p',
+        canvasId: 'cv-1',
+      ));
+    }
+    final state = container.read(jobsRegistryProvider);
+    expect(state.length, kJobsRegistryMaxActive);
+    // 最旧 4 条被剔除，最新保留
+    expect(state.first.jobId, 'stuck-4');
+    expect(state.last.jobId, 'stuck-${kJobsRegistryMaxActive + 3}');
+  });
+
   test('forCanvas 只返回指定画布的活跃任务，按插入序', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);

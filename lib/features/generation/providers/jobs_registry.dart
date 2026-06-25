@@ -6,8 +6,9 @@
 // 列表顺序：按插入顺序追加（FIFO），保持与 JobQueueService 调度一致的视觉感。
 //
 // 保留策略：本 provider keepAlive，应用全程存活。终态条目（succeeded/failed/
-// cancelled）超过 [kJobsRegistryMaxTerminal] 时自动剔除最旧终态，防止长会话
-// 无界增长；活跃条目永不被剔除。
+// cancelled）超过 [kJobsRegistryMaxTerminal] 时按插入序剔除最旧终态；活跃（非终态）
+// 条目超过 [kJobsRegistryMaxActive] 时同样剔除最旧——这是对"卡死非终态 job"
+// （_track 异常/进程被杀，永不上报终态）的兜底，防止长会话无界增长。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,6 +16,10 @@ import '../models/job_state.dart';
 
 /// 终态条目保留上限——超出后按插入序剔除最旧终态。
 const int kJobsRegistryMaxTerminal = 50;
+
+/// 活跃（非终态）条目硬上限——正常运行远不会触及；仅兜底"卡死非终态 job"
+/// 的病态累积，超出后按插入序剔除最旧（最旧的活跃条目即最可能已废弃）。
+const int kJobsRegistryMaxActive = 200;
 
 final jobsRegistryProvider =
     NotifierProvider<JobsRegistry, List<JobState>>(
@@ -37,17 +42,26 @@ class JobsRegistry extends Notifier<List<JobState>> {
     } else {
       next[idx] = job;
     }
-    _evictTerminalOverflow(next);
+    _evictOverflow(next);
     state = List<JobState>.unmodifiable(next);
   }
 
-  /// 终态条目超限时就地剔除最旧终态（列表前部即最旧）。
-  void _evictTerminalOverflow(List<JobState> list) {
-    var excess =
-        list.where((e) => e.isTerminal).length - kJobsRegistryMaxTerminal;
+  /// 终态 / 活跃条目各自超限时就地剔除最旧者（列表前部即最旧）。
+  void _evictOverflow(List<JobState> list) {
+    _evictOldest(list, (e) => e.isTerminal, kJobsRegistryMaxTerminal);
+    _evictOldest(list, (e) => !e.isTerminal, kJobsRegistryMaxActive);
+  }
+
+  /// 在 [match] 子集中，超过 [cap] 时按插入序剔除最旧者。
+  void _evictOldest(
+    List<JobState> list,
+    bool Function(JobState) match,
+    int cap,
+  ) {
+    var excess = list.where(match).length - cap;
     if (excess <= 0) return;
     list.removeWhere((e) {
-      if (excess <= 0 || !e.isTerminal) return false;
+      if (excess <= 0 || !match(e)) return false;
       excess--;
       return true;
     });
