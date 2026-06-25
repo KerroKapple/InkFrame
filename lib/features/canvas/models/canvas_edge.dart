@@ -5,6 +5,9 @@
 
 import 'package:flutter/foundation.dart';
 
+import '../../../core/db/columns.dart';
+import '../../../core/db/row_reader.dart';
+
 /// 连线类型（对应 schema `edges.edge_type`）。
 enum EdgeType { data, narrative, generationSource }
 
@@ -65,16 +68,16 @@ class CanvasEdge {
 extension CanvasEdgeMapping on CanvasEdge {
   /// EdgeRepository row → UI model。
   static CanvasEdge fromRow(Map<String, Object?> row) {
-    final typeStr = row['edge_type'] as String;
-    final roleStr = (row['role'] as String?) ?? 'reference';
+    final typeStr = row.reqString(EdgeCol.edgeType);
+    final roleStr = row.optString(EdgeCol.role) ?? 'reference';
     return CanvasEdge(
-      id: row['id']!.toString(),
-      canvasId: row['canvas_id']!.toString(),
-      sourceNodeId: row['source_node_id']!.toString(),
-      targetNodeId: row['target_node_id']!.toString(),
+      id: row.reqId(EdgeCol.id),
+      canvasId: row.reqId(EdgeCol.canvasId),
+      sourceNodeId: row.reqId(EdgeCol.sourceNodeId),
+      targetNodeId: row.reqId(EdgeCol.targetNodeId),
       edgeType: _parseType(typeStr),
       role: _parseRole(roleStr),
-      sortOrder: (row['sort_order'] as int?) ?? 0,
+      sortOrder: row.optInt(EdgeCol.sortOrder) ?? 0,
     );
   }
 

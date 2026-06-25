@@ -5,6 +5,7 @@
 // 坏行策略：id / name / created_at 任一缺失或类型不符 → 跳过该行。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/db/columns.dart';
 import '../../../core/di/repositories.dart';
 import '../models/project_with_canvases.dart';
 
@@ -16,7 +17,7 @@ final workspaceProjectsProvider =
 
   final ids = <String>[
     for (final row in rows)
-      if (row['id'] != null) row['id']!.toString(),
+      if (row[ProjectCol.id] != null) row[ProjectCol.id]!.toString(),
   ];
   final canvasRows = ids.isEmpty
       ? const <Map<String, Object?>>[]
@@ -24,19 +25,19 @@ final workspaceProjectsProvider =
 
   final byProject = <String, List<CanvasRef>>{};
   for (final c in canvasRows) {
-    final pid = c['project_id']?.toString();
-    final cid = c['id']?.toString();
+    final pid = c[CanvasCol.projectId]?.toString();
+    final cid = c[CanvasCol.id]?.toString();
     if (pid == null || cid == null) continue;
     byProject.putIfAbsent(pid, () => <CanvasRef>[]).add(
-          CanvasRef(id: cid, name: c['name']?.toString() ?? ''),
+          CanvasRef(id: cid, name: c[CanvasCol.name]?.toString() ?? ''),
         );
   }
 
   final result = <ProjectWithCanvases>[];
   for (final row in rows) {
-    final id = row['id']?.toString();
-    final name = row['name']?.toString();
-    final createdAt = row['created_at'];
+    final id = row[ProjectCol.id]?.toString();
+    final name = row[ProjectCol.name]?.toString();
+    final createdAt = row[ProjectCol.createdAt];
     if (id == null || name == null || createdAt is! DateTime) continue;
     result.add(
       ProjectWithCanvases(

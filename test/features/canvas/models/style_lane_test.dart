@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/models/style_lane.dart';
 
 void main() {
@@ -27,5 +28,12 @@ void main() {
     const a = StyleLane(id: 'l', canvasId: 'c', label: 'x');
     expect(a.copyWith(label: 'y').label, 'y');
     expect(a.copyWith(), a);
+  });
+  test('列类型错（style_prompt 非 String）→ LocalIOError', () {
+    expect(
+      () => StyleLane.fromRow(
+          {'id': 'l', 'canvas_id': 'c', 'style_prompt': 42}),
+      throwsA(isA<LocalIOError>()),
+    );
   });
 }

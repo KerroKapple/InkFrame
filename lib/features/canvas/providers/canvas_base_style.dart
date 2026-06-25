@@ -1,6 +1,8 @@
 // canvas_base_style.dart — 共享画布基底风格 provider + setBaseStyle。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/db/columns.dart';
+import '../../../core/db/row_reader.dart';
 import '../../../core/di/repositories.dart';
 
 /// 读画布 base_style_prefix / base_style_suffix；失败降级为空字符串。
@@ -9,8 +11,8 @@ final canvasBaseStyleProvider = FutureProvider.autoDispose
   final repo = await ref.watch(canvasRepositoryProvider.future);
   final row = await repo.findById(canvasId);
   return (
-    prefix: (row?['base_style_prefix'] as String?) ?? '',
-    suffix: (row?['base_style_suffix'] as String?) ?? '',
+    prefix: row?.optString(CanvasCol.baseStylePrefix) ?? '',
+    suffix: row?.optString(CanvasCol.baseStyleSuffix) ?? '',
   );
 });
 
@@ -24,8 +26,8 @@ Future<void> setBaseStyle(
 }) async {
   final repo = await ref.read(canvasRepositoryProvider.future);
   await repo.update(canvasId, {
-    'base_style_prefix': prefix,
-    'base_style_suffix': suffix,
+    CanvasCol.baseStylePrefix: prefix,
+    CanvasCol.baseStyleSuffix: suffix,
   });
   ref.invalidate(canvasBaseStyleProvider(canvasId));
 }

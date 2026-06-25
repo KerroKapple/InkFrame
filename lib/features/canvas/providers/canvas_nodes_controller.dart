@@ -12,6 +12,8 @@
 import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/db/columns.dart';
+import '../../../core/db/row_reader.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/node_repository.dart';
@@ -113,8 +115,8 @@ class CanvasNodesController
         final outgoing = await scope.edges.listOutgoing(id);
         final incoming = await scope.edges.listIncoming(id);
         final edgeIds = <String>{
-          for (final r in outgoing) r['id']!.toString(),
-          for (final r in incoming) r['id']!.toString(),
+          for (final r in outgoing) r.reqId(EdgeCol.id),
+          for (final r in incoming) r.reqId(EdgeCol.id),
         };
         for (final eid in edgeIds) {
           await scope.edges.softDelete(eid);
@@ -148,9 +150,9 @@ class CanvasNodesController
     ]);
     try {
       await repo.update(id, <String, Object?>{
-        'position_x': newPos.dx,
-        'position_y': newPos.dy,
-        'lane_id': laneId,
+        NodeCol.positionX: newPos.dx,
+        NodeCol.positionY: newPos.dy,
+        NodeCol.laneId: laneId,
       });
     } on InkError catch (_) {
       if (_alive) state = AsyncData(previous);
