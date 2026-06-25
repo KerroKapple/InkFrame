@@ -59,6 +59,10 @@ abstract class SyncProviderBase
   /// HTTP/解析失败抛 [ProviderError]；成功响应里的内容审核（如 Stability 的
   /// finish-reason 头）也在此直接抛 [ProviderError]（contentPolicy）。
   /// DioException 原样抛出，由基类统一映射。
+  ///
+  /// 约束：本基类假定同步 Provider 单次往返即产出 inline 字节（ADR-0004）。
+  /// 若未来某 Provider 同步返回远端 URL（而非 bytes），不要在此下载来套用该签名
+  /// （下载是独立阶段）——应改用异步基类或扩展 hook 返回完整 JobStatus。
   Future<Uint8List> performGeneration(GenerationTask task, String apiKey);
 
   /// 执行最轻量鉴权 GET（零生成配额）。成功即返回；失败抛 DioException。

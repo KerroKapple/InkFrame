@@ -25,14 +25,16 @@
 **Produces:**
 - `typedef SyncProviderKeySource = Future<String> Function();`
 - `abstract class SyncProviderBase implements Submittable, Pollable, KeyValidatable` with:
-  - ctor `({required SyncProviderKeySource keySource, required ProviderRateLimiter rateLimiter, required String baseUrl, Dio? dio})`
+  - ctor `({required SyncProviderKeySource keySource, required ProviderRateLimiter rateLimiter, Dio? dio})`
   - `ProviderRateLimiter get rateLimiterForTesting`
-  - `@protected Dio get dio`
-  - abstract `String get localJobPrefix`
+  - `Dio get dio`
+  - abstract `String get baseUrl` / abstract `String get localJobPrefix`
   - abstract `Future<Uint8List> performGeneration(GenerationTask task, String apiKey)`
   - abstract `Future<void> performKeyValidation(String apiKey)`
-  - `@protected InkError? contentPolicyFromDioError(DioException e) => null;`
+  - `InkError? contentPolicyFromDioError(DioException e) => null;`
   - concrete `submit` / `poll` / `validateApiKey`
+
+> **As-built deviations from the draft below:** `baseUrl` is an **abstract getter** (not a ctor param) and the default Dio is built lazily (`late final _dio = _injectedDio ?? _buildDefaultDio(baseUrl)`) — an instance getter can't be read from a ctor initializer list, and the getter form lets subclasses use `super` parameters. `@protected` + the `meta` import were dropped to match `DashScopeAsyncProviderBase`'s convention (no annotation) and avoid a `depend_on_referenced_packages` lint. Behavior is unchanged.
 
 - [ ] **Step 1: write base** (`lib/providers/sync_provider_base.dart`):
 

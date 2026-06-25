@@ -24,6 +24,7 @@ class _FakeSyncProvider extends SyncProviderBase {
     super.dio,
     this.onGenerate,
     this.policyOnDio = false,
+    this.validateError,
   });
 
   /// 注入 performGeneration 行为（返回 bytes 或抛异常）。
@@ -31,6 +32,9 @@ class _FakeSyncProvider extends SyncProviderBase {
 
   /// 命中时把 submit 阶段的 DioException 翻成 contentPolicy。
   final bool policyOnDio;
+
+  /// 注入 performKeyValidation 抛出的 DioException（验证传输层分支）。
+  final DioException? validateError;
 
   @override
   String get baseUrl => 'https://fake.test';
@@ -70,6 +74,8 @@ class _FakeSyncProvider extends SyncProviderBase {
 
   @override
   Future<void> performKeyValidation(String apiKey) async {
+    final err = validateError;
+    if (err != null) throw err;
     await dio.get<dynamic>(
       _kValidatePath,
       options: Options(headers: {'Authorization': 'Bearer $apiKey'}),
@@ -102,6 +108,7 @@ _FakeSyncProvider _build({
   Dio? dio,
   Future<Uint8List> Function()? onGenerate,
   bool policyOnDio = false,
+  DioException? validateError,
 }) =>
     _FakeSyncProvider(
       keySource: () async => 'k',
@@ -109,6 +116,12 @@ _FakeSyncProvider _build({
       dio: dio,
       onGenerate: onGenerate,
       policyOnDio: policyOnDio,
+      validateError: validateError,
+    );
+
+DioException _validateDioError(DioExceptionType type) => DioException(
+      requestOptions: RequestOptions(path: _kValidatePath),
+      type: type,
     );
 
 void main() {
@@ -199,6 +212,58 @@ void main() {
     test('500 → networkError', () async {
       expect(await _build(dio: dioReplying(500)).validateApiKey('k'),
           isA<KeyNetworkError>());
+    });
+  });
+
+  group('SyncProviderBase 默认 Dio + validate 传输层分支', () {
+    test('未注入 dio → 懒建默认 Dio（超时/responseType/baseUrl 锁定）', () {
+      final o = _build().dio.options;
+      expect(o.baseUrl, 'https://fake.test');
+      expect(o.connectTimeout, const Duration(seconds: 10));
+      expect(o.sendTimeout, const Duration(seconds: 30));
+      expect(o.receiveTimeout, const Duration(seconds: 120));
+      expect(o.responseType, ResponseType.json);
+    });
+
+    test('connectionTimeout → networkError(validation timeout)', () async {
+      final r = await _build(
+        validateError: _validateDioError(DioExceptionType.connectionTimeout),
+      ).validateApiKey('k');
+      expect((r as KeyNetworkError).message, 'validation timeout');
+    });
+
+    test('receiveTimeout → networkError(validation timeout)', () async {
+      final r = await _build(
+        validateError: _validateDioError(DioExceptionType.receiveTimeout),
+      ).validateApiKey('k');
+      expect((r as KeyNetworkError).message, 'validation timeout');
+    });
+
+    test('badCertificate → networkError(no network)', () async {
+      final r = await _build(
+        validateError: _validateDioError(DioExceptionType.badCertificate),
+      ).validateApiKey('k');
+      expect((r as KeyNetworkError).message, 'no network');
+    });
+
+    test('connectionError → networkError(no network)', () async {
+      final r = await _build(
+        validateError: _validateDioError(DioExceptionType.connectionError),
+      ).validateApiKey('k');
+      expect((r as KeyNetworkError).message, 'no network');
+    });
+
+    test('cancel / unknown → networkError', () async {
+      expect(
+        await _build(validateError: _validateDioError(DioExceptionType.cancel))
+            .validateApiKey('k'),
+        isA<KeyNetworkError>(),
+      );
+      expect(
+        await _build(validateError: _validateDioError(DioExceptionType.unknown))
+            .validateApiKey('k'),
+        isA<KeyNetworkError>(),
+      );
     });
   });
 }
