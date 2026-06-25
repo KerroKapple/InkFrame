@@ -1,6 +1,9 @@
 // StyleLane：风格泳道 UI 模型（手写不可变，对齐 CanvasNode 风格，不引 freezed）。
 import 'package:flutter/foundation.dart';
 
+import '../../../core/db/columns.dart';
+import '../../../core/db/row_reader.dart';
+
 @immutable
 class StyleLane {
   const StyleLane({
@@ -56,12 +59,12 @@ class StyleLane {
       Object.hash(id, canvasId, label, stylePrompt, sortOrder, tintColor, size);
 
   static StyleLane fromRow(Map<String, Object?> row) => StyleLane(
-        id: row['id']!.toString(),
-        canvasId: row['canvas_id']!.toString(),
-        label: (row['label'] as String?) ?? '',
-        stylePrompt: (row['style_prompt'] as String?) ?? '',
-        sortOrder: (row['sort_order'] as num?)?.toInt() ?? 0,
-        tintColor: row['tint_color'] as String?,
-        size: (row['size'] as num?)?.toDouble() ?? 400.0,
+        id: row.reqId(StyleLaneCol.id),
+        canvasId: row.reqId(StyleLaneCol.canvasId),
+        label: row.optString(StyleLaneCol.label) ?? '',
+        stylePrompt: row.optString(StyleLaneCol.stylePrompt) ?? '',
+        sortOrder: row.optInt(StyleLaneCol.sortOrder) ?? 0,
+        tintColor: row.optString(StyleLaneCol.tintColor),
+        size: row.optDouble(StyleLaneCol.size) ?? 400.0,
       );
 }
