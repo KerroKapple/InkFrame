@@ -162,7 +162,26 @@ class GeminiImageProvider extends SyncProviderBase {
         },
       );
     }
-    final parts = ((candidates.first as Map)['content'] as Map?)?['parts'];
+    // 远端 schema 漂移防御（评审 P1#4）：候选/内容形态异常 → providerInvalidResponse，
+    // 不让裸 `as Map` 炸成 _TypeError → UnknownError。
+    final first = candidates.first;
+    if (first is! Map) {
+      throw ProviderError(
+        code: InkErrorCode.providerInvalidResponse,
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'malformed_candidate',
+        },
+      );
+    }
+    final content = first['content'];
+    if (content is! Map) {
+      throw ProviderError(
+        code: InkErrorCode.providerInvalidResponse,
+        extra: {'provider_id': capabilities.providerId, 'reason': 'no_content'},
+      );
+    }
+    final parts = content['parts'];
     if (parts is! List) {
       throw ProviderError(
         code: InkErrorCode.providerServer,

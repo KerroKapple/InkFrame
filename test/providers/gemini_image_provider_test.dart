@@ -283,6 +283,41 @@ void main() {
             .having((e) => e.code, 'code', InkErrorCode.providerServer)),
       );
     });
+
+    test('候选形态漂移（candidate 非对象）→ providerInvalidResponse（不炸 Unknown）',
+        () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onPost(
+        kGeminiSubmitPath,
+        (req) => req.reply(200, {
+          'candidates': ['not-an-object'],
+        }),
+      );
+
+      await expectLater(
+        _buildProvider(dio).submit(_task()),
+        throwsA(isA<ProviderError>().having(
+            (e) => e.code, 'code', InkErrorCode.providerInvalidResponse)),
+      );
+    });
+
+    test('内容形态漂移（content 非对象）→ providerInvalidResponse', () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onPost(
+        kGeminiSubmitPath,
+        (req) => req.reply(200, {
+          'candidates': [
+            {'content': 'not-an-object'},
+          ],
+        }),
+      );
+
+      await expectLater(
+        _buildProvider(dio).submit(_task()),
+        throwsA(isA<ProviderError>().having(
+            (e) => e.code, 'code', InkErrorCode.providerInvalidResponse)),
+      );
+    });
   });
 
   group('GeminiImageProvider.validateApiKey', () {
