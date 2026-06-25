@@ -2,34 +2,23 @@
 //
 // 接入参数（计划 2026-06-10-provider-dalle，权威至 2026-06-10）：
 //   Base URL : https://api.openai.com/v1
-//   Model ID : gpt-image-1（DALL-E 3 已于 2026-03-04 下线，改用 gpt-image-1）
+//   Model ID : gpt-image-1（同步，固定返回 b64_json，不接受 response_format）
 //   Auth     : Authorization: Bearer <key>（从 keySource 读取）
-//   Submit   : POST /images/generations（同步，gpt-image-1 固定返回 b64_json，
-//              不接受 response_format 参数）
+//   Submit   : POST /images/generations
 //   Validate : GET /models（零生成配额）
-//   Poll     : 无（同步返回，走 ADR-0004 inline-bytes 通道）
+//   Poll     : 无（同步返回，走 SyncProviderBase 的 inlineBytes 通道）
 //
-// 硬约束（PROVIDER-API.md §10 Step 1/2）：
-// - capabilities 是 const 字段，编译期固定
-// - 所有接入参数写死在本文件顶部 const 区，禁止散落字面量
-// - 抛出 InkError 子类，禁止裸 DioException
-// - 绝不硬编码 API Key——key 只经注入的 keySource 延迟读取
-
+// 共享脚手架见 SyncProviderBase；本文件仅声明能力 + OpenAI 专有的请求体/解析/审核判定。
 import 'dart:convert';
-import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 
 import '../core/errors/ink_error.dart';
-import '../core/interfaces/generation_provider.dart';
 import '../core/models/cost_model.dart';
 import '../core/models/generation_task.dart';
-import '../core/models/job_status.dart';
-import '../core/models/key_validation_result.dart';
 import '../core/models/provider_capabilities.dart';
-import 'dio_error_mapper.dart';
-import 'rate_limiter.dart';
+import 'sync_provider_base.dart';
 
 // ---- 接入参数（计划锁定） -------------------------------------------------
 const String kOpenAIBaseUrl = 'https://api.openai.com/v1';
@@ -47,7 +36,6 @@ const ProviderCapabilities kOpenAIImageCapabilities = ProviderCapabilities(
   region: ProviderRegion.global,
   modes: [GenerationMode.textToImage],
   // gpt-image-1 仅三种 size：1024x1024 / 1536x1024 / 1024x1536。
-  // r4x3 / r3x4 / r21x9 无精确映射，不声明以免误导 UI。
   supportedRatios: [
     AspectRatio.r1x1,
     AspectRatio.r16x9,
@@ -68,157 +56,80 @@ const ProviderCapabilities kOpenAIImageCapabilities = ProviderCapabilities(
   supportsCancellation: false,
   // 同步 Provider 仍走 Pollable 路径（poll 一调即返回 inlineBytes，详见 ADR-0004）。
   supportsPolling: true,
-  // medium 质量 1024×1024 的官方单图估价（low ~0.02 / medium ~0.042 / high ~0.167）。
+  // medium 质量 1024×1024 的官方单图估价。
   costModel: CostModel.perCall(usdPerCall: 0.042),
   maxConcurrentJobs: 1,
   qps: 2,
   burst: 5,
 );
 
-/// Key getter 协议——延迟读取，避免 Provider 持久化 Key。
-typedef OpenAIKeySource = Future<String> Function();
-
-class OpenAIImageProvider implements Submittable, Pollable, KeyValidatable {
+class OpenAIImageProvider extends SyncProviderBase {
   OpenAIImageProvider({
-    required OpenAIKeySource keySource,
-    required ProviderRateLimiter rateLimiter,
-    Dio? dio,
-  })  : _keySource = keySource,
-        _rateLimiter = rateLimiter,
-        _dio = dio ?? _buildDefaultDio();
-
-  final OpenAIKeySource _keySource;
-  final ProviderRateLimiter _rateLimiter;
-  final Dio _dio;
-
-  /// 仅供 DI 单测验证「共享 limiter」不变量。生产代码不要读这个。
-  ProviderRateLimiter get rateLimiterForTesting => _rateLimiter;
-
-  /// 同步 Provider 的 inline bytes 暂存（ADR-0004）。
-  ///
-  /// submit 解码 base64 后塞入；poll 一次性消费并删除。
-  /// instance-scoped，Provider 销毁时随 GC 回收。
-  final Map<JobId, Uint8List> _inlineCache = {};
+    required super.keySource,
+    required super.rateLimiter,
+    super.dio,
+  });
 
   @override
   ProviderCapabilities get capabilities => kOpenAIImageCapabilities;
 
-  static Dio _buildDefaultDio() => Dio(
-        BaseOptions(
-          baseUrl: kOpenAIBaseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 120),
-          responseType: ResponseType.json,
-        ),
-      );
+  @override
+  String get baseUrl => kOpenAIBaseUrl;
 
   @override
-  Future<JobId> submit(GenerationTask task) async {
-    if (task.mode != GenerationMode.textToImage) {
-      throw ProviderError(
-        code: InkErrorCode.invalidParameter,
-        extra: {'provider_id': capabilities.providerId, 'reason': 'mode'},
-      );
-    }
-    if (task.prompt.trim().isEmpty) {
-      throw ProviderError(
-        code: InkErrorCode.invalidParameter,
-        extra: {
-          'provider_id': capabilities.providerId,
-          'reason': 'empty_prompt',
-        },
-      );
-    }
+  String get localJobPrefix => kOpenAILocalJobPrefix;
 
-    await _rateLimiter.acquire();
-
-    final key = await _keySource();
+  @override
+  Future<Uint8List> performGeneration(
+    GenerationTask task,
+    String apiKey,
+  ) async {
     final body = <String, Object?>{
       'model': kOpenAIModel,
       'prompt': task.prompt,
       'n': 1,
       'size': _sizeFor(task.aspectRatio),
       'quality': 'medium',
-      // HI-06：gpt-image-1 不接受 response_format（带上即 400），
-      // 该模型固定返回 b64_json。
+      // HI-06：gpt-image-1 不接受 response_format（带上即 400），固定返回 b64_json。
     };
-
-    try {
-      final resp = await _dio.post<dynamic>(
-        kOpenAIImagePath,
-        data: body,
-        options: Options(
-          contentType: 'application/json',
-          headers: {'Authorization': 'Bearer $key'},
-        ),
-      );
-      final data = resp.data is Map
-          ? Map<String, Object?>.from(resp.data as Map)
-          : null;
-      return _handleSubmitResponse(data, task);
-    } on DioException catch (e) {
-      // OpenAI 400 不靠 HTTP 状态码区分内容策略——必须先读 error.code。
-      if (e.response?.statusCode == 400 &&
-          _isContentPolicyViolation(e.response?.data)) {
-        throw ProviderError(
-          code: InkErrorCode.contentPolicy,
-          extra: {'provider_id': capabilities.providerId},
-          cause: e,
-        );
-      }
-      throw mapDioError(e, providerId: capabilities.providerId);
-    }
+    final resp = await dio.post<dynamic>(
+      kOpenAIImagePath,
+      data: body,
+      options: Options(
+        contentType: 'application/json',
+        headers: {'Authorization': 'Bearer $apiKey'},
+      ),
+    );
+    final data = resp.data is Map
+        ? Map<String, Object?>.from(resp.data as Map)
+        : null;
+    return _decodeInlineImage(data);
   }
 
   @override
-  Future<KeyValidationResult> validateApiKey(String key) async {
-    try {
-      await _dio.get<dynamic>(
-        kOpenAIValidatePath,
-        options: Options(headers: {'Authorization': 'Bearer $key'}),
-      );
-      return const KeyValidationResult.valid();
-    } on DioException catch (e) {
-      switch (e.type) {
-        // ME-10：超时/离线无法判定 Key 本身 → networkError（与全 Provider 统一）。
-        case DioExceptionType.connectionTimeout:
-        case DioExceptionType.sendTimeout:
-        case DioExceptionType.receiveTimeout:
-          return const KeyValidationResult.networkError(
-            message: 'validation timeout',
-          );
-        case DioExceptionType.connectionError:
-        case DioExceptionType.badCertificate:
-          return const KeyValidationResult.networkError(message: 'no network');
-        case DioExceptionType.badResponse:
-          final status = e.response?.statusCode ?? 0;
-          if (status == 401 || status == 403) {
-            return const KeyValidationResult.invalid(
-              reason: KeyInvalidReason.invalidKey,
-            );
-          }
-          if (status == 402) {
-            return const KeyValidationResult.invalid(
-              reason: KeyInvalidReason.insufficientBalance,
-            );
-          }
-          return KeyValidationResult.networkError(
-            message: 'unexpected status $status',
-          );
-        case DioExceptionType.cancel:
-        case DioExceptionType.unknown:
-          return KeyValidationResult.networkError(
-            message: e.message ?? 'unknown',
-          );
-      }
-    }
+  Future<void> performKeyValidation(String apiKey) async {
+    await dio.get<dynamic>(
+      kOpenAIValidatePath,
+      options: Options(headers: {'Authorization': 'Bearer $apiKey'}),
+    );
   }
 
-  JobId _handleSubmitResponse(
-    Map<String, Object?>? data,
-    GenerationTask task,
-  ) {
+  @override
+  InkError? contentPolicyFromDioError(DioException e) {
+    // OpenAI 400 不靠 HTTP 状态码区分内容策略——必须先读 error.code。
+    if (e.response?.statusCode == 400 &&
+        _isContentPolicyViolation(e.response?.data)) {
+      return ProviderError(
+        code: InkErrorCode.contentPolicy,
+        extra: {'provider_id': capabilities.providerId},
+        cause: e,
+      );
+    }
+    return null;
+  }
+
+  /// 解析 data[0].b64_json（base64）为原始字节。
+  Uint8List _decodeInlineImage(Map<String, Object?>? data) {
     if (data == null) {
       throw ProviderError(
         code: InkErrorCode.providerServer,
@@ -243,29 +154,7 @@ class OpenAIImageProvider implements Submittable, Pollable, KeyValidatable {
         },
       );
     }
-    final inline = base64Decode(base64Str);
-    // 同步 Provider：合成本地 JobId，bytes 暂存 cache，等上层 poll 消费（ADR-0004）。
-    final suffix = '${task.jobId}-${_rand()}';
-    final jobId = '$kOpenAILocalJobPrefix$suffix';
-    _inlineCache[jobId] = inline;
-    return jobId;
-  }
-
-  @override
-  Future<JobStatus> poll(JobId id) async {
-    final bytes = _inlineCache.remove(id);
-    if (bytes == null) {
-      // 重复 poll 同一 jobId 或 jobId 未由本 instance submit 产生。
-      throw ProviderError(
-        code: InkErrorCode.providerServer,
-        extra: {
-          'provider_id': capabilities.providerId,
-          'reason': 'cache_miss_or_consumed',
-          'job_id': id,
-        },
-      );
-    }
-    return JobStatus.success(remoteUrls: const [], inlineBytes: [bytes]);
+    return base64Decode(base64Str);
   }
 
   /// AspectRatio → gpt-image-1 size 字符串。capabilities 已收窄到三种比例，
@@ -294,7 +183,4 @@ class OpenAIImageProvider implements Submittable, Pollable, KeyValidatable {
     }
     return false;
   }
-
-  static String _rand() =>
-      Random.secure().nextInt(0xFFFFFFFF).toRadixString(16).padLeft(8, '0');
 }
