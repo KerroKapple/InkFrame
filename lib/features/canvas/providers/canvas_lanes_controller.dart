@@ -2,6 +2,8 @@
 // 乐观更新 + 失败回滚，与 CanvasNodesController 同策略（ME-27 _alive 守卫）。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/db/columns.dart';
+import '../../../core/db/row_reader.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/style_lane_repository.dart';
@@ -75,10 +77,13 @@ class CanvasLanesController
     final repo = _repo;
     final previous = state.valueOrNull ?? const <StyleLane>[];
     final patch = <String, Object?>{
-      'label': ?label,
-      'style_prompt': ?stylePrompt,
-      if (clearTint) 'tint_color': null else 'tint_color': ?tintColor,
-      'size': ?size,
+      StyleLaneCol.label: ?label,
+      StyleLaneCol.stylePrompt: ?stylePrompt,
+      if (clearTint)
+        StyleLaneCol.tintColor: null
+      else
+        StyleLaneCol.tintColor: ?tintColor,
+      StyleLaneCol.size: ?size,
     };
     if (patch.isEmpty) return;
     state = AsyncData([
@@ -117,7 +122,8 @@ class CanvasLanesController
     try {
       for (var i = 0; i < reordered.length; i++) {
         if (previous.firstWhere((l) => l.id == reordered[i].id).sortOrder != i) {
-          await repo.update(reordered[i].id, <String, Object?>{'sort_order': i});
+          await repo.update(
+              reordered[i].id, <String, Object?>{StyleLaneCol.sortOrder: i});
         }
       }
     } on InkError catch (_) {
@@ -144,13 +150,15 @@ final canvasLaneDirectionProvider =
     FutureProvider.autoDispose.family<LaneDirection, String>((ref, canvasId) async {
   final repo = await ref.watch(canvasRepositoryProvider.future);
   final row = await repo.findById(canvasId);
-  return laneDirectionFromString((row?['lane_direction'] as String?) ?? 'horizontal');
+  return laneDirectionFromString(
+      row?.optString(CanvasCol.laneDirection) ?? 'horizontal');
 });
 
 /// 切换并持久化泳道方向，然后失效方向 provider 触发重读。
 /// 取 WidgetRef（read/invalidate 即够用）——调用方均为 widget。
 Future<void> setLaneDirection(WidgetRef ref, String canvasId, LaneDirection dir) async {
   final repo = await ref.read(canvasRepositoryProvider.future);
-  await repo.update(canvasId, {'lane_direction': laneDirectionToString(dir)});
+  await repo
+      .update(canvasId, {CanvasCol.laneDirection: laneDirectionToString(dir)});
   ref.invalidate(canvasLaneDirectionProvider(canvasId));
 }

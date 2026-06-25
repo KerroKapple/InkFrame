@@ -12,6 +12,8 @@ import 'dart:io';
 import 'dart:math';
 
 import '../core/constants/job_housekeeping.dart';
+import '../core/db/columns.dart';
+import '../core/db/row_reader.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/logging/logger_service.dart';
@@ -98,7 +100,7 @@ class InMemoryJobQueueService implements JobQueueService {
           extra: {'count': orphan.length});
     }
     for (final row in orphan) {
-      final id = row['id'] as String?;
+      final id = row.optId(JobCol.id);
       if (id == null) continue;
       await repo.transitionStatus(
         id: id,

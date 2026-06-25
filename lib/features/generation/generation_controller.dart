@@ -23,6 +23,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/default_providers.dart';
 import '../../core/constants/secure_storage_keys.dart';
+import '../../core/db/columns.dart';
+import '../../core/db/row_reader.dart';
 import '../../core/di/file_resolver.dart';
 import '../../core/di/job_queue.dart';
 import '../../core/di/logger.dart';
@@ -145,14 +147,14 @@ class GenerationController {
     if (cfgRow == null) {
       throw const InvalidGenerationConfigError('config node not found');
     }
-    if (cfgRow['node_role'] != 'config') {
+    if (cfgRow[NodeCol.nodeRole] != 'config') {
       throw const InvalidGenerationConfigError('node is not a config node');
     }
-    final nodeType = (cfgRow['type'] as String?) ?? 'image';
+    final nodeType = cfgRow.optString(NodeCol.type) ?? 'image';
     if (nodeType != 'image' && nodeType != 'video') {
       throw const InvalidGenerationConfigError('unsupported node type');
     }
-    final typeConfig = _readTypeConfig(cfgRow['type_config']);
+    final typeConfig = _readTypeConfig(cfgRow[NodeCol.typeConfig]);
 
     final prompt = (typeConfig['prompt'] as String?)?.trim() ?? '';
     if (prompt.isEmpty) {
@@ -174,10 +176,10 @@ class GenerationController {
       throw MissingApiKeyError(providerId);
     }
 
-    final canvasId = cfgRow['canvas_id']!.toString();
-    final projectId = cfgRow['project_id']?.toString();
+    final canvasId = cfgRow.reqId(NodeCol.canvasId);
+    final projectId = cfgRow.optId(NodeCol.projectId);
 
-    final laneId = cfgRow['lane_id']?.toString();
+    final laneId = cfgRow.optId(NodeCol.laneId);
     final ignoreLane = typeConfig['ignore_lane_style'] == true;
     final fullPrompt = await _assembleFullPrompt(
       userPrompt: prompt,
@@ -446,10 +448,10 @@ class GenerationController {
     String? lastFrame;
 
     for (final row in incoming) {
-      if (row['edge_type'] != 'data') continue;
-      final srcId = row['source_node_id']?.toString();
+      if (row[EdgeCol.edgeType] != 'data') continue;
+      final srcId = row.optId(EdgeCol.sourceNodeId);
       if (srcId == null) continue;
-      final role = row['role'] as String? ?? 'reference';
+      final role = row.optString(EdgeCol.role) ?? 'reference';
 
       final Map<String, Object?>? srcRow;
       try {
@@ -461,7 +463,7 @@ class GenerationController {
       }
       if (srcRow == null) continue;
 
-      final tc = _readTypeConfig(srcRow['type_config']);
+      final tc = _readTypeConfig(srcRow[NodeCol.typeConfig]);
       final relPath = tc['image_url'];
       if (relPath is! String || relPath.isEmpty) continue;
 
@@ -510,14 +512,14 @@ class GenerationController {
     var baseSuffix = '';
     try {
       final c = await canvas.findById(canvasId);
-      basePrefix = (c?['base_style_prefix'] as String?) ?? '';
-      baseSuffix = (c?['base_style_suffix'] as String?) ?? '';
+      basePrefix = c?.optString(CanvasCol.baseStylePrefix) ?? '';
+      baseSuffix = c?.optString(CanvasCol.baseStyleSuffix) ?? '';
     } on InkError catch (_) {}
     var laneStyle = '';
     if (!ignoreLaneStyle && laneId != null) {
       try {
         final l = await lanes.findById(laneId);
-        laneStyle = (l?['style_prompt'] as String?) ?? '';
+        laneStyle = l?.optString(StyleLaneCol.stylePrompt) ?? '';
       } on InkError catch (_) {}
     }
     final texts = await _resolveAssociatedTexts(configNodeId);
@@ -539,12 +541,12 @@ class GenerationController {
     } on InkError catch (_) {
       return const [];
     }
-    final rows = incoming.where((r) => r['edge_type'] == 'data').toList()
-      ..sort((a, b) => (a['created_at']?.toString() ?? '')
-          .compareTo(b['created_at']?.toString() ?? ''));
+    final rows = incoming.where((r) => r[EdgeCol.edgeType] == 'data').toList()
+      ..sort((a, b) => (a[EdgeCol.createdAt]?.toString() ?? '')
+          .compareTo(b[EdgeCol.createdAt]?.toString() ?? ''));
     final out = <String>[];
     for (final r in rows) {
-      final srcId = r['source_node_id']?.toString();
+      final srcId = r.optId(EdgeCol.sourceNodeId);
       if (srcId == null) continue;
       Map<String, Object?>? src;
       try {
@@ -552,10 +554,10 @@ class GenerationController {
       } on InkError catch (_) {
         continue;
       }
-      if (src == null || src['type'] != 'text') continue;
-      final tc = _readTypeConfig(src['type_config']);
+      if (src == null || src[NodeCol.type] != 'text') continue;
+      final tc = _readTypeConfig(src[NodeCol.typeConfig]);
       final text = (tc['text'] as String?)?.trim();
-      final label = (src['label'] as String?)?.trim();
+      final label = src.optString(NodeCol.label)?.trim();
       final content = (text != null && text.isNotEmpty) ? text : (label ?? '');
       if (content.isNotEmpty) out.add(content);
     }
