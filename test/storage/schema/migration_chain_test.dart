@@ -62,6 +62,27 @@ void main() {
       return;
     }
   });
+
+  test('v5 生效：复合 idx_jobs_canvas_created 存在且单列 idx_jobs_canvas_id 已删',
+      () async {
+    try {
+      final h = req();
+      final r = await h.conn.execute(
+        Sql.named(
+          'SELECT indexname FROM pg_indexes '
+          "WHERE tablename = 'jobs' AND schemaname = @s",
+        ),
+        parameters: {'s': h.schema},
+      );
+      final names = r.map((row) => row[0]! as String).toSet();
+      expect(names, contains('idx_jobs_canvas_created'),
+          reason: 'v5 应建复合 (canvas_id, created_at DESC) 索引');
+      expect(names, isNot(contains('idx_jobs_canvas_id')),
+          reason: 'v5 应删冗余单列索引（复合最左前缀已覆盖）');
+    } on _Skip {
+      return;
+    }
+  });
 }
 
 class _Skip implements Exception {}
