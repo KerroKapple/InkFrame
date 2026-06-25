@@ -107,8 +107,8 @@ class InMemoryJobQueueService implements JobQueueService {
         fromStatuses: orphanStatuses,
         toStatus: 'cancelled',
         extra: {
-          'error_code': InkErrorCode.cancelledOnExit.wire,
-          'error_message': 'app exited while job was not finished',
+          JobCol.errorCode: InkErrorCode.cancelledOnExit.wire,
+          JobCol.errorMessage: 'app exited while job was not finished',
         },
       );
     }
@@ -254,12 +254,12 @@ class InMemoryJobQueueService implements JobQueueService {
         task.jobId,
         from: const ['pending'],
         to: 'submitted',
-        extra: {'submitted_at': DateTime.now().toUtc().toIso8601String()},
+        extra: {JobCol.submittedAt: DateTime.now().toUtc().toIso8601String()},
       );
 
       final providerJobId = await provider.submit(task);
       running.providerJobId = providerJobId;
-      await _persistUpdate(task.jobId, {'remote_task_id': providerJobId});
+      await _persistUpdate(task.jobId, {JobCol.remoteTaskId: providerJobId});
 
       if (provider is! Pollable) {
         // 仅 Submittable 的 Provider 在 P0 还没有——按契约 supportsPolling 必须实现
@@ -354,11 +354,11 @@ class InMemoryJobQueueService implements JobQueueService {
               task.jobId,
               from: const ['submitted'],
               to: 'polling',
-              extra: {'progress': progress},
+              extra: {JobCol.progress: progress},
             );
             enteredPolling = true;
           } else {
-            await _persistUpdate(task.jobId, {'progress': progress});
+            await _persistUpdate(task.jobId, {JobCol.progress: progress});
           }
           handle._emit(status);
         case JobSuccess(:final inlineBytes, :final remoteUrls):
@@ -392,8 +392,8 @@ class InMemoryJobQueueService implements JobQueueService {
             from: const ['submitted', 'polling'],
             to: 'success',
             extra: {
-              'completed_at': DateTime.now().toUtc().toIso8601String(),
-              'progress': 1.0,
+              JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
+              JobCol.progress: 1.0,
             },
           );
           // HI-02：affectedRows==0 = cancel 抢先把行落成 cancelled
@@ -495,9 +495,9 @@ class InMemoryJobQueueService implements JobQueueService {
       from: const ['pending', 'submitted', 'polling'],
       to: 'error',
       extra: {
-        'error_code': error.code.wire,
-        'error_message': _truncate(error.toString(), 2000),
-        'completed_at': DateTime.now().toUtc().toIso8601String(),
+        JobCol.errorCode: error.code.wire,
+        JobCol.errorMessage: _truncate(error.toString(), 2000),
+        JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
   }
@@ -513,8 +513,8 @@ class InMemoryJobQueueService implements JobQueueService {
       from: const ['submitted', 'polling'],
       to: 'timeout',
       extra: {
-        'error_code': error.code.wire,
-        'completed_at': DateTime.now().toUtc().toIso8601String(),
+        JobCol.errorCode: error.code.wire,
+        JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
   }
@@ -528,8 +528,8 @@ class InMemoryJobQueueService implements JobQueueService {
       from: fromStatuses,
       to: 'cancelled',
       extra: {
-        'error_code': InkErrorCode.cancelledByUser.wire,
-        'completed_at': DateTime.now().toUtc().toIso8601String(),
+        JobCol.errorCode: InkErrorCode.cancelledByUser.wire,
+        JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
   }

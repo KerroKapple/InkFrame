@@ -5,6 +5,7 @@
 // CI 的 check-updated-at.sh 扫描 UPDATE 语句强制执行。
 import 'package:postgres/postgres.dart';
 
+import '../core/db/columns.dart';
 import '../core/errors/ink_error.dart';
 
 /// Repository 共享工具集。
@@ -43,7 +44,7 @@ mixin BaseRepository {
   Map<String, Object?> withUpdatedAt(Map<String, Object?> patch) {
     return <String, Object?>{
       ...patch,
-      'updated_at': utcNowIso(),
+      CommonCol.updatedAt: utcNowIso(),
     };
   }
 
@@ -51,14 +52,14 @@ mixin BaseRepository {
 
   /// 构造带时间戳的软删除 patch。
   Map<String, Object?> softDeletePatch() => <String, Object?>{
-        'deleted_at': utcNowIso(),
-        'updated_at': utcNowIso(),
+        CommonCol.deletedAt: utcNowIso(),
+        CommonCol.updatedAt: utcNowIso(),
       };
 
   /// 构造恢复 patch。
   Map<String, Object?> restorePatch() => <String, Object?>{
-        'deleted_at': null,
-        'updated_at': utcNowIso(),
+        CommonCol.deletedAt: null,
+        CommonCol.updatedAt: utcNowIso(),
       };
 
   /// 通用 UPDATE 构造：返回 (SQL, params)。
@@ -72,7 +73,7 @@ mixin BaseRepository {
     Map<String, Object?> patch, {
     bool includeDeletedFilter = true,
   }) {
-    final merged = patch.containsKey('updated_at')
+    final merged = patch.containsKey(CommonCol.updatedAt)
         ? Map<String, Object?>.from(patch)
         : withUpdatedAt(patch);
 
