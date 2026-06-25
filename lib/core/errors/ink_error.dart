@@ -38,7 +38,8 @@ enum InkErrorCode {
 }
 
 /// 每个 code 对应的 i18n ARB key（app_en.arb / app_zh.arb 中必须存在）。
-const Map<InkErrorCode, String> _messageKeys = <InkErrorCode, String>{
+/// 公开供 ink_error_i18n_test 做"每个 code 都有 key 且 key 在 ARB 内"的编译期闸门校验。
+const Map<InkErrorCode, String> kInkErrorMessageKeys = <InkErrorCode, String>{
   InkErrorCode.invalidKey: 'errorInvalidKey',
   InkErrorCode.insufficientBalance: 'errorInsufficientBalance',
   InkErrorCode.contentPolicy: 'errorContentPolicy',
@@ -84,7 +85,7 @@ sealed class InkError implements Exception {
   final Object? cause;
   final StackTrace? stackTrace;
 
-  String get messageKey => _messageKeys[code]!;
+  String get messageKey => kInkErrorMessageKeys[code]!;
   bool get retryable => _retryable.contains(code);
 
   Map<String, Object?> toLogJson() => <String, Object?>{

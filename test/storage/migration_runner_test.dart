@@ -112,7 +112,7 @@ void main() {
           Migration(version: 2, sql: 'DDL-v2'),
         ],
       );
-      await expectLater(runner.migrate, throwsA(isA<SchemaMigrationError>()));
+      await expectLater(runner.migrate, throwsA(isA<SchemaDowngradeError>()));
     });
 
     test('迁移列表存在 gap → 拒绝', () async {
