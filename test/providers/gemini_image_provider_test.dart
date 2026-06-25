@@ -318,6 +318,32 @@ void main() {
             (e) => e.code, 'code', InkErrorCode.providerInvalidResponse)),
       );
     });
+
+    test('inlineData.data 非字符串（漂移）→ no_inline_data，不炸 _TypeError', () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onPost(
+        kGeminiSubmitPath,
+        (req) => req.reply(200, {
+          'candidates': [
+            {
+              'content': {
+                'parts': [
+                  {
+                    'inlineData': {'data': 123},
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      );
+
+      await expectLater(
+        _buildProvider(dio).submit(_task()),
+        throwsA(isA<ProviderError>()
+            .having((e) => e.extra['reason'], 'reason', 'no_inline_data')),
+      );
+    });
   });
 
   group('GeminiImageProvider.validateApiKey', () {

@@ -190,9 +190,10 @@ class GeminiImageProvider extends SyncProviderBase {
     }
     for (final p in parts) {
       if (p is Map && p['inlineData'] is Map) {
-        final base64Str = (p['inlineData'] as Map)['data'] as String?;
-        if (base64Str != null) {
-          return base64Decode(base64Str);
+        // data 非字符串（schema 漂移）不抛 _TypeError——跳过，最终落 no_inline_data。
+        final dataVal = (p['inlineData'] as Map)['data'];
+        if (dataVal is String) {
+          return base64Decode(dataVal);
         }
       }
     }
