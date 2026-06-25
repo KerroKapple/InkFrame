@@ -167,13 +167,13 @@ void main() {
   test('ME-31：失败迁移整体回滚——版本号与半截 DDL 都不落库', () async {
     try {
       final h = req();
-      // 故意失败的 v5：先建表再撞语法错误；事务内两者都应回滚
+      // 故意失败的 v6（一过真实链末版 v5）：先建表再撞语法错误；事务内两者都应回滚。
       final broken = MigrationRunner(
         h.conn,
         migrations: [
           ...kAppMigrations,
           const Migration(
-            version: 5,
+            version: 6,
             sql: 'CREATE TABLE half_done (id INT); SELECT broken(',
           ),
         ],
@@ -182,7 +182,7 @@ void main() {
       final v = await h.conn.execute(
         'SELECT version FROM schema_version WHERE id = 1',
       );
-      expect(v.first[0], 4, reason: '失败迁移不得推进版本号');
+      expect(v.first[0], 5, reason: '失败迁移不得推进版本号');
       final half = await h.conn.execute(
         'SELECT 1 FROM information_schema.tables '
         "WHERE table_schema = current_schema() AND table_name = 'half_done'",
