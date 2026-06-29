@@ -6,11 +6,13 @@
 import 'package:postgres/postgres.dart';
 
 import '../core/errors/ink_error.dart';
+import '../core/interfaces/batch_result_repository.dart';
 import '../core/interfaces/canvas_repository.dart';
 import '../core/interfaces/edge_repository.dart';
 import '../core/interfaces/job_repository.dart';
 import '../core/interfaces/node_repository.dart';
 import '../core/interfaces/project_repository.dart';
+import '../core/interfaces/style_lane_repository.dart';
 import '../core/interfaces/unit_of_work.dart';
 
 class PostgresUnitOfWork implements UnitOfWork {
@@ -49,6 +51,8 @@ class RepositoryScopeData implements RepositoryScope {
     required this.canvas,
     required this.projects,
     required this.jobs,
+    required this.styleLanes,
+    required this.batchResults,
   });
 
   @override
@@ -61,4 +65,8 @@ class RepositoryScopeData implements RepositoryScope {
   final ProjectRepository projects;
   @override
   final JobRepository jobs;
+  @override
+  final StyleLaneRepository styleLanes;
+  @override
+  final BatchResultRepository batchResults;
 }

@@ -108,8 +108,8 @@ class CanvasLanesController
   }
 
   /// 按给定 id 顺序重排泳道，sort_order=下标。乐观更新 + 失败回滚。
+  /// 所有 sort_order 更新落在单个 UnitOfWork 事务内（原子，半重排不可见）。
   Future<void> reorderLanes(List<String> orderedIds) async {
-    final repo = _repo;
     final previous = state.valueOrNull ?? const <StyleLane>[];
     final byId = {for (final l in previous) l.id: l};
     final reordered = <StyleLane>[];
@@ -120,12 +120,15 @@ class CanvasLanesController
     if (reordered.length != previous.length) return; // 不完整顺序，跳过
     state = AsyncData(reordered);
     try {
-      for (var i = 0; i < reordered.length; i++) {
-        if (previous.firstWhere((l) => l.id == reordered[i].id).sortOrder != i) {
-          await repo.update(
-              reordered[i].id, <String, Object?>{StyleLaneCol.sortOrder: i});
+      final uow = await ref.read(unitOfWorkProvider.future);
+      await uow.run((scope) async {
+        for (var i = 0; i < reordered.length; i++) {
+          if (byId[reordered[i].id]!.sortOrder != i) {
+            await scope.styleLanes.update(
+                reordered[i].id, <String, Object?>{StyleLaneCol.sortOrder: i});
+          }
         }
-      }
+      });
     } on InkError catch (_) {
       if (_alive) state = AsyncData(previous);
       rethrow;

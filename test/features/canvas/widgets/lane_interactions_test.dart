@@ -21,6 +21,8 @@ import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
+import '../../../_harness/fake_unit_of_work.dart';
+
 // ── fakes ──────────────────────────────────────────────────────────────────
 
 class _FakeNodeRepository implements NodeRepository {
@@ -258,6 +260,8 @@ void main() {
       edgeRepositoryProvider.overrideWith((ref) async => _FakeEdgeRepository()),
       styleLaneRepositoryProvider.overrideWith((ref) async => fakeLaneRepo),
       canvasRepositoryProvider.overrideWith((ref) async => _FakeCanvasRepository()),
+      unitOfWorkProvider.overrideWith(
+          (ref) async => FakeUnitOfWork(FakeRepositoryScope(styleLanes: fakeLaneRepo))),
     ]);
     addTearDown(container.dispose);
   });

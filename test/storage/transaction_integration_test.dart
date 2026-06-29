@@ -7,11 +7,13 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/storage/postgres_unit_of_work.dart';
+import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_style_lane_repository.dart';
 import 'package:postgres/postgres.dart';
 
 import 'schema/pg_test_harness.dart';
@@ -27,6 +29,8 @@ PostgresUnitOfWork _uow(SessionExecutor exec) => PostgresUnitOfWork(
         canvas: PostgresCanvasRepository(s),
         projects: PostgresProjectRepository(s),
         jobs: PostgresJobRepository(s),
+        styleLanes: PostgresStyleLaneRepository(s),
+        batchResults: PostgresBatchResultRepository(s),
       ),
     );
 
