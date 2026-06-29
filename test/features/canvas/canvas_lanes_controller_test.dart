@@ -5,6 +5,8 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 
+import '../../_harness/fake_unit_of_work.dart';
+
 class _FakeLaneRepo implements StyleLaneRepository {
   final Map<String, Map<String, Object?>> store = {};
   int _seq = 0;
@@ -67,6 +69,8 @@ void main() {
     final repo = _FakeLaneRepo();
     final c = ProviderContainer(overrides: [
       styleLaneRepositoryProvider.overrideWith((ref) async => repo),
+      unitOfWorkProvider.overrideWith(
+          (ref) async => FakeUnitOfWork(FakeRepositoryScope(styleLanes: repo))),
     ]);
     addTearDown(c.dispose);
     await c.read(canvasLanesControllerProvider('cv').future);
@@ -89,6 +93,8 @@ void main() {
     final repo = _ThrowingOnUpdateRepo();
     final c = ProviderContainer(overrides: [
       styleLaneRepositoryProvider.overrideWith((ref) async => repo),
+      unitOfWorkProvider.overrideWith(
+          (ref) async => FakeUnitOfWork(FakeRepositoryScope(styleLanes: repo))),
     ]);
     addTearDown(c.dispose);
     await c.read(canvasLanesControllerProvider('cv').future);

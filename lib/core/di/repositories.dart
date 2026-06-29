@@ -94,6 +94,8 @@ final unitOfWorkProvider = FutureProvider<UnitOfWork>(
         canvas: PostgresCanvasRepository(s),
         projects: PostgresProjectRepository(s),
         jobs: PostgresJobRepository(s),
+        styleLanes: PostgresStyleLaneRepository(s),
+        batchResults: PostgresBatchResultRepository(s),
       ),
     );
   },
