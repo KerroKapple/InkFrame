@@ -408,7 +408,7 @@ class _PromptPreview extends ConsumerWidget {
     for (final e in dataEdges) {
       final src = nodesById[e.sourceNodeId];
       if (src == null || src.type != CanvasNodeType.text) continue;
-      final t = (src.typeConfig['text'] as String?)?.trim();
+      final t = src.textContent?.trim();
       final l = src.label.trim();
       final content = (t != null && t.isNotEmpty) ? t : (l.isNotEmpty ? l : null);
       if (content != null) texts.add(content);
