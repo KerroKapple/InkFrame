@@ -18,8 +18,12 @@ final canvasEdgesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
 
 class CanvasEdgesController
     extends AutoDisposeFamilyAsyncNotifier<List<CanvasEdge>, String> {
+  bool _alive = false;
+
   @override
   Future<List<CanvasEdge>> build(String canvasId) async {
+    _alive = true;
+    ref.onDispose(() => _alive = false);
     final repo = await ref.watch(edgeRepositoryProvider.future);
     final rows = await repo.listByCanvas(canvasId);
     return rows.map(CanvasEdgeMapping.fromRow).toList(growable: false);
@@ -34,7 +38,7 @@ class CanvasEdgesController
     return repo;
   }
 
-  /// 创建连线。乐观写——先更新内存，DB 失败回滚并 rethrow。
+  /// 创建连线。await create 成功后写内存；失败 rethrow（与 nodes/lanes 对齐 ME-27 守卫）。
   Future<CanvasEdge> addEdge({
     required String sourceNodeId,
     required String targetNodeId,
@@ -62,10 +66,10 @@ class CanvasEdgesController
         role: role,
         sortOrder: sortOrder,
       );
-      state = AsyncData([...previous, edge]);
+      if (_alive) state = AsyncData([...previous, edge]);
       return edge;
     } on InkError catch (_) {
-      state = AsyncData(previous);
+      if (_alive) state = AsyncData(previous);
       rethrow;
     }
   }
@@ -76,7 +80,7 @@ class CanvasEdgesController
     try {
       await _repo.softDelete(id);
     } on InkError catch (_) {
-      state = AsyncData(previous);
+      if (_alive) state = AsyncData(previous);
       rethrow;
     }
   }
@@ -95,7 +99,7 @@ class CanvasEdgesController
         'role': CanvasEdgeMapping.roleToDb(role),
       });
     } on InkError catch (_) {
-      state = AsyncData(previous);
+      if (_alive) state = AsyncData(previous);
       rethrow;
     }
   }
