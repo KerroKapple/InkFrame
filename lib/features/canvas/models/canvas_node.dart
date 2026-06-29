@@ -94,6 +94,18 @@ class CanvasNode {
     return v is String && v.isNotEmpty ? v : null;
   }
 
+  /// config 节点用户 prompt 文本；非 String 或未设置时为 null。
+  String? get promptText {
+    final v = typeConfig['prompt'];
+    return v is String ? v : null;
+  }
+
+  /// text 节点正文（type_config.text）；非 String 或未设置时为 null。
+  String? get textContent {
+    final v = typeConfig['text'];
+    return v is String ? v : null;
+  }
+
   /// 该节点是否忽略所属泳道的风格（type_config.ignore_lane_style）。
   bool get ignoreLaneStyle => typeConfig['ignore_lane_style'] == true;
 
@@ -150,8 +162,8 @@ class CanvasNode {
         canvasId,
         sourceNodeId,
         laneId,
-        Object.hashAll(typeConfig.entries
-            .map((e) => Object.hash(e.key, e.value))),
+        Object.hashAllUnordered(
+            typeConfig.entries.map((e) => Object.hash(e.key, e.value))),
         position,
         size,
       );

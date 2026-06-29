@@ -280,7 +280,7 @@ class _ConfigBody extends StatelessWidget {
     return Align(
       alignment: Alignment.topLeft,
       child: Text(
-        node.label.isEmpty ? (node.typeConfig['prompt'] as String? ?? '') : node.label,
+        node.label.isEmpty ? (node.promptText ?? '') : node.label,
         style: typo.body.copyWith(color: colors.fg1),
         maxLines: 3,
         overflow: TextOverflow.ellipsis,
