@@ -76,7 +76,7 @@ class _UnlockedShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasId = ref.watch(currentCanvasIdProvider);
     if (canvasId != null) {
-      return CanvasScreen(canvasName: context.l10n.canvasDefaultName);
+      return const CanvasScreen();
     }
     final screen = ref.watch(currentScreenProvider);
     return switch (screen) {
