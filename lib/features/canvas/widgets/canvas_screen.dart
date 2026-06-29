@@ -5,8 +5,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../providers/current_canvas_id.dart';
+import '../providers/current_canvas_name.dart';
 import 'canvas_add_node_fab.dart';
 import 'canvas_job_listener.dart';
 import 'canvas_left_toolbar.dart';
@@ -15,14 +17,14 @@ import 'canvas_top_chrome.dart';
 import 'canvas_view.dart';
 
 class CanvasScreen extends ConsumerWidget {
-  const CanvasScreen({super.key, required this.canvasName});
-
-  final String canvasName;
+  const CanvasScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final canvasId = ref.watch(currentCanvasIdProvider);
+    final canvasName = ref.watch(currentCanvasNameProvider).valueOrNull ??
+        context.l10n.canvasDefaultName;
     return CanvasJobListener(
       child: Scaffold(
         backgroundColor: colors.surfaceCanvas,
