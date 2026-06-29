@@ -1,6 +1,8 @@
 // CanvasEdgesController 单测——FakeEdgeRepository 覆盖 build / add / remove /
 // DB 失败回滚。
 
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -84,6 +86,38 @@ class _FakeEdgeRepo implements EdgeRepository {
     if (idx >= 0) rows[idx] = {...rows[idx], ...patch};
     return 1;
   }
+  @override
+  Future<int> restore(String id) async => 0;
+  @override
+  Future<int> hardDelete(String id) async => 0;
+}
+
+class _GatedEdgeRepo implements EdgeRepository {
+  final Completer<void> gate = Completer<void>();
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async => [];
+  @override
+  Future<String> create({
+    required String canvasId,
+    required String sourceNodeId,
+    required String targetNodeId,
+    required String edgeType,
+    String role = 'reference',
+    int sortOrder = 0,
+  }) async {
+    await gate.future; // 阻塞，模拟 await 期间 provider 被 dispose
+    return 'e1';
+  }
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => null;
+  @override
+  Future<List<Map<String, Object?>>> listOutgoing(String s) async => [];
+  @override
+  Future<List<Map<String, Object?>>> listIncoming(String t) async => [];
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async => 1;
+  @override
+  Future<int> softDelete(String id) async => 1;
   @override
   Future<int> restore(String id) async => 0;
   @override
@@ -224,6 +258,20 @@ void main() {
       final state =
           container.read(canvasEdgesControllerProvider(canvasId));
       expect(state.valueOrNull, hasLength(1));
+    });
+
+    test('addEdge 在 await 期间被 dispose 不抛 StateError (ME-27 _alive 守卫)',
+        () async {
+      final gated = _GatedEdgeRepo();
+      final c = ProviderContainer(overrides: [
+        edgeRepositoryProvider.overrideWith((ref) async => gated),
+      ]);
+      await c.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl = c.read(canvasEdgesControllerProvider(canvasId).notifier);
+      final future = ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+      c.dispose(); // await 期间销毁 notifier
+      gated.gate.complete(); // 放行 create
+      await expectLater(future, completes); // 守卫存在 → 无 StateError
     });
   });
 }
