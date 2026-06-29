@@ -446,6 +446,49 @@ void main() {
       expect(patch.keys, isNot(contains('thumbnail_url')));
       svc.dispose();
     });
+
+    test('远程产物：resultNodeId 为空(生产缺 ID) → job 失败而非静默成功', () async {
+      final provider = _FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [
+          JobStatus.success(remoteUrls: ['https://fake/out.png']),
+        ],
+      );
+      final registry = CachingProviderRegistry({'fake': () => provider});
+      final repo = _FakeJobRepo()..seedPending('jmiss');
+      final nodeRepo = _FakeNodeRepo();
+      final downloader = _RecordingDownloader();
+
+      final svc = _build(
+        registry: registry,
+        repo: repo,
+        nodeRepo: nodeRepo,
+        fileResolver: fileResolver,
+        downloader: downloader,
+      );
+
+      // 依赖齐全，但 resultNodeId 缺失（生产缺 ID 故障）→ 必须失败。
+      final h = await svc.submit(
+        const GenerationTask(
+          providerId: 'fake',
+          jobId: 'jmiss',
+          projectId: 'proj-1',
+          canvasId: 'canvas-1',
+          resultNodeId: null,
+          mode: GenerationMode.textToImage,
+          prompt: 'x',
+          resolution: Resolution.p1080,
+          aspectRatio: AspectRatio.r1x1,
+        ),
+      );
+      final terminal = await h.done;
+
+      expect(terminal, isA<JobFailure>());
+      // 产物未被静默丢弃当成功：节点无任何 patch、downloader 未被调用。
+      expect(nodeRepo.patches, isEmpty);
+      expect(downloader.calls, isEmpty);
+      svc.dispose();
+    });
   });
 }
 

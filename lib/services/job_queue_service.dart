@@ -535,8 +535,8 @@ class InMemoryJobQueueService implements JobQueueService {
   /// b3：把同步 Provider 返回的 inline bytes 写到 canvas/images/，
   /// 更新 node.type_config.image_url。
   ///
-  /// 三个关键 ID（projectId / canvasId / resultNodeId）任一缺失或服务未注入 →
-  /// 跳过落盘（认为是单测路径）。返回 null 表示成功，非 null = 应转 failure。
+  /// 依赖（fileResolver/nodeRepo）未注入 = 单测/纯内存模式：跳过落盘（返回 null）。
+  /// 依赖已注入但关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure，不静默丢产物）。
   Future<InkError?> _persistInlineBytes(
     GenerationTask task,
     List<dynamic> bytesList,
@@ -546,12 +546,18 @@ class InMemoryJobQueueService implements JobQueueService {
     final resultNodeId = task.resultNodeId;
     final fileResolver = _fileResolver;
     final nodeRepo = _nodeRepo;
-    if (projectId == null ||
-        canvasId == null ||
-        resultNodeId == null ||
-        fileResolver == null ||
-        nodeRepo == null) {
+    // 依赖未注入 = 纯内存/单测模式：跳过落盘（非故障）。
+    if (fileResolver == null || nodeRepo == null) {
       return null;
+    }
+    // 依赖已注入但关键 ID 缺失 = 生产故障：必须失败，绝不静默丢产物当成功。
+    if (projectId == null || canvasId == null || resultNodeId == null) {
+      return LocalIOError(
+        extra: <String, Object?>{
+          'job_id': task.jobId,
+          'reason': 'missing_result_ids',
+        },
+      );
     }
     try {
       final relativePaths = <String>[];
@@ -601,8 +607,9 @@ class InMemoryJobQueueService implements JobQueueService {
   ///   - [FileSystemException] → [LocalIOError]
   ///   - [PathSecurityError]   → [LocalIOError]
   ///
-  /// 三关键 ID（projectId / canvasId / resultNodeId）任一缺失或依赖未注入 →
-  /// 静默跳过（单测路径）。batch_size=1：只取 remoteUrls.first，批量留后续。
+  /// 依赖未注入 = 单测/纯内存模式：跳过下载落盘（返回 null）。
+  /// 依赖已注入但关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure）。
+  /// batch_size=1：只取 remoteUrls.first，批量留后续。
   Future<InkError?> _persistRemoteUrls(
     GenerationTask task,
     List<String> remoteUrls,
@@ -613,13 +620,18 @@ class InMemoryJobQueueService implements JobQueueService {
     final fileResolver = _fileResolver;
     final nodeRepo = _nodeRepo;
     final downloader = _videoDownloader;
-    if (projectId == null ||
-        canvasId == null ||
-        resultNodeId == null ||
-        fileResolver == null ||
-        nodeRepo == null ||
-        downloader == null) {
+    // 依赖未注入 = 纯内存/单测模式：跳过下载落盘（非故障）。
+    if (fileResolver == null || nodeRepo == null || downloader == null) {
       return null;
+    }
+    // 依赖已注入但关键 ID 缺失 = 生产故障：失败，不静默丢产物。
+    if (projectId == null || canvasId == null || resultNodeId == null) {
+      return LocalIOError(
+        extra: <String, Object?>{
+          'job_id': task.jobId,
+          'reason': 'missing_result_ids',
+        },
+      );
     }
 
     final isVideo = task.mode == GenerationMode.textToVideo ||
