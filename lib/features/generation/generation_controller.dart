@@ -168,6 +168,12 @@ class GenerationController {
     final resolution = _parseResolution(typeConfig['resolution']) ??
         Resolution.p1080;
     final aspect = _parseAspect(typeConfig['aspect_ratio']) ?? AspectRatio.r1x1;
+    final seed = typeConfig['seed'] is int ? typeConfig['seed'] as int : null;
+    final negRaw = typeConfig['negative_prompt'];
+    final negativePrompt =
+        (negRaw is String && negRaw.trim().isNotEmpty) ? negRaw.trim() : null;
+    final batchRaw = typeConfig['batch_size'];
+    final batchSize = (batchRaw is int && batchRaw > 0) ? batchRaw : 1;
 
     final apiKey = await secure.retrieve(
       SecureStorageKeys.providerApiKey(providerId),
@@ -241,11 +247,15 @@ class GenerationController {
           jobType: nodeType,
           fullPrompt: fullPrompt,
           userPrompt: prompt,
+          batchSize: batchSize,
           parameters: <String, Object?>{
             'resolution': resolution.name,
             'aspect_ratio': aspect.name,
             if (durationSeconds > 0) 'duration_seconds': durationSeconds,
             if (cameraEnum != null) 'camera': cameraEnum.name,
+            'seed': ?seed,
+            'negative_prompt': ?negativePrompt,
+            if (batchSize > 1) 'batch_size': batchSize,
             if (refs.refImagePaths.isNotEmpty)
               'ref_image_paths': refs.refImagePaths,
             if (refs.firstFramePath != null)
@@ -279,6 +289,7 @@ class GenerationController {
         resultNodeId: resultNodeId,
         mode: mode,
         prompt: fullPrompt,
+        negativePrompt: negativePrompt,
         resolution: resolution,
         aspectRatio: aspect,
         durationSeconds: durationSeconds,
@@ -286,6 +297,8 @@ class GenerationController {
         refImagePaths: refs.refImagePaths,
         firstFramePath: refs.firstFramePath,
         lastFramePath: refs.lastFramePath,
+        seed: seed,
+        batchSize: batchSize,
       );
 
       final handle = await queue.submit(task);
@@ -299,6 +312,7 @@ class GenerationController {
           jobId: jobId,
           providerId: providerId,
           canvasId: canvasId,
+          sourceNodeId: configNodeId,
         ),
       );
       unawaited(_track(
@@ -306,6 +320,7 @@ class GenerationController {
         canvasId: canvasId,
         resultNodeId: resultNodeId,
         providerId: providerId,
+        sourceNodeId: configNodeId,
       ));
       return jobId;
     } catch (e, st) {
@@ -354,6 +369,7 @@ class GenerationController {
     required String canvasId,
     required String resultNodeId,
     required String providerId,
+    required String sourceNodeId,
   }) async {
     final sub = handle.status.listen((s) {
       if (s is JobInProgress) {
@@ -362,6 +378,7 @@ class GenerationController {
             jobId: handle.jobId,
             providerId: providerId,
             canvasId: canvasId,
+            sourceNodeId: sourceNodeId,
             progress: s.progress,
           ),
         );
@@ -376,6 +393,7 @@ class GenerationController {
             jobId: handle.jobId,
             providerId: providerId,
             canvasId: canvasId,
+            sourceNodeId: sourceNodeId,
             artifactPath: path,
           ),
         );
@@ -387,6 +405,7 @@ class GenerationController {
               jobId: handle.jobId,
               providerId: providerId,
               canvasId: canvasId,
+              sourceNodeId: sourceNodeId,
             ),
           );
         } else {
@@ -405,6 +424,7 @@ class GenerationController {
               jobId: handle.jobId,
               providerId: providerId,
               canvasId: canvasId,
+              sourceNodeId: sourceNodeId,
               error: status.error,
             ),
           );
@@ -424,6 +444,7 @@ class GenerationController {
           jobId: handle.jobId,
           providerId: providerId,
           canvasId: canvasId,
+          sourceNodeId: sourceNodeId,
           error: UnknownError(cause: e, stackTrace: st),
         ),
       );

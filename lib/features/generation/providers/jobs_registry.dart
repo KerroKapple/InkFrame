@@ -85,4 +85,14 @@ class JobsRegistry extends Notifier<List<JobState>> {
   /// 某画布的活跃任务（非终态），按插入序——CanvasRenderQueue 消费。
   List<JobState> forCanvas(String canvasId) =>
       state.where((e) => e.canvasId == canvasId && !e.isTerminal).toList();
+
+  /// 某 config 节点当前的活跃（非终态）job——Inspector 按节点回读进度。
+  /// 多个活跃时取最近插入的一个；无活跃返回 null（终态不计）。
+  JobState? activeForSourceNode(String nodeId) {
+    JobState? found;
+    for (final e in state) {
+      if (e.sourceNodeId == nodeId && !e.isTerminal) found = e;
+    }
+    return found;
+  }
 }

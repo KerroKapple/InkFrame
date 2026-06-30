@@ -114,6 +114,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorResolutionLabel => 'Resolution';
 
   @override
+  String get inspectorAspectRatioLabel => 'Aspect ratio';
+
+  @override
+  String get inspectorSeedLabel => 'Seed';
+
+  @override
+  String get inspectorSeedHint => 'Random';
+
+  @override
+  String get inspectorNegativePromptLabel => 'Negative prompt';
+
+  @override
+  String get inspectorNegativePromptHint => 'What to avoid';
+
+  @override
+  String get inspectorBatchLabel => 'Batch size';
+
+  @override
   String get inspectorGenerate => 'Generate';
 
   @override
