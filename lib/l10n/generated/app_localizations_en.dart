@@ -509,6 +509,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioCreate => 'Create';
 
   @override
+  String get studioRenameProject => 'Rename project';
+
+  @override
+  String get studioRename => 'Rename';
+
+  @override
+  String get studioRenameFailed => 'Failed to rename project';
+
+  @override
+  String get studioDeleteProject => 'Delete project';
+
+  @override
+  String get studioDelete => 'Delete';
+
+  @override
+  String get studioDeleteConfirmTitle => 'Delete project?';
+
+  @override
+  String get studioDeleteConfirmBody =>
+      'The project and its canvases will be moved out of your library.';
+
+  @override
+  String get studioDeleteFailed => 'Failed to delete project';
+
+  @override
+  String get studioProjectMenuTooltip => 'Project options';
+
+  @override
   String studioProjectMetaLine(DateTime date, int count) {
     final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
     final String dateString = dateDateFormat.format(date);

@@ -1034,6 +1034,60 @@ abstract class AppLocalizations {
   /// **'Create'**
   String get studioCreate;
 
+  /// No description provided for @studioRenameProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename project'**
+  String get studioRenameProject;
+
+  /// No description provided for @studioRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get studioRename;
+
+  /// No description provided for @studioRenameFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rename project'**
+  String get studioRenameFailed;
+
+  /// No description provided for @studioDeleteProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project'**
+  String get studioDeleteProject;
+
+  /// No description provided for @studioDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get studioDelete;
+
+  /// No description provided for @studioDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project?'**
+  String get studioDeleteConfirmTitle;
+
+  /// No description provided for @studioDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The project and its canvases will be moved out of your library.'**
+  String get studioDeleteConfirmBody;
+
+  /// No description provided for @studioDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete project'**
+  String get studioDeleteFailed;
+
+  /// No description provided for @studioProjectMenuTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Project options'**
+  String get studioProjectMenuTooltip;
+
   /// Project card meta line: real creation month + canvas count
   ///
   /// In en, this message translates to:

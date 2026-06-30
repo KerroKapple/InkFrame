@@ -491,6 +491,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioCreate => '创建';
 
   @override
+  String get studioRenameProject => '重命名项目';
+
+  @override
+  String get studioRename => '重命名';
+
+  @override
+  String get studioRenameFailed => '重命名项目失败';
+
+  @override
+  String get studioDeleteProject => '删除项目';
+
+  @override
+  String get studioDelete => '删除';
+
+  @override
+  String get studioDeleteConfirmTitle => '删除项目？';
+
+  @override
+  String get studioDeleteConfirmBody => '该项目及其画布将移出你的项目库。';
+
+  @override
+  String get studioDeleteFailed => '删除项目失败';
+
+  @override
+  String get studioProjectMenuTooltip => '项目操作';
+
+  @override
   String studioProjectMetaLine(DateTime date, int count) {
     final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
     final String dateString = dateDateFormat.format(date);
