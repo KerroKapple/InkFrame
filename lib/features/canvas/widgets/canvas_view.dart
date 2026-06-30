@@ -287,11 +287,10 @@ class _CanvasBody extends ConsumerWidget {
       (_, next) => _onLinkEvent(context, next),
     );
 
-    final selected = ref.watch(canvasSelectionControllerProvider);
-    final linkSourceId = ref.watch(linkModeControllerProvider);
-
+    // 本层不再 watch 选中/链接态——这两类高频变化下沉到各插槽各自 watch，
+    // 避免改一次选中就整层（含全部节点卡片）重建。
     void onEmptyTap() {
-      if (linkSourceId != null) {
+      if (ref.read(linkModeControllerProvider) != null) {
         ref.read(linkModeControllerProvider.notifier).cancel();
       }
       ref.read(canvasSelectionControllerProvider.notifier).clear();
@@ -313,32 +312,22 @@ class _CanvasBody extends ConsumerWidget {
       );
     }
 
-    // Inspector 仅当单选且选中的是 config 节点时显示。
-    CanvasNode? inspectorTarget;
-    if (selected.length == 1) {
-      final id = selected.first;
-      inspectorTarget = nodes
-          .where((n) => n.id == id && n.role == NodeRole.config)
-          .cast<CanvasNode?>()
-          .firstWhere((_) => true, orElse: () => null);
-    }
-
     final Widget leftArea = Stack(
       children: [
         Positioned.fill(child: canvasArea),
-        if (linkSourceId != null)
-          Positioned(
-            top: InkSpacing.md,
-            left: InkSpacing.md,
-            right: InkSpacing.md,
-            child: _LinkHintBanner(),
-          ),
-        if (selected.length >= 2)
-          Positioned(
-            top: InkSpacing.md,
-            right: InkSpacing.md,
-            child: _SelectionCountChip(count: selected.length),
-          ),
+        // 链接提示条：仅随 linkMode 重建。
+        const Positioned(
+          top: InkSpacing.md,
+          left: InkSpacing.md,
+          right: InkSpacing.md,
+          child: _LinkHintSlot(),
+        ),
+        // 多选计数 chip：仅随选中数量重建。
+        const Positioned(
+          top: InkSpacing.md,
+          right: InkSpacing.md,
+          child: _SelectionCountSlot(),
+        ),
         // 泳道工具栏：左下角固定，位于链接提示条之下。
         Positioned(
           bottom: InkSpacing.md,
@@ -351,11 +340,8 @@ class _CanvasBody extends ConsumerWidget {
     return Row(
       children: [
         Expanded(child: leftArea),
-        if (inspectorTarget != null)
-          NodeInspectorRouter(
-            key: ValueKey(inspectorTarget.id),
-            node: inspectorTarget,
-          ),
+        // Inspector：单选 config 节点时浮出，仅随选中态重建。
+        _InspectorSlot(nodes: nodes),
       ],
     );
   }
@@ -398,8 +384,8 @@ class _CanvasStage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    final selected = ref.watch(canvasSelectionControllerProvider);
-    final linkSourceId = ref.watch(linkModeControllerProvider);
+    // 选中/链接态不在本层 watch——下沉到 _NodeCardSlot 各自 watch，改选中
+    // 只重建涉及的卡片，不再整层重建（丝滑核心）。
     final selectedEdgeId = ref.watch(selectedEdgeControllerProvider);
     final edges = ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[];
@@ -408,6 +394,8 @@ class _CanvasStage extends ConsumerWidget {
     final direction = ref.watch(canvasLaneDirectionProvider(canvasId)).valueOrNull ?? LaneDirection.horizontal;
     // 折叠态（纯 UI，不持久化）。
     final collapsedIds = ref.watch(laneCollapseProvider(canvasId));
+    // 拖拽落点 → 泳道归属用的切片，整层算一次复用给各卡片插槽。
+    final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
 
     void onEdgeLayerTap(TapDownDetails d) {
       final hitId = hitTestEdge(
@@ -483,36 +471,16 @@ class _CanvasStage extends ConsumerWidget {
                   key: ValueKey('node-card-${node.id}'),
                   left: node.position.dx,
                   top: node.position.dy,
-                  // HI-13/HI-15：拖拽位移在 NodeCard 内部局部累积，落点
-                  // 一次性提交 moveNode；RepaintBoundary 把拖拽重绘隔离
-                  // 在本卡片 layer，不放大到全画布。
-                  child: RepaintBoundary(
-                    child: NodeCard(
-                      node: node,
-                      selected: selected.contains(node.id),
-                      onTap: () => onNodeTap(node),
-                      onDragEnd: (totalDelta) {
-                        // 拖拽落点中心 → 计算归属泳道，一并传给 moveNode。
-                        final center = node.position + totalDelta +
-                            Offset(node.size.width / 2, node.size.height / 2);
-                        final laneId = laneIdAtPoint(
-                          point: center,
-                          lanes: [for (final l in lanes) (id: l.id, size: l.size)],
-                          direction: direction,
-                        );
-                        ref
-                            .read(canvasNodesControllerProvider(canvasId).notifier)
-                            .moveNode(node.id, totalDelta, laneId: laneId)
-                            .catchError((Object _) {});
-                      },
-                      onStartLink: () => ref
-                          .read(linkModeControllerProvider.notifier)
-                          .start(node.id),
-                      onDelete: () => _handleNodeDelete(context, ref, node.id),
-                      isLinkSource: linkSourceId == node.id,
-                      isLinkCandidate:
-                          linkSourceId != null && linkSourceId != node.id,
-                    ),
+                  // HI-13/HI-15：拖拽位移在 NodeCard 内部局部累积，落点一次性
+                  // 提交 moveNode；选中/链接态下沉到 _NodeCardSlot 各自 watch，
+                  // RepaintBoundary 把拖拽/重绘隔离在本卡片 layer。
+                  child: _NodeCardSlot(
+                    node: node,
+                    canvasId: canvasId,
+                    laneSlices: laneSlices,
+                    direction: direction,
+                    onTap: () => onNodeTap(node),
+                    onDelete: () => _handleNodeDelete(context, ref, node.id),
                   ),
                 ),
               // 泳道标题栏：节点层之上，边删除按钮之下。
@@ -775,4 +743,109 @@ class _CanvasStage extends ConsumerWidget {
   }
   if (source == null || target == null) return null;
   return (edge: edge, source: source, target: target);
+}
+
+/// 单个节点卡片插槽：各自 watch 自己的选中/链接态——改选中只重建涉及的卡片，
+/// 不连带整个舞台层（丝滑核心）。NodeCard 公共 API 不变。
+class _NodeCardSlot extends ConsumerWidget {
+  const _NodeCardSlot({
+    required this.node,
+    required this.canvasId,
+    required this.laneSlices,
+    required this.direction,
+    required this.onTap,
+    required this.onDelete,
+  });
+
+  final CanvasNode node;
+  final String canvasId;
+  final List<({String id, double size})> laneSlices;
+  final LaneDirection direction;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // .select：仅当本节点的"是否被选中"翻转时才重建本卡片。
+    final selected = ref.watch(
+      canvasSelectionControllerProvider.select((s) => s.contains(node.id)),
+    );
+    final linkSourceId = ref.watch(linkModeControllerProvider);
+    return RepaintBoundary(
+      child: NodeCard(
+        node: node,
+        selected: selected,
+        onTap: onTap,
+        onDragEnd: (totalDelta) {
+          // 拖拽落点中心 → 计算归属泳道，一并传给 moveNode。
+          final center = node.position +
+              totalDelta +
+              Offset(node.size.width / 2, node.size.height / 2);
+          final laneId = laneIdAtPoint(
+            point: center,
+            lanes: laneSlices,
+            direction: direction,
+          );
+          ref
+              .read(canvasNodesControllerProvider(canvasId).notifier)
+              .moveNode(node.id, totalDelta, laneId: laneId)
+              .catchError((Object _) {});
+        },
+        onStartLink: () =>
+            ref.read(linkModeControllerProvider.notifier).start(node.id),
+        onDelete: onDelete,
+        isLinkSource: linkSourceId == node.id,
+        isLinkCandidate: linkSourceId != null && linkSourceId != node.id,
+      ),
+    );
+  }
+}
+
+/// 链接提示条插槽：仅随 linkMode 变化重建。
+class _LinkHintSlot extends ConsumerWidget {
+  const _LinkHintSlot();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final active = ref.watch(linkModeControllerProvider) != null;
+    return active ? _LinkHintBanner() : const SizedBox.shrink();
+  }
+}
+
+/// 多选计数 chip 插槽：仅随选中数量变化重建。
+class _SelectionCountSlot extends ConsumerWidget {
+  const _SelectionCountSlot();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(
+      canvasSelectionControllerProvider.select((s) => s.length),
+    );
+    if (count < 2) return const SizedBox.shrink();
+    return _SelectionCountChip(count: count);
+  }
+}
+
+/// Inspector 插槽：单选 config 节点时浮出；仅随选中态重建，不连带画布。
+class _InspectorSlot extends ConsumerWidget {
+  const _InspectorSlot({required this.nodes});
+
+  final List<CanvasNode> nodes;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final selected = ref.watch(canvasSelectionControllerProvider);
+    CanvasNode? target;
+    if (selected.length == 1) {
+      final id = selected.first;
+      for (final n in nodes) {
+        if (n.id == id && n.role == NodeRole.config) {
+          target = n;
+          break;
+        }
+      }
+    }
+    if (target == null) return const SizedBox.shrink();
+    return NodeInspectorRouter(key: ValueKey(target.id), node: target);
+  }
 }
