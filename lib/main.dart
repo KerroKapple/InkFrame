@@ -14,8 +14,10 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'core/di/paths.dart';
+import 'core/di/preferences.dart';
 import 'core/paths/app_paths.dart';
 import 'services/app_teardown.dart';
+import 'services/file_preferences_service.dart';
 import 'theme/tokens.dart';
 
 Future<void> main() async {
@@ -28,9 +30,14 @@ Future<void> main() async {
   final AppPaths paths = await DefaultAppPaths.create();
   await paths.ensureInitialized();
 
+  // 启动即加载持久化偏好（主题/语言/对比度/缩放），供控制器 build 期 seed。
+  final FilePreferencesService prefsService = FilePreferencesService(paths);
+  await prefsService.load();
+
   final ProviderContainer container = ProviderContainer(
     overrides: <Override>[
       appPathsProvider.overrideWithValue(paths),
+      preferencesServiceProvider.overrideWithValue(prefsService),
     ],
   );
   final AppTeardown teardown = AppTeardown();
