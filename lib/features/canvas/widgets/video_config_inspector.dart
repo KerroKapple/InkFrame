@@ -65,16 +65,20 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     _providerId =
         savedProviderId ?? (caps.isNotEmpty ? caps.first.providerId : null);
     final selected = _selectedCaps(caps);
+    // 钳制到当前 provider 支持集，避免 DropdownButton "value 不在 items" 断言：
+    // 持久化的旧值若不被当前 provider 支持，退回 first / null。
+    final supportedDur = selected?.supportedDurations ?? const <int>[];
     final savedDurMs = tc['duration_ms'];
-    _durationSec = savedDurMs is int
-        ? savedDurMs ~/ 1000
-        : (selected != null && selected.supportedDurations.isNotEmpty
-            ? selected.supportedDurations.first
-            : null);
-    _camera = _parseCamera(tc['camera']) ??
-        (selected != null && selected.supportedCameras.isNotEmpty
-            ? selected.supportedCameras.first
-            : null);
+    final savedDurSec = savedDurMs is int ? savedDurMs ~/ 1000 : null;
+    _durationSec = (savedDurSec != null && supportedDur.contains(savedDurSec))
+        ? savedDurSec
+        : (supportedDur.isNotEmpty ? supportedDur.first : null);
+
+    final supportedCam = selected?.supportedCameras ?? const <CameraMovement>[];
+    final savedCam = _parseCamera(tc['camera']);
+    _camera = (savedCam != null && supportedCam.contains(savedCam))
+        ? savedCam
+        : (supportedCam.isNotEmpty ? supportedCam.first : null);
     final savedPrompt = tc['prompt'];
     if (savedPrompt is String) _promptCtrl.text = savedPrompt;
   }
@@ -230,33 +234,36 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                     );
                   },
           ),
-          const SizedBox(height: InkSpacing.md),
-          Text(
-            context.l10n.inspectorVideoCameraLabel,
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-          const SizedBox(height: InkSpacing.xs),
-          DropdownButton<CameraMovement>(
-            value: _camera,
-            isExpanded: true,
-            items: [
-              if (selected != null)
+          // 运镜：仅当当前 provider 真正声明了 supportedCameras 才展示——
+          // 否则隐藏整段（当前所有 provider 均为空，避免一个永远空的死下拉）。
+          if (selected != null && selected.supportedCameras.isNotEmpty) ...[
+            const SizedBox(height: InkSpacing.md),
+            Text(
+              context.l10n.inspectorVideoCameraLabel,
+              style: typo.caption.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            DropdownButton<CameraMovement>(
+              value: _camera,
+              isExpanded: true,
+              items: [
                 for (final c in selected.supportedCameras)
                   DropdownMenuItem(
                     value: c,
                     child: Text(cameraMovementLabel(context, c)),
                   ),
-            ],
-            onChanged: busy
-                ? null
-                : (v) {
-                    if (v == null) return;
-                    setState(() => _camera = v);
-                    _submitCtrl.saveConfig(
-                      <String, Object?>{'camera': v.name},
-                    );
-                  },
-          ),
+              ],
+              onChanged: busy
+                  ? null
+                  : (v) {
+                      if (v == null) return;
+                      setState(() => _camera = v);
+                      _submitCtrl.saveConfig(
+                        <String, Object?>{'camera': v.name},
+                      );
+                    },
+            ),
+          ],
           const SizedBox(height: InkSpacing.md),
           Text(
             context.l10n.inspectorVideoModeAuto,

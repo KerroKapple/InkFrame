@@ -147,5 +147,18 @@ void main() {
       expect(a.progressValue, 1.0);
       expect(b.progressValue, 0.0);
     });
+
+    test('sourceNodeId：可选字段，默认 null，各变体可读', () {
+      const withNode = JobState.running(
+        jobId: 'j',
+        providerId: 'p',
+        canvasId: 'cv',
+        sourceNodeId: 'cfg-7',
+      );
+      const withoutNode =
+          JobState.queued(jobId: 'j', providerId: 'p', canvasId: 'cv');
+      expect(withNode.sourceNodeId, 'cfg-7');
+      expect(withoutNode.sourceNodeId, isNull);
+    });
   });
 }

@@ -105,6 +105,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorResolutionLabel => '分辨率';
 
   @override
+  String get inspectorAspectRatioLabel => '宽高比';
+
+  @override
+  String get inspectorSeedLabel => '种子';
+
+  @override
+  String get inspectorSeedHint => '随机';
+
+  @override
+  String get inspectorNegativePromptLabel => '负向提示词';
+
+  @override
+  String get inspectorNegativePromptHint => '要避免的内容';
+
+  @override
+  String get inspectorBatchLabel => '数量';
+
+  @override
   String get inspectorGenerate => '生成';
 
   @override

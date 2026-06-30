@@ -290,6 +290,42 @@ abstract class AppLocalizations {
   /// **'Resolution'**
   String get inspectorResolutionLabel;
 
+  /// No description provided for @inspectorAspectRatioLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Aspect ratio'**
+  String get inspectorAspectRatioLabel;
+
+  /// No description provided for @inspectorSeedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed'**
+  String get inspectorSeedLabel;
+
+  /// No description provided for @inspectorSeedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Random'**
+  String get inspectorSeedHint;
+
+  /// No description provided for @inspectorNegativePromptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Negative prompt'**
+  String get inspectorNegativePromptLabel;
+
+  /// No description provided for @inspectorNegativePromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What to avoid'**
+  String get inspectorNegativePromptHint;
+
+  /// No description provided for @inspectorBatchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch size'**
+  String get inspectorBatchLabel;
+
   /// No description provided for @inspectorGenerate.
   ///
   /// In en, this message translates to:

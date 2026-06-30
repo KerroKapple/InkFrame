@@ -132,6 +132,7 @@ class _FakeJobRepo implements JobRepository {
       'provider_id': providerId,
       'full_prompt': fullPrompt,
       'parameters': parameters,
+      'batch_size': batchSize,
     });
     return id;
   }
@@ -650,6 +651,85 @@ void main() {
             r.extra?['job_id'] == jobId &&
             r.extra?['provider_id'] == providerId),
         isNotEmpty,
+      );
+    });
+  });
+
+  group('config 参数抬升（seed / negative_prompt / batch_size / sourceNodeId）', () {
+    Future<String> seedParamNode(Map<String, Object?> extra) async {
+      const id = 'cfgp';
+      nodes.rows[id] = {
+        'id': id,
+        'canvas_id': 'cvx',
+        'project_id': 'proj-1',
+        'type': 'image',
+        'node_role': 'config',
+        'type_config': <String, Object?>{
+          'prompt': 'a cat',
+          'provider_id': providerId,
+          ...extra,
+        },
+      };
+      return id;
+    }
+
+    test('seed / negative_prompt / batch_size 抬进 GenerationTask + jobs.create',
+        () async {
+      final cfg = await seedParamNode(<String, Object?>{
+        'seed': 42,
+        'negative_prompt': 'blurry, low quality',
+        'batch_size': 3,
+      });
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final task = queue.lastTask!;
+      expect(task.seed, 42);
+      expect(task.negativePrompt, 'blurry, low quality');
+      expect(task.batchSize, 3);
+
+      final created = jobs.creates.first;
+      expect(created['batch_size'], 3);
+      final params = created['parameters']! as Map<String, Object?>;
+      expect(params['seed'], 42);
+      expect(params['negative_prompt'], 'blurry, low quality');
+      expect(params['batch_size'], 3);
+    });
+
+    test('缺省时 seed=null / negativePrompt=null / batchSize=1', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final task = queue.lastTask!;
+      expect(task.seed, isNull);
+      expect(task.negativePrompt, isNull);
+      expect(task.batchSize, 1);
+    });
+
+    test('negative_prompt 全空白视为未设置（null）', () async {
+      final cfg = await seedParamNode(<String, Object?>{'negative_prompt': '   '});
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(queue.lastTask!.negativePrompt, isNull);
+    });
+
+    test('JobState 事件携带 sourceNodeId = configNodeId', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
+
+      expect(jobsRegistry.events, isNotEmpty);
+      expect(
+        jobsRegistry.events.every((e) => e.sourceNodeId == cfg),
+        isTrue,
+        reason: 'queued→running→succeeded 全程应带发起节点 id',
       );
     });
   });

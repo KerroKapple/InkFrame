@@ -14,7 +14,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/models/job_state.dart';
+import '../../generation/providers/jobs_registry.dart';
 import '../providers/inspector_submit_controller.dart';
+
+/// 该 config 节点当前活跃（非终态）的 job——从注册表镜像取最近一条。
+JobState? _activeJobFor(List<JobState> jobs, String nodeId) {
+  JobState? found;
+  for (final e in jobs) {
+    if (e.sourceNodeId == nodeId && !e.isTerminal) found = e;
+  }
+  return found;
+}
+
+/// 把真实 job 状态映射成 Inspector 视图态：队列/提交→Submitting，运行→带真实进度。
+InspectorSubmitState _jobToInspectorView(JobState job) => switch (job) {
+      JobQueued() || JobSubmitting() => const InspectorSubmitSubmitting(),
+      JobRunning(:final progress) =>
+        InspectorSubmitRunning(progress: progress > 0 ? progress : null),
+      _ => const InspectorSubmitIdle(),
+    };
 
 /// InspectorSubmitError → 用户可读文案。exhaustive switch，新错误类型漏映射编译期报错。
 String inspectorSubmitErrorText(BuildContext context, InspectorSubmitError e) {
@@ -52,6 +71,11 @@ class InspectorStatusBinding extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(inspectorSubmitControllerProvider(nodeId));
+    // 真实进度来源：注册表里该节点的活跃 job（覆盖提交控制器的瞬时态）；
+    // 无活跃 job 时回落到提交控制器态（idle 按钮 / 提交前的失败）。
+    final activeJob = ref.watch(
+      jobsRegistryProvider.select((jobs) => _activeJobFor(jobs, nodeId)),
+    );
     final pid = providerId;
     final hasKey = pid != null &&
         (ref.watch(inspectorHasApiKeyProvider(pid)).valueOrNull ?? false);
@@ -63,7 +87,7 @@ class InspectorStatusBinding extends ConsumerWidget {
       disabledReason = disabledNoKeyText;
     }
     return InspectorStatusPanel(
-      view: state,
+      view: activeJob != null ? _jobToInspectorView(activeJob) : state,
       generateLabel: generateLabel,
       canSubmit: !promptEmpty && hasKey,
       disabledReason: disabledReason,

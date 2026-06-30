@@ -140,6 +140,30 @@ void main() {
     expect(state.last.jobId, 'stuck-${kJobsRegistryMaxActive + 3}');
   });
 
+  test('activeForSourceNode 返回该节点的活跃 job；终态 / 他节点过滤', () {
+    final reg = container.read(jobsRegistryProvider.notifier);
+    reg.upsert(const JobState.running(
+        jobId: 'a', providerId: 'p', canvasId: 'c1', sourceNodeId: 'n1', progress: 0.3));
+    reg.upsert(const JobState.running(
+        jobId: 'b', providerId: 'p', canvasId: 'c1', sourceNodeId: 'n2', progress: 0.5));
+    reg.upsert(const JobState.succeeded(
+        jobId: 'c', providerId: 'p', canvasId: 'c1', sourceNodeId: 'n3', artifactPath: 'x.png'));
+
+    expect(reg.activeForSourceNode('n1')?.jobId, 'a');
+    expect(reg.activeForSourceNode('n2')?.jobId, 'b');
+    expect(reg.activeForSourceNode('n3'), isNull, reason: '终态不算活跃');
+    expect(reg.activeForSourceNode('absent'), isNull);
+  });
+
+  test('activeForSourceNode 多个活跃取最近插入', () {
+    final reg = container.read(jobsRegistryProvider.notifier);
+    reg.upsert(const JobState.queued(
+        jobId: 'old', providerId: 'p', canvasId: 'c1', sourceNodeId: 'n1'));
+    reg.upsert(const JobState.running(
+        jobId: 'new', providerId: 'p', canvasId: 'c1', sourceNodeId: 'n1', progress: 0.2));
+    expect(reg.activeForSourceNode('n1')?.jobId, 'new');
+  });
+
   test('forCanvas 只返回指定画布的活跃任务，按插入序', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
