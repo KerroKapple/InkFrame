@@ -4,6 +4,7 @@
 // 错误只走 InkError 链，原样冒泡给调用方渲染。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/db/columns.dart';
 import '../../../core/di/repositories.dart';
 import '../providers/workspace_projects_provider.dart';
 
@@ -28,6 +29,23 @@ class StudioProjectsController {
       final projectId = await scope.projects.create(name: name);
       await scope.canvas.create(projectId: projectId, name: firstCanvasName);
     });
+    _ref.invalidate(workspaceProjectsProvider);
+  }
+
+  /// 重命名项目（单行 update）；成功后刷新工作库列表。错误走 InkError 冒泡。
+  Future<void> renameProject({
+    required String id,
+    required String name,
+  }) async {
+    final repo = await _ref.read(projectRepositoryProvider.future);
+    await repo.update(id, <String, Object?>{ProjectCol.name: name});
+    _ref.invalidate(workspaceProjectsProvider);
+  }
+
+  /// 删除项目（软删——移出库、可恢复，不级联硬删画布）；成功后刷新列表。
+  Future<void> deleteProject(String id) async {
+    final repo = await _ref.read(projectRepositoryProvider.future);
+    await repo.softDelete(id);
     _ref.invalidate(workspaceProjectsProvider);
   }
 }

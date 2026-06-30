@@ -207,6 +207,15 @@
   "studioNewProjectErrorDuplicate": "已存在同名项目",
   "studioNewProjectFailed": "项目创建失败",
   "studioCreate": "创建",
+  "studioRenameProject": "重命名项目",
+  "studioRename": "重命名",
+  "studioRenameFailed": "重命名项目失败",
+  "studioDeleteProject": "删除项目",
+  "studioDelete": "删除",
+  "studioDeleteConfirmTitle": "删除项目？",
+  "studioDeleteConfirmBody": "该项目及其画布将移出你的项目库。",
+  "studioDeleteFailed": "删除项目失败",
+  "studioProjectMenuTooltip": "项目操作",
   "studioProjectMetaLine": "{date} · {count, plural, other{{count} 个画布}}",
   "@studioProjectMetaLine": {
     "placeholders": {

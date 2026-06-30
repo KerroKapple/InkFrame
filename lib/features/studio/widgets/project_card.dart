@@ -1,6 +1,7 @@
 // ProjectCard：16:10 占位静帧 + 衬线标题 + mono 元数据。
 import 'package:flutter/material.dart';
 
+import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/primitives/ink_noir_card.dart';
 import '../../../theme/tokens.dart';
@@ -11,11 +12,15 @@ class StudioProjectCard extends StatelessWidget {
     required this.name,
     required this.metaLine,
     required this.onTap,
+    this.onRename,
+    this.onDelete,
   });
 
   final String name;
   final String metaLine;
   final VoidCallback onTap;
+  final VoidCallback? onRename;
+  final VoidCallback? onDelete;
 
   @override
   Widget build(BuildContext context) {
@@ -27,24 +32,34 @@ class StudioProjectCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          AspectRatio(
-            aspectRatio: 16 / 10,
-            child: Container(
-              decoration: BoxDecoration(
-                color: colors.surface3,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(InkRadius.lg),
-                ),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: <Color>[
-                    colors.surface3,
-                    colors.surface1,
-                  ],
+          Stack(
+            children: <Widget>[
+              AspectRatio(
+                aspectRatio: 16 / 10,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: colors.surface3,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(InkRadius.lg),
+                    ),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: <Color>[
+                        colors.surface3,
+                        colors.surface1,
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
+              if (onRename != null || onDelete != null)
+                Positioned(
+                  top: InkSpacing.xs,
+                  right: InkSpacing.xs,
+                  child: _ProjectMenu(onRename: onRename, onDelete: onDelete),
+                ),
+            ],
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(
@@ -75,6 +90,46 @@ class StudioProjectCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+enum _ProjectAction { rename, delete }
+
+/// 项目卡右上角操作菜单（重命名 / 删除）；菜单点击不冒泡到卡片 onTap。
+class _ProjectMenu extends StatelessWidget {
+  const _ProjectMenu({this.onRename, this.onDelete});
+
+  final VoidCallback? onRename;
+  final VoidCallback? onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    return PopupMenuButton<_ProjectAction>(
+      icon: Icon(Icons.more_vert, size: 18, color: colors.fg2),
+      tooltip: context.l10n.studioProjectMenuTooltip,
+      color: colors.surface2,
+      onSelected: (a) {
+        switch (a) {
+          case _ProjectAction.rename:
+            onRename?.call();
+          case _ProjectAction.delete:
+            onDelete?.call();
+        }
+      },
+      itemBuilder: (context) => <PopupMenuEntry<_ProjectAction>>[
+        if (onRename != null)
+          PopupMenuItem<_ProjectAction>(
+            value: _ProjectAction.rename,
+            child: Text(context.l10n.studioRenameProject),
+          ),
+        if (onDelete != null)
+          PopupMenuItem<_ProjectAction>(
+            value: _ProjectAction.delete,
+            child: Text(context.l10n.studioDeleteProject),
+          ),
+      ],
     );
   }
 }
