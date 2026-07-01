@@ -168,6 +168,14 @@
   "inspectorRoleLastFrame": "Last frame",
   "inspectorRemoveInput": "Remove input",
 
+  "inspectorCharactersLabel": "Characters",
+  "inspectorCharactersEmpty": "No characters yet",
+  "inspectorCharactersUnsupported": "This model ignores reference images",
+  "inspectorCharactersSaveFromReference": "Save reference as character",
+  "inspectorCharactersDialogTitle": "New character",
+  "inspectorCharactersNameHint": "Character name",
+  "inspectorCharactersSave": "Save",
+
   "canvasAddImageNode": "Add image node",
   "canvasAddVideoNode": "Add video node",
   "@canvasAddVideoNode": {},

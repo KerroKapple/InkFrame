@@ -776,6 +776,48 @@ abstract class AppLocalizations {
   /// **'Remove input'**
   String get inspectorRemoveInput;
 
+  /// No description provided for @inspectorCharactersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Characters'**
+  String get inspectorCharactersLabel;
+
+  /// No description provided for @inspectorCharactersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No characters yet'**
+  String get inspectorCharactersEmpty;
+
+  /// No description provided for @inspectorCharactersUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This model ignores reference images'**
+  String get inspectorCharactersUnsupported;
+
+  /// No description provided for @inspectorCharactersSaveFromReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Save reference as character'**
+  String get inspectorCharactersSaveFromReference;
+
+  /// No description provided for @inspectorCharactersDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New character'**
+  String get inspectorCharactersDialogTitle;
+
+  /// No description provided for @inspectorCharactersNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Character name'**
+  String get inspectorCharactersNameHint;
+
+  /// No description provided for @inspectorCharactersSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get inspectorCharactersSave;
+
   /// No description provided for @canvasAddImageNode.
   ///
   /// In en, this message translates to:

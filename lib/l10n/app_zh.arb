@@ -160,6 +160,14 @@
   "inspectorRoleLastFrame": "尾帧",
   "inspectorRemoveInput": "移除输入",
 
+  "inspectorCharactersLabel": "角色",
+  "inspectorCharactersEmpty": "还没有角色",
+  "inspectorCharactersUnsupported": "当前模型不使用参考图，角色不会生效",
+  "inspectorCharactersSaveFromReference": "把参考图存为角色",
+  "inspectorCharactersDialogTitle": "新建角色",
+  "inspectorCharactersNameHint": "角色名称",
+  "inspectorCharactersSave": "保存",
+
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
   "canvasAddNodeTooltip": "新建节点",

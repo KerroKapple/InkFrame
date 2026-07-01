@@ -362,6 +362,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorRemoveInput => '移除输入';
 
   @override
+  String get inspectorCharactersLabel => '角色';
+
+  @override
+  String get inspectorCharactersEmpty => '还没有角色';
+
+  @override
+  String get inspectorCharactersUnsupported => '当前模型不使用参考图，角色不会生效';
+
+  @override
+  String get inspectorCharactersSaveFromReference => '把参考图存为角色';
+
+  @override
+  String get inspectorCharactersDialogTitle => '新建角色';
+
+  @override
+  String get inspectorCharactersNameHint => '角色名称';
+
+  @override
+  String get inspectorCharactersSave => '保存';
+
+  @override
   String get canvasAddImageNode => '添加图片节点';
 
   @override

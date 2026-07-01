@@ -376,6 +376,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorRemoveInput => 'Remove input';
 
   @override
+  String get inspectorCharactersLabel => 'Characters';
+
+  @override
+  String get inspectorCharactersEmpty => 'No characters yet';
+
+  @override
+  String get inspectorCharactersUnsupported =>
+      'This model ignores reference images';
+
+  @override
+  String get inspectorCharactersSaveFromReference =>
+      'Save reference as character';
+
+  @override
+  String get inspectorCharactersDialogTitle => 'New character';
+
+  @override
+  String get inspectorCharactersNameHint => 'Character name';
+
+  @override
+  String get inspectorCharactersSave => 'Save';
+
+  @override
   String get canvasAddImageNode => 'Add image node';
 
   @override
