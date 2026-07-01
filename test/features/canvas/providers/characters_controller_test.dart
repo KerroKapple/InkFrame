@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/character_assets.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/providers/characters_controller.dart';
 
 import '../../../_harness/fake_character.dart';
@@ -14,10 +15,12 @@ void main() {
   setUp(() {
     repo = FakeCharacterRepo();
     assets = FakeCharacterAssetService();
-    container = ProviderContainer(overrides: <Override>[
-      characterRepositoryProvider.overrideWith((ref) async => repo),
-      characterAssetServiceProvider.overrideWithValue(assets),
-    ]);
+    container = ProviderContainer(
+      overrides: <Override>[
+        characterRepositoryProvider.overrideWith((ref) async => repo),
+        characterAssetServiceProvider.overrideWithValue(assets),
+      ],
+    );
     addTearDown(container.dispose);
   });
 
@@ -41,7 +44,9 @@ void main() {
       'reference_image_paths': <String>['characters/h.png'],
     };
     await boot('p1');
-    final list = container.read(charactersControllerProvider('p1')).valueOrNull!;
+    final list = container
+        .read(charactersControllerProvider('p1'))
+        .valueOrNull!;
     expect(list, hasLength(1));
     expect(list.single.name, 'Hero');
     expect(list.single.referenceImagePaths, ['characters/h.png']);
@@ -57,7 +62,9 @@ void main() {
     final row = repo.rows[id]!;
     expect(row['name'], 'Hero');
     expect(row['reference_image_paths'], isNotEmpty);
-    final list = container.read(charactersControllerProvider('p1')).valueOrNull!;
+    final list = container
+        .read(charactersControllerProvider('p1'))
+        .valueOrNull!;
     expect(list.any((c) => c.id == id), isTrue);
   });
 
@@ -71,11 +78,13 @@ void main() {
     final notifier = await boot('p1');
     await notifier.rename('c1', 'New');
     expect(repo.rows['c1']!['name'], 'New');
-    final list = container.read(charactersControllerProvider('p1')).valueOrNull!;
+    final list = container
+        .read(charactersControllerProvider('p1'))
+        .valueOrNull!;
     expect(list.single.name, 'New');
   });
 
-  test('delete：软删 + 资产清理 + 列表移除', () async {
+  test('delete：软删（可 restore）→ 不销毁参考图资产 + 列表移除', () async {
     repo.rows['c1'] = <String, Object?>{
       'id': 'c1',
       'project_id': 'p1',
@@ -85,8 +94,38 @@ void main() {
     final notifier = await boot('p1');
     await notifier.delete('c1');
     expect(repo.softDeleted, contains('c1'));
-    expect(assets.deleted, contains('characters/x.png'));
-    final list = container.read(charactersControllerProvider('p1')).valueOrNull!;
+    // 软删可恢复：不销毁资产，否则 restore 后指向已删文件（评审 F2）。
+    expect(assets.deleted, isEmpty);
+    final list = container
+        .read(charactersControllerProvider('p1'))
+        .valueOrNull!;
     expect(list, isEmpty);
+  });
+
+  test('createFromImage：repo.update 失败 → 清 ghost 记录 + 孤儿图，上抛', () async {
+    repo.failUpdate = true;
+    final notifier = await boot('p1');
+    await expectLater(
+      notifier.createFromImage(name: 'Hero', sourceAbsolutePath: '/src/a.png'),
+      throwsA(isA<InkError>()),
+    );
+    // 记录已回滚（hardDelete），不残留 ghost；导入的图也被清理。
+    expect(repo.rows.values.any((r) => r['name'] == 'Hero'), isFalse);
+    expect(assets.deleted, hasLength(1));
+  });
+
+  test('rename：repo 抛 InkError → 乐观更新回滚', () async {
+    repo.rows['c1'] = <String, Object?>{
+      'id': 'c1',
+      'project_id': 'p1',
+      'name': 'Old',
+    };
+    repo.failUpdate = true;
+    final notifier = await boot('p1');
+    await expectLater(notifier.rename('c1', 'New'), throwsA(isA<InkError>()));
+    final list = container
+        .read(charactersControllerProvider('p1'))
+        .valueOrNull!;
+    expect(list.single.name, 'Old'); // 回滚
   });
 }

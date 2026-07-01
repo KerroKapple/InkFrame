@@ -43,6 +43,7 @@ class BatchResult {
   final String? errorMessage;
 
   bool get isSuccess => status == 'success';
+  bool get isError => status == 'error';
 
   @override
   bool operator ==(Object other) =>

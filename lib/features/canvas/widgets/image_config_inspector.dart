@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/file_resolver.dart';
 import '../../../core/di/providers.dart';
+import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -583,33 +584,37 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
             prompt: current.prompt.trim(),
             negative: current.negative.trim(),
           );
-    } catch (_) {
-      // best-effort：落库失败不崩 UI。
+    } on Exception catch (_) {
+      // best-effort：落库失败不崩 UI（InkError 均实现 Exception）。
     }
   }
 
-  Future<String?> _promptPresetName(BuildContext context) {
+  Future<String?> _promptPresetName(BuildContext context) async {
     final ctrl = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.l10n.inspectorPresetsDialogTitle),
-        content: InkInput(
-          controller: ctrl,
-          hintText: ctx.l10n.inspectorPresetsNameHint,
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(ctx.l10n.inspectorPresetsDialogTitle),
+          content: InkInput(
+            controller: ctrl,
+            hintText: ctx.l10n.inspectorPresetsNameHint,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(ctx.l10n.commonCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+              child: Text(ctx.l10n.inspectorCharactersSave),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(ctx.l10n.commonCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(ctrl.text),
-            child: Text(ctx.l10n.inspectorCharactersSave),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      ctrl.dispose();
+    }
   }
 }
 
@@ -773,7 +778,7 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
           .read(charactersControllerProvider(projectId).notifier)
           .createFromImage(name: name.trim(), sourceAbsolutePath: file.path);
       if (mounted) _toggle(id);
-    } catch (_) {
+    } on Exception catch (_) {
       // best-effort：选择/导入失败不崩 UI。
     }
   }
@@ -791,7 +796,7 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
           .read(fileResolverServiceProvider)
           .resolve(projectId: projectId, canvasId: canvasId, relativePath: rel)
           .path;
-    } catch (_) {
+    } on PathSecurityError catch (_) {
       return;
     }
     final name = await _promptName(context);
@@ -801,33 +806,37 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
           .read(charactersControllerProvider(projectId).notifier)
           .createFromImage(name: name.trim(), sourceAbsolutePath: abs);
       if (mounted) _toggle(id);
-    } catch (_) {
+    } on Exception catch (_) {
       // best-effort：导入/落库失败不崩 UI（下次可重试）。
     }
   }
 
-  Future<String?> _promptName(BuildContext context) {
+  Future<String?> _promptName(BuildContext context) async {
     final ctrl = TextEditingController();
-    return showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(ctx.l10n.inspectorCharactersDialogTitle),
-        content: InkInput(
-          controller: ctrl,
-          hintText: ctx.l10n.inspectorCharactersNameHint,
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: Text(ctx.l10n.inspectorCharactersDialogTitle),
+          content: InkInput(
+            controller: ctrl,
+            hintText: ctx.l10n.inspectorCharactersNameHint,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: Text(ctx.l10n.commonCancel),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+              child: Text(ctx.l10n.inspectorCharactersSave),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: Text(ctx.l10n.commonCancel),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(ctrl.text),
-            child: Text(ctx.l10n.inspectorCharactersSave),
-          ),
-        ],
-      ),
-    );
+      );
+    } finally {
+      ctrl.dispose();
+    }
   }
 }
 

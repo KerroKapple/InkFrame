@@ -74,7 +74,11 @@ class DefaultCharacterAssetService implements CharacterAssetService {
       } on CharacterAssetError {
         continue;
       }
-      if (await File(abs).exists()) out.add(abs);
+      try {
+        if (await File(abs).exists()) out.add(abs);
+      } on FileSystemException {
+        // I/O 抖动：跳过该条，不抛（生成注入为 best-effort）。
+      }
     }
     return out;
   }

@@ -101,7 +101,7 @@ class _BatchSlotTile extends ConsumerWidget {
         return _placeholder(colors, Icons.broken_image_outlined);
       }
     }
-    if (slot.status == 'error') {
+    if (slot.isError) {
       return _placeholder(colors, Icons.error_outline);
     }
     return _placeholder(colors, Icons.hourglass_empty);
