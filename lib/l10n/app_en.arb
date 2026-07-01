@@ -172,6 +172,7 @@
   "inspectorCharactersEmpty": "No characters yet",
   "inspectorCharactersUnsupported": "This model ignores reference images",
   "inspectorCharactersSaveFromReference": "Save reference as character",
+  "inspectorCharactersImportFile": "Import image file",
   "inspectorCharactersDialogTitle": "New character",
   "inspectorCharactersNameHint": "Character name",
   "inspectorCharactersSave": "Save",

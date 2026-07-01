@@ -800,6 +800,12 @@ abstract class AppLocalizations {
   /// **'Save reference as character'**
   String get inspectorCharactersSaveFromReference;
 
+  /// No description provided for @inspectorCharactersImportFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Import image file'**
+  String get inspectorCharactersImportFile;
+
   /// No description provided for @inspectorCharactersDialogTitle.
   ///
   /// In en, this message translates to:

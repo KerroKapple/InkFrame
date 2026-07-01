@@ -374,6 +374,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorCharactersSaveFromReference => '把参考图存为角色';
 
   @override
+  String get inspectorCharactersImportFile => '从文件导入图片';
+
+  @override
   String get inspectorCharactersDialogTitle => '新建角色';
 
   @override

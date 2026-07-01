@@ -164,6 +164,7 @@
   "inspectorCharactersEmpty": "还没有角色",
   "inspectorCharactersUnsupported": "当前模型不使用参考图，角色不会生效",
   "inspectorCharactersSaveFromReference": "把参考图存为角色",
+  "inspectorCharactersImportFile": "从文件导入图片",
   "inspectorCharactersDialogTitle": "新建角色",
   "inspectorCharactersNameHint": "角色名称",
   "inspectorCharactersSave": "保存",
