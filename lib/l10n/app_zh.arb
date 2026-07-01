@@ -168,6 +168,12 @@
   "inspectorCharactersNameHint": "角色名称",
   "inspectorCharactersSave": "保存",
 
+  "inspectorPresetsLabel": "提示词预设",
+  "inspectorPresetsEmpty": "还没有预设",
+  "inspectorPresetsSaveCurrent": "把当前提示词存为预设",
+  "inspectorPresetsDialogTitle": "新建预设",
+  "inspectorPresetsNameHint": "预设名称",
+
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
   "canvasAddNodeTooltip": "新建节点",

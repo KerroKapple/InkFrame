@@ -176,6 +176,12 @@
   "inspectorCharactersNameHint": "Character name",
   "inspectorCharactersSave": "Save",
 
+  "inspectorPresetsLabel": "Prompt presets",
+  "inspectorPresetsEmpty": "No presets yet",
+  "inspectorPresetsSaveCurrent": "Save current as preset",
+  "inspectorPresetsDialogTitle": "New preset",
+  "inspectorPresetsNameHint": "Preset name",
+
   "canvasAddImageNode": "Add image node",
   "canvasAddVideoNode": "Add video node",
   "@canvasAddVideoNode": {},

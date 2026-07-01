@@ -13,6 +13,7 @@ import '../core/interfaces/edge_repository.dart';
 import '../core/interfaces/job_repository.dart';
 import '../core/interfaces/node_repository.dart';
 import '../core/interfaces/project_repository.dart';
+import '../core/interfaces/prompt_preset_repository.dart';
 import '../core/interfaces/style_lane_repository.dart';
 import '../core/interfaces/unit_of_work.dart';
 
@@ -55,6 +56,7 @@ class RepositoryScopeData implements RepositoryScope {
     required this.styleLanes,
     required this.batchResults,
     required this.characters,
+    required this.promptPresets,
   });
 
   @override
@@ -73,4 +75,6 @@ class RepositoryScopeData implements RepositoryScope {
   final BatchResultRepository batchResults;
   @override
   final CharacterRepository characters;
+  @override
+  final PromptPresetRepository promptPresets;
 }

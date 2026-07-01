@@ -14,6 +14,7 @@ import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_prompt_preset_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_style_lane_repository.dart';
 import 'package:postgres/postgres.dart';
 
@@ -33,6 +34,7 @@ PostgresUnitOfWork _uow(SessionExecutor exec) => PostgresUnitOfWork(
         styleLanes: PostgresStyleLaneRepository(s),
         batchResults: PostgresBatchResultRepository(s),
         characters: PostgresCharacterRepository(s),
+        promptPresets: PostgresPromptPresetRepository(s),
       ),
     );
 

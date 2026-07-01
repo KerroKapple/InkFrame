@@ -383,6 +383,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorCharactersSave => '保存';
 
   @override
+  String get inspectorPresetsLabel => '提示词预设';
+
+  @override
+  String get inspectorPresetsEmpty => '还没有预设';
+
+  @override
+  String get inspectorPresetsSaveCurrent => '把当前提示词存为预设';
+
+  @override
+  String get inspectorPresetsDialogTitle => '新建预设';
+
+  @override
+  String get inspectorPresetsNameHint => '预设名称';
+
+  @override
   String get canvasAddImageNode => '添加图片节点';
 
   @override

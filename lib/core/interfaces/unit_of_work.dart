@@ -9,6 +9,7 @@ import 'batch_result_repository.dart';
 import 'canvas_repository.dart';
 import 'character_repository.dart';
 import 'edge_repository.dart';
+import 'prompt_preset_repository.dart';
 import 'job_repository.dart';
 import 'node_repository.dart';
 import 'project_repository.dart';
@@ -24,6 +25,7 @@ abstract class RepositoryScope {
   StyleLaneRepository get styleLanes;
   BatchResultRepository get batchResults;
   CharacterRepository get characters;
+  PromptPresetRepository get promptPresets;
 }
 
 /// 事务工作单元：在单个事务内执行 [action]。

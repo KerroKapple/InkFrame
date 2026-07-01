@@ -399,6 +399,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorCharactersSave => 'Save';
 
   @override
+  String get inspectorPresetsLabel => 'Prompt presets';
+
+  @override
+  String get inspectorPresetsEmpty => 'No presets yet';
+
+  @override
+  String get inspectorPresetsSaveCurrent => 'Save current as preset';
+
+  @override
+  String get inspectorPresetsDialogTitle => 'New preset';
+
+  @override
+  String get inspectorPresetsNameHint => 'Preset name';
+
+  @override
   String get canvasAddImageNode => 'Add image node';
 
   @override
