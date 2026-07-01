@@ -33,6 +33,8 @@ import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
 import '../../helpers/recording_logger.dart';
+import '../../_harness/fake_character.dart';
+import '../../_harness/fake_providers.dart';
 import '../../_harness/fake_unit_of_work.dart';
 
 // ---- fakes ------------------------------------------------------------
@@ -347,6 +349,8 @@ void main() {
   late _FakeLaneRepo laneRepo;
   late _RecordingRegistry jobsRegistry;
   late RecordingLogger logger;
+  late FakeCharacterRepo characters;
+  late FakeCharacterAssetService characterAssets;
 
   GenerationController buildCtrl() => GenerationController(
         nodes: nodes,
@@ -358,6 +362,8 @@ void main() {
         resolver: resolver,
         canvas: canvasRepo,
         lanes: laneRepo,
+        characters: characters,
+        characterAssets: characterAssets,
         uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
         jobsRegistry: jobsRegistry,
         logger: logger,
@@ -377,6 +383,8 @@ void main() {
     laneRepo = _FakeLaneRepo();
     jobsRegistry = _RecordingRegistry();
     logger = RecordingLogger();
+    characters = FakeCharacterRepo();
+    characterAssets = FakeCharacterAssetService();
   });
 
   Future<String> seedConfigNode({
@@ -428,6 +436,101 @@ void main() {
       'role': role,
     });
   }
+
+  // ---- M2 角色一致性注入 ----------------------------------------------
+  Future<String> seedConfigNodeWithCharacters({
+    required List<String> characterIds,
+  }) async {
+    const id = 'cfgC';
+    nodes.rows[id] = {
+      'id': id,
+      'canvas_id': 'cvx',
+      'project_id': 'proj-1',
+      'type': 'image',
+      'node_role': 'config',
+      'type_config': <String, Object?>{
+        'prompt': 'a cat',
+        'provider_id': providerId,
+        'character_ids': characterIds,
+      },
+    };
+    return id;
+  }
+
+  void useCapableProvider({int maxRefImages = 4}) {
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(
+        capabilities: fakeImageCapabilities(
+          id: providerId,
+          modes: const <GenerationMode>[
+            GenerationMode.textToImage,
+            GenerationMode.imageToImage,
+          ],
+          maxRefImages: maxRefImages,
+        ),
+      ),
+    });
+  }
+
+  test('角色一致性：provider 支持参考图 → 角色图并入 refImagePaths + mode 翻 imageToImage + 落盘参数带上',
+      () async {
+    useCapableProvider();
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'name': 'Hero',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    const expectedAbs = '/abs/proj-1/characters/hero-0.png';
+    expect(queue.lastTask?.refImagePaths, contains(expectedAbs));
+    expect(queue.lastTask?.mode, GenerationMode.imageToImage);
+    final params = jobs.creates.first['parameters'] as Map<String, Object?>;
+    expect(params['ref_image_paths'], contains(expectedAbs));
+  });
+
+  test('角色一致性：provider maxRefImages=0 → 不注入，保持 textToImage', () async {
+    useCapableProvider(maxRefImages: 0);
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    expect(queue.lastTask?.refImagePaths, isEmpty);
+    expect(queue.lastTask?.mode, GenerationMode.textToImage);
+  });
+
+  test('角色一致性：角色资产文件缺失 → 跳过（不注入）', () async {
+    useCapableProvider();
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    characterAssets = FakeCharacterAssetService(existing: <String>{});
+    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    expect(queue.lastTask?.refImagePaths, isEmpty);
+    expect(queue.lastTask?.mode, GenerationMode.textToImage);
+  });
 
   test('成功路径（fire-and-forget）：立即返回 jobId，后台推进 queued→running→succeeded',
       () async {

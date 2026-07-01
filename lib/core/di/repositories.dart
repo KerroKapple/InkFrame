@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../interfaces/batch_result_repository.dart';
 import '../interfaces/canvas_repository.dart';
+import '../interfaces/character_repository.dart';
 import '../interfaces/edge_repository.dart';
 import '../interfaces/job_repository.dart';
 import '../interfaces/node_repository.dart';
@@ -18,6 +19,7 @@ import '../interfaces/unit_of_work.dart';
 import '../../storage/postgres_unit_of_work.dart';
 import '../../storage/repositories/postgres_batch_result_repository.dart';
 import '../../storage/repositories/postgres_canvas_repository.dart';
+import '../../storage/repositories/postgres_character_repository.dart';
 import '../../storage/repositories/postgres_edge_repository.dart';
 import '../../storage/repositories/postgres_job_repository.dart';
 import '../../storage/repositories/postgres_node_repository.dart';
@@ -81,6 +83,14 @@ final batchResultRepositoryProvider = FutureProvider<BatchResultRepository>(
   name: 'batchResultRepositoryProvider',
 );
 
+final characterRepositoryProvider = FutureProvider<CharacterRepository>(
+  (ref) async {
+    final pool = await ref.watch(pgMigratedPoolProvider.future);
+    return PostgresCharacterRepository(pool);
+  },
+  name: 'characterRepositoryProvider',
+);
+
 /// 事务工作单元——多步写入原子化（仓储绑定到同一 runTx 事务）。
 /// 具体仓储的装配（new）在此 DI 层完成，PostgresUnitOfWork 只依赖工厂抽象。
 final unitOfWorkProvider = FutureProvider<UnitOfWork>(
@@ -96,6 +106,7 @@ final unitOfWorkProvider = FutureProvider<UnitOfWork>(
         jobs: PostgresJobRepository(s),
         styleLanes: PostgresStyleLaneRepository(s),
         batchResults: PostgresBatchResultRepository(s),
+        characters: PostgresCharacterRepository(s),
       ),
     );
   },

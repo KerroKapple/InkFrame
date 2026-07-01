@@ -8,6 +8,7 @@ import 'package:postgres/postgres.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/batch_result_repository.dart';
 import '../core/interfaces/canvas_repository.dart';
+import '../core/interfaces/character_repository.dart';
 import '../core/interfaces/edge_repository.dart';
 import '../core/interfaces/job_repository.dart';
 import '../core/interfaces/node_repository.dart';
@@ -53,6 +54,7 @@ class RepositoryScopeData implements RepositoryScope {
     required this.jobs,
     required this.styleLanes,
     required this.batchResults,
+    required this.characters,
   });
 
   @override
@@ -69,4 +71,6 @@ class RepositoryScopeData implements RepositoryScope {
   final StyleLaneRepository styleLanes;
   @override
   final BatchResultRepository batchResults;
+  @override
+  final CharacterRepository characters;
 }

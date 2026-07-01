@@ -25,6 +25,7 @@ import '../../core/constants/default_providers.dart';
 import '../../core/constants/secure_storage_keys.dart';
 import '../../core/db/columns.dart';
 import '../../core/db/row_reader.dart';
+import '../../core/di/character_assets.dart';
 import '../../core/di/file_resolver.dart';
 import '../../core/di/job_queue.dart';
 import '../../core/di/logger.dart';
@@ -33,6 +34,8 @@ import '../../core/di/repositories.dart';
 import '../../core/di/secure_storage.dart';
 import '../../core/errors/ink_error.dart';
 import '../../core/interfaces/canvas_repository.dart';
+import '../../core/interfaces/character_asset_service.dart';
+import '../../core/interfaces/character_repository.dart';
 import '../../core/interfaces/edge_repository.dart';
 import '../../core/interfaces/file_resolver_service.dart';
 import '../../core/interfaces/job_queue_service.dart';
@@ -46,6 +49,7 @@ import '../../core/models/generation_task.dart';
 import '../../core/models/job_status.dart';
 import '../../core/models/provider_capabilities.dart';
 import '../../core/interfaces/provider_registry.dart';
+import '../canvas/models/character.dart';
 import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
 import 'services/prompt_assembler.dart';
@@ -61,6 +65,8 @@ final generationControllerProvider = FutureProvider<GenerationController>(
     final resolver = ref.watch(fileResolverServiceProvider);
     final canvas = await ref.watch(canvasRepositoryProvider.future);
     final lanes = await ref.watch(styleLaneRepositoryProvider.future);
+    final characters = await ref.watch(characterRepositoryProvider.future);
+    final characterAssets = ref.watch(characterAssetServiceProvider);
     final uow = await ref.watch(unitOfWorkProvider.future);
     // jobsRegistryProvider 是 keepAlive：用 read 拿实例，controller 持有它，
     // 后台 _track future 全程不再触碰 ref。
@@ -75,6 +81,8 @@ final generationControllerProvider = FutureProvider<GenerationController>(
       resolver: resolver,
       canvas: canvas,
       lanes: lanes,
+      characters: characters,
+      characterAssets: characterAssets,
       uow: uow,
       jobsRegistry: jobsRegistry,
       logger: ref.watch(loggerProvider),
@@ -120,6 +128,8 @@ class GenerationController {
     required this.resolver,
     required this.canvas,
     required this.lanes,
+    required this.characters,
+    required this.characterAssets,
     required this.uow,
     required this.jobsRegistry,
     this.logger,
@@ -134,6 +144,8 @@ class GenerationController {
   final FileResolverService resolver;
   final CanvasRepository canvas;
   final StyleLaneRepository lanes;
+  final CharacterRepository characters;
+  final CharacterAssetService characterAssets;
   final UnitOfWork uow;
   final JobsRegistry jobsRegistry;
   final LoggerService? logger;
@@ -198,10 +210,18 @@ class GenerationController {
     );
 
     // 读入 data 连线作为参考图（PRD §8.2）。失败不阻断生成——refs 仍可为空。
-    final refs = await _resolveRefImages(
+    var refs = await _resolveRefImages(
       incoming: incoming,
       projectId: projectId,
       canvasId: canvasId,
+    );
+    // M2 角色一致性：图像节点按 provider 能力注入项目级角色参考图（不支持则原样返回）。
+    refs = await _injectCharacterRefs(
+      base: refs,
+      typeConfig: typeConfig,
+      nodeType: nodeType,
+      providerId: providerId,
+      projectId: projectId,
     );
 
     // image / video 分流：mode 推断 + video 独有 duration / camera。
@@ -551,6 +571,85 @@ class GenerationController {
       firstFramePath: firstFrame,
       lastFramePath: lastFrame,
     );
+  }
+
+  /// M2 角色一致性：把 config 节点挂接的项目级角色参考图并进 refImagePaths。
+  ///
+  /// 门控（缺一即原样返回 base，绝不误翻 mode / 破坏文生图）：
+  ///   - 仅 image 节点（video 的 i2v 走首/尾帧语义，v1 不覆盖）；
+  ///   - projectId 非空；
+  ///   - config.type_config['character_ids'] 非空；
+  ///   - provider 声明 maxRefImages>0 且支持 imageToImage。
+  /// 合并去重后按 maxRefImages 截断（边连参考图优先，角色图补足）。
+  /// 角色查不到 / 资产文件缺失静默跳过，不阻断生成。
+  Future<_RefImages> _injectCharacterRefs({
+    required _RefImages base,
+    required Map<String, Object?> typeConfig,
+    required String nodeType,
+    required String providerId,
+    required String? projectId,
+  }) async {
+    if (nodeType != 'image' || projectId == null) return base;
+    final ids = _readCharacterIds(typeConfig);
+    if (ids.isEmpty) return base;
+
+    final caps = registry.get(providerId).capabilities;
+    if (caps.maxRefImages <= 0 ||
+        !caps.modes.contains(GenerationMode.imageToImage)) {
+      return base;
+    }
+
+    final relPaths = <String>[];
+    for (final id in ids) {
+      Map<String, Object?>? row;
+      try {
+        row = await characters.findById(id);
+      } on InkError catch (e) {
+        logger?.warn(_logModule, 'character lookup failed (swallowed)',
+            extra: {'character_id': id, 'reason': e.toString()});
+        continue;
+      }
+      if (row == null) continue;
+      relPaths.addAll(Character.fromRow(row).referenceImagePaths);
+    }
+    if (relPaths.isEmpty) return base;
+
+    List<String> extraAbs;
+    try {
+      extraAbs = await characterAssets.resolveExisting(
+        projectId: projectId,
+        relativePaths: relPaths,
+      );
+    } catch (e) {
+      logger?.warn(_logModule, 'character asset resolve failed (swallowed)',
+          extra: {'reason': e.toString()});
+      return base;
+    }
+    if (extraAbs.isEmpty) return base;
+
+    final merged = <String>[...base.refImagePaths];
+    for (final abs in extraAbs) {
+      if (!merged.contains(abs)) merged.add(abs);
+    }
+    final capped = merged.length > caps.maxRefImages
+        ? merged.sublist(0, caps.maxRefImages)
+        : merged;
+    return _RefImages(
+      refImagePaths: List.unmodifiable(capped),
+      firstFramePath: base.firstFramePath,
+      lastFramePath: base.lastFramePath,
+    );
+  }
+
+  List<String> _readCharacterIds(Map<String, Object?> typeConfig) {
+    final raw = typeConfig['character_ids'];
+    if (raw is List) {
+      return raw
+          .map((e) => e.toString())
+          .where((s) => s.isNotEmpty)
+          .toList(growable: false);
+    }
+    return const <String>[];
   }
 
   /// PRD §7.4：组装 base前缀 + 泳道风格 + 关联文本 + userPrompt + base后缀。

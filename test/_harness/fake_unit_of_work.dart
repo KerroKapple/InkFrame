@@ -2,6 +2,7 @@
 // 真正的回滚语义由 test/storage/transaction_integration_test.dart（真 PG）覆盖。
 import 'package:inkframe/core/interfaces/batch_result_repository.dart';
 import 'package:inkframe/core/interfaces/canvas_repository.dart';
+import 'package:inkframe/core/interfaces/character_repository.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
@@ -18,13 +19,15 @@ class FakeRepositoryScope implements RepositoryScope {
     JobRepository? jobs,
     StyleLaneRepository? styleLanes,
     BatchResultRepository? batchResults,
+    CharacterRepository? characters,
   })  : _nodes = nodes,
         _edges = edges,
         _canvas = canvas,
         _projects = projects,
         _jobs = jobs,
         _styleLanes = styleLanes,
-        _batchResults = batchResults;
+        _batchResults = batchResults,
+        _characters = characters;
 
   final NodeRepository? _nodes;
   final EdgeRepository? _edges;
@@ -33,6 +36,7 @@ class FakeRepositoryScope implements RepositoryScope {
   final JobRepository? _jobs;
   final StyleLaneRepository? _styleLanes;
   final BatchResultRepository? _batchResults;
+  final CharacterRepository? _characters;
 
   @override
   NodeRepository get nodes => _nodes ?? (throw StateError('nodes not provided'));
@@ -52,6 +56,9 @@ class FakeRepositoryScope implements RepositoryScope {
   @override
   BatchResultRepository get batchResults =>
       _batchResults ?? (throw StateError('batchResults not provided'));
+  @override
+  CharacterRepository get characters =>
+      _characters ?? (throw StateError('characters not provided'));
 }
 
 class FakeUnitOfWork implements UnitOfWork {
