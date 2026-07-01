@@ -22,13 +22,17 @@
 
 ## M2 —「创作者要的」🔵 进行中
 
+> 分支 `feat/m2-creator`（在 PR #133 合并后 rebase 到 main）。
+
 | 功能 | 状态 | 优先级 | 备注 |
 |---|---|---|---|
-| 参考图 / 首尾帧 UI（Provider 已支持，缺界面） | 🔵 | P0 | 差异化起点 |
-| 角色一致性（项目级角色参考，自动带入生成） | ⬜ | P0 | 最大痛点，借鉴 mStudio |
+| 参考图 / 首尾帧 UI（Provider 已支持，缺界面） | ✅ | P0 | Inspector `_InputsSection` 已在（看/切 role/删）；连线经画布 link 模式 |
+| 角色一致性（项目级角色参考，自动带入生成） | ✅ | P0 | characters 表/仓储/资产服务 + 生成按能力注入 + Inspector 角色区/存为角色（`69be6a9`/`295bf72`）。仅 image 节点、maxRefImages>0 且 imageToImage 生效 |
 | 批量 / 变体（batch_results 表已在，缺 UI） | ⬜ | P1 | |
 | 提示词模板 / 预设库 | ⬜ | P1 | base style 预设扩展 |
-| 成本估算 UI（CostModel 已定义，缺消费端） | ⬜ | P2 | |
+| 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + Inspector 实时预估（`d8fc9f3`） |
+| 视频 Inspector 接成本 / 角色（估算器已支持 PerSecondVideo） | ⬜ | P2 | 角色注入 v1 仅图像；视频首/尾帧语义待接 |
+| 文件系统导入参考图（file_picker 依赖） | ⬜ | P2 | v1 角色图源自应用内结果，外部导入为快随 |
 | CI 烟测 + golden 首跑绿（beta DoD） | ⬜ | P1 | golden 本地 Windows 假阳性，CI ubuntu 为准 |
 
 ## M3 —「差异化」⬜ 未开始
