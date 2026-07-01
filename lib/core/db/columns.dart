@@ -45,6 +45,18 @@ abstract final class StyleLaneCol {
   static const deletedAt = 'deleted_at';
 }
 
+abstract final class CharacterCol {
+  static const id = 'id';
+  static const projectId = 'project_id';
+  static const name = 'name';
+  static const referenceImagePaths = 'reference_image_paths';
+  static const description = 'description';
+  static const sortOrder = 'sort_order';
+  static const createdAt = 'created_at';
+  static const updatedAt = 'updated_at';
+  static const deletedAt = 'deleted_at';
+}
+
 abstract final class NodeCol {
   static const id = 'id';
   static const canvasId = 'canvas_id';

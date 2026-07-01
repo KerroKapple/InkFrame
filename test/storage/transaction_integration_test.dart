@@ -9,6 +9,7 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/storage/postgres_unit_of_work.dart';
 import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_character_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
@@ -31,6 +32,7 @@ PostgresUnitOfWork _uow(SessionExecutor exec) => PostgresUnitOfWork(
         jobs: PostgresJobRepository(s),
         styleLanes: PostgresStyleLaneRepository(s),
         batchResults: PostgresBatchResultRepository(s),
+        characters: PostgresCharacterRepository(s),
       ),
     );
 
