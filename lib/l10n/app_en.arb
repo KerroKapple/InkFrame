@@ -185,6 +185,10 @@
 
   "batchResultsLabel": "Variants",
 
+  "inspectorShotTitle": "Shot",
+  "inspectorShotNotesLabel": "Shot notes",
+  "inspectorShotNotesHint": "Describe this shot (camera, action, mood)...",
+
   "canvasAddImageNode": "Add image node",
   "canvasAddVideoNode": "Add video node",
   "@canvasAddVideoNode": {},

@@ -860,6 +860,24 @@ abstract class AppLocalizations {
   /// **'Variants'**
   String get batchResultsLabel;
 
+  /// No description provided for @inspectorShotTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get inspectorShotTitle;
+
+  /// No description provided for @inspectorShotNotesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot notes'**
+  String get inspectorShotNotesLabel;
+
+  /// No description provided for @inspectorShotNotesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe this shot (camera, action, mood)...'**
+  String get inspectorShotNotesHint;
+
   /// No description provided for @canvasAddImageNode.
   ///
   /// In en, this message translates to:

@@ -420,6 +420,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchResultsLabel => 'Variants';
 
   @override
+  String get inspectorShotTitle => 'Shot';
+
+  @override
+  String get inspectorShotNotesLabel => 'Shot notes';
+
+  @override
+  String get inspectorShotNotesHint =>
+      'Describe this shot (camera, action, mood)...';
+
+  @override
   String get canvasAddImageNode => 'Add image node';
 
   @override

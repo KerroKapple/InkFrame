@@ -1,13 +1,15 @@
 // NodeInspectorRouter 按 node.type / role 分流：
 //   - image + config → ImageConfigInspector
 //   - video + config → VideoConfigInspector
-//   - result / 其他 → 不渲染 Inspector
+//   - shot  + config → ShotConfigInspector
+//   - result / text → 不渲染 Inspector
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
 import 'package:inkframe/features/canvas/widgets/node_inspector_router.dart';
+import 'package:inkframe/features/canvas/widgets/shot_config_inspector.dart';
 import 'package:inkframe/features/canvas/widgets/video_config_inspector.dart';
 
 import '../../../_harness/test_app.dart';
@@ -40,6 +42,21 @@ void main() {
       const Scaffold(body: NodeInspectorRouter(node: node)),
     );
     expect(find.byType(VideoConfigInspector), findsOneWidget);
+    expect(find.byType(ImageConfigInspector), findsNothing);
+  });
+
+  testWidgets('shot 节点 → ShotConfigInspector', (tester) async {
+    const node = CanvasNode(
+      id: 'n1',
+      label: '',
+      type: CanvasNodeType.shot,
+      role: NodeRole.config,
+    );
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: NodeInspectorRouter(node: node)),
+    );
+    expect(find.byType(ShotConfigInspector), findsOneWidget);
     expect(find.byType(ImageConfigInspector), findsNothing);
   });
 
