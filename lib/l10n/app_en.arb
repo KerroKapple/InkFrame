@@ -183,6 +183,8 @@
   "inspectorPresetsDialogTitle": "New preset",
   "inspectorPresetsNameHint": "Preset name",
 
+  "batchResultsLabel": "Variants",
+
   "canvasAddImageNode": "Add image node",
   "canvasAddVideoNode": "Add video node",
   "@canvasAddVideoNode": {},

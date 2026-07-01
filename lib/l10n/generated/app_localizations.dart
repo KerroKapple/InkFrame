@@ -854,6 +854,12 @@ abstract class AppLocalizations {
   /// **'Preset name'**
   String get inspectorPresetsNameHint;
 
+  /// No description provided for @batchResultsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Variants'**
+  String get batchResultsLabel;
+
   /// No description provided for @canvasAddImageNode.
   ///
   /// In en, this message translates to:

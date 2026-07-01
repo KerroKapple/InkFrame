@@ -175,6 +175,8 @@
   "inspectorPresetsDialogTitle": "新建预设",
   "inspectorPresetsNameHint": "预设名称",
 
+  "batchResultsLabel": "变体",
+
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
   "canvasAddNodeTooltip": "新建节点",
