@@ -8,6 +8,7 @@
 import 'package:flutter/material.dart' hide AspectRatio;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/file_resolver.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
@@ -18,11 +19,13 @@ import '../../generation/services/cost_estimator.dart';
 import '../../generation/services/prompt_assembler.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
+import '../models/character.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_base_style.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_lanes_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/characters_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import 'inspector_status_panel.dart';
 
@@ -392,6 +395,11 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
               const SizedBox(height: InkSpacing.lg),
               _InputsSection(targetNode: widget.node),
               const SizedBox(height: InkSpacing.md),
+              _CharactersSection(
+                targetNode: widget.node,
+                selectedCaps: selected,
+              ),
+              const SizedBox(height: InkSpacing.md),
               Row(
                 children: [
                   Expanded(
@@ -469,6 +477,237 @@ class _InputsSection extends ConsumerWidget {
               canvasId: canvasId,
             ),
       ],
+    );
+  }
+}
+
+/// 项目级角色一致性：把可复用角色挂到本 config 节点（写 type_config.character_ids），
+/// 并支持把已连的参考图「存为角色」。仅当 provider 支持参考图时真正生效（否则给提示）。
+class _CharactersSection extends ConsumerStatefulWidget {
+  const _CharactersSection({required this.targetNode, required this.selectedCaps});
+
+  final CanvasNode targetNode;
+  final ProviderCapabilities? selectedCaps;
+
+  @override
+  ConsumerState<_CharactersSection> createState() => _CharactersSectionState();
+}
+
+class _CharactersSectionState extends ConsumerState<_CharactersSection> {
+  late Set<String> _attachedIds;
+
+  @override
+  void initState() {
+    super.initState();
+    _attachedIds = _readAttached(widget.targetNode.typeConfig);
+  }
+
+  Set<String> _readAttached(Map<String, Object?> tc) {
+    final raw = tc['character_ids'];
+    if (raw is List) {
+      return raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toSet();
+    }
+    return <String>{};
+  }
+
+  InspectorSubmitController get _submitCtrl => ref
+      .read(inspectorSubmitControllerProvider(widget.targetNode.id).notifier);
+
+  bool get _supportsRefs {
+    final caps = widget.selectedCaps;
+    return caps != null &&
+        caps.maxRefImages > 0 &&
+        caps.modes.contains(GenerationMode.imageToImage);
+  }
+
+  void _toggle(String id) {
+    setState(() {
+      if (!_attachedIds.add(id)) _attachedIds.remove(id);
+    });
+    _submitCtrl.saveConfig(<String, Object?>{
+      'character_ids': _attachedIds.toList(growable: false),
+    });
+  }
+
+  /// 本 config 节点第一条 reference data 边上、带 image_url 的源节点（"存为角色"来源）。
+  CanvasNode? _referenceSource() {
+    final canvasId = widget.targetNode.canvasId;
+    if (canvasId == null) return null;
+    final edges =
+        ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+            const <CanvasEdge>[];
+    final nodes =
+        ref.watch(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+            const <CanvasNode>[];
+    final nodesById = {for (final n in nodes) n.id: n};
+    for (final e in edges) {
+      if (e.targetNodeId != widget.targetNode.id ||
+          e.edgeType != EdgeType.data ||
+          e.role != EdgeRole.reference) {
+        continue;
+      }
+      final src = nodesById[e.sourceNodeId];
+      if (src != null && (src.imageUrl?.isNotEmpty ?? false)) return src;
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final projectId = widget.targetNode.projectId;
+    if (projectId == null) return const SizedBox.shrink();
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final characters =
+        ref.watch(charactersControllerProvider(projectId)).valueOrNull ??
+            const <Character>[];
+    final refSource = _referenceSource();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.inspectorCharactersLabel,
+          style: typo.caption.copyWith(color: colors.fg3),
+        ),
+        const SizedBox(height: InkSpacing.xs),
+        if (!_supportsRefs)
+          Padding(
+            padding: const EdgeInsets.only(bottom: InkSpacing.xs),
+            child: Text(
+              context.l10n.inspectorCharactersUnsupported,
+              style: typo.caption.copyWith(color: colors.warning),
+            ),
+          ),
+        if (characters.isEmpty)
+          Text(
+            context.l10n.inspectorCharactersEmpty,
+            style: typo.caption.copyWith(color: colors.fg3),
+          )
+        else
+          Wrap(
+            spacing: InkSpacing.xs,
+            runSpacing: InkSpacing.xs,
+            children: [
+              for (final c in characters)
+                _CharacterChip(
+                  label: c.name.isNotEmpty ? c.name : c.id,
+                  selected: _attachedIds.contains(c.id),
+                  onTap: () => _toggle(c.id),
+                ),
+            ],
+          ),
+        const SizedBox(height: InkSpacing.xs),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed:
+                refSource == null ? null : () => _createFromReference(refSource),
+            icon: const Icon(Icons.person_add_alt_1, size: 16),
+            label: Text(context.l10n.inspectorCharactersSaveFromReference),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _createFromReference(CanvasNode source) async {
+    final canvasId = widget.targetNode.canvasId;
+    final projectId = widget.targetNode.projectId;
+    final rel = source.imageUrl;
+    if (canvasId == null || projectId == null || rel == null || rel.isEmpty) {
+      return;
+    }
+    final String abs;
+    try {
+      abs = ref
+          .read(fileResolverServiceProvider)
+          .resolve(projectId: projectId, canvasId: canvasId, relativePath: rel)
+          .path;
+    } catch (_) {
+      return;
+    }
+    final name = await _promptName(context);
+    if (name == null || name.trim().isEmpty) return;
+    try {
+      final id = await ref
+          .read(charactersControllerProvider(projectId).notifier)
+          .createFromImage(name: name.trim(), sourceAbsolutePath: abs);
+      if (mounted) _toggle(id);
+    } catch (_) {
+      // best-effort：导入/落库失败不崩 UI（下次可重试）。
+    }
+  }
+
+  Future<String?> _promptName(BuildContext context) {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(ctx.l10n.inspectorCharactersDialogTitle),
+        content: InkInput(
+          controller: ctrl,
+          hintText: ctx.l10n.inspectorCharactersNameHint,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(ctx.l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+            child: Text(ctx.l10n.inspectorCharactersSave),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CharacterChip extends StatelessWidget {
+  const _CharacterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(InkRadius.sm),
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: InkSpacing.sm,
+          vertical: InkSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? colors.accent : colors.surface2,
+          borderRadius: BorderRadius.circular(InkRadius.sm),
+          border: Border.all(color: selected ? colors.accent : colors.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (selected) ...[
+              Icon(Icons.check, size: 14, color: colors.surfaceCanvas),
+              const SizedBox(width: InkSpacing.xs),
+            ],
+            Text(
+              label,
+              style: typo.caption.copyWith(
+                color: selected ? colors.surfaceCanvas : colors.fg1,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
