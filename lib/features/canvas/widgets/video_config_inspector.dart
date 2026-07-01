@@ -16,6 +16,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/services/cost_estimator.dart';
 import '../models/canvas_node.dart';
 import '../providers/inspector_submit_controller.dart';
 import 'inspector_status_panel.dart';
@@ -52,8 +53,8 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
   int? _durationSec;
   CameraMovement? _camera;
 
-  InspectorSubmitController get _submitCtrl => ref
-      .read(inspectorSubmitControllerProvider(widget.node.id).notifier);
+  InspectorSubmitController get _submitCtrl =>
+      ref.read(inspectorSubmitControllerProvider(widget.node.id).notifier);
 
   @override
   void initState() {
@@ -91,9 +92,11 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
 
   List<ProviderCapabilities> _videoCaps() => ref
       .read(providerCapabilitiesListProvider)
-      .where((c) =>
-          c.modes.contains(GenerationMode.textToVideo) ||
-          c.modes.contains(GenerationMode.imageToVideo))
+      .where(
+        (c) =>
+            c.modes.contains(GenerationMode.textToVideo) ||
+            c.modes.contains(GenerationMode.imageToVideo),
+      )
       .toList(growable: false);
 
   ProviderCapabilities? _selectedCaps(List<ProviderCapabilities> all) {
@@ -134,9 +137,11 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     final selected = _selectedCaps(caps);
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final submitState =
-        ref.watch(inspectorSubmitControllerProvider(widget.node.id));
-    final busy = submitState is InspectorSubmitSubmitting ||
+    final submitState = ref.watch(
+      inspectorSubmitControllerProvider(widget.node.id),
+    );
+    final busy =
+        submitState is InspectorSubmitSubmitting ||
         submitState is InspectorSubmitRunning;
 
     return Container(
@@ -146,142 +151,157 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
         color: colors.surface1,
         border: Border(left: BorderSide(color: colors.border)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.inspectorTitle,
-            style: typo.title.copyWith(color: colors.fg1),
-          ),
-          const SizedBox(height: InkSpacing.lg),
-          Text(
-            context.l10n.inspectorVideoPromptLabel,
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-          const SizedBox(height: InkSpacing.xs),
-          InkInput(
-            controller: _promptCtrl,
-            hintText: context.l10n.inspectorPromptHint,
-            minLines: 4,
-            maxLines: 8,
-            onChanged: _onPromptChanged,
-          ),
-          const SizedBox(height: InkSpacing.md),
-          Text(
-            context.l10n.inspectorProviderLabel,
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-          const SizedBox(height: InkSpacing.xs),
-          DropdownButton<String>(
-            value: _providerId,
-            isExpanded: true,
-            items: [
-              for (final c in caps)
-                DropdownMenuItem(
-                  value: c.providerId,
-                  child: Text(c.displayName ?? c.providerId),
-                ),
-            ],
-            onChanged: busy
-                ? null
-                : (v) {
-                    if (v == null) return;
-                    final next =
-                        caps.firstWhere((c) => c.providerId == v);
-                    final newDuration = next.supportedDurations.isNotEmpty
-                        ? next.supportedDurations.first
-                        : null;
-                    final newCamera = next.supportedCameras.isNotEmpty
-                        ? next.supportedCameras.first
-                        : null;
-                    setState(() {
-                      _providerId = v;
-                      _durationSec = newDuration;
-                      _camera = newCamera;
-                    });
-                    _submitCtrl.saveConfig(<String, Object?>{
-                      'provider_id': v,
-                      if (newDuration != null)
-                        'duration_ms': newDuration * 1000,
-                      if (newCamera != null) 'camera': newCamera.name,
-                    });
-                  },
-          ),
-          const SizedBox(height: InkSpacing.md),
-          Text(
-            context.l10n.inspectorVideoDurationLabel,
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-          const SizedBox(height: InkSpacing.xs),
-          DropdownButton<int>(
-            value: _durationSec,
-            isExpanded: true,
-            items: [
-              if (selected != null)
-                for (final d in selected.supportedDurations)
-                  DropdownMenuItem(
-                    value: d,
-                    child: Text(context.l10n.inspectorVideoDurationOption(d)),
-                  ),
-            ],
-            onChanged: busy
-                ? null
-                : (v) {
-                    if (v == null) return;
-                    setState(() => _durationSec = v);
-                    _submitCtrl.saveConfig(
-                      <String, Object?>{'duration_ms': v * 1000},
-                    );
-                  },
-          ),
-          // 运镜：仅当当前 provider 真正声明了 supportedCameras 才展示——
-          // 否则隐藏整段（当前所有 provider 均为空，避免一个永远空的死下拉）。
-          if (selected != null && selected.supportedCameras.isNotEmpty) ...[
-            const SizedBox(height: InkSpacing.md),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              context.l10n.inspectorVideoCameraLabel,
+              context.l10n.inspectorTitle,
+              style: typo.title.copyWith(color: colors.fg1),
+            ),
+            const SizedBox(height: InkSpacing.lg),
+            Text(
+              context.l10n.inspectorVideoPromptLabel,
               style: typo.caption.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
-            DropdownButton<CameraMovement>(
-              value: _camera,
+            InkInput(
+              controller: _promptCtrl,
+              hintText: context.l10n.inspectorPromptHint,
+              minLines: 4,
+              maxLines: 8,
+              onChanged: _onPromptChanged,
+            ),
+            const SizedBox(height: InkSpacing.md),
+            Text(
+              context.l10n.inspectorProviderLabel,
+              style: typo.caption.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            DropdownButton<String>(
+              value: _providerId,
               isExpanded: true,
               items: [
-                for (final c in selected.supportedCameras)
+                for (final c in caps)
                   DropdownMenuItem(
-                    value: c,
-                    child: Text(cameraMovementLabel(context, c)),
+                    value: c.providerId,
+                    child: Text(c.displayName ?? c.providerId),
                   ),
               ],
               onChanged: busy
                   ? null
                   : (v) {
                       if (v == null) return;
-                      setState(() => _camera = v);
-                      _submitCtrl.saveConfig(
-                        <String, Object?>{'camera': v.name},
-                      );
+                      final next = caps.firstWhere((c) => c.providerId == v);
+                      final newDuration = next.supportedDurations.isNotEmpty
+                          ? next.supportedDurations.first
+                          : null;
+                      final newCamera = next.supportedCameras.isNotEmpty
+                          ? next.supportedCameras.first
+                          : null;
+                      setState(() {
+                        _providerId = v;
+                        _durationSec = newDuration;
+                        _camera = newCamera;
+                      });
+                      _submitCtrl.saveConfig(<String, Object?>{
+                        'provider_id': v,
+                        if (newDuration != null)
+                          'duration_ms': newDuration * 1000,
+                        if (newCamera != null) 'camera': newCamera.name,
+                      });
                     },
             ),
+            const SizedBox(height: InkSpacing.md),
+            Text(
+              context.l10n.inspectorVideoDurationLabel,
+              style: typo.caption.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            DropdownButton<int>(
+              value: _durationSec,
+              isExpanded: true,
+              items: [
+                if (selected != null)
+                  for (final d in selected.supportedDurations)
+                    DropdownMenuItem(
+                      value: d,
+                      child: Text(context.l10n.inspectorVideoDurationOption(d)),
+                    ),
+              ],
+              onChanged: busy
+                  ? null
+                  : (v) {
+                      if (v == null) return;
+                      setState(() => _durationSec = v);
+                      _submitCtrl.saveConfig(<String, Object?>{
+                        'duration_ms': v * 1000,
+                      });
+                    },
+            ),
+            // 运镜：仅当当前 provider 真正声明了 supportedCameras 才展示——
+            // 否则隐藏整段（当前所有 provider 均为空，避免一个永远空的死下拉）。
+            if (selected != null && selected.supportedCameras.isNotEmpty) ...[
+              const SizedBox(height: InkSpacing.md),
+              Text(
+                context.l10n.inspectorVideoCameraLabel,
+                style: typo.caption.copyWith(color: colors.fg3),
+              ),
+              const SizedBox(height: InkSpacing.xs),
+              DropdownButton<CameraMovement>(
+                value: _camera,
+                isExpanded: true,
+                items: [
+                  for (final c in selected.supportedCameras)
+                    DropdownMenuItem(
+                      value: c,
+                      child: Text(cameraMovementLabel(context, c)),
+                    ),
+                ],
+                onChanged: busy
+                    ? null
+                    : (v) {
+                        if (v == null) return;
+                        setState(() => _camera = v);
+                        _submitCtrl.saveConfig(<String, Object?>{
+                          'camera': v.name,
+                        });
+                      },
+              ),
+            ],
+            const SizedBox(height: InkSpacing.md),
+            Text(
+              context.l10n.inspectorVideoModeAuto,
+              style: typo.caption.copyWith(color: colors.fg3),
+            ),
+            if (selected != null) ...[
+              const SizedBox(height: InkSpacing.md),
+              Text(
+                context.l10n.inspectorEstimatedCost(
+                  formatCostUsd(
+                    estimateCostUsd(
+                      selected.costModel,
+                      durationSeconds: _durationSec ?? 0,
+                    ),
+                  ),
+                ),
+                style: typo.caption.copyWith(color: colors.fg3),
+              ),
+            ],
+            const SizedBox(height: InkSpacing.lg),
+            InspectorStatusBinding(
+              nodeId: widget.node.id,
+              providerId: _providerId,
+              promptEmpty: _promptCtrl.text.trim().isEmpty,
+              generateLabel: context.l10n.inspectorVideoGenerate,
+              disabledEmptyPromptText:
+                  context.l10n.inspectorVideoGenerateDisabledEmptyPrompt,
+              disabledNoKeyText:
+                  context.l10n.inspectorVideoGenerateDisabledNoKey,
+              onSubmit: _submit,
+            ),
           ],
-          const SizedBox(height: InkSpacing.md),
-          Text(
-            context.l10n.inspectorVideoModeAuto,
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-          const SizedBox(height: InkSpacing.lg),
-          InspectorStatusBinding(
-            nodeId: widget.node.id,
-            providerId: _providerId,
-            promptEmpty: _promptCtrl.text.trim().isEmpty,
-            generateLabel: context.l10n.inspectorVideoGenerate,
-            disabledEmptyPromptText:
-                context.l10n.inspectorVideoGenerateDisabledEmptyPrompt,
-            disabledNoKeyText:
-                context.l10n.inspectorVideoGenerateDisabledNoKey,
-            onSubmit: _submit,
-          ),
-        ],
+        ),
       ),
     );
   }
