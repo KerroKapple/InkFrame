@@ -177,6 +177,10 @@
 
   "batchResultsLabel": "变体",
 
+  "inspectorShotTitle": "分镜",
+  "inspectorShotNotesLabel": "分镜备注",
+  "inspectorShotNotesHint": "描述这个分镜（机位、动作、氛围）……",
+
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
   "canvasAddNodeTooltip": "新建节点",

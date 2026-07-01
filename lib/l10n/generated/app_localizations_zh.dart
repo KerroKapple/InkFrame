@@ -404,6 +404,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchResultsLabel => '变体';
 
   @override
+  String get inspectorShotTitle => '分镜';
+
+  @override
+  String get inspectorShotNotesLabel => '分镜备注';
+
+  @override
+  String get inspectorShotNotesHint => '描述这个分镜（机位、动作、氛围）……';
+
+  @override
   String get canvasAddImageNode => '添加图片节点';
 
   @override
