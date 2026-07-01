@@ -1,14 +1,18 @@
 // 测试用 Character 仓储 / 资产服务 fake。
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/character_asset_service.dart';
 import 'package:inkframe/core/interfaces/character_repository.dart';
 
 class FakeCharacterRepo implements CharacterRepository {
   FakeCharacterRepo([Map<String, Map<String, Object?>>? rows])
-      : rows = rows ?? <String, Map<String, Object?>>{};
+    : rows = rows ?? <String, Map<String, Object?>>{};
 
   final Map<String, Map<String, Object?>> rows;
   final List<String> softDeleted = <String>[];
   int createCalls = 0;
+
+  /// 置 true 时 update 抛 LocalIOError（模拟回滚/失败路径）。
+  bool failUpdate = false;
 
   @override
   Future<String> create({
@@ -40,6 +44,7 @@ class FakeCharacterRepo implements CharacterRepository {
 
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
+    if (failUpdate) throw const LocalIOError();
     final row = rows[id];
     if (row == null) return 0;
     rows[id] = <String, Object?>{...row, ...patch};
@@ -86,8 +91,7 @@ class FakeCharacterAssetService implements CharacterAssetService {
   String absolutePathOf({
     required String projectId,
     required String relativePath,
-  }) =>
-      '/abs/$projectId/$relativePath';
+  }) => '/abs/$projectId/$relativePath';
 
   @override
   Future<List<String>> resolveExisting({

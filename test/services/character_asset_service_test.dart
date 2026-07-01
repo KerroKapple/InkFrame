@@ -59,7 +59,8 @@ void main() {
 
   test('absolutePathOf 拒绝 traversal', () {
     expect(
-      () => svc.absolutePathOf(projectId: 'p1', relativePath: '../../etc/passwd'),
+      () =>
+          svc.absolutePathOf(projectId: 'p1', relativePath: '../../etc/passwd'),
       throwsA(isA<CharacterAssetError>()),
     );
   });
@@ -76,5 +77,34 @@ void main() {
     await svc.delete(projectId: 'p1', relativePath: rel);
     expect(File(abs).existsSync(), isFalse);
     await svc.delete(projectId: 'p1', relativePath: rel); // 再删静默不抛
+  });
+
+  test('absolutePathOf 拒绝越权 relativePath（跨平台向量）', () {
+    // 平台无关向量：POSIX 绝对路径、上跳、内嵌上跳、空串——两平台均拒。
+    for (final bad in <String>[
+      '/etc/passwd',
+      '../secret.png',
+      'characters/../../secret',
+      '',
+    ]) {
+      expect(
+        () => svc.absolutePathOf(projectId: 'p1', relativePath: bad),
+        throwsA(isA<CharacterAssetError>()),
+        reason: 'should reject relativePath: "$bad"',
+      );
+    }
+  });
+
+  test('absolutePathOf 拒绝越权 projectId', () {
+    for (final bad in <String>['..', '../x', 'a/b', '']) {
+      expect(
+        () => svc.absolutePathOf(
+          projectId: bad,
+          relativePath: 'characters/a.png',
+        ),
+        throwsA(isA<CharacterAssetError>()),
+        reason: 'should reject projectId: "$bad"',
+      );
+    }
   });
 }

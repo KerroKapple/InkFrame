@@ -54,42 +54,41 @@ import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
 import 'services/prompt_assembler.dart';
 
-final generationControllerProvider = FutureProvider<GenerationController>(
-  (ref) async {
-    final nodes = await ref.watch(nodeRepositoryProvider.future);
-    final edges = await ref.watch(edgeRepositoryProvider.future);
-    final jobs = await ref.watch(jobRepositoryProvider.future);
-    final secure = ref.watch(secureStorageServiceProvider);
-    final queue = await ref.watch(jobQueueServiceProvider.future);
-    final registry = ref.watch(providerRegistryProvider);
-    final resolver = ref.watch(fileResolverServiceProvider);
-    final canvas = await ref.watch(canvasRepositoryProvider.future);
-    final lanes = await ref.watch(styleLaneRepositoryProvider.future);
-    final characters = await ref.watch(characterRepositoryProvider.future);
-    final characterAssets = ref.watch(characterAssetServiceProvider);
-    final uow = await ref.watch(unitOfWorkProvider.future);
-    // jobsRegistryProvider 是 keepAlive：用 read 拿实例，controller 持有它，
-    // 后台 _track future 全程不再触碰 ref。
-    final jobsRegistry = ref.read(jobsRegistryProvider.notifier);
-    return GenerationController(
-      nodes: nodes,
-      edges: edges,
-      jobs: jobs,
-      secure: secure,
-      queue: queue,
-      registry: registry,
-      resolver: resolver,
-      canvas: canvas,
-      lanes: lanes,
-      characters: characters,
-      characterAssets: characterAssets,
-      uow: uow,
-      jobsRegistry: jobsRegistry,
-      logger: ref.watch(loggerProvider),
-    );
-  },
-  name: 'generationControllerProvider',
-);
+final generationControllerProvider = FutureProvider<GenerationController>((
+  ref,
+) async {
+  final nodes = await ref.watch(nodeRepositoryProvider.future);
+  final edges = await ref.watch(edgeRepositoryProvider.future);
+  final jobs = await ref.watch(jobRepositoryProvider.future);
+  final secure = ref.watch(secureStorageServiceProvider);
+  final queue = await ref.watch(jobQueueServiceProvider.future);
+  final registry = ref.watch(providerRegistryProvider);
+  final resolver = ref.watch(fileResolverServiceProvider);
+  final canvas = await ref.watch(canvasRepositoryProvider.future);
+  final lanes = await ref.watch(styleLaneRepositoryProvider.future);
+  final characters = await ref.watch(characterRepositoryProvider.future);
+  final characterAssets = ref.watch(characterAssetServiceProvider);
+  final uow = await ref.watch(unitOfWorkProvider.future);
+  // jobsRegistryProvider 是 keepAlive：用 read 拿实例，controller 持有它，
+  // 后台 _track future 全程不再触碰 ref。
+  final jobsRegistry = ref.read(jobsRegistryProvider.notifier);
+  return GenerationController(
+    nodes: nodes,
+    edges: edges,
+    jobs: jobs,
+    secure: secure,
+    queue: queue,
+    registry: registry,
+    resolver: resolver,
+    canvas: canvas,
+    lanes: lanes,
+    characters: characters,
+    characterAssets: characterAssets,
+    uow: uow,
+    jobsRegistry: jobsRegistry,
+    logger: ref.watch(loggerProvider),
+  );
+}, name: 'generationControllerProvider');
 
 /// 生成控制器异常。具体子类见下方——UI 层按类型分流 toast。
 sealed class GenerationError implements Exception {
@@ -177,13 +176,14 @@ class GenerationController {
     if (!registry.contains(providerId)) {
       throw ProviderNotRegisteredError(providerId);
     }
-    final resolution = _parseResolution(typeConfig['resolution']) ??
-        Resolution.p1080;
+    final resolution =
+        _parseResolution(typeConfig['resolution']) ?? Resolution.p1080;
     final aspect = _parseAspect(typeConfig['aspect_ratio']) ?? AspectRatio.r1x1;
     final seed = typeConfig['seed'] is int ? typeConfig['seed'] as int : null;
     final negRaw = typeConfig['negative_prompt'];
-    final negativePrompt =
-        (negRaw is String && negRaw.trim().isNotEmpty) ? negRaw.trim() : null;
+    final negativePrompt = (negRaw is String && negRaw.trim().isNotEmpty)
+        ? negRaw.trim()
+        : null;
     final batchRaw = typeConfig['batch_size'];
     final batchSize = (batchRaw is int && batchRaw > 0) ? batchRaw : 1;
 
@@ -229,7 +229,8 @@ class GenerationController {
     int durationSeconds = 0;
     CameraMovement? cameraEnum;
     if (nodeType == 'video') {
-      mode = refs.refImagePaths.isEmpty &&
+      mode =
+          refs.refImagePaths.isEmpty &&
               refs.firstFramePath == null &&
               refs.lastFramePath == null
           ? GenerationMode.textToVideo
@@ -322,11 +323,11 @@ class GenerationController {
       );
 
       final handle = await queue.submit(task);
-      logger?.info(_logModule, 'job submitted', extra: {
-        'job_id': jobId,
-        'provider_id': providerId,
-        'mode': mode.name,
-      });
+      logger?.info(
+        _logModule,
+        'job submitted',
+        extra: {'job_id': jobId, 'provider_id': providerId, 'mode': mode.name},
+      );
       jobsRegistry.upsert(
         JobState.queued(
           jobId: jobId,
@@ -335,13 +336,15 @@ class GenerationController {
           sourceNodeId: configNodeId,
         ),
       );
-      unawaited(_track(
-        handle,
-        canvasId: canvasId,
-        resultNodeId: resultNodeId,
-        providerId: providerId,
-        sourceNodeId: configNodeId,
-      ));
+      unawaited(
+        _track(
+          handle,
+          canvasId: canvasId,
+          resultNodeId: resultNodeId,
+          providerId: providerId,
+          sourceNodeId: configNodeId,
+        ),
+      );
       return jobId;
     } catch (e, st) {
       // node+job 已提交，但 submit / registry 挂了——原子清掉两行，不留孤儿。
@@ -486,8 +489,10 @@ class GenerationController {
       return await edges.listIncoming(configNodeId);
     } on InkError catch (e) {
       logger?.warn(
-          _logModule, 'listIncoming failed; refs+texts skipped (swallowed)',
-          extra: {'config_node_id': configNodeId, 'reason': e.toString()});
+        _logModule,
+        'listIncoming failed; refs+texts skipped (swallowed)',
+        extra: {'config_node_id': configNodeId, 'reason': e.toString()},
+      );
       return const [];
     }
   }
@@ -518,8 +523,11 @@ class GenerationController {
       try {
         srcRow = await nodes.findById(srcId);
       } catch (e) {
-        logger?.warn(_logModule, 'ref source lookup failed (swallowed)',
-            extra: {'source_node_id': srcId, 'reason': e.toString()});
+        logger?.warn(
+          _logModule,
+          'ref source lookup failed (swallowed)',
+          extra: {'source_node_id': srcId, 'reason': e.toString()},
+        );
         continue;
       }
       if (srcRow == null) continue;
@@ -539,8 +547,11 @@ class GenerationController {
             .path;
       } catch (e) {
         failedResolves++;
-        logger?.warn(_logModule, 'ref path resolve failed (swallowed)',
-            extra: {'source_node_id': srcId, 'reason': e.toString()});
+        logger?.warn(
+          _logModule,
+          'ref path resolve failed (swallowed)',
+          extra: {'source_node_id': srcId, 'reason': e.toString()},
+        );
         continue;
       }
 
@@ -605,8 +616,11 @@ class GenerationController {
       try {
         row = await characters.findById(id);
       } on InkError catch (e) {
-        logger?.warn(_logModule, 'character lookup failed (swallowed)',
-            extra: {'character_id': id, 'reason': e.toString()});
+        logger?.warn(
+          _logModule,
+          'character lookup failed (swallowed)',
+          extra: {'character_id': id, 'reason': e.toString()},
+        );
         continue;
       }
       if (row == null) continue;
@@ -614,28 +628,22 @@ class GenerationController {
     }
     if (relPaths.isEmpty) return base;
 
-    List<String> extraAbs;
-    try {
-      extraAbs = await characterAssets.resolveExisting(
-        projectId: projectId,
-        relativePaths: relPaths,
-      );
-    } catch (e) {
-      logger?.warn(_logModule, 'character asset resolve failed (swallowed)',
-          extra: {'reason': e.toString()});
-      return base;
-    }
+    // resolveExisting 为非抛设计（服务内逐条吞掉缺文件/越权），无需外层 catch。
+    final extraAbs = await characterAssets.resolveExisting(
+      projectId: projectId,
+      relativePaths: relPaths,
+    );
     if (extraAbs.isEmpty) return base;
 
+    // 合并去重（边连参考图在前，角色图补足）。不在此截断 maxRefImages——与边连参考图
+    // 一致，由 provider 自身 take(maxRefImages) 收口，避免"有无角色决定是否截断"的不一致
+    // （评审 #1）。
     final merged = <String>[...base.refImagePaths];
     for (final abs in extraAbs) {
       if (!merged.contains(abs)) merged.add(abs);
     }
-    final capped = merged.length > caps.maxRefImages
-        ? merged.sublist(0, caps.maxRefImages)
-        : merged;
     return _RefImages(
-      refImagePaths: List.unmodifiable(capped),
+      refImagePaths: List.unmodifiable(merged),
       firstFramePath: base.firstFramePath,
       lastFramePath: base.lastFramePath,
     );
@@ -668,9 +676,11 @@ class GenerationController {
       basePrefix = c?.optString(CanvasCol.baseStylePrefix) ?? '';
       baseSuffix = c?.optString(CanvasCol.baseStyleSuffix) ?? '';
     } on InkError catch (e) {
-      logger?.warn(_logModule,
-          'base style lookup failed; degraded to empty (swallowed)',
-          extra: {'canvas_id': canvasId, 'reason': e.toString()});
+      logger?.warn(
+        _logModule,
+        'base style lookup failed; degraded to empty (swallowed)',
+        extra: {'canvas_id': canvasId, 'reason': e.toString()},
+      );
     }
     var laneStyle = '';
     if (!ignoreLaneStyle && laneId != null) {
@@ -678,9 +688,11 @@ class GenerationController {
         final l = await lanes.findById(laneId);
         laneStyle = l?.optString(StyleLaneCol.stylePrompt) ?? '';
       } on InkError catch (e) {
-        logger?.warn(_logModule,
-            'lane style lookup failed; degraded to empty (swallowed)',
-            extra: {'lane_id': laneId, 'reason': e.toString()});
+        logger?.warn(
+          _logModule,
+          'lane style lookup failed; degraded to empty (swallowed)',
+          extra: {'lane_id': laneId, 'reason': e.toString()},
+        );
       }
     }
     final texts = await _resolveAssociatedTexts(incoming);
@@ -699,8 +711,11 @@ class GenerationController {
     List<Map<String, Object?>> incoming,
   ) async {
     final rows = incoming.where((r) => r[EdgeCol.edgeType] == 'data').toList()
-      ..sort((a, b) => (a[EdgeCol.createdAt]?.toString() ?? '')
-          .compareTo(b[EdgeCol.createdAt]?.toString() ?? ''));
+      ..sort(
+        (a, b) => (a[EdgeCol.createdAt]?.toString() ?? '').compareTo(
+          b[EdgeCol.createdAt]?.toString() ?? '',
+        ),
+      );
     final out = <String>[];
     for (final r in rows) {
       final srcId = r.optId(EdgeCol.sourceNodeId);
@@ -755,9 +770,9 @@ class _RefImages {
     this.lastFramePath,
   });
   const _RefImages.empty()
-      : refImagePaths = const <String>[],
-        firstFramePath = null,
-        lastFramePath = null;
+    : refImagePaths = const <String>[],
+      firstFramePath = null,
+      lastFramePath = null;
   final List<String> refImagePaths;
   final String? firstFramePath;
   final String? lastFramePath;

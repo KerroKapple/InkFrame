@@ -97,8 +97,7 @@ class _FakeNodeRepo implements NodeRepository {
   @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
-  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async =>
-      0;
+  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async => 0;
   @override
   Future<int> restore(String id) async => 0;
   @override
@@ -144,7 +143,10 @@ class _FakeJobRepo implements JobRepository {
   @override
   Future<List<Map<String, Object?>>> listByStatus(List<String> s) async => [];
   @override
-  Future<List<Map<String, Object?>>> listByCanvas(String c, {int limit = 200}) async => [];
+  Future<List<Map<String, Object?>>> listByCanvas(
+    String c, {
+    int limit = 200,
+  }) async => [];
   @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
@@ -163,8 +165,7 @@ class _FakeJobRepo implements JobRepository {
     required List<String> fromStatuses,
     required String toStatus,
     Map<String, Object?> extra = const <String, Object?>{},
-  }) async =>
-      0;
+  }) async => 0;
   @override
   Future<int> hardDelete(String id) async {
     hardDeleted.add(id);
@@ -210,12 +211,11 @@ class _FakeJobQueue implements JobQueueService {
   Future<JobHandle> submit(GenerationTask task) async {
     if (submitThrows) throw StateError('submit boom');
     lastTask = task;
-    return _FakeHandle(
-      task.jobId,
-      const [JobStatus.inProgress(progress: 0.4)],
-      finalStatus,
-    );
+    return _FakeHandle(task.jobId, const [
+      JobStatus.inProgress(progress: 0.4),
+    ], finalStatus);
   }
+
   @override
   Future<void> cancel(String jobId) async {}
   @override
@@ -282,11 +282,19 @@ class _FakeCanvasRepo implements CanvasRepository {
   @override
   Future<Map<String, Object?>?> findById(String id) async => null;
   @override
-  Future<String> create({required String projectId, required String name, String baseStylePrefix = '', String baseStyleSuffix = ''}) async => '';
+  Future<String> create({
+    required String projectId,
+    required String name,
+    String baseStylePrefix = '',
+    String baseStyleSuffix = '',
+  }) async => '';
   @override
-  Future<List<Map<String, Object?>>> listByProject(String projectId) async => [];
+  Future<List<Map<String, Object?>>> listByProject(String projectId) async =>
+      [];
   @override
-  Future<List<Map<String, Object?>>> listByProjects(List<String> projectIds) async => [];
+  Future<List<Map<String, Object?>>> listByProjects(
+    List<String> projectIds,
+  ) async => [];
   @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
@@ -301,7 +309,14 @@ class _FakeLaneRepo implements StyleLaneRepository {
   @override
   Future<Map<String, Object?>?> findById(String id) async => null;
   @override
-  Future<String> create({required String canvasId, String label = '', String stylePrompt = '', int sortOrder = 0, String? tintColor, double size = 400.0}) async => '';
+  Future<String> create({
+    required String canvasId,
+    String label = '',
+    String stylePrompt = '',
+    int sortOrder = 0,
+    String? tintColor,
+    double size = 400.0,
+  }) async => '';
   @override
   Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async => [];
   @override
@@ -323,15 +338,13 @@ class _FakeResolver implements FileResolverService {
     required String projectId,
     required String canvasId,
     required String relativePath,
-  }) =>
-      File('/fake/$projectId/$canvasId/$relativePath');
+  }) => File('/fake/$projectId/$canvasId/$relativePath');
   @override
   String toRelative({
     required String projectId,
     required String canvasId,
     required File source,
-  }) =>
-      source.path;
+  }) => source.path;
 }
 
 // ---- tests ------------------------------------------------------------
@@ -353,21 +366,21 @@ void main() {
   late FakeCharacterAssetService characterAssets;
 
   GenerationController buildCtrl() => GenerationController(
-        nodes: nodes,
-        edges: edges,
-        jobs: jobs,
-        secure: secure,
-        queue: queue,
-        registry: registry,
-        resolver: resolver,
-        canvas: canvasRepo,
-        lanes: laneRepo,
-        characters: characters,
-        characterAssets: characterAssets,
-        uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
-        jobsRegistry: jobsRegistry,
-        logger: logger,
-      );
+    nodes: nodes,
+    edges: edges,
+    jobs: jobs,
+    secure: secure,
+    queue: queue,
+    registry: registry,
+    resolver: resolver,
+    canvas: canvasRepo,
+    lanes: laneRepo,
+    characters: characters,
+    characterAssets: characterAssets,
+    uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
+    jobsRegistry: jobsRegistry,
+    logger: logger,
+  );
 
   setUp(() {
     nodes = _FakeNodeRepo();
@@ -408,10 +421,7 @@ void main() {
     return id;
   }
 
-  void seedRefImageNode({
-    required String id,
-    required String imageUrl,
-  }) {
+  void seedRefImageNode({required String id, required String imageUrl}) {
     nodes.rows[id] = {
       'id': id,
       'canvas_id': 'cvx',
@@ -472,28 +482,30 @@ void main() {
     });
   }
 
-  test('角色一致性：provider 支持参考图 → 角色图并入 refImagePaths + mode 翻 imageToImage + 落盘参数带上',
-      () async {
-    useCapableProvider();
-    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
-      'char-1': <String, Object?>{
-        'id': 'char-1',
-        'project_id': 'proj-1',
-        'name': 'Hero',
-        'reference_image_paths': <String>['characters/hero-0.png'],
-      },
-    });
-    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
-    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+  test(
+    '角色一致性：provider 支持参考图 → 角色图并入 refImagePaths + mode 翻 imageToImage + 落盘参数带上',
+    () async {
+      useCapableProvider();
+      characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+        'char-1': <String, Object?>{
+          'id': 'char-1',
+          'project_id': 'proj-1',
+          'name': 'Hero',
+          'reference_image_paths': <String>['characters/hero-0.png'],
+        },
+      });
+      final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
 
-    await buildCtrl().submitFromConfigNode(cfg);
+      await buildCtrl().submitFromConfigNode(cfg);
 
-    const expectedAbs = '/abs/proj-1/characters/hero-0.png';
-    expect(queue.lastTask?.refImagePaths, contains(expectedAbs));
-    expect(queue.lastTask?.mode, GenerationMode.imageToImage);
-    final params = jobs.creates.first['parameters'] as Map<String, Object?>;
-    expect(params['ref_image_paths'], contains(expectedAbs));
-  });
+      const expectedAbs = '/abs/proj-1/characters/hero-0.png';
+      expect(queue.lastTask?.refImagePaths, contains(expectedAbs));
+      expect(queue.lastTask?.mode, GenerationMode.imageToImage);
+      final params = jobs.creates.first['parameters'] as Map<String, Object?>;
+      expect(params['ref_image_paths'], contains(expectedAbs));
+    },
+  );
 
   test('角色一致性：provider maxRefImages=0 → 不注入，保持 textToImage', () async {
     useCapableProvider(maxRefImages: 0);
@@ -532,37 +544,92 @@ void main() {
     expect(queue.lastTask?.mode, GenerationMode.textToImage);
   });
 
-  test('成功路径（fire-and-forget）：立即返回 jobId，后台推进 queued→running→succeeded',
-      () async {
-    final cfg = await seedConfigNode();
-    await secure.store(
-      SecureStorageKeys.providerApiKey(providerId),
-      'sk-test',
+  test('角色一致性：多个角色的参考图按序并入', () async {
+    useCapableProvider();
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'reference_image_paths': <String>['characters/a.png'],
+      },
+      'char-2': <String, Object?>{
+        'id': 'char-2',
+        'project_id': 'proj-1',
+        'reference_image_paths': <String>['characters/b.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(
+      characterIds: ['char-1', 'char-2'],
     );
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
 
-    final jobId = await buildCtrl().submitFromConfigNode(cfg);
+    await buildCtrl().submitFromConfigNode(cfg);
 
-    // 同步契约：提交即返回非空 jobId + result 节点已预创建。
-    expect(jobId, isNotEmpty);
-    expect(nodes.creates, hasLength(1));
-    expect(nodes.creates.first['node_role'], 'result');
-    expect(nodes.creates.first['source_node_id'], cfg);
-    expect(jobs.creates, hasLength(1));
     expect(
-      jobs.creates.first['result_node_id'],
-      nodes.creates.first['id'],
+      queue.lastTask?.refImagePaths,
+      containsAll(<String>[
+        '/abs/proj-1/characters/a.png',
+        '/abs/proj-1/characters/b.png',
+      ]),
     );
-    expect(queue.lastTask?.prompt, 'a cat');
-
-    // 排空后台 _track future。
-    await pumpEventQueue();
-
-    final types = jobsRegistry.events.map((e) => e.runtimeType).toList();
-    expect(types.first, JobQueued);
-    expect(types, contains(JobRunning));
-    expect(types.last, JobSucceeded);
-    expect(nodes.softDeleted, isEmpty);
   });
+
+  test('角色一致性：provider maxRefImages>0 但无 imageToImage 模式 → 不注入', () async {
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(
+        capabilities: fakeImageCapabilities(
+          id: providerId,
+          modes: const <GenerationMode>[GenerationMode.textToImage],
+          maxRefImages: 4,
+        ),
+      ),
+    });
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'reference_image_paths': <String>['characters/a.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    expect(queue.lastTask?.refImagePaths, isEmpty);
+    expect(queue.lastTask?.mode, GenerationMode.textToImage);
+  });
+
+  test(
+    '成功路径（fire-and-forget）：立即返回 jobId，后台推进 queued→running→succeeded',
+    () async {
+      final cfg = await seedConfigNode();
+      await secure.store(
+        SecureStorageKeys.providerApiKey(providerId),
+        'sk-test',
+      );
+
+      final jobId = await buildCtrl().submitFromConfigNode(cfg);
+
+      // 同步契约：提交即返回非空 jobId + result 节点已预创建。
+      expect(jobId, isNotEmpty);
+      expect(nodes.creates, hasLength(1));
+      expect(nodes.creates.first['node_role'], 'result');
+      expect(nodes.creates.first['source_node_id'], cfg);
+      expect(jobs.creates, hasLength(1));
+      expect(jobs.creates.first['result_node_id'], nodes.creates.first['id']);
+      expect(queue.lastTask?.prompt, 'a cat');
+
+      // 排空后台 _track future。
+      await pumpEventQueue();
+
+      final types = jobsRegistry.events.map((e) => e.runtimeType).toList();
+      expect(types.first, JobQueued);
+      expect(types, contains(JobRunning));
+      expect(types.last, JobSucceeded);
+      expect(nodes.softDeleted, isEmpty);
+    },
+  );
 
   test('未指定 provider_id → 默认走 kDefaultImageProviderId', () async {
     final cfg = await seedConfigNode(); // typeConfig 不含 provider_id
@@ -600,16 +667,12 @@ void main() {
 
   test('prompt 空 → InvalidGenerationConfigError', () async {
     final cfg = await seedConfigNode(prompt: '   ');
-    await secure.store(
-      SecureStorageKeys.providerApiKey(providerId),
-      'sk',
-    );
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
     expect(
       () => buildCtrl().submitFromConfigNode(cfg),
       throwsA(isA<InvalidGenerationConfigError>()),
     );
-    expect(nodes.creates, isEmpty,
-        reason: '参数校验失败，不该创 result 节点');
+    expect(nodes.creates, isEmpty, reason: '参数校验失败，不该创 result 节点');
   });
 
   test('未注册 Provider → ProviderNotRegisteredError', () async {
@@ -630,48 +693,43 @@ void main() {
     expect(nodes.creates, isEmpty);
   });
 
-  test('Provider 失败（done = failure）→ 末态 JobFailed + result 节点 softDelete',
-      () async {
-    final cfg = await seedConfigNode();
-    await secure.store(
-      SecureStorageKeys.providerApiKey(providerId),
-      'sk',
-    );
-    queue.finalStatus = const JobStatus.failure(
-      error: ProviderError(code: InkErrorCode.providerServer),
-    );
+  test(
+    'Provider 失败（done = failure）→ 末态 JobFailed + result 节点 softDelete',
+    () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+      queue.finalStatus = const JobStatus.failure(
+        error: ProviderError(code: InkErrorCode.providerServer),
+      );
 
-    await buildCtrl().submitFromConfigNode(cfg);
-    await pumpEventQueue();
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
 
-    expect(jobsRegistry.events.last, isA<JobFailed>());
-    expect(nodes.softDeleted, contains(nodes.creates.first['id']));
-  });
+      expect(jobsRegistry.events.last, isA<JobFailed>());
+      expect(nodes.softDeleted, contains(nodes.creates.first['id']));
+    },
+  );
 
-  test('取消（done = failure，error 为 CancelledError）→ 末态 JobCancelled + softDelete',
-      () async {
-    final cfg = await seedConfigNode();
-    await secure.store(
-      SecureStorageKeys.providerApiKey(providerId),
-      'sk',
-    );
-    queue.finalStatus = const JobStatus.failure(
-      error: CancelledError.byUser(),
-    );
+  test(
+    '取消（done = failure，error 为 CancelledError）→ 末态 JobCancelled + softDelete',
+    () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+      queue.finalStatus = const JobStatus.failure(
+        error: CancelledError.byUser(),
+      );
 
-    await buildCtrl().submitFromConfigNode(cfg);
-    await pumpEventQueue();
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
 
-    expect(jobsRegistry.events.last, isA<JobCancelled>());
-    expect(nodes.softDeleted, contains(nodes.creates.first['id']));
-  });
+      expect(jobsRegistry.events.last, isA<JobCancelled>());
+      expect(nodes.softDeleted, contains(nodes.creates.first['id']));
+    },
+  );
 
   test('jobs.create 抛错 → 创建事务回滚，submit 未触达，rethrow', () async {
     final cfg = await seedConfigNode();
-    await secure.store(
-      SecureStorageKeys.providerApiKey(providerId),
-      'sk',
-    );
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
     jobs.createThrows = true;
 
     await expectLater(
@@ -698,10 +756,7 @@ void main() {
   group('logger 注入点（FIX-016 / ME-21）', () {
     test('job 终态失败 → ERROR 日志（module=generation.controller）', () async {
       final cfg = await seedConfigNode();
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
       queue.finalStatus = const JobStatus.failure(
         error: ProviderError(code: InkErrorCode.providerServer),
       );
@@ -712,47 +767,47 @@ void main() {
       final errors = logger.byLevel(InkLogLevel.error);
       expect(errors, isNotEmpty);
       expect(errors.first.module, 'generation.controller');
-      expect(errors.first.extra?['error_code'],
-          InkErrorCode.providerServer.wire);
-    });
-
-    test('创建事务失败 → ERROR 日志（module=generation.controller）后照常 rethrow',
-        () async {
-      final cfg = await seedConfigNode();
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
-      jobs.createThrows = true;
-
-      await expectLater(
-        buildCtrl().submitFromConfigNode(cfg),
-        throwsA(isA<LocalIOError>()),
-      );
       expect(
-        logger
-            .byLevel(InkLogLevel.error)
-            .where((r) => r.module == 'generation.controller'),
-        isNotEmpty,
+        errors.first.extra?['error_code'],
+        InkErrorCode.providerServer.wire,
       );
     });
+
+    test(
+      '创建事务失败 → ERROR 日志（module=generation.controller）后照常 rethrow',
+      () async {
+        final cfg = await seedConfigNode();
+        await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+        jobs.createThrows = true;
+
+        await expectLater(
+          buildCtrl().submitFromConfigNode(cfg),
+          throwsA(isA<LocalIOError>()),
+        );
+        expect(
+          logger
+              .byLevel(InkLogLevel.error)
+              .where((r) => r.module == 'generation.controller'),
+          isNotEmpty,
+        );
+      },
+    );
 
     test('成功提交 → INFO 日志带 job_id / provider_id', () async {
       final cfg = await seedConfigNode();
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
 
       final jobId = await buildCtrl().submitFromConfigNode(cfg);
       await pumpEventQueue();
 
       final infos = logger.byLevel(InkLogLevel.info);
       expect(
-        infos.where((r) =>
-            r.module == 'generation.controller' &&
-            r.extra?['job_id'] == jobId &&
-            r.extra?['provider_id'] == providerId),
+        infos.where(
+          (r) =>
+              r.module == 'generation.controller' &&
+              r.extra?['job_id'] == jobId &&
+              r.extra?['provider_id'] == providerId,
+        ),
         isNotEmpty,
       );
     });
@@ -776,29 +831,31 @@ void main() {
       return id;
     }
 
-    test('seed / negative_prompt / batch_size 抬进 GenerationTask + jobs.create',
-        () async {
-      final cfg = await seedParamNode(<String, Object?>{
-        'seed': 42,
-        'negative_prompt': 'blurry, low quality',
-        'batch_size': 3,
-      });
-      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+    test(
+      'seed / negative_prompt / batch_size 抬进 GenerationTask + jobs.create',
+      () async {
+        final cfg = await seedParamNode(<String, Object?>{
+          'seed': 42,
+          'negative_prompt': 'blurry, low quality',
+          'batch_size': 3,
+        });
+        await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
 
-      await buildCtrl().submitFromConfigNode(cfg);
+        await buildCtrl().submitFromConfigNode(cfg);
 
-      final task = queue.lastTask!;
-      expect(task.seed, 42);
-      expect(task.negativePrompt, 'blurry, low quality');
-      expect(task.batchSize, 3);
+        final task = queue.lastTask!;
+        expect(task.seed, 42);
+        expect(task.negativePrompt, 'blurry, low quality');
+        expect(task.batchSize, 3);
 
-      final created = jobs.creates.first;
-      expect(created['batch_size'], 3);
-      final params = created['parameters']! as Map<String, Object?>;
-      expect(params['seed'], 42);
-      expect(params['negative_prompt'], 'blurry, low quality');
-      expect(params['batch_size'], 3);
-    });
+        final created = jobs.creates.first;
+        expect(created['batch_size'], 3);
+        final params = created['parameters']! as Map<String, Object?>;
+        expect(params['seed'], 42);
+        expect(params['negative_prompt'], 'blurry, low quality');
+        expect(params['batch_size'], 3);
+      },
+    );
 
     test('缺省时 seed=null / negativePrompt=null / batchSize=1', () async {
       final cfg = await seedConfigNode();
@@ -813,7 +870,9 @@ void main() {
     });
 
     test('negative_prompt 全空白视为未设置（null）', () async {
-      final cfg = await seedParamNode(<String, Object?>{'negative_prompt': '   '});
+      final cfg = await seedParamNode(<String, Object?>{
+        'negative_prompt': '   ',
+      });
       await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
 
       await buildCtrl().submitFromConfigNode(cfg);
@@ -838,31 +897,27 @@ void main() {
   });
 
   group('data edge → refImagePaths', () {
-    test('多条 reference data edge 聚合为 refImagePaths + mode=imageToImage',
-        () async {
-      final cfg = await seedConfigNode();
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
-      seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
-      seedRefImageNode(id: 'img2', imageUrl: 'images/b.png');
-      seedDataEdge(sourceId: 'img1', targetId: cfg);
-      seedDataEdge(sourceId: 'img2', targetId: cfg);
+    test(
+      '多条 reference data edge 聚合为 refImagePaths + mode=imageToImage',
+      () async {
+        final cfg = await seedConfigNode();
+        await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+        seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
+        seedRefImageNode(id: 'img2', imageUrl: 'images/b.png');
+        seedDataEdge(sourceId: 'img1', targetId: cfg);
+        seedDataEdge(sourceId: 'img2', targetId: cfg);
 
-      await buildCtrl().submitFromConfigNode(cfg);
-      final task = queue.lastTask!;
-      expect(task.mode, GenerationMode.imageToImage);
-      expect(task.refImagePaths, hasLength(2));
-      expect(task.refImagePaths.first, contains('/proj-1/cvx/images/'));
-    });
+        await buildCtrl().submitFromConfigNode(cfg);
+        final task = queue.lastTask!;
+        expect(task.mode, GenerationMode.imageToImage);
+        expect(task.refImagePaths, hasLength(2));
+        expect(task.refImagePaths.first, contains('/proj-1/cvx/images/'));
+      },
+    );
 
     test('first_frame / last_frame role 分流到独立字段', () async {
       final cfg = await seedConfigNode();
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
       seedRefImageNode(id: 'ff', imageUrl: 'images/first.png');
       seedRefImageNode(id: 'lf', imageUrl: 'images/last.png');
       seedRefImageNode(id: 'r1', imageUrl: 'images/ref.png');
@@ -880,10 +935,7 @@ void main() {
 
     test('源节点已删 / image_url 空 → 该边静默跳过', () async {
       final cfg = await seedConfigNode();
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
       // img1 有 url；img2 url 空；img3 不存在（FakeNodeRepo.findById 返回 null）
       seedRefImageNode(id: 'img1', imageUrl: 'images/ok.png');
       seedRefImageNode(id: 'img2', imageUrl: '');
@@ -898,10 +950,7 @@ void main() {
 
     test('projectId 为空（单测占位）→ 不解析 refImages', () async {
       final cfg = await seedConfigNode(projectId: null);
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
       seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
       seedDataEdge(sourceId: 'img1', targetId: cfg);
 
@@ -913,10 +962,7 @@ void main() {
 
     test('narrative / generation_source edge 不参与 refImages', () async {
       final cfg = await seedConfigNode();
-      await secure.store(
-        SecureStorageKeys.providerApiKey(providerId),
-        'sk',
-      );
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
       seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
       // narrative 不该被消费
       edges.rows.add({

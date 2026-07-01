@@ -12,11 +12,12 @@ import '../../../core/interfaces/character_asset_service.dart';
 import '../../../core/interfaces/character_repository.dart';
 import '../models/character.dart';
 
-final charactersControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
-    CharactersController, List<Character>, String>(
-  CharactersController.new,
-  name: 'charactersControllerProvider',
-);
+final charactersControllerProvider =
+    AutoDisposeAsyncNotifierProviderFamily<
+      CharactersController,
+      List<Character>,
+      String
+    >(CharactersController.new, name: 'charactersControllerProvider');
 
 class CharactersController
     extends AutoDisposeFamilyAsyncNotifier<List<Character>, String> {
@@ -38,11 +39,11 @@ class CharactersController
     return r;
   }
 
-  CharacterAssetService get _assets =>
-      ref.read(characterAssetServiceProvider);
+  CharacterAssetService get _assets => ref.read(characterAssetServiceProvider);
 
   /// 从一张已存在的绝对路径图片新建角色：先建记录拿 id → 导图命名 {id}-0 → 回填参考图。
-  /// 导图失败回滚记录并上抛。返回新角色 id。
+  /// 导图或回填任一步失败：清记录 + 清可能已落盘的图（best-effort），保留原始错误上抛，
+  /// 不留 ghost 记录/孤儿文件。返回新角色 id。
   Future<String> createFromImage({
     required String name,
     required String sourceAbsolutePath,
@@ -50,20 +51,27 @@ class CharactersController
     final projectId = arg;
     final repo = _repo;
     final id = await repo.create(projectId: projectId, name: name);
-    final String rel;
+    String? rel;
     try {
       rel = await _assets.importImage(
         projectId: projectId,
         sourceAbsolutePath: sourceAbsolutePath,
         fileBaseName: '$id-0',
       );
-    } catch (_) {
-      await repo.hardDelete(id);
-      rethrow;
+      await repo.update(id, <String, Object?>{
+        CharacterCol.referenceImagePaths: <String>[rel],
+      });
+    } on Exception catch (e, st) {
+      try {
+        await repo.hardDelete(id);
+      } on Exception catch (_) {
+        // 补偿失败也不掩盖原始错误。
+      }
+      if (rel != null) {
+        await _assets.delete(projectId: projectId, relativePath: rel);
+      }
+      Error.throwWithStackTrace(e, st);
     }
-    await repo.update(id, <String, Object?>{
-      CharacterCol.referenceImagePaths: <String>[rel],
-    });
     await _reload();
     return id;
   }
@@ -85,10 +93,7 @@ class CharactersController
 
   Future<void> delete(String id) async {
     final repo = _repo;
-    final assets = _assets;
-    final projectId = arg;
     final previous = state.valueOrNull ?? const <Character>[];
-    final removed = previous.where((c) => c.id == id).toList();
     state = AsyncData(previous.where((c) => c.id != id).toList());
     try {
       await repo.softDelete(id);
@@ -96,12 +101,8 @@ class CharactersController
       if (_alive) state = AsyncData(previous);
       rethrow;
     }
-    // 资产清理尽力而为——不影响 UI 状态。
-    for (final c in removed) {
-      for (final rel in c.referenceImagePaths) {
-        await assets.delete(projectId: projectId, relativePath: rel);
-      }
-    }
+    // 软删可恢复（restore 存在于契约）：不销毁参考图资产，留待 hardDelete/清理路径，
+    // 否则 restore 后角色参考图指向已删文件（评审 F2）。
   }
 
   Future<void> _reload() async {
