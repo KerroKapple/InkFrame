@@ -5,6 +5,7 @@
 // InspectorSubmitController(nodeId)；hasApiKey 经 inspectorHasApiKeyProvider
 // 缓存；四态渲染由 InspectorStatusBinding → InspectorStatusPanel 完成。
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart' hide AspectRatio;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -743,8 +744,38 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
             label: Text(context.l10n.inspectorCharactersSaveFromReference),
           ),
         ),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: _importFromFile,
+            icon: const Icon(Icons.upload_file, size: 16),
+            label: Text(context.l10n.inspectorCharactersImportFile),
+          ),
+        ),
       ],
     );
+  }
+
+  /// 从磁盘选图新建角色（file_selector，桌面）。不依赖已连参考图，补齐首个角色的种子路径。
+  Future<void> _importFromFile() async {
+    final projectId = widget.targetNode.projectId;
+    if (projectId == null) return;
+    const group = XTypeGroup(
+      label: 'images',
+      extensions: <String>['png', 'jpg', 'jpeg', 'webp', 'bmp', 'gif'],
+    );
+    final file = await openFile(acceptedTypeGroups: <XTypeGroup>[group]);
+    if (file == null || !mounted) return;
+    final name = await _promptName(context);
+    if (name == null || name.trim().isEmpty) return;
+    try {
+      final id = await ref
+          .read(charactersControllerProvider(projectId).notifier)
+          .createFromImage(name: name.trim(), sourceAbsolutePath: file.path);
+      if (mounted) _toggle(id);
+    } catch (_) {
+      // best-effort：选择/导入失败不崩 UI。
+    }
   }
 
   Future<void> _createFromReference(CanvasNode source) async {

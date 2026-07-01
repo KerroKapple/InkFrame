@@ -390,6 +390,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Save reference as character';
 
   @override
+  String get inspectorCharactersImportFile => 'Import image file';
+
+  @override
   String get inspectorCharactersDialogTitle => 'New character';
 
   @override
