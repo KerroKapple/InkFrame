@@ -57,6 +57,20 @@ abstract final class CharacterCol {
   static const deletedAt = 'deleted_at';
 }
 
+abstract final class PromptPresetCol {
+  static const id = 'id';
+  static const projectId = 'project_id';
+  static const name = 'name';
+  static const prompt = 'prompt';
+  static const prefix = 'prefix';
+  static const suffix = 'suffix';
+  static const negative = 'negative';
+  static const sortOrder = 'sort_order';
+  static const createdAt = 'created_at';
+  static const updatedAt = 'updated_at';
+  static const deletedAt = 'deleted_at';
+}
+
 abstract final class NodeCol {
   static const id = 'id';
   static const canvasId = 'canvas_id';

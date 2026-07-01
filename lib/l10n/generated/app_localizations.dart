@@ -818,6 +818,36 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get inspectorCharactersSave;
 
+  /// No description provided for @inspectorPresetsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt presets'**
+  String get inspectorPresetsLabel;
+
+  /// No description provided for @inspectorPresetsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No presets yet'**
+  String get inspectorPresetsEmpty;
+
+  /// No description provided for @inspectorPresetsSaveCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Save current as preset'**
+  String get inspectorPresetsSaveCurrent;
+
+  /// No description provided for @inspectorPresetsDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New preset'**
+  String get inspectorPresetsDialogTitle;
+
+  /// No description provided for @inspectorPresetsNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset name'**
+  String get inspectorPresetsNameHint;
+
   /// No description provided for @canvasAddImageNode.
   ///
   /// In en, this message translates to:

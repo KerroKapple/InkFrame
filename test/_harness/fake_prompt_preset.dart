@@ -1,0 +1,67 @@
+// 测试用 PromptPreset 仓储 fake。
+import 'package:inkframe/core/interfaces/prompt_preset_repository.dart';
+
+class FakePromptPresetRepo implements PromptPresetRepository {
+  FakePromptPresetRepo([Map<String, Map<String, Object?>>? rows])
+    : rows = rows ?? <String, Map<String, Object?>>{};
+
+  final Map<String, Map<String, Object?>> rows;
+  final List<String> softDeleted = <String>[];
+  int createCalls = 0;
+
+  @override
+  Future<String> create({
+    required String projectId,
+    String name = '',
+    String prompt = '',
+    String prefix = '',
+    String suffix = '',
+    String negative = '',
+    int sortOrder = 0,
+  }) async {
+    createCalls++;
+    final id = 'preset-$createCalls';
+    rows[id] = <String, Object?>{
+      'id': id,
+      'project_id': projectId,
+      'name': name,
+      'prompt': prompt,
+      'prefix': prefix,
+      'suffix': suffix,
+      'negative': negative,
+      'sort_order': sortOrder,
+    };
+    return id;
+  }
+
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => rows[id];
+
+  @override
+  Future<List<Map<String, Object?>>> listByProject(String projectId) async =>
+      rows.values.where((r) => r['project_id'] == projectId).toList();
+
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async {
+    final row = rows[id];
+    if (row == null) return 0;
+    rows[id] = <String, Object?>{...row, ...patch};
+    return 1;
+  }
+
+  @override
+  Future<int> softDelete(String id) async {
+    softDeleted.add(id);
+    rows.remove(id);
+    return 1;
+  }
+
+  @override
+  Future<int> restore(String id) async => 1;
+
+  @override
+  Future<int> hardDelete(String id) async {
+    rows.remove(id);
+    return 1;
+  }
+}

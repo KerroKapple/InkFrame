@@ -20,6 +20,7 @@ import '../../generation/services/prompt_assembler.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
+import '../models/prompt_preset.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_base_style.dart';
 import '../providers/canvas_edges_controller.dart';
@@ -27,6 +28,7 @@ import '../providers/canvas_lanes_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/characters_controller.dart';
 import '../providers/inspector_submit_controller.dart';
+import '../providers/prompt_presets_controller.dart';
 import 'inspector_status_panel.dart';
 
 class ImageConfigInspector extends ConsumerStatefulWidget {
@@ -61,6 +63,19 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
 
   InspectorSubmitController get _submitCtrl =>
       ref.read(inspectorSubmitControllerProvider(widget.node.id).notifier);
+
+  /// 应用预设：填入 prompt + negative（节点级），并落盘。prefix/suffix 为画布级，
+  /// v1 不在此改动画布 base style（避免跨节点意外），仅带 prompt/negative。
+  void _applyPreset(PromptPreset preset) {
+    setState(() {
+      _promptCtrl.text = preset.prompt;
+      _negCtrl.text = preset.negative;
+    });
+    _submitCtrl.saveConfig(<String, Object?>{
+      'prompt': preset.prompt,
+      'negative_prompt': preset.negative,
+    });
+  }
 
   @override
   void initState() {
@@ -395,6 +410,13 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
               const SizedBox(height: InkSpacing.lg),
               _InputsSection(targetNode: widget.node),
               const SizedBox(height: InkSpacing.md),
+              _PresetsSection(
+                targetNode: widget.node,
+                onApply: _applyPreset,
+                readCurrent: () =>
+                    (prompt: _promptCtrl.text, negative: _negCtrl.text),
+              ),
+              const SizedBox(height: InkSpacing.md),
               _CharactersSection(
                 targetNode: widget.node,
                 selectedCaps: selected,
@@ -481,10 +503,122 @@ class _InputsSection extends ConsumerWidget {
   }
 }
 
+/// 项目级提示词预设库：点选预设 → 填入 prompt/negative；「存为预设」把当前 prompt 存起。
+class _PresetsSection extends ConsumerStatefulWidget {
+  const _PresetsSection({
+    required this.targetNode,
+    required this.onApply,
+    required this.readCurrent,
+  });
+
+  final CanvasNode targetNode;
+  final void Function(PromptPreset preset) onApply;
+  final ({String prompt, String negative}) Function() readCurrent;
+
+  @override
+  ConsumerState<_PresetsSection> createState() => _PresetsSectionState();
+}
+
+class _PresetsSectionState extends ConsumerState<_PresetsSection> {
+  @override
+  Widget build(BuildContext context) {
+    final projectId = widget.targetNode.projectId;
+    if (projectId == null) return const SizedBox.shrink();
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final presets =
+        ref.watch(promptPresetsControllerProvider(projectId)).valueOrNull ??
+        const <PromptPreset>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.inspectorPresetsLabel,
+          style: typo.caption.copyWith(color: colors.fg3),
+        ),
+        const SizedBox(height: InkSpacing.xs),
+        if (presets.isEmpty)
+          Text(
+            context.l10n.inspectorPresetsEmpty,
+            style: typo.caption.copyWith(color: colors.fg3),
+          )
+        else
+          Wrap(
+            spacing: InkSpacing.xs,
+            runSpacing: InkSpacing.xs,
+            children: [
+              for (final p in presets)
+                _CharacterChip(
+                  label: p.name.isNotEmpty ? p.name : p.id,
+                  selected: false,
+                  onTap: () => widget.onApply(p),
+                ),
+            ],
+          ),
+        const SizedBox(height: InkSpacing.xs),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => _saveCurrent(context, projectId),
+            icon: const Icon(Icons.bookmark_add_outlined, size: 16),
+            label: Text(context.l10n.inspectorPresetsSaveCurrent),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _saveCurrent(BuildContext context, String projectId) async {
+    final current = widget.readCurrent();
+    if (current.prompt.trim().isEmpty) return;
+    final name = await _promptPresetName(context);
+    if (name == null || name.trim().isEmpty) return;
+    try {
+      await ref
+          .read(promptPresetsControllerProvider(projectId).notifier)
+          .create(
+            name: name.trim(),
+            prompt: current.prompt.trim(),
+            negative: current.negative.trim(),
+          );
+    } catch (_) {
+      // best-effort：落库失败不崩 UI。
+    }
+  }
+
+  Future<String?> _promptPresetName(BuildContext context) {
+    final ctrl = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(ctx.l10n.inspectorPresetsDialogTitle),
+        content: InkInput(
+          controller: ctrl,
+          hintText: ctx.l10n.inspectorPresetsNameHint,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: Text(ctx.l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(ctrl.text),
+            child: Text(ctx.l10n.inspectorCharactersSave),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// 项目级角色一致性：把可复用角色挂到本 config 节点（写 type_config.character_ids），
 /// 并支持把已连的参考图「存为角色」。仅当 provider 支持参考图时真正生效（否则给提示）。
 class _CharactersSection extends ConsumerStatefulWidget {
-  const _CharactersSection({required this.targetNode, required this.selectedCaps});
+  const _CharactersSection({
+    required this.targetNode,
+    required this.selectedCaps,
+  });
 
   final CanvasNode targetNode;
   final ProviderCapabilities? selectedCaps;
@@ -510,8 +644,9 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
     return <String>{};
   }
 
-  InspectorSubmitController get _submitCtrl => ref
-      .read(inspectorSubmitControllerProvider(widget.targetNode.id).notifier);
+  InspectorSubmitController get _submitCtrl => ref.read(
+    inspectorSubmitControllerProvider(widget.targetNode.id).notifier,
+  );
 
   bool get _supportsRefs {
     final caps = widget.selectedCaps;
@@ -535,10 +670,10 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
     if (canvasId == null) return null;
     final edges =
         ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
-            const <CanvasEdge>[];
+        const <CanvasEdge>[];
     final nodes =
         ref.watch(canvasNodesControllerProvider(canvasId)).valueOrNull ??
-            const <CanvasNode>[];
+        const <CanvasNode>[];
     final nodesById = {for (final n in nodes) n.id: n};
     for (final e in edges) {
       if (e.targetNodeId != widget.targetNode.id ||
@@ -560,7 +695,7 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
     final typo = context.inkTypography;
     final characters =
         ref.watch(charactersControllerProvider(projectId)).valueOrNull ??
-            const <Character>[];
+        const <Character>[];
     final refSource = _referenceSource();
 
     return Column(
@@ -601,8 +736,9 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
         Align(
           alignment: Alignment.centerLeft,
           child: TextButton.icon(
-            onPressed:
-                refSource == null ? null : () => _createFromReference(refSource),
+            onPressed: refSource == null
+                ? null
+                : () => _createFromReference(refSource),
             icon: const Icon(Icons.person_add_alt_1, size: 16),
             label: Text(context.l10n.inspectorCharactersSaveFromReference),
           ),

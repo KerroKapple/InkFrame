@@ -7,6 +7,7 @@ import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/project_repository.dart';
+import 'package:inkframe/core/interfaces/prompt_preset_repository.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/interfaces/unit_of_work.dart';
 
@@ -20,14 +21,16 @@ class FakeRepositoryScope implements RepositoryScope {
     StyleLaneRepository? styleLanes,
     BatchResultRepository? batchResults,
     CharacterRepository? characters,
-  })  : _nodes = nodes,
-        _edges = edges,
-        _canvas = canvas,
-        _projects = projects,
-        _jobs = jobs,
-        _styleLanes = styleLanes,
-        _batchResults = batchResults,
-        _characters = characters;
+    PromptPresetRepository? promptPresets,
+  }) : _nodes = nodes,
+       _edges = edges,
+       _canvas = canvas,
+       _projects = projects,
+       _jobs = jobs,
+       _styleLanes = styleLanes,
+       _batchResults = batchResults,
+       _characters = characters,
+       _promptPresets = promptPresets;
 
   final NodeRepository? _nodes;
   final EdgeRepository? _edges;
@@ -37,11 +40,14 @@ class FakeRepositoryScope implements RepositoryScope {
   final StyleLaneRepository? _styleLanes;
   final BatchResultRepository? _batchResults;
   final CharacterRepository? _characters;
+  final PromptPresetRepository? _promptPresets;
 
   @override
-  NodeRepository get nodes => _nodes ?? (throw StateError('nodes not provided'));
+  NodeRepository get nodes =>
+      _nodes ?? (throw StateError('nodes not provided'));
   @override
-  EdgeRepository get edges => _edges ?? (throw StateError('edges not provided'));
+  EdgeRepository get edges =>
+      _edges ?? (throw StateError('edges not provided'));
   @override
   CanvasRepository get canvas =>
       _canvas ?? (throw StateError('canvas not provided'));
@@ -59,6 +65,9 @@ class FakeRepositoryScope implements RepositoryScope {
   @override
   CharacterRepository get characters =>
       _characters ?? (throw StateError('characters not provided'));
+  @override
+  PromptPresetRepository get promptPresets =>
+      _promptPresets ?? (throw StateError('promptPresets not provided'));
 }
 
 class FakeUnitOfWork implements UnitOfWork {
