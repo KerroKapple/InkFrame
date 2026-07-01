@@ -326,6 +326,12 @@ abstract class AppLocalizations {
   /// **'Batch size'**
   String get inspectorBatchLabel;
 
+  /// No description provided for @inspectorEstimatedCost.
+  ///
+  /// In en, this message translates to:
+  /// **'Est. cost {amount}'**
+  String inspectorEstimatedCost(String amount);
+
   /// No description provided for @inspectorGenerate.
   ///
   /// In en, this message translates to:

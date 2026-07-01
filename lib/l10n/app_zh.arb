@@ -43,6 +43,7 @@
   "inspectorNegativePromptLabel": "负向提示词",
   "inspectorNegativePromptHint": "要避免的内容",
   "inspectorBatchLabel": "数量",
+  "inspectorEstimatedCost": "预估成本 {amount}",
   "inspectorGenerate": "生成",
   "inspectorGenerateDisabledEmptyPrompt": "请先填写提示词",
   "inspectorGenerateDisabledNoKey": "请在设置中配置 API Key",

@@ -46,6 +46,12 @@
   "inspectorNegativePromptLabel": "Negative prompt",
   "inspectorNegativePromptHint": "What to avoid",
   "inspectorBatchLabel": "Batch size",
+  "inspectorEstimatedCost": "Est. cost {amount}",
+  "@inspectorEstimatedCost": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
   "inspectorGenerate": "Generate",
   "inspectorGenerateDisabledEmptyPrompt": "Write a prompt first",
   "inspectorGenerateDisabledNoKey": "Configure API key in Settings",

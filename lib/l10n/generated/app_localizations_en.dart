@@ -132,6 +132,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorBatchLabel => 'Batch size';
 
   @override
+  String inspectorEstimatedCost(String amount) {
+    return 'Est. cost $amount';
+  }
+
+  @override
   String get inspectorGenerate => 'Generate';
 
   @override
