@@ -123,6 +123,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorBatchLabel => '数量';
 
   @override
+  String inspectorEstimatedCost(String amount) {
+    return '预估成本 $amount';
+  }
+
+  @override
   String get inspectorGenerate => '生成';
 
   @override

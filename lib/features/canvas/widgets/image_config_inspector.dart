@@ -14,6 +14,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/services/cost_estimator.dart';
 import '../../generation/services/prompt_assembler.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
@@ -358,6 +359,22 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
                           'batch_size': v,
                         });
                       },
+              ),
+            ],
+            if (selected != null) ...[
+              const SizedBox(height: InkSpacing.md),
+              Text(
+                context.l10n.inspectorEstimatedCost(
+                  formatCostUsd(
+                    estimateCostUsd(
+                      selected.costModel,
+                      resolution: _resolution,
+                      batchSize: _batch ?? 1,
+                      promptChars: _promptCtrl.text.length,
+                    ),
+                  ),
+                ),
+                style: typo.caption.copyWith(color: colors.fg3),
               ),
             ],
             const SizedBox(height: InkSpacing.lg),
