@@ -28,18 +28,18 @@
 |---|---|---|---|
 | 参考图 / 首尾帧 UI（Provider 已支持，缺界面） | ✅ | P0 | Inspector `_InputsSection` 已在（看/切 role/删）；连线经画布 link 模式 |
 | 角色一致性（项目级角色参考，自动带入生成） | ✅ | P0 | characters 表/仓储/资产服务 + 生成按能力注入 + Inspector 角色区/存为角色（`69be6a9`/`295bf72`）。仅 image 节点、maxRefImages>0 且 imageToImage 生效 |
-| 批量 / 变体（batch_results 表已在，缺 UI） | ⬜ | P1 | |
-| 提示词模板 / 预设库 | ⬜ | P1 | base style 预设扩展 |
-| 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + Inspector 实时预估（`d8fc9f3`） |
-| 视频 Inspector 接成本 / 角色（估算器已支持 PerSecondVideo） | ⬜ | P2 | 角色注入 v1 仅图像；视频首/尾帧语义待接 |
-| 文件系统导入参考图（file_picker 依赖） | ⬜ | P2 | v1 角色图源自应用内结果，外部导入为快随 |
+| 批量 / 变体（batch_results 表已在，缺 UI） | 🔵 | P1 | 消费侧骨架落地（模型/控制器/变体网格+单测，`dfa04e5`）。**未接**：生产侧 JobQueue 按 slot 落行（P0 链路）+ 结果节点 Inspector 挂载点 |
+| 提示词模板 / 预设库 | ✅ | P1 | 项目级 schema_v7 预设库 + Inspector 点选应用/存为预设（`1fe16aa`） |
+| 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + 图像/视频 Inspector 实时预估（`d8fc9f3`/`79c45bf`） |
+| 视频 Inspector 接成本 | ✅ | P2 | `79c45bf`。角色注入 v1 仅图像（视频首/尾帧语义待接） |
+| 文件系统导入参考图（file_selector） | ✅ | P2 | Characters 区「从文件导入」（`1d2f555`）。桌面需开发者模式，与 media_kit 同 |
 | CI 烟测 + golden 首跑绿（beta DoD） | ⬜ | P1 | golden 本地 Windows 假阳性，CI ubuntu 为准 |
 
-## M3 —「差异化」⬜ 未开始
+## M3 —「差异化」🔵 起步（骨架设计见 `docs/M3-SKELETON.md`）
 
 | 功能 | 状态 | 备注 |
 |---|---|---|
-| 分镜 / Shot 节点（脚本→分镜→序列） | ⬜ | Shot 现仅模型层 |
+| 分镜 / Shot 节点（脚本→分镜→序列） | 🔵 | Shot 编辑器（分镜备注）落地 + 接入 router（`8dbf2fa`）；流水线设计见 M3-SKELETON |
 | 视频导出 / 拼接 | ⬜ | |
 | 本地素材 / 产物画廊（借鉴 InvokeAI） | ⬜ | |
 | 模型扩展（fal/OpenRouter 式聚合器 或 custom_providers.json） | ⬜ | 已设计未建 |
