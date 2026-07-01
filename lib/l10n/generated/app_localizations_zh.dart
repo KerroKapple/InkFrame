@@ -401,6 +401,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorPresetsNameHint => '预设名称';
 
   @override
+  String get batchResultsLabel => '变体';
+
+  @override
   String get canvasAddImageNode => '添加图片节点';
 
   @override

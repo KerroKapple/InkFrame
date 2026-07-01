@@ -417,6 +417,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorPresetsNameHint => 'Preset name';
 
   @override
+  String get batchResultsLabel => 'Variants';
+
+  @override
   String get canvasAddImageNode => 'Add image node';
 
   @override
