@@ -884,6 +884,18 @@ abstract class AppLocalizations {
   /// **'Describe this shot (camera, action, mood)...'**
   String get inspectorShotNotesHint;
 
+  /// No description provided for @inspectorShotGenerateImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate image from notes'**
+  String get inspectorShotGenerateImage;
+
+  /// No description provided for @inspectorShotLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Image node added, but linking failed'**
+  String get inspectorShotLinkFailed;
+
   /// No description provided for @canvasAddImageNode.
   ///
   /// In en, this message translates to:
@@ -895,6 +907,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add video node'**
   String get canvasAddVideoNode;
+
+  /// No description provided for @canvasAddShotNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Add shot node'**
+  String get canvasAddShotNode;
 
   /// No description provided for @canvasAddNodeTooltip.
   ///
@@ -1315,6 +1333,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add video node'**
   String get canvasEmptyAddVideo;
+
+  /// No description provided for @canvasEmptyAddShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Add shot node'**
+  String get canvasEmptyAddShot;
 
   /// No description provided for @canvasSelectionCount.
   ///

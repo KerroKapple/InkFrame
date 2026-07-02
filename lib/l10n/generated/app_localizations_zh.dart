@@ -416,10 +416,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorShotNotesHint => '描述这个分镜（机位、动作、氛围）……';
 
   @override
+  String get inspectorShotGenerateImage => '用本镜备注生成图像';
+
+  @override
+  String get inspectorShotLinkFailed => '图像节点已创建，连线失败';
+
+  @override
   String get canvasAddImageNode => '添加图片节点';
 
   @override
   String get canvasAddVideoNode => '添加视频节点';
+
+  @override
+  String get canvasAddShotNode => '添加分镜节点';
 
   @override
   String get canvasAddNodeTooltip => '新建节点';
@@ -642,6 +651,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasEmptyAddVideo => '添加视频节点';
+
+  @override
+  String get canvasEmptyAddShot => '添加分镜节点';
 
   @override
   String canvasSelectionCount(int count) {

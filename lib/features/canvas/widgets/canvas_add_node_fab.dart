@@ -89,6 +89,16 @@ class CanvasAddNodeFab extends ConsumerWidget {
             ],
           ),
         ),
+        PopupMenuItem<CanvasNodeType>(
+          value: CanvasNodeType.shot,
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.movie_outlined),
+              const SizedBox(width: InkSpacing.sm),
+              Text(context.l10n.canvasAddShotNode),
+            ],
+          ),
+        ),
       ],
     );
     if (selected == null || !context.mounted) return;

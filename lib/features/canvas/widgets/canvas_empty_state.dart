@@ -106,6 +106,12 @@ class CanvasEmptyState extends ConsumerWidget {
                     icon: const Icon(Icons.videocam_outlined, size: 16),
                     label: Text(l.canvasEmptyAddVideo),
                   ),
+                  OutlinedButton.icon(
+                    onPressed: () =>
+                        _addNode(context, ref, CanvasNodeType.shot),
+                    icon: const Icon(Icons.movie_outlined, size: 16),
+                    label: Text(l.canvasEmptyAddShot),
+                  ),
                 ],
               ),
             ],

@@ -433,10 +433,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'Describe this shot (camera, action, mood)...';
 
   @override
+  String get inspectorShotGenerateImage => 'Generate image from notes';
+
+  @override
+  String get inspectorShotLinkFailed => 'Image node added, but linking failed';
+
+  @override
   String get canvasAddImageNode => 'Add image node';
 
   @override
   String get canvasAddVideoNode => 'Add video node';
+
+  @override
+  String get canvasAddShotNode => 'Add shot node';
 
   @override
   String get canvasAddNodeTooltip => 'New node';
@@ -667,6 +676,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get canvasEmptyAddVideo => 'Add video node';
+
+  @override
+  String get canvasEmptyAddShot => 'Add shot node';
 
   @override
   String canvasSelectionCount(int count) {
