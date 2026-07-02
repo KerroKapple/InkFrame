@@ -221,12 +221,14 @@ lib/
 │   │   └── widgets/
 │   ├── settings/                      # Settings surfaces
 │   │   ├── settings_screen.dart
+│   │   ├── providers/
 │   │   └── widgets/
 │   └── studio/                        # Project / workspace shell (home + open-canvas)
 │       ├── studio_home_screen.dart
 │       ├── open_canvas.dart           # Open/create a canvas from Studio
 │       ├── controllers/
 │       ├── models/
+│       ├── providers/
 │       └── widgets/
 ├── providers/                         # AI provider adapters (see docs/PROVIDER-API.md)
 │   ├── provider_registry.dart         # providerId → factory mapping
