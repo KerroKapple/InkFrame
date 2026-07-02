@@ -41,19 +41,26 @@
 ## 4. 模型聚合器 / 自定义 Provider（BYO-key 多模型）
 **目标**：用户填 base_url + key + model_id 接任意 OpenAI 兼容端点（fal.ai / OpenRouter /
 本地）。**最高杠杆差异化**——一次接入解锁 N 个模型。
-- 已有**详细设计**：`docs/superpowers/plans/2026-05-21-custom-providers.md`（OpenAI 兼容
-  base_url+key+model_id）。本项按该计划落地即可。
-- 模块/文件（按计划）：
-  - `lib/core/models/custom_provider_config.dart`（config 模型）
-  - `lib/storage/schema/schema_v8.dart` `custom_providers` 表（或 `custom_providers.json`）
-  - `lib/features/settings/providers/custom_providers_controller.dart`
-  - `lib/features/settings/widgets/custom_providers_section.dart`
-  - 适配器 `lib/providers/openai_compatible_provider.dart`，在
-    `lib/providers/provider_registry.dart` 动态注册。
-- 关键约束：适配器须实现 `Submittable`（+ 可选 `Pollable`），声明 `ProviderCapabilities`
-  （`maxRefImages`/`modes` 决定角色一致性等能否生效——见 generation 注入门控）。
+> **2026-07-02 拍板**：配置存 **`custom_providers.json` 文件**（可手编/分享，需校验+损坏
+> 兜底）；capabilities 由**协议白名单模板**派生（用户选模板 + 填 base_url/key/model，
+> 不自由填能力位）——即 PROVIDER-API §13 现稿方向。开工时重写 §13 为单一方案。
+
+- 原详细设计 `docs/superpowers/plans/2026-05-21-custom-providers.md` 已漂移（写于 5 月），
+  开工时按 2026-07-02 就绪度审计校正，要点：
+  - 适配器 **extends `SyncProviderBase`**（非手写 Submittable——JobQueue 对非 Pollable
+    防御性失败；结果走 inlineBytes poll 通道，请求体 `response_format:'b64_json'`）。
+  - 本方案存 json，**无需 schema_v8**；若未来改表，走 `schema_vN.dart` +
+    `kAppMigrations` 追加一行（不是 .sql 镜像 + version bump）。
+  - key 命名空间复用 `SecureStorageKeys.providerApiKey('custom:<uuid>')`——生成链路
+    key 校验/inspector 门控/Studio banner 零改动生效。
+  - `providerRegistryProvider` **只能变异、不能 invalidate**（否则 JobQueue 连锁重建、
+    运行中任务被打成 cancelled）；配置变更时须驱逐 registry 的旧实例缓存。
+  - `providerCapabilitiesListProvider` 改为同步可读的 Notifier（merge 内置 const +
+    模板派生），必须保持同步读（image inspector initState 里 `ref.read`）。
+  - ADR-0009（const-only capabilities）需小修：协议模板本身仍是代码内 const，
+    仅实例化参数（base_url/model_id）来自用户配置，修订幅度小。
 - 首个切片：单个硬编码 OpenAI 兼容 provider（base_url/model 从 SecureStorage/config 读），
-  跑通「文生图」，再抽象为用户可配置列表。
+  跑通「文生图」，再抽象为 json 配置列表。
 
 ## 落地顺序建议（价值/风险）
 1. **模型聚合器**（差异化最强，已设计，风险中）——先做单端点跑通。
