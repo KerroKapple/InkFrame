@@ -189,10 +189,13 @@
   "inspectorShotTitle": "Shot",
   "inspectorShotNotesLabel": "Shot notes",
   "inspectorShotNotesHint": "Describe this shot (camera, action, mood)...",
+  "inspectorShotGenerateImage": "Generate image from notes",
+  "inspectorShotLinkFailed": "Image node added, but linking failed",
 
   "canvasAddImageNode": "Add image node",
   "canvasAddVideoNode": "Add video node",
   "@canvasAddVideoNode": {},
+  "canvasAddShotNode": "Add shot node",
   "canvasAddNodeTooltip": "New node",
   "@canvasAddNodeTooltip": {},
   "canvasAddNodeFailed": "Failed to add node",
@@ -293,6 +296,7 @@
   "canvasEmptySubtitle": "Add your first node to start storyboarding.",
   "canvasEmptyAddImage": "Add image node",
   "canvasEmptyAddVideo": "Add video node",
+  "canvasEmptyAddShot": "Add shot node",
   "canvasSelectionCount": "{count} selected",
   "@canvasSelectionCount": {
     "placeholders": {

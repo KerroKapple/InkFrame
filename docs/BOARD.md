@@ -39,7 +39,7 @@
 
 | 功能 | 状态 | 备注 |
 |---|---|---|
-| 分镜 / Shot 节点（脚本→分镜→序列） | 🔵 | Shot 编辑器（分镜备注）落地 + 接入 router（`8dbf2fa`）；流水线设计见 M3-SKELETON |
+| 分镜 / Shot 节点（脚本→分镜→序列） | 🔵 | Shot 编辑器落地（`8dbf2fa`）；**首切片完成**：「用本镜备注生成图像」（shot_notes→image config 节点+narrative 边）+ FAB/空态 shot 创建入口 + addNode typeConfig 透传。后续：脚本解析、镜头级参数、序列预览 |
 | 视频导出 / 拼接 | ⬜ | |
 | 本地素材 / 产物画廊（借鉴 InvokeAI） | ⬜ | |
 | 模型扩展（自定义 Provider，BYO-key） | ⬜ | 2026-07-02 拍板：`custom_providers.json` 文件存储 + **协议白名单模板**派生 capabilities（PROVIDER-API §13 现稿方向）；开工时重写 §13 为单一方案并小修 ADR-0009 |

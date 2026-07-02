@@ -181,9 +181,12 @@
   "inspectorShotTitle": "分镜",
   "inspectorShotNotesLabel": "分镜备注",
   "inspectorShotNotesHint": "描述这个分镜（机位、动作、氛围）……",
+  "inspectorShotGenerateImage": "用本镜备注生成图像",
+  "inspectorShotLinkFailed": "图像节点已创建，连线失败",
 
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
+  "canvasAddShotNode": "添加分镜节点",
   "canvasAddNodeTooltip": "新建节点",
   "canvasAddNodeFailed": "添加节点失败",
 
@@ -261,6 +264,7 @@
   "canvasEmptySubtitle": "添加第一个节点，开始分镜。",
   "canvasEmptyAddImage": "添加图片节点",
   "canvasEmptyAddVideo": "添加视频节点",
+  "canvasEmptyAddShot": "添加分镜节点",
   "canvasSelectionCount": "已选 {count} 个",
   "@canvasSelectionCount": {
     "placeholders": {

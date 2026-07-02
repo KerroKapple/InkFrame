@@ -59,6 +59,7 @@ class CanvasNodesController
     String? sourceNodeId,
     Offset position = Offset.zero,
     Size size = const Size(200, 160),
+    Map<String, Object?> typeConfig = const <String, Object?>{},
   }) async {
     assert(
       role != NodeRole.result || sourceNodeId != null,
@@ -78,6 +79,7 @@ class CanvasNodesController
         positionY: position.dy,
         width: size.width,
         height: size.height,
+        typeConfig: typeConfig,
       );
       final inserted = CanvasNode(
         id: id,
@@ -86,6 +88,7 @@ class CanvasNodesController
         role: role,
         canvasId: canvasId,
         sourceNodeId: sourceNodeId,
+        typeConfig: typeConfig,
         position: position,
         size: size,
       );

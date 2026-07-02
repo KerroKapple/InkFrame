@@ -53,6 +53,7 @@ class _FakeNodeRepository implements NodeRepository {
       'position_y': positionY,
       'width': width,
       'height': height,
+      'type_config': typeConfig,
     });
     if (createError != null) {
       throw LocalIOError(extra: {'op': 'create', 'table': 'nodes', 'msg': createError});
@@ -229,6 +230,41 @@ void main() {
 
       final state = container.read(canvasNodesControllerProvider(canvasId));
       expect(state.valueOrNull, hasLength(1));
+    });
+
+    test('addNode 透传 typeConfig：乐观对象 + Repository.create 都带上', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+
+      final inserted = await ctrl.addNode(
+        label: 'S',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'prompt': 'wide shot'},
+      );
+
+      expect(repo.createCalls, hasLength(1));
+      expect(repo.createCalls.first['type_config'],
+          <String, Object?>{'prompt': 'wide shot'});
+      expect(inserted.typeConfig, <String, Object?>{'prompt': 'wide shot'});
+
+      final state = container.read(canvasNodesControllerProvider(canvasId));
+      expect(state.valueOrNull!.single.typeConfig,
+          <String, Object?>{'prompt': 'wide shot'});
+    });
+
+    test('addNode 不传 typeConfig → 默认空 map，行为不变', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+
+      final inserted =
+          await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+
+      expect(repo.createCalls.first['type_config'], isEmpty);
+      expect(inserted.typeConfig, isEmpty);
     });
 
     test('addNode DB 失败抛给调用方，内存不写入', () async {

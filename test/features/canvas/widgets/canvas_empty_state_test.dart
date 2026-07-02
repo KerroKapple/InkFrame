@@ -6,7 +6,7 @@ import 'package:inkframe/features/canvas/widgets/canvas_empty_state.dart';
 import '../../../_harness/test_app.dart';
 
 void main() {
-  testWidgets('渲染插图 + 标题 + 副文 + 双 CTA', (tester) async {
+  testWidgets('渲染插图 + 标题 + 副文 + 三 CTA', (tester) async {
     await pumpInkApp(
       tester,
       Scaffold(
@@ -20,9 +20,11 @@ void main() {
         findsOneWidget);
     expect(find.text('Add image node'), findsOneWidget);
     expect(find.text('Add video node'), findsOneWidget);
+    expect(find.text('Add shot node'), findsOneWidget);
     expect(find.byIcon(Icons.add), findsOneWidget); // illustration center
     expect(find.byIcon(Icons.add_photo_alternate_outlined), findsOneWidget);
     expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+    expect(find.byIcon(Icons.movie_outlined), findsOneWidget);
   });
 
   testWidgets('点击空白触发 onBackgroundTap', (tester) async {
