@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../generation/models/job_state.dart';
+import '../../generation/providers/batch_results_controller.dart';
 import '../../generation/providers/jobs_registry.dart';
 import '../../generation/services/toast_service.dart';
 import '../providers/canvas_nodes_controller.dart';
@@ -35,6 +36,10 @@ class CanvasJobListener extends ConsumerWidget {
               l10nError(context, err),
               kind: ToastKind.error,
             );
+      }
+      // 终态定点刷新批量网格（autoDispose family：未被 watch 时 invalidate 为 no-op）。
+      for (final nodeId in effect.invalidateBatchNodes) {
+        ref.invalidate(batchResultsControllerProvider(nodeId));
       }
     });
     return child;

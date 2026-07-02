@@ -55,6 +55,49 @@ class FakeBatchResultRepo implements BatchResultRepository {
   }
 
   @override
+  Future<int> finalizePendingByJob(
+    String jobId, {
+    required String toStatus,
+    String? errorCode,
+  }) async {
+    var n = 0;
+    for (final id in rows.keys.toList()) {
+      final r = rows[id]!;
+      if (r['job_id'] == jobId && r['status'] == 'generating') {
+        rows[id] = <String, Object?>{
+          ...r,
+          'status': toStatus,
+          'error_code': ?errorCode,
+          'completed_at': DateTime.now().toUtc().toIso8601String(),
+        };
+        n++;
+      }
+    }
+    return n;
+  }
+
+  @override
+  Future<int> finalizeAllPending({
+    required String toStatus,
+    String? errorCode,
+  }) async {
+    var n = 0;
+    for (final id in rows.keys.toList()) {
+      final r = rows[id]!;
+      if (r['status'] == 'generating') {
+        rows[id] = <String, Object?>{
+          ...r,
+          'status': toStatus,
+          'error_code': ?errorCode,
+          'completed_at': DateTime.now().toUtc().toIso8601String(),
+        };
+        n++;
+      }
+    }
+    return n;
+  }
+
+  @override
   Future<int> markPromoted({
     required String id,
     required String promotedNodeId,

@@ -420,6 +420,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchResultsLabel => 'Variants';
 
   @override
+  String get inspectorResultTitle => 'Result';
+
+  @override
   String get inspectorShotTitle => 'Shot';
 
   @override

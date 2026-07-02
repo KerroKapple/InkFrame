@@ -56,4 +56,81 @@ void main() {
     final r = CanvasJobEffects.diff(prev: [_ok('a', 'c1')], next: const [], canvasId: 'c1');
     expect(r.shouldReloadNodes, isFalse);
   });
+
+  // M2 批量：job 新转终态且携带 resultNodeId → 定点刷新批量网格。
+  group('invalidateBatchNodes', () {
+    JobState runWithNode(String id, String cv) => JobState.running(
+        jobId: id, providerId: 'p', canvasId: cv, resultNodeId: 'rn-$id');
+    JobState okWithNode(String id, String cv) => JobState.succeeded(
+        jobId: id,
+        providerId: 'p',
+        canvasId: cv,
+        resultNodeId: 'rn-$id',
+        artifactPath: 'a');
+
+    test('转 succeeded 且带 resultNodeId → 收集该节点', () {
+      final r = CanvasJobEffects.diff(
+        prev: [runWithNode('a', 'c1')],
+        next: [okWithNode('a', 'c1')],
+        canvasId: 'c1',
+      );
+      expect(r.invalidateBatchNodes, ['rn-a']);
+    });
+
+    test('转 cancelled 也收集（网格需收敛 cancelled slot）', () {
+      final r = CanvasJobEffects.diff(
+        prev: [runWithNode('a', 'c1')],
+        next: [
+          const JobState.cancelled(
+              jobId: 'a', providerId: 'p', canvasId: 'c1', resultNodeId: 'rn-a'),
+        ],
+        canvasId: 'c1',
+      );
+      expect(r.invalidateBatchNodes, ['rn-a']);
+    });
+
+    test('转 failed 也收集（网格需收敛 error slot），且照常 toast', () {
+      final r = CanvasJobEffects.diff(
+        prev: [runWithNode('a', 'c1')],
+        next: [
+          const JobState.failed(
+              jobId: 'a',
+              providerId: 'p',
+              canvasId: 'c1',
+              resultNodeId: 'rn-a',
+              error: err),
+        ],
+        canvasId: 'c1',
+      );
+      expect(r.invalidateBatchNodes, ['rn-a']);
+      expect(r.toastErrors, hasLength(1));
+    });
+
+    test('无 resultNodeId 的终态 → 不收集', () {
+      final r = CanvasJobEffects.diff(
+        prev: [_run('a', 'c1', 0.9)],
+        next: [_ok('a', 'c1')],
+        canvasId: 'c1',
+      );
+      expect(r.invalidateBatchNodes, isEmpty);
+    });
+
+    test('进度 tick → 不收集', () {
+      final r = CanvasJobEffects.diff(
+        prev: [runWithNode('a', 'c1')],
+        next: [runWithNode('a', 'c1')],
+        canvasId: 'c1',
+      );
+      expect(r.invalidateBatchNodes, isEmpty);
+    });
+
+    test('别的画布终态 → 不收集', () {
+      final r = CanvasJobEffects.diff(
+        prev: [runWithNode('a', 'c2')],
+        next: [okWithNode('a', 'c2')],
+        canvasId: 'c1',
+      );
+      expect(r.invalidateBatchNodes, isEmpty);
+    });
+  });
 }

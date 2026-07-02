@@ -404,6 +404,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchResultsLabel => '变体';
 
   @override
+  String get inspectorResultTitle => '结果';
+
+  @override
   String get inspectorShotTitle => '分镜';
 
   @override

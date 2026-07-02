@@ -99,6 +99,52 @@ class PostgresBatchResultRepository
   }
 
   @override
+  Future<int> finalizePendingByJob(
+    String jobId, {
+    required String toStatus,
+    String? errorCode,
+  }) {
+    return guard('finalizePendingByJob', 'batch_results', () async {
+      final hasEc = errorCode != null;
+      final r = await session.execute(
+        Sql.named(
+          'UPDATE batch_results SET status = @st, completed_at = now()'
+          '${hasEc ? ', error_code = @ec' : ''} '
+          "WHERE job_id = @jid AND status = 'generating'",
+        ),
+        parameters: <String, Object?>{
+          'jid': jobId,
+          'st': toStatus,
+          if (hasEc) 'ec': errorCode,
+        },
+      );
+      return r.affectedRows;
+    });
+  }
+
+  @override
+  Future<int> finalizeAllPending({
+    required String toStatus,
+    String? errorCode,
+  }) {
+    return guard('finalizeAllPending', 'batch_results', () async {
+      final hasEc = errorCode != null;
+      final r = await session.execute(
+        Sql.named(
+          'UPDATE batch_results SET status = @st, completed_at = now()'
+          '${hasEc ? ', error_code = @ec' : ''} '
+          "WHERE status = 'generating'",
+        ),
+        parameters: <String, Object?>{
+          'st': toStatus,
+          if (hasEc) 'ec': errorCode,
+        },
+      );
+      return r.affectedRows;
+    });
+  }
+
+  @override
   Future<int> markPromoted({
     required String id,
     required String promotedNodeId,

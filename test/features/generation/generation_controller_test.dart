@@ -33,6 +33,7 @@ import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
 import '../../helpers/recording_logger.dart';
+import '../../_harness/fake_batch_result.dart';
 import '../../_harness/fake_character.dart';
 import '../../_harness/fake_providers.dart';
 import '../../_harness/fake_unit_of_work.dart';
@@ -186,18 +187,16 @@ class _FakeSecure implements SecureStorageService {
 }
 
 class _FakeHandle implements JobHandle {
-  _FakeHandle(this._jobId, this._statuses, this._done);
+  _FakeHandle(this._jobId, this._statuses, this._doneFactory);
   final String _jobId;
   final List<JobStatus> _statuses;
-  final JobStatus _done;
+  final Future<JobStatus> Function() _doneFactory;
   @override
   String get jobId => _jobId;
   @override
   Stream<JobStatus> get status => Stream<JobStatus>.fromIterable(_statuses);
-  // done 延后一个 microtask 完成，保证 status 流先 emit，再到终态——
-  // 避免 fire-and-forget 下 JobRunning 事件因竞态丢失。
   @override
-  Future<JobStatus> get done => Future<JobStatus>.microtask(() => _done);
+  Future<JobStatus> get done => _doneFactory();
 }
 
 class _FakeJobQueue implements JobQueueService {
@@ -205,15 +204,24 @@ class _FakeJobQueue implements JobQueueService {
   JobStatus finalStatus;
   GenerationTask? lastTask;
   bool submitThrows = false;
+
+  /// 置非空则 done 由测试手动完成（模拟提交后、终态前的中间窗口）。
+  Completer<JobStatus>? manualDone;
+
   @override
   Future<void> init() async {}
   @override
   Future<JobHandle> submit(GenerationTask task) async {
     if (submitThrows) throw StateError('submit boom');
     lastTask = task;
-    return _FakeHandle(task.jobId, const [
-      JobStatus.inProgress(progress: 0.4),
-    ], finalStatus);
+    return _FakeHandle(
+      task.jobId,
+      const [JobStatus.inProgress(progress: 0.4)],
+      // done 默认延后一个 microtask 完成，保证 status 流先 emit，再到终态——
+      // 避免 fire-and-forget 下 JobRunning 事件因竞态丢失。
+      () =>
+          manualDone?.future ?? Future<JobStatus>.microtask(() => finalStatus),
+    );
   }
 
   @override
@@ -364,6 +372,7 @@ void main() {
   late RecordingLogger logger;
   late FakeCharacterRepo characters;
   late FakeCharacterAssetService characterAssets;
+  late FakeBatchResultRepo batchResults;
 
   GenerationController buildCtrl() => GenerationController(
     nodes: nodes,
@@ -377,7 +386,10 @@ void main() {
     lanes: laneRepo,
     characters: characters,
     characterAssets: characterAssets,
-    uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
+    batchResults: batchResults,
+    uow: FakeUnitOfWork(
+      FakeRepositoryScope(nodes: nodes, jobs: jobs, batchResults: batchResults),
+    ),
     jobsRegistry: jobsRegistry,
     logger: logger,
   );
@@ -398,6 +410,7 @@ void main() {
     logger = RecordingLogger();
     characters = FakeCharacterRepo();
     characterAssets = FakeCharacterAssetService();
+    batchResults = FakeBatchResultRepo();
   });
 
   Future<String> seedConfigNode({
@@ -893,6 +906,161 @@ void main() {
         isTrue,
         reason: 'queued→running→succeeded 全程应带发起节点 id',
       );
+    });
+  });
+
+  group('批量 slot 预建（M2 生产侧）', () {
+    Future<String> seedBatchNode(int batchSize) async {
+      const id = 'cfgb';
+      nodes.rows[id] = {
+        'id': id,
+        'canvas_id': 'cvx',
+        'project_id': 'proj-1',
+        'type': 'image',
+        'node_role': 'config',
+        'type_config': <String, Object?>{
+          'prompt': 'a cat',
+          'provider_id': providerId,
+          'batch_size': batchSize,
+        },
+      };
+      return id;
+    }
+
+    test('batch_size=3 → 事务内预建 3 个 generating slot 占位行', () async {
+      final cfg = await seedBatchNode(3);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final resultNodeId = nodes.creates.first['id'];
+      final jobId = jobs.creates.first['id'];
+      final slots = batchResults.rows.values.toList()
+        ..sort(
+          (a, b) =>
+              (a['slot_index'] as int).compareTo(b['slot_index'] as int),
+        );
+      expect(slots, hasLength(3));
+      for (var i = 0; i < 3; i++) {
+        expect(slots[i]['node_id'], resultNodeId);
+        expect(slots[i]['job_id'], jobId);
+        expect(slots[i]['slot_index'], i);
+        expect(slots[i]['status'], 'generating');
+      }
+    });
+
+    test('batch_size=1（缺省）→ 不建 slot 行', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(batchResults.rows, isEmpty);
+    });
+
+    test('JobState 事件全程携带 resultNodeId', () async {
+      final cfg = await seedBatchNode(2);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
+
+      final resultNodeId = nodes.creates.first['id'];
+      expect(jobsRegistry.events, isNotEmpty);
+      expect(
+        jobsRegistry.events.every((e) => e.resultNodeId == resultNodeId),
+        isTrue,
+        reason: 'queued→running→succeeded 全程应带 result 节点 id',
+      );
+    });
+
+    test('video 节点 batch_size=2 → 强制 1，不建 slot 行', () async {
+      nodes.rows['cfgv'] = {
+        'id': 'cfgv',
+        'canvas_id': 'cvx',
+        'project_id': 'proj-1',
+        'type': 'video',
+        'node_role': 'config',
+        'type_config': <String, Object?>{
+          'prompt': 'a cat',
+          'provider_id': providerId,
+          'batch_size': 2,
+        },
+      };
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode('cfgv');
+
+      expect(queue.lastTask!.batchSize, 1);
+      expect(jobs.creates.first['batch_size'], 1);
+      final params = jobs.creates.first['parameters']! as Map<String, Object?>;
+      expect(params.containsKey('batch_size'), isFalse);
+      expect(batchResults.rows, isEmpty);
+    });
+  });
+
+  group('批量取消保留语义（已成功 slot 的结果节点不软删）', () {
+    Future<String> seedBatchNode(int batchSize) async {
+      const id = 'cfgk';
+      nodes.rows[id] = {
+        'id': id,
+        'canvas_id': 'cvx',
+        'project_id': 'proj-1',
+        'type': 'image',
+        'node_role': 'config',
+        'type_config': <String, Object?>{
+          'prompt': 'a cat',
+          'provider_id': providerId,
+          'batch_size': batchSize,
+        },
+      };
+      return id;
+    }
+
+    test('部分成功后取消 → 结果节点保留 + success slot 在 + 末态 JobCancelled', () async {
+      final cfg = await seedBatchNode(3);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+      final done = Completer<JobStatus>();
+      queue.manualDone = done;
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      final resultNodeId = nodes.creates.first['id'] as String;
+
+      // 终态到达前一张已成功落 slot。
+      final slot0 = await batchResults.findBySlot(resultNodeId, 0);
+      await batchResults.update(slot0!['id'] as String, {'status': 'success'});
+
+      done.complete(
+        const JobStatus.failure(error: CancelledError.byUser()),
+      );
+      await pumpEventQueue();
+
+      expect(jobsRegistry.events.last, isA<JobCancelled>());
+      expect(
+        nodes.softDeleted,
+        isNot(contains(resultNodeId)),
+        reason: '有 success slot：结果节点必须保留',
+      );
+      final kept = await batchResults.findBySlot(resultNodeId, 0);
+      expect(kept!['status'], 'success');
+    });
+
+    test('0 成功取消 → 结果节点照旧软删', () async {
+      final cfg = await seedBatchNode(3);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+      final done = Completer<JobStatus>();
+      queue.manualDone = done;
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      final resultNodeId = nodes.creates.first['id'] as String;
+
+      done.complete(
+        const JobStatus.failure(error: CancelledError.byUser()),
+      );
+      await pumpEventQueue();
+
+      expect(jobsRegistry.events.last, isA<JobCancelled>());
+      expect(nodes.softDeleted, contains(resultNodeId));
     });
   });
 

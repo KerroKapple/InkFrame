@@ -2,13 +2,21 @@
 //   - 当前画布出现新 job（占位 result 节点需显示）或 job 转入终态 → 需重拉节点；
 //     进度 tick / 中间态流转 / 注册表清理不重拉——避免内存拖拽位置回弹（HI-14）
 //   - 当前画布新转入 failed 的 job → 收集其 InkError 供 toast（cancelled 不收）
+//   - 当前画布新转入终态且携带 resultNodeId 的 job → 定点刷新批量网格
 import '../../../core/errors/ink_error.dart';
 import '../../generation/models/job_state.dart';
 
 class CanvasJobEffect {
-  const CanvasJobEffect({required this.shouldReloadNodes, required this.toastErrors});
+  const CanvasJobEffect({
+    required this.shouldReloadNodes,
+    required this.toastErrors,
+    this.invalidateBatchNodes = const <String>[],
+  });
   final bool shouldReloadNodes;
   final List<InkError> toastErrors;
+
+  /// 需 invalidate batchResultsControllerProvider 的 result 节点 id。
+  final List<String> invalidateBatchNodes;
 }
 
 class CanvasJobEffects {
@@ -27,13 +35,24 @@ class CanvasJobEffects {
     });
 
     final toastErrors = <InkError>[];
+    final invalidateBatchNodes = <String>[];
     for (final e in n.entries) {
       final cur = e.value;
       final was = p[e.key];
       if (cur is JobFailed && was is! JobFailed) {
         toastErrors.add(cur.error);
       }
+      final resultNodeId = cur.resultNodeId;
+      if (resultNodeId != null &&
+          cur.isTerminal &&
+          (was == null || !was.isTerminal)) {
+        invalidateBatchNodes.add(resultNodeId);
+      }
     }
-    return CanvasJobEffect(shouldReloadNodes: changed, toastErrors: toastErrors);
+    return CanvasJobEffect(
+      shouldReloadNodes: changed,
+      toastErrors: toastErrors,
+      invalidateBatchNodes: invalidateBatchNodes,
+    );
   }
 }

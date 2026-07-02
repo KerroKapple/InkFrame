@@ -50,6 +50,39 @@ void main() {
     });
   });
 
+  group('resultNodeId 访问器', () {
+    test('缺省为 null（六变体）', () {
+      expect(all.map((s) => s.resultNodeId).toList(), List.filled(6, null));
+    });
+
+    test('六变体上各取本体值', () {
+      final withNode = <JobState>[
+        const JobState.queued(
+            jobId: 'j', providerId: 'p', canvasId: 'c', resultNodeId: 'rq'),
+        const JobState.submitting(
+            jobId: 'j', providerId: 'p', canvasId: 'c', resultNodeId: 'rs'),
+        const JobState.running(
+            jobId: 'j', providerId: 'p', canvasId: 'c', resultNodeId: 'rr'),
+        const JobState.succeeded(
+            jobId: 'j',
+            providerId: 'p',
+            canvasId: 'c',
+            resultNodeId: 'rok',
+            artifactPath: 'a'),
+        const JobState.failed(
+            jobId: 'j',
+            providerId: 'p',
+            canvasId: 'c',
+            resultNodeId: 'rf',
+            error: NetworkError(code: InkErrorCode.networkTimeout)),
+        const JobState.cancelled(
+            jobId: 'j', providerId: 'p', canvasId: 'c', resultNodeId: 'rc'),
+      ];
+      expect(withNode.map((s) => s.resultNodeId).toList(),
+          ['rq', 'rs', 'rr', 'rok', 'rf', 'rc']);
+    });
+  });
+
   group('progressValue 哨兵', () {
     test('JobSubmitting / JobCancelled → 0.0', () {
       const sub = JobState.submitting(jobId: 'j', providerId: 'p', canvasId: 'c');
