@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InkFrame · Canvas — V1 Amber Noir</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#0B0908; --s1:#100C0A; --s2:#15110E; --s3:#1C1814; --s4:#2A2520;
+    --t1:#E8DFD0; --t2:#B5A89A; --t3:#8A7E70; --t4:#5A5048;
+    --accent:#C9A85B; --accent-h:#D8B66B; --cta:#E3A648;
+    --danger:#C8523A; --warning:#D88B3A; --success:#5C8A4E; --info:#4B7A92;
+    --border:#2A2522; --border-sub:#1C1814; --border-h:#3C342A;
+    --serif:"Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono:"JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --shadow-card:0 10px 30px -12px rgba(0,0,0,.75), 0 2px 6px rgba(0,0,0,.55);
+    --shadow-float:0 32px 70px -20px rgba(0,0,0,.9), 0 8px 22px rgba(0,0,0,.6), 0 0 0 1px rgba(201,168,91,.06);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--sans); background:var(--canvas); color:var(--t1);
+    overflow:hidden; -webkit-font-smoothing:antialiased; font-size:13px;
+  }
+  .app{position:fixed; inset:0; display:flex; flex-direction:column;}
+
+  /* ============ TOP CHROME ============ */
+  .chrome{
+    height:50px; flex:0 0 50px; display:flex; align-items:center;
+    background:linear-gradient(180deg,#16120E,#100C0A);
+    border-bottom:1px solid var(--border); padding:0 0 0 16px; gap:20px; position:relative; z-index:60;
+    box-shadow:0 1px 0 rgba(201,168,91,.04), 0 6px 18px -10px rgba(0,0,0,.7);
+  }
+  .wordmark{font-family:var(--serif); font-weight:400; font-size:23px; letter-spacing:.5px; color:var(--t1); white-space:nowrap;}
+  .wordmark .sl{color:var(--accent); font-weight:500; padding:0 1px;}
+  .crumb{display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--t3);}
+  .crumb .sep{color:var(--t4); font-size:13px;}
+  .crumb .proj{color:var(--t2);}
+  .crumb .active{color:var(--t1); font-weight:500;}
+  .chrome-spacer{flex:1;}
+  .kbd-pill{
+    display:flex; align-items:center; gap:6px; padding:5px 10px; border:1px solid var(--border);
+    border-radius:8px; background:var(--s2); color:var(--t3); font-family:var(--mono); font-size:11px;
+  }
+  .kbd-pill .lbl{letter-spacing:.5px;}
+  .kbd-pill kbd{background:var(--s4); color:var(--t2); border-radius:4px; padding:1px 5px; font-size:10px; border:1px solid var(--border-h);}
+  .ic-btn{
+    width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center;
+    color:var(--t2); border:1px solid transparent; background:transparent; cursor:pointer; transition:.15s;
+  }
+  .ic-btn:hover{background:var(--s3); color:var(--t1); border-color:var(--border);}
+  .run-btn{
+    width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(145deg,var(--cta),#c98a30); color:#1a1206; box-shadow:0 4px 14px -4px rgba(227,166,72,.6); cursor:pointer; transition:.15s;
+  }
+  .run-btn:hover{filter:brightness(1.06);}
+  .avatar{
+    width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(145deg,var(--accent),#9c7e3d); color:#1a1206; font-weight:600; font-size:14px; font-family:var(--serif);
+    box-shadow:0 0 0 1px rgba(216,182,107,.3);
+  }
+  .right-cluster{display:flex; align-items:center; gap:10px; padding-right:6px;}
+  .win-ctrls{display:flex; align-items:center; height:100%; border-left:1px solid var(--border); margin-left:6px;}
+  .win-btn{width:46px; height:50px; display:flex; align-items:center; justify-content:center; color:var(--t3); cursor:pointer; transition:.15s;}
+  .win-btn:hover{background:var(--s3); color:var(--t1);}
+  .win-btn.close:hover{background:var(--danger); color:#fff;}
+
+  /* ============ BODY LAYOUT ============ */
+  .body{flex:1; display:flex; min-height:0; position:relative;}
+
+  /* ============ LEFT RAIL ============ */
+  .rail{
+    width:56px; flex:0 0 56px; background:linear-gradient(180deg,#120D0A,#0E0A08); border-right:1px solid var(--border);
+    display:flex; flex-direction:column; align-items:center; padding:10px 0; gap:5px; z-index:50;
+  }
+  .tool{
+    width:40px; height:40px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+    color:var(--t3); cursor:pointer; transition:.15s; border:1px solid transparent; position:relative;
+  }
+  .tool:hover{background:var(--s3); color:var(--t1);}
+  .tool.active{color:#1a1206; background:linear-gradient(145deg,var(--accent),#a3823f); box-shadow:0 5px 16px -5px rgba(201,168,91,.75);}
+  .tool.active::before{content:""; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:20px; border-radius:2px; background:var(--accent); box-shadow:0 0 8px var(--accent);}
+  .rail-div{width:24px; height:1px; background:var(--border); margin:8px 0;}
+  .rail-bottom{margin-top:auto; display:flex; flex-direction:column; gap:5px;}
+
+  /* ============ CANVAS ============ */
+  .canvas-wrap{flex:1; position:relative; min-width:0; overflow:hidden;
+    background:
+      radial-gradient(circle at 20% 26%, rgba(216,139,58,.06), transparent 42%),
+      radial-gradient(circle at 80% 78%, rgba(75,122,146,.055), transparent 45%),
+      var(--canvas);
+  }
+  .dotgrid{position:absolute; inset:0;
+    background-image:radial-gradient(rgba(180,160,120,.11) 1px, transparent 1.4px);
+    background-size:28px 28px; background-position:-1px -1px;
+  }
+  .vignette{position:absolute; inset:0; pointer-events:none; z-index:3;
+    background:radial-gradient(ellipse 115% 120% at 48% 38%, transparent 52%, rgba(0,0,0,.5) 100%);}
+  .grain{position:absolute; inset:0; pointer-events:none; z-index:3; opacity:.05;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='140' height='140'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");}
+  .board{position:absolute; inset:0;}
+
+  /* lanes */
+  .lane{position:absolute; left:0; right:0;}
+  .lane-a{top:34px; height:360px; background:linear-gradient(90deg, rgba(216,139,58,.075), rgba(216,139,58,.018) 42%, transparent 72%); border-top:1px solid rgba(216,139,58,.13); border-bottom:1px solid rgba(216,139,58,.06);}
+  .lane-b{top:430px; height:360px; background:linear-gradient(90deg, rgba(75,122,146,.095), rgba(75,122,146,.022) 42%, transparent 72%); border-top:1px solid rgba(75,122,146,.14); border-bottom:1px solid rgba(75,122,146,.06);}
+  .lane-label{
+    position:absolute; left:16px; top:6px; padding:9px 13px 9px 14px; border-radius:11px; background:linear-gradient(180deg,var(--s3),var(--s2));
+    border:1px solid var(--border); box-shadow:var(--shadow-card); max-width:206px; z-index:6; display:flex; gap:11px; align-items:flex-start;
+  }
+  .lane-label .bar{width:3px; align-self:stretch; border-radius:2px; margin-top:1px;}
+  .lane-a .lane-label .bar{background:var(--warning); box-shadow:0 0 8px rgba(216,139,58,.5);}
+  .lane-b .lane-label .bar{background:var(--info); box-shadow:0 0 8px rgba(75,122,146,.5);}
+  .lane-label .idx{font-family:var(--mono); font-size:9px; letter-spacing:1.5px; color:var(--t4); display:block; margin-bottom:2px;}
+  .lane-label .ln-name{font-family:var(--mono); font-size:11.5px; letter-spacing:1.6px; font-weight:600;}
+  .lane-a .ln-name{color:var(--warning);} .lane-b .ln-name{color:var(--info);}
+  .lane-label .ln-hint{font-size:11px; color:var(--t3); margin-top:4px; line-height:1.4; font-style:italic; font-family:var(--serif); font-size:13px;}
+
+  /* edges layer */
+  .edges{position:absolute; inset:0; pointer-events:none; z-index:4; overflow:visible;}
+
+  /* nodes */
+  .node{
+    position:absolute; width:212px; background:linear-gradient(180deg,var(--s2),#130F0C); border:1px solid var(--border);
+    border-radius:14px; box-shadow:var(--shadow-card); overflow:hidden; z-index:8; transition:.18s;
+  }
+  .node:hover{border-color:var(--border-h); transform:translateY(-1px);}
+  .node .strip{height:3px; width:100%;}
+  .node .nbody{padding:12px 13px 0;}
+  .node .ttag{font-family:var(--mono); font-size:9.5px; letter-spacing:1.5px; color:var(--t3); font-weight:500;}
+  .node .ntitle{font-family:var(--serif); font-weight:400; font-size:22px; line-height:1.04; color:var(--t1); margin-top:3px; letter-spacing:.2px;}
+  .node .nprev{margin:11px 0 0; aspect-ratio:16/9; border-radius:9px; overflow:hidden; position:relative; border:1px solid var(--border-sub); box-shadow:inset 0 0 0 1px rgba(0,0,0,.4), inset 0 -14px 26px -16px rgba(0,0,0,.8);}
+  .node .nfoot{font-family:var(--mono); font-size:9.5px; letter-spacing:.7px; color:var(--t4); padding:10px 13px 12px; display:flex; align-items:center; gap:7px;}
+  .node .nfoot .pdot{width:5px; height:5px; border-radius:50%; flex:0 0 5px;}
+
+  .node.selected{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 0 30px -2px rgba(201,168,91,.5), var(--shadow-card); z-index:10;}
+  .node.selected::after{content:""; position:absolute; inset:-5px; border-radius:17px; border:1px dashed rgba(201,168,91,.42); pointer-events:none; animation:dashpulse 3s ease-in-out infinite;}
+  @keyframes dashpulse{0%,100%{opacity:.5;}50%{opacity:.95;}}
+  .sel-tag{position:absolute; top:9px; right:9px; z-index:11; font-family:var(--mono); font-size:8.5px; letter-spacing:1.4px; color:#1a1206; background:linear-gradient(145deg,var(--accent),#b1903f); padding:3px 7px; border-radius:6px; font-weight:600; box-shadow:0 2px 8px -2px rgba(201,168,91,.7);}
+
+  /* anchors */
+  .anchor{position:absolute; width:11px; height:11px; border-radius:50%; background:var(--s4); border:2px solid var(--border-h); top:50%; transform:translateY(-50%); z-index:12;}
+  .anchor.in{left:-6px;} .anchor.out{right:-6px;}
+  .anchor.hot{background:var(--accent); border-color:var(--accent-h); box-shadow:0 0 10px rgba(201,168,91,.8);}
+
+  /* text node */
+  .node.textnode .ntext{margin:11px 0 0; padding:12px 13px; background:var(--s1); border:1px solid var(--border-sub); border-radius:9px; font-size:12.5px; line-height:1.55; color:var(--t2); font-family:var(--serif); font-size:15px; position:relative;}
+  .node.textnode .ntext::before{content:"“"; position:absolute; left:5px; top:-2px; font-family:var(--serif); font-size:26px; color:var(--t4);}
+  .node.textnode .ntext .body{padding-left:12px; display:block;}
+
+  /* video overlay */
+  .play-ov{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;}
+  .play-ov .tri{width:44px; height:44px; border-radius:50%; background:rgba(20,16,12,.55); backdrop-filter:blur(2px); border:1px solid rgba(232,223,208,.3); display:flex; align-items:center; justify-content:center; box-shadow:0 4px 16px -4px rgba(0,0,0,.7);}
+  .dur-badge{position:absolute; right:8px; bottom:8px; font-family:var(--mono); font-size:9.5px; padding:2px 7px; border-radius:5px; background:rgba(11,9,8,.82); color:var(--t1); border:1px solid var(--border-h);}
+
+  /* generating */
+  .gen-ov{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:rgba(11,9,8,.4);}
+  .gen-ov .spin{width:28px; height:28px; border-radius:50%; border:2.5px solid rgba(92,138,78,.25); border-top-color:var(--success); animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .gen-ov .glabel{font-family:var(--mono); font-size:10px; letter-spacing:1.2px; color:var(--t1);}
+  .shimmer{position:absolute; inset:0; background:linear-gradient(110deg, transparent 30%, rgba(232,223,208,.08) 50%, transparent 70%); background-size:220% 100%; animation:sh 1.8s infinite;}
+  @keyframes sh{to{background-position:-220% 0;}}
+
+  /* zoom/minimap pill */
+  .zoom-pill{position:absolute; left:50%; bottom:48px; transform:translateX(-50%); display:flex; align-items:center; gap:11px; padding:7px 14px; background:linear-gradient(180deg,var(--s3),var(--s2)); border:1px solid var(--border); border-radius:30px; box-shadow:var(--shadow-card); font-family:var(--mono); font-size:11px; color:var(--t2); z-index:30;}
+  .zoom-pill .zb{width:18px; height:18px; border-radius:5px; display:flex; align-items:center; justify-content:center; color:var(--t3); cursor:pointer; font-size:13px;}
+  .zoom-pill .zb:hover{background:var(--s4); color:var(--t1);}
+  .zoom-pill .sepv{width:1px; height:13px; background:var(--border);}
+  .zoom-pill .fps{color:var(--success);}
+
+  /* keyboard strip */
+  .kbstrip{position:absolute; left:50%; bottom:13px; transform:translateX(-50%); display:flex; gap:22px; font-family:var(--mono); font-size:10px; color:var(--t4); letter-spacing:.5px; z-index:20;}
+  .kbstrip b{color:var(--t3); font-weight:500;}
+
+  /* FAB */
+  .fab{position:absolute; right:24px; bottom:24px; display:flex; align-items:center; gap:9px; padding:13px 21px; border-radius:30px; background:linear-gradient(145deg,var(--cta),#c98a30); color:#1a1206; font-weight:600; font-size:13.5px; box-shadow:0 16px 36px -10px rgba(227,166,72,.7), 0 0 0 1px rgba(255,220,150,.18); cursor:pointer; z-index:40; border:1px solid rgba(255,220,150,.35); transition:.15s;}
+  .fab:hover{transform:translateY(-1px); filter:brightness(1.05);}
+
+  /* version pill */
+  .ver-pill{position:fixed; left:14px; bottom:13px; display:flex; align-items:center; gap:9px; padding:7px 14px; border-radius:30px; background:linear-gradient(180deg,var(--s3),var(--s2)); border:1px solid var(--accent); color:var(--t1); font-family:var(--mono); font-size:11px; letter-spacing:.6px; box-shadow:var(--shadow-card); z-index:70;}
+  .ver-pill .vdot{width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 9px var(--accent);}
+
+  /* ============ FLOATING INSPECTOR ============ */
+  .inspector{
+    position:absolute; top:74px; right:24px; width:312px; background:linear-gradient(180deg,var(--s2),#130F0C);
+    border:1px solid var(--border-h); border-radius:15px; box-shadow:var(--shadow-float); z-index:45;
+    overflow:hidden;
+  }
+  .insp-head{padding:16px 17px 14px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,var(--s3),var(--s2)); position:relative;}
+  .insp-head::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--info); box-shadow:0 0 10px rgba(75,122,146,.5);}
+  .overline{font-family:var(--mono); font-size:9.5px; letter-spacing:2.2px; color:var(--accent); font-weight:600;}
+  .insp-title{font-family:var(--serif); font-weight:400; font-size:27px; line-height:1.08; margin-top:4px; color:var(--t1); letter-spacing:.3px;}
+  .insp-sub{font-family:var(--mono); font-size:10px; letter-spacing:1.2px; color:var(--t3); margin-top:4px;}
+  .insp-body{padding:15px 17px 17px;}
+  .field{margin-bottom:14px;}
+  .flabel{font-size:11px; font-weight:500; color:var(--t2); margin-bottom:7px; display:block; letter-spacing:.3px;}
+  .ta{width:100%; background:var(--s1); border:1px solid var(--border); border-radius:10px; padding:10px 12px; color:var(--t1); font-family:var(--sans); font-size:12px; line-height:1.55; resize:none; min-height:78px;}
+  .ta:focus{outline:none; border-color:var(--border-h);}
+  .fpp{background:var(--s1); border:1px solid var(--border-sub); border-radius:10px; padding:10px 12px; font-size:11.5px; line-height:1.55; color:var(--t3);}
+  .fpp .appended{color:var(--warning); background:rgba(216,139,58,.12); border-radius:3px; padding:1px 3px;}
+  .chip-in{display:inline-flex; align-items:center; gap:9px; background:var(--s1); border:1px solid var(--border); border-radius:9px; padding:7px 10px;}
+  .chip-in .av{width:24px; height:24px; border-radius:7px; background:radial-gradient(circle at 50% 30%, #d99a6a, #a85e3e 60%, #5a2e22); box-shadow:0 0 0 1px rgba(216,182,107,.25);}
+  .chip-in .nm{font-size:12px; color:var(--t1); font-weight:500;}
+  .chip-in .role{font-family:var(--mono); font-size:9px; letter-spacing:.9px; color:var(--accent); background:rgba(201,168,91,.1); padding:2px 7px; border-radius:5px; border:1px solid rgba(201,168,91,.2);}
+  .dropdown{width:100%; display:flex; align-items:center; justify-content:space-between; background:var(--s1); border:1px solid var(--border); border-radius:10px; padding:10px 12px; font-size:12px; color:var(--t1); cursor:pointer; transition:.15s;}
+  .dropdown:hover{border-color:var(--border-h);}
+  .dropdown .lead{display:flex; align-items:center; gap:8px;}
+  .dropdown .pdot{width:6px; height:6px; border-radius:50%;}
+  .dropdown .chev{color:var(--t3);}
+  .row2{display:flex; gap:11px;}
+  .row2 .field{flex:1; margin-bottom:14px;}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:9px 11px; background:var(--s1); border:1px solid var(--border-sub); border-radius:10px;}
+  .toggle-row .tl{font-size:12px; color:var(--t2);}
+  .toggle-row .ts{font-family:var(--mono); font-size:9px; letter-spacing:1px; color:var(--t4); margin-left:auto; margin-right:11px;}
+  .switch{width:40px; height:22px; border-radius:12px; background:var(--s4); border:1px solid var(--border-h); position:relative; cursor:pointer; flex:0 0 40px;}
+  .switch .knob{position:absolute; width:16px; height:16px; border-radius:50%; background:var(--t3); top:2px; left:2px; transition:.2s;}
+  .gen-btn{width:100%; margin-top:8px; padding:13px; border-radius:11px; background:linear-gradient(145deg,var(--cta),#c98a30); color:#1a1206; font-weight:600; font-size:13.5px; border:1px solid rgba(255,220,150,.35); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:9px; box-shadow:0 10px 24px -8px rgba(227,166,72,.65); transition:.15s;}
+  .gen-btn:hover{filter:brightness(1.06);}
+
+  /* ============ RENDER QUEUE ============ */
+  .queue{width:312px; flex:0 0 312px; background:linear-gradient(180deg,#120D0A,#0E0A08); border-left:1px solid var(--border); display:flex; flex-direction:column; z-index:50;}
+  .q-head{padding:16px 17px 14px; border-bottom:1px solid var(--border); display:flex; align-items:flex-start; justify-content:space-between;}
+  .q-head .ql{display:flex; flex-direction:column; gap:5px;}
+  .q-count{font-size:11px; color:var(--t3); display:flex; align-items:center; gap:7px;}
+  .q-count .livedot{width:6px; height:6px; border-radius:50%; background:var(--cta); box-shadow:0 0 8px var(--cta); animation:dashpulse 1.4s infinite;}
+  .q-count b{color:var(--accent); font-weight:600;}
+  .q-body{flex:1; overflow-y:auto; padding:13px;}
+  .job{background:linear-gradient(180deg,var(--s2),#130F0C); border:1px solid var(--border); border-radius:12px; padding:13px; margin-bottom:11px; position:relative; overflow:hidden;}
+  .job::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px;}
+  .job.j-run::before{background:var(--cta);} .job.j-sub::before{background:var(--accent);}
+  .job.j-done::before{background:var(--success);} .job.j-fail::before{background:var(--danger);}
+  .job-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .job-name{font-size:12.5px; font-weight:500; color:var(--t1);}
+  .job-act{font-family:var(--mono); font-size:9.5px; letter-spacing:.7px; padding:4px 9px; border-radius:6px; border:1px solid var(--border); color:var(--t3); cursor:pointer; background:var(--s1); transition:.15s;}
+  .job-act:hover{border-color:var(--border-h); color:var(--t1);}
+  .job-act.retry{color:var(--danger); border-color:rgba(200,82,58,.4);}
+  .job-act.retry:hover{background:rgba(200,82,58,.12); color:#e07a63;}
+  .job-status{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; letter-spacing:.6px; margin-bottom:9px;}
+  .stat-dot{width:6px; height:6px; border-radius:50%;}
+  .bar{height:5px; border-radius:4px; background:var(--s4); overflow:hidden; position:relative;}
+  .bar .fill{height:100%; border-radius:4px;}
+  .bar .stripe{height:100%; width:55%; border-radius:4px; background:repeating-linear-gradient(45deg, rgba(201,168,91,.6) 0 7px, rgba(201,168,91,.22) 7px 14px); animation:slide 1.1s linear infinite;}
+  @keyframes slide{to{transform:translateX(60%);}}
+  .q-foot{padding:13px 17px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;}
+  .q-foot a{font-size:11px; color:var(--t3); text-decoration:none; font-family:var(--mono); letter-spacing:.5px;}
+  .q-foot a:hover{color:var(--accent);}
+  .q-foot .meta{font-family:var(--mono); font-size:9.5px; color:var(--t4); letter-spacing:.5px;}
+
+  svg{display:block;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ TOP CHROME ============ -->
+  <header class="chrome">
+    <div class="wordmark">Ink<span class="sl">/</span>Frame</div>
+    <nav class="crumb">
+      <span class="proj">Sunset Heist</span><span class="sep">›</span><span class="active">Opening Sequence</span>
+    </nav>
+    <div class="chrome-spacer"></div>
+    <div class="right-cluster">
+      <div class="kbd-pill"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><span class="lbl">Search</span><kbd>⌘</kbd><kbd>K</kbd></div>
+      <div class="run-btn" title="Run"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l11-7z"/></svg></div>
+      <div class="ic-btn" title="Contrast / theme"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 3v18" /><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor" stroke="none"/></svg></div>
+      <div class="avatar">J</div>
+    </div>
+    <div class="win-ctrls">
+      <div class="win-btn" title="Minimize"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg></div>
+      <div class="win-btn" title="Maximize"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></div>
+      <div class="win-btn close" title="Close"><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></div>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- ============ LEFT RAIL ============ -->
+    <aside class="rail">
+      <div class="tool active" title="Select"><svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3l15 9-6.5 1.5L10 21z"/></svg></div>
+      <div class="tool" title="Pan"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M8 13V5a1.5 1.5 0 0 1 3 0v6m0 0V4a1.5 1.5 0 0 1 3 0v7m0 0V6a1.5 1.5 0 0 1 3 0v8a6 6 0 0 1-6 6h-1.5a5 5 0 0 1-4-2l-3-4a1.6 1.6 0 0 1 2.5-2L8 13z"/></svg></div>
+      <div class="tool" title="Crop"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 2v16h16M2 6h16v16"/></svg></div>
+      <div class="tool" title="Hierarchy"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2h12v2"/></svg></div>
+      <div class="tool" title="Category"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+      <div class="tool" title="Text"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M5 5h14M12 5v14"/></svg></div>
+      <div class="tool" title="Image"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="m4 18 5-5 4 4 3-3 4 4"/></svg></div>
+      <div class="tool" title="3D"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></div>
+      <div class="rail-bottom">
+        <div class="rail-div"></div>
+        <div class="tool" title="Zoom to fit"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/></svg></div>
+        <div class="tool" title="Undo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a6 6 0 0 1 0 12h-3"/></svg></div>
+        <div class="tool" title="More"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg></div>
+      </div>
+    </aside>
+
+    <!-- ============ CANVAS ============ -->
+    <main class="canvas-wrap">
+      <div class="dotgrid"></div>
+      <div class="board">
+
+        <!-- lanes -->
+        <div class="lane lane-a">
+          <div class="lane-label">
+            <div class="bar"></div>
+            <div>
+              <span class="idx">LANE A</span>
+              <div class="ln-name">ESTABLISHING</div>
+              <div class="ln-hint">warm sunset lighting, candlelit</div>
+            </div>
+          </div>
+        </div>
+        <div class="lane lane-b">
+          <div class="lane-label">
+            <div class="bar"></div>
+            <div>
+              <span class="idx">LANE B</span>
+              <div class="ln-name">NIGHT HEIST</div>
+              <div class="ln-hint">neon noir, rain</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- EDGES -->
+        <svg class="edges">
+          <defs>
+            <linearGradient id="actwire" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0" stop-color="#C9A85B" stop-opacity=".45"/><stop offset="1" stop-color="#D8B66B"/>
+            </linearGradient>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="3.2"/>
+            </filter>
+          </defs>
+
+          <!-- subtle / dashed wires -->
+          <path d="M276,196 C312,196 320,196 335,196" fill="none" stroke="#3C342A" stroke-width="2" stroke-dasharray="5 5"/>
+          <path d="M820,196 C884,196 884,412 816,412 L380,412 C336,412 330,460 330,500 L330,544 C330,562 330,570 335,570" fill="none" stroke="#3C342A" stroke-width="2" stroke-dasharray="5 5"/>
+          <path d="M276,570 C300,570 308,570 335,570" fill="none" stroke="#3C342A" stroke-width="2" stroke-dasharray="5 5"/>
+
+          <!-- ACTIVE wire 2->3 -->
+          <path d="M548,196 C572,196 584,196 607,196" fill="none" stroke="url(#actwire)" stroke-width="6" opacity=".22" filter="url(#glow)"/>
+          <path id="p23" d="M548,196 C572,196 584,196 607,196" fill="none" stroke="url(#actwire)" stroke-width="2.4"/>
+          <!-- ACTIVE wire 2->6 -->
+          <path d="M548,196 C575,290 607,430 607,570" fill="none" stroke="url(#actwire)" stroke-width="6" opacity=".22" filter="url(#glow)"/>
+          <path id="p26" d="M548,196 C575,290 607,430 607,570" fill="none" stroke="url(#actwire)" stroke-width="2.4"/>
+
+          <!-- flow dots on active wires -->
+          <circle r="2.6" fill="#F0D58A">
+            <animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#p23"/></animateMotion>
+          </circle>
+          <circle r="2.6" fill="#F0D58A">
+            <animateMotion dur="2.8s" repeatCount="indefinite"><mpath href="#p26"/></animateMotion>
+          </circle>
+        </svg>
+
+        <!-- ===== LANE A nodes ===== -->
+        <!-- Node 1 Mira -->
+        <div class="node" style="left:64px; top:96px;">
+          <div class="strip" style="background:var(--accent);"></div>
+          <div class="nbody">
+            <div class="ttag">IMAGE · CHARACTER</div>
+            <div class="ntitle">Mira</div>
+            <div class="nprev"><div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%, #e0a574, #a85e3e 38%, #5a2e22 76%, #281310);"></div><div style="position:absolute;inset:0;background:radial-gradient(circle at 62% 78%, rgba(227,166,72,.4), transparent 50%);"></div><div style="position:absolute;left:0;right:0;bottom:0;height:42%;background:linear-gradient(transparent, rgba(20,10,6,.65));"></div></div>
+          </div>
+          <div class="nfoot"><span class="pdot" style="background:var(--accent);"></span>Gemini Image · 1080×1350</div>
+          <div class="anchor in"></div><div class="anchor out"></div>
+        </div>
+
+        <!-- Node 2 Rooftop Bar SELECTED -->
+        <div class="node selected" style="left:336px; top:96px;">
+          <div class="sel-tag">EDITING</div>
+          <div class="strip" style="background:var(--info);"></div>
+          <div class="nbody">
+            <div class="ttag">IMAGE · SCENE</div>
+            <div class="ntitle">Rooftop Bar</div>
+            <div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(180deg,#eaad5d 0%,#c97a48 28%,#6e3f5a 60%,#221830 100%);"></div><div style="position:absolute;inset:0;background:repeating-linear-gradient(90deg, transparent 0 13px, rgba(255,210,140,.13) 13px 15px);"></div><div style="position:absolute;left:18%;top:46%;width:3px;height:30%;background:rgba(255,225,160,.6);box-shadow:0 0 8px rgba(255,210,140,.7);"></div><div style="position:absolute;left:60%;top:40%;width:2px;height:38%;background:rgba(180,210,255,.5);box-shadow:0 0 7px rgba(150,190,255,.6);"></div><div style="position:absolute;bottom:0;left:0;right:0;height:42%;background:linear-gradient(transparent, rgba(20,10,30,.72));"></div></div>
+          </div>
+          <div class="nfoot"><span class="pdot" style="background:var(--info);"></span>Gemini Image · 1920×1080</div>
+          <div class="anchor in hot"></div><div class="anchor out hot"></div>
+        </div>
+
+        <!-- Node 3 Wide Establishing -->
+        <div class="node" style="left:608px; top:96px;">
+          <div class="strip" style="background:var(--border-h);"></div>
+          <div class="nbody">
+            <div class="ttag">SHOT</div>
+            <div class="ntitle">Wide Establishing</div>
+            <div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(160deg,#ecb96e,#b6764a 45%,#382540 100%);"></div><div style="position:absolute;left:8%;right:8%;top:14%;bottom:14%;border:1px solid rgba(255,235,200,.35);"></div><div style="position:absolute;left:50%;top:8%;bottom:8%;width:1px;background:rgba(255,235,200,.18);"></div><div style="position:absolute;left:8%;right:8%;top:50%;height:1px;background:rgba(255,235,200,.18);"></div></div>
+          </div>
+          <div class="nfoot"><span class="pdot" style="background:var(--border-h);"></span>ID 0314 · 1920×1080</div>
+          <div class="anchor in"></div><div class="anchor out"></div>
+        </div>
+
+        <!-- ===== LANE B nodes ===== -->
+        <!-- Node 4 Beat TEXT -->
+        <div class="node textnode" style="left:64px; top:470px;">
+          <div class="strip" style="background:var(--t3);"></div>
+          <div class="nbody">
+            <div class="ttag">TEXT</div>
+            <div class="ntitle">Beat</div>
+            <div class="ntext"><span class="body">Alarm trips — lights cut to red. Mira freezes on the ledge.</span></div>
+          </div>
+          <div class="nfoot"><span class="pdot" style="background:var(--t3);"></span>SCRIPT · BEAT 07</div>
+          <div class="anchor in"></div><div class="anchor out"></div>
+        </div>
+
+        <!-- Node 5 Vault Approach VIDEO -->
+        <div class="node" style="left:336px; top:470px;">
+          <div class="strip" style="background:var(--cta);"></div>
+          <div class="nbody">
+            <div class="ttag">VIDEO</div>
+            <div class="ntitle">Vault Approach</div>
+            <div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(150deg,#16202a,#0e1620 50%,#1a2630 100%);"></div><div style="position:absolute;inset:0;background:radial-gradient(circle at 42% 42%, rgba(75,122,146,.55), transparent 56%);"></div><div style="position:absolute;left:30%;top:20%;width:2px;height:60%;background:rgba(150,200,255,.4);box-shadow:0 0 7px rgba(120,180,255,.5);"></div><div style="position:absolute;inset:0;background:repeating-linear-gradient(transparent 0 3px, rgba(0,0,0,.2) 3px 4px);"></div>
+              <div class="play-ov"><div class="tri"><svg width="15" height="15" viewBox="0 0 24 24" fill="#E8DFD0"><path d="M8 5v14l11-7z"/></svg></div></div>
+              <div class="dur-badge">10s</div>
+            </div>
+          </div>
+          <div class="nfoot"><span class="pdot" style="background:var(--cta);"></span>Kling v3 · 720p</div>
+          <div class="anchor in"></div><div class="anchor out"></div>
+        </div>
+
+        <!-- Node 6 Neon Reflection GENERATING -->
+        <div class="node" style="left:608px; top:470px;">
+          <div class="strip" style="background:var(--success);"></div>
+          <div class="nbody">
+            <div class="ttag">IMAGE GEN</div>
+            <div class="ntitle">Neon Reflection</div>
+            <div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#1c2630,#28323e 50%,#3a2a3e 100%);"></div><div style="position:absolute;inset:0;background:radial-gradient(circle at 60% 60%, rgba(90,140,80,.3), transparent 55%);"></div><div class="shimmer"></div>
+              <div class="gen-ov"><div class="spin"></div><div class="glabel">Generating 64%</div></div>
+            </div>
+          </div>
+          <div class="nfoot"><span class="pdot" style="background:var(--success);"></span>Wanx Image</div>
+          <div class="anchor in"></div><div class="anchor out"></div>
+        </div>
+
+      </div>
+
+      <!-- zoom pill -->
+      <div class="zoom-pill">
+        <span>87%</span><div class="sepv"></div>
+        <span class="zb">−</span><span style="font-family:var(--mono);">▢</span><span class="zb">+</span>
+        <div class="sepv"></div><span class="fps">60 FPS</span>
+      </div>
+
+      <!-- keyboard strip -->
+      <div class="kbstrip">
+        <span>Pan <b>[Space]</b></span><span>Zoom <b>[⌘ +/−]</b></span><span>Add Node <b>[A]</b></span><span>Connect <b>[C]</b></span>
+      </div>
+
+      <!-- atmosphere -->
+      <div class="vignette"></div>
+      <div class="grain"></div>
+
+      <!-- FAB -->
+      <div class="fab"><svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.4"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> New node</div>
+
+      <!-- ============ FLOATING INSPECTOR ============ -->
+      <div class="inspector">
+        <div class="insp-head">
+          <div class="overline">CONFIG</div>
+          <div class="insp-title">Rooftop Bar</div>
+          <div class="insp-sub">IMAGE · SCENE</div>
+        </div>
+        <div class="insp-body">
+          <div class="field">
+            <label class="flabel">Prompt</label>
+            <textarea class="ta" readonly>Neon-lit rooftop cocktail bar at golden hour, city skyline behind, shallow depth of field, anamorphic flare</textarea>
+          </div>
+          <div class="field">
+            <label class="flabel">Final prompt preview</label>
+            <div class="fpp">…anamorphic flare,<span class="appended">warm sunset lighting, candlelit</span></div>
+          </div>
+          <div class="field">
+            <label class="flabel">Inputs</label>
+            <div class="chip-in"><div class="av"></div><span class="nm">Mira</span><span class="role">REFERENCE</span></div>
+          </div>
+          <div class="row2">
+            <div class="field">
+              <label class="flabel">Provider</label>
+              <div class="dropdown"><span class="lead"><span class="pdot" style="background:var(--info);"></span>Gemini Image</span><span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+            <div class="field">
+              <label class="flabel">Resolution</label>
+              <div class="dropdown"><span>1080p · 16:9</span><span class="chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></div>
+            </div>
+          </div>
+          <div class="field">
+            <div class="toggle-row"><span class="tl">Ignore lane style</span><span class="ts">OFF</span><div class="switch"><div class="knob"></div></div></div>
+          </div>
+          <button class="gen-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3v4M3 5h4M6 17v4M4 19h4M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5z"/></svg> Generate</button>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ============ RENDER QUEUE ============ -->
+    <aside class="queue">
+      <div class="q-head">
+        <div class="ql">
+          <div class="overline">RENDER QUEUE</div>
+          <div class="q-count"><span class="livedot"></span><b>2 active</b></div>
+        </div>
+        <div class="ic-btn" title="Collapse"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+      </div>
+      <div class="q-body">
+        <!-- 1 Running -->
+        <div class="job j-run">
+          <div class="job-top"><span class="job-name">Wanx Text-to-Video</span><span class="job-act">Cancel</span></div>
+          <div class="job-status" style="color:var(--cta);"><span class="stat-dot" style="background:var(--cta);"></span>Running 64%</div>
+          <div class="bar"><div class="fill" style="width:64%; background:linear-gradient(90deg,var(--cta),#f0b95c);"></div></div>
+        </div>
+        <!-- 2 Submitting -->
+        <div class="job j-sub">
+          <div class="job-top"><span class="job-name">Gemini Image</span><span class="job-act">Cancel</span></div>
+          <div class="job-status" style="color:var(--accent);"><span class="stat-dot" style="background:var(--accent);"></span>Submitting</div>
+          <div class="bar"><div class="stripe"></div></div>
+        </div>
+        <!-- 3 Done -->
+        <div class="job j-done">
+          <div class="job-top"><span class="job-name">Kling v3</span><span class="job-act">Dismiss</span></div>
+          <div class="job-status" style="color:var(--success);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>Done</div>
+          <div class="bar"><div class="fill" style="width:100%; background:var(--success);"></div></div>
+        </div>
+        <!-- 4 Failed -->
+        <div class="job j-fail">
+          <div class="job-top"><span class="job-name">Stable Image Core</span><span class="job-act retry">Retry</span></div>
+          <div class="job-status" style="color:var(--danger);"><span class="stat-dot" style="background:var(--danger);"></span>Failed</div>
+          <div class="bar"><div class="fill" style="width:38%; background:var(--danger);"></div></div>
+        </div>
+      </div>
+      <div class="q-foot"><a href="#">Clear completed</a><span class="meta">4 jobs</span></div>
+    </aside>
+
+  </div>
+</div>
+
+<!-- version pill -->
+<div class="ver-pill"><span class="vdot"></span>V1 · Amber Noir</div>
+
+</body>
+</html>

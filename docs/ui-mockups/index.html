@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>InkFrame · Canvas UI — 5 Directions to Choose From</title>
+<style>
+  :root{
+    --bg:#111216; --bg2:#16181d; --line:#262931; --line2:#33373f;
+    --fg:#ECEEF2; --fg2:#A4AAB6; --fg3:#6E7480; --accent:#C9A85B;
+    --mono:ui-monospace,"JetBrains Mono","SFMono-Regular",Consolas,monospace;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    /* preview geometry: render 1440x900 then scale to fit card */
+    --pw:660px; --ph:412.5px; --scale:0.4583;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  a{color:inherit;text-decoration:none}
+
+  .wrap{max-width:1480px;margin:0 auto;padding:48px 40px 120px}
+  header.hero{border-bottom:1px solid var(--line);padding-bottom:28px;margin-bottom:36px;display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .h-l .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--fg3)}
+  .h-l h1{font-size:30px;font-weight:600;margin:10px 0 8px;letter-spacing:-.01em}
+  .h-l p{margin:0;color:var(--fg2);max-width:760px;line-height:1.65;font-size:14px}
+  .h-r{font-family:var(--mono);font-size:11px;color:var(--fg3);line-height:1.9;text-align:right}
+  .h-r b{color:var(--fg)}
+
+  .note{display:flex;gap:10px;align-items:flex-start;background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:12px 16px;color:var(--fg2);font-size:12.5px;line-height:1.6;margin-bottom:34px}
+  .note b{color:var(--fg)}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(660px,1fr));gap:30px}
+  @media(max-width:760px){:root{--pw:92vw;--ph:57.5vw;--scale:calc(92vw/1440)} .grid{grid-template-columns:1fr}}
+
+  .card{background:var(--bg2);border:1px solid var(--line);border-radius:14px;overflow:hidden;transition:border-color .15s,transform .15s}
+  .card:hover{border-color:var(--line2)}
+
+  .frame{position:relative;width:var(--pw);height:var(--ph);max-width:100%;background:#000;overflow:hidden;border-bottom:1px solid var(--line)}
+  .frame iframe{position:absolute;top:0;left:0;width:1440px;height:900px;border:0;transform:scale(var(--scale));transform-origin:top left;pointer-events:none}
+  .frame .open{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:flex-end;padding:14px;opacity:0;transition:opacity .15s;background:linear-gradient(to top,rgba(0,0,0,.55),transparent 38%)}
+  .frame:hover .open{opacity:1}
+  .frame .open span{font-family:var(--mono);font-size:11px;letter-spacing:.06em;color:#fff;background:rgba(0,0,0,.6);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:7px 13px;backdrop-filter:blur(4px)}
+
+  .meta{padding:18px 20px 20px}
+  .meta .row{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .meta .vno{font-family:var(--mono);font-size:12px;color:var(--accent);letter-spacing:.12em}
+  .meta h2{font-size:19px;font-weight:600;margin:2px 0 0}
+  .meta .openbtn{font-family:var(--mono);font-size:11px;color:var(--fg2);border:1px solid var(--line2);border-radius:8px;padding:6px 11px;white-space:nowrap;transition:.15s}
+  .meta .openbtn:hover{color:var(--fg);border-color:var(--accent)}
+  .meta p{margin:11px 0 14px;color:var(--fg2);font-size:13px;line-height:1.62}
+  .sw{display:flex;gap:7px;align-items:center}
+  .sw i{width:22px;height:22px;border-radius:6px;border:1px solid rgba(255,255,255,.14);display:inline-block}
+  .sw .lbl{font-family:var(--mono);font-size:10px;color:var(--fg3);letter-spacing:.14em;text-transform:uppercase;margin-left:4px}
+
+  footer{margin-top:54px;color:var(--fg3);font-family:var(--mono);font-size:11px;line-height:1.9;border-top:1px solid var(--line);padding-top:20px}
+  footer b{color:var(--fg2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="h-l">
+      <div class="kicker">InkFrame v2 · Canvas screen · design exploration</div>
+      <h1>Five directions for the node canvas</h1>
+      <p>Every version renders the <b>identical</b> canvas scene — “Sunset Heist › Opening Sequence”, the same six nodes, real provider names and real UI labels — so you are comparing the <b>look</b>, not the content. Pick the one that feels like InkFrame and we’ll take it into implementation.</p>
+    </div>
+    <div class="h-r">
+      <div><b>5</b> directions</div>
+      <div>same scene · self-contained HTML</div>
+      <div>2026-06-29</div>
+    </div>
+  </header>
+
+  <a href="canvas-v1-amber-noir-spec.html" style="display:flex;align-items:center;gap:14px;background:linear-gradient(180deg,#1c1814,#15110e);border:1px solid #C9A85B;border-radius:12px;padding:14px 18px;margin-bottom:18px;text-decoration:none">
+    <span style="width:9px;height:9px;border-radius:50%;background:#C9A85B;box-shadow:0 0 9px #C9A85B"></span>
+    <span style="color:#ECEEF2;font-size:14px"><b style="color:#C9A85B">Selected: V1 · Amber Noir</b> — open the full <b>Design Definition</b> (all node/inspector/queue states, per-provider behaviour, token annotations) ↗</span>
+  </a>
+
+  <div class="note">
+    <span>ⓘ</span>
+    <div>Previews below are <b>live, scaled-down renders</b> of each full-screen file — click any preview (or “Open full size”) to view it at 1:1 in its own tab. Fonts load from Google Fonts, so connect to the internet for the intended typography (system fallbacks kick in offline).</div>
+  </div>
+
+  <div class="grid">
+
+    <!-- V1 -->
+    <div class="card">
+      <div class="frame">
+        <iframe src="canvas-v1-amber-noir.html" title="V1 Amber Noir" loading="lazy" scrolling="no"></iframe>
+        <a class="open" href="canvas-v1-amber-noir.html" target="_blank" rel="noopener"><span>Open full size ↗</span></a>
+      </div>
+      <div class="meta">
+        <div class="row">
+          <div><div class="vno">V1</div><h2>Amber Noir <span style="color:var(--fg3);font-weight:400;font-size:14px">— refined</span></h2></div>
+          <a class="openbtn" href="canvas-v1-amber-noir.html" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+        <p>Your current direction, tightened. Warm matte-black darkroom, amber-gold wires that glow with flow, serif titles over mono tags — editorial-luxury and filmic. The safe, on-brand choice.</p>
+        <div class="sw"><i style="background:#0B0908"></i><i style="background:#15110E"></i><i style="background:#C9A85B"></i><i style="background:#E3A648"></i><i style="background:#E8DFD0"></i><span class="lbl">warm-black · amber gold</span></div>
+      </div>
+    </div>
+
+    <!-- V2 -->
+    <div class="card">
+      <div class="frame">
+        <iframe src="canvas-v2-paper-atelier.html" title="V2 Paper Atelier" loading="lazy" scrolling="no"></iframe>
+        <a class="open" href="canvas-v2-paper-atelier.html" target="_blank" rel="noopener"><span>Open full size ↗</span></a>
+      </div>
+      <div class="meta">
+        <div class="row">
+          <div><div class="vno">V2</div><h2>Paper Atelier <span style="color:var(--fg3);font-weight:400;font-size:14px">— light</span></h2></div>
+          <a class="openbtn" href="canvas-v2-paper-atelier.html" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+        <p>The bright counterpart. An ivory printmaker’s desk: engraving-line grid, hairline borders, catalog-plate lane headers, gold double-rule selection. Calm, premium, gallery-quiet.</p>
+        <div class="sw"><i style="background:#F5EFE3"></i><i style="background:#FFFAF0"></i><i style="background:#A88340"></i><i style="background:#C68B2E"></i><i style="background:#2A2520"></i><span class="lbl">warm ivory · ink + gold</span></div>
+      </div>
+    </div>
+
+    <!-- V3 -->
+    <div class="card">
+      <div class="frame">
+        <iframe src="canvas-v3-aurora-glass.html" title="V3 Aurora Glass" loading="lazy" scrolling="no"></iframe>
+        <a class="open" href="canvas-v3-aurora-glass.html" target="_blank" rel="noopener"><span>Open full size ↗</span></a>
+      </div>
+      <div class="meta">
+        <div class="row">
+          <div><div class="vno">V3</div><h2>Aurora Glass</h2></div>
+          <a class="openbtn" href="canvas-v3-aurora-glass.html" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+        <p>Premium glassmorphism. Frosted panels float over a violet–cyan–magenta nebula; glowing aurora wires and bloom on the Generate button. Modern AI-tool energy (Runway / Krea / Linear-dark).</p>
+        <div class="sw"><i style="background:#0A0B14"></i><i style="background:#8B7BFF"></i><i style="background:#45E0E6"></i><i style="background:#FF7AD9"></i><i style="background:#ECEEF6"></i><span class="lbl">deep base · aurora glass</span></div>
+      </div>
+    </div>
+
+    <!-- V4 -->
+    <div class="card">
+      <div class="frame">
+        <iframe src="canvas-v4-blueprint.html" title="V4 Blueprint" loading="lazy" scrolling="no"></iframe>
+        <a class="open" href="canvas-v4-blueprint.html" target="_blank" rel="noopener"><span>Open full size ↗</span></a>
+      </div>
+      <div class="meta">
+        <div class="row">
+          <div><div class="vno">V4</div><h2>Blueprint <span style="color:var(--fg3);font-weight:400;font-size:14px">— technical</span></h2></div>
+          <a class="openbtn" href="canvas-v4-blueprint.html" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+        <p>Instrument-grade node-graph. Ruler grid, port-to-port type-colored wires, monospace readouts everywhere, an attribute-panel inspector. TouchDesigner / Nuke meets storyboarding — for power users.</p>
+        <div class="sw"><i style="background:#0B0E12"></i><i style="background:#151A21"></i><i style="background:#35D0E0"></i><i style="background:#B6FF3C"></i><i style="background:#FF5C8A"></i><span class="lbl">cool slate · cyan / lime</span></div>
+      </div>
+    </div>
+
+    <!-- V5 -->
+    <div class="card">
+      <div class="frame">
+        <iframe src="canvas-v5-neo-pop.html" title="V5 Neo Pop" loading="lazy" scrolling="no"></iframe>
+        <a class="open" href="canvas-v5-neo-pop.html" target="_blank" rel="noopener"><span>Open full size ↗</span></a>
+      </div>
+      <div class="meta">
+        <div class="row">
+          <div><div class="vno">V5</div><h2>Neo Pop <span style="color:var(--fg3);font-weight:400;font-size:14px">— brutalist</span></h2></div>
+          <a class="openbtn" href="canvas-v5-neo-pop.html" target="_blank" rel="noopener">Open ↗</a>
+        </div>
+        <p>Loud and confident. Thick black outlines, hard offset shadows, sticker-like nodes in saturated pop colors, chunky type. The brave, unmistakable, anti-minimal direction.</p>
+        <div class="sw"><i style="background:#F4F1E8"></i><i style="background:#2D5BFF"></i><i style="background:#FF5436"></i><i style="background:#C6F32B"></i><i style="background:#FFC500"></i><span class="lbl">off-white · pop blocks</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <div><b>Files</b> · docs/ui-mockups/canvas-v1…v5.html — each a single self-contained HTML file (inline CSS + SVG, no external images).</div>
+    <div><b>Same scene everywhere</b> · top chrome · 8-tool rail · 2 style lanes / 6 nodes / bezier edges · floating Config inspector · Render Queue · “New node” FAB.</div>
+    <div><b>Next</b> · tell me which number you want (or mix elements across them) and we’ll spec it into the real Flutter theme.</div>
+  </footer>
+</div>
+</body>
+</html>

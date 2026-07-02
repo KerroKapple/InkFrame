@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Canvas · Amber Noir — Design Definition</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --canvas:#0B0908; --s1:#100C0A; --s2:#15110E; --s3:#1C1814; --s4:#2A2520;
+    --t1:#E8DFD0; --t2:#B5A89A; --t3:#8A7E70; --t4:#5A5048;
+    --accent:#C9A85B; --accent-h:#D8B66B; --accent-p:#B89A4F; --cta:#E3A648; --cta-h:#F0B556;
+    --danger:#C8523A; --warning:#D88B3A; --success:#5C8A4E; --info:#4B7A92;
+    --border:#2A2522; --border-sub:#1C1814; --border-h:#3C342A;
+    --serif:"Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono:"JetBrains Mono", "SF Mono", Menlo, Consolas, monospace;
+    --shadow-card:0 10px 30px -12px rgba(0,0,0,.75), 0 2px 6px rgba(0,0,0,.55);
+    --shadow-float:0 32px 70px -20px rgba(0,0,0,.9), 0 8px 22px rgba(0,0,0,.6), 0 0 0 1px rgba(201,168,91,.06);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{font-family:var(--sans); background:
+      radial-gradient(circle at 18% 0%, rgba(216,139,58,.05), transparent 38%),
+      radial-gradient(circle at 90% 12%, rgba(75,122,146,.045), transparent 40%),
+      var(--canvas);
+    color:var(--t1); font-size:13px; -webkit-font-smoothing:antialiased; line-height:1.5; padding-bottom:120px;}
+  a{color:inherit; text-decoration:none;}
+
+  /* ===== sticky header ===== */
+  .top{position:sticky; top:0; z-index:100; display:flex; align-items:center; gap:18px; padding:12px 26px;
+    background:linear-gradient(180deg, rgba(18,14,10,.96), rgba(16,12,10,.9)); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border); box-shadow:0 8px 26px -16px rgba(0,0,0,.85);}
+  .top .wm{font-family:var(--serif); font-size:21px;}
+  .top .wm .sl{color:var(--accent); font-weight:500;}
+  .top .doc{font-family:var(--mono); font-size:10.5px; letter-spacing:1.6px; color:var(--t3); text-transform:uppercase;}
+  .top .sp{flex:1;}
+  .top nav{display:flex; gap:3px; flex-wrap:wrap;}
+  .top nav a{font-family:var(--mono); font-size:10.5px; letter-spacing:.4px; color:var(--t3); padding:5px 9px; border-radius:7px; border:1px solid transparent;}
+  .top nav a:hover{color:var(--t1); background:var(--s3); border-color:var(--border);}
+
+  .wrap{max-width:1240px; margin:0 auto; padding:0 26px;}
+
+  /* ===== hero ===== */
+  .hero{margin:40px 0 14px; display:flex; align-items:flex-end; justify-content:space-between; gap:24px; flex-wrap:wrap;}
+  .hero .k{font-family:var(--mono); font-size:11px; letter-spacing:2.4px; color:var(--accent); text-transform:uppercase;}
+  .hero h1{font-family:var(--serif); font-weight:300; font-size:46px; line-height:1.04; margin-top:10px; letter-spacing:.4px;}
+  .hero h1 b{font-weight:500; color:var(--accent);}
+  .hero p{color:var(--t2); max-width:640px; margin-top:12px; line-height:1.65; font-size:13.5px;}
+  .hero .meta{font-family:var(--mono); font-size:10.5px; color:var(--t3); line-height:1.95; text-align:right;}
+  .hero .meta b{color:var(--t1);}
+
+  .screenframe{position:relative; width:100%; height:760px; border:1px solid var(--border-h); border-radius:16px; overflow:hidden; box-shadow:var(--shadow-float); background:#000; margin-bottom:10px;}
+  .screenframe iframe{position:absolute; top:0; left:0; width:1440px; height:900px; border:0; transform:scale(.8264); transform-origin:top left;}
+  .screenframe .open{position:absolute; right:14px; bottom:14px; font-family:var(--mono); font-size:11px; color:#fff; background:rgba(11,9,8,.7); border:1px solid rgba(201,168,91,.4); border-radius:999px; padding:7px 14px; backdrop-filter:blur(4px);}
+  .screenframe .open:hover{border-color:var(--accent);}
+  .frame-cap{font-family:var(--mono); font-size:10px; color:var(--t4); letter-spacing:.5px; margin-bottom:34px;}
+
+  /* ===== sections ===== */
+  section{margin:46px 0; scroll-margin-top:70px;}
+  .sec-h{display:flex; align-items:baseline; gap:14px; padding-bottom:13px; margin-bottom:24px; border-bottom:1px solid var(--border);}
+  .sec-h .no{font-family:var(--mono); font-size:12px; color:var(--accent); font-weight:600; letter-spacing:1px;}
+  .sec-h h2{font-family:var(--serif); font-weight:400; font-size:30px; letter-spacing:.3px;}
+  .sec-h .sub{font-family:var(--mono); font-size:10.5px; color:var(--t3); margin-left:auto; letter-spacing:.5px;}
+  .lead{color:var(--t2); max-width:780px; margin:-8px 0 24px; line-height:1.7; font-size:13.5px;}
+
+  /* generic card */
+  .panel{background:linear-gradient(180deg,var(--s2),#130F0C); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-card);}
+
+  /* ===== token legend ===== */
+  .grid{display:grid; gap:16px;}
+  .g4{grid-template-columns:repeat(4,1fr);} .g3{grid-template-columns:repeat(3,1fr);} .g2{grid-template-columns:repeat(2,1fr);}
+  @media(max-width:1000px){.g4{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(2,1fr);}}
+  .tokgroup{padding:16px; border-radius:13px;}
+  .tokgroup h4{font-family:var(--mono); font-size:10px; letter-spacing:1.8px; text-transform:uppercase; color:var(--t3); margin-bottom:13px;}
+  .swatch{display:flex; align-items:center; gap:11px; padding:6px 0;}
+  .swatch .chip{width:30px; height:30px; border-radius:8px; flex:0 0 30px; border:1px solid rgba(255,255,255,.07);}
+  .swatch .sd{min-width:0;}
+  .swatch .fn{font-family:var(--mono); font-size:11px; color:var(--t1);}
+  .swatch .fv{font-family:var(--mono); font-size:9.5px; color:var(--t4); letter-spacing:.3px;}
+
+  table{width:100%; border-collapse:collapse; font-size:12px;}
+  table.spec th{font-family:var(--mono); font-size:9.5px; letter-spacing:1.2px; text-transform:uppercase; color:var(--t3); text-align:left; padding:10px 12px; border-bottom:1px solid var(--border);}
+  table.spec td{padding:9px 12px; border-bottom:1px solid var(--border-sub); color:var(--t2); vertical-align:top;}
+  table.spec tr:hover td{background:rgba(255,255,255,.012);}
+  table.spec td code, .code{font-family:var(--mono); font-size:11px; color:var(--accent); background:rgba(201,168,91,.08); padding:1px 6px; border-radius:5px;}
+  table.spec td.mono{font-family:var(--mono); color:var(--t1); font-size:11px;}
+  table.spec td b{color:var(--t1); font-weight:500;}
+  .yes{color:var(--success);} .no{color:var(--t4);}
+  .scrollx{overflow-x:auto; border:1px solid var(--border); border-radius:13px;}
+  .scrollx table.spec th, .scrollx table.spec td{white-space:nowrap;}
+
+  .type-row{display:flex; align-items:center; gap:8px;}
+  .type-row .ts{width:13px; height:13px; border-radius:4px;}
+
+  /* ===== node mini renders (reuse V1 language) ===== */
+  .nodewall{display:flex; flex-wrap:wrap; gap:20px;}
+  .nbox{display:flex; flex-direction:column; gap:9px; width:194px;}
+  .nbox .cap{font-family:var(--mono); font-size:9.5px; letter-spacing:.8px; color:var(--t3); display:flex; align-items:center; gap:7px;}
+  .nbox .cap .k{color:var(--accent);}
+  .node{position:relative; width:194px; background:linear-gradient(180deg,var(--s2),#130F0C); border:1px solid var(--border); border-radius:13px; box-shadow:var(--shadow-card); overflow:hidden;}
+  .node .strip{height:3px; width:100%;}
+  .node .nbody{padding:11px 12px 0;}
+  .node .ttag{font-family:var(--mono); font-size:9px; letter-spacing:1.4px; color:var(--t3); font-weight:500;}
+  .node .ntitle{font-family:var(--serif); font-weight:400; font-size:20px; line-height:1.05; color:var(--t1); margin-top:3px;}
+  .node .nprev{margin:9px 0 0; aspect-ratio:16/9; border-radius:8px; overflow:hidden; position:relative; border:1px solid var(--border-sub);}
+  .node .nfoot{font-family:var(--mono); font-size:9px; letter-spacing:.6px; color:var(--t4); padding:9px 12px 11px; display:flex; align-items:center; gap:6px;}
+  .node .nfoot .pdot{width:5px; height:5px; border-radius:50%;}
+  .node.sel{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 0 26px -3px rgba(201,168,91,.5), var(--shadow-card);}
+  .node.sel .seltag{position:absolute; top:8px; right:8px; font-family:var(--mono); font-size:8px; letter-spacing:1.2px; color:#1a1206; background:linear-gradient(145deg,var(--accent),#b1903f); padding:3px 6px; border-radius:5px; font-weight:600;}
+  .node.hov{border-color:var(--border-h); transform:translateY(-1px);}
+  .node.src{border-color:var(--cta); box-shadow:0 0 0 1px var(--cta), 0 0 24px -4px rgba(227,166,72,.45);}
+  .node.cand{border-color:var(--accent); border-style:dashed;}
+  .node.cand .candbadge{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(201,168,91,.06); font-family:var(--mono); font-size:9px; letter-spacing:1px; color:var(--accent);}
+  .node.multi{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent);}
+  .node.multi::after{content:""; position:absolute; inset:-4px; border:1px dashed rgba(201,168,91,.4); border-radius:15px;}
+  .node .anc{position:absolute; width:10px; height:10px; border-radius:50%; background:var(--s4); border:2px solid var(--border-h); top:50%; transform:translateY(-50%);}
+  .node .anc.in{left:-5px;} .node .anc.out{right:-5px;}
+  .node .anc.hot{background:var(--accent); border-color:var(--accent-h); box-shadow:0 0 8px rgba(201,168,91,.7);}
+  .textnode .ntext{margin:9px 0 0; padding:10px 11px; background:var(--s1); border:1px solid var(--border-sub); border-radius:8px; font-family:var(--serif); font-size:14px; line-height:1.5; color:var(--t2);}
+  .play-ov{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;}
+  .play-ov .tri{width:38px; height:38px; border-radius:50%; background:rgba(20,16,12,.55); border:1px solid rgba(232,223,208,.3); display:flex; align-items:center; justify-content:center;}
+  .dur{position:absolute; right:7px; bottom:7px; font-family:var(--mono); font-size:9px; padding:2px 6px; border-radius:5px; background:rgba(11,9,8,.82); color:var(--t1); border:1px solid var(--border-h);}
+  .gen-ov{position:absolute; inset:0; display:flex; flex-direction:column; gap:8px; align-items:center; justify-content:center; background:rgba(11,9,8,.42);}
+  .spin{width:24px; height:24px; border-radius:50%; border:2.5px solid rgba(92,138,78,.25); border-top-color:var(--success); animation:spin 1s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .glabel{font-family:var(--mono); font-size:9.5px; letter-spacing:1px; color:var(--t1);}
+  .shimmer{position:absolute; inset:0; background:linear-gradient(110deg,transparent 30%,rgba(232,223,208,.08) 50%,transparent 70%); background-size:220% 100%; animation:sh 1.8s infinite;}
+  @keyframes sh{to{background-position:-220% 0;}}
+  .pending-ov{position:absolute; inset:0; display:flex; flex-direction:column; gap:7px; align-items:center; justify-content:center; color:var(--t3); background:repeating-linear-gradient(45deg,transparent 0 8px, rgba(255,255,255,.018) 8px 16px);}
+  .missing-ov{position:absolute; inset:0; display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; color:var(--danger); background:rgba(200,82,58,.06);}
+
+  /* anatomy callouts */
+  .anatomy{display:flex; gap:34px; align-items:flex-start; flex-wrap:wrap; padding:26px; border-radius:14px;}
+  .callouts{flex:1; min-width:280px; display:flex; flex-direction:column; gap:11px;}
+  .callout{display:flex; gap:12px; align-items:flex-start;}
+  .callout .dot{font-family:var(--mono); font-size:10px; color:#1a1206; background:var(--accent); width:20px; height:20px; border-radius:50%; flex:0 0 20px; display:flex; align-items:center; justify-content:center; font-weight:700; margin-top:1px;}
+  .callout .ct{font-size:12.5px; color:var(--t2); line-height:1.5;}
+  .callout .ct b{color:var(--t1);}
+  .anatomy .node{width:232px;}
+  .anatomy .node .nbody{padding:13px 14px 0;}
+  .anatomy .node .ntitle{font-size:23px;}
+
+  /* edges demo */
+  .edgewall{display:grid; grid-template-columns:repeat(2,1fr); gap:16px;}
+  @media(max-width:900px){.edgewall{grid-template-columns:1fr;}}
+  .edgecard{padding:14px 16px; border-radius:13px;}
+  .edgecard h4{font-family:var(--mono); font-size:10px; letter-spacing:1.2px; text-transform:uppercase; color:var(--t2); margin-bottom:4px;}
+  .edgecard p{font-size:11.5px; color:var(--t3); line-height:1.5; margin-bottom:10px;}
+  .edgecard svg{width:100%; height:46px;}
+
+  /* inspector renders */
+  .insp{width:312px; background:linear-gradient(180deg,var(--s2),#130F0C); border:1px solid var(--border-h); border-radius:15px; box-shadow:var(--shadow-float); overflow:hidden; flex:0 0 312px;}
+  .insp-head{padding:15px 16px 13px; border-bottom:1px solid var(--border); background:linear-gradient(180deg,var(--s3),var(--s2)); position:relative;}
+  .insp-head::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px;}
+  .insp-head.img::before{background:var(--info); box-shadow:0 0 10px rgba(75,122,146,.5);}
+  .insp-head.vid::before{background:var(--cta); box-shadow:0 0 10px rgba(227,166,72,.5);}
+  .ovl{font-family:var(--mono); font-size:9px; letter-spacing:2.2px; color:var(--accent); font-weight:600;}
+  .insp-title{font-family:var(--serif); font-size:25px; margin-top:3px; line-height:1.06;}
+  .insp-sub{font-family:var(--mono); font-size:9.5px; letter-spacing:1.1px; color:var(--t3); margin-top:3px;}
+  .insp-body{padding:14px 16px 16px;}
+  .field{margin-bottom:13px;}
+  .flabel{font-size:11px; font-weight:500; color:var(--t2); margin-bottom:6px; display:flex; align-items:center; gap:7px;}
+  .badge{font-family:var(--mono); font-size:8px; letter-spacing:.8px; padding:1px 5px; border-radius:4px; border:1px solid; text-transform:uppercase;}
+  .badge.always{color:var(--t3); border-color:var(--border-h);}
+  .badge.cap{color:var(--info); border-color:rgba(75,122,146,.45); background:rgba(75,122,146,.1);}
+  .badge.cv{color:var(--accent); border-color:rgba(201,168,91,.4); background:rgba(201,168,91,.08);}
+  .badge.prop{color:var(--cta); border-color:rgba(227,166,72,.5); background:rgba(227,166,72,.1);}
+  .ta{width:100%; background:var(--s1); border:1px solid var(--border); border-radius:9px; padding:9px 11px; color:var(--t1); font-family:var(--sans); font-size:11.5px; line-height:1.5; resize:none; min-height:64px;}
+  .fpp{background:var(--s1); border:1px solid var(--border-sub); border-radius:9px; padding:9px 11px; font-size:11px; line-height:1.5; color:var(--t3);}
+  .fpp .ap{color:var(--warning); background:rgba(216,139,58,.12); border-radius:3px; padding:1px 3px;}
+  .dd{width:100%; display:flex; align-items:center; justify-content:space-between; background:var(--s1); border:1px solid var(--border); border-radius:9px; padding:9px 11px; font-size:11.5px; color:var(--t1);}
+  .dd .lead{display:flex; align-items:center; gap:7px;} .dd .pdot{width:6px;height:6px;border-radius:50%;} .dd .chev{color:var(--t3);}
+  .dd.disabled{opacity:.45;}
+  .row2{display:flex; gap:10px;} .row2 .field{flex:1;}
+  .chip-in{display:inline-flex; align-items:center; gap:8px; background:var(--s1); border:1px solid var(--border); border-radius:8px; padding:6px 9px;}
+  .chip-in .av{width:22px; height:22px; border-radius:6px; background:radial-gradient(circle at 50% 30%,#d99a6a,#a85e3e 60%,#5a2e22);}
+  .chip-in .nm{font-size:11.5px; color:var(--t1);}
+  .chip-in .role{font-family:var(--mono); font-size:8.5px; letter-spacing:.8px; color:var(--accent); background:rgba(201,168,91,.1); padding:2px 6px; border-radius:5px; border:1px solid rgba(201,168,91,.2);}
+  .toggle-row{display:flex; align-items:center; justify-content:space-between; padding:8px 10px; background:var(--s1); border:1px solid var(--border-sub); border-radius:9px;}
+  .toggle-row .tl{font-size:11.5px; color:var(--t2);} .toggle-row .ts{font-family:var(--mono); font-size:8.5px; letter-spacing:1px; color:var(--t4); margin-left:auto; margin-right:10px;}
+  .switch{width:38px; height:21px; border-radius:12px; background:var(--s4); border:1px solid var(--border-h); position:relative; flex:0 0 38px;}
+  .switch .knob{position:absolute; width:15px; height:15px; border-radius:50%; background:var(--t3); top:2px; left:2px; transition:.2s;}
+  .switch.on{background:rgba(201,168,91,.3); border-color:var(--accent);} .switch.on .knob{left:20px; background:var(--accent);}
+  .gen-btn{width:100%; margin-top:6px; padding:12px; border-radius:10px; background:linear-gradient(145deg,var(--cta),#c98a30); color:#1a1206; font-weight:600; font-size:13px; border:1px solid rgba(255,220,150,.35); display:flex; align-items:center; justify-content:center; gap:8px;}
+  .gen-btn.disabled{background:var(--s3); color:var(--t4); border-color:var(--border); cursor:not-allowed;}
+  .statusline{display:flex; align-items:center; gap:8px; font-family:var(--mono); font-size:10px; letter-spacing:.6px; margin-top:9px; padding:9px 11px; border-radius:9px; background:var(--s1); border:1px solid var(--border-sub);}
+  .statusline .sd{width:6px; height:6px; border-radius:50%;}
+  .tip{font-family:var(--mono); font-size:9px; color:var(--t4); margin-top:6px; letter-spacing:.4px;}
+
+  .inspstates{display:flex; flex-wrap:wrap; gap:16px;}
+  .ist{width:240px; padding:14px; border-radius:13px;}
+  .ist h4{font-family:var(--mono); font-size:10px; letter-spacing:1px; color:var(--t2); margin-bottom:3px;}
+  .ist .sk{font-family:var(--mono); font-size:8.5px; color:var(--t4); margin-bottom:11px;}
+
+  /* render queue jobs */
+  .jobs{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+  @media(max-width:980px){.jobs{grid-template-columns:repeat(2,1fr);}} @media(max-width:640px){.jobs{grid-template-columns:1fr;}}
+  .job{background:linear-gradient(180deg,var(--s2),#130F0C); border:1px solid var(--border); border-radius:11px; padding:12px; position:relative; overflow:hidden;}
+  .job::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px;}
+  .job.q::before{background:var(--t4);} .job.sub::before{background:var(--accent);} .job.run::before{background:var(--cta);}
+  .job.done::before{background:var(--success);} .job.fail::before{background:var(--danger);} .job.cancel::before{background:var(--t4);}
+  .job-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;}
+  .job-name{font-size:12px; font-weight:500; color:var(--t1);}
+  .job-act{font-family:var(--mono); font-size:9px; letter-spacing:.6px; padding:3px 8px; border-radius:6px; border:1px solid var(--border); color:var(--t3); background:var(--s1);}
+  .job-act.retry{color:var(--danger); border-color:rgba(200,82,58,.4);}
+  .job-status{display:flex; align-items:center; gap:7px; font-family:var(--mono); font-size:9.5px; letter-spacing:.5px; margin-bottom:8px;}
+  .sd{width:6px; height:6px; border-radius:50%;}
+  .bar{height:5px; border-radius:4px; background:var(--s4); overflow:hidden; position:relative;}
+  .bar .fill{height:100%; border-radius:4px;}
+  .bar .stripe{height:100%; width:55%; background:repeating-linear-gradient(45deg,rgba(201,168,91,.6) 0 7px,rgba(201,168,91,.22) 7px 14px); animation:slide 1.1s linear infinite;}
+  @keyframes slide{to{transform:translateX(60%);}}
+  .keyref{font-family:var(--mono); font-size:9px; color:var(--t4); margin-top:8px; letter-spacing:.3px;}
+
+  /* notes / callout box */
+  .notebox{border:1px solid var(--border-h); border-left:3px solid var(--accent); border-radius:11px; padding:16px 18px; background:rgba(201,168,91,.04); margin:16px 0;}
+  .notebox.warn{border-left-color:var(--warning); background:rgba(216,139,58,.05);}
+  .notebox h4{font-family:var(--mono); font-size:10px; letter-spacing:1.4px; text-transform:uppercase; color:var(--accent); margin-bottom:9px;}
+  .notebox.warn h4{color:var(--warning);}
+  .notebox ul{margin:0; padding-left:18px; color:var(--t2); line-height:1.75; font-size:12.5px;}
+  .notebox li{margin-bottom:5px;} .notebox b{color:var(--t1);}
+
+  .legendkey{display:flex; gap:18px; flex-wrap:wrap; margin:10px 0 0; font-family:var(--mono); font-size:9.5px; color:var(--t3);}
+  .legendkey span{display:flex; align-items:center; gap:6px;}
+
+  footer{max-width:1240px; margin:60px auto 0; padding:24px 26px 0; border-top:1px solid var(--border); color:var(--t4); font-family:var(--mono); font-size:10.5px; line-height:2;}
+  footer b{color:var(--t2);}
+  .verpill{position:fixed; left:14px; bottom:13px; display:flex; align-items:center; gap:9px; padding:7px 14px; border-radius:30px; background:linear-gradient(180deg,var(--s3),var(--s2)); border:1px solid var(--accent); color:var(--t1); font-family:var(--mono); font-size:11px; letter-spacing:.6px; box-shadow:var(--shadow-card); z-index:90;}
+  .verpill .vd{width:8px; height:8px; border-radius:50%; background:var(--accent); box-shadow:0 0 9px var(--accent);}
+  svg{display:block;}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <span class="wm">Ink<span class="sl">/</span>Frame</span>
+  <span class="doc">Canvas · Amber Noir — Design Definition</span>
+  <span class="sp"></span>
+  <nav>
+    <a href="#hero">Overview</a>
+    <a href="#tokens">Tokens</a>
+    <a href="#anatomy">Node anatomy</a>
+    <a href="#types">Types</a>
+    <a href="#states">States</a>
+    <a href="#edges">Edges</a>
+    <a href="#rail">Toolbar</a>
+    <a href="#insp-img">Inspector·Image</a>
+    <a href="#insp-vid">Inspector·Video</a>
+    <a href="#insp-states">Inspector states</a>
+    <a href="#providers">Providers</a>
+    <a href="#queue">Render queue</a>
+    <a href="#lanes">Lanes</a>
+    <a href="#empty">Empty / Link</a>
+    <a href="#fidelity">Fidelity notes</a>
+  </nav>
+</div>
+
+<div class="wrap">
+
+  <!-- ===================== HERO ===================== -->
+  <div id="hero" class="hero">
+    <div>
+      <div class="k">Selected direction · V1</div>
+      <h1>Canvas — <b>Amber Noir</b></h1>
+      <p>The agreed visual direction, taken to a delivery-ready definition: every node type and state, the wire vocabulary, both Config inspectors with real per-provider behaviour, the render queue, lanes, and empty/link states — each annotated to the real <span class="code">lib/theme</span> tokens so it drops straight into Flutter.</p>
+    </div>
+    <div class="meta">
+      <div><b>Direction</b> · Amber Noir</div>
+      <div><b>Screen</b> · Node Canvas</div>
+      <div><b>Theme base</b> · dark (warm-black + amber)</div>
+      <div><b>Updated</b> · 2026-06-30</div>
+    </div>
+  </div>
+
+  <div class="screenframe">
+    <iframe src="canvas-v1-amber-noir.html" title="Canvas V1 Amber Noir" scrolling="no"></iframe>
+    <a class="open" href="canvas-v1-amber-noir.html" target="_blank" rel="noopener">Open full screen ↗</a>
+  </div>
+  <div class="frame-cap">Live scaled render of canvas-v1-amber-noir.html · scene: “Sunset Heist › Opening Sequence”.</div>
+
+  <!-- ===================== TOKENS ===================== -->
+  <section id="tokens">
+    <div class="sec-h"><span class="no">01</span><h2>Token foundation</h2><span class="sub">lib/theme/tokens.dart · typography.dart · motion.dart</span></div>
+    <p class="lead">Every value below is the real Dart symbol. Colours &amp; type are reached through a <span class="code">BuildContext</span> extension; spacing/radius/shadow/motion are static. Access pattern (live convention): <span class="code">final colors = context.inkColors; final typo = context.inkTypography;</span> then <span class="code">InkSpacing.md</span>, <span class="code">InkRadius.lg</span>, <span class="code">InkShadow.card</span>, <span class="code">InkMotion.fast</span>. There is no <span class="code">InkColors.of()</span> — colours arrive via the <span class="code">AppThemeExtension</span> ThemeExtension.</p>
+
+    <div class="grid g4" style="margin-bottom:16px;">
+      <div class="tokgroup panel">
+        <h4>Surfaces · context.inkColors</h4>
+        <div class="swatch"><span class="chip" style="background:#0B0908"></span><div class="sd"><div class="fn">surfaceCanvas</div><div class="fv">0xFF0B0908</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#100C0A"></span><div class="sd"><div class="fn">surface1</div><div class="fv">0xFF100C0A</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#15110E"></span><div class="sd"><div class="fn">surface2</div><div class="fv">0xFF15110E</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#1C1814"></span><div class="sd"><div class="fn">surface3</div><div class="fv">0xFF1C1814</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#2A2520"></span><div class="sd"><div class="fn">surface4</div><div class="fv">0xFF2A2520</div></div></div>
+      </div>
+      <div class="tokgroup panel">
+        <h4>Foreground</h4>
+        <div class="swatch"><span class="chip" style="background:#E8DFD0"></span><div class="sd"><div class="fn">fg1</div><div class="fv">0xFFE8DFD0 · primary</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#B5A89A"></span><div class="sd"><div class="fn">fg2</div><div class="fv">0xFFB5A89A · secondary</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#8A7E70"></span><div class="sd"><div class="fn">fg3</div><div class="fv">0xFF8A7E70 · tertiary</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#5A5048"></span><div class="sd"><div class="fn">fg4</div><div class="fv">0xFF5A5048 · weak</div></div></div>
+      </div>
+      <div class="tokgroup panel">
+        <h4>Accent · Brand · CTA</h4>
+        <div class="swatch"><span class="chip" style="background:#C9A85B"></span><div class="sd"><div class="fn">accent / brand</div><div class="fv">0xFFC9A85B</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#D8B66B"></span><div class="sd"><div class="fn">accentHover</div><div class="fv">0xFFD8B66B</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#B89A4F"></span><div class="sd"><div class="fn">accentPressed</div><div class="fv">0xFFB89A4F</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#E3A648"></span><div class="sd"><div class="fn">cta</div><div class="fv">0xFFE3A648</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#F0B556"></span><div class="sd"><div class="fn">ctaHover</div><div class="fv">0xFFF0B556</div></div></div>
+      </div>
+      <div class="tokgroup panel">
+        <h4>Semantic</h4>
+        <div class="swatch"><span class="chip" style="background:#C8523A"></span><div class="sd"><div class="fn">danger</div><div class="fv">0xFFC8523A</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#D88B3A"></span><div class="sd"><div class="fn">warning</div><div class="fv">0xFFD88B3A</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#5C8A4E"></span><div class="sd"><div class="fn">success</div><div class="fv">0xFF5C8A4E</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#4B7A92"></span><div class="sd"><div class="fn">info</div><div class="fv">0xFF4B7A92</div></div></div>
+      </div>
+    </div>
+
+    <div class="grid g3">
+      <div class="tokgroup panel">
+        <h4>Borders + focus/overlay</h4>
+        <div class="swatch"><span class="chip" style="background:#2A2522"></span><div class="sd"><div class="fn">border</div><div class="fv">0xFF2A2522</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#1C1814"></span><div class="sd"><div class="fn">borderSubtle</div><div class="fv">0xFF1C1814</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#3C342A"></span><div class="sd"><div class="fn">borderHover</div><div class="fv">0xFF3C342A</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#C9A85B"></span><div class="sd"><div class="fn">focusRing</div><div class="fv">0xFFC9A85B</div></div></div>
+        <div class="swatch"><span class="chip" style="background:#2a2520"></span><div class="sd"><div class="fn">inputFill</div><div class="fv">0x0AFFFFFF · 4% white</div></div></div>
+      </div>
+      <div class="tokgroup panel">
+        <h4>Spacing · InkSpacing (px)</h4>
+        <table class="spec"><tbody>
+          <tr><td class="mono">xs / sm / md</td><td>4 · 8 · 16</td></tr>
+          <tr><td class="mono">lg / xl / xxl</td><td>24 · 32 · 48</td></tr>
+          <tr><td class="mono">s10 / s12 / s14 / s18 / s28</td><td>half-steps</td></tr>
+          <tr><td class="mono">s2 / s3 / s6</td><td>optical micro</td></tr>
+        </tbody></table>
+        <h4 style="margin-top:14px;">Radius · InkRadius (px)</h4>
+        <table class="spec"><tbody>
+          <tr><td class="mono">xs 2 · sm 4 · md 8</td><td>controls</td></tr>
+          <tr><td class="mono">lg 12 · xl 16</td><td>cards / panels</td></tr>
+          <tr><td class="mono">bento 10 · bentoBtn 6 · pill 999</td><td>special</td></tr>
+        </tbody></table>
+      </div>
+      <div class="tokgroup panel">
+        <h4>Shadow · InkShadow</h4>
+        <table class="spec"><tbody>
+          <tr><td class="mono">card</td><td>blur 12 · y+4 · 20% black</td></tr>
+          <tr><td class="mono">overlay</td><td>blur 24 · y+8 · 40% black</td></tr>
+          <tr><td class="mono">elevated</td><td>blur 32 · y+12 · 50% black</td></tr>
+        </tbody></table>
+        <h4 style="margin-top:14px;">Motion · InkMotion / InkMotionSpring</h4>
+        <table class="spec"><tbody>
+          <tr><td class="mono">fast / normal / slow</td><td>120 · 200 · 320 ms</td></tr>
+          <tr><td class="mono">hoverScale / tapScale</td><td>1.05 · 0.95</td></tr>
+          <tr><td class="mono">defaultSpring</td><td>damping .8 · stiffness 300</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;" class="scrollx">
+      <table class="spec">
+        <thead><tr><th>Typography · context.inkTypography</th><th>Size</th><th>Weight</th><th>Family</th><th>Tracking</th><th>Used for (canvas)</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">display / displayMd</td><td>48 / 32</td><td>w300</td><td>Cormorant Garamond</td><td>0.5</td><td>page titles (studio)</td></tr>
+          <tr><td class="mono">headline / Sm / Xs</td><td>22 / 18 / 16</td><td>w400</td><td>Cormorant Garamond</td><td>—</td><td><b>node titles, inspector title, wordmark</b></td></tr>
+          <tr><td class="mono">title</td><td>18</td><td>w600</td><td>system sans</td><td>—</td><td>prominent labels</td></tr>
+          <tr><td class="mono">body</td><td>14</td><td>w400</td><td>system sans</td><td>—</td><td>prompt text, descriptions</td></tr>
+          <tr><td class="mono">label</td><td>13</td><td>w500</td><td>system sans</td><td>—</td><td>field labels, buttons</td></tr>
+          <tr><td class="mono">caption</td><td>11</td><td>w400</td><td>JetBrains Mono</td><td>1.5</td><td>metadata</td></tr>
+          <tr><td class="mono">overline</td><td>11</td><td>w400</td><td>JetBrains Mono</td><td>1.8</td><td><b>CONFIG / RENDER QUEUE kickers</b></td></tr>
+          <tr><td class="mono">monoMicro / monoNano</td><td>10 / 9</td><td>w400</td><td>JetBrains Mono</td><td>— / 1.8</td><td><b>type tags, ids, node footers</b></td></tr>
+          <tr><td class="mono">micro / nano</td><td>10 / 9</td><td>w400</td><td>system sans</td><td>—</td><td>small labels</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="notebox warn">
+      <h4>Hard rule from the codebase</h4>
+      <ul>
+        <li><b>No literal hex/sizes in widgets.</b> Only <span class="code">tokens.dart</span> may hold raw values. Type sizes scale for a11y — never <span class="code">copyWith(fontSize:)</span>, only <span class="code">copyWith(color:)</span>.</li>
+        <li>Window background before <span class="code">BuildContext</span> exists uses <span class="code">InkPalette.surfaceCanvasDark</span> (must equal <span class="code">surfaceCanvas</span>).</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===================== NODE ANATOMY ===================== -->
+  <section id="anatomy">
+    <div class="sec-h"><span class="no">02</span><h2>Node anatomy</h2><span class="sub">node_card.dart</span></div>
+    <div class="anatomy panel">
+      <div class="node">
+        <div class="strip" style="background:var(--info);"></div>
+        <div class="nbody">
+          <div class="ttag">IMAGE · SCENE</div>
+          <div class="ntitle">Rooftop Bar</div>
+          <div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(180deg,#eaad5d,#c97a48 30%,#6e3f5a 62%,#221830);"></div><div style="position:absolute;bottom:0;left:0;right:0;height:42%;background:linear-gradient(transparent,rgba(20,10,30,.7));"></div></div>
+        </div>
+        <div class="nfoot"><span class="pdot" style="background:var(--info);"></span>Gemini Image · 1920×1080</div>
+        <div class="anc in"></div><div class="anc out"></div>
+      </div>
+      <div class="callouts">
+        <div class="callout"><span class="dot">1</span><div class="ct"><b>Type strip</b> — 3px top bar, colour keyed to semantic type (see §03). <span class="code">InkSpacing.s3</span> height.</div></div>
+        <div class="callout"><span class="dot">2</span><div class="ct"><b>Type tag</b> — <span class="code">monoNano</span> (9px JetBrains Mono, 1.8 tracking), colour <span class="code">fg3</span>. Pattern <span class="code">STRUCTURAL · SEMANTIC</span>.</div></div>
+        <div class="callout"><span class="dot">3</span><div class="ct"><b>Title</b> — <span class="code">headlineSm</span> (18px Cormorant Garamond), colour <span class="code">fg1</span>.</div></div>
+        <div class="callout"><span class="dot">4</span><div class="ct"><b>Preview</b> — 16:9, radius <span class="code">InkRadius.lg</span> (12), border <span class="code">borderSubtle</span>, inset shadow for depth.</div></div>
+        <div class="callout"><span class="dot">5</span><div class="ct"><b>Footer</b> — <span class="code">monoNano</span> / <span class="code">fg4</span>; provider dot + <span class="code">displayName · resolution</span>.</div></div>
+        <div class="callout"><span class="dot">6</span><div class="ct"><b>Anchors</b> — in (left) / out (right) ports; turn <b>hot</b> (accent + glow) on the selected node or during link mode.</div></div>
+        <div class="callout"><span class="dot">7</span><div class="ct"><b>Container</b> — width 212, radius <span class="code">InkRadius.xl</span> (16), fill <span class="code">surface2</span> gradient, border <span class="code">border</span>, <span class="code">InkShadow.card</span>.</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TYPES ===================== -->
+  <section id="types">
+    <div class="sec-h"><span class="no">03</span><h2>Node types &amp; roles</h2><span class="sub">CanvasNodeType · NodeRole · canvasNodeType* l10n</span></div>
+    <p class="lead">Structural type = <span class="code">image · text · video · shot</span>. Role decides editability: <span class="code">config</span> nodes (image/video) open an inspector; <span class="code">result</span> nodes show generated output; <span class="code">text</span>/<span class="code">shot</span> have no inspector (<span class="code">node_inspector_router.dart</span>). The type tag's second word is the semantic label.</p>
+
+    <div class="scrollx" style="margin-bottom:22px;">
+      <table class="spec">
+        <thead><tr><th>Semantic label (l10n)</th><th>Strip colour</th><th>Typical structural type</th><th>Inspector</th></tr></thead>
+        <tbody>
+          <tr><td><b>Character</b> · canvasNodeTypeCharacter</td><td><span class="type-row"><span class="ts" style="background:#C9A85B"></span>accent</span></td><td class="mono">image (config)</td><td>Image config</td></tr>
+          <tr><td><b>Scene</b> · canvasNodeTypeScene</td><td><span class="type-row"><span class="ts" style="background:#4B7A92"></span>info</span></td><td class="mono">image (config)</td><td>Image config</td></tr>
+          <tr><td><b>Camera</b> · canvasNodeTypeCamera</td><td><span class="type-row"><span class="ts" style="background:#D88B3A"></span>warning</span></td><td class="mono">video (config)</td><td>Video config</td></tr>
+          <tr><td><b>Prop</b> · canvasNodeTypeProp</td><td><span class="type-row"><span class="ts" style="background:#C8523A"></span>danger</span></td><td class="mono">image (config)</td><td>Image config</td></tr>
+          <tr><td><b>Shot</b> · canvasNodeTypeShot</td><td><span class="type-row"><span class="ts" style="background:#3C342A"></span>borderHover</span></td><td class="mono">shot</td><td class="no">none</td></tr>
+          <tr><td><b>Image Gen</b> · canvasNodeTypeImageGen</td><td><span class="type-row"><span class="ts" style="background:#5C8A4E"></span>success</span></td><td class="mono">image (result)</td><td>read-only result</td></tr>
+          <tr><td><b>Text</b> · canvasNodeTextType</td><td><span class="type-row"><span class="ts" style="background:#8A7E70"></span>fg3</span></td><td class="mono">text</td><td class="no">none</td></tr>
+          <tr><td><b>Video</b> · canvasNodeVideoType</td><td><span class="type-row"><span class="ts" style="background:#E3A648"></span>cta</span></td><td class="mono">video (config/result)</td><td>Video config</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="nodewall">
+      <div class="nbox"><div class="cap"><span class="k">▌</span>Image · Character</div>
+        <div class="node"><div class="strip" style="background:var(--accent)"></div><div class="nbody"><div class="ttag">IMAGE · CHARACTER</div><div class="ntitle">Mira</div><div class="nprev"><div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,#e0a574,#a85e3e 40%,#5a2e22 78%);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--accent)"></span>Gemini Image · 1080×1350</div></div>
+      </div>
+      <div class="nbox"><div class="cap"><span class="k">▌</span>Image · Scene</div>
+        <div class="node"><div class="strip" style="background:var(--info)"></div><div class="nbody"><div class="ttag">IMAGE · SCENE</div><div class="ntitle">Rooftop Bar</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(180deg,#eaad5d,#6e3f5a 64%,#221830);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--info)"></span>Gemini Image · 1920×1080</div></div>
+      </div>
+      <div class="nbox"><div class="cap"><span class="k">▌</span>Shot</div>
+        <div class="node"><div class="strip" style="background:var(--border-h)"></div><div class="nbody"><div class="ttag">SHOT</div><div class="ntitle">Wide Establishing</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(160deg,#ecb96e,#382540);"></div><div style="position:absolute;left:8%;right:8%;top:14%;bottom:14%;border:1px solid rgba(255,235,200,.3);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--border-h)"></span>ID 0314 · 1920×1080</div></div>
+      </div>
+      <div class="nbox"><div class="cap"><span class="k">▌</span>Text</div>
+        <div class="node textnode"><div class="strip" style="background:var(--t3)"></div><div class="nbody"><div class="ttag">TEXT</div><div class="ntitle">Beat</div><div class="ntext">Alarm trips — lights cut to red.</div></div><div class="nfoot"><span class="pdot" style="background:var(--t3)"></span>SCRIPT · BEAT 07</div></div>
+      </div>
+      <div class="nbox"><div class="cap"><span class="k">▌</span>Video</div>
+        <div class="node"><div class="strip" style="background:var(--cta)"></div><div class="nbody"><div class="ttag">VIDEO</div><div class="ntitle">Vault Approach</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(150deg,#16202a,#1a2630);"></div><div class="play-ov"><div class="tri"><svg width="13" height="13" viewBox="0 0 24 24" fill="#E8DFD0"><path d="M8 5v14l11-7z"/></svg></div></div><div class="dur">10s</div></div></div><div class="nfoot"><span class="pdot" style="background:var(--cta)"></span>Kling v3 · 720p</div></div>
+      </div>
+      <div class="nbox"><div class="cap"><span class="k">▌</span>Image Gen · result</div>
+        <div class="node"><div class="strip" style="background:var(--success)"></div><div class="nbody"><div class="ttag">IMAGE GEN</div><div class="ntitle">Neon Reflection</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#1c2630,#3a2a3e);"></div><div class="shimmer"></div><div class="gen-ov"><div class="spin"></div><div class="glabel">Generating 64%</div></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--success)"></span>Wanx Image</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== STATES ===================== -->
+  <section id="states">
+    <div class="sec-h"><span class="no">04</span><h2>Node states</h2><span class="sub">selection · linking · result lifecycle</span></div>
+    <p class="lead">Interaction &amp; lifecycle states a node can take. Selection drives the floating inspector; link mode (<span class="code">linkModeStart</span>) recolours candidates; result nodes move through pending → generating → done / missing.</p>
+    <div class="nodewall">
+      <div class="nbox"><div class="cap">Idle</div>
+        <div class="node"><div class="strip" style="background:var(--info)"></div><div class="nbody"><div class="ttag">IMAGE · SCENE</div><div class="ntitle">Rooftop Bar</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(180deg,#eaad5d,#221830);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--info)"></span>Gemini Image · 1920×1080</div></div>
+      </div>
+      <div class="nbox"><div class="cap">Hover · border + lift</div>
+        <div class="node hov"><div class="strip" style="background:var(--info)"></div><div class="nbody"><div class="ttag">IMAGE · SCENE</div><div class="ntitle">Rooftop Bar</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(180deg,#eaad5d,#221830);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--info)"></span>Gemini Image · 1920×1080</div></div>
+      </div>
+      <div class="nbox"><div class="cap">Selected · opens inspector</div>
+        <div class="node sel"><div class="seltag">EDITING</div><div class="strip" style="background:var(--info)"></div><div class="nbody"><div class="ttag">IMAGE · SCENE</div><div class="ntitle">Rooftop Bar</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(180deg,#eaad5d,#221830);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--info)"></span>Gemini Image · 1920×1080</div><div class="anc in hot"></div><div class="anc out hot"></div></div>
+      </div>
+      <div class="nbox"><div class="cap">Link source · linkModeStart</div>
+        <div class="node src"><div class="strip" style="background:var(--accent)"></div><div class="nbody"><div class="ttag">IMAGE · CHARACTER</div><div class="ntitle">Mira</div><div class="nprev"><div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,#e0a574,#5a2e22 78%);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--accent)"></span>Gemini Image · 1080×1350</div><div class="anc out hot"></div></div>
+      </div>
+      <div class="nbox"><div class="cap">Link candidate · tap to link</div>
+        <div class="node cand"><div class="strip" style="background:var(--info)"></div><div class="nbody"><div class="ttag">IMAGE · SCENE</div><div class="ntitle">Rooftop Bar</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(180deg,#eaad5d,#221830);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--info)"></span>Gemini Image · 1920×1080</div><div class="candbadge">LINK HERE</div></div>
+      </div>
+      <div class="nbox"><div class="cap">Multi-select</div>
+        <div class="node multi"><div class="strip" style="background:var(--cta)"></div><div class="nbody"><div class="ttag">VIDEO</div><div class="ntitle">Vault Approach</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(150deg,#16202a,#1a2630);"></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--cta)"></span>Kling v3 · 720p</div></div>
+      </div>
+      <div class="nbox"><div class="cap">Result · pending</div>
+        <div class="node"><div class="strip" style="background:var(--success)"></div><div class="nbody"><div class="ttag">IMAGE GEN</div><div class="ntitle">Neon Reflection</div><div class="nprev"><div style="position:absolute;inset:0;background:var(--s1);"></div><div class="pending-ov"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A7E70" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span style="font-family:var(--mono);font-size:9px;">Waiting for generation</span></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--success)"></span>resultNodePending</div></div>
+      </div>
+      <div class="nbox"><div class="cap">Result · generating</div>
+        <div class="node"><div class="strip" style="background:var(--success)"></div><div class="nbody"><div class="ttag">IMAGE GEN</div><div class="ntitle">Neon Reflection</div><div class="nprev"><div style="position:absolute;inset:0;background:linear-gradient(135deg,#1c2630,#3a2a3e);"></div><div class="shimmer"></div><div class="gen-ov"><div class="spin"></div><div class="glabel">Generating 64%</div></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--success)"></span>Wanx Image</div></div>
+      </div>
+      <div class="nbox"><div class="cap">Result · image missing</div>
+        <div class="node"><div class="strip" style="background:var(--danger)"></div><div class="nbody"><div class="ttag">IMAGE GEN</div><div class="ntitle">Neon Reflection</div><div class="nprev"><div style="position:absolute;inset:0;background:var(--s1);"></div><div class="missing-ov"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#C8523A" stroke-width="1.6"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m4 18 5-5 4 4M21 15l-4-4-3 3"/></svg><span style="font-family:var(--mono);font-size:9px;">Image file missing</span></div></div></div><div class="nfoot"><span class="pdot" style="background:var(--danger)"></span>resultNodeImageMissing</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== EDGES ===================== -->
+  <section id="edges">
+    <div class="sec-h"><span class="no">05</span><h2>Wires &amp; edge roles</h2><span class="sub">EdgeType.data · EdgeRole</span></div>
+    <p class="lead">Edges connect an <span class="code">out</span> anchor to an <span class="code">in</span> anchor. Data edges carry a role (set on the target's input row): <span class="code">Reference · First frame · Last frame</span>. Idle edges are subtle dashed; active edges (flowing into a selected or generating node) use the amber gradient with a glow halo and travelling flow dots.</p>
+    <div class="edgewall">
+      <div class="edgecard panel"><h4>Idle data edge</h4><p>borderHover, 2px, dashed 5/5.</p>
+        <svg viewBox="0 0 320 40"><path d="M8,20 C90,20 120,20 312,20" fill="none" stroke="#3C342A" stroke-width="2" stroke-dasharray="5 5"/><circle cx="8" cy="20" r="4" fill="#2A2520" stroke="#3C342A" stroke-width="2"/><circle cx="312" cy="20" r="4" fill="#2A2520" stroke="#3C342A" stroke-width="2"/></svg>
+      </div>
+      <div class="edgecard panel"><h4>Active edge · flowing</h4><p>accent→accentHover gradient, 2.4px + blur glow + flow dot.</p>
+        <svg viewBox="0 0 320 40"><defs><linearGradient id="aw" x1="0" x2="1"><stop offset="0" stop-color="#C9A85B" stop-opacity=".4"/><stop offset="1" stop-color="#D8B66B"/></linearGradient></defs><path d="M8,20 C90,20 120,20 312,20" fill="none" stroke="url(#aw)" stroke-width="6" opacity=".22" filter="blur(2px)"/><path id="ap" d="M8,20 C90,20 120,20 312,20" fill="none" stroke="url(#aw)" stroke-width="2.4"/><circle cx="8" cy="20" r="4" fill="#C9A85B"/><circle cx="312" cy="20" r="4" fill="#C9A85B"/><circle r="2.6" fill="#F0D58A"><animateMotion dur="2.2s" repeatCount="indefinite"><mpath href="#ap"/></animateMotion></circle></svg>
+      </div>
+      <div class="edgecard panel"><h4>Role · Reference</h4><p>label chip rides the wire. <span class="code">inspectorRoleReference</span>.</p>
+        <svg viewBox="0 0 320 40"><path d="M8,20 C120,20 200,20 312,20" fill="none" stroke="#3C342A" stroke-width="2" stroke-dasharray="5 5"/><rect x="124" y="9" width="72" height="22" rx="6" fill="#15110E" stroke="#3C342A"/><text x="160" y="24" text-anchor="middle" fill="#C9A85B" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1">REFERENCE</text></svg>
+      </div>
+      <div class="edgecard panel"><h4>Role · First / Last frame</h4><p>keyframe roles for i2v. <span class="code">inspectorRoleFirstFrame / inspectorRoleLastFrame</span>.</p>
+        <svg viewBox="0 0 320 40"><path d="M8,20 C120,20 200,20 312,20" fill="none" stroke="#3C342A" stroke-width="2" stroke-dasharray="5 5"/><rect x="116" y="9" width="88" height="22" rx="6" fill="#15110E" stroke="#3C342A"/><text x="160" y="24" text-anchor="middle" fill="#D88B3A" font-family="JetBrains Mono, monospace" font-size="9" letter-spacing="1">FIRST FRAME</text></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== TOOLBAR ===================== -->
+  <section id="rail">
+    <div class="sec-h"><span class="no">06</span><h2>Left tool rail</h2><span class="sub">56px · gradient s1 · border</span></div>
+    <p class="lead">Eight primary tools; <b>Select</b> active by default. Tool: 40×40, radius <span class="code">InkRadius.md</span>; default <span class="code">fg3</span>; hover <span class="code">surface3 + fg1</span>; active = amber gradient fill with a left glow marker. Transition <span class="code">InkMotion.fast</span>.</p>
+    <div class="scrollx">
+      <table class="spec">
+        <thead><tr><th>#</th><th>Tool</th><th>Icon</th><th>Default</th><th>Hover</th><th>Active</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><b>Select</b></td><td>cursor</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td class="mono"><span style="color:var(--accent)">accent fill + marker</span></td></tr>
+          <tr><td>2</td><td>Pan</td><td>hand</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td>—</td></tr>
+          <tr><td>3</td><td>Crop</td><td>frame</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td>—</td></tr>
+          <tr><td>4</td><td>Hierarchy</td><td>tree</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td>—</td></tr>
+          <tr><td>5</td><td>Category</td><td>grid</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td>—</td></tr>
+          <tr><td>6</td><td>Text</td><td>T</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td>—</td></tr>
+          <tr><td>7</td><td>Image</td><td>picture</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td>—</td></tr>
+          <tr><td>8</td><td>3D</td><td>cube</td><td class="mono">fg3</td><td class="mono">surface3 / fg1</td><td>—</td></tr>
+          <tr><td>—</td><td colspan="5" style="color:var(--t4)">divider, then utility cluster: Zoom-to-fit · Undo · More (bottom-anchored)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ===================== INSPECTOR IMAGE ===================== -->
+  <section id="insp-img">
+    <div class="sec-h"><span class="no">07</span><h2>Inspector — Image config</h2><span class="sub">image_config_inspector.dart</span></div>
+    <p class="lead">Routed when <span class="code">node.role == config &amp;&amp; node.type == image</span>. Below is the panel with the <b>real, current</b> field order &amp; l10n keys. Badges mark each control: <span class="badge always">always</span> shown, <span class="badge cap">cap-driven</span> by a capability flag, <span class="badge cv">canvasId</span> gated by the node having a canvas.</p>
+    <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;">
+      <div class="insp">
+        <div class="insp-head img"><div class="ovl">CONFIG</div><div class="insp-title">Rooftop Bar</div><div class="insp-sub">IMAGE · SCENE</div></div>
+        <div class="insp-body">
+          <div class="field"><label class="flabel">Prompt <span class="badge always">always</span></label><textarea class="ta" readonly>Neon-lit rooftop cocktail bar at golden hour, city skyline behind, shallow depth of field</textarea><div class="tip">inspectorPromptLabel · hint inspectorPromptHint</div></div>
+          <div class="field"><label class="flabel">Provider <span class="badge always">always</span></label><div class="dd"><span class="lead"><span class="pdot" style="background:var(--info)"></span>Gemini Image</span><span class="chev">▾</span></div><div class="tip">inspectorProviderLabel · items = displayName ?? providerId</div></div>
+          <div class="field"><label class="flabel">Resolution <span class="badge cap">cap · supportedResolutions</span></label><div class="dd"><span>1080p</span><span class="chev">▾</span></div><div class="tip">inspectorResolutionLabel · the ONLY cap-driven control today</div></div>
+          <button class="gen-btn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3l2.5 6.5L22 12l-6.5 2.5L13 21l-2.5-6.5L4 12l6.5-2.5z"/></svg> Generate</button><div class="tip" style="text-align:center;margin-top:6px;">inspectorGenerate</div>
+          <div style="height:1px;background:var(--border);margin:15px 0;"></div>
+          <div class="field"><label class="flabel">Inputs <span class="badge cv">canvasId</span></label><div class="chip-in"><div class="av"></div><span class="nm">Mira</span><span class="role">REFERENCE</span></div><div class="tip">inspectorInputsLabel · per-edge role: Reference / First frame / Last frame · empty → inspectorInputsEmpty</div></div>
+          <div class="field"><div class="toggle-row"><span class="tl">Ignore lane style</span><span class="ts">OFF</span><div class="switch"><div class="knob"></div></div></div><div class="tip">inspectorIgnoreLaneStyle <span class="badge cv">canvasId</span></div></div>
+          <div class="field"><label class="flabel">Final prompt preview <span class="badge cv">canvasId</span></label><div class="fpp">…shallow depth of field, <span class="ap">warm sunset lighting, candlelit</span></div><div class="tip">inspectorPromptPreviewLabel · appends lane style (highlighted)</div></div>
+        </div>
+      </div>
+      <div style="flex:1; min-width:280px;">
+        <div class="notebox warn">
+          <h4>Current behaviour vs proposal</h4>
+          <ul>
+            <li><b>Today only Resolution adapts to the provider.</b> The capability model also exposes <span class="code">supportedRatios</span>, <span class="code">supportsSeed</span>, <span class="code">supportsNegativePrompt</span>, <span class="code">supportsBatch / maxBatchSize</span> — but the image inspector renders none of them.</li>
+            <li><b>Proposed additions</b> (gate each on its flag), shown below as <span class="badge prop">proposed</span>.</li>
+          </ul>
+        </div>
+        <div class="grid g2">
+          <div class="ist panel"><h4>Aspect ratio <span class="badge prop">proposed</span></h4><div class="sk">cap · supportedRatios</div><div class="dd"><span>16:9</span><span class="chev">▾</span></div></div>
+          <div class="ist panel"><h4>Seed <span class="badge prop">proposed</span></h4><div class="sk">cap · supportsSeed</div><div class="dd"><span>· random ·</span><span class="chev">⟳</span></div></div>
+          <div class="ist panel"><h4>Negative prompt <span class="badge prop">proposed</span></h4><div class="sk">cap · supportsNegativePrompt</div><textarea class="ta" style="min-height:42px" readonly>low quality, watermark</textarea></div>
+          <div class="ist panel"><h4>Batch <span class="badge prop">proposed</span></h4><div class="sk">cap · supportsBatch · max maxBatchSize</div><div class="dd"><span>× 4</span><span class="chev">▾</span></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== INSPECTOR VIDEO ===================== -->
+  <section id="insp-vid">
+    <div class="sec-h"><span class="no">08</span><h2>Inspector — Video config</h2><span class="sub">video_config_inspector.dart</span></div>
+    <p class="lead">Routed when <span class="code">node.type == video</span>. Provider list is pre-filtered to the 5 video-capable providers. Real, current fields shown.</p>
+    <div style="display:flex; gap:30px; flex-wrap:wrap; align-items:flex-start;">
+      <div class="insp">
+        <div class="insp-head vid"><div class="ovl">CONFIG</div><div class="insp-title">Vault Approach</div><div class="insp-sub">VIDEO</div></div>
+        <div class="insp-body">
+          <div class="field"><label class="flabel">Video prompt <span class="badge always">always</span></label><textarea class="ta" readonly>Slow dolly toward the vault door, raindrops on glass, neon reflections</textarea><div class="tip">inspectorVideoPromptLabel · hint inspectorPromptHint</div></div>
+          <div class="field"><label class="flabel">Provider <span class="badge always">always</span></label><div class="dd"><span class="lead"><span class="pdot" style="background:var(--cta)"></span>Kling v3</span><span class="chev">▾</span></div><div class="tip">filtered: textToVideo / imageToVideo only</div></div>
+          <div class="row2">
+            <div class="field"><label class="flabel">Duration <span class="badge cap">cap</span></label><div class="dd"><span>10s</span><span class="chev">▾</span></div><div class="tip">inspectorVideoDurationLabel · supportedDurations</div></div>
+            <div class="field"><label class="flabel">Camera <span class="badge cap">cap</span></label><div class="dd disabled"><span>—</span><span class="chev">▾</span></div><div class="tip">inspectorVideoCameraLabel · supportedCameras</div></div>
+          </div>
+          <div class="statusline" style="color:var(--t3);"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>Mode: auto-detected from inputs</div><div class="tip">inspectorVideoModeAuto · t2v vs i2v inferred from data edges</div>
+          <button class="gen-btn" style="margin-top:13px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m22 8-6 4 6 4V8zM2 6h12v12H2z"/></svg> Generate video</button><div class="tip" style="text-align:center;margin-top:6px;">inspectorVideoGenerate</div>
+        </div>
+      </div>
+      <div style="flex:1; min-width:280px;">
+        <div class="notebox warn">
+          <h4>Camera dropdown gap</h4>
+          <ul>
+            <li>The <span class="code">CameraMovement</span> enum has 9 values (Static / Push in / Pull out / Pan left / Pan right / Tilt up / Tilt down / Orbit / Handheld) with l10n keys <span class="code">cameraStatic…cameraHandheld</span>, <b>but every provider declares <span class="code">supportedCameras: []</span></b> → the dropdown is always empty today.</li>
+            <li><b>Decide:</b> either populate <span class="code">supportedCameras</span> per provider, or hide the control when empty. Spec shows it disabled/empty to reflect reality.</li>
+            <li>No negative-prompt / seed control in video inspector despite caps (<span class="badge prop">proposed</span> to add, like image).</li>
+          </ul>
+        </div>
+        <div class="grid g3">
+          <div class="ist panel" style="width:auto"><h4>Static</h4><div class="sk">cameraStatic</div></div>
+          <div class="ist panel" style="width:auto"><h4>Push in</h4><div class="sk">cameraPushIn</div></div>
+          <div class="ist panel" style="width:auto"><h4>Pull out</h4><div class="sk">cameraPullOut</div></div>
+          <div class="ist panel" style="width:auto"><h4>Pan L/R</h4><div class="sk">cameraPanLeft/Right</div></div>
+          <div class="ist panel" style="width:auto"><h4>Tilt U/D</h4><div class="sk">cameraTiltUp/Down</div></div>
+          <div class="ist panel" style="width:auto"><h4>Orbit · Handheld</h4><div class="sk">cameraOrbit / cameraHandheld</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== INSPECTOR STATES ===================== -->
+  <section id="insp-states">
+    <div class="sec-h"><span class="no">09</span><h2>Inspector — generate &amp; status states</h2><span class="sub">inspector_status_panel.dart</span></div>
+    <p class="lead">The Generate button + status area move through one state machine for both inspectors: Idle → Submitting → Running → (Idle | Failure). Disabled has two reasons in priority order. Progress in the inspector is a placeholder — real job progress lives in the render queue (§11).</p>
+    <div class="inspstates">
+      <div class="ist panel" style="width:260px"><h4>Ready</h4><div class="sk">canSubmit = true</div><button class="gen-btn">Generate</button></div>
+      <div class="ist panel" style="width:260px"><h4>Disabled · empty prompt</h4><div class="sk">inspectorGenerateDisabledEmptyPrompt</div><button class="gen-btn disabled">Generate</button><div class="tip">Tooltip: “Write a prompt first” · video: “Prompt required”</div></div>
+      <div class="ist panel" style="width:260px"><h4>Disabled · no API key</h4><div class="sk">inspectorGenerateDisabledNoKey</div><button class="gen-btn disabled">Generate</button><div class="tip">Tooltip: “Configure API key in Settings”</div></div>
+      <div class="ist panel" style="width:260px"><h4>Submitting</h4><div class="sk">inspectorStatusSubmitting</div><div class="statusline" style="color:var(--accent)"><span class="spin" style="width:13px;height:13px;border-width:2px"></span>Submitting…</div></div>
+      <div class="ist panel" style="width:260px"><h4>Running</h4><div class="sk">inspectorStatusRunningWithProgress</div><div class="statusline" style="color:var(--cta)"><span class="sd" style="background:var(--cta)"></span>Generating… 64%</div><div class="bar" style="margin-top:8px"><div class="fill" style="width:64%;background:linear-gradient(90deg,var(--cta),#f0b95c)"></div></div></div>
+      <div class="ist panel" style="width:260px"><h4>Failure</h4><div class="sk">inspectorStatusErrorTitle · inspectorRetry</div><div class="statusline" style="color:var(--danger)"><span class="sd" style="background:var(--danger)"></span>Generation failed</div><button class="gen-btn" style="margin-top:9px;background:var(--s3);color:var(--danger);border-color:rgba(200,82,58,.4)">Retry</button></div>
+    </div>
+  </section>
+
+  <!-- ===================== PROVIDERS ===================== -->
+  <section id="providers">
+    <div class="sec-h"><span class="no">10</span><h2>Provider capability matrix</h2><span class="sub">9 providers · provider_capabilities.dart</span></div>
+    <p class="lead">Dropdown order = registration order. Image inspector lists all 9; video inspector lists only the 5 with a t2v/i2v mode. The capability fields the inspectors actually read are <span class="code">supportedResolutions</span> (image) and <span class="code">supportedDurations</span> / <span class="code">supportedCameras</span> (video).</p>
+    <div class="scrollx">
+      <table class="spec">
+        <thead><tr><th>#</th><th>Provider · displayName</th><th>region</th><th>modes</th><th>ratios</th><th>res</th><th>dur</th><th>seed</th><th>neg</th><th>batch</th><th>ref img</th><th>1st/last</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td class="mono"><b>Gemini Image</b><br>gemini-image</td><td>global</td><td>t2i</td><td>1,16:9,9:16,4:3,3:4</td><td>1080</td><td>—</td><td class="yes">✓</td><td class="no">✗</td><td class="no">1</td><td class="no">0</td><td class="no">✗/✗</td></tr>
+          <tr><td>2</td><td class="mono"><b>OpenAI Image</b><br>openai-image</td><td>global</td><td>t2i</td><td>1,16:9,9:16</td><td>1080</td><td>—</td><td class="no">✗</td><td class="no">✗</td><td class="no">1</td><td class="no">0</td><td class="no">✗/✗</td></tr>
+          <tr><td>3</td><td class="mono"><b>Wanx Image</b><br>wanx-image</td><td>cn</td><td>t2i, i2i</td><td>1,16:9,9:16,4:3,3:4</td><td>1080</td><td>—</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">4</td><td>1</td><td class="no">✗/✗</td></tr>
+          <tr><td>4</td><td class="mono"><b>Wanx Text-to-Video</b><br>wanx-t2v</td><td>cn</td><td>t2v</td><td>16:9,9:16,1</td><td>720,1080</td><td>5,10</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">1</td><td class="no">0</td><td class="no">✗/✗</td></tr>
+          <tr><td>5</td><td class="mono"><b>Wanx Image-to-Video</b><br>wanx-i2v</td><td>cn</td><td>i2v</td><td>16:9,9:16,1</td><td>720,1080</td><td>5,10</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">1</td><td class="no">0</td><td class="yes">✓/✓</td></tr>
+          <tr><td>6</td><td class="mono"><b>Wanx Reference-to-Video</b><br>wanx-r2v</td><td>cn</td><td>t2v*</td><td>16:9,9:16,1</td><td>720,1080</td><td>5,10</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">1</td><td>3</td><td class="no">✗/✗</td></tr>
+          <tr><td>7</td><td class="mono"><b>Kling v3</b><br>kling-v3</td><td>cn</td><td>t2v, i2v</td><td>16:9,9:16,1</td><td>720,1080</td><td>5,10</td><td class="no">✗</td><td class="yes">✓</td><td class="no">1</td><td class="no">0</td><td class="yes">✓/✗</td></tr>
+          <tr><td>8</td><td class="mono"><b>Kling v3 Omni</b><br>kling-v3-omni</td><td>cn</td><td>t2v</td><td>16:9,9:16,1</td><td>720,1080</td><td>5,10</td><td class="no">✗</td><td class="yes">✓</td><td class="no">1</td><td>4</td><td class="no">✗/✗</td></tr>
+          <tr><td>9</td><td class="mono"><b>Stable Image Core</b><br>stability-image-core</td><td>global</td><td>t2i</td><td>1,16:9,9:16,4:3,3:4,21:9</td><td>1080</td><td>—</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">1</td><td class="no">0</td><td class="no">✗/✗</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="legendkey">
+      <span><b style="color:var(--t2)">t2i</b> text→image</span><span><b style="color:var(--t2)">i2i</b> image→image</span><span><b style="color:var(--t2)">t2v</b> text→video</span><span><b style="color:var(--t2)">i2v</b> image→video</span><span>* r2v declares t2v + maxRefImages:3</span><span>all: maxConcurrentJobs 1 (wanx-image 2) · supportsPolling true</span>
+    </div>
+  </section>
+
+  <!-- ===================== RENDER QUEUE ===================== -->
+  <section id="queue">
+    <div class="sec-h"><span class="no">11</span><h2>Render queue</h2><span class="sub">JobState · job_queue_panel.dart</span></div>
+    <p class="lead">Right-edge 320px panel. Header overline <span class="code">RENDER QUEUE</span> + active count (<span class="code">generationCountActive</span>) + collapse. One card per job, left strip + dot coloured by state, a thin progress bar, and a single trailing action. Footer: <span class="code">generationQueueClearTerminated</span>.</p>
+    <div class="jobs">
+      <div class="job q"><div class="job-top"><span class="job-name">Wanx Reference-to-Video</span><span class="job-act">Cancel</span></div><div class="job-status" style="color:var(--t3)"><span class="sd" style="background:var(--t4)"></span>Queued</div><div class="bar"><div class="fill" style="width:0"></div></div><div class="keyref">generationStatusQueued · generationQueueCancel</div></div>
+      <div class="job sub"><div class="job-top"><span class="job-name">Gemini Image</span><span class="job-act">Cancel</span></div><div class="job-status" style="color:var(--accent)"><span class="sd" style="background:var(--accent)"></span>Submitting</div><div class="bar"><div class="stripe"></div></div><div class="keyref">generationStatusSubmitting</div></div>
+      <div class="job run"><div class="job-top"><span class="job-name">Wanx Text-to-Video</span><span class="job-act">Cancel</span></div><div class="job-status" style="color:var(--cta)"><span class="sd" style="background:var(--cta)"></span>Running 64%</div><div class="bar"><div class="fill" style="width:64%;background:linear-gradient(90deg,var(--cta),#f0b95c)"></div></div><div class="keyref">generationStatusRunningWithProgress</div></div>
+      <div class="job done"><div class="job-top"><span class="job-name">Kling v3</span><span class="job-act">Dismiss</span></div><div class="job-status" style="color:var(--success)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>Done</div><div class="bar"><div class="fill" style="width:100%;background:var(--success)"></div></div><div class="keyref">generationStatusSucceeded · generationQueueRemove</div></div>
+      <div class="job fail"><div class="job-top"><span class="job-name">Stable Image Core</span><span class="job-act retry">Retry</span></div><div class="job-status" style="color:var(--danger)"><span class="sd" style="background:var(--danger)"></span>Failed</div><div class="bar"><div class="fill" style="width:38%;background:var(--danger)"></div></div><div class="keyref">generationStatusFailed · generationQueueRetry</div></div>
+      <div class="job cancel"><div class="job-top"><span class="job-name">OpenAI Image</span><span class="job-act">Dismiss</span></div><div class="job-status" style="color:var(--t3)"><span class="sd" style="background:var(--t4)"></span>Cancelled</div><div class="bar"><div class="fill" style="width:20%;background:var(--t4)"></div></div><div class="keyref">generationStatusCancelled</div></div>
+    </div>
+    <div class="notebox"><h4>Empty state</h4><ul><li><span class="code">generationQueueEmpty</span> = “No active jobs” (panel) · <span class="code">canvasRenderQueueEmpty</span> = “No active renders” (canvas rail). Render in <span class="code">caption</span>/<span class="code">fg4</span>.</li></ul></div>
+  </section>
+
+  <!-- ===================== LANES ===================== -->
+  <section id="lanes">
+    <div class="sec-h"><span class="no">12</span><h2>Lanes &amp; base style</h2><span class="sub">StyleLane · lane* / baseStyle* l10n</span></div>
+    <p class="lead">Lanes group nodes and inject a style prompt appended to each node's prompt (preview shown in inspector). Lane label = mono name + serif italic style hint + tint bar. Project-level <b>base style</b> wraps every prompt with a prefix/suffix and ships presets.</p>
+    <div class="grid g2">
+      <div class="panel" style="padding:18px;">
+        <h4 style="font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--t3);margin-bottom:13px;">LANE LABEL</h4>
+        <div style="display:inline-flex; gap:11px; padding:11px 14px; border-radius:11px; background:linear-gradient(180deg,var(--s3),var(--s2)); border:1px solid var(--border); box-shadow:var(--shadow-card);">
+          <div style="width:3px;border-radius:2px;background:var(--warning);box-shadow:0 0 8px rgba(216,139,58,.5);"></div>
+          <div><span style="font-family:var(--mono);font-size:9px;letter-spacing:1.5px;color:var(--t4);">LANE A</span><div style="font-family:var(--mono);font-size:11.5px;letter-spacing:1.6px;font-weight:600;color:var(--warning);">ESTABLISHING</div><div style="font-family:var(--serif);font-size:13px;font-style:italic;color:var(--t3);margin-top:4px;">warm sunset lighting, candlelit</div></div>
+        </div>
+        <div class="keyref" style="margin-top:12px;">laneNameLabel · laneStyleLabel · laneTintLabel · laneCollapse / laneExpand · laneDirectionToggle · laneAdd</div>
+      </div>
+      <div class="panel" style="padding:18px;">
+        <h4 style="font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--t3);margin-bottom:13px;">BASE STYLE PRESETS · baseStylePreset*</h4>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <span class="badge cv" style="font-size:10px;padding:5px 10px;">Cinematic</span><span class="badge cv" style="font-size:10px;padding:5px 10px;">Anime</span><span class="badge cv" style="font-size:10px;padding:5px 10px;">Ghibli</span><span class="badge cv" style="font-size:10px;padding:5px 10px;">Cyberpunk</span><span class="badge cv" style="font-size:10px;padding:5px 10px;">Ink wash</span><span class="badge cv" style="font-size:10px;padding:5px 10px;">Photographic</span><span class="badge cv" style="font-size:10px;padding:5px 10px;">3D animation</span>
+        </div>
+        <div class="keyref" style="margin-top:14px;">baseStylePrefixLabel (“cinematic film still”) · baseStyleSuffixLabel (“8k, highly detailed”)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== EMPTY / LINK ===================== -->
+  <section id="empty">
+    <div class="sec-h"><span class="no">13</span><h2>Empty &amp; link states</h2><span class="sub">canvasEmpty* · link* l10n</span></div>
+    <div class="grid g2">
+      <div class="panel" style="padding:34px; text-align:center;">
+        <div style="width:54px;height:54px;border-radius:14px;border:1px dashed var(--border-h);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;color:var(--t4);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M12 8v8M8 12h8"/></svg></div>
+        <div style="font-family:var(--serif);font-size:22px;">This canvas is empty</div>
+        <div style="color:var(--t3);font-size:12.5px;margin-top:7px;">Add your first node to start storyboarding.</div>
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:18px;">
+          <span style="font-size:12px;padding:9px 16px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--t1);">＋ Add image node</span>
+          <span style="font-size:12px;padding:9px 16px;border-radius:10px;background:var(--s3);border:1px solid var(--border);color:var(--t1);">＋ Add video node</span>
+        </div>
+        <div class="keyref" style="margin-top:16px;">canvasEmptyTitle · canvasEmptySubtitle · canvasEmptyAddImage / AddVideo</div>
+      </div>
+      <div class="panel" style="padding:34px;">
+        <h4 style="font-family:var(--mono);font-size:10px;letter-spacing:1.4px;color:var(--t3);margin-bottom:14px;">LINK MODE</h4>
+        <div style="display:inline-flex;align-items:center;gap:9px;padding:10px 15px;border-radius:30px;background:linear-gradient(180deg,var(--s3),var(--s2));border:1px solid var(--accent);color:var(--t1);font-size:12px;box-shadow:var(--shadow-card);">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 9px var(--accent);"></span>Tap a target node to link, or tap empty space to cancel
+        </div>
+        <ul style="margin:18px 0 0;padding-left:18px;color:var(--t2);line-height:1.9;font-size:12.5px;">
+          <li><span class="code">linkModeStart</span> “Start link” · <span class="code">linkModeHint</span> (toast above)</li>
+          <li><span class="code">linkCreated</span> · <span class="code">linkAlreadyExists</span> · <span class="code">linkSelfNotAllowed</span> · <span class="code">linkCreateFailed</span></li>
+          <li>Source node → <span style="color:var(--cta)">cta border</span>; candidates → <span style="color:var(--accent)">dashed accent</span> (see §04).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FIDELITY ===================== -->
+  <section id="fidelity">
+    <div class="sec-h"><span class="no">14</span><h2>Fidelity notes — design vs current code</h2><span class="sub">read before implementing</span></div>
+    <div class="notebox warn">
+      <h4>Where this proposal diverges from today's build</h4>
+      <ul>
+        <li><b>Inspector placement.</b> This design floats the Config panel over the canvas (top-right, <span class="code">InkShadow.elevated</span>). The current code renders it as a fixed 320px panel. Pick one; the field set is identical either way.</li>
+        <li><b>Capability-aware fields.</b> Image &amp; video inspectors should render Aspect ratio / Seed / Negative prompt / Batch gated on the existing flags (<span class="code">supportedRatios, supportsSeed, supportsNegativePrompt, supportsBatch+maxBatchSize</span>). Today only Resolution/Duration are wired.</li>
+        <li><b>Camera movements.</b> Enum + l10n exist but <span class="code">supportedCameras</span> is empty for all 9 providers. Either fill per provider or hide the control when the list is empty.</li>
+        <li><b>Inspector progress is a placeholder.</b> <span class="code">InspectorSubmitRunning.progress</span> is currently always null; authoritative progress is the render queue. Keep the inspector status terse (Submitting / Generating…) and let the queue own the % bar.</li>
+        <li><b>Node type ↔ strip colour</b> mapping (§03) is a design decision to ratify; wire it as a single lookup so it stays token-driven.</li>
+      </ul>
+    </div>
+    <div class="notebox">
+      <h4>Ready to implement</h4>
+      <ul>
+        <li>All colours/spacing/radii/type here map 1:1 to <span class="code">context.inkColors</span> / <span class="code">InkSpacing</span> / <span class="code">InkRadius</span> / <span class="code">context.inkTypography</span> — no new tokens required for Amber Noir.</li>
+        <li>All user-facing strings use existing ARB keys (quoted throughout) — no new i18n needed for the states shown, except any <span class="badge prop">proposed</span> controls.</li>
+      </ul>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div><b>Canvas · Amber Noir — Design Definition</b> · docs/ui-mockups/canvas-v1-amber-noir-spec.html</div>
+  <div><b>Companions</b> · canvas-v1-amber-noir.html (full screen) · index.html (5-direction gallery)</div>
+  <div><b>Sources</b> · lib/theme/{tokens,typography,motion,app_theme}.dart · lib/features/canvas/widgets/{node_card,node_inspector_router,image_config_inspector,video_config_inspector}.dart · lib/core/models/provider_capabilities.dart · lib/l10n/app_en.arb</div>
+</footer>
+
+<div class="verpill"><span class="vd"></span>V1 · Amber Noir · Spec</div>
+
+</body>
+</html>
