@@ -22,6 +22,11 @@ proposed ──► accepted ──► superseded (by ADR-NNNN)
 | [ADR-0004](0004-sync-provider-data-channel.md) | 同步 Provider 通过 Pollable + inline bytes 通道暴露结果 | accepted | 2026-04-18 |
 | [ADR-0005](0005-dashscope-async-provider-base.md) | DashScope 异步 Provider 公共基类（Wanx + Kling 6 Provider 共享） | accepted | 2026-04-18 |
 | [ADR-0006](0006-video-playback-library.md) | 视频播放库：media_kit | accepted | 2026-04-22 |
+| [ADR-0007](0007-node-type-role-jsonb-config.md) | 画布节点用 type × role 双维度建模，参数存 type_config JSONB | accepted | 2026-07-01 |
+| [ADR-0008](0008-render-queue-jobstate-vs-jobstatus.md) | 渲染队列分层：JobStatus(瞬时) 与 JobState(UI 状态机) 分离，内存镜像 + jobs 表双层 | accepted | 2026-07-01 |
+| [ADR-0009](0009-provider-capability-and-interface-segregation.md) | Provider 抽象：能力声明(const) + 接口隔离 + registry 作为唯一接入点 | accepted | 2026-07-01 |
+| [ADR-0010](0010-zero-hardcoding-i18n-and-design-tokens.md) | 两条硬约束：i18n 零硬编码文案 + design-token 零硬编码样式 | accepted | 2026-07-01 |
+| [ADR-0011](0011-plugin-oriented-extension-points.md) | 面向插件的扩展点：现在守住接缝，运行时插件系统延后到 ROADMAP | accepted | 2026-07-01 |
 
 ---
 
