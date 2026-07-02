@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>InkFrame · Opening Sequence — Canvas (Neo Pop)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --paper:#F4F1E8;
+    --white:#FFFFFF;
+    --ink:#111111;
+    --blue:#2D5BFF;
+    --coral:#FF5436;
+    --lime:#C6F32B;
+    --yellow:#FFC500;
+    --violet:#7A3CFF;
+    --good:#19C37D;
+    --danger:#FF2E2E;
+    --bd:3px solid var(--ink);
+    --bd2:2px solid var(--ink);
+    --shadow:5px 5px 0 var(--ink);
+    --shadow-sm:3px 3px 0 var(--ink);
+    --shadow-lg:8px 8px 0 var(--ink);
+    --shadow-xl:11px 11px 0 var(--ink);
+    --grot:"Space Grotesk","Segoe UI",system-ui,-apple-system,Arial,sans-serif;
+    --mono:"Space Mono","JetBrains Mono","SFMono-Regular",Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{height:100%;}
+  body{
+    font-family:var(--grot);
+    background:var(--paper);
+    color:var(--ink);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .app{
+    width:100vw;height:100vh;
+    display:flex;flex-direction:column;
+    background:var(--paper);
+    position:relative;
+  }
+
+  /* ============ A. TOP CHROME ============ */
+  .chrome{
+    height:54px;flex:0 0 54px;
+    display:flex;align-items:center;
+    gap:20px;padding:0 16px;
+    background:var(--white);
+    border-bottom:var(--bd);
+    z-index:60;
+  }
+  .wordmark{
+    font-weight:700;font-size:22px;letter-spacing:-.6px;
+    white-space:nowrap;
+  }
+  .wordmark .slash{color:var(--coral);font-weight:700;}
+  .crumbs{
+    display:flex;align-items:center;gap:10px;
+    font-family:var(--mono);font-size:12px;font-weight:700;
+    margin-left:4px;
+  }
+  .crumb{padding:5px 11px;border:var(--bd2);background:var(--paper);}
+  .crumb.active{background:var(--yellow);box-shadow:var(--shadow-sm);}
+  .crumb-sep{color:var(--coral);font-weight:700;font-size:15px;}
+  .chrome-right{margin-left:auto;display:flex;align-items:center;gap:12px;}
+  .kbd-pill{
+    display:flex;align-items:center;gap:7px;
+    font-family:var(--mono);font-size:11px;font-weight:700;
+    background:var(--paper);border:var(--bd2);
+    padding:6px 11px;box-shadow:var(--shadow-sm);
+  }
+  .kbd-pill b{
+    background:var(--ink);color:var(--white);
+    padding:2px 6px;border-radius:2px;font-size:10px;
+  }
+  .ico-btn{
+    width:36px;height:36px;display:grid;place-items:center;
+    background:var(--white);border:var(--bd2);cursor:pointer;
+    box-shadow:var(--shadow-sm);
+  }
+  .ico-btn svg{width:18px;height:18px;}
+  .run-btn{
+    display:flex;align-items:center;gap:8px;
+    background:var(--lime);border:var(--bd);
+    font-family:var(--grot);font-weight:700;font-size:13px;letter-spacing:.2px;
+    padding:7px 16px;cursor:pointer;box-shadow:var(--shadow-sm);
+  }
+  .run-btn svg{width:13px;height:13px;}
+  .avatar{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--violet);color:var(--white);
+    border:var(--bd);display:grid;place-items:center;
+    font-weight:700;font-size:15px;
+  }
+  .winctl{display:flex;gap:9px;margin-left:8px;}
+  .wc{width:17px;height:17px;border:var(--bd2);display:grid;place-items:center;cursor:pointer;}
+  .wc.min{background:var(--yellow);}
+  .wc.max{background:var(--lime);}
+  .wc.close{background:var(--coral);}
+  .wc svg{width:9px;height:9px;}
+
+  /* ============ MIDDLE ROW ============ */
+  .body{flex:1;display:flex;min-height:0;position:relative;}
+
+  /* ============ B. LEFT RAIL ============ */
+  .rail{
+    width:58px;flex:0 0 58px;
+    background:var(--white);
+    border-right:var(--bd);
+    display:flex;flex-direction:column;align-items:center;
+    padding:12px 0;gap:9px;z-index:50;
+  }
+  .tool{
+    width:38px;height:38px;display:grid;place-items:center;
+    background:var(--white);border:var(--bd2);cursor:pointer;
+    box-shadow:var(--shadow-sm);
+  }
+  .tool svg{width:19px;height:19px;}
+  .tool.active{background:var(--coral);box-shadow:var(--shadow);}
+  .tool.active svg{stroke:var(--white);}
+  .rail-div{width:32px;height:0;border-top:var(--bd2);margin:5px 0;}
+  .rail-spacer{flex:1;}
+
+  /* ============ C. CANVAS ============ */
+  .canvas-wrap{
+    flex:1;position:relative;min-width:0;
+    overflow:hidden;
+    background:
+      radial-gradient(var(--ink) 1.7px, transparent 1.7px);
+    background-size:27px 27px;
+    background-position:13px 13px;
+    background-color:var(--paper);
+  }
+  .board{position:absolute;inset:0;}
+
+  /* lane bands */
+  .lane{
+    position:absolute;left:0;right:0;
+    border-top:var(--bd2);border-bottom:var(--bd2);
+    z-index:1;
+  }
+  .lane::before{content:"";position:absolute;left:0;top:0;bottom:0;width:10px;border-right:var(--bd2);}
+  .lane.a{top:62px;height:300px;background:rgba(255,197,0,.12);border-color:rgba(17,17,17,.30);}
+  .lane.a::before{background:var(--yellow);}
+  .lane.b{top:380px;height:302px;background:rgba(45,91,255,.09);border-color:rgba(17,17,17,.30);}
+  .lane.b::before{background:var(--blue);}
+
+  .lane-chip{
+    position:absolute;left:24px;z-index:8;
+    background:var(--white);border:var(--bd);box-shadow:var(--shadow);
+    padding:8px 13px;width:208px;
+  }
+  .lane-chip .ln{font-family:var(--mono);font-weight:700;font-size:14px;letter-spacing:1.5px;}
+  .lane-chip .ln-bar{height:8px;border:var(--bd2);margin:6px 0;}
+  .lane-chip.a .ln-bar{background:var(--yellow);}
+  .lane-chip.b .ln-bar{background:var(--blue);}
+  .lane-chip .hint{font-family:var(--mono);font-size:10.5px;font-weight:400;color:#3a3a3a;line-height:1.35;}
+
+  /* edges layer — pixel-true, no viewBox stretching */
+  .edges{position:absolute;top:0;left:0;width:900px;height:720px;overflow:visible;pointer-events:none;z-index:4;}
+
+  /* nodes */
+  .node{
+    position:absolute;width:204px;
+    background:var(--white);border:var(--bd);
+    box-shadow:var(--shadow);z-index:10;
+  }
+  .node-head{
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:var(--bd2);padding:7px 10px;
+  }
+  .node-tag{font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:.6px;}
+  .node-dot{width:12px;height:12px;border:var(--bd2);background:var(--ink);border-radius:50%;}
+  .node-title{font-weight:700;font-size:16px;padding:9px 11px 7px;letter-spacing:-.3px;}
+  .preview{height:104px;border-top:var(--bd2);border-bottom:var(--bd2);position:relative;overflow:hidden;}
+  .node-foot{font-family:var(--mono);font-size:9.5px;font-weight:700;padding:7px 11px;color:#1a1a1a;}
+
+  /* gradient previews */
+  .pv-mira{background:linear-gradient(135deg,#FFD27A 0%,#FF8A3D 45%,#C7335A 100%);}
+  .pv-mira::after{content:"";position:absolute;left:50%;top:40%;transform:translate(-50%,-30%);width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fff6e0,#ffcaa0 70%,#e08a55);box-shadow:0 28px 0 -8px #8a2a44;}
+  .pv-roof{background:linear-gradient(170deg,#FFB74D 0%,#FF7E5F 40%,#5b3b8c 100%);}
+  .pv-roof::before{content:"";position:absolute;bottom:0;left:0;right:0;height:46%;background:repeating-linear-gradient(90deg,#2a1c4a 0 7px,#3a2660 7px 16px);clip-path:polygon(0 60%,8% 30%,16% 55%,26% 20%,36% 50%,48% 25%,60% 55%,72% 18%,84% 48%,94% 30%,100% 55%,100% 100%,0 100%);}
+  .pv-roof::after{content:"";position:absolute;top:18%;right:18%;width:20px;height:20px;border-radius:50%;background:#FFE8B0;box-shadow:0 0 20px 7px rgba(255,210,120,.7);}
+  .pv-wide{background:linear-gradient(180deg,#ffcf8a 0%,#ff9a6b 38%,#7a4b8f 78%,#2c2350 100%);}
+  .pv-wide::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 46%,rgba(0,0,0,.18) 50%,transparent 54%);}
+  .pv-wide::after{content:"";position:absolute;bottom:0;left:0;right:0;height:30%;background:#241b3f;clip-path:polygon(0 70%,30% 40%,55% 65%,80% 35%,100% 60%,100% 100%,0 100%);}
+  .pv-vault{background:linear-gradient(135deg,#0d1b2a 0%,#1b3a5b 55%,#0a0f1c 100%);}
+  .pv-vault::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(115deg,transparent 0 10px,rgba(45,91,255,.14) 10px 11px);}
+  .pv-neon{background:linear-gradient(135deg,#21123a 0%,#3a1d6e 50%,#0e0820 100%);}
+
+  /* video overlay */
+  .play{
+    position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+    width:42px;height:42px;border-radius:50%;
+    background:var(--coral);border:var(--bd);
+    display:grid;place-items:center;box-shadow:var(--shadow-sm);
+  }
+  .play svg{width:16px;height:16px;margin-left:3px;}
+  .dur-badge{
+    position:absolute;right:8px;bottom:8px;
+    font-family:var(--mono);font-weight:700;font-size:10px;
+    background:var(--ink);color:var(--white);padding:3px 7px;border:var(--bd2);
+  }
+  /* text node body */
+  .text-body{
+    padding:11px 12px;font-size:12.5px;line-height:1.45;font-weight:500;
+    min-height:104px;border-top:var(--bd2);
+    background:repeating-linear-gradient(0deg,transparent 0 21px,rgba(122,60,255,.12) 21px 23px);
+  }
+  /* generating state */
+  .gen{display:grid;place-items:center;gap:9px;}
+  .gen .shim{
+    position:absolute;inset:0;
+    background:linear-gradient(100deg,#2a1750 0%,#4a2a8a 40%,#7a3cff 50%,#4a2a8a 60%,#2a1750 100%);
+    background-size:300% 100%;animation:shim 1.6s linear infinite;
+  }
+  @keyframes shim{0%{background-position:140% 0;}100%{background-position:-40% 0;}}
+  .spin{
+    position:relative;z-index:2;width:28px;height:28px;border-radius:50%;
+    border:4px solid rgba(255,255,255,.35);border-top-color:var(--white);
+    animation:sp 0.9s linear infinite;
+  }
+  @keyframes sp{to{transform:rotate(360deg);}}
+  .gen-label{position:relative;z-index:2;font-family:var(--mono);font-weight:700;font-size:11px;color:#fff;background:var(--ink);padding:3px 8px;border:var(--bd2);}
+
+  /* selected node 2 */
+  .node.selected{
+    border-width:5px;box-shadow:var(--shadow-xl);
+    transform:rotate(-1.5deg);z-index:14;
+  }
+  .sel-star{
+    position:absolute;top:-18px;right:-16px;z-index:20;
+    width:38px;height:38px;background:var(--coral);
+    border:var(--bd);display:grid;place-items:center;
+    box-shadow:var(--shadow-sm);transform:rotate(9deg);
+  }
+  .sel-star svg{width:22px;height:22px;}
+  .sel-ribbon{
+    position:absolute;left:-10px;top:14px;z-index:20;
+    background:var(--ink);color:var(--lime);
+    font-family:var(--mono);font-weight:700;font-size:9px;letter-spacing:1.5px;
+    padding:3px 8px;transform:rotate(-1.5deg);box-shadow:var(--shadow-sm);
+  }
+
+  /* minimap pill */
+  .minimap{
+    position:absolute;left:50%;bottom:50px;transform:translateX(-50%);
+    z-index:30;display:flex;align-items:center;gap:9px;
+    background:var(--white);border:var(--bd);box-shadow:var(--shadow);
+    padding:7px 13px;font-family:var(--mono);font-weight:700;font-size:12px;
+  }
+  .minimap .mm-btn{border:var(--bd2);background:var(--paper);width:21px;height:21px;display:grid;place-items:center;line-height:1;cursor:pointer;}
+  .minimap .fps{color:var(--good);}
+  /* keyhint strip */
+  .keyhints{
+    position:absolute;left:16px;bottom:14px;z-index:25;
+    display:flex;gap:15px;font-family:var(--mono);font-size:10.5px;font-weight:700;color:#555;
+  }
+  .keyhints span{display:flex;align-items:center;gap:6px;}
+  .keyhints b{background:var(--white);border:var(--bd2);padding:2px 6px;color:var(--ink);}
+
+  /* ============ D. INSPECTOR ============ */
+  .inspector{
+    position:absolute;top:64px;width:306px;
+    right:22px;z-index:40;
+    background:var(--white);border:var(--bd);box-shadow:var(--shadow-xl);
+  }
+  .insp-head{padding:13px 15px 11px;border-bottom:var(--bd);background:var(--yellow);}
+  .overline{font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:2.5px;}
+  .insp-title{font-weight:700;font-size:21px;letter-spacing:-.5px;margin-top:3px;}
+  .insp-sub{font-family:var(--mono);font-size:10.5px;font-weight:700;margin-top:2px;}
+  .insp-body{padding:13px 15px;display:flex;flex-direction:column;gap:12px;max-height:calc(100vh - 200px);overflow:auto;}
+  .field-lbl{font-family:var(--mono);font-weight:700;font-size:10px;letter-spacing:1.2px;margin-bottom:6px;text-transform:uppercase;}
+  .textarea{
+    border:var(--bd2);background:var(--paper);padding:9px 10px;
+    font-family:var(--grot);font-size:12px;line-height:1.45;font-weight:500;
+    box-shadow:var(--shadow-sm);
+  }
+  .final{
+    border:var(--bd2);background:#fff;padding:9px 10px;
+    font-family:var(--mono);font-size:10.5px;line-height:1.5;color:#333;
+    box-shadow:var(--shadow-sm);
+  }
+  .final .hl{background:var(--lime);color:var(--ink);font-weight:700;padding:0 3px;box-shadow:1px 1px 0 var(--ink);}
+  .chip-input{
+    display:flex;align-items:center;gap:9px;
+    border:var(--bd2);background:var(--paper);padding:7px 9px;box-shadow:var(--shadow-sm);
+  }
+  .chip-av{width:24px;height:24px;border-radius:50%;background:var(--blue);border:var(--bd2);color:#fff;display:grid;place-items:center;font-weight:700;font-size:12px;}
+  .chip-name{font-weight:700;font-size:13px;flex:1;}
+  .role-tag{font-family:var(--mono);font-size:9.5px;font-weight:700;background:var(--violet);color:#fff;border:var(--bd2);padding:3px 7px;}
+  .select{
+    display:flex;align-items:center;justify-content:space-between;
+    border:var(--bd2);background:#fff;padding:9px 11px;
+    font-weight:700;font-size:13px;box-shadow:var(--shadow-sm);cursor:pointer;
+  }
+  .select svg{width:14px;height:14px;}
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;}
+  .toggle-row .tl{font-weight:700;font-size:13px;}
+  .switch{
+    width:50px;height:27px;border:var(--bd2);background:var(--paper);
+    position:relative;box-shadow:var(--shadow-sm);
+  }
+  .switch .knob{position:absolute;top:1px;left:1px;width:21px;height:21px;background:var(--ink);}
+  .switch .off-lbl{position:absolute;right:6px;top:6px;font-family:var(--mono);font-size:8px;font-weight:700;color:#777;}
+  .gen-btn{
+    width:100%;background:var(--coral);color:#fff;border:var(--bd);
+    font-family:var(--grot);font-weight:700;font-size:16px;letter-spacing:.4px;
+    padding:13px;cursor:pointer;box-shadow:var(--shadow);margin-top:2px;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    transition:transform .05s,box-shadow .05s;
+  }
+  .gen-btn:hover{transform:translate(3px,3px);box-shadow:2px 2px 0 var(--ink);}
+  .gen-btn svg{width:17px;height:17px;}
+
+  /* ============ E. RENDER QUEUE ============ */
+  .queue{
+    width:308px;flex:0 0 308px;
+    background:var(--white);border-left:var(--bd);
+    display:flex;flex-direction:column;z-index:55;
+  }
+  .q-head{
+    display:flex;align-items:center;gap:10px;
+    padding:14px 15px;border-bottom:var(--bd);background:var(--violet);color:#fff;
+  }
+  .q-head .q-ol{font-family:var(--mono);font-weight:700;font-size:11px;letter-spacing:2.5px;}
+  .q-count{margin-left:auto;font-family:var(--mono);font-weight:700;font-size:11px;background:var(--lime);color:var(--ink);border:var(--bd2);padding:3px 8px;}
+  .q-chev{cursor:pointer;display:grid;place-items:center;}
+  .q-chev svg{width:16px;height:16px;}
+  .q-list{flex:1;overflow:auto;padding:13px;display:flex;flex-direction:column;gap:13px;}
+  .job{border:var(--bd2);background:var(--white);box-shadow:var(--shadow-sm);padding:11px 12px;}
+  .job-top{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
+  .job-name{font-weight:700;font-size:13.5px;flex:1;letter-spacing:-.2px;}
+  .status{font-family:var(--mono);font-weight:700;font-size:9.5px;padding:3px 7px;border:var(--bd2);}
+  .st-run{background:var(--blue);color:#fff;}
+  .st-sub{background:var(--yellow);color:var(--ink);}
+  .st-done{background:var(--good);color:#fff;}
+  .st-fail{background:var(--danger);color:#fff;}
+  .bar{height:14px;border:var(--bd2);background:var(--paper);position:relative;overflow:hidden;}
+  .bar .fill{position:absolute;top:0;left:0;bottom:0;}
+  .fill-run{background:var(--blue);width:64%;border-right:var(--bd2);}
+  .fill-done{background:var(--good);width:100%;}
+  .fill-fail{background:var(--danger);width:42%;border-right:var(--bd2);}
+  .fill-sub{
+    width:100%;
+    background:repeating-linear-gradient(45deg,var(--yellow) 0 8px,#111 8px 9px,var(--yellow) 9px 16px);
+    background-size:200% 100%;animation:stripe 1s linear infinite;
+  }
+  @keyframes stripe{to{background-position:32px 0;}}
+  .job-bot{display:flex;align-items:center;justify-content:space-between;margin-top:9px;}
+  .job-meta{font-family:var(--mono);font-size:10px;font-weight:700;color:#444;display:flex;align-items:center;gap:6px;}
+  .job-act{
+    font-family:var(--grot);font-weight:700;font-size:11px;
+    border:var(--bd2);background:var(--white);padding:4px 10px;cursor:pointer;box-shadow:2px 2px 0 var(--ink);
+  }
+  .act-dismiss{background:var(--lime);}
+  .act-retry{background:var(--coral);color:#fff;}
+  .check{display:inline-grid;place-items:center;width:16px;height:16px;background:var(--good);border:var(--bd2);}
+  .check svg{width:9px;height:9px;}
+  .q-foot{padding:12px 15px;border-top:var(--bd);}
+  .clear-link{font-family:var(--mono);font-weight:700;font-size:11px;color:var(--ink);text-decoration:underline;text-underline-offset:3px;cursor:pointer;}
+
+  /* ============ F. FAB ============ */
+  .fab{
+    position:absolute;right:24px;bottom:24px;z-index:45;
+    display:flex;align-items:center;gap:10px;
+    background:var(--blue);color:#fff;border:var(--bd);
+    font-family:var(--grot);font-weight:700;font-size:15px;letter-spacing:.2px;
+    padding:14px 20px;cursor:pointer;box-shadow:var(--shadow-lg);
+    transition:transform .05s,box-shadow .05s;
+  }
+  .fab:hover{transform:translate(3px,3px);box-shadow:5px 5px 0 var(--ink);}
+  .fab svg{width:19px;height:19px;}
+
+  /* version pill */
+  .ver-pill{
+    position:fixed;left:16px;bottom:54px;z-index:80;
+    display:flex;align-items:center;gap:9px;
+    background:var(--ink);color:var(--paper);
+    border:var(--bd);box-shadow:var(--shadow);
+    font-family:var(--mono);font-weight:700;font-size:12px;letter-spacing:.5px;
+    padding:8px 14px;
+  }
+  .ver-pill .vno{background:var(--lime);color:var(--ink);padding:2px 8px;border:var(--bd2);}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===== A. TOP CHROME ===== -->
+  <header class="chrome">
+    <div class="wordmark">Ink<span class="slash">/</span>Frame</div>
+    <nav class="crumbs">
+      <span class="crumb">Sunset Heist</span>
+      <span class="crumb-sep">›</span>
+      <span class="crumb active">Opening Sequence</span>
+    </nav>
+    <div class="chrome-right">
+      <div class="kbd-pill"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.4" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><b>⌘K</b> Search</div>
+      <button class="run-btn"><svg viewBox="0 0 24 24" fill="#111"><path d="M6 4l14 8-14 8z"/></svg>Run</button>
+      <button class="ico-btn" title="Theme / contrast"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 010 16z" fill="#111"/></svg></button>
+      <div class="avatar">J</div>
+      <div class="winctl">
+        <span class="wc min"><svg viewBox="0 0 8 8" stroke="#111" stroke-width="1.4"><path d="M1 6h6"/></svg></span>
+        <span class="wc max"><svg viewBox="0 0 8 8" fill="none" stroke="#111" stroke-width="1.3"><rect x="1" y="1" width="6" height="6"/></svg></span>
+        <span class="wc close"><svg viewBox="0 0 8 8" stroke="#111" stroke-width="1.5"><path d="M1 1l6 6M7 1L1 7"/></svg></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- ===== B. LEFT RAIL ===== -->
+    <aside class="rail">
+      <!-- 1 Select active -->
+      <div class="tool active" title="Select"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linejoin="round"><path d="M5 3l15 8-6 1.6L11 19z"/></svg></div>
+      <!-- 2 Pan -->
+      <div class="tool" title="Pan"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M8 11V5.5a1.5 1.5 0 013 0V10m0-.5V4.5a1.5 1.5 0 013 0V10m0-.5a1.5 1.5 0 013 0V14c0 3.5-2 6-6 6s-6-2-6-6v-2a1.5 1.5 0 013 0"/></svg></div>
+      <!-- 3 Crop -->
+      <div class="tool" title="Crop"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M6 2v16h16M2 6h16v16"/></svg></div>
+      <!-- 4 Hierarchy -->
+      <div class="tool" title="Hierarchy"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="9" y="2" width="6" height="5"/><rect x="3" y="17" width="6" height="5"/><rect x="15" y="17" width="6" height="5"/><path d="M12 7v5M6 17v-3h12v3"/></svg></div>
+      <!-- 5 Category -->
+      <div class="tool" title="Category"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div>
+      <!-- 6 Text -->
+      <div class="tool" title="Text"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.2"><path d="M4 5h16M12 5v14"/></svg></div>
+      <!-- 7 Image -->
+      <div class="tool" title="Image"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><rect x="3" y="4" width="18" height="16"/><circle cx="8.5" cy="9" r="1.6"/><path d="M21 16l-5-5-7 7"/></svg></div>
+      <!-- 8 3D -->
+      <div class="tool" title="3D"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2" stroke-linejoin="round"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M3 7l9 5 9-5M12 12v10"/></svg></div>
+      <div class="rail-div"></div>
+      <div class="tool" title="Zoom to fit"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></div>
+      <div class="tool" title="Undo"><svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2"><path d="M9 7L4 12l5 5M4 12h11a5 5 0 010 10h-2"/></svg></div>
+    </aside>
+
+    <!-- ===== C. CANVAS ===== -->
+    <main class="canvas-wrap">
+      <div class="board">
+
+        <!-- lanes -->
+        <div class="lane a"></div>
+        <div class="lane b"></div>
+
+        <!-- edges layer (pixel-true) -->
+        <svg class="edges">
+          <!-- 1 -> 2 (subtle dashed) -->
+          <path d="M270,250 C292,250 292,250 314,250" stroke="#111" stroke-width="3" fill="none" stroke-dasharray="7 7" stroke-linecap="round"/>
+          <!-- 4 -> 5 (subtle dashed) -->
+          <path d="M270,566 C292,566 292,566 314,566" stroke="#111" stroke-width="3" fill="none" stroke-dasharray="7 7" stroke-linecap="round"/>
+          <!-- 3 -> 5 (subtle dashed, crosses 2->6) -->
+          <path d="M658,349 C658,420 414,400 414,468" stroke="#111" stroke-width="3" fill="none" stroke-dasharray="7 7" stroke-linecap="round"/>
+          <!-- 2 -> 3 ACTIVE -->
+          <path d="M514,250 C536,250 536,250 558,250" stroke="#2D5BFF" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <!-- 2 -> 6 ACTIVE -->
+          <path d="M414,349 C414,420 658,400 658,468" stroke="#2D5BFF" stroke-width="6" fill="none" stroke-linecap="round"/>
+          <!-- chunky end ports (subtle) -->
+          <circle cx="270" cy="250" r="6" fill="#111"/><circle cx="314" cy="250" r="6" fill="#111"/>
+          <circle cx="270" cy="566" r="6" fill="#111"/><circle cx="314" cy="566" r="6" fill="#111"/>
+          <circle cx="658" cy="349" r="6" fill="#111"/><circle cx="414" cy="468" r="6" fill="#111"/>
+          <!-- chunky end ports (active) -->
+          <circle cx="514" cy="250" r="7.5" fill="#2D5BFF" stroke="#111" stroke-width="2.5"/>
+          <circle cx="558" cy="250" r="7.5" fill="#2D5BFF" stroke="#111" stroke-width="2.5"/>
+          <circle cx="414" cy="349" r="7.5" fill="#2D5BFF" stroke="#111" stroke-width="2.5"/>
+          <circle cx="658" cy="468" r="7.5" fill="#2D5BFF" stroke="#111" stroke-width="2.5"/>
+        </svg>
+
+        <!-- lane chips -->
+        <div class="lane-chip a" style="top:74px;">
+          <div class="ln">ESTABLISHING</div>
+          <div class="ln-bar"></div>
+          <div class="hint">warm sunset lighting, candlelit</div>
+        </div>
+        <div class="lane-chip b" style="top:392px;">
+          <div class="ln">NIGHT HEIST</div>
+          <div class="ln-bar"></div>
+          <div class="hint">neon noir, rain</div>
+        </div>
+
+        <!-- NODE 1 -->
+        <div class="node" style="left:70px;top:152px;">
+          <div class="node-head" style="background:var(--blue);color:#fff;"><span class="node-tag" style="color:#fff;">IMAGE · CHARACTER</span><span class="node-dot" style="background:#fff;"></span></div>
+          <div class="node-title">Mira</div>
+          <div class="preview pv-mira"></div>
+          <div class="node-foot">Gemini Image · 1080x1350</div>
+        </div>
+
+        <!-- NODE 2 SELECTED -->
+        <div class="node selected" style="left:314px;top:152px;">
+          <div class="sel-star"><svg viewBox="0 0 24 24" fill="#111"><path d="M12 1l2.7 6.6L22 8.3l-5.2 4.7L18.4 20 12 16.2 5.6 20l1.6-7L2 8.3l7.3-.7z"/></svg></div>
+          <div class="sel-ribbon">SELECTED</div>
+          <div class="node-head" style="background:var(--yellow);"><span class="node-tag">IMAGE · SCENE</span><span class="node-dot"></span></div>
+          <div class="node-title">Rooftop Bar</div>
+          <div class="preview pv-roof"></div>
+          <div class="node-foot">Gemini Image · 1920x1080</div>
+        </div>
+
+        <!-- NODE 3 -->
+        <div class="node" style="left:558px;top:152px;">
+          <div class="node-head" style="background:var(--lime);"><span class="node-tag">SHOT</span><span class="node-dot"></span></div>
+          <div class="node-title">Wide Establishing</div>
+          <div class="preview pv-wide"></div>
+          <div class="node-foot">ID 0314 · 1920x1080</div>
+        </div>
+
+        <!-- NODE 4 TEXT -->
+        <div class="node" style="left:70px;top:468px;">
+          <div class="node-head" style="background:var(--violet);color:#fff;"><span class="node-tag" style="color:#fff;">TEXT</span><span class="node-dot" style="background:#fff;"></span></div>
+          <div class="node-title">Beat</div>
+          <div class="text-body">Alarm trips — lights cut to red. Mira freezes on the ledge.</div>
+          <div class="node-foot">Story beat · scene 02</div>
+        </div>
+
+        <!-- NODE 5 VIDEO -->
+        <div class="node" style="left:314px;top:468px;">
+          <div class="node-head" style="background:var(--coral);color:#fff;"><span class="node-tag" style="color:#fff;">VIDEO</span><span class="node-dot" style="background:#fff;"></span></div>
+          <div class="node-title">Vault Approach</div>
+          <div class="preview pv-vault">
+            <div class="play"><svg viewBox="0 0 24 24" fill="#fff"><path d="M6 4l14 8-14 8z"/></svg></div>
+            <div class="dur-badge">10s</div>
+          </div>
+          <div class="node-foot">Kling v3 · 720p</div>
+        </div>
+
+        <!-- NODE 6 GENERATING -->
+        <div class="node" style="left:558px;top:468px;">
+          <div class="node-head" style="background:var(--blue);color:#fff;"><span class="node-tag" style="color:#fff;">IMAGE GEN</span><span class="node-dot" style="background:#fff;"></span></div>
+          <div class="node-title">Neon Reflection</div>
+          <div class="preview pv-neon gen">
+            <div class="shim"></div>
+            <div class="spin"></div>
+            <div class="gen-label">Generating 64%</div>
+          </div>
+          <div class="node-foot">Wanx Image</div>
+        </div>
+
+      </div>
+
+      <!-- minimap pill -->
+      <div class="minimap">
+        <span>87%</span><span class="mm-btn">−</span><span class="mm-btn">▢</span><span class="mm-btn">+</span><span>·</span><span class="fps">60 FPS</span>
+      </div>
+
+      <!-- key hints -->
+      <div class="keyhints">
+        <span>Pan <b>Space</b></span>
+        <span>Zoom <b>⌘ +/−</b></span>
+        <span>Add Node <b>A</b></span>
+        <span>Connect <b>C</b></span>
+      </div>
+
+      <!-- ===== D. INSPECTOR ===== -->
+      <section class="inspector">
+        <div class="insp-head">
+          <div class="overline">CONFIG</div>
+          <div class="insp-title">Rooftop Bar</div>
+          <div class="insp-sub">IMAGE · SCENE</div>
+        </div>
+        <div class="insp-body">
+          <div>
+            <div class="field-lbl">Prompt</div>
+            <div class="textarea">Neon-lit rooftop cocktail bar at golden hour, city skyline behind, shallow depth of field, anamorphic flare</div>
+          </div>
+          <div>
+            <div class="field-lbl">Final prompt preview</div>
+            <div class="final">…shallow depth of field, anamorphic flare<span class="hl">, warm sunset lighting, candlelit</span></div>
+          </div>
+          <div>
+            <div class="field-lbl">Inputs</div>
+            <div class="chip-input">
+              <span class="chip-av">M</span>
+              <span class="chip-name">Mira</span>
+              <span class="role-tag">Reference</span>
+            </div>
+          </div>
+          <div>
+            <div class="field-lbl">Provider</div>
+            <div class="select">Gemini Image <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+          <div>
+            <div class="field-lbl">Resolution</div>
+            <div class="select">1080p · 16:9 <svg viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></div>
+          </div>
+          <div class="toggle-row">
+            <span class="tl">Ignore lane style</span>
+            <span class="switch"><span class="off-lbl">OFF</span><span class="knob"></span></span>
+          </div>
+          <button class="gen-btn"><svg viewBox="0 0 24 24" fill="#fff"><path d="M13 2L4 14h6l-1 8 9-12h-6z"/></svg>Generate</button>
+        </div>
+      </section>
+
+      <!-- ===== F. FAB ===== -->
+      <button class="fab"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg>New node</button>
+
+    </main>
+
+    <!-- ===== E. RENDER QUEUE ===== -->
+    <aside class="queue">
+      <div class="q-head">
+        <span class="q-ol">RENDER QUEUE</span>
+        <span class="q-count">2 ACTIVE</span>
+        <span class="q-chev"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg></span>
+      </div>
+      <div class="q-list">
+        <!-- 1 -->
+        <div class="job">
+          <div class="job-top"><span class="job-name">Wanx Text-to-Video</span><span class="status st-run">RUNNING 64%</span></div>
+          <div class="bar"><div class="fill fill-run"></div></div>
+          <div class="job-bot"><span class="job-meta">est. 0:42 left</span><button class="job-act">Cancel</button></div>
+        </div>
+        <!-- 2 -->
+        <div class="job">
+          <div class="job-top"><span class="job-name">Gemini Image</span><span class="status st-sub">SUBMITTING</span></div>
+          <div class="bar"><div class="fill fill-sub"></div></div>
+          <div class="job-bot"><span class="job-meta">queued · slot 2</span><button class="job-act">Cancel</button></div>
+        </div>
+        <!-- 3 -->
+        <div class="job">
+          <div class="job-top"><span class="job-name">Kling v3</span><span class="status st-done">DONE</span></div>
+          <div class="bar"><div class="fill fill-done"></div></div>
+          <div class="job-bot"><span class="job-meta"><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5"><path d="M5 12l5 5L19 7"/></svg></span> 720p · 10s</span><button class="job-act act-dismiss">Dismiss</button></div>
+        </div>
+        <!-- 4 -->
+        <div class="job">
+          <div class="job-top"><span class="job-name">Stable Image Core</span><span class="status st-fail">FAILED</span></div>
+          <div class="bar"><div class="fill fill-fail"></div></div>
+          <div class="job-bot"><span class="job-meta">err · timeout</span><button class="job-act act-retry">Retry</button></div>
+        </div>
+      </div>
+      <div class="q-foot"><span class="clear-link">Clear completed</span></div>
+    </aside>
+
+  </div>
+
+  <!-- version pill -->
+  <div class="ver-pill"><span class="vno">V5</span> Neo Pop</div>
+
+</div>
+</body>
+</html>

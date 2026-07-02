@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ink/Frame — Opening Sequence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* ---- Paper Atelier palette (light theme) ---- */
+    --canvas:#F5EFE3;
+    --surface1:#FAF5EB;
+    --surface2:#FFFAF0;
+    --surface3:#EFE7D5;
+    --surface4:#E5DBC4;
+    --ink1:#2A2520;
+    --ink2:#5A5048;
+    --ink3:#8A7E70;
+    --ink4:#B5A89A;
+    --accent:#A88340;
+    --cta:#C68B2E;
+    --danger:#B04030;
+    --warning:#C07028;
+    --success:#4C7240;
+    --info:#3C6478;
+    --border:#D5CAB0;
+    --border-subtle:#E5DBC4;
+    --border-hover:#B89A6A;
+    --paper-white:#FFF8EC;
+
+    --serif:"Cormorant Garamond", Georgia, "Times New Roman", serif;
+    --sans:"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --mono:"JetBrains Mono", ui-monospace, "SF Mono", Consolas, "Liberation Mono", monospace;
+
+    --shadow-card:0 1px 1px rgba(60,48,30,.05), 0 5px 14px rgba(80,64,36,.07);
+    --shadow-float:0 6px 14px rgba(60,48,30,.10), 0 22px 56px rgba(70,54,30,.17);
+    --shadow-sel:0 2px 5px rgba(120,90,40,.14), 0 16px 38px rgba(120,90,40,.20);
+  }
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{
+    font-family:var(--sans);
+    background:var(--canvas);
+    color:var(--ink1);
+    overflow:hidden;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+    font-size:13px;
+  }
+
+  .app{
+    width:100vw;height:100vh;
+    display:flex;flex-direction:column;
+    background:var(--canvas);
+  }
+
+  /* ===================== TOP CHROME ===================== */
+  .chrome{
+    height:52px;flex:0 0 52px;
+    display:flex;align-items:center;
+    background:linear-gradient(180deg,var(--surface2),var(--surface1));
+    border-bottom:1px solid var(--border);
+    box-shadow:0 1px 0 rgba(255,255,255,.6) inset;
+    padding:0 0 0 18px;
+    gap:18px;
+    user-select:none;
+  }
+  .wordmark{
+    font-family:var(--serif);
+    font-size:24px;font-weight:600;
+    letter-spacing:.3px;
+    color:var(--ink1);
+    line-height:1;
+    white-space:nowrap;
+  }
+  .wordmark .slash{color:var(--accent);font-style:italic;padding:0 2px;font-weight:600}
+
+  .crumb-sep-vert{width:1px;height:24px;background:var(--border)}
+
+  .breadcrumb{
+    display:flex;align-items:center;gap:10px;
+    font-size:12.5px;color:var(--ink3);
+    white-space:nowrap;
+  }
+  .breadcrumb .proj{color:var(--ink2);font-weight:500}
+  .breadcrumb .chev{color:var(--ink4);font-family:var(--serif);font-size:17px;line-height:1}
+  .breadcrumb .active{
+    color:var(--ink1);font-weight:600;
+    font-family:var(--serif);font-size:17px;
+  }
+
+  .chrome-spacer{flex:1}
+
+  .right-cluster{display:flex;align-items:center;gap:10px}
+  .cmdk{
+    display:flex;align-items:center;gap:8px;
+    height:31px;padding:0 7px 0 11px;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface2);
+    color:var(--ink3);
+    font-size:12px;
+  }
+  .cmdk .keys{
+    font-family:var(--mono);font-size:10px;font-weight:600;
+    color:var(--ink2);
+    background:var(--surface3);
+    border:1px solid var(--border-subtle);
+    border-radius:5px;padding:3px 7px;line-height:1;
+  }
+  .icon-btn{
+    width:33px;height:31px;
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--border);
+    border-radius:8px;
+    background:var(--surface2);
+    color:var(--ink2);
+    cursor:pointer;
+  }
+  .icon-btn:hover{border-color:var(--border-hover);color:var(--ink1)}
+  .run-btn{
+    display:flex;align-items:center;gap:7px;
+    height:31px;padding:0 15px 0 13px;
+    border-radius:8px;
+    background:linear-gradient(180deg,#d2962f,var(--cta));
+    color:var(--paper-white);
+    border:1px solid #aa7320;
+    font-weight:600;font-size:12px;
+    cursor:pointer;
+    box-shadow:0 1px 2px rgba(150,100,30,.25), 0 1px 0 rgba(255,255,255,.3) inset;
+  }
+  .run-btn svg{fill:var(--paper-white)}
+  .avatar{
+    width:31px;height:31px;border-radius:50%;
+    background:linear-gradient(145deg,#C68B2E,#9a7536);
+    color:var(--paper-white);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:600;font-size:14px;
+    font-family:var(--serif);
+    border:1px solid rgba(120,90,40,.35);
+    box-shadow:0 1px 2px rgba(120,90,40,.25);
+  }
+
+  .win-controls{display:flex;align-items:center;height:100%;margin-left:8px}
+  .win-btn{
+    width:46px;height:52px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--ink3);cursor:pointer;
+  }
+  .win-btn:hover{background:var(--surface3);color:var(--ink1)}
+  .win-btn.close:hover{background:var(--danger);color:#fff}
+
+  /* ===================== BODY LAYOUT ===================== */
+  .body{flex:1;display:flex;min-height:0}
+
+  /* ---- LEFT RAIL ---- */
+  .rail{
+    width:56px;flex:0 0 56px;
+    background:linear-gradient(180deg,var(--surface2),var(--surface1));
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;align-items:center;
+    padding:12px 0;
+    gap:5px;
+  }
+  .tool{
+    width:38px;height:38px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--ink3);cursor:pointer;
+    position:relative;
+    border:1px solid transparent;
+    transition:none;
+  }
+  .tool:hover{background:var(--surface3);color:var(--ink1)}
+  .tool.active{
+    color:var(--paper-white);
+    background:linear-gradient(180deg,#b89048,var(--accent));
+    border-color:#8c6c34;
+    box-shadow:0 2px 5px rgba(120,90,40,.3), 0 1px 0 rgba(255,255,255,.25) inset;
+  }
+  .tool.active::before{
+    content:"";position:absolute;left:-12px;top:8px;bottom:8px;
+    width:3px;border-radius:0 3px 3px 0;background:var(--accent);
+  }
+  .rail-divider{width:22px;height:1px;background:var(--border);margin:9px 0}
+  .rail-spacer{flex:1}
+
+  /* ---- CANVAS ---- */
+  .canvas-wrap{
+    flex:1;position:relative;overflow:hidden;
+    background:
+      linear-gradient(var(--border-subtle) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border-subtle) 1px, transparent 1px),
+      var(--canvas);
+    background-size:30px 30px, 30px 30px, auto;
+    background-position:-1px -1px;
+  }
+  /* coarse engraving plate-line overlay (every 5th line) */
+  .canvas-wrap::before{
+    content:"";position:absolute;inset:0;pointer-events:none;
+    background:
+      linear-gradient(rgba(170,131,64,.09) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(170,131,64,.09) 1px, transparent 1px);
+    background-size:150px 150px,150px 150px;
+    background-position:-1px -1px;
+  }
+  /* warm paper vignette */
+  .canvas-wrap::after{
+    content:"";position:absolute;inset:0;pointer-events:none;z-index:1;
+    background:radial-gradient(125% 120% at 48% 38%, transparent 52%, rgba(120,95,55,.085) 100%);
+  }
+
+  /* printmaker registration crosses */
+  .reg{position:absolute;width:16px;height:16px;pointer-events:none;z-index:1;opacity:.5}
+  .reg svg{display:block}
+  .reg.tl{top:14px;left:14px}
+  .reg.tr{top:14px;right:14px}
+  .reg.bl{bottom:60px;left:14px}
+
+  /* lanes */
+  .lane{
+    position:absolute;left:0;right:0;
+    border-top:1px solid rgba(170,131,64,.20);
+    border-bottom:1px solid rgba(170,131,64,.20);
+  }
+  .lane.a{top:60px;height:300px;background:linear-gradient(180deg, rgba(198,139,46,.055), rgba(198,139,46,.012))}
+  .lane.b{top:452px;height:308px;background:linear-gradient(180deg, rgba(60,100,120,.05), rgba(60,100,120,.012))}
+
+  .lane-label{
+    position:absolute;left:18px;top:18px;
+    display:flex;flex-direction:column;gap:7px;
+    width:130px;
+  }
+  .lane-plate{
+    display:flex;align-items:baseline;gap:7px;
+  }
+  .lane-idx{
+    font-family:var(--serif);font-style:italic;font-size:15px;
+    color:var(--accent);line-height:1;
+  }
+  .lane.b .lane-idx{color:var(--info)}
+  .lane-name{
+    font-family:var(--mono);
+    font-size:11px;font-weight:600;letter-spacing:2.5px;
+    color:var(--ink1);
+    text-transform:uppercase;
+    padding-bottom:6px;
+    border-bottom:2px solid var(--accent);
+    box-shadow:0 3px 0 -2px var(--accent);
+    display:inline-block;width:max-content;
+  }
+  .lane.b .lane-name{border-bottom-color:var(--info);box-shadow:0 3px 0 -2px var(--info)}
+  .lane-hint{
+    font-family:var(--serif);
+    font-style:italic;
+    font-size:14.5px;
+    color:var(--ink3);
+    line-height:1.3;
+  }
+  .lane.a .lane-hint{color:#9a7a48}
+  .lane.b .lane-hint{color:#587585}
+
+  /* edges svg — PIXEL-ALIGNED to node anchors (no viewBox scaling) */
+  .edges{position:absolute;left:0;top:0;pointer-events:none;z-index:2}
+
+  /* nodes */
+  .node{
+    position:absolute;width:212px;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:11px;
+    box-shadow:var(--shadow-card);
+    z-index:3;
+  }
+  .node::before{ /* paper top highlight */
+    content:"";position:absolute;left:1px;right:1px;top:1px;height:40%;
+    border-radius:10px 10px 40% 40%/10px 10px 14px 14px;
+    background:linear-gradient(180deg, rgba(255,255,255,.5), transparent);
+    pointer-events:none;
+  }
+  .node:hover{border-color:var(--border-hover)}
+  .node-head{padding:11px 13px 9px;position:relative;border-radius:11px 11px 0 0}
+  .type-tag{
+    font-family:var(--mono);
+    font-size:9.5px;font-weight:600;letter-spacing:1.4px;
+    color:var(--accent);
+    text-transform:uppercase;
+  }
+  .node.cool .type-tag{color:var(--info)}
+  .node-title{
+    font-family:var(--serif);
+    font-size:22px;font-weight:600;line-height:1.04;
+    color:var(--ink1);
+    margin-top:3px;
+  }
+  .preview{
+    height:106px;margin:0 13px;
+    border-radius:8px;overflow:hidden;
+    border:1px solid var(--border-subtle);
+    box-shadow:0 1px 2px rgba(60,48,30,.12) inset;
+    position:relative;
+  }
+  /* halftone print texture on image previews */
+  .grain{
+    position:absolute;inset:0;z-index:1;pointer-events:none;
+    background-image:radial-gradient(circle, rgba(36,30,24,.30) .5px, transparent .7px);
+    background-size:3.5px 3.5px;
+    mix-blend-mode:multiply;opacity:.32;
+  }
+  .node-foot{
+    padding:9px 13px 11px;
+    font-family:var(--mono);
+    font-size:10px;color:var(--ink3);
+    letter-spacing:.3px;
+    display:flex;align-items:center;gap:7px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .foot-dot{width:3px;height:3px;border-radius:50%;background:var(--ink4);flex:0 0 auto}
+
+  /* node anchors — fixed offset so wires stay level across card heights */
+  .anchor{position:absolute;width:10px;height:10px;border-radius:50%;
+    background:var(--surface2);border:1.5px solid var(--accent);top:96px;z-index:4;
+    box-shadow:0 1px 2px rgba(120,90,40,.25)}
+  .anchor.in{left:-5px}
+  .anchor.out{right:-5px}
+  .node.cool .anchor{border-color:var(--info)}
+
+  /* selected node — gold double-rule + plate badge */
+  .node.selected{
+    border:1.5px solid var(--accent);
+    box-shadow:var(--shadow-sel);
+    z-index:5;
+  }
+  .node.selected .node-head{
+    background:linear-gradient(180deg, rgba(198,139,46,.10), transparent);
+  }
+  .node.selected::after{
+    content:"";position:absolute;inset:3px;
+    border:1px solid var(--accent);border-radius:8px;pointer-events:none;
+    opacity:.5;
+  }
+  .sel-badge{
+    position:absolute;top:-10px;left:13px;
+    font-family:var(--mono);font-size:8.5px;font-weight:600;letter-spacing:1.6px;
+    background:linear-gradient(180deg,#b89048,var(--accent));color:var(--paper-white);
+    padding:3px 9px;border-radius:5px;text-transform:uppercase;z-index:6;
+    box-shadow:0 2px 4px rgba(120,90,40,.3);
+  }
+
+  /* preview gradients */
+  .pv-mira{background:
+    radial-gradient(72% 92% at 50% 30%, #F6DCAA 0%, #E8B879 36%, #CB8B56 62%, #7d4f3a 100%);}
+  .pv-mira::after{content:"";position:absolute;left:50%;bottom:-14%;width:48%;height:64%;transform:translateX(-50%);
+    border-radius:50% 50% 45% 45%;background:radial-gradient(60% 70% at 50% 35%, rgba(60,34,24,.55), transparent 70%)}
+  .pv-rooftop{background:
+    linear-gradient(180deg,#F8CB7E 0%, #EC9E5E 34%, #BC6056 62%, #6E3F58 100%);}
+  .pv-rooftop::before{content:"";position:absolute;inset:0;background:
+    linear-gradient(90deg, rgba(40,25,40,.55) 0 5%, transparent 5% 11%, rgba(40,25,40,.5) 11% 15%, transparent 15% 25%, rgba(40,25,40,.6) 25% 30%, transparent 30% 43%, rgba(40,25,40,.45) 43% 48%, transparent 48% 63%, rgba(40,25,40,.55) 63% 69%, transparent 69% 81%, rgba(40,25,40,.5) 81% 87%, transparent 87%);
+    mask:linear-gradient(180deg,transparent 50%, #000 50%);
+    -webkit-mask:linear-gradient(180deg,transparent 50%, #000 50%)}
+  .pv-rooftop::after{content:"";position:absolute;left:64%;top:24%;width:46px;height:46px;
+    background:radial-gradient(circle, rgba(255,246,220,.85), transparent 65%);border-radius:50%}
+  .pv-wide{background:
+    linear-gradient(180deg,#F4D69C 0%, #E2AA6C 40%, #9C6A4E 72%, #5b4439 100%);}
+  .pv-wide::before{content:"";position:absolute;left:50%;top:34%;width:34px;height:34px;transform:translateX(-50%);
+    background:radial-gradient(circle, rgba(255,248,222,.9), rgba(255,235,190,.3) 60%, transparent 72%);border-radius:50%}
+  .pv-wide::after{content:"";position:absolute;inset:0;background:
+    linear-gradient(0deg, rgba(60,40,30,.45), transparent 28%),
+    repeating-linear-gradient(90deg, rgba(255,240,210,.05) 0 2px, transparent 2px 34px)}
+  .pv-video{background:
+    radial-gradient(82% 92% at 50% 62%, #2c4452 0%, #1c2c38 54%, #11181f 100%);}
+  .pv-video::before{content:"";position:absolute;inset:0;background:
+    linear-gradient(118deg, transparent 38%, rgba(80,150,190,.28) 50%, transparent 62%),
+    repeating-linear-gradient(180deg, rgba(120,180,210,.05) 0 1px, transparent 1px 5px)}
+  .play-overlay{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;z-index:2;
+  }
+  .play-circle{
+    width:40px;height:40px;border-radius:50%;
+    background:rgba(255,250,240,.94);
+    display:flex;align-items:center;justify-content:center;
+    box-shadow:0 2px 9px rgba(0,0,0,.4), 0 0 0 6px rgba(255,250,240,.16);
+  }
+  .play-circle svg{fill:var(--ink1);margin-left:3px}
+  .dur-badge{
+    position:absolute;right:8px;bottom:8px;z-index:3;
+    font-family:var(--mono);font-size:9px;font-weight:600;
+    background:rgba(20,28,34,.82);color:#e8f0f4;
+    padding:2px 7px;border-radius:5px;letter-spacing:.5px;
+  }
+
+  /* generating */
+  .pv-gen{background:linear-gradient(135deg,#F1E9D9,#E5DBC4);overflow:hidden}
+  .pv-gen .shimmer{
+    position:absolute;inset:0;z-index:1;
+    background:linear-gradient(100deg, transparent 30%, rgba(255,250,240,.9) 50%, transparent 70%);
+    background-size:220% 100%;
+    animation:shim 1.7s linear infinite;
+  }
+  @keyframes shim{0%{background-position:160% 0}100%{background-position:-60% 0}}
+  .gen-center{
+    position:absolute;inset:0;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:9px;z-index:2;
+  }
+  .spinner{
+    width:27px;height:27px;border-radius:50%;
+    border:2.5px solid rgba(168,131,64,.25);
+    border-top-color:var(--accent);
+    animation:spin 0.9s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .gen-label{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--ink2);letter-spacing:.5px}
+
+  /* text node */
+  .node.text-node .preview{display:none}
+  .text-body{
+    margin:2px 13px 4px;padding:11px 13px;
+    background:var(--surface1);
+    border:1px solid var(--border-subtle);
+    border-left:2px solid var(--info);
+    border-radius:7px;
+    font-family:var(--serif);
+    font-size:16px;font-style:italic;line-height:1.4;
+    color:var(--ink2);
+  }
+
+  /* minimap pill */
+  .minimap{
+    position:absolute;bottom:48px;left:50%;transform:translateX(-50%);
+    display:flex;align-items:center;gap:11px;z-index:6;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:7px 15px;
+    box-shadow:var(--shadow-card);
+    font-family:var(--mono);font-size:11px;color:var(--ink2);font-weight:500;
+  }
+  .minimap .zbtn{width:19px;height:19px;display:flex;align-items:center;justify-content:center;
+    border:1px solid var(--border);border-radius:5px;color:var(--ink2);cursor:pointer;font-size:13px;line-height:1}
+  .minimap .sep{width:1px;height:14px;background:var(--border)}
+  .minimap .fps{color:var(--success);font-weight:600}
+
+  /* keyboard strip */
+  .kbd-strip{
+    position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+    display:flex;gap:24px;z-index:5;
+    font-size:10.5px;color:var(--ink4);
+  }
+  .kbd-strip span{display:flex;align-items:center}
+  .kbd-strip b{font-family:var(--mono);font-weight:600;color:var(--ink3);
+    background:var(--surface2);border:1px solid var(--border-subtle);border-radius:4px;
+    padding:2px 6px;margin-left:6px;font-size:9.5px}
+
+  /* FAB */
+  .fab{
+    position:absolute;bottom:86px;right:24px;z-index:7;
+    display:flex;align-items:center;gap:8px;
+    height:44px;padding:0 19px 0 16px;
+    background:linear-gradient(180deg,#d2962f,var(--cta));color:var(--paper-white);
+    border:1px solid #aa7320;
+    border-radius:22px;
+    font-weight:600;font-size:13px;
+    cursor:pointer;
+    box-shadow:0 5px 14px rgba(170,120,40,.34), 0 1px 0 rgba(255,255,255,.3) inset;
+  }
+  .fab svg{stroke:var(--paper-white)}
+  .fab:hover{filter:brightness(1.04)}
+
+  /* ---- CONFIG INSPECTOR (floating) ---- */
+  .inspector{
+    position:absolute;top:78px;right:24px;z-index:8;
+    width:312px;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:13px;
+    box-shadow:var(--shadow-float);
+    overflow:hidden;
+  }
+  .insp-accent{height:3px;background:linear-gradient(90deg,var(--accent),var(--cta))}
+  .insp-body{padding:17px 17px 18px;display:flex;flex-direction:column;gap:14px}
+  .overline{
+    font-family:var(--mono);font-size:9.5px;font-weight:600;letter-spacing:2.2px;
+    color:var(--accent);text-transform:uppercase;
+  }
+  .insp-title{font-family:var(--serif);font-size:25px;font-weight:600;line-height:1;color:var(--ink1);margin-top:4px}
+  .insp-sub{font-family:var(--mono);font-size:10px;color:var(--ink3);letter-spacing:1px;margin-top:6px}
+  .insp-head{padding-bottom:13px;border-bottom:1px solid var(--border-subtle)}
+
+  .field-label{font-size:11px;font-weight:600;color:var(--ink2);margin-bottom:6px;display:block;letter-spacing:.2px}
+  .textarea{
+    background:var(--surface1);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 11px;
+    font-family:var(--sans);font-size:12px;line-height:1.5;color:var(--ink1);
+    min-height:66px;
+    box-shadow:0 1px 2px rgba(60,48,30,.05) inset;
+  }
+  .final-prev{
+    background:var(--surface3);
+    border:1px solid var(--border-subtle);
+    border-radius:8px;
+    padding:9px 11px;
+    font-family:var(--mono);font-size:10.5px;line-height:1.55;color:var(--ink2);
+  }
+  .final-prev .appended{
+    color:var(--cta);background:rgba(198,139,46,.16);
+    border-radius:3px;padding:0 3px;font-weight:600;
+    box-shadow:0 0 0 1px rgba(198,139,46,.2);
+  }
+  .input-chip{
+    display:inline-flex;align-items:center;gap:8px;
+    background:var(--surface1);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:5px 7px 5px 11px;
+  }
+  .chip-av{width:18px;height:18px;border-radius:50%;
+    background:radial-gradient(70% 80% at 50% 30%, #E8B879, #b06b45);flex:0 0 auto}
+  .chip-name{font-size:12px;font-weight:600;color:var(--ink1)}
+  .role-tag{
+    font-family:var(--mono);font-size:9px;font-weight:600;letter-spacing:.5px;
+    color:var(--accent);background:rgba(168,131,64,.13);
+    border:1px solid rgba(168,131,64,.3);
+    padding:2px 8px;border-radius:12px;text-transform:uppercase;
+  }
+  .dropdown{
+    display:flex;align-items:center;justify-content:space-between;
+    background:var(--surface1);
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:10px 11px;
+    font-size:12.5px;color:var(--ink1);font-weight:500;cursor:pointer;
+  }
+  .dropdown:hover{border-color:var(--border-hover)}
+  .dropdown svg{stroke:var(--ink3)}
+  .row-2{display:flex;gap:11px}
+  .row-2 > div{flex:1;min-width:0}
+
+  .toggle-row{display:flex;align-items:center;justify-content:space-between;
+    padding:2px 0}
+  .toggle-row .tl{font-size:12.5px;font-weight:500;color:var(--ink2)}
+  .switch{
+    width:40px;height:22px;border-radius:11px;
+    background:var(--surface4);border:1px solid var(--border);
+    position:relative;cursor:pointer;flex:0 0 auto;
+  }
+  .switch .knob{
+    position:absolute;top:1.5px;left:2px;width:17px;height:17px;border-radius:50%;
+    background:var(--surface2);box-shadow:0 1px 2px rgba(80,60,30,.3);
+  }
+  .switch .off-txt{position:absolute;right:6px;top:5px;font-family:var(--mono);font-size:8px;color:var(--ink3);font-weight:600}
+
+  .generate-btn{
+    margin-top:3px;
+    height:44px;border-radius:9px;
+    background:linear-gradient(180deg,#d2962f,var(--cta));color:var(--paper-white);
+    border:1px solid #aa7320;
+    font-weight:600;font-size:13.5px;
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    cursor:pointer;
+    box-shadow:0 3px 8px rgba(170,120,40,.32), 0 1px 0 rgba(255,255,255,.3) inset;
+  }
+  .generate-btn:hover{filter:brightness(1.04)}
+  .generate-btn svg{fill:var(--paper-white)}
+
+  /* ---- RENDER QUEUE ---- */
+  .queue{
+    width:320px;flex:0 0 320px;
+    background:linear-gradient(180deg,var(--surface2),var(--surface1));
+    border-left:1px solid var(--border);
+    display:flex;flex-direction:column;
+  }
+  .queue-head{
+    padding:16px 18px 15px;
+    border-bottom:1px solid var(--border-subtle);
+    display:flex;align-items:flex-start;justify-content:space-between;
+  }
+  .queue-head .ovl{display:flex;flex-direction:column;gap:6px}
+  .qcount{display:flex;align-items:center;gap:8px;font-family:var(--serif);font-size:21px;font-weight:600;color:var(--ink1);line-height:1}
+  .qcount .badge{
+    font-family:var(--sans);font-size:10px;font-weight:600;
+    color:var(--cta);background:rgba(198,139,46,.13);
+    border:1px solid rgba(198,139,46,.32);
+    padding:2px 9px;border-radius:11px;
+  }
+  .queue-list{flex:1;overflow:auto;padding:13px 14px;display:flex;flex-direction:column;gap:11px}
+
+  .job{
+    background:var(--surface2);
+    border:1px solid var(--border-subtle);
+    border-radius:10px;
+    padding:13px 13px 14px;
+    box-shadow:var(--shadow-card);
+    position:relative;
+    border-left:3px solid var(--border);
+  }
+  .job.running{border-left-color:var(--cta)}
+  .job.submitting{border-left-color:var(--accent)}
+  .job.done{border-left-color:var(--success)}
+  .job.failed{border-left-color:var(--danger)}
+  .job-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .job-name{font-size:13px;font-weight:600;color:var(--ink1)}
+  .job-act{
+    font-size:11px;font-weight:600;color:var(--ink3);cursor:pointer;
+    border:1px solid var(--border);border-radius:7px;padding:3px 10px;background:var(--surface1);
+  }
+  .job-act:hover{border-color:var(--border-hover);color:var(--ink1)}
+  .job-act.retry{color:var(--danger);border-color:rgba(176,64,48,.4);background:rgba(176,64,48,.06)}
+  .job-mid{display:flex;align-items:center;gap:7px;margin-bottom:10px}
+  .status-dot{width:7px;height:7px;border-radius:50%;flex:0 0 auto}
+  .job-status{font-family:var(--mono);font-size:10.5px;font-weight:600;letter-spacing:.3px}
+  .bar{height:6px;border-radius:4px;background:var(--surface4);overflow:hidden;position:relative;
+    box-shadow:0 1px 1px rgba(60,48,30,.08) inset}
+  .bar .fill{height:100%;border-radius:4px}
+  .fill.cta{background:linear-gradient(90deg,var(--cta),#d89a3a)}
+  .fill.success{background:var(--success)}
+  .fill.danger{background:var(--danger)}
+  .bar.striped .fill{
+    background:repeating-linear-gradient(45deg, var(--accent) 0 8px, #c5a25e 8px 16px);
+    animation:stripe 0.8s linear infinite;
+  }
+  @keyframes stripe{0%{background-position:0 0}100%{background-position:32px 0}}
+
+  .running .status-dot{background:var(--cta)}
+  .running .job-status{color:var(--cta)}
+  .submitting .status-dot{background:var(--accent)}
+  .submitting .job-status{color:var(--accent)}
+  .done .status-dot{background:var(--success)}
+  .done .job-status{color:var(--success)}
+  .failed .status-dot{background:var(--danger)}
+  .failed .job-status{color:var(--danger)}
+  .check{margin-left:auto;color:var(--success);display:flex}
+
+  .queue-foot{
+    padding:14px 18px;border-top:1px solid var(--border-subtle);
+    text-align:center;
+  }
+  .clear-link{font-size:11.5px;font-weight:600;color:var(--ink3);cursor:pointer;letter-spacing:.3px}
+  .clear-link:hover{color:var(--accent)}
+
+  /* version pill */
+  .ver-pill{
+    position:fixed;bottom:16px;left:72px;z-index:20;
+    display:flex;align-items:center;gap:9px;
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:18px;
+    padding:7px 15px 7px 12px;
+    box-shadow:var(--shadow-card);
+    font-size:11.5px;color:var(--ink2);font-weight:500;
+  }
+  .ver-pill .vnum{font-family:var(--mono);font-weight:600;color:var(--accent)}
+  .ver-pill .vname{font-family:var(--serif);font-style:italic;font-size:14.5px;color:var(--ink1)}
+  .ver-swatch{width:11px;height:11px;border-radius:3px;background:linear-gradient(135deg,#C68B2E,#A88340);border:1px solid rgba(120,90,40,.4)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ===================== TOP CHROME ===================== -->
+  <div class="chrome">
+    <div class="wordmark">Ink<span class="slash">/</span>Frame</div>
+    <div class="crumb-sep-vert"></div>
+    <div class="breadcrumb">
+      <span class="proj">Sunset Heist</span>
+      <span class="chev">›</span>
+      <span class="active">Opening Sequence</span>
+    </div>
+
+    <div class="chrome-spacer"></div>
+
+    <div class="right-cluster">
+      <div class="cmdk">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+        Search
+        <span class="keys">⌘ K</span>
+      </div>
+      <button class="run-btn">
+        <svg width="10" height="11" viewBox="0 0 10 11"><path d="M0 0 L10 5.5 L0 11 Z"/></svg>
+        Run
+      </button>
+      <div class="icon-btn" title="Theme / contrast">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3 a9 9 0 0 1 0 18 Z" fill="currentColor" stroke="none"/></svg>
+      </div>
+      <div class="avatar">J</div>
+    </div>
+
+    <div class="win-controls">
+      <div class="win-btn"><svg width="11" height="11" viewBox="0 0 11 11"><line x1="1" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.3"/></svg></div>
+      <div class="win-btn"><svg width="11" height="11" viewBox="0 0 11 11"><rect x="1.5" y="1.5" width="8" height="8" fill="none" stroke="currentColor" stroke-width="1.3"/></svg></div>
+      <div class="win-btn close"><svg width="11" height="11" viewBox="0 0 11 11"><line x1="1.5" y1="1.5" x2="9.5" y2="9.5" stroke="currentColor" stroke-width="1.3"/><line x1="9.5" y1="1.5" x2="1.5" y2="9.5" stroke="currentColor" stroke-width="1.3"/></svg></div>
+    </div>
+  </div>
+
+  <!-- ===================== BODY ===================== -->
+  <div class="body">
+
+    <!-- LEFT RAIL -->
+    <div class="rail">
+      <div class="tool active" title="Select">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M5 3 L19 11 L12.5 12.5 L16 19 L13.5 20 L10 13.5 L5 18 Z"/></svg>
+      </div>
+      <div class="tool" title="Pan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 11V6a1.5 1.5 0 013 0v4m0-1V4.5a1.5 1.5 0 013 0V10m0-1V6a1.5 1.5 0 013 0v6c0 4-2 7-6 7s-5.5-2.5-6.5-4.5L5 11.5c-.6-1.2 1-2.3 2-1.3l1 1"/></svg>
+      </div>
+      <div class="tool" title="Crop">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 2v14a2 2 0 002 2h14"/><path d="M2 6h14a2 2 0 012 2v14"/></svg>
+      </div>
+      <div class="tool" title="Hierarchy">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="2" width="6" height="5" rx="1"/><rect x="2" y="16" width="6" height="5" rx="1"/><rect x="16" y="16" width="6" height="5" rx="1"/><path d="M12 7v4M5 16v-2a1 1 0 011-1h12a1 1 0 011 1v2M12 11v2"/></svg>
+      </div>
+      <div class="tool" title="Category">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      </div>
+      <div class="tool" title="Text">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 5h14M12 5v14"/></svg>
+      </div>
+      <div class="tool" title="Image">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.8"/><path d="M21 16l-5-5L5 20"/></svg>
+      </div>
+      <div class="tool" title="3D">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l9 5v10l-9 5-9-5V7z"/><path d="M12 12l9-5M12 12v10M12 12L3 7"/></svg>
+      </div>
+
+      <div class="rail-divider"></div>
+
+      <div class="tool" title="Zoom to fit">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8V5a2 2 0 012-2h3M16 3h3a2 2 0 012 2v3M21 16v3a2 2 0 01-2 2h-3M8 21H5a2 2 0 01-2-2v-3"/></svg>
+      </div>
+      <div class="tool" title="Undo">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 7L4 12l5 5"/><path d="M4 12h11a5 5 0 010 10h-1"/></svg>
+      </div>
+
+      <div class="rail-spacer"></div>
+
+      <div class="tool" title="More">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="12" cy="19" r="1.6"/></svg>
+      </div>
+    </div>
+
+    <!-- CANVAS -->
+    <div class="canvas-wrap">
+
+      <!-- registration marks -->
+      <div class="reg tl"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#A88340" stroke-width="1"><line x1="8" y1="0" x2="8" y2="16"/><line x1="0" y1="8" x2="16" y2="8"/><circle cx="8" cy="8" r="4"/></svg></div>
+      <div class="reg tr"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#A88340" stroke-width="1"><line x1="8" y1="0" x2="8" y2="16"/><line x1="0" y1="8" x2="16" y2="8"/><circle cx="8" cy="8" r="4"/></svg></div>
+      <div class="reg bl"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#A88340" stroke-width="1"><line x1="8" y1="0" x2="8" y2="16"/><line x1="0" y1="8" x2="16" y2="8"/><circle cx="8" cy="8" r="4"/></svg></div>
+
+      <!-- LANES -->
+      <div class="lane a">
+        <div class="lane-label">
+          <div class="lane-plate"><span class="lane-idx">i</span><span class="lane-name">Establishing</span></div>
+          <span class="lane-hint">warm sunset lighting, candlelit</span>
+        </div>
+      </div>
+      <div class="lane b">
+        <div class="lane-label">
+          <div class="lane-plate"><span class="lane-idx">ii</span><span class="lane-name">Night Heist</span></div>
+          <span class="lane-hint">neon noir, rain</span>
+        </div>
+      </div>
+
+      <!-- EDGES (pixel-aligned, 1 unit = 1px) -->
+      <svg class="edges" width="1080" height="780">
+        <defs>
+          <linearGradient id="activeWire" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stop-color="#C68B2E"/><stop offset="1" stop-color="#A88340"/>
+          </linearGradient>
+        </defs>
+        <!-- 1->2 subtle dashed : n1 out(380,224) -> n2 in(410,224) -->
+        <path d="M380,224 C392,224 398,224 410,224" fill="none" stroke="#B5A89A" stroke-width="1.6" stroke-dasharray="4 4"/>
+        <!-- 3->5 subtle dashed : n3 out(864,224, behind inspector) -> n5 in(410,616) -->
+        <path d="M864,224 C912,420 560,548 410,616" fill="none" stroke="#B5A89A" stroke-width="1.6" stroke-dasharray="4 4"/>
+        <!-- 4->5 subtle dashed : n4 out(380,616) -> n5 in(410,616) -->
+        <path d="M380,616 C392,616 398,616 410,616" fill="none" stroke="#B5A89A" stroke-width="1.6" stroke-dasharray="4 4"/>
+        <!-- 2->3 ACTIVE : n2 out(622,224) -> n3 in(652,224) -->
+        <path d="M622,224 C634,224 640,224 651,224" fill="none" stroke="url(#activeWire)" stroke-width="2.6"/>
+        <polygon points="652,224 645,220 645,228" fill="#C68B2E"/>
+        <!-- 2->6 ACTIVE : n2 out(622,224) -> n6 in(652,616) -->
+        <path d="M622,224 C648,400 652,500 652,610" fill="none" stroke="url(#activeWire)" stroke-width="2.6"/>
+        <polygon points="652,616 648,609 656,609" fill="#C68B2E"/>
+      </svg>
+
+      <!-- ===== LANE A NODES (top=128) ===== -->
+      <!-- Node 1 : Mira  (col1=168) -->
+      <div class="node warm" style="left:168px;top:128px;">
+        <div class="anchor in"></div><div class="anchor out"></div>
+        <div class="node-head">
+          <div class="type-tag">IMAGE · CHARACTER</div>
+          <div class="node-title">Mira</div>
+        </div>
+        <div class="preview pv-mira"><div class="grain"></div></div>
+        <div class="node-foot">Gemini Image <span class="foot-dot"></span> 1080×1350</div>
+      </div>
+
+      <!-- Node 2 : Rooftop Bar (SELECTED)  (col2=410) -->
+      <div class="node warm selected" style="left:410px;top:128px;">
+        <div class="sel-badge">Selected</div>
+        <div class="anchor in"></div><div class="anchor out"></div>
+        <div class="node-head">
+          <div class="type-tag">IMAGE · SCENE</div>
+          <div class="node-title">Rooftop Bar</div>
+        </div>
+        <div class="preview pv-rooftop"><div class="grain"></div></div>
+        <div class="node-foot">Gemini Image <span class="foot-dot"></span> 1920×1080</div>
+      </div>
+
+      <!-- Node 3 : Wide Establishing  (col3=652, peeks behind inspector) -->
+      <div class="node warm" style="left:652px;top:128px;">
+        <div class="anchor in"></div><div class="anchor out"></div>
+        <div class="node-head">
+          <div class="type-tag">SHOT</div>
+          <div class="node-title">Wide Establishing</div>
+        </div>
+        <div class="preview pv-wide"><div class="grain"></div></div>
+        <div class="node-foot">ID 0314 <span class="foot-dot"></span> 1920×1080</div>
+      </div>
+
+      <!-- ===== LANE B NODES (top=520) ===== -->
+      <!-- Node 4 : Beat (TEXT)  (col1=168) -->
+      <div class="node cool text-node" style="left:168px;top:520px;">
+        <div class="anchor in"></div><div class="anchor out"></div>
+        <div class="node-head">
+          <div class="type-tag">TEXT</div>
+          <div class="node-title">Beat</div>
+        </div>
+        <div class="text-body">Alarm trips — lights cut to red. Mira freezes on the ledge.</div>
+        <div class="node-foot">Beat note <span class="foot-dot"></span> 28 words</div>
+      </div>
+
+      <!-- Node 5 : Vault Approach (VIDEO)  (col2=410) -->
+      <div class="node cool" style="left:410px;top:520px;">
+        <div class="anchor in"></div><div class="anchor out"></div>
+        <div class="node-head">
+          <div class="type-tag">VIDEO</div>
+          <div class="node-title">Vault Approach</div>
+        </div>
+        <div class="preview pv-video">
+          <div class="grain"></div>
+          <div class="play-overlay"><div class="play-circle"><svg width="13" height="14" viewBox="0 0 13 14"><path d="M0 0 L13 7 L0 14 Z"/></svg></div></div>
+          <div class="dur-badge">10s</div>
+        </div>
+        <div class="node-foot">Kling v3 <span class="foot-dot"></span> 720p</div>
+      </div>
+
+      <!-- Node 6 : Neon Reflection (GENERATING)  (col3=652) -->
+      <div class="node cool" style="left:652px;top:520px;">
+        <div class="anchor in"></div><div class="anchor out"></div>
+        <div class="node-head">
+          <div class="type-tag">IMAGE GEN</div>
+          <div class="node-title">Neon Reflection</div>
+        </div>
+        <div class="preview pv-gen">
+          <div class="shimmer"></div>
+          <div class="gen-center">
+            <div class="spinner"></div>
+            <div class="gen-label">Generating 64%</div>
+          </div>
+        </div>
+        <div class="node-foot">Wanx Image</div>
+      </div>
+
+      <!-- MINIMAP / ZOOM PILL -->
+      <div class="minimap">
+        <span>87%</span>
+        <span class="sep"></span>
+        <span class="zbtn">−</span>
+        <span class="zbtn">+</span>
+        <span class="sep"></span>
+        <span class="fps">60 FPS</span>
+      </div>
+
+      <!-- KEYBOARD STRIP -->
+      <div class="kbd-strip">
+        <span>Pan <b>Space</b></span>
+        <span>Zoom <b>⌘ +/−</b></span>
+        <span>Add Node <b>A</b></span>
+        <span>Connect <b>C</b></span>
+      </div>
+
+      <!-- FAB -->
+      <button class="fab">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New node
+      </button>
+
+      <!-- ===== CONFIG INSPECTOR (floating) ===== -->
+      <div class="inspector">
+        <div class="insp-accent"></div>
+        <div class="insp-body">
+          <div class="insp-head">
+            <div class="overline">Config</div>
+            <div class="insp-title">Rooftop Bar</div>
+            <div class="insp-sub">IMAGE · SCENE</div>
+          </div>
+
+          <div>
+            <span class="field-label">Prompt</span>
+            <div class="textarea">Neon-lit rooftop cocktail bar at golden hour, city skyline behind, shallow depth of field, anamorphic flare</div>
+          </div>
+
+          <div>
+            <span class="field-label">Final prompt preview</span>
+            <div class="final-prev">…shallow depth of field, anamorphic flare<span class="appended">, warm sunset lighting, candlelit</span></div>
+          </div>
+
+          <div>
+            <span class="field-label">Inputs</span>
+            <div class="input-chip">
+              <span class="chip-av"></span>
+              <span class="chip-name">Mira</span>
+              <span class="role-tag">Reference</span>
+            </div>
+          </div>
+
+          <div class="row-2">
+            <div>
+              <span class="field-label">Provider</span>
+              <div class="dropdown">Gemini Image
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+            <div>
+              <span class="field-label">Resolution</span>
+              <div class="dropdown">1080p · 16:9
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M6 9l6 6 6-6"/></svg>
+              </div>
+            </div>
+          </div>
+
+          <div class="toggle-row">
+            <span class="tl">Ignore lane style</span>
+            <div class="switch"><span class="off-txt">OFF</span><span class="knob"></span></div>
+          </div>
+
+          <button class="generate-btn">
+            <svg width="11" height="12" viewBox="0 0 11 12"><path d="M0 0 L11 6 L0 12 Z"/></svg>
+            Generate
+          </button>
+        </div>
+      </div>
+
+    </div><!-- /canvas-wrap -->
+
+    <!-- ===== RENDER QUEUE ===== -->
+    <div class="queue">
+      <div class="queue-head">
+        <div class="ovl">
+          <span class="overline">Render Queue</span>
+          <span class="qcount">Jobs <span class="badge">2 active</span></span>
+        </div>
+        <div class="icon-btn" title="Collapse">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 15l-6-6-6 6"/></svg>
+        </div>
+      </div>
+
+      <div class="queue-list">
+        <!-- Job 1 -->
+        <div class="job running">
+          <div class="job-top">
+            <span class="job-name">Wanx Text-to-Video</span>
+            <span class="job-act">Cancel</span>
+          </div>
+          <div class="job-mid">
+            <span class="status-dot"></span>
+            <span class="job-status">Running 64%</span>
+          </div>
+          <div class="bar"><div class="fill cta" style="width:64%"></div></div>
+        </div>
+
+        <!-- Job 2 -->
+        <div class="job submitting">
+          <div class="job-top">
+            <span class="job-name">Gemini Image</span>
+            <span class="job-act">Cancel</span>
+          </div>
+          <div class="job-mid">
+            <span class="status-dot"></span>
+            <span class="job-status">Submitting</span>
+          </div>
+          <div class="bar striped"><div class="fill" style="width:100%"></div></div>
+        </div>
+
+        <!-- Job 3 -->
+        <div class="job done">
+          <div class="job-top">
+            <span class="job-name">Kling v3</span>
+            <span class="job-act">Dismiss</span>
+          </div>
+          <div class="job-mid">
+            <span class="status-dot"></span>
+            <span class="job-status">Done</span>
+            <span class="check"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6"><path d="M5 13l4 4L19 7"/></svg></span>
+          </div>
+          <div class="bar"><div class="fill success" style="width:100%"></div></div>
+        </div>
+
+        <!-- Job 4 -->
+        <div class="job failed">
+          <div class="job-top">
+            <span class="job-name">Stable Image Core</span>
+            <span class="job-act retry">Retry</span>
+          </div>
+          <div class="job-mid">
+            <span class="status-dot"></span>
+            <span class="job-status">Failed</span>
+          </div>
+          <div class="bar"><div class="fill danger" style="width:38%"></div></div>
+        </div>
+      </div>
+
+      <div class="queue-foot">
+        <span class="clear-link">Clear completed</span>
+      </div>
+    </div>
+
+  </div><!-- /body -->
+</div>
+
+<!-- VERSION PILL -->
+<div class="ver-pill">
+  <span class="ver-swatch"></span>
+  <span class="vnum">V2</span>
+  <span class="vname">Paper Atelier</span>
+</div>
+
+</body>
+</html>
