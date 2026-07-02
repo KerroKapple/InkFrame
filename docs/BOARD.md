@@ -20,7 +20,7 @@
 | 项目重命名 + 删除（软删可恢复） | ✅ | `3a3c035` + 测试 |
 | 画布 P0/P1 正确性簇（标题/JobQueue/边守卫/hash/泳道事务） | ✅ | `6e0f362`..`46a8fe4` |
 
-## M2 —「创作者要的」🔵 进行中
+## M2 —「创作者要的」✅ 完成（2026-07-02，CI 全绿收官）
 
 > 分支 `feat/m2-creator`（在 PR #133 合并后 rebase 到 main）。
 
@@ -33,7 +33,7 @@
 | 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + 图像/视频 Inspector 实时预估（`d8fc9f3`/`79c45bf`） |
 | 视频 Inspector 接成本 | ✅ | P2 | `79c45bf`。角色注入 v1 仅图像（视频首/尾帧语义待接） |
 | 文件系统导入参考图（file_selector） | ✅ | P2 | Characters 区「从文件导入」（`1d2f555`）。桌面需开发者模式，与 media_kit 同 |
-| CI 烟测 + golden 首跑绿（beta DoD） | ⬜ | P1 | golden 本地 Windows 假阳性，CI ubuntu 为准 |
+| CI 烟测 + golden 首跑绿（beta DoD） | ✅ | P1 | run 28595968123 全绿（analyze/test+coverage 70% 闸/golden/secret-scan）。唯一 CI 红为 ME-31 测试自朽（坏迁移 v6 与真实链重号被跳过），已动态化修复 `309902b` |
 
 ## M3 —「差异化」🔵 起步（骨架设计见 `docs/M3-SKELETON.md`）
 
