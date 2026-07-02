@@ -33,6 +33,7 @@ import '../../core/di/providers.dart';
 import '../../core/di/repositories.dart';
 import '../../core/di/secure_storage.dart';
 import '../../core/errors/ink_error.dart';
+import '../../core/interfaces/batch_result_repository.dart';
 import '../../core/interfaces/canvas_repository.dart';
 import '../../core/interfaces/character_asset_service.dart';
 import '../../core/interfaces/character_repository.dart';
@@ -68,6 +69,7 @@ final generationControllerProvider = FutureProvider<GenerationController>((
   final lanes = await ref.watch(styleLaneRepositoryProvider.future);
   final characters = await ref.watch(characterRepositoryProvider.future);
   final characterAssets = ref.watch(characterAssetServiceProvider);
+  final batchResults = await ref.watch(batchResultRepositoryProvider.future);
   final uow = await ref.watch(unitOfWorkProvider.future);
   // jobsRegistryProvider 是 keepAlive：用 read 拿实例，controller 持有它，
   // 后台 _track future 全程不再触碰 ref。
@@ -84,6 +86,7 @@ final generationControllerProvider = FutureProvider<GenerationController>((
     lanes: lanes,
     characters: characters,
     characterAssets: characterAssets,
+    batchResults: batchResults,
     uow: uow,
     jobsRegistry: jobsRegistry,
     logger: ref.watch(loggerProvider),
@@ -129,6 +132,7 @@ class GenerationController {
     required this.lanes,
     required this.characters,
     required this.characterAssets,
+    required this.batchResults,
     required this.uow,
     required this.jobsRegistry,
     this.logger,
@@ -145,6 +149,7 @@ class GenerationController {
   final StyleLaneRepository lanes;
   final CharacterRepository characters;
   final CharacterAssetService characterAssets;
+  final BatchResultRepository batchResults;
   final UnitOfWork uow;
   final JobsRegistry jobsRegistry;
   final LoggerService? logger;
@@ -185,7 +190,10 @@ class GenerationController {
         ? negRaw.trim()
         : null;
     final batchRaw = typeConfig['batch_size'];
-    final batchSize = (batchRaw is int && batchRaw > 0) ? batchRaw : 1;
+    // 批量仅对图片节点生效：视频强制单张（数据层可构造 video+batch_size，此处收口）。
+    final batchSize = (nodeType == 'image' && batchRaw is int && batchRaw > 0)
+        ? batchRaw
+        : 1;
 
     final apiKey = await secure.retrieve(
       SecureStorageKeys.providerApiKey(providerId),
@@ -285,6 +293,18 @@ class GenerationController {
               'last_frame_path': refs.lastFramePath,
           },
         );
+        // 批量：同事务预建 slot 占位行——消费侧网格立即可见 generating。
+        // 失败补偿删 job 时 FK CASCADE 自动清 slot。
+        if (batchSize > 1) {
+          for (var i = 0; i < batchSize; i++) {
+            await scope.batchResults.create(
+              nodeId: rNode,
+              jobId: jId,
+              slotIndex: i,
+              status: 'generating',
+            );
+          }
+        }
         return (rNode, jId);
       });
       resultNodeId = created.$1;
@@ -334,6 +354,7 @@ class GenerationController {
           providerId: providerId,
           canvasId: canvasId,
           sourceNodeId: configNodeId,
+          resultNodeId: resultNodeId,
         ),
       );
       unawaited(
@@ -343,6 +364,7 @@ class GenerationController {
           resultNodeId: resultNodeId,
           providerId: providerId,
           sourceNodeId: configNodeId,
+          batchSize: batchSize,
         ),
       );
       return jobId;
@@ -386,13 +408,15 @@ class GenerationController {
 
   /// 后台跟踪一个已提交 job 的状态流 + 终态，推进 JobsRegistry。
   ///
-  /// 不在 submitFromConfigNode 中 await——fire-and-forget。失败/取消时清理孤儿 result。
+  /// 不在 submitFromConfigNode 中 await——fire-and-forget。失败时清理孤儿 result；
+  /// 取消时批量 job 若已有 success slot 则保留结果节点（用户仍能看到成功产物）。
   Future<void> _track(
     JobHandle handle, {
     required String canvasId,
     required String resultNodeId,
     required String providerId,
     required String sourceNodeId,
+    required int batchSize,
   }) async {
     final sub = handle.status.listen((s) {
       if (s is JobInProgress) {
@@ -402,6 +426,7 @@ class GenerationController {
             providerId: providerId,
             canvasId: canvasId,
             sourceNodeId: sourceNodeId,
+            resultNodeId: resultNodeId,
             progress: s.progress,
           ),
         );
@@ -417,21 +442,28 @@ class GenerationController {
             providerId: providerId,
             canvasId: canvasId,
             sourceNodeId: sourceNodeId,
+            resultNodeId: resultNodeId,
             artifactPath: path,
           ),
         );
       } else if (status is JobFailure) {
-        await nodes.softDelete(resultNodeId);
         if (status.error is CancelledError) {
+          // 取消保留语义：批量下已有 success slot 的结果节点不软删。
+          final keep = batchSize > 1 && await _hasSuccessSlot(resultNodeId);
+          if (!keep) {
+            await nodes.softDelete(resultNodeId);
+          }
           jobsRegistry.upsert(
             JobState.cancelled(
               jobId: handle.jobId,
               providerId: providerId,
               canvasId: canvasId,
               sourceNodeId: sourceNodeId,
+              resultNodeId: resultNodeId,
             ),
           );
         } else {
+          await nodes.softDelete(resultNodeId);
           logger?.error(
             _logModule,
             'job failed',
@@ -448,6 +480,7 @@ class GenerationController {
               providerId: providerId,
               canvasId: canvasId,
               sourceNodeId: sourceNodeId,
+              resultNodeId: resultNodeId,
               error: status.error,
             ),
           );
@@ -468,6 +501,7 @@ class GenerationController {
           providerId: providerId,
           canvasId: canvasId,
           sourceNodeId: sourceNodeId,
+          resultNodeId: resultNodeId,
           error: UnknownError(cause: e, stackTrace: st),
         ),
       );
@@ -481,6 +515,22 @@ class GenerationController {
     final row = await nodes.findById(resultNodeId);
     final tc = _readTypeConfig(row?['type_config']);
     return (tc['image_url'] ?? tc['video_url'] ?? '').toString();
+  }
+
+  /// 取消收敛时判定 result 节点下是否已有 success slot。
+  /// 查询失败按「有」处理——宁保留节点，也不误删用户已见的成功产物。
+  Future<bool> _hasSuccessSlot(String resultNodeId) async {
+    try {
+      final slots = await batchResults.listByNode(resultNodeId);
+      return slots.any((r) => r[BatchResultCol.status] == 'success');
+    } on InkError catch (e) {
+      logger?.warn(
+        _logModule,
+        'batch slot lookup failed; keeping result node (swallowed)',
+        extra: {'result_node_id': resultNodeId, 'reason': e.toString()},
+      );
+      return true;
+    }
   }
 
   /// configNode 的 data 入连线取一次（refs + associatedTexts 共用）；失败 warn + 空。

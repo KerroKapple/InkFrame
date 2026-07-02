@@ -14,6 +14,7 @@ import 'dart:math';
 import '../core/constants/job_housekeeping.dart';
 import '../core/db/columns.dart';
 import '../core/errors/ink_error.dart';
+import '../core/interfaces/batch_result_repository.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/logging/logger_service.dart';
 import '../core/interfaces/job_queue_service.dart';
@@ -39,6 +40,7 @@ class InMemoryJobQueueService implements JobQueueService {
     JobRepository? repo,
     FileResolverService? fileResolver,
     NodeRepository? nodeRepo,
+    BatchResultRepository? batchResultRepo,
     VideoDownloadService? videoDownloader,
     ThumbnailService? thumbnailService,
     LoggerService? logger,
@@ -52,6 +54,7 @@ class InMemoryJobQueueService implements JobQueueService {
         _repo = repo,
         _fileResolver = fileResolver,
         _nodeRepo = nodeRepo,
+        _batchResults = batchResultRepo,
         _videoDownloader = videoDownloader,
         _thumbnail = thumbnailService,
         _logger = logger,
@@ -66,6 +69,7 @@ class InMemoryJobQueueService implements JobQueueService {
   final JobRepository? _repo;
   final FileResolverService? _fileResolver;
   final NodeRepository? _nodeRepo;
+  final BatchResultRepository? _batchResults;
   final VideoDownloadService? _videoDownloader;
   final ThumbnailService? _thumbnail;
   final LoggerService? _logger;
@@ -107,6 +111,20 @@ class InMemoryJobQueueService implements JobQueueService {
       _logger?.info(_logModule, 'startup recovery: orphan jobs cancelled',
           extra: {'count': cancelled});
     }
+    // 孤儿 slot 同步收敛：启动期无在途 job，任何 'generating' slot 都已无人推进，
+    // 不收敛则批量网格永久转圈。已终态 slot（success/error）不动。
+    final batchRepo = _batchResults;
+    if (batchRepo != null) {
+      final slots = await batchRepo.finalizeAllPending(
+        toStatus: 'cancelled',
+        errorCode: InkErrorCode.cancelledOnExit.wire,
+      );
+      if (slots > 0) {
+        _logger?.info(
+            _logModule, 'startup recovery: orphan batch slots cancelled',
+            extra: {'count': slots});
+      }
+    }
     // ME-32：jobs 表清理在启动时接线（retention + per-canvas cap）。
     // 清理是 housekeeping——失败只放弃本次，绝不阻断启动。
     try {
@@ -147,6 +165,14 @@ class InMemoryJobQueueService implements JobQueueService {
       // 软删除：标记后 dispatch loop 自然跳过并出队，避免重建 Queue。
       pending.cancelled = true;
       await _persistCancel(jobId, fromStatuses: const ['pending']);
+      // 排队期取消：预建的 slot 占位行同步收敛（仅批量 job 有 slot 行）。
+      if (pending.task.batchSize > 1) {
+        await _convergeSlots(
+          jobId,
+          toStatus: 'cancelled',
+          errorCode: InkErrorCode.cancelledByUser.wire,
+        );
+      }
       _emitFailure(pending.handle, _cancelledError(jobId));
       return;
     }
@@ -269,7 +295,7 @@ class InMemoryJobQueueService implements JobQueueService {
       }
       await _pollLoop(provider as Pollable, providerJobId, task, handle, running);
     } on InkError catch (e) {
-      final rows = await _persistFailure(task.jobId, e);
+      final rows = await _persistFailure(task, e, running);
       _emitFailure(handle, _arbitrate(rows, running, e, task.jobId));
     } catch (e, st) {
       // HI-01 兜底：非 InkError（provider bug / 库异常）逃逸会让 handle 永挂。
@@ -279,7 +305,7 @@ class InMemoryJobQueueService implements JobQueueService {
         stackTrace: st,
         extra: {'job_id': task.jobId},
       );
-      await _persistFailure(task.jobId, err);
+      await _persistFailure(task, err, running);
       _emitFailure(handle, err);
     } finally {
       _running.remove(task.jobId);
@@ -310,11 +336,19 @@ class InMemoryJobQueueService implements JobQueueService {
     }
 
     // cancel 收敛：幂等补写 cancelled（cancel 主路径已写过则 0 行），persist 先于 emit。
+    // slot 收敛（已成功 slot 保留，仍 generating 的置 cancelled）与 job 行同步。
     Future<void> emitCancelled() async {
       await _persistCancel(
         task.jobId,
         fromStatuses: const ['submitted', 'polling'],
       );
+      if (task.batchSize > 1) {
+        await _convergeSlots(
+          task.jobId,
+          toStatus: 'cancelled',
+          errorCode: InkErrorCode.cancelledByUser.wire,
+        );
+      }
       _emitFailure(handle, _cancelledError(task.jobId));
     }
 
@@ -328,7 +362,7 @@ class InMemoryJobQueueService implements JobQueueService {
           code: InkErrorCode.pollTimeout,
           extra: {'provider_id': task.providerId, 'job_id': task.jobId},
         );
-        final rows = await _persistTimeout(task.jobId, timeoutErr);
+        final rows = await _persistTimeout(task, timeoutErr, running);
         _emitFailure(handle, _arbitrate(rows, running, timeoutErr, task.jobId));
         return;
       }
@@ -362,22 +396,41 @@ class InMemoryJobQueueService implements JobQueueService {
             await emitCancelled();
             return;
           }
+          final hasInline = inlineBytes != null && inlineBytes.isNotEmpty;
+          // 批量零产出：provider 报 success 但两路产物皆空 → 按失败收敛，
+          // 否则 job 落 success 而 N 个 slot 永挂 generating。
+          if (task.batchSize > 1 && !hasInline && remoteUrls.isEmpty) {
+            final err = ProviderError(
+              code: InkErrorCode.providerInvalidResponse,
+              extra: {
+                'provider_id': task.providerId,
+                'job_id': task.jobId,
+                'reason': 'batch_zero_outputs',
+              },
+            );
+            final rows = await _persistFailure(task, err, running);
+            _emitFailure(handle, _arbitrate(rows, running, err, task.jobId));
+            return;
+          }
           // b3：inlineBytes 落盘到 {canvasRoot}/images/{jobId}-{idx}.png
           //     成功后更新 node.type_config.image_url。失败转 LocalIOError。
-          if (inlineBytes != null && inlineBytes.isNotEmpty) {
-            final ioErr = await _persistInlineBytes(task, inlineBytes);
+          if (hasInline) {
+            final ioErr = await _persistInlineBytes(task, inlineBytes, running);
             if (ioErr != null) {
-              await _persistFailure(task.jobId, ioErr);
-              _emitFailure(handle, ioErr);
+              final rows = await _persistFailure(task, ioErr, running);
+              _emitFailure(
+                  handle, _arbitrate(rows, running, ioErr, task.jobId));
               return;
             }
           }
           // T5-S3：remoteUrls（所有异步 Provider 走这条）→ 下载到
           //   videos/{jobId}.mp4 或 images/{jobId}.png，按 task.mode 分流。
-          if (remoteUrls.isNotEmpty) {
-            final err = await _persistRemoteUrls(task, remoteUrls);
+          // 批量下 inline 与 remote 互斥：inline 已落盘则跳过 remote，
+          // 避免同名双写/覆盖。
+          if (remoteUrls.isNotEmpty && !(task.batchSize > 1 && hasInline)) {
+            final err = await _persistRemoteUrls(task, remoteUrls, running);
             if (err != null) {
-              final rows = await _persistFailure(task.jobId, err);
+              final rows = await _persistFailure(task, err, running);
               _emitFailure(handle, _arbitrate(rows, running, err, task.jobId));
               return;
             }
@@ -401,7 +454,7 @@ class InMemoryJobQueueService implements JobQueueService {
           handle._complete(status);
           return;
         case JobFailure(:final error):
-          final rows = await _persistFailure(task.jobId, error);
+          final rows = await _persistFailure(task, error, running);
           _emitFailure(handle, _arbitrate(rows, running, error, task.jobId));
           return;
       }
@@ -477,16 +530,20 @@ class InMemoryJobQueueService implements JobQueueService {
     await repo.update(jobId, patch);
   }
 
-  Future<int?> _persistFailure(String jobId, InkError error) {
+  Future<int?> _persistFailure(
+    GenerationTask task,
+    InkError error,
+    _RunningJob running,
+  ) async {
     // 所有失败终态的统一漏斗：在此落 ERROR 日志。
     _logger?.error(
       _logModule,
       'job failed',
-      extra: {'job_id': jobId, 'error_code': error.code.wire},
+      extra: {'job_id': task.jobId, 'error_code': error.code.wire},
       cause: error,
     );
-    return _persistTransition(
-      jobId,
+    final rows = await _persistTransition(
+      task.jobId,
       from: const ['pending', 'submitted', 'polling'],
       to: 'error',
       extra: {
@@ -495,16 +552,22 @@ class InMemoryJobQueueService implements JobQueueService {
         JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
+    await _convergeSlotsAfterTerminal(task, rows, running, error);
+    return rows;
   }
 
-  Future<int?> _persistTimeout(String jobId, InkError error) {
+  Future<int?> _persistTimeout(
+    GenerationTask task,
+    InkError error,
+    _RunningJob running,
+  ) async {
     _logger?.error(
       _logModule,
       'job poll timeout',
-      extra: {'job_id': jobId, 'error_code': error.code.wire},
+      extra: {'job_id': task.jobId, 'error_code': error.code.wire},
     );
-    return _persistTransition(
-      jobId,
+    final rows = await _persistTransition(
+      task.jobId,
       from: const ['submitted', 'polling'],
       to: 'timeout',
       extra: {
@@ -512,7 +575,83 @@ class InMemoryJobQueueService implements JobQueueService {
         JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
+    await _convergeSlotsAfterTerminal(task, rows, running, error);
+    return rows;
   }
+
+  // ---- batch slot 落库 helpers（batchSize>1 专用；未注入 repo 时全 no-op） ----
+
+  /// job 落终态后收敛遗留 'generating' slot。
+  ///
+  /// 取消语境由 [_lostToCancel]（running.cancelled + 竞态裁决）显式判定，
+  /// 绝不单凭 affectedRows==0 反推——二次失败写库同样是 0 行，但对外终态
+  /// 仍是原错误，slot 必须收敛 error。
+  Future<void> _convergeSlotsAfterTerminal(
+    GenerationTask task,
+    int? rows,
+    _RunningJob running,
+    InkError error,
+  ) {
+    if (task.batchSize <= 1) return Future.value();
+    final cancelWon = _lostToCancel(rows, running);
+    return _convergeSlots(
+      task.jobId,
+      toStatus: cancelWon ? 'cancelled' : 'error',
+      errorCode:
+          cancelWon ? InkErrorCode.cancelledByUser.wire : error.code.wire,
+    );
+  }
+
+  /// 终态 slot 收敛统一入口：绝不抛出。收敛链上的抛出会跳过 emit、
+  /// 让 handle 永挂——失败仅记日志，init() 的孤儿 slot 回收兜底。
+  Future<void> _convergeSlots(
+    String jobId, {
+    required String toStatus,
+    String? errorCode,
+  }) async {
+    final repo = _batchResults;
+    if (repo == null) return;
+    try {
+      await repo.finalizePendingByJob(
+        jobId,
+        toStatus: toStatus,
+        errorCode: errorCode,
+      );
+    } on InkError catch (e) {
+      _logger?.warn(_logModule, 'slot convergence failed (swallowed)', extra: {
+        'job_id': jobId,
+        'to_status': toStatus,
+        'error_code': e.code.wire,
+      });
+    }
+  }
+
+  /// 按 (resultNodeId, slotIndex) 定位 slot 行并 patch；行缺失静默跳过。
+  Future<void> _updateSlot(
+    String resultNodeId,
+    int slotIndex,
+    Map<String, Object?> patch,
+  ) async {
+    final repo = _batchResults;
+    if (repo == null) return;
+    final row = await repo.findBySlot(resultNodeId, slotIndex);
+    final id = row?[BatchResultCol.id];
+    if (id == null) return;
+    await repo.update(id.toString(), patch);
+  }
+
+  Map<String, Object?> _slotSuccessPatch(String relPath) => <String, Object?>{
+        BatchResultCol.status: 'success',
+        BatchResultCol.outputUrl: relPath,
+        BatchResultCol.completedAt: DateTime.now().toUtc().toIso8601String(),
+      };
+
+  Map<String, Object?> _slotErrorPatch(InkError error) => <String, Object?>{
+        BatchResultCol.status: 'error',
+        BatchResultCol.errorCode: error.code.wire,
+        BatchResultCol.errorMessage: _truncate(error.toString(), 2000),
+        BatchResultCol.completedAt: DateTime.now().toUtc().toIso8601String(),
+      };
 
   Future<int?> _persistCancel(
     String jobId, {
@@ -540,6 +679,7 @@ class InMemoryJobQueueService implements JobQueueService {
   Future<InkError?> _persistInlineBytes(
     GenerationTask task,
     List<dynamic> bytesList,
+    _RunningJob running,
   ) async {
     final projectId = task.projectId;
     final canvasId = task.canvasId;
@@ -559,6 +699,19 @@ class InMemoryJobQueueService implements JobQueueService {
         },
       );
     }
+    // 批量：逐张写盘 + 逐 slot 落终态（部分成功语义）。
+    if (task.batchSize > 1) {
+      return _persistInlineBytesBatch(
+        task,
+        bytesList,
+        running,
+        projectId: projectId,
+        canvasId: canvasId,
+        resultNodeId: resultNodeId,
+        fileResolver: fileResolver,
+        nodeRepo: nodeRepo,
+      );
+    }
     try {
       final relativePaths = <String>[];
       for (var i = 0; i < bytesList.length; i++) {
@@ -574,7 +727,6 @@ class InMemoryJobQueueService implements JobQueueService {
         relativePaths.add(relPath);
       }
       // 多张时只取首张做主图（PRD §4.4：image_url 单值；批量在 batch_results 表）。
-      // 当前 batch_size=1 是 P0 主路径；批量留给后续 batch_results 接入。
       await nodeRepo.patchTypeConfig(resultNodeId, {
         'image_url': relativePaths.first,
       });
@@ -599,6 +751,99 @@ class InMemoryJobQueueService implements JobQueueService {
     }
   }
 
+  /// 批量 inlineBytes（batchSize>1，恒为图片）：逐张写 images/{jobId}-{i}.png，
+  /// 每张独立落 slot 终态；≥1 张成功 → 整体 success（首张成功图作主图 image_url），
+  /// 全败 → 返回最后一个错误（job 失败）。bytes 数 < batchSize 的缺失 slot 收敛 error。
+  /// 取消即中断：剩余张不再写盘，未完成 slot 收敛 cancelled（已成功的保留）。
+  Future<InkError?> _persistInlineBytesBatch(
+    GenerationTask task,
+    List<dynamic> bytesList,
+    _RunningJob running, {
+    required String projectId,
+    required String canvasId,
+    required String resultNodeId,
+    required FileResolverService fileResolver,
+    required NodeRepository nodeRepo,
+  }) async {
+    String? firstSuccessRel;
+    InkError? lastError;
+    final count = min(bytesList.length, task.batchSize);
+    for (var i = 0; i < count; i++) {
+      // 每张写盘前看取消位：已取消则中断，剩余 slot 由下方统一收敛。
+      if (running.cancelled) break;
+      final relPath = 'images/${task.jobId}-$i.png';
+      InkError? slotError;
+      try {
+        final file = fileResolver.resolve(
+          projectId: projectId,
+          canvasId: canvasId,
+          relativePath: relPath,
+        );
+        await file.parent.create(recursive: true);
+        await file.writeAsBytes(bytesList[i] as List<int>);
+      } on FileSystemException catch (e) {
+        slotError = LocalIOError(
+          cause: e,
+          extra: {
+            'job_id': task.jobId,
+            'slot_index': i,
+            'reason': 'write_inline_bytes_failed',
+            'message': e.message,
+          },
+        );
+      } on PathSecurityError catch (e) {
+        slotError = LocalIOError(
+          cause: e,
+          extra: {
+            'job_id': task.jobId,
+            'slot_index': i,
+            'reason': 'unsafe_path',
+          },
+        );
+      }
+      if (slotError == null) {
+        await _updateSlot(resultNodeId, i, _slotSuccessPatch(relPath));
+        firstSuccessRel ??= relPath;
+      } else {
+        lastError = slotError;
+        _logger?.warn(_logModule, 'batch slot failed', extra: {
+          'job_id': task.jobId,
+          'slot_index': i,
+          'error_code': slotError.code.wire,
+        });
+        await _updateSlot(resultNodeId, i, _slotErrorPatch(slotError));
+      }
+    }
+    if (running.cancelled) {
+      // 取消中断：未完成 slot 收敛 cancelled；job 对外终态由 cancel 竞态裁决收口。
+      await _convergeSlots(
+        task.jobId,
+        toStatus: 'cancelled',
+        errorCode: InkErrorCode.cancelledByUser.wire,
+      );
+    } else {
+      // Provider 返回张数不足 batchSize：缺失 slot 收敛 error，避免永久 generating。
+      await _convergeSlots(
+        task.jobId,
+        toStatus: 'error',
+        errorCode: InkErrorCode.providerInvalidResponse.wire,
+      );
+    }
+    if (firstSuccessRel == null) {
+      return lastError ??
+          LocalIOError(
+            extra: <String, Object?>{
+              'job_id': task.jobId,
+              'reason': 'batch_no_outputs',
+            },
+          );
+    }
+    await nodeRepo.patchTypeConfig(resultNodeId, {
+      'image_url': firstSuccessRel,
+    });
+    return null;
+  }
+
   /// T5-S3：把 Provider 返回的 remoteUrls 下载到本地，
   /// 并更新 node.type_config 里 video_url / image_url（可选 thumbnail_url）。
   ///
@@ -609,10 +854,11 @@ class InMemoryJobQueueService implements JobQueueService {
   ///
   /// 依赖未注入 = 单测/纯内存模式：跳过下载落盘（返回 null）。
   /// 依赖已注入但关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure）。
-  /// batch_size=1：只取 remoteUrls.first，批量留后续。
+  /// batch_size=1 只取 remoteUrls.first；batchSize>1 走批量分支（逐 slot 落终态）。
   Future<InkError?> _persistRemoteUrls(
     GenerationTask task,
     List<String> remoteUrls,
+    _RunningJob running,
   ) async {
     final projectId = task.projectId;
     final canvasId = task.canvasId;
@@ -631,6 +877,21 @@ class InMemoryJobQueueService implements JobQueueService {
           'job_id': task.jobId,
           'reason': 'missing_result_ids',
         },
+      );
+    }
+
+    // 批量（视频恒 batchSize=1，不走此分支）：逐 URL 下载 + 逐 slot 落终态。
+    if (task.batchSize > 1) {
+      return _persistRemoteUrlsBatch(
+        task,
+        remoteUrls,
+        running,
+        projectId: projectId,
+        canvasId: canvasId,
+        resultNodeId: resultNodeId,
+        fileResolver: fileResolver,
+        nodeRepo: nodeRepo,
+        downloader: downloader,
       );
     }
 
@@ -714,6 +975,111 @@ class InMemoryJobQueueService implements JobQueueService {
         },
       );
     }
+  }
+
+  /// 批量 remoteUrls（batchSize>1，恒为图片）：逐 URL 下载到 images/{jobId}-{i}.png，
+  /// 每张独立落 slot 终态；≥1 张成功 → 整体 success（首张成功图作主图 image_url），
+  /// 全败 → 返回最后一个错误（job 失败）。URL 数 < batchSize 的缺失 slot 收敛 error。
+  /// 取消即中断：剩余 URL 不再下载，未完成 slot 收敛 cancelled（已成功的保留）。
+  Future<InkError?> _persistRemoteUrlsBatch(
+    GenerationTask task,
+    List<String> remoteUrls,
+    _RunningJob running, {
+    required String projectId,
+    required String canvasId,
+    required String resultNodeId,
+    required FileResolverService fileResolver,
+    required NodeRepository nodeRepo,
+    required VideoDownloadService downloader,
+  }) async {
+    String? firstSuccessRel;
+    InkError? lastError;
+    final count = min(remoteUrls.length, task.batchSize);
+    for (var i = 0; i < count; i++) {
+      // 每张下载前看取消位：已取消则中断，剩余 slot 由下方统一收敛。
+      if (running.cancelled) break;
+      final relPath = 'images/${task.jobId}-$i.png';
+      InkError? slotError;
+      try {
+        final file = fileResolver.resolve(
+          projectId: projectId,
+          canvasId: canvasId,
+          relativePath: relPath,
+        );
+        await downloader.download(url: remoteUrls[i], destination: file);
+      } on VideoDownloadError catch (e) {
+        slotError = DownloadError(
+          cause: e,
+          extra: {
+            'job_id': task.jobId,
+            'slot_index': i,
+            'reason': 'remote_url_download_failed',
+            'url': e.url,
+            'http_status': e.httpStatus,
+          },
+        );
+      } on FileSystemException catch (e) {
+        slotError = LocalIOError(
+          cause: e,
+          extra: {
+            'job_id': task.jobId,
+            'slot_index': i,
+            'reason': 'write_remote_file_failed',
+            'message': e.message,
+          },
+        );
+      } on PathSecurityError catch (e) {
+        slotError = LocalIOError(
+          cause: e,
+          extra: {
+            'job_id': task.jobId,
+            'slot_index': i,
+            'reason': 'unsafe_path',
+          },
+        );
+      }
+      if (slotError == null) {
+        await _updateSlot(resultNodeId, i, _slotSuccessPatch(relPath));
+        firstSuccessRel ??= relPath;
+      } else {
+        lastError = slotError;
+        _logger?.warn(_logModule, 'batch slot failed', extra: {
+          'job_id': task.jobId,
+          'slot_index': i,
+          'error_code': slotError.code.wire,
+        });
+        await _updateSlot(resultNodeId, i, _slotErrorPatch(slotError));
+      }
+    }
+    if (running.cancelled) {
+      // 取消中断：未完成 slot 收敛 cancelled；job 对外终态由 cancel 竞态裁决收口。
+      await _convergeSlots(
+        task.jobId,
+        toStatus: 'cancelled',
+        errorCode: InkErrorCode.cancelledByUser.wire,
+      );
+    } else {
+      // Provider 返回 URL 数不足 batchSize：缺失 slot 收敛 error，避免永久 generating。
+      await _convergeSlots(
+        task.jobId,
+        toStatus: 'error',
+        errorCode: InkErrorCode.providerInvalidResponse.wire,
+      );
+    }
+    if (firstSuccessRel == null) {
+      return lastError ??
+          ProviderError(
+            code: InkErrorCode.providerInvalidResponse,
+            extra: <String, Object?>{
+              'job_id': task.jobId,
+              'reason': 'batch_no_outputs',
+            },
+          );
+    }
+    await nodeRepo.patchTypeConfig(resultNodeId, {
+      'image_url': firstSuccessRel,
+    });
+    return null;
   }
 
   void _ensureNotDisposed() {

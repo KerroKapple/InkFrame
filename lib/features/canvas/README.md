@@ -34,8 +34,8 @@ util/       无副作用的几何/命中/预设工具
 - `canvas_screen` — 整屏骨架：`canvas_top_chrome` + `canvas_left_toolbar` + `canvas_view` + `canvas_render_queue`
 - `canvas_view` / `edge_painter` — 画布视口与连线绘制
 - `node_card` / `canvas_node_card` / `video_node_body` — 节点卡片各形态
-- `node_inspector_router` — 按 (role==config, type) 分发 → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`；前二者共用 `inspector_status_panel`
-- `batch_results_grid` — 结果节点的批量/变体槽位网格
+- `node_inspector_router` — 按 (role, type) 分发：config → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`（前二者共用 `inspector_status_panel`）；result+image → `image_result_inspector`
+- `batch_results_grid` — 结果节点的批量/变体槽位网格（挂载于 `image_result_inspector`）
 - `canvas_render_queue` — 右侧渲染队列（消费 `jobsRegistry`）
 - `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_add_node_fab` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`
 

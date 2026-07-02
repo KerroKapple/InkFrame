@@ -21,13 +21,13 @@ widgets/job_queue_panel      队列面板 UI
 1. 读 config 节点 `type_config`（prompt/provider_id/resolution/aspect_ratio/seed/negative_prompt/batch_size/duration/camera…）
 2. 取 API Key（缺失 → `MissingApiKeyError`）；校验 provider 已注册
 3. 组装 `fullPrompt`（`prompt_assembler`）+ 解析 data 入连线的参考图/首尾帧
-4. **单事务**预建 result 节点 + `jobs` 表行（任一失败整体回滚）
+4. **单事务**预建 result 节点 + `jobs` 表行（batch_size>1 时同事务预建 `batch_results` slot 占位行；任一失败整体回滚）
 5. 组 `GenerationTask` → `JobQueueService.submit` → 拿 `JobHandle`
 6. **fire-and-forget**：立即返回 jobId；后台 `_track` 监听 `handle.status` 推进 `JobsRegistry`（queued→running→succeeded/failed/cancelled），失败时 `softDelete` 孤儿 result
 
 ## 两个状态模型（务必分清，ADR-0008）
 - `JobStatus`（`core/models/job_status.dart`）：Provider 单次 poll 的**瞬时**结果
-- `JobState`（本模块）：UI 端**完整状态机**，带 `sourceNodeId`（供 inspector 按节点回读进度）
+- `JobState`（本模块）：UI 端**完整状态机**，带 `sourceNodeId`（供 inspector 按节点回读进度）与 `resultNodeId`（供批量网格终态定点刷新）
 
 ## 消费者
 - `widgets/job_queue_panel` 与 canvas 的 `canvas_render_queue` 都读 `jobsRegistryProvider`

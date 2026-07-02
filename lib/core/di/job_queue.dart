@@ -21,12 +21,14 @@ final jobQueueServiceProvider = FutureProvider<JobQueueService>((ref) async {
   final thumbnail = ref.watch(thumbnailServiceProvider);
   final repo = await ref.watch(jobRepositoryProvider.future);
   final nodeRepo = await ref.watch(nodeRepositoryProvider.future);
+  final batchResults = await ref.watch(batchResultRepositoryProvider.future);
   final fileResolver = ref.watch(fileResolverServiceProvider);
   final service = InMemoryJobQueueService(
     registry: registry,
     repo: repo,
     fileResolver: fileResolver,
     nodeRepo: nodeRepo,
+    batchResultRepo: batchResults,
     videoDownloader: downloader,
     thumbnailService: thumbnail,
     logger: ref.watch(loggerProvider),

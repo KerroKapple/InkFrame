@@ -826,7 +826,8 @@ class _SelectionCountSlot extends ConsumerWidget {
   }
 }
 
-/// Inspector 插槽：单选 config 节点时浮出；仅随选中态重建，不连带画布。
+/// Inspector 插槽：单选节点时浮出（config/result 分流交 NodeInspectorRouter）；
+/// 仅随选中态重建，不连带画布。
 class _InspectorSlot extends ConsumerWidget {
   const _InspectorSlot({required this.nodes});
 
@@ -839,7 +840,7 @@ class _InspectorSlot extends ConsumerWidget {
     if (selected.length == 1) {
       final id = selected.first;
       for (final n in nodes) {
-        if (n.id == id && n.role == NodeRole.config) {
+        if (n.id == id) {
           target = n;
           break;
         }

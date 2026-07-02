@@ -1,7 +1,7 @@
 // BatchResultsController —— 某结果节点下的批量 slot 列表（按 nodeId 分族）。
 //
-// 读侧投影：build 拉 listByNode，refresh 供生成完成后刷新。
-// 写侧（job_queue 落 slot 行）与「提升为结果节点」为后续接入点（见 docs/BOARD.md）。
+// 读侧投影：build 拉 listByNode；job 终态由 CanvasJobListener 定点 invalidate。
+// 写侧落 slot 行见 JobQueueService；「提升为结果节点」为后续接入点（见 docs/BOARD.md）。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/repositories.dart';

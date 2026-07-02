@@ -12,6 +12,7 @@ import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/services/job_queue_service.dart';
 
+import '../../_harness/fake_batch_result.dart';
 import '../../helpers/recording_logger.dart';
 
 class _NoopSecure implements SecureStorageService {
@@ -66,11 +67,19 @@ class _FakeResolver implements FileResolverService {
 void main() {
   test('jobQueueServiceProvider 注入 repo 且解析时跑 init() 清理孤儿', () async {
     final fakeRepo = _FakeJobRepo();
+    final fakeBatch = FakeBatchResultRepo();
+    await fakeBatch.create(
+      nodeId: 'n1',
+      jobId: 'j1',
+      slotIndex: 0,
+      status: 'generating',
+    );
     final container = ProviderContainer(
       overrides: <Override>[
         secureStorageServiceProvider.overrideWithValue(_NoopSecure()),
         jobRepositoryProvider.overrideWith((ref) async => fakeRepo),
         nodeRepositoryProvider.overrideWith((ref) async => _FakeNodeRepo()),
+        batchResultRepositoryProvider.overrideWith((ref) async => fakeBatch),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
         thumbnailServiceProvider.overrideWithValue(null),
         loggerProvider.overrideWithValue(RecordingLogger()),
@@ -87,5 +96,9 @@ void main() {
       fakeRepo.bulkCalls.single.from,
       containsAll(<String>['pending', 'submitted', 'polling']),
     );
+    // 孤儿 slot 同步收敛 —— 证明 batch repo 已被真正注入。
+    final slot = fakeBatch.rows.values.single;
+    expect(slot['status'], 'cancelled');
+    expect(slot['error_code'], 'cancelled_on_exit');
   });
 }

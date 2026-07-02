@@ -17,6 +17,22 @@ abstract class BatchResultRepository {
 
   Future<int> update(String id, Map<String, Object?> patch);
 
+  /// 单 job 收敛：该 job 下仍 'generating' 的 slot 一次性置 [toStatus]
+  /// （可附 errorCode，写 completed_at）。已终态 slot 不动（部分成功语义）。
+  /// 返回受影响行数。
+  Future<int> finalizePendingByJob(
+    String jobId, {
+    required String toStatus,
+    String? errorCode,
+  });
+
+  /// 启动孤儿回收：全表仍 'generating' 的 slot 置 [toStatus]（启动期无并发）。
+  /// 返回受影响行数。
+  Future<int> finalizeAllPending({
+    required String toStatus,
+    String? errorCode,
+  });
+
   /// 标记为已提升：promoted = true + promoted_node_id。
   Future<int> markPromoted({required String id, required String promotedNodeId});
 

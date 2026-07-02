@@ -860,6 +860,12 @@ abstract class AppLocalizations {
   /// **'Variants'**
   String get batchResultsLabel;
 
+  /// No description provided for @inspectorResultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Result'**
+  String get inspectorResultTitle;
+
   /// No description provided for @inspectorShotTitle.
   ///
   /// In en, this message translates to:

@@ -24,6 +24,7 @@ import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
+import '../../_harness/fake_batch_result.dart';
 import '../../_harness/fake_character.dart';
 import '../../_harness/fake_unit_of_work.dart';
 
@@ -319,6 +320,7 @@ void main() {
         lanes: laneRepo,
         characters: FakeCharacterRepo(),
         characterAssets: FakeCharacterAssetService(),
+        batchResults: FakeBatchResultRepo(),
         uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
         jobsRegistry: jobsRegistry,
       );

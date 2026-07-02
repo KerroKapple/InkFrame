@@ -14,7 +14,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$JobState {
 
- String get jobId; String get providerId; String get canvasId; String? get sourceNodeId;
+ String get jobId; String get providerId; String get canvasId; String? get sourceNodeId; String? get resultNodeId;
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -25,16 +25,16 @@ $JobStateCopyWith<JobState> get copyWith => _$JobStateCopyWithImpl<JobState>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobState&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobState&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId);
+int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,resultNodeId);
 
 @override
 String toString() {
-  return 'JobState(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId)';
+  return 'JobState(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, resultNodeId: $resultNodeId)';
 }
 
 
@@ -45,7 +45,7 @@ abstract mixin class $JobStateCopyWith<$Res>  {
   factory $JobStateCopyWith(JobState value, $Res Function(JobState) _then) = _$JobStateCopyWithImpl;
 @useResult
 $Res call({
- String jobId, String providerId, String canvasId, String? sourceNodeId
+ String jobId, String providerId, String canvasId, String? sourceNodeId, String? resultNodeId
 });
 
 
@@ -62,12 +62,13 @@ class _$JobStateCopyWithImpl<$Res>
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? resultNodeId = freezed,}) {
   return _then(_self.copyWith(
 jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
 as String,providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,canvasId: null == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
 as String,sourceNodeId: freezed == sourceNodeId ? _self.sourceNodeId : sourceNodeId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -165,15 +166,15 @@ return cancelled(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)?  queued,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)?  submitting,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  double progress)?  running,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String artifactPath)?  succeeded,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  InkError error)?  failed,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)?  cancelled,required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>({TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)?  queued,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)?  submitting,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  double progress)?  running,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  String artifactPath)?  succeeded,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  InkError error)?  failed,TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)?  cancelled,required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case JobQueued() when queued != null:
-return queued(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case JobSubmitting() when submitting != null:
-return submitting(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case JobRunning() when running != null:
-return running(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.progress);case JobSucceeded() when succeeded != null:
-return succeeded(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.artifactPath);case JobFailed() when failed != null:
-return failed(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.error);case JobCancelled() when cancelled != null:
-return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case _:
+return queued(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case JobSubmitting() when submitting != null:
+return submitting(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case JobRunning() when running != null:
+return running(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.progress);case JobSucceeded() when succeeded != null:
+return succeeded(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.artifactPath);case JobFailed() when failed != null:
+return failed(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.error);case JobCancelled() when cancelled != null:
+return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case _:
   return orElse();
 
 }
@@ -191,15 +192,15 @@ return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId)
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)  queued,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)  submitting,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  double progress)  running,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String artifactPath)  succeeded,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  InkError error)  failed,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)  cancelled,}) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>({required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)  queued,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)  submitting,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  double progress)  running,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  String artifactPath)  succeeded,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  InkError error)  failed,required TResult Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)  cancelled,}) {final _that = this;
 switch (_that) {
 case JobQueued():
-return queued(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case JobSubmitting():
-return submitting(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case JobRunning():
-return running(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.progress);case JobSucceeded():
-return succeeded(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.artifactPath);case JobFailed():
-return failed(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.error);case JobCancelled():
-return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);}
+return queued(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case JobSubmitting():
+return submitting(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case JobRunning():
+return running(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.progress);case JobSucceeded():
+return succeeded(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.artifactPath);case JobFailed():
+return failed(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.error);case JobCancelled():
+return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);}
 }
 /// A variant of `when` that fallback to returning `null`
 ///
@@ -213,15 +214,15 @@ return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId)
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)?  queued,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)?  submitting,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  double progress)?  running,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String artifactPath)?  succeeded,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  InkError error)?  failed,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId)?  cancelled,}) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>({TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)?  queued,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)?  submitting,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  double progress)?  running,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  String artifactPath)?  succeeded,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId,  InkError error)?  failed,TResult? Function( String jobId,  String providerId,  String canvasId,  String? sourceNodeId,  String? resultNodeId)?  cancelled,}) {final _that = this;
 switch (_that) {
 case JobQueued() when queued != null:
-return queued(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case JobSubmitting() when submitting != null:
-return submitting(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case JobRunning() when running != null:
-return running(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.progress);case JobSucceeded() when succeeded != null:
-return succeeded(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.artifactPath);case JobFailed() when failed != null:
-return failed(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.error);case JobCancelled() when cancelled != null:
-return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId);case _:
+return queued(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case JobSubmitting() when submitting != null:
+return submitting(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case JobRunning() when running != null:
+return running(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.progress);case JobSucceeded() when succeeded != null:
+return succeeded(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.artifactPath);case JobFailed() when failed != null:
+return failed(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId,_that.error);case JobCancelled() when cancelled != null:
+return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId,_that.resultNodeId);case _:
   return null;
 
 }
@@ -233,13 +234,14 @@ return cancelled(_that.jobId,_that.providerId,_that.canvasId,_that.sourceNodeId)
 
 
 class JobQueued implements JobState {
-  const JobQueued({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId});
+  const JobQueued({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, this.resultNodeId});
   
 
 @override final  String jobId;
 @override final  String providerId;
 @override final  String canvasId;
 @override final  String? sourceNodeId;
+@override final  String? resultNodeId;
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
@@ -251,16 +253,16 @@ $JobQueuedCopyWith<JobQueued> get copyWith => _$JobQueuedCopyWithImpl<JobQueued>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobQueued&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobQueued&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId);
+int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,resultNodeId);
 
 @override
 String toString() {
-  return 'JobState.queued(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId)';
+  return 'JobState.queued(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, resultNodeId: $resultNodeId)';
 }
 
 
@@ -271,7 +273,7 @@ abstract mixin class $JobQueuedCopyWith<$Res> implements $JobStateCopyWith<$Res>
   factory $JobQueuedCopyWith(JobQueued value, $Res Function(JobQueued) _then) = _$JobQueuedCopyWithImpl;
 @override @useResult
 $Res call({
- String jobId, String providerId, String canvasId, String? sourceNodeId
+ String jobId, String providerId, String canvasId, String? sourceNodeId, String? resultNodeId
 });
 
 
@@ -288,12 +290,13 @@ class _$JobQueuedCopyWithImpl<$Res>
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? resultNodeId = freezed,}) {
   return _then(JobQueued(
 jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
 as String,providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,canvasId: null == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
 as String,sourceNodeId: freezed == sourceNodeId ? _self.sourceNodeId : sourceNodeId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -305,13 +308,14 @@ as String?,
 
 
 class JobSubmitting implements JobState {
-  const JobSubmitting({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId});
+  const JobSubmitting({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, this.resultNodeId});
   
 
 @override final  String jobId;
 @override final  String providerId;
 @override final  String canvasId;
 @override final  String? sourceNodeId;
+@override final  String? resultNodeId;
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
@@ -323,16 +327,16 @@ $JobSubmittingCopyWith<JobSubmitting> get copyWith => _$JobSubmittingCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobSubmitting&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobSubmitting&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId);
+int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,resultNodeId);
 
 @override
 String toString() {
-  return 'JobState.submitting(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId)';
+  return 'JobState.submitting(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, resultNodeId: $resultNodeId)';
 }
 
 
@@ -343,7 +347,7 @@ abstract mixin class $JobSubmittingCopyWith<$Res> implements $JobStateCopyWith<$
   factory $JobSubmittingCopyWith(JobSubmitting value, $Res Function(JobSubmitting) _then) = _$JobSubmittingCopyWithImpl;
 @override @useResult
 $Res call({
- String jobId, String providerId, String canvasId, String? sourceNodeId
+ String jobId, String providerId, String canvasId, String? sourceNodeId, String? resultNodeId
 });
 
 
@@ -360,12 +364,13 @@ class _$JobSubmittingCopyWithImpl<$Res>
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? resultNodeId = freezed,}) {
   return _then(JobSubmitting(
 jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
 as String,providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,canvasId: null == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
 as String,sourceNodeId: freezed == sourceNodeId ? _self.sourceNodeId : sourceNodeId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -377,13 +382,14 @@ as String?,
 
 
 class JobRunning implements JobState {
-  const JobRunning({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, this.progress = 0.0});
+  const JobRunning({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, this.resultNodeId, this.progress = 0.0});
   
 
 @override final  String jobId;
 @override final  String providerId;
 @override final  String canvasId;
 @override final  String? sourceNodeId;
+@override final  String? resultNodeId;
 @JsonKey() final  double progress;
 
 /// Create a copy of JobState
@@ -396,16 +402,16 @@ $JobRunningCopyWith<JobRunning> get copyWith => _$JobRunningCopyWithImpl<JobRunn
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobRunning&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.progress, progress) || other.progress == progress));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobRunning&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId)&&(identical(other.progress, progress) || other.progress == progress));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,progress);
+int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,resultNodeId,progress);
 
 @override
 String toString() {
-  return 'JobState.running(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, progress: $progress)';
+  return 'JobState.running(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, resultNodeId: $resultNodeId, progress: $progress)';
 }
 
 
@@ -416,7 +422,7 @@ abstract mixin class $JobRunningCopyWith<$Res> implements $JobStateCopyWith<$Res
   factory $JobRunningCopyWith(JobRunning value, $Res Function(JobRunning) _then) = _$JobRunningCopyWithImpl;
 @override @useResult
 $Res call({
- String jobId, String providerId, String canvasId, String? sourceNodeId, double progress
+ String jobId, String providerId, String canvasId, String? sourceNodeId, String? resultNodeId, double progress
 });
 
 
@@ -433,12 +439,13 @@ class _$JobRunningCopyWithImpl<$Res>
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? progress = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? resultNodeId = freezed,Object? progress = null,}) {
   return _then(JobRunning(
 jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
 as String,providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,canvasId: null == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
 as String,sourceNodeId: freezed == sourceNodeId ? _self.sourceNodeId : sourceNodeId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
 as String?,progress: null == progress ? _self.progress : progress // ignore: cast_nullable_to_non_nullable
 as double,
   ));
@@ -451,13 +458,14 @@ as double,
 
 
 class JobSucceeded implements JobState {
-  const JobSucceeded({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, required this.artifactPath});
+  const JobSucceeded({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, this.resultNodeId, required this.artifactPath});
   
 
 @override final  String jobId;
 @override final  String providerId;
 @override final  String canvasId;
 @override final  String? sourceNodeId;
+@override final  String? resultNodeId;
  final  String artifactPath;
 
 /// Create a copy of JobState
@@ -470,16 +478,16 @@ $JobSucceededCopyWith<JobSucceeded> get copyWith => _$JobSucceededCopyWithImpl<J
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobSucceeded&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.artifactPath, artifactPath) || other.artifactPath == artifactPath));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobSucceeded&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId)&&(identical(other.artifactPath, artifactPath) || other.artifactPath == artifactPath));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,artifactPath);
+int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,resultNodeId,artifactPath);
 
 @override
 String toString() {
-  return 'JobState.succeeded(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, artifactPath: $artifactPath)';
+  return 'JobState.succeeded(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, resultNodeId: $resultNodeId, artifactPath: $artifactPath)';
 }
 
 
@@ -490,7 +498,7 @@ abstract mixin class $JobSucceededCopyWith<$Res> implements $JobStateCopyWith<$R
   factory $JobSucceededCopyWith(JobSucceeded value, $Res Function(JobSucceeded) _then) = _$JobSucceededCopyWithImpl;
 @override @useResult
 $Res call({
- String jobId, String providerId, String canvasId, String? sourceNodeId, String artifactPath
+ String jobId, String providerId, String canvasId, String? sourceNodeId, String? resultNodeId, String artifactPath
 });
 
 
@@ -507,12 +515,13 @@ class _$JobSucceededCopyWithImpl<$Res>
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? artifactPath = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? resultNodeId = freezed,Object? artifactPath = null,}) {
   return _then(JobSucceeded(
 jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
 as String,providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,canvasId: null == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
 as String,sourceNodeId: freezed == sourceNodeId ? _self.sourceNodeId : sourceNodeId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
 as String?,artifactPath: null == artifactPath ? _self.artifactPath : artifactPath // ignore: cast_nullable_to_non_nullable
 as String,
   ));
@@ -525,13 +534,14 @@ as String,
 
 
 class JobFailed implements JobState {
-  const JobFailed({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, required this.error});
+  const JobFailed({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, this.resultNodeId, required this.error});
   
 
 @override final  String jobId;
 @override final  String providerId;
 @override final  String canvasId;
 @override final  String? sourceNodeId;
+@override final  String? resultNodeId;
  final  InkError error;
 
 /// Create a copy of JobState
@@ -544,16 +554,16 @@ $JobFailedCopyWith<JobFailed> get copyWith => _$JobFailedCopyWithImpl<JobFailed>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobFailed&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.error, error) || other.error == error));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobFailed&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId)&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,error);
+int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,resultNodeId,error);
 
 @override
 String toString() {
-  return 'JobState.failed(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, error: $error)';
+  return 'JobState.failed(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, resultNodeId: $resultNodeId, error: $error)';
 }
 
 
@@ -564,7 +574,7 @@ abstract mixin class $JobFailedCopyWith<$Res> implements $JobStateCopyWith<$Res>
   factory $JobFailedCopyWith(JobFailed value, $Res Function(JobFailed) _then) = _$JobFailedCopyWithImpl;
 @override @useResult
 $Res call({
- String jobId, String providerId, String canvasId, String? sourceNodeId, InkError error
+ String jobId, String providerId, String canvasId, String? sourceNodeId, String? resultNodeId, InkError error
 });
 
 
@@ -581,12 +591,13 @@ class _$JobFailedCopyWithImpl<$Res>
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? error = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? resultNodeId = freezed,Object? error = null,}) {
   return _then(JobFailed(
 jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
 as String,providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,canvasId: null == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
 as String,sourceNodeId: freezed == sourceNodeId ? _self.sourceNodeId : sourceNodeId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
 as String?,error: null == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as InkError,
   ));
@@ -599,13 +610,14 @@ as InkError,
 
 
 class JobCancelled implements JobState {
-  const JobCancelled({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId});
+  const JobCancelled({required this.jobId, required this.providerId, required this.canvasId, this.sourceNodeId, this.resultNodeId});
   
 
 @override final  String jobId;
 @override final  String providerId;
 @override final  String canvasId;
 @override final  String? sourceNodeId;
+@override final  String? resultNodeId;
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
@@ -617,16 +629,16 @@ $JobCancelledCopyWith<JobCancelled> get copyWith => _$JobCancelledCopyWithImpl<J
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobCancelled&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is JobCancelled&&(identical(other.jobId, jobId) || other.jobId == jobId)&&(identical(other.providerId, providerId) || other.providerId == providerId)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.sourceNodeId, sourceNodeId) || other.sourceNodeId == sourceNodeId)&&(identical(other.resultNodeId, resultNodeId) || other.resultNodeId == resultNodeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId);
+int get hashCode => Object.hash(runtimeType,jobId,providerId,canvasId,sourceNodeId,resultNodeId);
 
 @override
 String toString() {
-  return 'JobState.cancelled(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId)';
+  return 'JobState.cancelled(jobId: $jobId, providerId: $providerId, canvasId: $canvasId, sourceNodeId: $sourceNodeId, resultNodeId: $resultNodeId)';
 }
 
 
@@ -637,7 +649,7 @@ abstract mixin class $JobCancelledCopyWith<$Res> implements $JobStateCopyWith<$R
   factory $JobCancelledCopyWith(JobCancelled value, $Res Function(JobCancelled) _then) = _$JobCancelledCopyWithImpl;
 @override @useResult
 $Res call({
- String jobId, String providerId, String canvasId, String? sourceNodeId
+ String jobId, String providerId, String canvasId, String? sourceNodeId, String? resultNodeId
 });
 
 
@@ -654,12 +666,13 @@ class _$JobCancelledCopyWithImpl<$Res>
 
 /// Create a copy of JobState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? jobId = null,Object? providerId = null,Object? canvasId = null,Object? sourceNodeId = freezed,Object? resultNodeId = freezed,}) {
   return _then(JobCancelled(
 jobId: null == jobId ? _self.jobId : jobId // ignore: cast_nullable_to_non_nullable
 as String,providerId: null == providerId ? _self.providerId : providerId // ignore: cast_nullable_to_non_nullable
 as String,canvasId: null == canvasId ? _self.canvasId : canvasId // ignore: cast_nullable_to_non_nullable
 as String,sourceNodeId: freezed == sourceNodeId ? _self.sourceNodeId : sourceNodeId // ignore: cast_nullable_to_non_nullable
+as String?,resultNodeId: freezed == resultNodeId ? _self.resultNodeId : resultNodeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

@@ -29,6 +29,7 @@ sealed class JobState with _$JobState {
     required String providerId,
     required String canvasId,
     String? sourceNodeId,
+    String? resultNodeId,
   }) = JobQueued;
 
   /// 已取到 slot，正在调 Provider.submit——pending → submitted。
@@ -37,6 +38,7 @@ sealed class JobState with _$JobState {
     required String providerId,
     required String canvasId,
     String? sourceNodeId,
+    String? resultNodeId,
   }) = JobSubmitting;
 
   /// 轮询中，progress ∈ [0,1]——polling 状态。Provider 不提供进度时 progress=0。
@@ -45,6 +47,7 @@ sealed class JobState with _$JobState {
     required String providerId,
     required String canvasId,
     String? sourceNodeId,
+    String? resultNodeId,
     @Default(0.0) double progress,
   }) = JobRunning;
 
@@ -54,6 +57,7 @@ sealed class JobState with _$JobState {
     required String providerId,
     required String canvasId,
     String? sourceNodeId,
+    String? resultNodeId,
     required String artifactPath,
   }) = JobSucceeded;
 
@@ -63,6 +67,7 @@ sealed class JobState with _$JobState {
     required String providerId,
     required String canvasId,
     String? sourceNodeId,
+    String? resultNodeId,
     required InkError error,
   }) = JobFailed;
 
@@ -72,6 +77,7 @@ sealed class JobState with _$JobState {
     required String providerId,
     required String canvasId,
     String? sourceNodeId,
+    String? resultNodeId,
   }) = JobCancelled;
 }
 
@@ -111,6 +117,16 @@ extension JobStateX on JobState {
         JobSucceeded(:final sourceNodeId) => sourceNodeId,
         JobFailed(:final sourceNodeId) => sourceNodeId,
         JobCancelled(:final sourceNodeId) => sourceNodeId,
+      };
+
+  /// 该 job 的 result 节点 id（批量网格定点刷新用）。可为 null。
+  String? get resultNodeId => switch (this) {
+        JobQueued(:final resultNodeId) => resultNodeId,
+        JobSubmitting(:final resultNodeId) => resultNodeId,
+        JobRunning(:final resultNodeId) => resultNodeId,
+        JobSucceeded(:final resultNodeId) => resultNodeId,
+        JobFailed(:final resultNodeId) => resultNodeId,
+        JobCancelled(:final resultNodeId) => resultNodeId,
       };
 
   /// 是否处于终态——UI 用来决定能否取消 / 重试。

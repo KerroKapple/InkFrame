@@ -1,7 +1,7 @@
 // BatchResultsGrid：批量/变体结果网格——展示某结果节点下所有 slot。
 //
-// 读侧组件（batchResultsControllerProvider）。挂载点（结果节点 Inspector 槽）与
-// 生产侧（JobQueueService 落 slot 行）为后续接入，见 docs/BOARD.md。
+// 读侧组件（batchResultsControllerProvider）；挂载在 ImageResultInspector，
+// 生产侧落 slot 行见 JobQueueService。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
