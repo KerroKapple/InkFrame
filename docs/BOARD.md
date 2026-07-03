@@ -26,12 +26,12 @@
 
 | 功能 | 状态 | 优先级 | 备注 |
 |---|---|---|---|
-| 参考图 / 首尾帧 UI（Provider 已支持，缺界面） | ✅ | P0 | Inspector `_InputsSection` 已在（看/切 role/删）；连线经画布 link 模式 |
+| 参考图 / 首尾帧 UI（Provider 已支持，缺界面） | ✅ | P0 | 共享 `NodeInputsSection`（image+video 均挂载，缩略图/role 按 `supportsFirstFrame/LastFrame` 门控/n-max 计数）；连线经画布 link 模式（feat/ref-ui-completion B1/B3） |
 | 角色一致性（项目级角色参考，自动带入生成） | ✅ | P0 | characters 表/仓储/资产服务 + 生成按能力注入 + Inspector 角色区/存为角色（`69be6a9`/`295bf72`）。仅 image 节点、maxRefImages>0 且 imageToImage 生效 |
 | 批量 / 变体（生产侧 + 消费侧全链路） | ✅ | P1 | 消费侧骨架（`dfa04e5`）+ 生产侧：提交事务预建 slot 占位、JobQueue 逐 slot 落库、结果节点 Inspector 挂 `BatchResultsGrid`、取消/失败/孤儿收敛。拍板语义：≥1 成即 job success、取消保留已成 slot。经 3 路对抗评审,2×P1+4×P2 全修 |
 | 提示词模板 / 预设库 | ✅ | P1 | 项目级 schema_v7 预设库 + Inspector 点选应用/存为预设（`1fe16aa`） |
 | 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + 图像/视频 Inspector 实时预估（`d8fc9f3`/`79c45bf`） |
-| 视频 Inspector 接成本 | ✅ | P2 | `79c45bf`。角色注入 v1 仅图像（视频首/尾帧语义待接） |
+| 视频 Inspector 接成本 | ✅ | P2 | `79c45bf`。角色注入 v1 仍仅图像；视频首/尾帧语义已接通——video inspector 挂入边区 + role 切换，控制器建行前校验帧能力位不支持即显式拒绝（feat/ref-ui-completion B1/B2） |
 | 文件系统导入参考图（file_selector） | ✅ | P2 | Characters 区「从文件导入」（`1d2f555`）。桌面需开发者模式，与 media_kit 同 |
 | CI 烟测 + golden 首跑绿（beta DoD） | ✅ | P1 | run 28595968123 全绿（analyze/test+coverage 70% 闸/golden/secret-scan）。唯一 CI 红为 ME-31 测试自朽（坏迁移 v6 与真实链重号被跳过），已动态化修复 `309902b` |
 
@@ -53,8 +53,8 @@
 | 三大上帝类拆分（JobQueue/GenController/CanvasView） | 🅿️ | 非阻塞，随功能演进逐步拆 |
 | 补两档设计令牌（图标尺寸/控件高度） | 🅿️ | P2 一致性 |
 | **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | 根修需升级 freezed/riverpod_generator/custom_lint 主版本至 analyzer≥9,单独立项（2026-07-02 发现） |
-| M2 各 Inspector 区 widget 级测试（参考图/预设/角色/成本文案,覆盖停在控制器层） | 🅿️ | 2026-07-02 审计发现;随 UI 稳定补 |
+| M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（feat/ref-ui-completion）,仍欠预设点选应用与成本文案断言 | 🅿️ | 2026-07-02 审计发现;剩余随 UI 稳定补 |
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
-| `image_config_inspector.dart` `_importFromFile` 一处 `on Exception` 违规 | 🅿️ | 改捕具体 InkError 子类;顺带清 `batch_results_grid` 裸 catch + AsyncValue error 态吞没(两处镜像模式统一改 `.when`) |
+| Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | 🅿️ | 原捆绑的 3 处 `on Exception` 吞错与 `batch_results_grid` 裸 catch 已修（feat/ref-ui-completion B3）,仅剩 error 态展示 |
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | 🅿️ | 产品面缺口,M3 排期 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | 🅿️ | 收口到 core/constants 一次性改 |
