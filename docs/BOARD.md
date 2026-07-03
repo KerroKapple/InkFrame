@@ -42,7 +42,7 @@
 | 分镜 / Shot 节点（脚本→分镜→序列） | 🔵 | Shot 编辑器落地（`8dbf2fa`）；**首切片完成**：「用本镜备注生成图像」（shot_notes→image config 节点+narrative 边）+ FAB/空态 shot 创建入口 + addNode typeConfig 透传。后续：脚本解析、镜头级参数、序列预览 |
 | 视频导出 / 拼接 | ⬜ | |
 | 本地素材 / 产物画廊（借鉴 InvokeAI） | ⬜ | |
-| 模型扩展（自定义 Provider，BYO-key） | ⬜ | 2026-07-02 拍板：`custom_providers.json` 文件存储 + **协议白名单模板**派生 capabilities（PROVIDER-API §13 现稿方向）；开工时重写 §13 为单一方案并小修 ADR-0009 |
+| 模型扩展（自定义 Provider，BYO-key） | 🔵 | **首切片落地**：`custom_providers.json`（逐条校验 + 损坏兜底）→ 协议模板 `openai-image` 派生 capabilities → `OpenAICompatibleImageProvider`(extends SyncProviderBase) → 启动期一次性注册（改 json 重启生效）；key 复用 `provider.custom:<id>.api_key`，设置页/门控/banner 零改动生效。PROVIDER-API §13 已重写为唯一方案，ADR-0009 已修订（2026-07-02）。后续：设置页编辑 UI、运行时增删（registry 变异非 invalidate）、更多协议模板 |
 | 定位落地（README/官网：你的数据/Key/工作室） | ⬜ | |
 
 ## 已延后 / 技术债

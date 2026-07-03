@@ -91,6 +91,7 @@ abstract class KeyValidatable {
 |---|---|
 | 同步图片（gemini-image / openai-image / stability-image-core） | `Submittable` + `Pollable` + `KeyValidatable`（poll 走 inlineBytes cache，见 §5.5） |
 | DashScope 异步系（wanx-* / kling-v3 / kling-v3-omni，共享基类 `DashScopeAsyncProviderBase`） | `Submittable` + `Pollable` + `KeyValidatable` |
+| 自定义 OpenAI 兼容（`custom:*`，`OpenAICompatibleImageProvider` extends `SyncProviderBase`，见 §13） | 同步图片同款（inlineBytes cache） |
 
 当前没有任何 Provider 实现 `Cancellable`（所有 capabilities 的 `supportsCancellation` 均为 false）——接口保留作为扩展点。
 
@@ -136,9 +137,9 @@ abstract class ProviderCapabilities with _$ProviderCapabilities {
 
 **硬约束**：
 
-- `providerId` 全小写 kebab-case，与 §9.1 表对齐（`wanx-image` 不是 `WanxImage`）
+- `providerId` 全小写 kebab-case，与 §9.1 表对齐（`wanx-image` 不是 `WanxImage`）；自定义 Provider 恒为 `custom:<id>`（§13）
 - 枚举值只能用 `AspectRatio` / `Resolution` / `CameraMovement` / `GenerationMode`，禁止字符串
-- `capabilities` 必须是 `const` 字段；禁止运行时构造、禁止从配置文件/网络下发
+- 内置 Provider 的 `capabilities` 必须是 `const` 字段；自定义 Provider（§13）从代码内 const 协议模板经 `copyWith(providerId, displayName)` 派生、实例化后不可变——两种形态都禁止能力位来自 .env / DB / 网络 / 用户自由填写
 
 **UI fallback 规则**：`supportedRatios` 为空或不包含当前值 → 自动 fallback 到第一个支持值，**禁止抛错**。
 
@@ -368,7 +369,7 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 
 ## 9. 已实现 Provider 差异矩阵
 
-> 唯一事实源是各 provider 文件顶部的 `const k*Capabilities`；本节只是速查快照，改 capabilities 时同 commit 更新这里。注册清单见 `lib/core/di/providers.dart`。未接入的 Provider（Jimeng / Hailuo / Kling 官方 API / DALL-E 3 等）一律见 `ROADMAP.md`，不在本表。
+> 唯一事实源是各 provider 文件顶部的 `const k*Capabilities`；本节只是速查快照，改 capabilities 时同 commit 更新这里。注册清单见 `lib/core/di/providers.dart`。未接入的 Provider（Jimeng / Hailuo / Kling 官方 API / DALL-E 3 等）一律见 `ROADMAP.md`，不在本表。自定义 Provider（`custom:*`）能力由 §13.2 协议模板派生，也不在本表。
 
 ### 9.1 接入参数（写死在各 provider 文件顶部 const 区）
 
@@ -448,16 +449,24 @@ lib/
 │   │   ├── generation_task.dart           # freezed
 │   │   ├── job_status.dart                # freezed sealed
 │   │   ├── key_validation_result.dart     # freezed sealed
+│   │   ├── custom_provider_config.dart    # freezed + json（自定义 Provider 配置条目，§13）
+│   │   ├── provider_protocol_template.dart # 协议模板白名单 const + 派生函数（§13.2）
 │   │   └── provider_quota.dart            # freezed（配额展示模型，暂无消费方）
+│   ├── interfaces/
+│   │   └── custom_provider_source.dart    # 自定义 Provider 配置源契约（同步只读）
 │   └── errors/
 │       └── ink_error.dart                 # sealed hierarchy + InkErrorCode 14 码
+├── services/
+│   └── custom_providers_file_service.dart # custom_providers.json 读取/校验/兜底（§13.1）
 ├── providers/
 │   ├── provider_registry.dart             # id → factory
 │   ├── rate_limiter.dart                  # Per-Provider Token Bucket
 │   ├── dio_error_mapper.dart              # mapDioError：DioException → InkError
+│   ├── sync_provider_base.dart            # 同步图片 Provider 共享基类（inlineBytes 通道）
 │   ├── dashscope_async_provider_base.dart # DashScope 系 6 款共享基类
 │   ├── gemini_image_provider.dart
 │   ├── openai_image_provider.dart
+│   ├── openai_compatible_provider.dart    # 自定义 OpenAI 兼容适配器（§13.3）
 │   ├── stability_image_core_provider.dart
 │   ├── wanx_image_provider.dart
 │   ├── wanx_t2v_provider.dart
@@ -466,7 +475,8 @@ lib/
 │   ├── kling_v3_provider.dart
 │   └── kling_v3_omni_provider.dart
 └── core/di/
-    └── providers.dart                     # Riverpod 接线（registry + 共享 RateLimiter）
+    ├── providers.dart                     # Riverpod 接线（registry + 共享 RateLimiter + 能力合并源）
+    └── custom_providers.dart              # customProviderSourceProvider（默认空，main 覆盖）
 ```
 
 **命名**：
@@ -521,25 +531,77 @@ test/fixtures/providers/
 
 ---
 
-## 13. 自定义 Provider 扩展点
+## 13. 自定义 Provider（BYO-key，OpenAI 兼容）
 
-> **Planned，未实现**。当前 `ProviderRegistry` 只接受 `lib/core/di/providers.dart` 传入的内置映射，无任何外部源合并逻辑。以下是设计预留：
+> **已落地（首切片）**。2026-07-02 拍板的唯一方案：**配置文件 + 协议白名单模板派生**。
+> 本节与实现一一对齐；运行时增删 / 更多协议模板 / 设置页编辑 UI 是后续切片（见 ROADMAP / BOARD）。
 
-`ProviderRegistry` 未来启动时合并三个源：
+### 13.1 配置文件
 
-1. 内置 Provider（`lib/providers/*.dart` 中的 `providerId`）——**当前唯一来源**
-2. `~/InkFrame/config/custom_providers.json`（用户自定义）——Planned
-3. 插件包——更远期
+- 位置：`~/InkFrame/config/custom_providers.json`（`AppPaths.config`，与 `preferences.json` 同目录）
+- 可手编 / 可分享（**Key 永不入此文件**，见 §13.4）
+- 顶层是 JSON 数组；每条 5 个字段，全部必填非空字符串：
 
-**自定义 Provider 协议白名单**（硬编码）：
+```json
+[
+  {
+    "id": "my-openrouter",
+    "display_name": "OpenRouter FLUX",
+    "template": "openai-image",
+    "base_url": "https://openrouter.ai/api/v1",
+    "model_id": "black-forest-labs/flux-1.1-pro"
+  }
+]
+```
 
-| protocol | 说明 |
+| 字段 | 约束 |
 |---|---|
-| `openai-image` | OpenAI Images API 兼容 |
-| `openai-chat-image` | OpenAI Chat Completions + image 输出 |
-| `gemini-compatible` | Google Generative Language API 兼容 |
+| `id` | `^[A-Za-z0-9][A-Za-z0-9_-]*$`，文件内唯一；providerId 恒为 `custom:<id>` |
+| `display_name` | 非空；inspector 下拉显示名（设置页 API Keys 行当前显示原始 `custom:<id>`，接入 displayName 属下一切片设置页 UI） |
+| `template` | §13.2 白名单之一 |
+| `base_url` | 绝对 http(s) URL，**不得含 query/fragment/userinfo**（Dio baseUrl 为字符串拼接，带 query 必产坏请求）；尾部 `/` 解析时剔除 |
+| `model_id` | 非空；透传为请求体 `model` 字段 |
 
-**禁止**运行时下发协议（安全边界）。
+**校验与损坏兜底**（`lib/services/custom_providers_file_service.dart`，模型 `lib/core/models/custom_provider_config.dart`）：
+
+- 文件缺失 → 空列表（静默，不算错误）
+- 文件不可读 / JSON 损坏 / 顶层不是数组 → 空列表 + WARN 日志（`module=custom_providers`），**不崩、不阻断启动**
+- 单条非法（非对象、字段缺失或空、`id` 不合法/重复/与内置 providerId 冲突、未知 `template`、`base_url` 非法）→ 仅剔除该条 + WARN（含 index 与 reason），其余条目照常生效
+
+### 13.2 协议模板白名单（代码内 const）
+
+模板 = 一份 const `ProviderCapabilities` 能力基线，定义在 `lib/core/models/provider_protocol_template.dart` 的 `kProviderProtocolTemplates`。用户**只选模板 + 填实例化参数**（`base_url` / `model_id` / `display_name`），**不自由填能力位**。派生规则（`deriveCustomProviderCapabilities`）：
+
+```
+capabilities = 模板基线.copyWith(providerId: 'custom:<id>', displayName: display_name)
+```
+
+| template | 适配器 | 能力基线（保守） |
+|---|---|---|
+| `openai-image` | `OpenAICompatibleImageProvider`（`lib/providers/openai_compatible_provider.dart`，extends `SyncProviderBase`） | textToImage；比例 1:1 / 16:9 / 9:16；1080p；maxBatchSize 1；maxRefImages 0；无 seed / 负向 / 批量 / 取消；qps 1 / burst 2 / 并发 1；costModel `perCall(0)`（计费未知按零估） |
+
+**禁止**运行时自由下发能力位（安全边界，§14-6）。加新模板 = 改代码 + 发版。候选模板（未实现，勿在配置中使用）：`openai-chat-image`、`gemini-compatible`。
+
+### 13.3 协议接入点（`openai-image` 模板）
+
+| 动作 | 请求 |
+|---|---|
+| 生成 | `POST {base_url}/images/generations`，JSON body `{model, prompt, n: 1, size, response_format: "b64_json"}`，`Authorization: Bearer <key>` |
+| Key 验证 | `GET {base_url}/models`（零生成配额） |
+
+- 结果走同步 inlineBytes 通道（§5.5 / ADR-0004）：解析 `data[0].b64_json`，poll 一次性消费；**基类禁止在 Provider 内下载远端 URL**，故请求体显式要求 `b64_json`
+- `size` 由 AspectRatio 映射：1:1→`1024x1024`，16:9→`1536x1024`，9:16→`1024x1536`
+- 错误映射与内置同步 Provider 完全一致（`mapDioError` + §6.1 14 码）
+
+### 13.4 Key 存储
+
+复用 `SecureStorageKeys.providerApiKey('custom:<id>')` → `provider.custom:<id>.api_key`（`scopeOf` 对未登记家族回退 providerId 本身）。设置页 API Keys 分节按 capabilities 列表自动多出一行；生成链路 key 校验 / inspector 门控 / Studio banner **零改动生效**。
+
+### 13.5 生效时机（本切片：启动期一次性注册）
+
+- `main()` 在构建 ProviderContainer 前完成 `CustomProvidersFileService.load()`（对齐 `FilePreferencesService` 的 bootstrap 模式），经 `customProviderSourceProvider`（`lib/core/di/custom_providers.dart`，默认空实现）overrideWithValue 注入
+- `providerRegistryProvider` 构建时把 custom factory 并入内置映射（每个 providerId 一个 `ProviderRateLimiter`，dispose 挂 container 生命周期，同内置样板）；`providerCapabilitiesListProvider` 同步合并（custom 为空时原样返回内置 const 列表）——保持**同步可读**（image inspector 在 initState 里 `ref.read`）
+- **会话内不变**：改 json 须重启生效。`providerRegistryProvider` 禁止 invalidate（JobQueue 连锁重建会把运行中任务打成 cancelled）；运行时增删是下一切片（须走 registry 变异 + 旧实例驱逐，而非 invalidate）
 
 ---
 
@@ -562,8 +624,9 @@ test/fixtures/providers/
 5. ❌ `validateApiKey` 内调 `submit()` 做"验证"
    → 消耗用户配额，用户会投诉
 
-6. ❌ `capabilities` 从 `.env` 或数据库读
-   → 必须 `const`
+6. ❌ 能力位运行时自由下发（`.env` / DB / 网络 / 配置文件里直接写能力位）
+   → 内置 Provider 的 `capabilities` 必须 `const`；自定义 Provider 只能从代码内 const 协议模板派生（§13.2），
+     用户配置仅提供实例化参数（`base_url` / `model_id` / `display_name`），不含任何能力位
 
 7. ❌ 在 `submit()` 里 `await Future.delayed(Duration(seconds: 3))` 模拟退避
    → 退避是 JobQueueService 的职责
@@ -585,3 +648,4 @@ test/fixtures/providers/
 |---|---|---|---|
 | 2026-04-15 | v0.1.0 | 初版。对齐 PRD §10 + ARCHITECTURE §3 | P9 |
 | 2026-06-12 | v0.1.1 | 对齐真实代码：QuotaAware 删除（四接口）；§6 错误契约改为真实 sealed 子类 + `mapDioError` 签名；§9 矩阵替换为已实现 9 款；estimateCost / 自定义 Provider 标 Planned；§11/§12 文件与测试布局对齐 repo | FIX-019 |
+| 2026-07-03 | v0.2.0 | §13 重写为唯一已落地方案（custom_providers.json + 协议模板派生 + 启动期一次性注册）；§3 硬约束与 §14-6 反模式收敛为"能力位禁止运行时自由下发"（模板派生合法）；§2/§9/§11 补自定义 Provider 条目。对应 ADR-0009 2026-07-02 修订 | M3 首切片 |
