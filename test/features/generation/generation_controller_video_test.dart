@@ -26,6 +26,7 @@ import 'package:inkframe/providers/provider_registry.dart';
 
 import '../../_harness/fake_batch_result.dart';
 import '../../_harness/fake_character.dart';
+import '../../_harness/fake_providers.dart';
 import '../../_harness/fake_unit_of_work.dart';
 
 // ---- fakes ------------------------------------------------------------
@@ -444,7 +445,25 @@ void main() {
     expect(task.camera, isNull);
   });
 
+  /// 注册带首/尾帧能力位的 fake video provider（帧能力校验经 registry.get 读取）。
+  void useVideoProvider({bool first = false, bool last = false}) {
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(
+        capabilities: fakeVideoCapabilities(
+          id: providerId,
+          modes: const <GenerationMode>[
+            GenerationMode.textToVideo,
+            GenerationMode.imageToVideo,
+          ],
+          supportsFirstFrame: first,
+          supportsLastFrame: last,
+        ),
+      ),
+    });
+  }
+
   test('video config + first_frame data edge → mode=imageToVideo', () async {
+    useVideoProvider(first: true);
     final cfg = await seedVideoConfigNode();
     await secure.store(
       SecureStorageKeys.providerApiKey(providerId),
@@ -458,6 +477,70 @@ void main() {
     final task = queue.lastTask!;
     expect(task.mode, GenerationMode.imageToVideo);
     expect(task.firstFramePath, contains('images/first.png'));
+  });
+
+  test('provider 不支持首帧 + first_frame 边 → InvalidGenerationConfigError，无副作用', () async {
+    useVideoProvider(); // supportsFirstFrame: false
+    final cfg = await seedVideoConfigNode();
+    await secure.store(
+      SecureStorageKeys.providerApiKey(providerId),
+      'sk-test',
+    );
+    seedRefImageNode(id: 'ff', imageUrl: 'images/first.png');
+    seedDataEdge(sourceId: 'ff', targetId: cfg, role: 'first_frame');
+
+    await expectLater(
+      buildCtrl().submitFromConfigNode(cfg),
+      throwsA(isA<InvalidGenerationConfigError>().having(
+        (e) => e.reason,
+        'reason',
+        'first_frame_unsupported',
+      )),
+    );
+    // fail-fast：不留半行（result 节点 / job 都不建）。
+    expect(nodes.creates, isEmpty);
+    expect(jobs.creates, isEmpty);
+  });
+
+  test('provider 不支持尾帧 + last_frame 边 → InvalidGenerationConfigError（不静默丢）', () async {
+    useVideoProvider(first: true); // supportsLastFrame: false
+    final cfg = await seedVideoConfigNode();
+    await secure.store(
+      SecureStorageKeys.providerApiKey(providerId),
+      'sk-test',
+    );
+    seedRefImageNode(id: 'lf', imageUrl: 'images/last.png');
+    seedDataEdge(sourceId: 'lf', targetId: cfg, role: 'last_frame');
+
+    await expectLater(
+      buildCtrl().submitFromConfigNode(cfg),
+      throwsA(isA<InvalidGenerationConfigError>().having(
+        (e) => e.reason,
+        'reason',
+        'last_frame_unsupported',
+      )),
+    );
+    expect(jobs.creates, isEmpty);
+  });
+
+  test('首尾帧全支持 + 双边 → firstFramePath/lastFramePath 都注入', () async {
+    useVideoProvider(first: true, last: true);
+    final cfg = await seedVideoConfigNode();
+    await secure.store(
+      SecureStorageKeys.providerApiKey(providerId),
+      'sk-test',
+    );
+    seedRefImageNode(id: 'ff', imageUrl: 'images/first.png');
+    seedRefImageNode(id: 'lf', imageUrl: 'images/last.png');
+    seedDataEdge(sourceId: 'ff', targetId: cfg, role: 'first_frame');
+    seedDataEdge(sourceId: 'lf', targetId: cfg, role: 'last_frame');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    final task = queue.lastTask!;
+    expect(task.mode, GenerationMode.imageToVideo);
+    expect(task.firstFramePath, contains('images/first.png'));
+    expect(task.lastFramePath, contains('images/last.png'));
   });
 
   test('非 image/video type → InvalidGenerationConfigError', () async {

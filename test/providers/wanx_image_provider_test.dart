@@ -119,6 +119,19 @@ void main() {
       expect((parts[1] as Map)['image'], '/abs/ref.png');
     });
 
+    // 控制器合并边连参考图 + 角色图后不截断（截断责任约定在 provider——
+    // generation_controller._injectCharacterRefs 注释明确），此处必须收口。
+    test('refImagePaths 超出 maxRefImages(1) → 按能力截断只取首张', () {
+      final body = p.buildRequestBody(
+        _t2iTask(refs: ['/a.png', '/b.png', '/c.png']),
+      );
+      final content = ((body['input'] as Map)['messages'] as List).first
+          as Map;
+      final parts = content['content'] as List;
+      expect(parts, hasLength(2)); // text + 1 image
+      expect((parts[1] as Map)['image'], '/a.png');
+    });
+
     test('可选参数透传：negative_prompt + seed + batchSize', () {
       final body = p.buildRequestBody(_t2iTask(
         batch: 4,
