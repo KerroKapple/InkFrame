@@ -776,6 +776,30 @@ abstract class AppLocalizations {
   /// **'Remove input'**
   String get inspectorRemoveInput;
 
+  /// No description provided for @inspectorInputsLabelCounted.
+  ///
+  /// In en, this message translates to:
+  /// **'Inputs ({count}/{max})'**
+  String inspectorInputsLabelCounted(int count, int max);
+
+  /// No description provided for @inspectorInputsOverLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Exceeds provider limit ({max}); extra reference images are ignored'**
+  String inspectorInputsOverLimit(int max);
+
+  /// No description provided for @inspectorPresetsSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to save preset'**
+  String get inspectorPresetsSaveFailed;
+
+  /// No description provided for @inspectorCharactersImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to import character'**
+  String get inspectorCharactersImportFailed;
+
   /// No description provided for @inspectorCharactersLabel.
   ///
   /// In en, this message translates to:

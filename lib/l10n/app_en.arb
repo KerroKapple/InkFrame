@@ -167,6 +167,21 @@
   "inspectorRoleFirstFrame": "First frame",
   "inspectorRoleLastFrame": "Last frame",
   "inspectorRemoveInput": "Remove input",
+  "inspectorInputsLabelCounted": "Inputs ({count}/{max})",
+  "@inspectorInputsLabelCounted": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "inspectorInputsOverLimit": "Exceeds provider limit ({max}); extra reference images are ignored",
+  "@inspectorInputsOverLimit": {
+    "placeholders": {
+      "max": { "type": "int" }
+    }
+  },
+  "inspectorPresetsSaveFailed": "Failed to save preset",
+  "inspectorCharactersImportFailed": "Failed to import character",
 
   "inspectorCharactersLabel": "Characters",
   "inspectorCharactersEmpty": "No characters yet",

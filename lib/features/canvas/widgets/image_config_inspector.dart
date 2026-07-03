@@ -5,17 +5,23 @@
 // InspectorSubmitController(nodeId)；hasApiKey 经 inspectorHasApiKeyProvider
 // 缓存；四态渲染由 InspectorStatusBinding → InspectorStatusPanel 完成。
 
+import 'dart:io';
+
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter/material.dart' hide AspectRatio;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/character_assets.dart';
 import '../../../core/di/file_resolver.dart';
 import '../../../core/di/providers.dart';
+import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/character_asset_service.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
+import '../../../theme/primitives/ink_dashed_slot.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/services/cost_estimator.dart';
 import '../../generation/services/prompt_assembler.dart';
@@ -538,38 +544,26 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
             prompt: current.prompt.trim(),
             negative: current.negative.trim(),
           );
-    } on Exception catch (_) {
-      // best-effort：落库失败不崩 UI（InkError 均实现 Exception）。
+    } on InkError catch (_) {
+      // 落库失败不崩 UI，但必须让用户知道没存上（此前静默吞错 = 假成功）。
+      // 参数 context 跨 async gap 不可用，取 State 自身 context（mounted 已守卫）。
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(this.context)?.showSnackBar(
+        SnackBar(content: Text(this.context.l10n.inspectorPresetsSaveFailed)),
+      );
     }
   }
 
-  Future<String?> _promptPresetName(BuildContext context) async {
-    final ctrl = TextEditingController();
-    try {
-      return await showDialog<String>(
+  Future<String?> _promptPresetName(BuildContext context) =>
+      showDialog<String>(
         context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(ctx.l10n.inspectorPresetsDialogTitle),
-          content: InkInput(
-            controller: ctrl,
-            hintText: ctx.l10n.inspectorPresetsNameHint,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(ctx.l10n.commonCancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(ctrl.text),
-              child: Text(ctx.l10n.inspectorCharactersSave),
-            ),
-          ],
+        builder: (ctx) => _NameDialog(
+          title: ctx.l10n.inspectorPresetsDialogTitle,
+          hint: ctx.l10n.inspectorPresetsNameHint,
+          confirmLabel: ctx.l10n.inspectorCharactersSave,
+          cancelLabel: ctx.l10n.commonCancel,
         ),
       );
-    } finally {
-      ctrl.dispose();
-    }
-  }
 }
 
 /// 项目级角色一致性：把可复用角色挂到本 config 节点（写 type_config.character_ids），
@@ -624,6 +618,19 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
     });
   }
 
+  /// 角色首张参考图缩略图绝对路径；无图 / 越权路径 → null 不渲染。
+  String? _characterThumb(String projectId, Character c) {
+    if (c.referenceImagePaths.isEmpty) return null;
+    try {
+      return ref.read(characterAssetServiceProvider).absolutePathOf(
+        projectId: projectId,
+        relativePath: c.referenceImagePaths.first,
+      );
+    } on CharacterAssetError {
+      return null;
+    }
+  }
+
   /// 本 config 节点第一条 reference data 边上、带 image_url 的源节点（"存为角色"来源）。
   CanvasNode? _referenceSource() {
     final canvasId = widget.targetNode.canvasId;
@@ -675,9 +682,12 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
             ),
           ),
         if (characters.isEmpty)
-          Text(
-            context.l10n.inspectorCharactersEmpty,
-            style: typo.caption.copyWith(color: colors.fg3),
+          InkDashedSlot(
+            onPressed: _importFromFile,
+            child: Text(
+              context.l10n.inspectorCharactersEmpty,
+              style: typo.caption.copyWith(color: colors.fg3),
+            ),
           )
         else
           Wrap(
@@ -689,6 +699,7 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
                   label: c.name.isNotEmpty ? c.name : c.id,
                   selected: _attachedIds.contains(c.id),
                   onTap: () => _toggle(c.id),
+                  thumbPath: _characterThumb(projectId, c),
                 ),
             ],
           ),
@@ -732,8 +743,12 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
           .read(charactersControllerProvider(projectId).notifier)
           .createFromImage(name: name.trim(), sourceAbsolutePath: file.path);
       if (mounted) _toggle(id);
-    } on Exception catch (_) {
-      // best-effort：选择/导入失败不崩 UI。
+    } on InkError catch (_) {
+      // 导入失败不崩 UI，但要提示（此前静默吞错 = 假成功）。
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+      );
     }
   }
 
@@ -760,50 +775,88 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
           .read(charactersControllerProvider(projectId).notifier)
           .createFromImage(name: name.trim(), sourceAbsolutePath: abs);
       if (mounted) _toggle(id);
-    } on Exception catch (_) {
-      // best-effort：导入/落库失败不崩 UI（下次可重试）。
+    } on InkError catch (_) {
+      // 导入/落库失败不崩 UI，但要提示（下次可重试）。
+      if (!mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+      );
     }
   }
 
-  Future<String?> _promptName(BuildContext context) async {
-    final ctrl = TextEditingController();
-    try {
-      return await showDialog<String>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(ctx.l10n.inspectorCharactersDialogTitle),
-          content: InkInput(
-            controller: ctrl,
-            hintText: ctx.l10n.inspectorCharactersNameHint,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(ctx.l10n.commonCancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(ctrl.text),
-              child: Text(ctx.l10n.inspectorCharactersSave),
-            ),
-          ],
+  Future<String?> _promptName(BuildContext context) => showDialog<String>(
+    context: context,
+    builder: (ctx) => _NameDialog(
+      title: ctx.l10n.inspectorCharactersDialogTitle,
+      hint: ctx.l10n.inspectorCharactersNameHint,
+      confirmLabel: ctx.l10n.inspectorCharactersSave,
+      cancelLabel: ctx.l10n.commonCancel,
+    ),
+  );
+}
+
+/// 命名对话框。TextEditingController 生命周期归 dialog 自身——退场动画期间
+/// TextField 仍引用 controller，调用方在 showDialog 返回后立即 dispose 会炸。
+class _NameDialog extends StatefulWidget {
+  const _NameDialog({
+    required this.title,
+    required this.hint,
+    required this.confirmLabel,
+    required this.cancelLabel,
+  });
+
+  final String title;
+  final String hint;
+  final String confirmLabel;
+  final String cancelLabel;
+
+  @override
+  State<_NameDialog> createState() => _NameDialogState();
+}
+
+class _NameDialogState extends State<_NameDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: InkInput(controller: _ctrl, hintText: widget.hint),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(widget.cancelLabel),
         ),
-      );
-    } finally {
-      ctrl.dispose();
-    }
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(_ctrl.text),
+          child: Text(widget.confirmLabel),
+        ),
+      ],
+    );
   }
 }
+
+/// 角色 chip 缩略图边长（正方形裁切）。
+const double _kCharacterThumbSize = 20;
 
 class _CharacterChip extends StatelessWidget {
   const _CharacterChip({
     required this.label,
     required this.selected,
     required this.onTap,
+    this.thumbPath,
   });
 
   final String label;
   final bool selected;
   final VoidCallback onTap;
+  final String? thumbPath;
 
   @override
   Widget build(BuildContext context) {
@@ -825,6 +878,24 @@ class _CharacterChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (thumbPath != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(InkRadius.sm),
+                child: Image.file(
+                  File(thumbPath!),
+                  width: _kCharacterThumbSize,
+                  height: _kCharacterThumbSize,
+                  fit: BoxFit.cover,
+                  // 缺文件/坏图占位，不崩 UI。
+                  errorBuilder: (_, _, _) => Icon(
+                    Icons.person_outline,
+                    size: 14,
+                    color: selected ? colors.surfaceCanvas : colors.fg3,
+                  ),
+                ),
+              ),
+              const SizedBox(width: InkSpacing.xs),
+            ],
             if (selected) ...[
               Icon(Icons.check, size: 14, color: colors.surfaceCanvas),
               const SizedBox(width: InkSpacing.xs),

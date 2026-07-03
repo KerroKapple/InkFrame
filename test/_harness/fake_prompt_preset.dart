@@ -1,4 +1,5 @@
 // 测试用 PromptPreset 仓储 fake。
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/prompt_preset_repository.dart';
 
 class FakePromptPresetRepo implements PromptPresetRepository {
@@ -8,6 +9,9 @@ class FakePromptPresetRepo implements PromptPresetRepository {
   final Map<String, Map<String, Object?>> rows;
   final List<String> softDeleted = <String>[];
   int createCalls = 0;
+
+  /// 置 true 时 create 抛 LocalIOError（模拟落库失败路径）。
+  bool failCreate = false;
 
   @override
   Future<String> create({
@@ -19,6 +23,7 @@ class FakePromptPresetRepo implements PromptPresetRepository {
     String negative = '',
     int sortOrder = 0,
   }) async {
+    if (failCreate) throw const LocalIOError();
     createCalls++;
     final id = 'preset-$createCalls';
     rows[id] = <String, Object?>{
