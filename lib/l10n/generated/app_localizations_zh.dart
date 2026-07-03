@@ -788,4 +788,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get baseStyleUpdateFailed => '更新基底风格失败';
+
+  @override
+  String get commonRetry => '重试';
+
+  @override
+  String get galleryEntryLabel => '画廊';
+
+  @override
+  String galleryBreadcrumb(String projectName) {
+    return '$projectName / 画廊';
+  }
+
+  @override
+  String get galleryBackTooltip => '返回工作室';
+
+  @override
+  String get galleryEmptyTitle => '还没有生成的产物';
+
+  @override
+  String get galleryEmptySubtitle => '该项目画布上生成的图片和视频会显示在这里。';
+
+  @override
+  String get galleryLoadFailed => '画廊加载失败';
+
+  @override
+  String get galleryKindImage => '图片';
+
+  @override
+  String get galleryKindVideo => '视频';
 }

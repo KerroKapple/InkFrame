@@ -1603,6 +1603,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to update base style'**
   String get baseStyleUpdateFailed;
+
+  /// No description provided for @commonRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get commonRetry;
+
+  /// No description provided for @galleryEntryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get galleryEntryLabel;
+
+  /// Gallery top chrome breadcrumb
+  ///
+  /// In en, this message translates to:
+  /// **'{projectName} / Gallery'**
+  String galleryBreadcrumb(String projectName);
+
+  /// No description provided for @galleryBackTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to studio'**
+  String get galleryBackTooltip;
+
+  /// No description provided for @galleryEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No generated assets yet'**
+  String get galleryEmptyTitle;
+
+  /// No description provided for @galleryEmptySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Images and videos generated on this project\'s canvases will appear here.'**
+  String get galleryEmptySubtitle;
+
+  /// No description provided for @galleryLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load gallery'**
+  String get galleryLoadFailed;
+
+  /// No description provided for @galleryKindImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get galleryKindImage;
+
+  /// No description provided for @galleryKindVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get galleryKindVideo;
 }
 
 class _AppLocalizationsDelegate

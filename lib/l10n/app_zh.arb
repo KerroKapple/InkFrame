@@ -321,5 +321,20 @@
   "baseStylePresetInkwash": "水墨",
   "baseStylePresetPhoto": "写实摄影",
   "baseStylePreset3d": "3D动画",
-  "baseStyleUpdateFailed": "更新基底风格失败"
+  "baseStyleUpdateFailed": "更新基底风格失败",
+
+  "commonRetry": "重试",
+  "galleryEntryLabel": "画廊",
+  "galleryBreadcrumb": "{projectName} / 画廊",
+  "@galleryBreadcrumb": {
+    "placeholders": {
+      "projectName": { "type": "String" }
+    }
+  },
+  "galleryBackTooltip": "返回工作室",
+  "galleryEmptyTitle": "还没有生成的产物",
+  "galleryEmptySubtitle": "该项目画布上生成的图片和视频会显示在这里。",
+  "galleryLoadFailed": "画廊加载失败",
+  "galleryKindImage": "图片",
+  "galleryKindVideo": "视频"
 }

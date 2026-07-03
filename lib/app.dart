@@ -4,7 +4,8 @@
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
 // - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
-// - 锁屏后路由：currentCanvasId 优先；否则按 currentScreenProvider 在 Studio / Settings 切换
+// - 锁屏后路由：currentCanvasId 优先；其次 currentGalleryProject（项目产物画廊）；
+//   否则按 currentScreenProvider 在 Studio / Settings 切换
 // - 新增节点 FAB 已下沉到 CanvasScreen 内部，本文件不再托管
 
 import 'package:flutter/material.dart';
@@ -15,6 +16,8 @@ import 'core/di/locale.dart';
 import 'core/di/theme.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
+import 'features/gallery/providers/current_gallery_project.dart';
+import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
 import 'features/settings/settings_screen.dart';
 import 'features/studio/studio_home_screen.dart';
@@ -77,6 +80,12 @@ class _UnlockedShell extends ConsumerWidget {
     final canvasId = ref.watch(currentCanvasIdProvider);
     if (canvasId != null) {
       return const CanvasScreen();
+    }
+    final gallery = ref.watch(currentGalleryProjectProvider);
+    if (gallery != null) {
+      return Scaffold(
+        body: GalleryScreen(projectId: gallery.id, projectName: gallery.name),
+      );
     }
     final screen = ref.watch(currentScreenProvider);
     return switch (screen) {

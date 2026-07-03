@@ -16,6 +16,7 @@ import '../../theme/primitives/ink_compact_text_field.dart';
 import '../../theme/primitives/ink_ghost_button.dart';
 import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
+import '../gallery/providers/current_gallery_project.dart';
 import 'controllers/studio_projects_controller.dart';
 import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
@@ -462,6 +463,9 @@ class _ProjectGrid extends ConsumerWidget {
                   }
                 }
               },
+              onOpenGallery: () => ref
+                  .read(currentGalleryProjectProvider.notifier)
+                  .state = (id: p.id, name: p.name),
               onRename: () => _renameProject(context, ref, p),
               onDelete: () => _deleteProject(context, ref, p),
             );

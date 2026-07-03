@@ -360,6 +360,80 @@ void main() {
       return;
     }
   });
+
+  test('BatchResultRepository.listSuccessByProject：跨画布聚合 + 过滤状态/软删 + join 派生列',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final canvasRepo = PostgresCanvasRepository(h.conn);
+      final cid1 = await canvasRepo.create(projectId: pid, name: 'C1');
+      final cid2 = await canvasRepo.create(projectId: pid, name: 'C2');
+      final nodes = PostgresNodeRepository(h.conn);
+      final cfg =
+          await nodes.create(canvasId: cid1, type: 'image', nodeRole: 'config');
+      final res1 = await nodes.create(
+          canvasId: cid1, type: 'image', nodeRole: 'result', sourceNodeId: cfg);
+      final res2 =
+          await nodes.create(canvasId: cid2, type: 'image', nodeRole: 'result');
+      final jid = await PostgresJobRepository(h.conn).create(
+        canvasId: cid1,
+        sourceNodeId: cfg,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      final repo = PostgresBatchResultRepository(h.conn);
+      final ok1 = await repo.create(
+          nodeId: res1, jobId: jid, slotIndex: 0, status: 'success');
+      await repo.update(ok1, {'output_url': 'images/a.png'});
+      final ok2 = await repo.create(
+          nodeId: res2, jobId: jid, slotIndex: 1, status: 'success');
+      await repo.update(ok2, {'output_url': 'images/b.png'});
+      await repo.create(
+          nodeId: res1, jobId: jid, slotIndex: 2, status: 'error');
+
+      // 锁 created_at DESC 排序(与 fake 契约同语义,防真库侧漂移):
+      // 顺序插入可能同毫秒,显式拉开两行时间戳。
+      await h.conn.execute(
+        "UPDATE batch_results SET created_at = TIMESTAMPTZ '2026-01-01T00:00:00Z' "
+        "WHERE id = '$ok1'",
+      );
+      await h.conn.execute(
+        "UPDATE batch_results SET created_at = TIMESTAMPTZ '2026-01-02T00:00:00Z' "
+        "WHERE id = '$ok2'",
+      );
+
+      final rows = await repo.listSuccessByProject(pid);
+      expect(rows, hasLength(2));
+      expect(
+        rows.map((r) => r['id'].toString()).toList(),
+        [ok2, ok1],
+        reason: 'created_at DESC',
+      );
+      expect(
+        rows.map((r) => r['canvas_id']?.toString()),
+        containsAll(<String>[cid1, cid2]),
+      );
+      expect(rows.every((r) => r['project_id']?.toString() == pid), isTrue);
+
+      // 软删节点的 slot 不出现
+      await nodes.softDelete(res2);
+      expect(await repo.listSuccessByProject(pid), hasLength(1));
+      // 软删画布的 slot 不出现
+      await canvasRepo.softDelete(cid1);
+      expect(await repo.listSuccessByProject(pid), isEmpty);
+      // 别的项目 → 空
+      expect(
+        await repo
+            .listSuccessByProject('00000000-0000-0000-0000-000000000000'),
+        isEmpty,
+      );
+    } on _Skip {
+      return;
+    }
+  });
 }
 
 class _Skip implements Exception {}

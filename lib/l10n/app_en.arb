@@ -357,5 +357,21 @@
   "baseStylePresetInkwash": "Ink wash",
   "baseStylePresetPhoto": "Photographic",
   "baseStylePreset3d": "3D animation",
-  "baseStyleUpdateFailed": "Failed to update base style"
+  "baseStyleUpdateFailed": "Failed to update base style",
+
+  "commonRetry": "Retry",
+  "galleryEntryLabel": "Gallery",
+  "galleryBreadcrumb": "{projectName} / Gallery",
+  "@galleryBreadcrumb": {
+    "description": "Gallery top chrome breadcrumb",
+    "placeholders": {
+      "projectName": { "type": "String" }
+    }
+  },
+  "galleryBackTooltip": "Back to studio",
+  "galleryEmptyTitle": "No generated assets yet",
+  "galleryEmptySubtitle": "Images and videos generated on this project's canvases will appear here.",
+  "galleryLoadFailed": "Failed to load gallery",
+  "galleryKindImage": "Image",
+  "galleryKindVideo": "Video"
 }
