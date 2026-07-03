@@ -1,8 +1,9 @@
 // ProviderCapabilities：Provider 能力声明（PRD §10.1）。
 //
-// 每个 Provider 通过一个 const 实例声明自己支持的参数组合。
-// UI 内联面板、JobQueueService 都只依赖这个声明。
-// 禁止从 .env / DB / 网络下发——必须 const，编译期固定。
+// 每个 Provider 通过能力声明支持的参数组合。UI 内联面板、JobQueueService 都只依赖它。
+// 能力位编译期固定：内置 Provider 为 const 实例;自定义 Provider 由代码内 const
+// 协议模板 copyWith 派生(仅 providerId/displayName 等实例化参数来自用户配置)。
+// 禁止能力位从 .env / DB / 网络自由下发(ADR-0009,2026-07-02 修订)。
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
