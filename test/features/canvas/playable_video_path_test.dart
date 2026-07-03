@@ -9,6 +9,13 @@ import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/playable_video_path.dart';
 
 class _StubResolver implements FileResolverService {
+  @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) =>
+      throw UnimplementedError();
+
   _StubResolver(this.root);
   final Directory root;
 

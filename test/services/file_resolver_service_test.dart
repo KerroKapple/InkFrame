@@ -154,5 +154,49 @@ void main() {
       );
       expect(f.path, contains(p.join('images', 'x.png')));
     });
+
+    test('resolveInProject 正常项目相对路径 → 拼接出绝对 File', () {
+      final f = svc.resolveInProject(
+        projectId: 'p1',
+        relativePath: 'canvases/c1/videos/a.mp4',
+      );
+      expect(
+        f.path,
+        p.join(paths.projects.path, 'p1', 'canvases', 'c1', 'videos', 'a.mp4'),
+      );
+
+      final out = svc.resolveInProject(
+        projectId: 'p1',
+        relativePath: 'exports/final.mp4',
+      );
+      expect(out.path, p.join(paths.projects.path, 'p1', 'exports', 'final.mp4'));
+    });
+
+    test("resolveInProject 拒绝 '..' 穿越", () {
+      for (final bad in <String>['../escape.mp4', 'exports/../../etc/passwd']) {
+        expect(
+          () => svc.resolveInProject(projectId: 'p1', relativePath: bad),
+          throwsA(isA<PathSecurityError>()),
+          reason: 'should reject: $bad',
+        );
+      }
+    });
+
+    test('resolveInProject 拒绝绝对路径 / 空串 / 控制字符', () {
+      for (final bad in <String>['/etc/passwd', '', 'a\u0000.mp4']) {
+        expect(
+          () => svc.resolveInProject(projectId: 'p1', relativePath: bad),
+          throwsA(isA<PathSecurityError>()),
+          reason: 'should reject: ${bad.codeUnits}',
+        );
+      }
+    });
+
+    test('resolveInProject 拒绝非法 projectId', () {
+      expect(
+        () => svc.resolveInProject(projectId: 'a/b', relativePath: 'x.mp4'),
+        throwsA(isA<PathSecurityError>()),
+      );
+    });
   });
 }

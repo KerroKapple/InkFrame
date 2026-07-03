@@ -35,6 +35,13 @@ final bool _skipGolden = !_goldensPresent && !autoUpdateGoldenFiles;
 
 class _StubFileResolver implements FileResolverService {
   @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   File resolve({
     required String projectId,
     required String canvasId,

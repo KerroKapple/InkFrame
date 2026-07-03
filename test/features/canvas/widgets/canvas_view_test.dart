@@ -70,6 +70,13 @@ class _FakeEdgesController extends CanvasEdgesController {
 
 class _StubResolver implements FileResolverService {
   @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   File resolve({
     required String projectId,
     required String canvasId,

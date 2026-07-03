@@ -6,7 +6,7 @@
 > 视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-07-02
+> 最近更新：2026-07-03
 
 ## M1 —「能用起来」✅ 完成（分支 feat/m1-usable，待 PR）
 
@@ -40,7 +40,7 @@
 | 功能 | 状态 | 备注 |
 |---|---|---|
 | 分镜 / Shot 节点（脚本→分镜→序列） | 🔵 | Shot 编辑器落地（`8dbf2fa`）；**首切片完成**：「用本镜备注生成图像」（shot_notes→image config 节点+narrative 边）+ FAB/空态 shot 创建入口 + addNode typeConfig 透传。后续：脚本解析、镜头级参数、序列预览 |
-| 视频导出 / 拼接 | ⬜ | |
+| 视频导出 / 拼接 | 🔵 | **首切片落地**：纯服务层骨架——`VideoExportService.concat`（项目相对路径进出）→ `FfmpegVideoExportService`（concat demuxer 流拷贝 `-c copy`，不转码，要求输入同编码参数）+ `FfmpegLocator`（INKFRAME_FFMPEG env → PATH 探测，命中缓存）+ 最小 `ProcessRunner` 抽象（fake 可注入）；`FileResolverService.resolveInProject` 新增（项目根边界安全校验，导出落 `exports/`）。**不打包 ffmpeg 二进制**（体积/许可评估延后）：系统有 ffmpeg 才真拼接，没有 → `LocalIOError(reason=ffmpeg_not_found)`；错误全复用现有 code（invalidParameter/localIOError），零 l10n 变更。真 ffmpeg 集成测 `@Tags(['ffmpeg'])` TEST_FFMPEG=1 门控。后续：UI 入口、转码/分辨率归一、打包二进制评估 |
 | 本地素材 / 产物画廊（借鉴 InvokeAI） | 🔵 | **首切片落地**：`features/gallery`——project 维度只读聚合（result 节点 image_url/video_url + batch_results 成功 slot，`listSuccessByProject` 一次跨画布查询 + 与节点主图同路径去重，createdAt 倒序）→ 网格 UI（图片 tile 走 fileResolver + 图片 lightbox；视频 tile 图标+时长占位）；入口=Studio 项目卡菜单「Gallery」，路由走 `currentGalleryProjectProvider`（同 canvasId 语义）。后续：拖入画布、存为角色、筛选/搜索、视频缩略图/播放、删除；**视频时长需写侧接入**（生成链路不落 result 节点 `duration_ms`，tile 时长当前恒占位）；fake `listSuccessByProject` join 派生列由种子行提供（契约见注释，PG 集成测兜真语义） |
 | 模型扩展（自定义 Provider，BYO-key） | 🔵 | **首切片落地**：`custom_providers.json`（逐条校验 + 损坏兜底）→ 协议模板 `openai-image` 派生 capabilities → `OpenAICompatibleImageProvider`(extends SyncProviderBase) → 启动期一次性注册（改 json 重启生效）；key 复用 `provider.custom:<id>.api_key`，设置页/门控/banner 零改动生效。PROVIDER-API §13 已重写为唯一方案，ADR-0009 已修订（2026-07-02）。后续：设置页编辑 UI、运行时增删（registry 变异非 invalidate）、更多协议模板 |
 | 定位落地（README/官网：你的数据/Key/工作室） | ⬜ | |

@@ -23,6 +23,14 @@ abstract class FileResolverService {
     required String relativePath,
   });
 
+  /// 项目根相对路径 → 绝对 File（守 `projects/{project-id}/` 边界）。
+  /// 跨画布/项目级产物（如 `exports/<name>.mp4`、`canvases/<c>/videos/<f>`）
+  /// 走此入口；相对路径非法时抛 [PathSecurityError]。
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  });
+
   /// 绝对路径 → 相对路径；源路径不在指定 canvas 根目录内时抛 [PathSecurityError]。
   String toRelative({
     required String projectId,
