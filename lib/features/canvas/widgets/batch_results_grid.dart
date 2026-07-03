@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/file_resolver.dart';
+import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -97,7 +98,8 @@ class _BatchSlotTile extends ConsumerWidget {
           errorBuilder: (_, _, _) =>
               _placeholder(colors, Icons.broken_image_outlined),
         );
-      } catch (_) {
+      } on PathSecurityError catch (_) {
+        // 越权相对路径按坏图占位处理，不崩网格。
         return _placeholder(colors, Icons.broken_image_outlined);
       }
     }
