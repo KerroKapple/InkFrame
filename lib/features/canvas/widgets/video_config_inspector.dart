@@ -20,6 +20,7 @@ import '../../generation/services/cost_estimator.dart';
 import '../models/canvas_node.dart';
 import '../providers/inspector_submit_controller.dart';
 import 'inspector_status_panel.dart';
+import 'node_inputs_section.dart';
 
 /// CameraMovement → 用户可读文案。exhaustive switch，新枚举漏映射编译期报错。
 String cameraMovementLabel(BuildContext context, CameraMovement camera) {
@@ -300,6 +301,15 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                   context.l10n.inspectorVideoGenerateDisabledNoKey,
               onSubmit: _submit,
             ),
+            // 入边（首/尾帧、参考图连线）：i2v 的首尾帧语义由此处 role 切换驱动，
+            // GenerationController 按 role 分流到 firstFramePath/lastFramePath。
+            if (widget.node.canvasId != null) ...[
+              const SizedBox(height: InkSpacing.lg),
+              NodeInputsSection(
+                targetNode: widget.node,
+                selectedCaps: selected,
+              ),
+            ],
           ],
         ),
       ),

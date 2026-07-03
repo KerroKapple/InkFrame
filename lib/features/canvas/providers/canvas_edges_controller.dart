@@ -1,7 +1,7 @@
 // CanvasEdgesController — canvasId-family，DB-backed 连线集合。
 //
-// 与 CanvasNodesController 设计对齐：load / add / remove 经 EdgeRepository，
-// 失败回滚内存。此 MVP 不覆盖 role 修改（firstFrame/lastFrame 切换归后续 PR）。
+// 与 CanvasNodesController 设计对齐：load / add / remove / updateRole 经
+// EdgeRepository，失败回滚内存。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

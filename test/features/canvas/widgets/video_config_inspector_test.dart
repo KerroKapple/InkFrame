@@ -4,11 +4,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/providers.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/widgets/node_inputs_section.dart';
 import 'package:inkframe/features/canvas/widgets/video_config_inspector.dart';
 
+import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/test_app.dart';
 
 const _fakeVideoCaps = caps.ProviderCapabilities(
@@ -182,6 +185,50 @@ void main() {
     // 不应直出枚举名
     expect(find.text('static_'), findsNothing);
     expect(find.text('pushIn'), findsNothing);
+  });
+
+  testWidgets('带 canvasId 的视频节点渲染 Inputs 区（首尾帧接入口）', (tester) async {
+    final nodeRepo = InMemoryNodeRepository();
+    final edgeRepo = InMemoryEdgeRepository();
+    final sourceId = await nodeRepo.create(
+      canvasId: 'canvas-1',
+      type: 'image',
+      nodeRole: 'result',
+      label: 'FrameSrc',
+    );
+    final targetId = await nodeRepo.create(
+      canvasId: 'canvas-1',
+      type: 'video',
+      nodeRole: 'config',
+      label: '',
+    );
+    await edgeRepo.create(
+      canvasId: 'canvas-1',
+      sourceNodeId: sourceId,
+      targetNodeId: targetId,
+      edgeType: 'data',
+    );
+    final node = CanvasNode(
+      id: targetId,
+      label: '',
+      type: CanvasNodeType.video,
+      role: NodeRole.config,
+      canvasId: 'canvas-1',
+    );
+    await pumpInkApp(
+      tester,
+      Scaffold(body: VideoConfigInspector(node: node)),
+      locale: const Locale('en'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fakeVideoCaps]),
+        nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
+        edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NodeInputsSection), findsOneWidget);
+    expect(find.text('FrameSrc'), findsOneWidget);
   });
 
   testWidgets('Generate 按钮初始 disabled（prompt 空）', (tester) async {
