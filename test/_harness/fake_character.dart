@@ -14,6 +14,9 @@ class FakeCharacterRepo implements CharacterRepository {
   /// 置 true 时 update 抛 LocalIOError（模拟回滚/失败路径）。
   bool failUpdate = false;
 
+  /// 置 true 时 create 抛 LocalIOError（模拟落库失败路径）。
+  bool failCreate = false;
+
   @override
   Future<String> create({
     required String projectId,
@@ -22,6 +25,7 @@ class FakeCharacterRepo implements CharacterRepository {
     String description = '',
     int sortOrder = 0,
   }) async {
+    if (failCreate) throw const LocalIOError();
     createCalls++;
     final id = 'char-$createCalls';
     rows[id] = <String, Object?>{

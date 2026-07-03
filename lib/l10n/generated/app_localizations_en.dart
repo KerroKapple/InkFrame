@@ -376,6 +376,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorRemoveInput => 'Remove input';
 
   @override
+  String inspectorInputsLabelCounted(int count, int max) {
+    return 'Inputs ($count/$max)';
+  }
+
+  @override
+  String inspectorInputsOverLimit(int max) {
+    return 'Exceeds provider limit ($max); extra reference images are ignored';
+  }
+
+  @override
+  String get inspectorPresetsSaveFailed => 'Failed to save preset';
+
+  @override
+  String get inspectorCharactersImportFailed => 'Failed to import character';
+
+  @override
   String get inspectorCharactersLabel => 'Characters';
 
   @override

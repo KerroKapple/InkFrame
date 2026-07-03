@@ -362,6 +362,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorRemoveInput => '移除输入';
 
   @override
+  String inspectorInputsLabelCounted(int count, int max) {
+    return '输入（$count/$max）';
+  }
+
+  @override
+  String inspectorInputsOverLimit(int max) {
+    return '超出 Provider 上限（$max），多余参考图将被忽略';
+  }
+
+  @override
+  String get inspectorPresetsSaveFailed => '预设保存失败';
+
+  @override
+  String get inspectorCharactersImportFailed => '角色导入失败';
+
+  @override
   String get inspectorCharactersLabel => '角色';
 
   @override

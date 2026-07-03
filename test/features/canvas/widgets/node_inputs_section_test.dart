@@ -3,19 +3,51 @@
 // 当前 role 不在允许集时保留（防 DropdownButton 断言）；
 // 切 role → updateRole 落库；移除 → removeEdge；空态文案。
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/node_inputs_section.dart';
+import 'package:inkframe/theme/primitives/ink_dashed_slot.dart';
 
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/test_app.dart';
 
 const _kCanvasId = 'canvas-1';
+const _kProjectId = 'proj-1';
+
+class _FakeResolver implements FileResolverService {
+  @override
+  File resolve({
+    required String projectId,
+    required String canvasId,
+    required String relativePath,
+  }) => File('/fake/$projectId/$canvasId/$relativePath');
+
+  @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) => File('/fake/$projectId/$relativePath');
+
+  @override
+  Directory canvasRoot({required String projectId, required String canvasId}) =>
+      Directory.systemTemp;
+
+  @override
+  String toRelative({
+    required String projectId,
+    required String canvasId,
+    required File source,
+  }) => source.path;
+}
 
 /// 支持首帧、不支持尾帧（kling-v3 形态）。
 const _firstFrameOnlyCaps = caps.ProviderCapabilities(
@@ -108,12 +140,14 @@ void main() {
   Future<({CanvasNode target, String edgeId})> seed({
     String role = 'reference',
     String sourceLabel = 'SrcNode',
+    Map<String, Object?> sourceTypeConfig = const <String, Object?>{},
   }) async {
     final sourceId = await nodeRepo.create(
       canvasId: _kCanvasId,
       type: 'image',
       nodeRole: 'result',
       label: sourceLabel,
+      typeConfig: sourceTypeConfig,
     );
     final targetId = await nodeRepo.create(
       canvasId: _kCanvasId,
@@ -134,6 +168,7 @@ void main() {
       type: CanvasNodeType.video,
       role: NodeRole.config,
       canvasId: _kCanvasId,
+      projectId: _kProjectId,
     );
     return (target: target, edgeId: edgeId);
   }
@@ -152,6 +187,7 @@ void main() {
       overrides: [
         nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
         edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+        fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
       ],
     );
     await tester.pumpAndSettle();
@@ -233,5 +269,84 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(await edgeRepo.listByCanvas(_kCanvasId), isEmpty);
+  });
+
+  group('B3 参考图 UI 补完', () {
+    testWidgets('maxRefImages>0 → 标签带 n/max 计数', (tester) async {
+      final s = await seed();
+      await pump(tester, s.target, _imageCaps); // maxRefImages: 1
+
+      expect(find.text('Inputs (1/1)'), findsOneWidget);
+    });
+
+    testWidgets('first/last_frame 边不计入 n/max（只数 reference）', (tester) async {
+      final s = await seed(role: 'first_frame');
+      await pump(tester, s.target, _bothFramesCaps);
+      // _bothFramesCaps maxRefImages=0 → 无计数；换 imageCaps 验证计 0
+      await pump(tester, s.target, _imageCaps);
+
+      expect(find.text('Inputs (0/1)'), findsOneWidget);
+    });
+
+    testWidgets('reference 边超出 maxRefImages → 显示忽略警告', (tester) async {
+      final s = await seed();
+      // 第二条 reference 边
+      final src2 = await nodeRepo.create(
+        canvasId: _kCanvasId,
+        type: 'image',
+        nodeRole: 'result',
+        label: 'Src2',
+      );
+      await edgeRepo.create(
+        canvasId: _kCanvasId,
+        sourceNodeId: src2,
+        targetNodeId: s.target.id,
+        edgeType: 'data',
+        role: 'reference',
+      );
+      await pump(tester, s.target, _imageCaps); // maxRefImages: 1
+
+      expect(find.text('Inputs (2/1)'), findsOneWidget);
+      expect(find.textContaining('Exceeds provider limit'), findsOneWidget);
+    });
+
+    testWidgets('未超限 → 无忽略警告', (tester) async {
+      final s = await seed();
+      await pump(tester, s.target, _imageCaps);
+
+      expect(find.textContaining('Exceeds provider limit'), findsNothing);
+    });
+
+    testWidgets('空态用 InkDashedSlot 呈现', (tester) async {
+      const target = CanvasNode(
+        id: 'lonely',
+        label: 'cfg',
+        type: CanvasNodeType.video,
+        role: NodeRole.config,
+        canvasId: _kCanvasId,
+        projectId: _kProjectId,
+      );
+      await pump(tester, target, _bothFramesCaps);
+
+      expect(find.byType(InkDashedSlot), findsOneWidget);
+      expect(find.text('No input connections'), findsOneWidget);
+    });
+
+    testWidgets('来源节点有 image_url → 行内缩略图（缺文件走占位不崩）', (tester) async {
+      final s = await seed(
+        sourceTypeConfig: <String, Object?>{'image_url': 'images/a.png'},
+      );
+      await pump(tester, s.target, _bothFramesCaps);
+
+      expect(find.byType(Image), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('来源节点无 image_url → 不渲染缩略图', (tester) async {
+      final s = await seed();
+      await pump(tester, s.target, _bothFramesCaps);
+
+      expect(find.byType(Image), findsNothing);
+    });
   });
 }

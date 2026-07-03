@@ -159,6 +159,21 @@
   "inspectorRoleFirstFrame": "首帧",
   "inspectorRoleLastFrame": "尾帧",
   "inspectorRemoveInput": "移除输入",
+  "inspectorInputsLabelCounted": "输入（{count}/{max}）",
+  "@inspectorInputsLabelCounted": {
+    "placeholders": {
+      "count": { "type": "int" },
+      "max": { "type": "int" }
+    }
+  },
+  "inspectorInputsOverLimit": "超出 Provider 上限（{max}），多余参考图将被忽略",
+  "@inspectorInputsOverLimit": {
+    "placeholders": {
+      "max": { "type": "int" }
+    }
+  },
+  "inspectorPresetsSaveFailed": "预设保存失败",
+  "inspectorCharactersImportFailed": "角色导入失败",
 
   "inspectorCharactersLabel": "角色",
   "inspectorCharactersEmpty": "还没有角色",
