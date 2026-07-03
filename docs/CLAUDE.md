@@ -234,9 +234,11 @@ lib/
 │   ├── provider_registry.dart         # providerId → factory mapping
 │   ├── rate_limiter.dart              # Per-provider token bucket
 │   ├── dio_error_mapper.dart          # DioException → InkError mapping
+│   ├── sync_provider_base.dart        # Shared base for sync image providers (inlineBytes)
 │   ├── dashscope_async_provider_base.dart  # Shared base for DashScope async tasks
 │   ├── gemini_image_provider.dart
 │   ├── openai_image_provider.dart
+│   ├── openai_compatible_provider.dart # Custom OpenAI-compatible endpoint (PROVIDER-API §13)
 │   ├── stability_image_core_provider.dart
 │   ├── kling_v3_provider.dart
 │   ├── kling_v3_omni_provider.dart
@@ -254,6 +256,10 @@ lib/
 └── services/                          # App-level services
     ├── job_queue_service.dart         # Dual-layer concurrency + persisted state machine
     ├── file_resolver_service.dart     # Relative ↔ absolute path resolution
+    ├── file_preferences_service.dart  # config/preferences.json load/save
+    ├── custom_providers_file_service.dart  # config/custom_providers.json parse + fallback
+    ├── character_asset_service.dart
+    ├── app_teardown.dart              # Ordered shutdown (JobQueue → Pool → PG)
     ├── dio_video_download_service.dart
     ├── media_kit_video_player_service.dart
     ├── media_kit_thumbnail_service.dart

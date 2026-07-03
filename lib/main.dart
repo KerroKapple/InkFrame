@@ -1,11 +1,13 @@
 // InkFrame 应用入口：
 //   1) 绑定 Flutter binding + MediaKit + window_manager
 //   2) 解析 AppPaths 并 ensureInitialized（首次启动创建 ~/InkFrame 目录）
-//   3) 显式构造 ProviderContainer + AppTeardown，并【在显示窗口之前】注册退出路径
+//   3) bootstrap 期预加载：偏好 + 自定义 Provider 配置（custom_providers.json，
+//      启动期一次性注册——registry 构建前必须就绪且会话内不变，PROVIDER-API §13.5）
+//   4) 显式构造 ProviderContainer + AppTeardown，并【在显示窗口之前】注册退出路径
 //      （窗口关闭监听 + macOS lifecycle channel）——窗口一旦可见即可被 Cmd+Q，
 //      handler 必须先就位，否则 AppDelegate 立即 reply 终止、teardown 从未执行 → PG 孤儿
-//   4) setPreventClose + 显示窗口
-//   5) runApp(UncontrolledProviderScope + InkFrameApp)
+//   5) setPreventClose + 显示窗口
+//   6) runApp(UncontrolledProviderScope + InkFrameApp)
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -13,10 +15,15 @@ import 'package:media_kit/media_kit.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
+import 'core/di/custom_providers.dart';
+import 'core/di/logger.dart';
 import 'core/di/paths.dart';
 import 'core/di/preferences.dart';
+import 'core/di/providers.dart';
+import 'core/logging/logger_service.dart';
 import 'core/paths/app_paths.dart';
 import 'services/app_teardown.dart';
+import 'services/custom_providers_file_service.dart';
 import 'services/file_preferences_service.dart';
 import 'theme/tokens.dart';
 
@@ -34,10 +41,28 @@ Future<void> main() async {
   final FilePreferencesService prefsService = FilePreferencesService(paths);
   await prefsService.load();
 
+  // Logger 在容器前构造（bootstrap 期加载即可写 WARN），随后 overrideWithValue
+  // 保持全 app 单实例；参数与 di/logger.dart 默认装配一致（SystemClock + 默认配置）。
+  final FileLoggerService logger =
+      FileLoggerService(paths: paths, clock: const SystemClock());
+
+  // 自定义 Provider 配置：容器构建前完成加载（providerRegistryProvider /
+  // providerCapabilitiesListProvider 构建时同步读取；会话内不变，改 json 重启生效）。
+  final CustomProvidersFileService customProviders = CustomProvidersFileService(
+    paths: paths,
+    logger: logger,
+    reservedProviderIds: <String>{
+      for (final c in kAllProviderCapabilities) c.providerId,
+    },
+  );
+  await customProviders.load();
+
   final ProviderContainer container = ProviderContainer(
     overrides: <Override>[
       appPathsProvider.overrideWithValue(paths),
       preferencesServiceProvider.overrideWithValue(prefsService),
+      loggerProvider.overrideWithValue(logger),
+      customProviderSourceProvider.overrideWithValue(customProviders),
     ],
   );
   final AppTeardown teardown = AppTeardown();
