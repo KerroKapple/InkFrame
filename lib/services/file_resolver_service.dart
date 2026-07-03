@@ -34,6 +34,25 @@ class DefaultFileResolverService implements FileResolverService {
     required String canvasId,
     required String relativePath,
   }) {
+    final root = canvasRoot(projectId: projectId, canvasId: canvasId);
+    return _resolveWithin(root, relativePath, rootLabel: 'canvas');
+  }
+
+  @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) {
+    _assertSafeSegment(projectId, label: 'projectId');
+    final root = Directory(p.join(_paths.projects.path, projectId));
+    return _resolveWithin(root, relativePath, rootLabel: 'project');
+  }
+
+  File _resolveWithin(
+    Directory root,
+    String relativePath, {
+    required String rootLabel,
+  }) {
     if (relativePath.isEmpty) {
       throw PathSecurityError('relativePath must not be empty');
     }
@@ -47,11 +66,10 @@ class DefaultFileResolverService implements FileResolverService {
       throw PathSecurityError('relativePath must not include drive letter');
     }
 
-    final root = canvasRoot(projectId: projectId, canvasId: canvasId);
     final joined = p.normalize(p.join(root.path, relativePath));
     if (!_within(root.path, joined)) {
       throw PathSecurityError(
-        'relativePath escapes canvas root via traversal: $relativePath',
+        'relativePath escapes $rootLabel root via traversal: $relativePath',
       );
     }
     return File(joined);

@@ -6,3 +6,6 @@ tags:
     # golden 像素测：基线锁定 canonical 平台（CI ubuntu）。
     # 跨平台 smoke（mac/win）以 --exclude-tags golden 排除，避免字体光栅化 false-fail。
     # ubuntu 的 golden job 按文件 glob 跑，不依赖本 tag。
+  ffmpeg:
+    # 真 ffmpeg 集成测：需环境变量 TEST_FFMPEG=1 且本机 PATH 有 ffmpeg。
+    # 未设置时用例内 markTestSkipped，不阻塞默认测试运行。

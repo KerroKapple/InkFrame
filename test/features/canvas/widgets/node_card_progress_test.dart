@@ -16,6 +16,13 @@ import '../../../_harness/test_app.dart';
 
 class _FakeResolver implements FileResolverService {
   @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) =>
+      throw UnimplementedError();
+
+  @override
   Directory canvasRoot({required String projectId, required String canvasId}) =>
       Directory.systemTemp;
   @override

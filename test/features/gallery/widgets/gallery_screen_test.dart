@@ -22,6 +22,13 @@ const String _kPng1x1B64 =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 class _FakeResolver implements FileResolverService {
+  @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) =>
+      throw UnimplementedError();
+
   _FakeResolver(this.dir);
   final Directory dir;
 

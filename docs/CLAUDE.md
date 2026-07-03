@@ -265,6 +265,9 @@ lib/
     ├── character_asset_service.dart
     ├── app_teardown.dart              # Ordered shutdown (JobQueue → Pool → PG)
     ├── dio_video_download_service.dart
+    ├── system_process_runner.dart     # ProcessRunner impl (Process.run)
+    ├── ffmpeg_locator.dart            # ffmpeg discovery (INKFRAME_FFMPEG env → PATH probe)
+    ├── ffmpeg_video_export_service.dart  # VideoExportService impl (concat demuxer, stream copy)
     ├── media_kit_video_player_service.dart
     ├── media_kit_thumbnail_service.dart
     └── platform_secure_storage_service.dart

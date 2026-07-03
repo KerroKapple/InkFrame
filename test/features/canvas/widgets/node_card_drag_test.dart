@@ -14,6 +14,13 @@ import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import '../../../_harness/test_app.dart';
 
 class _FakeResolver implements FileResolverService {
+  @override
+  File resolveInProject({
+    required String projectId,
+    required String relativePath,
+  }) =>
+      throw UnimplementedError();
+
   _FakeResolver(this.dir);
   final Directory dir;
 

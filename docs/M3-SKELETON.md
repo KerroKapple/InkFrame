@@ -20,13 +20,20 @@
 
 ## 2. 视频导出 / 拼接
 **目标**：把画布上多个 video 结果按序列拼接导出。
-- 模块：`lib/features/export/` + 服务 `lib/services/video_export_service.dart`
-  （接口 `lib/core/interfaces/video_export_service.dart`）。
-- 依赖：ffmpeg（`ffmpeg_kit_flutter` 或打包二进制 + `Process.run`）。**新增原生依赖，
-  需评估桌面体积/许可**——与 media_kit 同属重依赖，先做接口 + 假实现骨架，再接真编码。
-- 首个切片：`VideoExportService.concat({inputs: List<String>, output})` 接口 +
-  一个基于已下载视频文件的顺序拼接假实现（或直接调 ffmpeg），导出到项目目录。
-- 复用：`FileResolverService`（解析输入相对路径）、`AppPaths`（导出目录）。
+- **首切片已落地（纯服务层，无 UI）**：接口
+  `lib/core/interfaces/video_export_service.dart` +
+  实现 `lib/services/ffmpeg_video_export_service.dart`（concat demuxer 流拷贝
+  `-c copy`，不转码，要求输入同编码参数）+ 探测
+  `lib/services/ffmpeg_locator.dart`（INKFRAME_FFMPEG env → PATH `-version` 探测，
+  命中缓存）+ 最小进程抽象 `lib/core/interfaces/process_runner.dart`。
+- 签名：`concat({projectId, inputRelativePaths, outputBaseName?})`——输入为
+  **项目根相对路径**（`canvases/<c>/videos/<f>.mp4`），经
+  `FileResolverService.resolveInProject`（新增，项目根边界安全校验）解析；
+  输出落 `projects/<id>/exports/`，返回项目相对路径。导出目录未走 `AppPaths`
+  （其方法均为 app 级无 projectId），归口 FileResolverService。
+- **不打包 ffmpeg 二进制**（体积/许可评估延后）：系统无 ffmpeg →
+  `LocalIOError(reason=ffmpeg_not_found)`；错误全复用现有 InkErrorCode，零 l10n 变更。
+- 后续：UI 入口（`lib/features/export/`）、转码/分辨率归一、打包二进制评估。
 
 ## 3. 素材库 / Asset Gallery
 **目标**：跨画布浏览项目已生成的图片/视频 + 复用（拖入画布 / 存为角色）。
@@ -66,4 +73,4 @@
 1. **模型聚合器**（差异化最强，已设计，风险中）——先做单端点跑通。
 2. **素材库**（复用现有落盘，风险低，纯读）。
 3. **分镜流水线**（复用 shot 节点，渐进）。
-4. **视频导出**（重原生依赖，最后做，先接口骨架）。
+4. **视频导出**（重原生依赖——服务层骨架已落地，UI 入口/转码/打包评估后续）。
