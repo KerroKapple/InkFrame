@@ -89,7 +89,10 @@ class WanxImageProvider extends DashScopeAsyncProviderBase {
     final size = _kSizeBy1080p[task.aspectRatio] ?? _kSizeBy1080p[AspectRatio.r1x1]!;
     final content = <Map<String, Object?>>[
       {'text': task.prompt},
-      for (final p in task.refImagePaths) {'image': p},
+      // 控制器合并边连图 + 角色图后不截断，截断责任在 provider（与
+      // kling-omni / wanx-r2v 的 take 收口对齐）。
+      for (final p in task.refImagePaths.take(capabilities.maxRefImages))
+        {'image': p},
     ];
     return <String, Object?>{
       'model': kWanxImageModel,

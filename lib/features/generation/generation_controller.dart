@@ -257,6 +257,19 @@ class GenerationController {
           : GenerationMode.imageToImage;
     }
 
+    // 首/尾帧能力校验：provider 不支持却连了对应 role 的边 → 显式失败。
+    // provider 请求体只读自己支持的字段，静默丢弃 = 用户白配还以为生效了。
+    // 放在建行事务之前 fail-fast，不留半行。
+    if (refs.firstFramePath != null || refs.lastFramePath != null) {
+      final caps = registry.get(providerId).capabilities;
+      if (refs.firstFramePath != null && !caps.supportsFirstFrame) {
+        throw const InvalidGenerationConfigError('first_frame_unsupported');
+      }
+      if (refs.lastFramePath != null && !caps.supportsLastFrame) {
+        throw const InvalidGenerationConfigError('last_frame_unsupported');
+      }
+    }
+
     // 预创建 result 节点 + 建 job 行——单事务原子（任一失败整体回滚，不留半行）。
     final String resultNodeId;
     final String jobId;

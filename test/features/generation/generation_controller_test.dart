@@ -1091,6 +1091,21 @@ void main() {
     );
 
     test('first_frame / last_frame role 分流到独立字段', () async {
+      // 帧能力校验（B2）：分流断言需要 provider 声明首/尾帧能力位。
+      registry = CachingProviderRegistry({
+        providerId: () => FakeProvider(
+          capabilities: fakeImageCapabilities(
+            id: providerId,
+            modes: const <GenerationMode>[
+              GenerationMode.textToImage,
+              GenerationMode.imageToImage,
+            ],
+            maxRefImages: 4,
+            supportsFirstFrame: true,
+            supportsLastFrame: true,
+          ),
+        ),
+      });
       final cfg = await seedConfigNode();
       await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
       seedRefImageNode(id: 'ff', imageUrl: 'images/first.png');

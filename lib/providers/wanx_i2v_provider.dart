@@ -7,13 +7,15 @@
 //   Poll     : GET  /tasks/{task_id}（基类提供）
 //
 // 与 WanxT2VProvider 差异：
-//   - input 追加 `img_url`（首帧图，必填）+ 可选 `last_frame_url`（末帧图）
+//   - input 追加 `media` 数组：`{type: first_frame, url}` 必有 + 可选 `{type: last_frame, url}`
+//     （wan2.7 契约；旧版 img_url / last_frame_url 已被服务端拒绝）
 //   - 其他参数（size / duration / seed / negative_prompt）一致
 //   - 响应同 T2V：`output.video_url` 单一 URL
 //
 // 注：首末帧本地路径由基类在 submit 前内联为 base64 data URI（HI-05）；
 // http(s)/data 引用原样透传。
 
+import '../core/errors/ink_error.dart';
 import '../core/models/cost_model.dart';
 import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
@@ -77,6 +79,15 @@ class WanxI2VProvider extends DashScopeAsyncProviderBase {
 
   @override
   Map<String, Object?> buildRequestBody(GenerationTask task) {
+    // 首帧必填（media 契约 + 能力声明）：缺首帧在构造请求体阶段
+    // fail-fast，错误归因清晰，不吃一次注定失败的 API round-trip。
+    final firstFrame = task.firstFramePath;
+    if (firstFrame == null || firstFrame.isEmpty) {
+      throw const ProviderError(
+        code: InkErrorCode.invalidParameter,
+        extra: {'reason': 'missing_first_frame'},
+      );
+    }
     final size = kDashScopeVideoSizeMatrix[task.resolution]?[task.aspectRatio] ??
         kDashScopeVideoSizeMatrix[Resolution.p720]![AspectRatio.r16x9]!;
     return <String, Object?>{
@@ -85,19 +96,14 @@ class WanxI2VProvider extends DashScopeAsyncProviderBase {
         'prompt': task.prompt,
         // wan2.7 契约：首末帧经 input.media 数组传递（type: first_frame / last_frame），
         // 旧版 img_url / last_frame_url 已被服务端拒绝（Field required: input.media）。
-        if (task.firstFramePath != null || task.lastFramePath != null)
-          'media': <Map<String, Object?>>[
-            if (task.firstFramePath != null)
-              <String, Object?>{
-                'type': 'first_frame',
-                'url': task.firstFramePath,
-              },
-            if (task.lastFramePath != null)
-              <String, Object?>{
-                'type': 'last_frame',
-                'url': task.lastFramePath,
-              },
-          ],
+        'media': <Map<String, Object?>>[
+          <String, Object?>{'type': 'first_frame', 'url': firstFrame},
+          if (task.lastFramePath != null)
+            <String, Object?>{
+              'type': 'last_frame',
+              'url': task.lastFramePath,
+            },
+        ],
       },
       'parameters': <String, Object?>{
         'size': size,

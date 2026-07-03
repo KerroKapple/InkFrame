@@ -86,9 +86,17 @@ void main() {
       expect(media[1], {'type': 'last_frame', 'url': 'https://x/last.png'});
     });
 
-    test('缺首末帧图时 body 不包含 media 键（交由服务端校验）', () {
-      final body = p.buildRequestBody(_task(firstFrame: null));
-      expect((body['input'] as Map).containsKey('media'), isFalse);
+    // 首帧是 wanx-i2v 必填项（media 契约）：缺首帧不再交由服务端
+    // 晚炸，构造请求体阶段 fail-fast，错误归因清晰且不浪费一次 API round-trip。
+    test('缺首帧图 → ProviderError(invalidParameter) fail-fast', () {
+      expect(
+        () => p.buildRequestBody(_task(firstFrame: null)),
+        throwsA(isA<ProviderError>().having(
+          (e) => e.code,
+          'code',
+          InkErrorCode.invalidParameter,
+        )),
+      );
     });
 
     test('size 矩阵：1080p × 9:16', () {
