@@ -13,8 +13,14 @@ import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
+import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
+import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
+
+import '../_harness/fake_batch_result.dart';
+import '../_harness/fake_repositories.dart';
 
 Future<AppPaths> _setupPaths(WidgetTester tester, String prefix) async {
   final Directory tmp = Directory.systemTemp.createTempSync(prefix);
@@ -74,6 +80,40 @@ void main() {
     await tester.pump();
 
     expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.byType(StudioHomeScreen), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('unlocked + gallery target → 渲染 GalleryScreen', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final paths = await _setupPaths(tester, 'ink_route_gallery_');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          appPathsProvider.overrideWithValue(paths),
+          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
+          currentScreenProvider.overrideWith((_) => AppScreen.studio),
+          currentCanvasIdProvider.overrideWith((_) => null),
+          currentGalleryProjectProvider
+              .overrideWith((_) => (id: 'p1', name: 'Alpha')),
+          workspaceProjectsProvider
+              .overrideWith((_) async => const <ProjectWithCanvases>[]),
+          // 密封：画廊读仓储不真起内嵌 PG。
+          canvasRepositoryProvider
+              .overrideWith((_) async => InMemoryCanvasRepository()),
+          nodeRepositoryProvider
+              .overrideWith((_) async => InMemoryNodeRepository()),
+          batchResultRepositoryProvider
+              .overrideWith((_) async => FakeBatchResultRepo()),
+        ],
+        child: const InkFrameApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(GalleryScreen), findsOneWidget);
     expect(find.byType(StudioHomeScreen), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

@@ -15,6 +15,10 @@ abstract class BatchResultRepository {
   /// 某批量结果节点下所有 slot，slot_index ASC。
   Future<List<Map<String, Object?>>> listByNode(String nodeId);
 
+  /// 项目内全部成功 slot（跨画布，画廊读侧）：JOIN nodes/canvases 过滤软删，
+  /// 行内附 join 派生列 canvas_id / project_id，created_at DESC。
+  Future<List<Map<String, Object?>>> listSuccessByProject(String projectId);
+
   Future<int> update(String id, Map<String, Object?> patch);
 
   /// 单 job 收敛：该 job 下仍 'generating' 的 slot 一次性置 [toStatus]

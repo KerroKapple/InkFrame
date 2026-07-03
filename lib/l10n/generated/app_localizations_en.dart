@@ -814,4 +814,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get baseStyleUpdateFailed => 'Failed to update base style';
+
+  @override
+  String get commonRetry => 'Retry';
+
+  @override
+  String get galleryEntryLabel => 'Gallery';
+
+  @override
+  String galleryBreadcrumb(String projectName) {
+    return '$projectName / Gallery';
+  }
+
+  @override
+  String get galleryBackTooltip => 'Back to studio';
+
+  @override
+  String get galleryEmptyTitle => 'No generated assets yet';
+
+  @override
+  String get galleryEmptySubtitle =>
+      'Images and videos generated on this project\'s canvases will appear here.';
+
+  @override
+  String get galleryLoadFailed => 'Failed to load gallery';
+
+  @override
+  String get galleryKindImage => 'Image';
+
+  @override
+  String get galleryKindVideo => 'Video';
 }

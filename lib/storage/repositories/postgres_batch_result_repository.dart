@@ -78,6 +78,23 @@ class PostgresBatchResultRepository
   }
 
   @override
+  Future<List<Map<String, Object?>>> listSuccessByProject(String projectId) {
+    return guard('listSuccessByProject', 'batch_results', () async {
+      final r = await session.execute(
+        Sql.named(
+          'SELECT br.*, n.canvas_id, c.project_id FROM batch_results br '
+          'JOIN nodes n ON n.id = br.node_id AND n.deleted_at IS NULL '
+          'JOIN canvases c ON c.id = n.canvas_id AND c.deleted_at IS NULL '
+          "WHERE c.project_id = @pid AND br.status = 'success' "
+          'ORDER BY br.created_at DESC',
+        ),
+        parameters: <String, Object?>{'pid': projectId},
+      );
+      return allRows(r);
+    });
+  }
+
+  @override
   Future<int> update(String id, Map<String, Object?> patch) {
     if (patch.isEmpty) return Future.value(0);
     return guard('update', 'batch_results', () async {

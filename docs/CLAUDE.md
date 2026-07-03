@@ -213,6 +213,10 @@ lib/
 │   │   ├── providers/                 # Riverpod ViewModels
 │   │   ├── util/
 │   │   └── widgets/
+│   ├── gallery/                       # Project-wide generated-asset gallery (read-only)
+│   │   ├── models/
+│   │   ├── providers/
+│   │   └── widgets/
 │   ├── generation/                    # Generation flow UI + state
 │   │   ├── generation_controller.dart
 │   │   ├── models/

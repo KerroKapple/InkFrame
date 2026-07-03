@@ -12,6 +12,7 @@ class StudioProjectCard extends StatelessWidget {
     required this.name,
     required this.metaLine,
     required this.onTap,
+    this.onOpenGallery,
     this.onRename,
     this.onDelete,
   });
@@ -19,6 +20,7 @@ class StudioProjectCard extends StatelessWidget {
   final String name;
   final String metaLine;
   final VoidCallback onTap;
+  final VoidCallback? onOpenGallery;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
 
@@ -53,11 +55,15 @@ class StudioProjectCard extends StatelessWidget {
                   ),
                 ),
               ),
-              if (onRename != null || onDelete != null)
+              if (onOpenGallery != null || onRename != null || onDelete != null)
                 Positioned(
                   top: InkSpacing.xs,
                   right: InkSpacing.xs,
-                  child: _ProjectMenu(onRename: onRename, onDelete: onDelete),
+                  child: _ProjectMenu(
+                    onOpenGallery: onOpenGallery,
+                    onRename: onRename,
+                    onDelete: onDelete,
+                  ),
                 ),
             ],
           ),
@@ -94,12 +100,13 @@ class StudioProjectCard extends StatelessWidget {
   }
 }
 
-enum _ProjectAction { rename, delete }
+enum _ProjectAction { gallery, rename, delete }
 
-/// 项目卡右上角操作菜单（重命名 / 删除）；菜单点击不冒泡到卡片 onTap。
+/// 项目卡右上角操作菜单（画廊 / 重命名 / 删除）；菜单点击不冒泡到卡片 onTap。
 class _ProjectMenu extends StatelessWidget {
-  const _ProjectMenu({this.onRename, this.onDelete});
+  const _ProjectMenu({this.onOpenGallery, this.onRename, this.onDelete});
 
+  final VoidCallback? onOpenGallery;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
 
@@ -112,6 +119,8 @@ class _ProjectMenu extends StatelessWidget {
       color: colors.surface2,
       onSelected: (a) {
         switch (a) {
+          case _ProjectAction.gallery:
+            onOpenGallery?.call();
           case _ProjectAction.rename:
             onRename?.call();
           case _ProjectAction.delete:
@@ -119,6 +128,11 @@ class _ProjectMenu extends StatelessWidget {
         }
       },
       itemBuilder: (context) => <PopupMenuEntry<_ProjectAction>>[
+        if (onOpenGallery != null)
+          PopupMenuItem<_ProjectAction>(
+            value: _ProjectAction.gallery,
+            child: Text(context.l10n.galleryEntryLabel),
+          ),
         if (onRename != null)
           PopupMenuItem<_ProjectAction>(
             value: _ProjectAction.rename,

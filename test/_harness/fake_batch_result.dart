@@ -1,6 +1,13 @@
 // 测试用 BatchResult 仓储 fake。
 import 'package:inkframe/core/interfaces/batch_result_repository.dart';
 
+DateTime _dt(Object? v) => switch (v) {
+  final DateTime d => d,
+  final String s =>
+    DateTime.tryParse(s) ?? DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+  _ => DateTime.fromMillisecondsSinceEpoch(0, isUtc: true),
+};
+
 class FakeBatchResultRepo implements BatchResultRepository {
   FakeBatchResultRepo([Map<String, Map<String, Object?>>? rows])
     : rows = rows ?? <String, Map<String, Object?>>{};
@@ -43,6 +50,21 @@ class FakeBatchResultRepo implements BatchResultRepository {
     l.sort(
       (a, b) => (a['slot_index'] as int).compareTo(b['slot_index'] as int),
     );
+    return l;
+  }
+
+  /// join 派生列（canvas_id / project_id / created_at）由测试种子行直接提供。
+  @override
+  Future<List<Map<String, Object?>>> listSuccessByProject(
+    String projectId,
+  ) async {
+    final l = rows.values
+        .where(
+          (r) => r['project_id'] == projectId && r['status'] == 'success',
+        )
+        .map(Map<String, Object?>.of)
+        .toList();
+    l.sort((a, b) => _dt(b['created_at']).compareTo(_dt(a['created_at'])));
     return l;
   }
 
