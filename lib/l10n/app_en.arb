@@ -160,6 +160,7 @@
   "nodeDelete": "Delete node",
   "nodeDeleted": "Node deleted",
   "nodeDeleteFailed": "Failed to delete node",
+  "nodeMoveFailed": "Failed to move node",
 
   "inspectorInputsLabel": "Inputs",
   "inspectorInputsEmpty": "No input connections",

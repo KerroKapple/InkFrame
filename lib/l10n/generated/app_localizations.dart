@@ -740,6 +740,12 @@ abstract class AppLocalizations {
   /// **'Failed to delete node'**
   String get nodeDeleteFailed;
 
+  /// No description provided for @nodeMoveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to move node'**
+  String get nodeMoveFailed;
+
   /// No description provided for @inspectorInputsLabel.
   ///
   /// In en, this message translates to:

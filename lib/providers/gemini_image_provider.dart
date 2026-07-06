@@ -193,7 +193,18 @@ class GeminiImageProvider extends SyncProviderBase {
         // data 非字符串（schema 漂移）不抛 _TypeError——跳过，最终落 no_inline_data。
         final dataVal = (p['inlineData'] as Map)['data'];
         if (dataVal is String) {
-          return base64Decode(dataVal);
+          try {
+            return base64Decode(dataVal);
+          } on FormatException {
+            // 损坏的 base64 是确定性失败——不可重试，避免轮询风暴。
+            throw ProviderError(
+              code: InkErrorCode.providerInvalidResponse,
+              extra: {
+                'provider_id': capabilities.providerId,
+                'reason': 'malformed_b64_json',
+              },
+            );
+          }
         }
       }
     }

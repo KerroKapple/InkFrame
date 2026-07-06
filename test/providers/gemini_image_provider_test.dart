@@ -319,6 +319,42 @@ void main() {
       );
     });
 
+    test('inlineData.data 损坏 base64 → providerInvalidResponse(malformed_b64_json)，不裸抛',
+        () async {
+      final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
+      DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onPost(
+        kGeminiSubmitPath,
+        (req) => req.reply(200, {
+          'candidates': [
+            {
+              'content': {
+                'parts': [
+                  {
+                    'inlineData': {'data': '!!!not-base64!!!'},
+                  },
+                ],
+              },
+            },
+          ],
+        }),
+      );
+
+      await expectLater(
+        _buildProvider(dio).submit(_task()),
+        throwsA(isA<ProviderError>()
+            .having(
+              (e) => e.code,
+              'code',
+              InkErrorCode.providerInvalidResponse,
+            )
+            .having(
+              (e) => e.extra['reason'],
+              'reason',
+              'malformed_b64_json',
+            )),
+      );
+    });
+
     test('inlineData.data 非字符串（漂移）→ no_inline_data，不炸 _TypeError', () async {
       final dio = Dio(BaseOptions(baseUrl: kGeminiBaseUrl));
       DioAdapter(dio: dio, matcher: const UrlRequestMatcher()).onPost(

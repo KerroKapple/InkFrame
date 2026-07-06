@@ -37,6 +37,15 @@ class _FakeNodesController extends CanvasNodesController {
   }
 }
 
+class _MoveFailNodesController extends _FakeNodesController {
+  _MoveFailNodesController(super.seed);
+
+  @override
+  Future<void> moveNode(String id, Offset delta, {required String? laneId}) async {
+    throw const LocalIOError();
+  }
+}
+
 class _FakeEdgesController extends CanvasEdgesController {
   _FakeEdgesController({this.error});
   final InkError? error;
@@ -225,6 +234,32 @@ void main() {
 
     expect(find.text('Failed to create link'), findsOneWidget);
     expect(find.text('Link already exists'), findsNothing);
+  });
+
+  testWidgets('拖拽落点 moveNode 失败 → SnackBar 提示（不再静默吞错）', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: CanvasView()),
+      overrides: <Override>[
+        currentCanvasIdProvider.overrideWith((ref) => 'c1'),
+        canvasNodesControllerProvider
+            .overrideWith(() => _MoveFailNodesController(twoNodes)),
+        canvasEdgesControllerProvider
+            .overrideWith(() => _FakeEdgesController()),
+        fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.text('Node A')));
+    await gesture.moveBy(const Offset(40, 0));
+    await gesture.moveBy(const Offset(20, 10));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Failed to move node'), findsOneWidget);
   });
 
   testWidgets('video result 节点文件缺失 → 不开 lightbox，走常规选中', (tester) async {

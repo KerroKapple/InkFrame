@@ -23,11 +23,22 @@ class InkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.inkColors;
+    final bool enabled = onPressed != null;
+    // 彩色底（brand/danger）上的前景用画布最底色（对齐 InkAmberButton），
+    // fg1 在暗色变体是浅米色，放琥珀上对比度不足；禁用态统一压灰。
     final (Color bg, Color fg, Color? border) = switch (variant) {
-      InkButtonVariant.primary => (colors.brand, colors.fg1, null),
-      InkButtonVariant.secondary => (colors.surface3, colors.fg1, colors.border),
-      InkButtonVariant.ghost => (const Color(0x00000000), colors.fg1, colors.border),
-      InkButtonVariant.danger => (colors.danger, colors.fg1, null),
+      InkButtonVariant.primary => enabled
+          ? (colors.brand, colors.surfaceCanvas, null)
+          : (colors.surface3, colors.fg4, colors.border),
+      InkButtonVariant.secondary => enabled
+          ? (colors.surface3, colors.fg1, colors.border)
+          : (colors.surface3, colors.fg4, colors.border),
+      InkButtonVariant.ghost => enabled
+          ? (const Color(0x00000000), colors.fg1, colors.border)
+          : (const Color(0x00000000), colors.fg4, colors.border),
+      InkButtonVariant.danger => enabled
+          ? (colors.danger, colors.surfaceCanvas, null)
+          : (colors.surface3, colors.fg4, colors.border),
     };
 
     return Semantics(

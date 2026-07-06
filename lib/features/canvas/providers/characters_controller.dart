@@ -2,6 +2,8 @@
 //
 // 对齐 CanvasNodesController：AutoDispose family AsyncNotifier + ME-27 _alive 守卫 +
 // 乐观更新/InkError 回滚。角色参考图落盘经 CharacterAssetService（项目级目录）。
+import 'dart:io' show FileSystemException;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/db/columns.dart';
@@ -52,6 +54,21 @@ class CharactersController
     final repo = _repo;
     final id = await repo.create(projectId: projectId, name: name);
     String? rel;
+    // 补偿：清记录 + 清可能已落盘的图（best-effort），补偿失败不掩盖原始错误。
+    Future<void> compensate() async {
+      try {
+        await repo.hardDelete(id);
+      } on InkError catch (_) {
+        // 仓储层只抛 InkError；补偿失败也不掩盖原始错误。
+      }
+      final imported = rel;
+      if (imported != null) {
+        await _assets.delete(projectId: projectId, relativePath: imported);
+      }
+    }
+
+    // 捕获集 = try 体真实抛出集：仓储 InkError / 资产服务 CharacterAssetError /
+    // dart:io FileSystemException——不捕宽泛 Exception（铁律）。
     try {
       rel = await _assets.importImage(
         projectId: projectId,
@@ -61,15 +78,14 @@ class CharactersController
       await repo.update(id, <String, Object?>{
         CharacterCol.referenceImagePaths: <String>[rel],
       });
-    } on Exception catch (e, st) {
-      try {
-        await repo.hardDelete(id);
-      } on Exception catch (_) {
-        // 补偿失败也不掩盖原始错误。
-      }
-      if (rel != null) {
-        await _assets.delete(projectId: projectId, relativePath: rel);
-      }
+    } on InkError catch (e, st) {
+      await compensate();
+      Error.throwWithStackTrace(e, st);
+    } on CharacterAssetError catch (e, st) {
+      await compensate();
+      Error.throwWithStackTrace(e, st);
+    } on FileSystemException catch (e, st) {
+      await compensate();
       Error.throwWithStackTrace(e, st);
     }
     await _reload();

@@ -112,8 +112,10 @@ class OpenAICompatibleImageProvider extends SyncProviderBase {
     try {
       return base64Decode(base64Str);
     } on FormatException {
+      // 损坏的 base64 是确定性失败——providerInvalidResponse 不可重试，
+      // 与 gemini/openai-image 同款守卫对齐，避免轮询风暴。
       throw ProviderError(
-        code: InkErrorCode.providerServer,
+        code: InkErrorCode.providerInvalidResponse,
         extra: {
           'provider_id': capabilities.providerId,
           'reason': 'malformed_b64_json',

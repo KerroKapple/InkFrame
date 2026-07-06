@@ -17,6 +17,9 @@ class FakeCharacterRepo implements CharacterRepository {
   /// 置 true 时 create 抛 LocalIOError（模拟落库失败路径）。
   bool failCreate = false;
 
+  /// 置 true 时 hardDelete 抛 LocalIOError（模拟补偿失败路径）。
+  bool failHardDelete = false;
+
   @override
   Future<String> create({
     required String projectId,
@@ -67,6 +70,7 @@ class FakeCharacterRepo implements CharacterRepository {
 
   @override
   Future<int> hardDelete(String id) async {
+    if (failHardDelete) throw const LocalIOError();
     rows.remove(id);
     return 1;
   }

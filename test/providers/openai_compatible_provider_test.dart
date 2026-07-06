@@ -364,7 +364,11 @@ void main() {
       await expectLater(
         _buildProvider(dio).submit(_task()),
         throwsA(isA<ProviderError>()
-            .having((e) => e.code, 'code', InkErrorCode.providerServer)
+            .having(
+              (e) => e.code,
+              'code',
+              InkErrorCode.providerInvalidResponse,
+            )
             .having(
               (e) => e.extra['reason'],
               'reason',

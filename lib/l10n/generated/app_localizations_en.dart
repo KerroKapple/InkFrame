@@ -358,6 +358,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nodeDeleteFailed => 'Failed to delete node';
 
   @override
+  String get nodeMoveFailed => 'Failed to move node';
+
+  @override
   String get inspectorInputsLabel => 'Inputs';
 
   @override

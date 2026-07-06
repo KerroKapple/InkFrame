@@ -15,7 +15,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/di/database.dart';
 import '../core/di/job_queue.dart';
-import '../storage/pg_controller.dart';
 
 class AppTeardown {
   Future<void>? _running;
@@ -54,8 +53,9 @@ class AppTeardown {
     if (_isMounted(container, pgControllerProvider)) {
       try {
         await container.read(pgControllerProvider).stop();
-      } on PgLifecycleError {
-        // 退出路径上的失败不再扩散——下次启动有存活复用 / stale 清理兜底。
+      } on Object {
+        // 退出路径尽力而为（对齐步骤 1/2）：任何 stop 失败都不阻断
+        // container.dispose()——下次启动有存活复用 / stale 清理兜底。
       }
     }
 

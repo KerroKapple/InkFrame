@@ -154,7 +154,18 @@ class OpenAIImageProvider extends SyncProviderBase {
         },
       );
     }
-    return base64Decode(base64Str);
+    try {
+      return base64Decode(base64Str);
+    } on FormatException {
+      // 损坏的 base64 是确定性失败——不可重试，避免轮询风暴。
+      throw ProviderError(
+        code: InkErrorCode.providerInvalidResponse,
+        extra: {
+          'provider_id': capabilities.providerId,
+          'reason': 'malformed_b64_json',
+        },
+      );
+    }
   }
 
   /// AspectRatio → gpt-image-1 size 字符串。capabilities 已收窄到三种比例，
