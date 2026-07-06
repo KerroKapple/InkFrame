@@ -55,14 +55,37 @@
 | wanx-i2v 对齐 wan2.7 服务端契约（`input.media` 数组；旧 `img_url` 被拒致 i2v 全线 400）+ macOS 标题栏平台惯例 | #137 |
 | 参考图/首尾帧 UI 收尾（B1–B3）+ 连线智能默认 role；i2v media×fail-fast 语义整合 | #138 |
 
+## M1 补遗（审计发现的悬空项，进行中）
+
+| 项 | 状态 | 备注 |
+|---|---|---|
+| 记住上次使用的 provider（新节点默认选中） | 🔵 | STATUS-AND-ROADMAP M1 承诺项，审计发现零实现 |
+| 重启回上次打开的画布 | 🔵 | 同上；preferences 已有持久化通道可复用 |
+| 项目复制 + 画布级重命名/删除 | 🔵 | Studio 项目管理只做了重命名/软删；复制需跨表事务 |
+| 设置页按钮统一设计系统组件 + onPrimary 暗色 bug | 🔵 | onPrimary/onSecondary 误设 fg1（app_theme.dart）随快修簇处理 |
+
 ## 已延后 / 技术债
 
 | 项 | 状态 | 原因 |
 |---|---|---|
 | T6 生成 N+1（findByIds） | 🅿️ | 接口加方法强制 15 个实现体同步改、收益边际；单独 PR |
-| 三大上帝类拆分（JobQueue/GenController/CanvasView） | 🅿️ | 非阻塞，随功能演进逐步拆 |
+| 三大上帝类拆分（JobQueue/GenController/CanvasView） | 🅿️ | 非阻塞但**仍在膨胀**（JobQueue 790→1168 行）；拆分触发线：单文件 >1500 行或并行改动冲突频发 |
+| DI 层泄漏 ServerException + 迁移 DDL 编排在 provider body（AUDIT P1-5） | 🅿️ | 影响面小；随 storage 下次改动收口 |
+| buildUpdate 无列名白名单（AUDIT P1-11） | 🅿️ | 列名全部来自 core/db/columns.dart 常量，注入面受控；加白名单属加固 |
+| components/primitives 双组件族无收敛文档（AUDIT P1-12） | 🅿️ | 需一篇 ADR 定分层规则 |
+| InkWindowChrome 直依赖 window_manager（AUDIT P1-13） | 🅿️ | 单点依赖，抽象收益低；随 chrome 重构顺带 |
+| 缩略图 300ms 固定延时 + open 无超时（AUDIT P1-16） | 🅿️ | media_kit 行为依赖，需真机回归验证 |
+| _PromptPreview 双份拼装（AUDIT P1-17） | 🅿️ | 随 image_config_inspector 拆分处理 |
+| JobRepository 胖接口拆分（AUDIT P1-18） | 🅿️ | 与 findByIds 同窗处理 |
+| job_queue_panel 手写错误映射与 ink_error messageKey 双源（AUDIT P1-x2，缺 providerInvalidResponse 分支走 unknown 兜底） | 🅿️ | 统一改读 messageKey 映射表，单独小 PR |
+| ARCHIVE/footer 死 stub（AUDIT P1-x3） | 🅿️ | 产品定义未决 |
+| capabilities.pollTimeout 全仓零消费（AUDIT P1-x4） | 🅿️ | 接入 JobQueue 或删字段，二选一 |
+| provider displayName 英文常量（AUDIT P1-7） | 🅿️ | 品牌名不译是有意为之；若要本地化需过 l10n 例外评审 |
+| canvas_nodes_controller 乐观新增基于 previous 快照重建（丢更新竞态，VERIFICATION §5.3） | 🅿️ | 需要改并发模型，非一行修；排 M3 稳定期 |
+| 未消费依赖卫生（riverpod_annotation/json_annotation/logging/uuid，VERIFICATION §5.4） | 🅿️ | 待 build_runner 卡点解除后一并清（codegen 链相关） |
+| 嵌入式 PG `-A trust` 认证（AUDIT 安全附录） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §3）：单用户桌面现状与 Postgres.app/Supabase local 同水位,可接受;多用户共享机器是真实边际风险。推荐 SCRAM+随机密码进 Keychain（约 1–2 人日,实施路径已给）;多用户/局域网功能立项即升必须 |
 | 补两档设计令牌（图标尺寸/控件高度） | 🅿️ | P2 一致性 |
-| **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | 根修需升级 freezed/riverpod_generator/custom_lint 主版本至 analyzer≥9,单独立项（2026-07-02 发现） |
+| **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §2）：唯一瓶颈 freezed 3.2.5 与 riverpod_generator 4.0.4 的 analyzer 约束相斥,freezed 3.2.6 stable 一出即与 Riverpod 3 迁移合并立项（同时解掉 custom_lint 卡点,见 §1）;盯 freezed#1353 |
 | M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,仍欠预设点选应用与成本文案断言 | 🅿️ | 2026-07-02 审计发现;剩余随 UI 稳定补 |
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
 | Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | 🅿️ | 原捆绑的 3 处 `on Exception` 吞错与 `batch_results_grid` 裸 catch 已修（PR #138 B3）,仅剩 error 态展示 |
