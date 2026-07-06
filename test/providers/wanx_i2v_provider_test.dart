@@ -66,26 +66,29 @@ void main() {
       rateLimiter: ProviderRateLimiter(qps: 20, burst: 50),
     );
 
-    test('基础映射：model + input.prompt + img_url + size + duration', () {
+    test('基础映射：model + input.prompt + media[first_frame] + size + duration', () {
       final body = p.buildRequestBody(_task());
       expect(body['model'], kWanxI2VModel);
       final input = body['input'] as Map;
       expect(input['prompt'], isNotEmpty);
-      expect(input['img_url'], 'https://x/first.png');
-      expect(input.containsKey('last_frame_url'), isFalse);
+      final media = input['media'] as List;
+      expect(media, hasLength(1));
+      expect(media.single, {'type': 'first_frame', 'url': 'https://x/first.png'});
       final params = body['parameters'] as Map;
       expect(params['size'], '1280*720');
       expect(params['duration'], 5);
     });
 
-    test('末帧图透传到 input.last_frame_url', () {
+    test('末帧图透传为 media[last_frame] 项', () {
       final body = p.buildRequestBody(_task(lastFrame: 'https://x/last.png'));
-      expect((body['input'] as Map)['last_frame_url'], 'https://x/last.png');
+      final media = (body['input'] as Map)['media'] as List;
+      expect(media, hasLength(2));
+      expect(media[1], {'type': 'last_frame', 'url': 'https://x/last.png'});
     });
 
-    test('缺首帧图时 body 不包含 img_url 键（交由服务端校验）', () {
+    test('缺首末帧图时 body 不包含 media 键（交由服务端校验）', () {
       final body = p.buildRequestBody(_task(firstFrame: null));
-      expect((body['input'] as Map).containsKey('img_url'), isFalse);
+      expect((body['input'] as Map).containsKey('media'), isFalse);
     });
 
     test('size 矩阵：1080p × 9:16', () {
