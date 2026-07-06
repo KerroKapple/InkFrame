@@ -24,11 +24,18 @@
 > **已合并 main，未打 tag（→ alpha.10）/ Merged on main, untagged (→ alpha.10):**
 > Amber Noir shell 重写（frameless chrome + Studio + Canvas，取代 CineFlow，#100/#101）·
 > 生成流程接入 canvas（open-canvas + 实时 job 进度 + 去 mock 渲染队列，#104/#105）·
-> 移除 Lock 启动闸门，直接进入 Studio（#108）。
+> 移除 Lock 启动闸门，直接进入 Studio（#108）·
+> 后端 P0–P2 加固（UnitOfWork 事务 / 仓储类型化 / SyncProviderBase，#126–#132）·
+> **M1「能用起来」**（偏好持久化 / 节点级进度 / 画布性能 / 项目管理 + 正确性簇，#133）·
+> **M2「创作者要的」**（参考图/首尾帧 UI / 角色一致性 / 批量变体 / 预设库 / 成本估算，#134/#138）·
+> M3 首切片 ×4（Shot 分镜 / ffmpeg 视频导出 / 产物画廊 / custom_providers 聚合器，#134）·
+> 内嵌 PG 装进 app bundle（#135）· 双语 README 定位落地（#136）· wanx-i2v wan2.7 契约（#137）。
+> 里程碑级实时状态见 [`docs/BOARD.md`](docs/BOARD.md)。
 
 ## 🛠 In Progress (Maintainer)
 
-- **UI Sprint 3+** — 统一设计 token 落地剩余组件 / Design-token rollout for remaining components
+- **M3 差异化深化** — Shot 脚本解析/序列预览 · 视频导出 UI/转码归一 · 画廊拖入画布/筛选 · 自定义 Provider 设置页 UI（见 [`docs/BOARD.md`](docs/BOARD.md) M3 表）
+- **发布管线** — 签名/公证/打包（chore/release-pipeline 分支起步）
 - **稳定 alpha → beta** — 测试覆盖 / 跨平台烟测 / 性能基线
 
 ## 🙋 Help Wanted
@@ -52,7 +59,7 @@ Adding a new AI provider does not require understanding the whole codebase — r
 |----------|-------------|---------------|--------|
 | Stable Diffusion (local ComfyUI) | image | 🟢 Open | High |
 | Midjourney (Discord API) | image | 🟢 Open | Medium |
-| OpenAI DALL-E 3 | image | 🟢 Open | Medium |
+| OpenAI DALL-E 3（`gpt-image-1` 已内置，此条指 DALL-E 3 专用接入） | image | 🟢 Open | Medium |
 | Runway Gen-3 / Gen-4 | video | 🟢 Open | High |
 | Pika Labs | video | 🟢 Open | Medium |
 | Luma Dream Machine | video | 🟢 Open | Medium |
@@ -60,14 +67,15 @@ Adding a new AI provider does not require understanding the whole codebase — r
 | Hailuo (MiniMax 海螺) | video | 🟢 Open | Medium |
 | Kling 官方 API（非 DashScope 渠道） | image / video | 🟢 Open | Low |
 
-已实现 / Implemented: Gemini Image · OpenAI GPT-Image (`gpt-image-1`) · Stability Stable Image Core · Kling V3 / V3 Omni (DashScope) · Wanx (image / i2v / r2v / t2v)。共 9 款，差异矩阵见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) §9。
+已实现 / Implemented: Gemini Image · OpenAI GPT-Image (`gpt-image-1`) · Stability Stable Image Core · Kling V3 / V3 Omni (DashScope) · Wanx (image / i2v / r2v / t2v)。共 9 款内置，另有 OpenAI 兼容自定义端点（`custom_providers.json`，PROVIDER-API §13）。差异矩阵见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) §9。
 
-> 相关 Planned 基建（设计已写入文档、待实现）：成本预估 `estimateCost` + UI 成本展示（PROVIDER-API §4）· 配额展示（原 `QuotaAware` 接口，已删待重立项）· 自定义 Provider 配置源 `custom_providers.json`（PROVIDER-API §13）· JobQueue 自动重试与下载续传（ARCHITECTURE §5.3 / §8）· 性能降级控制器（ARCHITECTURE §10）。
+> 相关 Planned 基建（设计已写入文档、待实现）：配额展示（原 `QuotaAware` 接口，已删待重立项）· JobQueue **job 级**自动重试与下载续传（poll 级瞬时错误退避已有，ARCHITECTURE §5.3 / §8）· 性能降级控制器（ARCHITECTURE §10）。
+> 已从本清单毕业：成本预估 + UI 成本展示（M2 落地）· `custom_providers.json`（M3 首切片落地）。
 
 ### 🎨 Canvas / Editor
 
-- Undo/Redo 完整覆盖 — 当前部分操作未入 undo stack
-- 节点 group / collapse — 大画布折叠
+- Undo/Redo — 画布操作历史（当前无 undo stack，从零设计）
+- 节点 group / collapse — 泳道级折叠已落地（lane collapse），节点级 group 未做
 - 画布缩放性能优化 — 节点 > 200 时 frame drop
 
 ### 💻 平台 / Platform
@@ -77,7 +85,7 @@ Adding a new AI provider does not require understanding the whole codebase — r
 
 ### 🧪 测试基建 / Test infrastructure
 
-- Golden test 补齐 — 当前 `golden` job 是占位
+- Golden test 覆盖扩展 — 基线管线已就绪（CI ubuntu 铸造 + update-goldens workflow），当前仅 NodeCard 3 态，扩到更多组件
 - E2E：完整 script → storyboard → export 流程
 - Coverage 70% 门槛之上的提升路径
 
