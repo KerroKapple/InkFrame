@@ -1,4 +1,4 @@
-# InkFrame Provider API 契约 v0.1.0
+# InkFrame Provider API 契约 v0.2.1
 
 > **受众**：T3 Provider 层实现者（人类 + AI agents）
 > **权威性**：PRD §10 的工程化落地；与 `docs/ARCHITECTURE.md` §3 / §4 同级强约束
@@ -101,7 +101,7 @@ abstract class KeyValidatable {
 
 ## 3. ProviderCapabilities 能力声明
 
-**唯一事实源**：每个 Provider 实例必须暴露 `const ProviderCapabilities get capabilities`（定义见 `lib/core/models/provider_capabilities.dart`）。UI 内联面板、`JobQueueService` 都只通过这个字段决策。
+**唯一事实源**：每个 Provider 实例必须暴露 `const ProviderCapabilities get capabilities`（定义见 `lib/core/models/provider_capabilities.dart`）。UI 内联面板、`JobQueueService`、生成控制器（提交前首尾帧能力校验，不支持即抛 `InvalidGenerationConfigError`）、画布入边区 role 门控（`NodeInputsSection`）都只通过这个字段决策。
 
 ```dart
 @freezed
@@ -131,6 +131,7 @@ abstract class ProviderCapabilities with _$ProviderCapabilities {
     required int burst,                    // token bucket 桶容量；默认 = qps
     Duration? pollInterval,                // null = 全局 3s
     Duration? pollTimeout,                 // null = 全局 30min
+    String? displayName,                   // UI 显示名覆盖；自定义 Provider（§13）派生时必填
   }) = _ProviderCapabilities;
 }
 ```
@@ -246,11 +247,11 @@ if (s case JobSuccess(:final inlineBytes, :final remoteUrls)) {
 
 ---
 
-## 6. 错误契约（InkError ↔ 14 错误码）
+## 6. 错误契约（InkError ↔ 15 错误码）
 
 **唯一事实源**：`lib/core/errors/ink_error.dart` 的 `sealed class InkError`。所有 Provider 抛出的错误必须是 `InkError` 子类，不得裸 `Exception`。
 
-### 6.1 14 错误码映射
+### 6.1 15 错误码映射
 
 错误按域拆为 6 个 sealed 子类，code 经构造参数传入（子类构造器内 assert 限定合法 code 集合），而非每个 code 一个命名构造器：
 
@@ -260,6 +261,7 @@ if (s case JobSuccess(:final inlineBytes, :final remoteUrls)) {
 | `insufficient_balance` | `ProviderError(code: InkErrorCode.insufficientBalance)` | ❌ | 402 |
 | `content_policy` | `ProviderError(code: InkErrorCode.contentPolicy)` | ❌ | 审核拒绝 |
 | `invalid_parameter` | `ProviderError(code: InkErrorCode.invalidParameter)` | ❌ | 比例/分辨率/时长不合法 |
+| `provider_invalid_response` | `ProviderError(code: InkErrorCode.providerInvalidResponse)` | ❌ | 2xx 但响应体缺关键字段/结构不符（HI-04） |
 | `provider_5xx` | `ProviderError(code: InkErrorCode.providerServer)` | ✅ | 5xx |
 | `provider_busy` | `ProviderError(code: InkErrorCode.providerBusy)` | ✅ | 429 |
 | `poll_timeout` | `ProviderError(code: InkErrorCode.pollTimeout)` | ❌ | 超 30min |
@@ -408,7 +410,9 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 - **openai-image**：`gpt-image-1` 仅 1024×1024 / 1536×1024 / 1024×1536 三种 size——`r4x3` / `r3x4` / `r21x9` 无精确映射，capabilities 不声明
 - **stability-image-core**：提交是 multipart/form-data，不是 JSON；Key 验证用余额端点（最轻量、零配额消耗）
 - **DashScope 系 6 款**：共享基类 `DashScopeAsyncProviderBase` + 同一把 sk-xxx Key（SecureStorage 按 `provider.dashscope.api_key` 折叠存储，见 ARCHITECTURE.md §9.2）；提交必须带 `X-DashScope-Async: enable` 头；`task_status` 字面量见基类 `DashScopeTaskStatus`
-- **wanx-r2v / kling-v3-omni**：参考图超上限（3 / 4）客户端静默截断，最终裁决交给服务端
+- **wanx-image / wanx-r2v / kling-v3-omni**：参考图超上限（1 / 3 / 4）客户端按 `capabilities.maxRefImages` 静默截断，最终裁决交给服务端；UI 侧输入区超限时显示「多余参考图将被忽略」警告
+- **wanx-i2v（wan2.7 契约）**：首末帧经 `input.media` 数组传递（`{type: first_frame|last_frame, url}`）；旧版 `img_url` / `last_frame_url` 已被服务端拒绝（`Field required: input.media`）。缺首帧在 `buildRequestBody` 阶段抛 `ProviderError(invalidParameter, extra.reason='missing_first_frame')` fail-fast，不发注定失败的请求
+- **首尾帧能力位的消费链**：`supportsFirstFrame/LastFrame` 由画布入边区 role 下拉门控（`NodeInputsSection`）+ 生成控制器建行事务前校验（不支持即抛 `InvalidGenerationConfigError('first/last_frame_unsupported')`）双层强制；provider 层不做静默降级翻译
 
 ---
 
@@ -649,3 +653,4 @@ capabilities = 模板基线.copyWith(providerId: 'custom:<id>', displayName: dis
 | 2026-04-15 | v0.1.0 | 初版。对齐 PRD §10 + ARCHITECTURE §3 | P9 |
 | 2026-06-12 | v0.1.1 | 对齐真实代码：QuotaAware 删除（四接口）；§6 错误契约改为真实 sealed 子类 + `mapDioError` 签名；§9 矩阵替换为已实现 9 款；estimateCost / 自定义 Provider 标 Planned；§11/§12 文件与测试布局对齐 repo | FIX-019 |
 | 2026-07-03 | v0.2.0 | §13 重写为唯一已落地方案（custom_providers.json + 协议模板派生 + 启动期一次性注册）；§3 硬约束与 §14-6 反模式收敛为"能力位禁止运行时自由下发"（模板派生合法）；§2/§9/§11 补自定义 Provider 条目。对应 ADR-0009 2026-07-02 修订 | M3 首切片 |
+| 2026-07-06 | v0.2.1 | §6 错误码 14→15（补 `provider_invalid_response`，HI-04）；§3 snippet 补 `displayName` + 消费方清单补生成控制器/入边区门控；§9.3 补 wanx-image 截断、wanx-i2v wan2.7 `input.media` 契约与缺首帧 fail-fast、首尾帧能力位双层强制（对应 PR #137/#138）；标题版本号对齐变更记录 | 文档清欠 |

@@ -8,10 +8,13 @@
 - **Network**: dio
 - **i18n**: flutter_localizations + ARB files
 - **Video playback / thumbnail**: media_kit (+ media_kit_video, media_kit_libs_video)
+- **Video export**: external ffmpeg binary (runtime probe via `FfmpegLocator`; not bundled)
+- **Window chrome**: window_manager (frameless shell)
+- **File import**: file_selector
 - **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager)
 - **Platforms**: macOS + Windows
 
-> Modules not yet implemented (e.g. video export, script editor, storyboard, asset browser) live in `ROADMAP.md`. This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
+> Modules not yet implemented (e.g. script editor) are tracked in `docs/BOARD.md` (M3 table). This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
 
 ## Architecture Principles
 
@@ -201,6 +204,7 @@ lib/
 │   └── components/                    # Reusable Ink* components
 ├── core/                              # Shared abstractions (no Flutter imports below interfaces)
 │   ├── constants/                     # Enums, numeric constants (no side effects)
+│   ├── db/                            # DbRow typing + column-name constants (columns.dart, row_reader.dart)
 │   ├── di/                            # Riverpod provider definitions (the only wiring folder)
 │   ├── errors/                        # InkError sealed hierarchy + InkErrorCode
 │   ├── interfaces/                    # Abstract service / repository contracts
@@ -254,6 +258,7 @@ lib/
 │   ├── pg_controller.dart             # Embedded PG lifecycle
 │   ├── pg_binary_locator.dart         # PG binary discovery
 │   ├── base_repository.dart           # Shared SQL helpers
+│   ├── postgres_unit_of_work.dart     # Multi-step write transactions (UnitOfWork)
 │   ├── migrations/                    # Migration runner
 │   ├── repositories/                  # Concrete postgres_*_repository.dart
 │   └── schema/                        # DDL (.sql) + schema version (.dart)
