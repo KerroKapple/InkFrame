@@ -602,6 +602,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioDeleteFailed => '删除项目失败';
 
   @override
+  String get studioManageCanvases => '管理画布';
+
+  @override
+  String get studioRenameCanvas => '重命名画布';
+
+  @override
+  String get studioRenameCanvasFailed => '重命名画布失败';
+
+  @override
+  String get studioCanvasDeleteConfirmTitle => '删除画布？';
+
+  @override
+  String get studioCanvasDeleteConfirmBody => '该画布将从项目中移除。';
+
+  @override
+  String get studioDeleteCanvasFailed => '删除画布失败';
+
+  @override
+  String get studioNoCanvases => '该项目暂无画布';
+
+  @override
+  String get commonClose => '关闭';
+
+  @override
   String get studioProjectMenuTooltip => '项目操作';
 
   @override

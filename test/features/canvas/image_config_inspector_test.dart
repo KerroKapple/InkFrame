@@ -4,13 +4,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
+import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
+import 'package:inkframe/services/file_preferences_service.dart';
 
 import '../../_harness/test_app.dart';
 
@@ -124,6 +127,45 @@ void main() {
 
     expect(find.text('Config'), findsOneWidget);
     expect(find.text('Prompt'), findsOneWidget);
+    expect(find.text('test-provider'), findsOneWidget);
+  });
+
+  testWidgets('默认 provider 链：节点未存时优先上次使用', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      overrides: [
+        providerCapabilitiesListProvider
+            .overrideWith((ref) => [_fakeCaps, _fullCaps]),
+        preferencesServiceProvider.overrideWithValue(
+          InMemoryPreferencesService(
+            const AppPreferences(lastImageProviderId: 'wanx-image'),
+          ),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    // 未存节点配置时不取 first（test-provider），取记住的 wanx-image。
+    expect(find.text('wanx-image'), findsOneWidget);
+    expect(find.text('test-provider'), findsNothing);
+  });
+
+  testWidgets('上次使用的 provider 已不存在 → 回退 first', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fakeCaps]),
+        preferencesServiceProvider.overrideWithValue(
+          InMemoryPreferencesService(
+            const AppPreferences(lastImageProviderId: 'custom:ghost'),
+          ),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
     expect(find.text('test-provider'), findsOneWidget);
   });
 

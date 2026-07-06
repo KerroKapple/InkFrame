@@ -15,6 +15,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
 import '../providers/api_key_scope_controller.dart';
@@ -174,14 +175,15 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
                 ),
               ),
               const SizedBox(width: InkSpacing.sm),
-              FilledButton(
+              InkButton(
+                label: context.l10n.settingsApiKeySave,
                 onPressed: loading ? null : _save,
-                child: Text(context.l10n.settingsApiKeySave),
               ),
               const SizedBox(width: InkSpacing.xs),
-              OutlinedButton(
+              InkButton(
+                label: context.l10n.settingsApiKeyClear,
+                variant: InkButtonVariant.secondary,
                 onPressed: (loading || !isSet) ? null : _clear,
-                child: Text(context.l10n.settingsApiKeyClear),
               ),
             ],
           ),

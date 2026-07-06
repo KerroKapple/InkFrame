@@ -624,6 +624,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioDeleteFailed => 'Failed to delete project';
 
   @override
+  String get studioManageCanvases => 'Manage canvases';
+
+  @override
+  String get studioRenameCanvas => 'Rename canvas';
+
+  @override
+  String get studioRenameCanvasFailed => 'Failed to rename canvas';
+
+  @override
+  String get studioCanvasDeleteConfirmTitle => 'Delete canvas?';
+
+  @override
+  String get studioCanvasDeleteConfirmBody =>
+      'The canvas will be removed from this project.';
+
+  @override
+  String get studioDeleteCanvasFailed => 'Failed to delete canvas';
+
+  @override
+  String get studioNoCanvases => 'No canvases in this project';
+
+  @override
+  String get commonClose => 'Close';
+
+  @override
   String get studioProjectMenuTooltip => 'Project options';
 
   @override

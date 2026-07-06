@@ -10,6 +10,7 @@ import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/features/settings/widgets/api_keys_section.dart';
+import 'package:inkframe/theme/components/ink_button.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
 import '../../_harness/fake_providers.dart';
@@ -61,7 +62,7 @@ void main() {
     expect(find.text('Not set'), findsOneWidget);
     // Clear 按钮 disabled
     final clearBtn = tester
-        .widget<OutlinedButton>(find.widgetWithText(OutlinedButton, 'Clear'));
+        .widget<InkButton>(find.widgetWithText(InkButton, 'Clear'));
     expect(clearBtn.onPressed, isNull);
   });
 
@@ -75,7 +76,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'sk-abc');
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.widgetWithText(InkButton, 'Save'));
     await tester.pumpAndSettle();
 
     final storedKey = SecureStorageKeys.providerApiKey(_id);
@@ -98,7 +99,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'sk-bad');
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.widgetWithText(InkButton, 'Save'));
     await tester.pumpAndSettle();
 
     final storedKey = SecureStorageKeys.providerApiKey(_id);
@@ -129,7 +130,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'sk-maybe');
-    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.tap(find.widgetWithText(InkButton, 'Save'));
     await tester.pumpAndSettle();
 
     final storedKey = SecureStorageKeys.providerApiKey(_id);
@@ -156,7 +157,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Set'), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(OutlinedButton, 'Clear'));
+    await tester.tap(find.widgetWithText(InkButton, 'Clear'));
     await tester.pumpAndSettle();
 
     expect(await secure.retrieve(storedKey), isNull);

@@ -38,4 +38,38 @@ void main() {
     expect(p.copyWith(clearLocale: true).localeCode, isNull);
     expect(p.copyWith(localeCode: 'zh').localeCode, 'zh');
   });
+
+  test('上次会话字段 toMap/fromMap 往返', () {
+    const p = AppPreferences(
+      lastImageProviderId: 'gemini-image',
+      lastVideoProviderId: 'wanx-i2v',
+      lastCanvasId: 'cv1',
+      lastProjectId: 'p1',
+    );
+    expect(AppPreferences.fromMap(p.toMap()), p);
+  });
+
+  test('上次会话字段 fromMap 容错：类型错/缺失 → null', () {
+    final p = AppPreferences.fromMap(<String, Object?>{
+      'last_image_provider_id': 42, // 类型错
+      'last_canvas_id': true, // 类型错
+      // 其余缺失
+    });
+    expect(p.lastImageProviderId, isNull);
+    expect(p.lastVideoProviderId, isNull);
+    expect(p.lastCanvasId, isNull);
+    expect(p.lastProjectId, isNull);
+  });
+
+  test('copyWith clearLastCanvas 同时清画布与项目，不动 provider 记忆', () {
+    const p = AppPreferences(
+      lastImageProviderId: 'gemini-image',
+      lastCanvasId: 'cv1',
+      lastProjectId: 'p1',
+    );
+    final cleared = p.copyWith(clearLastCanvas: true);
+    expect(cleared.lastCanvasId, isNull);
+    expect(cleared.lastProjectId, isNull);
+    expect(cleared.lastImageProviderId, 'gemini-image');
+  });
 }
