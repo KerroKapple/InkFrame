@@ -83,10 +83,21 @@ class WanxI2VProvider extends DashScopeAsyncProviderBase {
       'model': kWanxI2VModel,
       'input': <String, Object?>{
         'prompt': task.prompt,
-        if (task.firstFramePath != null)
-          kDashScopeFieldImgUrl: task.firstFramePath,
-        if (task.lastFramePath != null)
-          kDashScopeFieldLastFrameUrl: task.lastFramePath,
+        // wan2.7 契约：首末帧经 input.media 数组传递（type: first_frame / last_frame），
+        // 旧版 img_url / last_frame_url 已被服务端拒绝（Field required: input.media）。
+        if (task.firstFramePath != null || task.lastFramePath != null)
+          'media': <Map<String, Object?>>[
+            if (task.firstFramePath != null)
+              <String, Object?>{
+                'type': 'first_frame',
+                'url': task.firstFramePath,
+              },
+            if (task.lastFramePath != null)
+              <String, Object?>{
+                'type': 'last_frame',
+                'url': task.lastFramePath,
+              },
+          ],
       },
       'parameters': <String, Object?>{
         'size': size,
