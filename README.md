@@ -18,8 +18,14 @@ InkFrame is a desktop workstation for AI-driven filmmaking. A node-based canvas 
 prompt → image → video through real providers — DashScope (Wanx), Kling, and Gemini — while every
 project file and API key stays on **your disk**. No cloud account, no upload, no SaaS lock-in.
 
-<!-- 📸 Maintainer: drop a canvas screenshot or short GIF here once UI Sprint 3 lands.
-     A real visual is the single highest-leverage addition for star conversion. -->
+<p align="center">
+  <img src="docs/media/hero-canvas.png" alt="InkFrame node canvas — prompt, provider config and a generated cinematic still" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/media/demo-generation.gif" alt="Generating an image on the canvas: submit, live queue progress, result lands on the node" width="70%">
+</p>
+
 
 ## ✨ Why InkFrame
 
