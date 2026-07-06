@@ -1,5 +1,7 @@
-// 无边框窗口的自定义标题栏：左/中/右三槽 + 右侧最小化/最大化/关闭按钮。
+// 无边框窗口的自定义标题栏：左/中/右三槽。
+// 窗口控制按钮按平台惯例：macOS 用原生红绿灯（leading 让位），其余平台自绘右侧三键。
 // 高度固定 56，整条 chrome 提供 DragToMoveArea。
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -22,6 +24,7 @@ class InkWindowChrome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final InkColors colors = context.inkColors;
+    final bool isMac = defaultTargetPlatform == TargetPlatform.macOS;
     return SizedBox(
       height: 56,
       child: DragToMoveArea(
@@ -35,13 +38,17 @@ class InkWindowChrome extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: InkSpacing.lg),
           child: Row(
             children: <Widget>[
+              if (isMac)
+                const SizedBox(width: InkSpacing.macTrafficLightInset),
               ?leading,
               Expanded(
                 child: Center(child: center ?? const SizedBox.shrink()),
               ),
               ?trailing,
-              const SizedBox(width: InkSpacing.md),
-              const _WindowButtons(),
+              if (!isMac) ...<Widget>[
+                const SizedBox(width: InkSpacing.md),
+                const _WindowButtons(),
+              ],
             ],
           ),
         ),
