@@ -290,6 +290,42 @@ abstract class AppLocalizations {
   /// **'Resolution'**
   String get inspectorResolutionLabel;
 
+  /// No description provided for @inspectorAspectRatioLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Aspect ratio'**
+  String get inspectorAspectRatioLabel;
+
+  /// No description provided for @inspectorSeedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Seed'**
+  String get inspectorSeedLabel;
+
+  /// No description provided for @inspectorSeedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Random'**
+  String get inspectorSeedHint;
+
+  /// No description provided for @inspectorNegativePromptLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Negative prompt'**
+  String get inspectorNegativePromptLabel;
+
+  /// No description provided for @inspectorNegativePromptHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What to avoid'**
+  String get inspectorNegativePromptHint;
+
+  /// No description provided for @inspectorBatchLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch size'**
+  String get inspectorBatchLabel;
+
   /// No description provided for @inspectorGenerate.
   ///
   /// In en, this message translates to:
@@ -998,6 +1034,60 @@ abstract class AppLocalizations {
   /// **'Create'**
   String get studioCreate;
 
+  /// No description provided for @studioRenameProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename project'**
+  String get studioRenameProject;
+
+  /// No description provided for @studioRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get studioRename;
+
+  /// No description provided for @studioRenameFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rename project'**
+  String get studioRenameFailed;
+
+  /// No description provided for @studioDeleteProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project'**
+  String get studioDeleteProject;
+
+  /// No description provided for @studioDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get studioDelete;
+
+  /// No description provided for @studioDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete project?'**
+  String get studioDeleteConfirmTitle;
+
+  /// No description provided for @studioDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The project and its canvases will be moved out of your library.'**
+  String get studioDeleteConfirmBody;
+
+  /// No description provided for @studioDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete project'**
+  String get studioDeleteFailed;
+
+  /// No description provided for @studioProjectMenuTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Project options'**
+  String get studioProjectMenuTooltip;
+
   /// Project card meta line: real creation month + canvas count
   ///
   /// In en, this message translates to:
@@ -1027,42 +1117,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Configure in Settings'**
   String get studioNoKeyBannerAction;
-
-  /// No description provided for @canvasInspectorTransform.
-  ///
-  /// In en, this message translates to:
-  /// **'Transform'**
-  String get canvasInspectorTransform;
-
-  /// No description provided for @canvasInspectorCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera'**
-  String get canvasInspectorCamera;
-
-  /// No description provided for @canvasInspectorComposition.
-  ///
-  /// In en, this message translates to:
-  /// **'Composition'**
-  String get canvasInspectorComposition;
-
-  /// No description provided for @canvasInspectorMetadata.
-  ///
-  /// In en, this message translates to:
-  /// **'Metadata'**
-  String get canvasInspectorMetadata;
-
-  /// No description provided for @canvasInspectorNotes.
-  ///
-  /// In en, this message translates to:
-  /// **'Notes'**
-  String get canvasInspectorNotes;
-
-  /// No description provided for @canvasInspectorAddAttribute.
-  ///
-  /// In en, this message translates to:
-  /// **'Add Attribute'**
-  String get canvasInspectorAddAttribute;
 
   /// No description provided for @canvasRenderQueue.
   ///
@@ -1154,24 +1208,6 @@ abstract class AppLocalizations {
   /// **'{count} selected'**
   String canvasSelectionCount(int count);
 
-  /// No description provided for @canvasInspectorKindCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera Node'**
-  String get canvasInspectorKindCamera;
-
-  /// No description provided for @canvasInspectorMockTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Wide Shot'**
-  String get canvasInspectorMockTitle;
-
-  /// No description provided for @canvasInspectorMockId.
-  ///
-  /// In en, this message translates to:
-  /// **'cam_0021'**
-  String get canvasInspectorMockId;
-
   /// No description provided for @canvasRenderQueueEmpty.
   ///
   /// In en, this message translates to:
@@ -1201,6 +1237,234 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get windowClose;
+
+  /// No description provided for @laneAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add lane'**
+  String get laneAdd;
+
+  /// No description provided for @laneNewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New lane'**
+  String get laneNewTitle;
+
+  /// No description provided for @laneEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit lane'**
+  String get laneEditTitle;
+
+  /// No description provided for @laneNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get laneNameLabel;
+
+  /// No description provided for @laneNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Lane name'**
+  String get laneNameHint;
+
+  /// No description provided for @laneStyleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Style description'**
+  String get laneStyleLabel;
+
+  /// No description provided for @laneStyleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. warm sunset lighting, candlelit'**
+  String get laneStyleHint;
+
+  /// No description provided for @laneTintLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Background color'**
+  String get laneTintLabel;
+
+  /// No description provided for @laneTintAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto'**
+  String get laneTintAuto;
+
+  /// No description provided for @laneDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete lane'**
+  String get laneDelete;
+
+  /// No description provided for @laneDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this lane?'**
+  String get laneDeleteConfirmTitle;
+
+  /// No description provided for @laneDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Nodes in this lane keep their position but lose the lane style.'**
+  String get laneDeleteConfirmBody;
+
+  /// No description provided for @laneDialogSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get laneDialogSave;
+
+  /// No description provided for @laneDialogCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get laneDialogCancel;
+
+  /// No description provided for @laneDirectionToggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle lane direction'**
+  String get laneDirectionToggle;
+
+  /// No description provided for @laneUntitled.
+  ///
+  /// In en, this message translates to:
+  /// **'Untitled lane'**
+  String get laneUntitled;
+
+  /// No description provided for @laneCreateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to create lane'**
+  String get laneCreateFailed;
+
+  /// No description provided for @laneUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update lane'**
+  String get laneUpdateFailed;
+
+  /// No description provided for @laneDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete lane'**
+  String get laneDeleteFailed;
+
+  /// No description provided for @laneCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse lane'**
+  String get laneCollapse;
+
+  /// No description provided for @laneExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand lane'**
+  String get laneExpand;
+
+  /// No description provided for @inspectorPromptPreviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Final prompt preview'**
+  String get inspectorPromptPreviewLabel;
+
+  /// No description provided for @inspectorIgnoreLaneStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ignore lane style'**
+  String get inspectorIgnoreLaneStyle;
+
+  /// No description provided for @baseStyleEditTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Base style'**
+  String get baseStyleEditTooltip;
+
+  /// No description provided for @baseStyleEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project base style'**
+  String get baseStyleEditTitle;
+
+  /// No description provided for @baseStylePrefixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Prefix (prepended to every prompt)'**
+  String get baseStylePrefixLabel;
+
+  /// No description provided for @baseStylePrefixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. cinematic film still'**
+  String get baseStylePrefixHint;
+
+  /// No description provided for @baseStyleSuffixLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Suffix (appended to every prompt)'**
+  String get baseStyleSuffixLabel;
+
+  /// No description provided for @baseStyleSuffixHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. 8k, highly detailed'**
+  String get baseStyleSuffixHint;
+
+  /// No description provided for @baseStylePresetsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Presets'**
+  String get baseStylePresetsLabel;
+
+  /// No description provided for @baseStylePresetCinematic.
+  ///
+  /// In en, this message translates to:
+  /// **'Cinematic'**
+  String get baseStylePresetCinematic;
+
+  /// No description provided for @baseStylePresetAnime.
+  ///
+  /// In en, this message translates to:
+  /// **'Anime'**
+  String get baseStylePresetAnime;
+
+  /// No description provided for @baseStylePresetGhibli.
+  ///
+  /// In en, this message translates to:
+  /// **'Ghibli'**
+  String get baseStylePresetGhibli;
+
+  /// No description provided for @baseStylePresetCyberpunk.
+  ///
+  /// In en, this message translates to:
+  /// **'Cyberpunk'**
+  String get baseStylePresetCyberpunk;
+
+  /// No description provided for @baseStylePresetInkwash.
+  ///
+  /// In en, this message translates to:
+  /// **'Ink wash'**
+  String get baseStylePresetInkwash;
+
+  /// No description provided for @baseStylePresetPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Photographic'**
+  String get baseStylePresetPhoto;
+
+  /// No description provided for @baseStylePreset3d.
+  ///
+  /// In en, this message translates to:
+  /// **'3D animation'**
+  String get baseStylePreset3d;
+
+  /// No description provided for @baseStyleUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to update base style'**
+  String get baseStyleUpdateFailed;
 }
 
 class _AppLocalizationsDelegate

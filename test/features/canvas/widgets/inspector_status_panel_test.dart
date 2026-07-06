@@ -8,8 +8,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
 import 'package:inkframe/features/canvas/widgets/inspector_status_panel.dart';
+import 'package:inkframe/features/generation/models/job_state.dart';
+import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 
 import '../../../_harness/test_app.dart';
+
+void _noop() {}
+
+/// build() 直接吐预置列表的 JobsRegistry——用于 Binding 进度回读测试。
+class _SeededRegistry extends JobsRegistry {
+  _SeededRegistry(this._seed);
+  final List<JobState> _seed;
+  @override
+  List<JobState> build() => _seed;
+}
 
 void main() {
   testWidgets('idle: 渲染 Generate 按钮；canSubmit=false 时 disabled', (tester) async {
@@ -153,5 +165,80 @@ void main() {
       locale: const Locale('zh'),
     );
     expect(find.text('配置无效：prompt is empty'), findsOneWidget);
+  });
+
+  testWidgets('Binding: 节点有活跃 running job → 展示该 job 的真实进度', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(
+        body: InspectorStatusBinding(
+          nodeId: 'n1',
+          providerId: null,
+          promptEmpty: false,
+          generateLabel: 'Generate',
+          disabledEmptyPromptText: 'empty',
+          disabledNoKeyText: 'nokey',
+          onSubmit: _noop,
+        ),
+      ),
+      locale: const Locale('zh'),
+      overrides: [
+        jobsRegistryProvider.overrideWith(
+          () => _SeededRegistry(const [
+            JobState.running(
+              jobId: 'j',
+              providerId: 'p',
+              canvasId: 'c',
+              sourceNodeId: 'n1',
+              progress: 0.5,
+            ),
+          ]),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final bar = tester.widget<LinearProgressIndicator>(
+      find.byType(LinearProgressIndicator),
+    );
+    expect(bar.value, closeTo(0.5, 1e-6));
+    expect(find.text('生成中... 50%'), findsOneWidget);
+    // 活跃 job 覆盖 idle → 不该再显示 Generate 按钮
+    expect(find.byType(FilledButton), findsNothing);
+  });
+
+  testWidgets('Binding: 节点有终态 job（succeeded）→ 回落 idle，显示 Generate',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(
+        body: InspectorStatusBinding(
+          nodeId: 'n1',
+          providerId: null,
+          promptEmpty: true,
+          generateLabel: 'Generate',
+          disabledEmptyPromptText: 'empty',
+          disabledNoKeyText: 'nokey',
+          onSubmit: _noop,
+        ),
+      ),
+      overrides: [
+        jobsRegistryProvider.overrideWith(
+          () => _SeededRegistry(const [
+            JobState.succeeded(
+              jobId: 'j',
+              providerId: 'p',
+              canvasId: 'c',
+              sourceNodeId: 'n1',
+              artifactPath: 'a.png',
+            ),
+          ]),
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byType(FilledButton), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 }

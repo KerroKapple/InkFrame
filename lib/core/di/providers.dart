@@ -105,12 +105,26 @@ final providerRegistryProvider = Provider<ProviderRegistry>((ref) {
   });
 });
 
-/// UI 层下拉菜单数据源：按注册顺序列出 capabilities。
+/// 全部已注册 Provider 的能力声明（编译期 const）。注册顺序即展示顺序。
+/// 与 providerRegistryProvider 的工厂表共用同一组 capabilities const，
+/// 一致性由 provider_capabilities_source_test 守卫（对齐 registry.ids，防漂移）。
+const List<ProviderCapabilities>
+    kAllProviderCapabilities = <ProviderCapabilities>[
+  kGeminiImageCapabilities,
+  kOpenAIImageCapabilities,
+  kWanxImageCapabilities,
+  kWanxT2VCapabilities,
+  kWanxI2VCapabilities,
+  kWanxR2VCapabilities,
+  kKlingV3Capabilities,
+  kKlingV3OmniCapabilities,
+  kStabilityImageCoreCapabilities,
+];
+
+/// UI 层下拉菜单数据源：直接读编译期 const 能力——**不实例化任何 Provider**
+/// （不连带 9 个 Dio / RateLimiter）。这是 P1-x1 的修复点。
 final providerCapabilitiesListProvider = Provider<List<ProviderCapabilities>>(
-  (ref) {
-    final registry = ref.watch(providerRegistryProvider);
-    return registry.listCapabilities();
-  },
+  (ref) => kAllProviderCapabilities,
   name: 'providerCapabilitiesListProvider',
 );
 

@@ -36,7 +36,77 @@ const _fakeVideoCaps = caps.ProviderCapabilities(
   burst: 1,
 );
 
+const _noCameraCaps = caps.ProviderCapabilities(
+  providerId: 'wanx-t2v',
+  region: caps.ProviderRegion.cn,
+  modes: [caps.GenerationMode.textToVideo],
+  supportedRatios: [caps.AspectRatio.r16x9],
+  supportedResolutions: [caps.Resolution.p720, caps.Resolution.p1080],
+  supportedDurations: [5, 10],
+  supportedCameras: [],
+  maxBatchSize: 1,
+  maxRefImages: 0,
+  refImagesIncludeKeyframes: false,
+  supportsFirstFrame: false,
+  supportsLastFrame: false,
+  supportsNegativePrompt: false,
+  supportsSeed: false,
+  supportsSound: false,
+  supportsBatch: false,
+  supportsCancellation: true,
+  supportsPolling: true,
+  costModel: CostModel.perCall(usdPerCall: 0.1),
+  maxConcurrentJobs: 1,
+  qps: 1,
+  burst: 1,
+);
+
 void main() {
+  testWidgets('supportedCameras 为空 → 运镜整段隐藏（不渲染死下拉）', (tester) async {
+    const node = CanvasNode(
+      id: 'n1',
+      label: '',
+      type: CanvasNodeType.video,
+      role: NodeRole.config,
+    );
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: VideoConfigInspector(node: node)),
+      locale: const Locale('zh'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_noCameraCaps]),
+      ],
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('运镜'), findsNothing);
+    expect(find.byType(DropdownButton<caps.CameraMovement>), findsNothing);
+    // duration 仍在
+    expect(find.text('时长（秒）'), findsOneWidget);
+  });
+
+  testWidgets('持久化的不受支持运镜被钳制，不触发 DropdownButton 断言', (tester) async {
+    const node = CanvasNode(
+      id: 'n1',
+      label: '',
+      type: CanvasNodeType.video,
+      role: NodeRole.config,
+      typeConfig: <String, Object?>{'provider_id': 'wanx-t2v', 'camera': 'orbit'},
+    );
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: VideoConfigInspector(node: node)),
+      locale: const Locale('zh'),
+      overrides: [
+        // 支持 [static_, pushIn]，不含 orbit
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fakeVideoCaps]),
+      ],
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    // 钳制为 supportedCameras.first → 本地化"固定机位"
+    expect(find.text('固定机位'), findsOneWidget);
+  });
+
   testWidgets('prompt / duration / camera 控件渲染', (tester) async {
     const node = CanvasNode(
       id: 'n1',

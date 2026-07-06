@@ -12,6 +12,7 @@ import 'dart:io';
 import 'dart:math';
 
 import '../core/constants/job_housekeeping.dart';
+import '../core/db/columns.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/generation_provider.dart';
 import '../core/logging/logger_service.dart';
@@ -92,23 +93,19 @@ class InMemoryJobQueueService implements JobQueueService {
     // ME-02：pending 也在回收范围——建行后未 submit / dispose 前未跑的行
     // 否则永远没有出口。
     const orphanStatuses = ['pending', 'submitted', 'polling'];
-    final orphan = await repo.listByStatus(orphanStatuses);
-    if (orphan.isNotEmpty) {
+    // 批量回收：一条 UPDATE 把所有遗留 in-flight job 终结为 cancelled，消除 N+1。
+    // 启动期无并发，无需 per-row from 守卫。
+    final cancelled = await repo.bulkTransition(
+      fromStatuses: orphanStatuses,
+      toStatus: 'cancelled',
+      extra: {
+        JobCol.errorCode: InkErrorCode.cancelledOnExit.wire,
+        JobCol.errorMessage: 'app exited while job was not finished',
+      },
+    );
+    if (cancelled > 0) {
       _logger?.info(_logModule, 'startup recovery: orphan jobs cancelled',
-          extra: {'count': orphan.length});
-    }
-    for (final row in orphan) {
-      final id = row['id'] as String?;
-      if (id == null) continue;
-      await repo.transitionStatus(
-        id: id,
-        fromStatuses: orphanStatuses,
-        toStatus: 'cancelled',
-        extra: {
-          'error_code': InkErrorCode.cancelledOnExit.wire,
-          'error_message': 'app exited while job was not finished',
-        },
-      );
+          extra: {'count': cancelled});
     }
     // ME-32：jobs 表清理在启动时接线（retention + per-canvas cap）。
     // 清理是 housekeeping——失败只放弃本次，绝不阻断启动。
@@ -252,12 +249,12 @@ class InMemoryJobQueueService implements JobQueueService {
         task.jobId,
         from: const ['pending'],
         to: 'submitted',
-        extra: {'submitted_at': DateTime.now().toUtc().toIso8601String()},
+        extra: {JobCol.submittedAt: DateTime.now().toUtc().toIso8601String()},
       );
 
       final providerJobId = await provider.submit(task);
       running.providerJobId = providerJobId;
-      await _persistUpdate(task.jobId, {'remote_task_id': providerJobId});
+      await _persistUpdate(task.jobId, {JobCol.remoteTaskId: providerJobId});
 
       if (provider is! Pollable) {
         // 仅 Submittable 的 Provider 在 P0 还没有——按契约 supportsPolling 必须实现
@@ -352,11 +349,11 @@ class InMemoryJobQueueService implements JobQueueService {
               task.jobId,
               from: const ['submitted'],
               to: 'polling',
-              extra: {'progress': progress},
+              extra: {JobCol.progress: progress},
             );
             enteredPolling = true;
           } else {
-            await _persistUpdate(task.jobId, {'progress': progress});
+            await _persistUpdate(task.jobId, {JobCol.progress: progress});
           }
           handle._emit(status);
         case JobSuccess(:final inlineBytes, :final remoteUrls):
@@ -390,8 +387,8 @@ class InMemoryJobQueueService implements JobQueueService {
             from: const ['submitted', 'polling'],
             to: 'success',
             extra: {
-              'completed_at': DateTime.now().toUtc().toIso8601String(),
-              'progress': 1.0,
+              JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
+              JobCol.progress: 1.0,
             },
           );
           // HI-02：affectedRows==0 = cancel 抢先把行落成 cancelled
@@ -493,9 +490,9 @@ class InMemoryJobQueueService implements JobQueueService {
       from: const ['pending', 'submitted', 'polling'],
       to: 'error',
       extra: {
-        'error_code': error.code.wire,
-        'error_message': _truncate(error.toString(), 2000),
-        'completed_at': DateTime.now().toUtc().toIso8601String(),
+        JobCol.errorCode: error.code.wire,
+        JobCol.errorMessage: _truncate(error.toString(), 2000),
+        JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
   }
@@ -511,8 +508,8 @@ class InMemoryJobQueueService implements JobQueueService {
       from: const ['submitted', 'polling'],
       to: 'timeout',
       extra: {
-        'error_code': error.code.wire,
-        'completed_at': DateTime.now().toUtc().toIso8601String(),
+        JobCol.errorCode: error.code.wire,
+        JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
   }
@@ -526,8 +523,8 @@ class InMemoryJobQueueService implements JobQueueService {
       from: fromStatuses,
       to: 'cancelled',
       extra: {
-        'error_code': InkErrorCode.cancelledByUser.wire,
-        'completed_at': DateTime.now().toUtc().toIso8601String(),
+        JobCol.errorCode: InkErrorCode.cancelledByUser.wire,
+        JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
   }
@@ -538,8 +535,8 @@ class InMemoryJobQueueService implements JobQueueService {
   /// b3：把同步 Provider 返回的 inline bytes 写到 canvas/images/，
   /// 更新 node.type_config.image_url。
   ///
-  /// 三个关键 ID（projectId / canvasId / resultNodeId）任一缺失或服务未注入 →
-  /// 跳过落盘（认为是单测路径）。返回 null 表示成功，非 null = 应转 failure。
+  /// 依赖（fileResolver/nodeRepo）未注入 = 单测/纯内存模式：跳过落盘（返回 null）。
+  /// 依赖已注入但关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure，不静默丢产物）。
   Future<InkError?> _persistInlineBytes(
     GenerationTask task,
     List<dynamic> bytesList,
@@ -549,12 +546,18 @@ class InMemoryJobQueueService implements JobQueueService {
     final resultNodeId = task.resultNodeId;
     final fileResolver = _fileResolver;
     final nodeRepo = _nodeRepo;
-    if (projectId == null ||
-        canvasId == null ||
-        resultNodeId == null ||
-        fileResolver == null ||
-        nodeRepo == null) {
+    // 依赖未注入 = 纯内存/单测模式：跳过落盘（非故障）。
+    if (fileResolver == null || nodeRepo == null) {
       return null;
+    }
+    // 依赖已注入但关键 ID 缺失 = 生产故障：必须失败，绝不静默丢产物当成功。
+    if (projectId == null || canvasId == null || resultNodeId == null) {
+      return LocalIOError(
+        extra: <String, Object?>{
+          'job_id': task.jobId,
+          'reason': 'missing_result_ids',
+        },
+      );
     }
     try {
       final relativePaths = <String>[];
@@ -604,8 +607,9 @@ class InMemoryJobQueueService implements JobQueueService {
   ///   - [FileSystemException] → [LocalIOError]
   ///   - [PathSecurityError]   → [LocalIOError]
   ///
-  /// 三关键 ID（projectId / canvasId / resultNodeId）任一缺失或依赖未注入 →
-  /// 静默跳过（单测路径）。batch_size=1：只取 remoteUrls.first，批量留后续。
+  /// 依赖未注入 = 单测/纯内存模式：跳过下载落盘（返回 null）。
+  /// 依赖已注入但关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure）。
+  /// batch_size=1：只取 remoteUrls.first，批量留后续。
   Future<InkError?> _persistRemoteUrls(
     GenerationTask task,
     List<String> remoteUrls,
@@ -616,13 +620,18 @@ class InMemoryJobQueueService implements JobQueueService {
     final fileResolver = _fileResolver;
     final nodeRepo = _nodeRepo;
     final downloader = _videoDownloader;
-    if (projectId == null ||
-        canvasId == null ||
-        resultNodeId == null ||
-        fileResolver == null ||
-        nodeRepo == null ||
-        downloader == null) {
+    // 依赖未注入 = 纯内存/单测模式：跳过下载落盘（非故障）。
+    if (fileResolver == null || nodeRepo == null || downloader == null) {
       return null;
+    }
+    // 依赖已注入但关键 ID 缺失 = 生产故障：失败，不静默丢产物。
+    if (projectId == null || canvasId == null || resultNodeId == null) {
+      return LocalIOError(
+        extra: <String, Object?>{
+          'job_id': task.jobId,
+          'reason': 'missing_result_ids',
+        },
+      );
     }
 
     final isVideo = task.mode == GenerationMode.textToVideo ||

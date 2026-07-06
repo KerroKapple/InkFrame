@@ -31,6 +31,12 @@ class SchemaMigrationError extends StateError {
   SchemaMigrationError(super.message);
 }
 
+/// 库版本高于应用期望（用更新版应用建的库被旧版打开）。单独子类，便于上层
+/// 捕获后给出"请升级应用"的友好提示，而非与普通迁移失败混为一谈。
+class SchemaDowngradeError extends SchemaMigrationError {
+  SchemaDowngradeError(super.message);
+}
+
 class MigrationRunner {
   MigrationRunner(this._executor, {required this.migrations})
       : assert(migrations.isNotEmpty, 'migrations must be non-empty');
@@ -69,9 +75,10 @@ class MigrationRunner {
     final target = targetVersion;
     if (current == target) return;
     if (current > target) {
-      throw SchemaMigrationError(
-        'Database schema version $current is newer than application '
-        'target $target. Upgrade the application or migrate data manually.',
+      throw SchemaDowngradeError(
+        'Database schema version $current was created by a newer version of '
+        'the app (expected $target). Update InkFrame to open this workspace; '
+        'downgrading is not supported.',
       );
     }
 

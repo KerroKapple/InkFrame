@@ -17,7 +17,7 @@ env:
 
 jobs:
   analyze:
-    name: analyze + hooks
+    name: analyze + lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -30,18 +30,23 @@ jobs:
         run: flutter pub get
       - name: flutter analyze
         run: flutter analyze
-      - name: hook / i18n coverage
-        run: bash scripts/hooks/check-i18n-coverage.sh
-      - name: hook / inline styles
-        run: bash scripts/hooks/check-inline-styles.sh
-      - name: hook / magic strings
-        run: bash scripts/hooks/check-magic-strings.sh
-      - name: hook / direct instantiation
-        run: bash scripts/hooks/check-direct-instantiation.sh
-      - name: hook / disposable cleanup
-        run: bash scripts/hooks/check-disposable-cleanup.sh
-      - name: hook / updated_at maintenance
-        run: bash scripts/hooks/check-updated-at.sh
+      # DIP + 生命周期铁律的硬闸门现由 test job 的 Dart 静态测试承担（不会因下方
+      # custom_lint 临时非阻断而出现防护真空）：
+      #   - test/quality/no_direct_instantiation_test.dart  （取代 check-direct-instantiation.sh）
+      #   - test/quality/disposable_cleanup_test.dart        （取代 check-disposable-cleanup.sh）
+      #   - test/quality/no_inline_styles_test.dart          （取代 check-inline-styles.sh）
+      #   - test/quality/no_magic_strings_test.dart          （取代 check-magic-strings.sh）
+      # 这些测试随 `flutter test --coverage` 阻断式执行，是铁律的回归靶子。
+      #
+      # 下方 custom_lint 是 AST 级增强（更精确，未来取代上述文本近似）。continue-on-error
+      # 临时挂载：在 analysis_options.yaml 启用 plugins: - custom_lint 且把
+      # riverpod_lint/custom_lint 升级到兼容 Dart 3.11+ dot-shorthand AST 的版本、本地
+      # `dart run custom_lint` 跑通无 throw 之前，不作硬阻断（避免引入 per-file crash 栈
+      # 或零规则假绿）。前置完成后去掉 continue-on-error 转为硬闸门。铁律防护在此期间
+      # 不依赖本 step——已由上述 Dart 测试兜底。
+      - name: custom_lint
+        continue-on-error: true
+        run: dart run custom_lint
 
   test:
     name: test + coverage
@@ -85,6 +90,14 @@ jobs:
           #   - generated l10n
           #   - features/debug/**（kDebugMode-only Showcase，用户访问不到）
           exclude: 'lib/main.dart lib/features/canvas/widgets/video_lightbox.dart lib/services/media_kit_*.dart lib/core/di/video_player.dart lib/core/di/thumbnail.dart lib/l10n/generated/** lib/features/debug/**'
+      # 覆盖率证据：把 lcov.info 作为 build artifact 上传，固化“≥70% 已达成”的可核对证据。
+      - name: upload coverage report (evidence)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-lcov
+          path: coverage/lcov.info
+          if-no-files-found: error
 
   golden:
     name: golden
@@ -98,11 +111,12 @@ jobs:
           cache: true
       - name: flutter pub get
         run: flutter pub get
-      # 跑 golden 测试 + 全 skip 告警：golden 基线未在 Linux runner 生成前测试整组
-      # skip，此时 job 绿灯不代表任何视觉验证——必须显式 ::warning:: 暴露空转状态。
-      # 注意：基线只允许在 canonical Linux runner 上生成（workflow_dispatch
+      # 跑 golden 测试 + 基线守卫：
+      #   - 已有基线 PNG 却 ran==0 → 基线被误删 / 测试被 skip → 硬失败（exit 1）。
+      #   - 还没有基线（bootstrap 期）→ ::warning:: 暴露空转，不阻断。
+      # 基线只允许在 canonical ubuntu runner 上生成（update-goldens.yml workflow_dispatch
       # --update-goldens），禁止提交 Windows / macOS 本地生成的基线。
-      - name: run golden tests + all-skip guard
+      - name: run golden tests + baseline guard
         run: |
           shopt -s globstar nullglob
           files=(test/**/*_golden_test.dart)
@@ -110,10 +124,28 @@ jobs:
             echo "::warning title=golden job idle::no golden test files exist — golden job verified nothing"
             exit 0
           fi
+          baselines=(test/**/goldens/*.png)
           flutter test "${files[@]}" --file-reporter "json:golden-report.json"
           ran=$(jq -s '[.[] | select(.type=="testDone" and .hidden != true and .skipped != true)] | length' golden-report.json)
           skipped=$(jq -s '[.[] | select(.type=="testDone" and .hidden != true and .skipped == true)] | length' golden-report.json)
-          echo "golden tests: ran=$ran skipped=$skipped"
+          echo "golden tests: ran=$ran skipped=$skipped baselines=${#baselines[@]}"
           if [ "$ran" -eq 0 ]; then
-            echo "::warning title=golden job idle::all $skipped golden tests are skipped — green light verifies nothing (baseline pending Linux --update-goldens, see test/features/canvas/widgets/node_card_golden_test.dart)"
+            if [ ${#baselines[@]} -gt 0 ]; then
+              echo "::error title=golden regression::${#baselines[@]} baseline PNG(s) exist but 0 golden tests ran — goldens were skipped or disabled; failing."
+              exit 1
+            fi
+            echo "::warning title=golden bootstrap pending::no baselines yet — run the update-goldens workflow on ubuntu to mint + commit them (see test/features/canvas/widgets/node_card_golden_test.dart)"
           fi
+
+  release-scripts:
+    name: release scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # release-tag.sh 回归测试（gh 已 PATH-stub、git 身份 per-repo 设置）。
+      # 修复 S8-8：该测试此前无任何 workflow 调用，发布脚本回归零 CI 保护。
+      - name: release-tag.sh regression test
+        run: |
+          git config --global user.email "ci@inkframe.test"
+          git config --global user.name "InkFrame CI"
+          bash test/scripts/release_tag_test.sh

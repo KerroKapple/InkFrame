@@ -188,6 +188,10 @@ class InkSpacing {
   static const double s14 = 14;
   static const double s18 = 18;
   static const double s28 = 28;
+  // 光学微调小档（2/3/6）：覆盖 chip/inspector/toolbar 的非 8 倍数细间距
+  static const double s2 = 2;
+  static const double s3 = 3;
+  static const double s6 = 6;
 }
 
 /// 圆角。

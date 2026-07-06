@@ -34,7 +34,7 @@
 | Repository 层 | `flutter_test` + 真 PG | `TEST_PG_URL` | **≥ 75%**（数据层硬门槛）| pre-push (有 PG) / CI |
 | Riverpod Provider | `flutter_test` + `ProviderContainer` | override | ≥ 70% | pre-push / CI |
 | Widget | `flutter_test` + `ProviderScope` override | fake services | ≥ 70% | pre-push / CI |
-| Golden | `golden_toolkit` | Skia 渲染 | 关键 Widget 必须有 | CI（macOS only） |
+| Golden | `golden_toolkit` | Skia 渲染 | 关键 Widget 必须有 | CI（ubuntu，canonical 基线平台） |
 | E2E (PRD §29.1 场景 A-H) | 手动 + 录屏 | 完整构建 | Sprint 2 收口 | 发版前 |
 
 **口径：**
@@ -107,7 +107,7 @@ test/
 |---|---|---|
 | 单元/逻辑 | `{subject}_test.dart` | 对应 `lib/` 同层路径 |
 | 集成（需 PG / 真 IO） | `{subject}_integration_test.dart` | `_integration` 后缀**硬约束** |
-| Golden | `{subject}_golden_test.dart` | CI 只在 macOS 跑 |
+| Golden | `{subject}_golden_test.dart` | CI 在 ubuntu 跑（canonical 基线平台） |
 | 契约复用 suite | `{subject}_suite.dart` | 不以 `_test.dart` 结尾，不被 runner 直接跑 |
 
 ### 测试名规范
@@ -325,8 +325,9 @@ flutter test test/widgets/node_golden_test.dart
 
 ### 8.3 平台差异
 
-- Golden 只在 macOS CI 跑——Windows 上字体光栅化差异会无限 false positive
-- 本地 Linux 开发者运行 `--update-goldens` 前，先切到 CI 镜像或 macOS
+- Golden 基线的 canonical 平台是 CI 的 ubuntu runner——Windows / macOS 上字体光栅化差异会无限 false positive
+- 禁止提交本地 Windows/macOS 生成的基线；用 `.github/workflows/update-goldens.yml`（workflow_dispatch）在 ubuntu 上跑 `--update-goldens` 后自动提交基线
+- `node_card_golden_test.dart` 在基线 PNG 存在时自动启用（`_goldensPresent`），CI golden job 在“有基线却 0 测试运行”时硬失败
 
 ---
 

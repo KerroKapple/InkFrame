@@ -2,6 +2,7 @@
 //
 // 补 canvas_edge_test.dart 未覆盖的 _parseRole 异常臂与 == 的末位字段短路。
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 
 Map<String, Object?> _row() => <String, Object?>{
@@ -32,6 +33,14 @@ void main() {
     test('sort_order 缺失 → 默认 0', () {
       final e = CanvasEdgeMapping.fromRow(_row());
       expect(e.sortOrder, 0);
+    });
+
+    test('edge_type 列类型错（非 String）→ LocalIOError', () {
+      final row = _row()..['edge_type'] = 9;
+      expect(
+        () => CanvasEdgeMapping.fromRow(row),
+        throwsA(isA<LocalIOError>()),
+      );
     });
   });
 

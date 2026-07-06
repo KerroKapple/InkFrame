@@ -70,7 +70,7 @@ class _ToolButtonState extends State<_ToolButton> {
         child: Container(
           width: 36,
           height: 36,
-          margin: const EdgeInsets.symmetric(vertical: 2),
+          margin: const EdgeInsets.symmetric(vertical: InkSpacing.s2),
           decoration: BoxDecoration(
             color: bg,
             borderRadius: BorderRadius.circular(InkRadius.md),

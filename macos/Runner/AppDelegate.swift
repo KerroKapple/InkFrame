@@ -25,11 +25,33 @@ class AppDelegate: FlutterAppDelegate {
     else {
       return .terminateNow
     }
+    // 单次回复守卫：Dart 回调与超时兜底竞争，谁先到谁 reply，另一个变 no-op。
+    // 二者都在主线程执行，无需锁；杜绝对 applicationShouldTerminate 的重复 reply。
+    var replied = false
+    func replyTerminateOnce() {
+      if replied { return }
+      replied = true
+      NSApp.reply(toApplicationShouldTerminate: true)
+    }
     let channel = FlutterMethodChannel(
       name: "inkframe/lifecycle",
       binaryMessenger: controller.engine.binaryMessenger)
-    channel.invokeMethod("requestTerminate", arguments: nil) { _ in
-      NSApp.reply(toApplicationShouldTerminate: true)
+    channel.invokeMethod("requestTerminate", arguments: nil) { result in
+      // 诊断：Dart teardown 抛错（FlutterError）或 handler 未注册（早退）时留痕，
+      // 否则失败会被静默吞掉。正常路径 result 为 nil。退出动作照常进行。
+      if let error = result as? FlutterError {
+        NSLog("[InkFrame] AppTeardown failed: \(error.code) \(error.message ?? "")")
+      } else if let r = result as? NSObject, r == FlutterMethodNotImplemented {
+        NSLog("[InkFrame] AppTeardown handler not registered; terminating without teardown")
+      }
+      replyTerminateOnce()
+    }
+    // 兜底超时：Dart 若 15s 内未回调（channel 握手异常 / teardown 卡死），
+    // 照常退出，避免 Cmd+Q 永久卡死须 Force Quit——最坏退化为「teardown 未跑完」，
+    // 与本修复前同级。15s 高于 teardown 内 pg_ctl stop -t 10 的上限；正常路径
+    // 由 Dart 回调即时 reply，根本走不到此超时。
+    DispatchQueue.main.asyncAfter(deadline: .now() + 15.0) {
+      replyTerminateOnce()
     }
     return .terminateLater
   }

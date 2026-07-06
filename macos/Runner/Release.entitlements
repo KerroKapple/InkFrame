@@ -2,10 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- 禁 app-sandbox：嵌入式 PostgreSQL 需 fork postmaster 子进程并读写数据目录，
-	     沙盒会阻断。安全性由 Hardened Runtime（签名时 --options runtime）提供。
-	     见 docs/BUILD-RELEASE.md。 -->
+	<!-- 禁 app-sandbox：需 fork 嵌入式 postgres 子进程；安全由 hardened runtime（codesign
+	     --options runtime）提供。见 docs/BUILD-RELEASE.md §5.3。 -->
 	<key>com.apple.security.app-sandbox</key>
 	<false/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-write</key>
+	<true/>
+	<key>com.apple.security.files.downloads.read-write</key>
+	<true/>
 </dict>
 </plist>

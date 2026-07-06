@@ -5,6 +5,7 @@
 // 以及 operator== 在「仅末位字段不同」时的逐字段短路返回 false。
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 
 Map<String, Object?> _baseRow() => <String, Object?>{
@@ -29,6 +30,14 @@ void main() {
       expect(
         () => CanvasNodeMapping.fromRow(row),
         throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('type 列类型错（非 String）→ LocalIOError', () {
+      final row = _baseRow()..['type'] = 123;
+      expect(
+        () => CanvasNodeMapping.fromRow(row),
+        throwsA(isA<LocalIOError>()),
       );
     });
   });
@@ -57,13 +66,13 @@ void main() {
     });
   });
 
-  group('CanvasNode.fromRow 数值字段解析', () {
-    test('position/size 从 int 与字符串解析为 double', () {
+  group('CanvasNode.fromRow 数值字段解析（严格类型）', () {
+    test('position/size 从 int / double 解析为 double', () {
       final row = _baseRow()
         ..['position_x'] = 10 // int → toDouble
-        ..['position_y'] = '20.5' // string → tryParse
-        ..['width'] = 300
-        ..['height'] = '180';
+        ..['position_y'] = 20.5 // double
+        ..['width'] = 300 // int → toDouble
+        ..['height'] = 180.0;
       final n = CanvasNodeMapping.fromRow(row);
       expect(n.position, const Offset(10, 20.5));
       expect(n.size, const Size(300, 180));
@@ -73,6 +82,12 @@ void main() {
       final n = CanvasNodeMapping.fromRow(_baseRow());
       expect(n.position, Offset.zero);
       expect(n.size, const Size(240, 240));
+    });
+
+    test('数值列类型错（String，非 num）→ LocalIOError', () {
+      final row = _baseRow()..['width'] = 'wide';
+      expect(() => CanvasNodeMapping.fromRow(row),
+          throwsA(isA<LocalIOError>()));
     });
   });
 

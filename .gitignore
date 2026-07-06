@@ -26,6 +26,8 @@ migrate_working_dir/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
+# golden 测试失败时的瞬时差异图输出（非 canonical 平台跑产生），不入库
+**/test/**/failures/
 .dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
@@ -91,6 +93,7 @@ api-key*
 .vscode/
 /tmp/flutter_run_*.log
 
-# 嵌入式 PostgreSQL 二进制（由 scripts/pg/make-relocatable-macos.sh 生成或 CI 拉取，不入库）
+# 构建产物 / 可重建的嵌入式 PG 二进制（make-relocatable-macos.sh 生成或 fetch-binaries.sh 重建，不入库）
+dist/
 macos/Runner/Resources/pg/
 windows/runner/resources/pg/

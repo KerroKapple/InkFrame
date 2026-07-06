@@ -105,6 +105,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorResolutionLabel => '分辨率';
 
   @override
+  String get inspectorAspectRatioLabel => '宽高比';
+
+  @override
+  String get inspectorSeedLabel => '种子';
+
+  @override
+  String get inspectorSeedHint => '随机';
+
+  @override
+  String get inspectorNegativePromptLabel => '负向提示词';
+
+  @override
+  String get inspectorNegativePromptHint => '要避免的内容';
+
+  @override
+  String get inspectorBatchLabel => '数量';
+
+  @override
   String get inspectorGenerate => '生成';
 
   @override
@@ -473,6 +491,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioCreate => '创建';
 
   @override
+  String get studioRenameProject => '重命名项目';
+
+  @override
+  String get studioRename => '重命名';
+
+  @override
+  String get studioRenameFailed => '重命名项目失败';
+
+  @override
+  String get studioDeleteProject => '删除项目';
+
+  @override
+  String get studioDelete => '删除';
+
+  @override
+  String get studioDeleteConfirmTitle => '删除项目？';
+
+  @override
+  String get studioDeleteConfirmBody => '该项目及其画布将移出你的项目库。';
+
+  @override
+  String get studioDeleteFailed => '删除项目失败';
+
+  @override
+  String get studioProjectMenuTooltip => '项目操作';
+
+  @override
   String studioProjectMetaLine(DateTime date, int count) {
     final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
     final String dateString = dateDateFormat.format(date);
@@ -496,24 +541,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get studioNoKeyBannerAction => '前往设置配置';
-
-  @override
-  String get canvasInspectorTransform => '变换';
-
-  @override
-  String get canvasInspectorCamera => '镜头';
-
-  @override
-  String get canvasInspectorComposition => '构图';
-
-  @override
-  String get canvasInspectorMetadata => '元数据';
-
-  @override
-  String get canvasInspectorNotes => '备注';
-
-  @override
-  String get canvasInspectorAddAttribute => '添加属性';
 
   @override
   String get canvasRenderQueue => '渲染队列';
@@ -563,15 +590,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get canvasInspectorKindCamera => '镜头节点';
-
-  @override
-  String get canvasInspectorMockTitle => '宽景镜头';
-
-  @override
-  String get canvasInspectorMockId => 'cam_0021';
-
-  @override
   String get canvasRenderQueueEmpty => '暂无渲染任务';
 
   @override
@@ -585,4 +603,118 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get windowClose => '关闭';
+
+  @override
+  String get laneAdd => '添加泳道';
+
+  @override
+  String get laneNewTitle => '新建泳道';
+
+  @override
+  String get laneEditTitle => '编辑泳道';
+
+  @override
+  String get laneNameLabel => '名称';
+
+  @override
+  String get laneNameHint => '泳道名称';
+
+  @override
+  String get laneStyleLabel => '风格描述';
+
+  @override
+  String get laneStyleHint => '如：温暖的黄昏光线、烛光';
+
+  @override
+  String get laneTintLabel => '背景色';
+
+  @override
+  String get laneTintAuto => '自动';
+
+  @override
+  String get laneDelete => '删除泳道';
+
+  @override
+  String get laneDeleteConfirmTitle => '确认删除该泳道？';
+
+  @override
+  String get laneDeleteConfirmBody => '泳道内节点位置保留，但会失去该泳道风格。';
+
+  @override
+  String get laneDialogSave => '保存';
+
+  @override
+  String get laneDialogCancel => '取消';
+
+  @override
+  String get laneDirectionToggle => '切换泳道方向';
+
+  @override
+  String get laneUntitled => '未命名泳道';
+
+  @override
+  String get laneCreateFailed => '创建泳道失败';
+
+  @override
+  String get laneUpdateFailed => '更新泳道失败';
+
+  @override
+  String get laneDeleteFailed => '删除泳道失败';
+
+  @override
+  String get laneCollapse => '折叠泳道';
+
+  @override
+  String get laneExpand => '展开泳道';
+
+  @override
+  String get inspectorPromptPreviewLabel => '最终 prompt 预览';
+
+  @override
+  String get inspectorIgnoreLaneStyle => '忽略区域风格';
+
+  @override
+  String get baseStyleEditTooltip => '基底风格';
+
+  @override
+  String get baseStyleEditTitle => '项目基底风格';
+
+  @override
+  String get baseStylePrefixLabel => '前缀（加在所有 prompt 最前）';
+
+  @override
+  String get baseStylePrefixHint => '如：电影感画面';
+
+  @override
+  String get baseStyleSuffixLabel => '后缀（加在所有 prompt 最后）';
+
+  @override
+  String get baseStyleSuffixHint => '如：8k，高细节';
+
+  @override
+  String get baseStylePresetsLabel => '快速预设';
+
+  @override
+  String get baseStylePresetCinematic => '真人电影';
+
+  @override
+  String get baseStylePresetAnime => '日漫';
+
+  @override
+  String get baseStylePresetGhibli => '吉卜力';
+
+  @override
+  String get baseStylePresetCyberpunk => '赛博朋克';
+
+  @override
+  String get baseStylePresetInkwash => '水墨';
+
+  @override
+  String get baseStylePresetPhoto => '写实摄影';
+
+  @override
+  String get baseStylePreset3d => '3D动画';
+
+  @override
+  String get baseStyleUpdateFailed => '更新基底风格失败';
 }

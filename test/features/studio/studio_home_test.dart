@@ -13,6 +13,7 @@ import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
 import '../../_harness/fake_repositories.dart';
+import '../../_harness/fake_unit_of_work.dart';
 import '../../_harness/test_app.dart';
 
 void main() {
@@ -213,6 +214,11 @@ void main() {
       overrides: <Override>[
         projectRepositoryProvider.overrideWith((_) async => projects),
         canvasRepositoryProvider.overrideWith((_) async => canvases),
+        unitOfWorkProvider.overrideWith(
+          (_) async => FakeUnitOfWork(
+            FakeRepositoryScope(projects: projects, canvas: canvases),
+          ),
+        ),
       ],
     );
     await tester.pumpAndSettle();

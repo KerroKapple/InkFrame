@@ -3,11 +3,17 @@
 // 视觉密度高，token 体系（amber accent / surface2 / borderSubtle / brand）全覆盖。
 // 后续 Inspector / EmptyState 增量加 golden 时复用 pumpGoldenScene。
 //
-// 当前状态：skip = true（_kSkipUntilLinuxBaseline）。
-// 原因：golden 基线必须在 canonical 平台（CI Linux runner）首次 --update-goldens 生成，
-// 跨平台字体渲染差异会让 Windows / macOS 本地生成的 baseline 在 Linux CI 上失败。
-// 解锁：用 workflow_dispatch 在 Linux runner 跑一次 --update-goldens 并提交结果，
-// 然后移除 skip 常量即可。
+// 当前状态：基线存在才跑（_goldensPresent），否则 skip——无需手动改常量。
+// 基线必须在 canonical 平台（CI ubuntu runner）用 `flutter test --update-goldens` 生成并提交；
+// 跨平台字体光栅化差异会让本地 Windows/macOS 生成的 baseline 在 CI 上 false-fail。
+// 生成方式：手动触发 .github/workflows/update-goldens.yml（ubuntu 上 --update-goldens 后自动提交 PNG）。
+// 提交基线后测试自动激活，无需再改代码。
+//
+// @Tags(['golden'])：golden 像素基线锁定 canonical 平台（CI ubuntu）。跨平台 smoke
+// （mac/win，smoke.yml）以 --exclude-tags golden 排除，否则字体光栅化差异 false-fail。
+// ubuntu 的 golden job 按文件 glob 跑、test job 跑全量，均不依赖本 tag。
+@Tags(['golden'])
+library;
 
 import 'dart:io';
 
@@ -21,8 +27,11 @@ import 'package:inkframe/features/canvas/widgets/node_card.dart';
 
 import '../../../_harness/golden_scaffold.dart';
 
-// true = 跳过；解锁条件见文件顶部说明。
-const bool _kSkipUntilLinuxBaseline = true;
+// 基线存在才跑；缺基线时 skip（--update-goldens 模式下强制运行以生成基线）。详见文件顶部。
+final bool _goldensPresent = File(
+  'test/features/canvas/widgets/goldens/node_card_idle.png',
+).existsSync();
+final bool _skipGolden = !_goldensPresent && !autoUpdateGoldenFiles;
 
 class _StubFileResolver implements FileResolverService {
   @override
@@ -80,7 +89,7 @@ void main() {
         matchesGoldenFile('goldens/node_card_idle.png'),
       );
     },
-    skip: _kSkipUntilLinuxBaseline,
+    skip: _skipGolden,
   );
 
   testWidgets(
@@ -106,7 +115,7 @@ void main() {
         matchesGoldenFile('goldens/node_card_selected.png'),
       );
     },
-    skip: _kSkipUntilLinuxBaseline,
+    skip: _skipGolden,
   );
 
   testWidgets(
@@ -131,6 +140,6 @@ void main() {
         matchesGoldenFile('goldens/node_card_link_source.png'),
       );
     },
-    skip: _kSkipUntilLinuxBaseline,
+    skip: _skipGolden,
   );
 }

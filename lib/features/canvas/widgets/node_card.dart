@@ -17,7 +17,9 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/models/job_state.dart';
 import '../models/canvas_node.dart';
+import '../providers/node_active_job.dart';
 import 'video_node_body.dart';
 
 class NodeCard extends ConsumerStatefulWidget {
@@ -78,6 +80,8 @@ class _NodeCardState extends ConsumerState<NodeCard> {
     final node = widget.node;
     final colors = context.inkColors;
     final typo = context.inkTypography;
+    // 节点级实时进度：该节点当前活跃 job（无则 null），驱动卡片底部进度条。
+    final activeJob = ref.watch(nodeActiveJobProvider(node.id));
 
     final Color borderColor;
     final double borderWidth;
@@ -174,6 +178,14 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                 top: -8,
                 child: _DeleteAnchor(onPressed: widget.onDelete!),
               ),
+            // 生成进行中：卡片底部一条实时进度条（有进度则确定，否则不确定动画）。
+            if (activeJob != null)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: _NodeProgressBar(job: activeJob),
+              ),
           ],
         ),
       ),
@@ -195,6 +207,29 @@ class _NodeCardState extends ConsumerState<NodeCard> {
         CanvasNodeType.video => context.l10n.canvasNodeVideoType,
         CanvasNodeType.shot => context.l10n.canvasNodeShotType,
       };
+}
+
+/// 节点底部实时进度条：running 且有进度→确定值；queued/submitting/无进度→不确定动画。
+class _NodeProgressBar extends StatelessWidget {
+  const _NodeProgressBar({required this.job});
+  final JobState job;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final progress = job.progressValue > 0 ? job.progressValue : null;
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(
+        bottom: Radius.circular(InkRadius.lg),
+      ),
+      child: LinearProgressIndicator(
+        value: progress,
+        minHeight: 3,
+        backgroundColor: colors.surface3,
+        color: colors.accent,
+      ),
+    );
+  }
 }
 
 class _LinkAnchor extends StatelessWidget {
@@ -280,7 +315,7 @@ class _ConfigBody extends StatelessWidget {
     return Align(
       alignment: Alignment.topLeft,
       child: Text(
-        node.label.isEmpty ? (node.typeConfig['prompt'] as String? ?? '') : node.label,
+        node.label.isEmpty ? (node.promptText ?? '') : node.label,
         style: typo.body.copyWith(color: colors.fg1),
         maxLines: 3,
         overflow: TextOverflow.ellipsis,

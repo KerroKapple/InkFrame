@@ -91,8 +91,7 @@ class _StudioMainArea extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: InkSpacing.lg),
                   child: Text(
                     context.l10n.studioRecentProjects,
-                    style: typo.display.copyWith(
-                      fontSize: 32,
+                    style: typo.displayMd.copyWith(
                       color: colors.fg1,
                     ),
                   ),
@@ -275,9 +274,17 @@ class _StudioEmptyState extends StatelessWidget {
 }
 
 class _NewProjectDialog extends StatefulWidget {
-  const _NewProjectDialog({required this.existingNames});
+  const _NewProjectDialog({
+    required this.existingNames,
+    this.initialName = '',
+    this.title,
+    this.confirmLabel,
+  });
 
   final Set<String> existingNames;
+  final String initialName;
+  final String? title;
+  final String? confirmLabel;
 
   @override
   State<_NewProjectDialog> createState() => _NewProjectDialogState();
@@ -285,8 +292,14 @@ class _NewProjectDialog extends StatefulWidget {
 
 class _NewProjectDialogState extends State<_NewProjectDialog> {
   static const int _maxNameLength = 60;
-  final TextEditingController _controller = TextEditingController();
+  late final TextEditingController _controller;
   String? _errorKey; // 'empty' | 'tooLong' | 'duplicate'
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialName);
+  }
 
   @override
   void dispose() {
@@ -345,7 +358,7 @@ class _NewProjectDialogState extends State<_NewProjectDialog> {
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Text(
-                context.l10n.studioNewProjectDialogTitle,
+                widget.title ?? context.l10n.studioNewProjectDialogTitle,
                 style: typo.headline.copyWith(color: colors.fg1),
               ),
               const SizedBox(height: InkSpacing.md),
@@ -383,7 +396,7 @@ class _NewProjectDialogState extends State<_NewProjectDialog> {
                   ),
                   const SizedBox(width: InkSpacing.sm),
                   InkAmberButton(
-                    label: context.l10n.studioCreate,
+                    label: widget.confirmLabel ?? context.l10n.studioCreate,
                     icon: Icons.check,
                     onPressed: _submit,
                   ),
@@ -449,10 +462,90 @@ class _ProjectGrid extends ConsumerWidget {
                   }
                 }
               },
+              onRename: () => _renameProject(context, ref, p),
+              onDelete: () => _deleteProject(context, ref, p),
             );
           },
         );
       },
     );
+  }
+
+  Future<void> _renameProject(
+    BuildContext context,
+    WidgetRef ref,
+    ProjectWithCanvases p,
+  ) async {
+    final existingNames = projects
+        .where((o) => o.id != p.id)
+        .map((o) => o.name.trim().toLowerCase())
+        .toSet();
+    final title = context.l10n.studioRenameProject;
+    final confirm = context.l10n.studioRename;
+    final failedMsg = context.l10n.studioRenameFailed;
+    final name = await showDialog<String>(
+      context: context,
+      barrierColor: context.inkColors.scrim,
+      builder: (_) => _NewProjectDialog(
+        existingNames: existingNames,
+        initialName: p.name,
+        title: title,
+        confirmLabel: confirm,
+      ),
+    );
+    if (name == null || name.isEmpty || name == p.name) return;
+    try {
+      await ref
+          .read(studioProjectsControllerProvider)
+          .renameProject(id: p.id, name: name);
+    } on InkError {
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(failedMsg),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteProject(
+    BuildContext context,
+    WidgetRef ref,
+    ProjectWithCanvases p,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: context.inkColors.scrim,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.inkColors.surface2,
+        title: Text(ctx.l10n.studioDeleteConfirmTitle),
+        content: Text(ctx.l10n.studioDeleteConfirmBody),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(ctx.l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(ctx.l10n.studioDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+    final failedMsg = context.l10n.studioDeleteFailed;
+    try {
+      await ref.read(studioProjectsControllerProvider).deleteProject(p.id);
+    } on InkError {
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(
+          content: Text(failedMsg),
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
   }
 }

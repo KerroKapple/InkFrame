@@ -1,0 +1,190 @@
+# InkFrame 发布流水线 —— 触发：push tag v* / 手动 dispatch。
+# 落地 docs/BUILD-RELEASE.md §13 的设计（并修正其与现实不符处：actions 版本对齐 ci.yml、
+# Windows 暂用 windows-latest + 守卫式签名而非 self-hosted dongle）。
+#
+# 与 scripts/release-tag.sh 的分工：
+#   人工路径 = 合入 release(vX) PR → 跑 scripts/release-tag.sh（校验守卫 + 打 tag + push +
+#   gh release create --generate-notes）。tag 一旦推上来即触发本 workflow：构建双平台、
+#   （有凭据时）签名/公证/打包、把产物附到同一个 Release。softprops/action-gh-release 幂等：
+#   release 已存在则更新并追加资产，不覆盖 release-tag.sh 生成的 notes。
+#
+# 「证书/存储就绪前」一切可跑：
+#   - PG 二进制 fetch：仅当 repo variable PG_ARTIFACT_BASE_URL 配置时执行；缺则 ::warning::
+#     并继续（产物不含嵌入式 PG，无法在干净机首启 PG，仅供构建/链接验证）。
+#   - 签名/公证/MSIX 签名：脚本自检环境，缺凭据 → 打印 SKIPPED 退出 0，不阻断。
+#   - 原始构建产物（zip 的 .app / Release 目录）无条件上传，零密钥也有可下载工件。
+name: release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      build_only:
+        description: '仅构建 + 上传 artifact，不发布到 GitHub Release（用于演练）'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write # publish job 需创建/更新 Release 并上传资产
+
+env:
+  FLUTTER_VERSION: 3.41.6
+
+jobs:
+  build-macos:
+    name: build (macOS)
+    runs-on: macos-14 # Apple Silicon → 仅 arm64；x64 / universal 需另起 macos-13 matrix（后续）
+    env:
+      PG_ARTIFACT_BASE_URL: ${{ vars.PG_ARTIFACT_BASE_URL }}
+      INKFRAME_PG_PLATFORM: macos-arm64
+      # macOS 签名/公证凭据（缺失时签名脚本自跳过）：
+      MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+      MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+      MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: enable macOS desktop
+        run: flutter config --enable-macos-desktop
+      - name: derive version
+        run: |
+          if [[ "${GITHUB_REF_NAME}" == v* ]]; then
+            echo "BUILD_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_NAME=0.0.0-dev" >> "$GITHUB_ENV"
+          fi
+          echo "BUILD_NUMBER=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+      - name: cache PG binaries
+        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
+        uses: actions/cache@v4
+        with:
+          path: macos/Runner/Resources/pg/
+          key: pg-${{ hashFiles('scripts/pg/pg-version.txt') }}-macos-arm64
+      - name: fetch embedded PG binaries
+        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
+        run: bash scripts/pg/fetch-binaries.sh
+      - name: warn — PG not bundled
+        if: ${{ vars.PG_ARTIFACT_BASE_URL == '' }}
+        run: echo "::warning title=PG not bundled::PG_ARTIFACT_BASE_URL 未配置，产物不含嵌入式 PostgreSQL，无法在干净机首启 PG（仅验证构建/链接）。配置 repo variable PG_ARTIFACT_BASE_URL 后重跑。"
+      - name: flutter pub get
+        run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze
+      - name: flutter test (exclude pg + golden)
+        run: flutter test --exclude-tags "pg || golden"
+      - name: flutter build macos (release)
+        run: flutter build macos --release --build-name="$BUILD_NAME" --build-number="$BUILD_NUMBER"
+      - name: zip unsigned .app (always uploadable)
+        run: |
+          mkdir -p dist
+          APP="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' | head -1)"
+          echo "app bundle: $APP"
+          ditto -c -k --keepParent "$APP" "dist/InkFrame-$BUILD_NAME-macos-arm64-unsigned.zip"
+      - name: sign + notarize (skips without credentials)
+        run: bash scripts/release/sign-and-notarize-macos.sh
+      - name: package DMG (best-effort skeleton)
+        continue-on-error: true
+        run: bash scripts/release/package-macos-dmg.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/*
+          if-no-files-found: error
+
+  build-windows:
+    name: build (Windows)
+    runs-on: windows-latest
+    env:
+      PG_ARTIFACT_BASE_URL: ${{ vars.PG_ARTIFACT_BASE_URL }}
+      INKFRAME_PG_PLATFORM: windows-x64
+      # Windows EV 代码签名凭据（缺失时签名脚本自跳过）。EV 证书在物理 Dongle 上时，
+      # 需挂载 Dongle 的 self-hosted runner 或云签服务 —— 见 BUILD-RELEASE §7.2。
+      WINDOWS_CERT_PFX_BASE64: ${{ secrets.WINDOWS_CERT_PFX_BASE64 }}
+      WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: enable Windows desktop
+        run: flutter config --enable-windows-desktop
+      - name: derive version
+        shell: pwsh
+        run: |
+          $ver = if ($env:GITHUB_REF_NAME -like 'v*') { $env:GITHUB_REF_NAME -replace '^v','' } else { '0.0.0-dev' }
+          "BUILD_NAME=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "BUILD_NUMBER=$env:GITHUB_RUN_NUMBER" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+      - name: cache PG binaries
+        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
+        uses: actions/cache@v4
+        with:
+          path: windows/runner/resources/pg/
+          key: pg-${{ hashFiles('scripts/pg/pg-version.txt') }}-windows-x64
+      - name: fetch embedded PG binaries
+        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
+        shell: bash
+        run: bash scripts/pg/fetch-binaries.sh
+      - name: warn — PG not bundled
+        if: ${{ vars.PG_ARTIFACT_BASE_URL == '' }}
+        run: echo "::warning title=PG not bundled::PG_ARTIFACT_BASE_URL 未配置，产物不含嵌入式 PostgreSQL（仅验证构建/链接）。"
+      - name: flutter pub get
+        run: flutter pub get
+      - name: flutter analyze
+        run: flutter analyze
+      - name: flutter test (exclude pg + golden)
+        run: flutter test --exclude-tags "pg || golden"
+      - name: flutter build windows (release)
+        shell: pwsh
+        run: flutter build windows --release --build-name="$env:BUILD_NAME" --build-number="$env:BUILD_NUMBER"
+      - name: zip unsigned Release dir (always uploadable)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "dist/InkFrame-$env:BUILD_NAME-windows-x64-unsigned.zip" -Force
+      - name: package MSIX (best-effort skeleton)
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          dart pub global activate flutter_distributor
+          flutter_distributor package --platform windows --targets msix --skip-clean
+      - name: sign (skips without credentials)
+        shell: pwsh
+        run: pwsh -File scripts/release/sign-windows.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: publish to GitHub Release
+    needs: [build-macos, build-windows]
+    runs-on: ubuntu-latest
+    # 仅在真实 tag push 时发布；workflow_dispatch 演练只构建+上传 artifact，不碰 Release。
+    if: ${{ startsWith(github.ref, 'refs/tags/v') }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: list artifacts
+        run: ls -R dist
+      - name: attach artifacts to release
+        uses: softprops/action-gh-release@v2
+        with:
+          # release-tag.sh 已用 --generate-notes 建好 Release；此处幂等更新并追加资产。
+          # 不设 body → 不覆盖既有 notes。Release 不存在时（直接 tag push 未走脚本）则创建。
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          fail_on_unmatched_files: true
+          files: dist/**/*

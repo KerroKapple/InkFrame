@@ -66,7 +66,10 @@ class _InkSurfaceButtonState extends State<InkSurfaceButton> {
       );
     } else {
       child = Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(
+          horizontal: InkSpacing.s10,
+          vertical: InkSpacing.s6,
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[

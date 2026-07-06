@@ -15,12 +15,14 @@ import 'package:inkframe/core/constants/secure_storage_keys.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'dart:io';
 
+import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
 import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
+import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
@@ -31,6 +33,7 @@ import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
 import '../../helpers/recording_logger.dart';
+import '../../_harness/fake_unit_of_work.dart';
 
 // ---- fakes ------------------------------------------------------------
 
@@ -102,6 +105,7 @@ class _FakeNodeRepo implements NodeRepository {
 
 class _FakeJobRepo implements JobRepository {
   final List<Map<String, Object?>> creates = [];
+  final List<String> hardDeleted = [];
   bool createThrows = false;
 
   @override
@@ -118,7 +122,7 @@ class _FakeJobRepo implements JobRepository {
     int maxRetries = 3,
     DateTime? timeoutAt,
   }) async {
-    if (createThrows) throw StateError('jobs.create boom');
+    if (createThrows) throw const LocalIOError();
     final id = 'j${creates.length + 1}';
     creates.add({
       'id': id,
@@ -128,6 +132,7 @@ class _FakeJobRepo implements JobRepository {
       'provider_id': providerId,
       'full_prompt': fullPrompt,
       'parameters': parameters,
+      'batch_size': batchSize,
     });
     return id;
   }
@@ -152,7 +157,17 @@ class _FakeJobRepo implements JobRepository {
   @override
   Future<int> purgePerCanvasCap({required int cap}) async => 0;
   @override
-  Future<int> hardDelete(String id) async => 0;
+  Future<int> bulkTransition({
+    required List<String> fromStatuses,
+    required String toStatus,
+    Map<String, Object?> extra = const <String, Object?>{},
+  }) async =>
+      0;
+  @override
+  Future<int> hardDelete(String id) async {
+    hardDeleted.add(id);
+    return 1;
+  }
 }
 
 class _FakeSecure implements SecureStorageService {
@@ -186,10 +201,12 @@ class _FakeJobQueue implements JobQueueService {
   _FakeJobQueue(this.finalStatus);
   JobStatus finalStatus;
   GenerationTask? lastTask;
+  bool submitThrows = false;
   @override
   Future<void> init() async {}
   @override
   Future<JobHandle> submit(GenerationTask task) async {
+    if (submitThrows) throw StateError('submit boom');
     lastTask = task;
     return _FakeHandle(
       task.jobId,
@@ -259,6 +276,42 @@ class _FakeEdgeRepo implements EdgeRepository {
   Future<int> hardDelete(String id) async => 0;
 }
 
+class _FakeCanvasRepo implements CanvasRepository {
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => null;
+  @override
+  Future<String> create({required String projectId, required String name, String baseStylePrefix = '', String baseStyleSuffix = ''}) async => '';
+  @override
+  Future<List<Map<String, Object?>>> listByProject(String projectId) async => [];
+  @override
+  Future<List<Map<String, Object?>>> listByProjects(List<String> projectIds) async => [];
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async => 0;
+  @override
+  Future<int> softDelete(String id) async => 0;
+  @override
+  Future<int> restore(String id) async => 0;
+  @override
+  Future<int> hardDelete(String id) async => 0;
+}
+
+class _FakeLaneRepo implements StyleLaneRepository {
+  @override
+  Future<Map<String, Object?>?> findById(String id) async => null;
+  @override
+  Future<String> create({required String canvasId, String label = '', String stylePrompt = '', int sortOrder = 0, String? tintColor, double size = 400.0}) async => '';
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async => [];
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async => 0;
+  @override
+  Future<int> softDelete(String id) async => 0;
+  @override
+  Future<int> restore(String id) async => 0;
+  @override
+  Future<int> hardDelete(String id) async => 0;
+}
+
 class _FakeResolver implements FileResolverService {
   @override
   Directory canvasRoot({required String projectId, required String canvasId}) =>
@@ -290,6 +343,8 @@ void main() {
   late _FakeJobQueue queue;
   late ProviderRegistry registry;
   late _FakeResolver resolver;
+  late _FakeCanvasRepo canvasRepo;
+  late _FakeLaneRepo laneRepo;
   late _RecordingRegistry jobsRegistry;
   late RecordingLogger logger;
 
@@ -301,6 +356,9 @@ void main() {
         queue: queue,
         registry: registry,
         resolver: resolver,
+        canvas: canvasRepo,
+        lanes: laneRepo,
+        uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
         jobsRegistry: jobsRegistry,
         logger: logger,
       );
@@ -315,6 +373,8 @@ void main() {
     registry = CachingProviderRegistry({
       providerId: () => throw UnimplementedError('not called in tests'),
     });
+    canvasRepo = _FakeCanvasRepo();
+    laneRepo = _FakeLaneRepo();
     jobsRegistry = _RecordingRegistry();
     logger = RecordingLogger();
   });
@@ -503,7 +563,7 @@ void main() {
     expect(nodes.softDeleted, contains(nodes.creates.first['id']));
   });
 
-  test('jobs.create 抛错 → 预创建的 result 被清 + rethrow', () async {
+  test('jobs.create 抛错 → 创建事务回滚，submit 未触达，rethrow', () async {
     final cfg = await seedConfigNode();
     await secure.store(
       SecureStorageKeys.providerApiKey(providerId),
@@ -513,9 +573,23 @@ void main() {
 
     await expectLater(
       buildCtrl().submitFromConfigNode(cfg),
-      throwsStateError,
+      throwsA(isA<LocalIOError>()),
     );
-    expect(nodes.softDeleted, hasLength(1));
+    // 事务回滚由真 PG 保证；此处断言 submit 阶段未触达（无 task）。
+    expect(queue.lastTask, isNull);
+  });
+
+  test('queue.submit 失败 → 清孤儿 result + job（补偿）后 rethrow', () async {
+    final cfg = await seedConfigNode();
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+    queue.submitThrows = true;
+
+    await expectLater(
+      buildCtrl().submitFromConfigNode(cfg),
+      throwsA(isA<StateError>()),
+    );
+    expect(nodes.softDeleted, contains(nodes.creates.first['id']));
+    expect(jobs.hardDeleted, contains(jobs.creates.first['id']));
   });
 
   group('logger 注入点（FIX-016 / ME-21）', () {
@@ -539,7 +613,8 @@ void main() {
           InkErrorCode.providerServer.wire);
     });
 
-    test('jobs.create 抛错回滚 → ERROR 日志后照常 rethrow', () async {
+    test('创建事务失败 → ERROR 日志（module=generation.controller）后照常 rethrow',
+        () async {
       final cfg = await seedConfigNode();
       await secure.store(
         SecureStorageKeys.providerApiKey(providerId),
@@ -549,7 +624,7 @@ void main() {
 
       await expectLater(
         buildCtrl().submitFromConfigNode(cfg),
-        throwsStateError,
+        throwsA(isA<LocalIOError>()),
       );
       expect(
         logger
@@ -576,6 +651,85 @@ void main() {
             r.extra?['job_id'] == jobId &&
             r.extra?['provider_id'] == providerId),
         isNotEmpty,
+      );
+    });
+  });
+
+  group('config 参数抬升（seed / negative_prompt / batch_size / sourceNodeId）', () {
+    Future<String> seedParamNode(Map<String, Object?> extra) async {
+      const id = 'cfgp';
+      nodes.rows[id] = {
+        'id': id,
+        'canvas_id': 'cvx',
+        'project_id': 'proj-1',
+        'type': 'image',
+        'node_role': 'config',
+        'type_config': <String, Object?>{
+          'prompt': 'a cat',
+          'provider_id': providerId,
+          ...extra,
+        },
+      };
+      return id;
+    }
+
+    test('seed / negative_prompt / batch_size 抬进 GenerationTask + jobs.create',
+        () async {
+      final cfg = await seedParamNode(<String, Object?>{
+        'seed': 42,
+        'negative_prompt': 'blurry, low quality',
+        'batch_size': 3,
+      });
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final task = queue.lastTask!;
+      expect(task.seed, 42);
+      expect(task.negativePrompt, 'blurry, low quality');
+      expect(task.batchSize, 3);
+
+      final created = jobs.creates.first;
+      expect(created['batch_size'], 3);
+      final params = created['parameters']! as Map<String, Object?>;
+      expect(params['seed'], 42);
+      expect(params['negative_prompt'], 'blurry, low quality');
+      expect(params['batch_size'], 3);
+    });
+
+    test('缺省时 seed=null / negativePrompt=null / batchSize=1', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final task = queue.lastTask!;
+      expect(task.seed, isNull);
+      expect(task.negativePrompt, isNull);
+      expect(task.batchSize, 1);
+    });
+
+    test('negative_prompt 全空白视为未设置（null）', () async {
+      final cfg = await seedParamNode(<String, Object?>{'negative_prompt': '   '});
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(queue.lastTask!.negativePrompt, isNull);
+    });
+
+    test('JobState 事件携带 sourceNodeId = configNodeId', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
+
+      expect(jobsRegistry.events, isNotEmpty);
+      expect(
+        jobsRegistry.events.every((e) => e.sourceNodeId == cfg),
+        isTrue,
+        reason: 'queued→running→succeeded 全程应带发起节点 id',
       );
     });
   });

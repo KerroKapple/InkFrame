@@ -12,6 +12,8 @@ import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
+import 'package:inkframe/features/studio/models/project_with_canvases.dart';
+import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 
 Future<AppPaths> _setupPaths(WidgetTester tester, String prefix) async {
@@ -35,6 +37,9 @@ void main() {
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.studio),
           currentCanvasIdProvider.overrideWith((_) => null),
+          // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
+          workspaceProjectsProvider
+              .overrideWith((_) async => const <ProjectWithCanvases>[]),
         ],
         child: const InkFrameApp(),
       ),
@@ -58,6 +63,9 @@ void main() {
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.settings),
           currentCanvasIdProvider.overrideWith((_) => null),
+          // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
+          workspaceProjectsProvider
+              .overrideWith((_) async => const <ProjectWithCanvases>[]),
         ],
         child: const InkFrameApp(),
       ),

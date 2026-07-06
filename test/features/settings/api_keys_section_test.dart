@@ -40,6 +40,9 @@ List<Override> _overrides(
   return [
     providerRegistryProvider
         .overrideWithValue(CachingProviderRegistry({_id: () => fake})),
+    // 下拉数据源已与 registry 解耦（直接读 const）；测试显式覆盖展示列表。
+    providerCapabilitiesListProvider
+        .overrideWithValue([fakeImageCapabilities(id: _id)]),
     secureStorageServiceProvider.overrideWithValue(secure),
   ];
 }

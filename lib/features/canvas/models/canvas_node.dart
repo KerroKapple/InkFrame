@@ -12,6 +12,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import '../../../core/db/columns.dart';
+import '../../../core/db/row_reader.dart';
+
 /// 节点角色（对应 schema `nodes.node_role`）。
 enum NodeRole { config, result }
 
@@ -25,6 +28,7 @@ class CanvasNode {
     this.projectId,
     this.canvasId,
     this.sourceNodeId,
+    this.laneId,
     this.typeConfig = const <String, Object?>{},
     this.position = Offset.zero,
     this.size = const Size(200, 160),
@@ -41,6 +45,9 @@ class CanvasNode {
 
   /// result 节点的溯源 config 节点 id（config 节点恒为 null）。
   final String? sourceNodeId;
+
+  /// 所属泳道 id（schema nodes.lane_id）；不在任何泳道时为 null。
+  final String? laneId;
 
   /// 对应 schema nodes.type_config JSONB。常用键：
   ///   config 节点：prompt / provider_id / resolution / aspect_ratio
@@ -87,6 +94,21 @@ class CanvasNode {
     return v is String && v.isNotEmpty ? v : null;
   }
 
+  /// config 节点用户 prompt 文本；非 String 或未设置时为 null。
+  String? get promptText {
+    final v = typeConfig['prompt'];
+    return v is String ? v : null;
+  }
+
+  /// text 节点正文（type_config.text）；非 String 或未设置时为 null。
+  String? get textContent {
+    final v = typeConfig['text'];
+    return v is String ? v : null;
+  }
+
+  /// 该节点是否忽略所属泳道的风格（type_config.ignore_lane_style）。
+  bool get ignoreLaneStyle => typeConfig['ignore_lane_style'] == true;
+
   CanvasNode copyWith({
     String? label,
     CanvasNodeType? type,
@@ -94,6 +116,8 @@ class CanvasNode {
     String? projectId,
     String? canvasId,
     String? sourceNodeId,
+    String? laneId,
+    bool clearLaneId = false,
     Map<String, Object?>? typeConfig,
     Offset? position,
     Size? size,
@@ -106,6 +130,7 @@ class CanvasNode {
         projectId: projectId ?? this.projectId,
         canvasId: canvasId ?? this.canvasId,
         sourceNodeId: sourceNodeId ?? this.sourceNodeId,
+        laneId: clearLaneId ? null : (laneId ?? this.laneId),
         typeConfig: typeConfig ?? this.typeConfig,
         position: position ?? this.position,
         size: size ?? this.size,
@@ -122,6 +147,7 @@ class CanvasNode {
           projectId == other.projectId &&
           canvasId == other.canvasId &&
           sourceNodeId == other.sourceNodeId &&
+          laneId == other.laneId &&
           mapEquals(typeConfig, other.typeConfig) &&
           position == other.position &&
           size == other.size;
@@ -135,8 +161,9 @@ class CanvasNode {
         projectId,
         canvasId,
         sourceNodeId,
-        Object.hashAll(typeConfig.entries
-            .map((e) => Object.hash(e.key, e.value))),
+        laneId,
+        Object.hashAllUnordered(
+            typeConfig.entries.map((e) => Object.hash(e.key, e.value))),
         position,
         size,
       );
@@ -150,11 +177,11 @@ extension CanvasNodeMapping on CanvasNode {
   /// 容错：type 非法 → throw；role 非法 → throw（schema CHECK 已保护，UI 层再加一道断言）。
   /// 其余可选字段缺失 → null / 默认值。
   static CanvasNode fromRow(Map<String, Object?> row) {
-    final typeStr = row['type'] as String;
-    final roleStr = row['node_role'] as String;
+    final typeStr = row.reqString(NodeCol.type);
+    final roleStr = row.reqString(NodeCol.nodeRole);
     return CanvasNode(
-      id: row['id']!.toString(),
-      label: (row['label'] as String?) ?? '',
+      id: row.reqId(NodeCol.id),
+      label: row.optString(NodeCol.label) ?? '',
       type: CanvasNodeType.values.firstWhere(
         (e) => e.name == typeStr,
         orElse: () => throw FormatException('Unknown node type: $typeStr'),
@@ -163,17 +190,18 @@ extension CanvasNodeMapping on CanvasNode {
         (e) => e.name == roleStr,
         orElse: () => throw FormatException('Unknown node role: $roleStr'),
       ),
-      projectId: row['project_id'] as String?,
-      canvasId: row['canvas_id']?.toString(),
-      sourceNodeId: row['source_node_id']?.toString(),
-      typeConfig: _parseTypeConfig(row['type_config']),
+      projectId: row.optId(NodeCol.projectId),
+      canvasId: row.optId(NodeCol.canvasId),
+      sourceNodeId: row.optId(NodeCol.sourceNodeId),
+      laneId: row.optId(NodeCol.laneId),
+      typeConfig: _parseTypeConfig(row[NodeCol.typeConfig]),
       position: Offset(
-        _asDouble(row['position_x']) ?? 0,
-        _asDouble(row['position_y']) ?? 0,
+        row.optDouble(NodeCol.positionX) ?? 0,
+        row.optDouble(NodeCol.positionY) ?? 0,
       ),
       size: Size(
-        _asDouble(row['width']) ?? 240,
-        _asDouble(row['height']) ?? 240,
+        row.optDouble(NodeCol.width) ?? 240,
+        row.optDouble(NodeCol.height) ?? 240,
       ),
     );
   }
@@ -202,9 +230,3 @@ Map<String, Object?> _parseTypeConfig(Object? raw) {
   return const <String, Object?>{};
 }
 
-double? _asDouble(Object? v) {
-  if (v == null) return null;
-  if (v is double) return v;
-  if (v is num) return v.toDouble();
-  return double.tryParse(v.toString());
-}

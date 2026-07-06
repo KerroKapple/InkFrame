@@ -51,6 +51,56 @@ const _fakeCaps = caps.ProviderCapabilities(
   burst: 1,
 );
 
+const _fullCaps = caps.ProviderCapabilities(
+  providerId: 'wanx-image',
+  region: caps.ProviderRegion.cn,
+  modes: [caps.GenerationMode.textToImage, caps.GenerationMode.imageToImage],
+  supportedRatios: [caps.AspectRatio.r1x1, caps.AspectRatio.r16x9],
+  supportedResolutions: [caps.Resolution.p1080],
+  supportedDurations: [],
+  supportedCameras: [],
+  maxBatchSize: 4,
+  maxRefImages: 1,
+  refImagesIncludeKeyframes: false,
+  supportsFirstFrame: false,
+  supportsLastFrame: false,
+  supportsNegativePrompt: true,
+  supportsSeed: true,
+  supportsSound: false,
+  supportsBatch: true,
+  supportsCancellation: true,
+  supportsPolling: true,
+  costModel: CostModel.perCall(usdPerCall: 0.1),
+  maxConcurrentJobs: 2,
+  qps: 1,
+  burst: 1,
+);
+
+const _minimalCaps = caps.ProviderCapabilities(
+  providerId: 'openai-image',
+  region: caps.ProviderRegion.global,
+  modes: [caps.GenerationMode.textToImage],
+  supportedRatios: [],
+  supportedResolutions: [caps.Resolution.p1080],
+  supportedDurations: [],
+  supportedCameras: [],
+  maxBatchSize: 1,
+  maxRefImages: 0,
+  refImagesIncludeKeyframes: false,
+  supportsFirstFrame: false,
+  supportsLastFrame: false,
+  supportsNegativePrompt: false,
+  supportsSeed: false,
+  supportsSound: false,
+  supportsBatch: false,
+  supportsCancellation: false,
+  supportsPolling: false,
+  costModel: CostModel.perCall(usdPerCall: 0),
+  maxConcurrentJobs: 1,
+  qps: 1,
+  burst: 1,
+);
+
 void main() {
   List<Override> overridesWith({SecureStorageService? secure}) => [
         providerCapabilitiesListProvider.overrideWith((ref) => [_fakeCaps]),
@@ -122,5 +172,62 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('existing prompt'), findsOneWidget);
+  });
+
+  testWidgets('能力齐全 provider → 显示 宽高比 / 负向 / 种子 / 批量 控件',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fullCaps]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aspect ratio'), findsOneWidget);
+    expect(find.text('Negative prompt'), findsOneWidget);
+    expect(find.text('Seed'), findsOneWidget);
+    expect(find.text('Batch size'), findsOneWidget);
+  });
+
+  testWidgets('能力为空 provider → 不显示 宽高比 / 负向 / 种子 / 批量', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_minimalCaps]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Aspect ratio'), findsNothing);
+    expect(find.text('Negative prompt'), findsNothing);
+    expect(find.text('Seed'), findsNothing);
+    expect(find.text('Batch size'), findsNothing);
+  });
+
+  testWidgets('水化 typeConfig 的 seed / negative_prompt', (tester) async {
+    const node = CanvasNode(
+      id: 'cfg3',
+      label: 'T',
+      type: CanvasNodeType.image,
+      typeConfig: <String, Object?>{
+        'provider_id': 'wanx-image',
+        'seed': 123,
+        'negative_prompt': 'blurry',
+      },
+    );
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: ImageConfigInspector(node: node)),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [_fullCaps]),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('123'), findsOneWidget);
+    expect(find.text('blurry'), findsOneWidget);
   });
 }

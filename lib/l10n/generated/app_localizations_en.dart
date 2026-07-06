@@ -114,6 +114,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorResolutionLabel => 'Resolution';
 
   @override
+  String get inspectorAspectRatioLabel => 'Aspect ratio';
+
+  @override
+  String get inspectorSeedLabel => 'Seed';
+
+  @override
+  String get inspectorSeedHint => 'Random';
+
+  @override
+  String get inspectorNegativePromptLabel => 'Negative prompt';
+
+  @override
+  String get inspectorNegativePromptHint => 'What to avoid';
+
+  @override
+  String get inspectorBatchLabel => 'Batch size';
+
+  @override
   String get inspectorGenerate => 'Generate';
 
   @override
@@ -491,6 +509,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioCreate => 'Create';
 
   @override
+  String get studioRenameProject => 'Rename project';
+
+  @override
+  String get studioRename => 'Rename';
+
+  @override
+  String get studioRenameFailed => 'Failed to rename project';
+
+  @override
+  String get studioDeleteProject => 'Delete project';
+
+  @override
+  String get studioDelete => 'Delete';
+
+  @override
+  String get studioDeleteConfirmTitle => 'Delete project?';
+
+  @override
+  String get studioDeleteConfirmBody =>
+      'The project and its canvases will be moved out of your library.';
+
+  @override
+  String get studioDeleteFailed => 'Failed to delete project';
+
+  @override
+  String get studioProjectMenuTooltip => 'Project options';
+
+  @override
   String studioProjectMetaLine(DateTime date, int count) {
     final intl.DateFormat dateDateFormat = intl.DateFormat.yMMM(localeName);
     final String dateString = dateDateFormat.format(date);
@@ -516,24 +562,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get studioNoKeyBannerAction => 'Configure in Settings';
-
-  @override
-  String get canvasInspectorTransform => 'Transform';
-
-  @override
-  String get canvasInspectorCamera => 'Camera';
-
-  @override
-  String get canvasInspectorComposition => 'Composition';
-
-  @override
-  String get canvasInspectorMetadata => 'Metadata';
-
-  @override
-  String get canvasInspectorNotes => 'Notes';
-
-  @override
-  String get canvasInspectorAddAttribute => 'Add Attribute';
 
   @override
   String get canvasRenderQueue => 'Render Queue';
@@ -584,15 +612,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get canvasInspectorKindCamera => 'Camera Node';
-
-  @override
-  String get canvasInspectorMockTitle => 'Wide Shot';
-
-  @override
-  String get canvasInspectorMockId => 'cam_0021';
-
-  @override
   String get canvasRenderQueueEmpty => 'No active renders';
 
   @override
@@ -606,4 +625,119 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get windowClose => 'Close';
+
+  @override
+  String get laneAdd => 'Add lane';
+
+  @override
+  String get laneNewTitle => 'New lane';
+
+  @override
+  String get laneEditTitle => 'Edit lane';
+
+  @override
+  String get laneNameLabel => 'Name';
+
+  @override
+  String get laneNameHint => 'Lane name';
+
+  @override
+  String get laneStyleLabel => 'Style description';
+
+  @override
+  String get laneStyleHint => 'e.g. warm sunset lighting, candlelit';
+
+  @override
+  String get laneTintLabel => 'Background color';
+
+  @override
+  String get laneTintAuto => 'Auto';
+
+  @override
+  String get laneDelete => 'Delete lane';
+
+  @override
+  String get laneDeleteConfirmTitle => 'Delete this lane?';
+
+  @override
+  String get laneDeleteConfirmBody =>
+      'Nodes in this lane keep their position but lose the lane style.';
+
+  @override
+  String get laneDialogSave => 'Save';
+
+  @override
+  String get laneDialogCancel => 'Cancel';
+
+  @override
+  String get laneDirectionToggle => 'Toggle lane direction';
+
+  @override
+  String get laneUntitled => 'Untitled lane';
+
+  @override
+  String get laneCreateFailed => 'Failed to create lane';
+
+  @override
+  String get laneUpdateFailed => 'Failed to update lane';
+
+  @override
+  String get laneDeleteFailed => 'Failed to delete lane';
+
+  @override
+  String get laneCollapse => 'Collapse lane';
+
+  @override
+  String get laneExpand => 'Expand lane';
+
+  @override
+  String get inspectorPromptPreviewLabel => 'Final prompt preview';
+
+  @override
+  String get inspectorIgnoreLaneStyle => 'Ignore lane style';
+
+  @override
+  String get baseStyleEditTooltip => 'Base style';
+
+  @override
+  String get baseStyleEditTitle => 'Project base style';
+
+  @override
+  String get baseStylePrefixLabel => 'Prefix (prepended to every prompt)';
+
+  @override
+  String get baseStylePrefixHint => 'e.g. cinematic film still';
+
+  @override
+  String get baseStyleSuffixLabel => 'Suffix (appended to every prompt)';
+
+  @override
+  String get baseStyleSuffixHint => 'e.g. 8k, highly detailed';
+
+  @override
+  String get baseStylePresetsLabel => 'Presets';
+
+  @override
+  String get baseStylePresetCinematic => 'Cinematic';
+
+  @override
+  String get baseStylePresetAnime => 'Anime';
+
+  @override
+  String get baseStylePresetGhibli => 'Ghibli';
+
+  @override
+  String get baseStylePresetCyberpunk => 'Cyberpunk';
+
+  @override
+  String get baseStylePresetInkwash => 'Ink wash';
+
+  @override
+  String get baseStylePresetPhoto => 'Photographic';
+
+  @override
+  String get baseStylePreset3d => '3D animation';
+
+  @override
+  String get baseStyleUpdateFailed => 'Failed to update base style';
 }

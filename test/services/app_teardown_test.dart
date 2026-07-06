@@ -1,5 +1,6 @@
 // AppTeardown 单测：窗口关闭路径的有序回收。
 // 顺序契约：JobQueue.dispose → Pool.close → PgController.stop → container.dispose。
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -60,6 +61,38 @@ void main() {
     expect(order, <String>['jobQueue.dispose', 'pool.close', 'pg.stop']);
     // 容器已 dispose：再读 provider 必抛
     expect(() => container.read(pgControllerProvider), throwsStateError);
+  });
+
+  test('半初始化：pgPool 在途时 teardown 等其完成再 close+stop（不漏回收 / 不孤儿）',
+      () async {
+    final gate = Completer<void>();
+    final container = ProviderContainer(
+      overrides: <Override>[
+        pgPoolProvider.overrideWith((ref) async {
+          await gate.future; // 模拟 PgController.start 仍在途
+          return _FakePool(() => order.add('pool.close'));
+        }),
+        pgControllerProvider.overrideWithValue(
+          _RecordingPgController(
+            root: tempRoot,
+            onStop: () => order.add('pg.stop'),
+          ),
+        ),
+      ],
+    );
+    // 挂载 pgPool（触发 init）但不等待 → 处于在途；pgController 也挂载。
+    container.read(pgPoolProvider);
+    container.read(pgControllerProvider);
+
+    final teardown = AppTeardown();
+    final f = teardown.run(container);
+    await Future<void>.delayed(Duration.zero);
+    expect(order, isEmpty, reason: 'init 未完成前不应回收（旧实现会漏关 + 提前 stop 变 no-op）');
+
+    gate.complete(); // 放行 init
+    await f;
+    expect(order, <String>['pool.close', 'pg.stop'],
+        reason: '等 init 完成后按序回收，杜绝 stop/start 竞争孤儿');
   });
 
   test('未初始化的 provider 不被 teardown 触发实例化', () async {
