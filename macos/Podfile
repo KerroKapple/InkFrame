@@ -39,4 +39,37 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
   end
+
+  # 注入「拷贝嵌入式 PostgreSQL 进 .app」构建阶段（幂等）。
+  # 资源在 macos/Runner/Resources/pg/<platform>/，由 scripts/pg/make-relocatable-macos.sh 生成
+  # （或 CI 从对象存储拉取）。在签名前运行，把 PG 拷进 Contents/Resources/pg/。
+  require 'xcodeproj'
+  runner_project_path = File.join(__dir__, 'Runner.xcodeproj')
+  if File.exist?(runner_project_path)
+    runner_project = Xcodeproj::Project.open(runner_project_path)
+    phase_name = 'Bundle Embedded PostgreSQL'
+    runner_project.targets.each do |t|
+      next unless t.name == 'Runner'
+      next if t.shell_script_build_phases.any? { |p| p.name == phase_name }
+      phase = t.new_shell_script_build_phase(phase_name)
+      phase.shell_script = <<~'SCRIPT'
+        set -e
+        ARCH_DIR="macos-arm64"
+        [ "$(uname -m)" = "x86_64" ] && ARCH_DIR="macos-x64"
+        SRC="${SRCROOT}/Runner/Resources/pg/${ARCH_DIR}"
+        DST="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/pg/${ARCH_DIR}"
+        if [ -d "$SRC/bin" ]; then
+          echo "Bundling embedded PostgreSQL: $SRC -> $DST"
+          /bin/mkdir -p "$DST"
+          /usr/bin/rsync -a --delete "$SRC/" "$DST/"
+        else
+          echo "warning: embedded PostgreSQL not found at $SRC; run scripts/pg/make-relocatable-macos.sh"
+        fi
+      SCRIPT
+      phase.run_only_for_deployment_postprocessing = '0'
+      # 拷贝阶段无声明 outputs，标记为「总是运行」以消除 Xcode 依赖分析警告。
+      phase.always_out_of_date = '1'
+    end
+    runner_project.save
+  end
 end

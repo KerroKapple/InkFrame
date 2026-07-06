@@ -106,3 +106,17 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# 嵌入式 PostgreSQL（Windows）：打进 <exe_dir>/resources/pg/windows-x64/，
+# 与 macOS Podfile 的 "Bundle Embedded PostgreSQL" 阶段对应；运行期由
+# pg_binary_locator 解析 <exe_dir>/resources/pg/windows-x64/bin。
+# 源目录由 scripts/pg（对象存储或现场构建）填充。
+set(INKFRAME_PG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/pg/windows-x64")
+if(EXISTS "${INKFRAME_PG_DIR}/bin/postgres.exe")
+  install(DIRECTORY "${INKFRAME_PG_DIR}/"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}/resources/pg/windows-x64"
+    COMPONENT Runtime)
+else()
+  message(WARNING "Embedded PostgreSQL not found at ${INKFRAME_PG_DIR}; "
+    "Windows build will lack bundled PG. Provision via scripts/pg.")
+endif()

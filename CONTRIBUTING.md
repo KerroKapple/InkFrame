@@ -205,6 +205,21 @@ export PG_ARTIFACT_BASE_URL=<对象存储 base URL>
 
 未配置对象存储时脚本输出 `NOT_CONFIGURED`，不会误判成功。
 
+### 方式 C：本机 Homebrew → 可重定位嵌入 PG（macOS 开发/本地出包，无需对象存储）
+
+当对象存储尚未配置时，开发机可直接从本机 Homebrew `postgresql@17` 生成「可重定位」的
+嵌入式 PG（vendoring 全部依赖闭包 + 改写 install name 为 `@rpath` + ad-hoc 重签名），
+落地到 `macos/Runner/Resources/pg/macos-arm64/`，供 `flutter build macos` 打进 `.app`：
+
+```bash
+brew install postgresql@17
+bash scripts/pg/make-relocatable-macos.sh        # 产物自洽，结尾自检 postgres --version
+flutter build macos --debug                      # Podfile 的 "Bundle Embedded PostgreSQL" 阶段自动拷进 bundle
+```
+
+产物默认被 `.gitignore` 忽略，不入库。`.app` 启动后嵌入式 PG 会在 `~/InkFrame/database`
+自动 initdb 并起库（沙盒已禁用，见 `macos/Runner/*.entitlements` 与 `docs/BUILD-RELEASE.md`）。
+
 ### Schema 与迁移
 
 - `lib/storage/schema/schema_v1.dart`：v=1 首版 DDL（真相源）

@@ -93,7 +93,7 @@ api-key*
 .vscode/
 /tmp/flutter_run_*.log
 
-# 构建产物 / 可重建的嵌入式 PG 二进制(由 scripts/pg/fetch-binaries.sh 重建)
+# 构建产物 / 可重建的嵌入式 PG 二进制（make-relocatable-macos.sh 生成或 fetch-binaries.sh 重建，不入库）
 dist/
 macos/Runner/Resources/pg/
 windows/runner/resources/pg/
