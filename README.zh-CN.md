@@ -18,8 +18,14 @@ InkFrame 是一个面向 AI 影视创作的桌面工作站。节点画布让你�
 接到真实的 provider —— DashScope（Wanx）、Kling、Gemini —— 而每一个工程文件和 API Key
 都留在**你自己的磁盘**上。无需云账号，不上传，不绑定 SaaS。
 
-<!-- 📸 维护者：等 UI Sprint 3 落地后，在这里放一张画布截图或短 GIF。
-     真实视觉素材是提升 star 转化最高杠杆的一步。 -->
+<p align="center">
+  <img src="docs/media/hero-canvas.png" alt="InkFrame 节点画布——prompt、provider 配置与真实生成的电影感画面" width="100%">
+</p>
+
+<p align="center">
+  <img src="docs/media/demo-generation.gif" alt="画布上生成图像：提交、队列实时进度、结果落到节点" width="70%">
+</p>
+
 
 ## ✨ 为什么是 InkFrame
 
