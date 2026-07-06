@@ -328,6 +328,36 @@ void main() {
       );
     });
 
+    test('b64_json 损坏 → providerInvalidResponse(malformed_b64_json)，不裸抛',
+        () async {
+      final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kOpenAIImagePath,
+        (req) => req.reply(200, {
+          'created': 1718000000,
+          'data': [
+            {'b64_json': '!!!not-base64!!!'},
+          ],
+        }),
+      );
+
+      await expectLater(
+        _buildProvider(dio).submit(_task()),
+        throwsA(isA<ProviderError>()
+            .having(
+              (e) => e.code,
+              'code',
+              InkErrorCode.providerInvalidResponse,
+            )
+            .having(
+              (e) => e.extra['reason'],
+              'reason',
+              'malformed_b64_json',
+            )),
+      );
+    });
+
     test('400 content_policy_violation → ProviderError(contentPolicy)', () async {
       final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
       final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());

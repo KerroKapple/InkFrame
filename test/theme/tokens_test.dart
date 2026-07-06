@@ -235,6 +235,32 @@ void main() {
       );
     });
 
+    // 彩色底上的前景 = 画布最底色（对齐 InkAmberButton）——fg1 在暗色变体
+    // 是浅米色，放琥珀/危险色上对比度不足（历史 bug）。三变体逐一锁定。
+    for (final (variant, colors) in [
+      (InkThemeVariant.dark, InkColors.dark()),
+      (InkThemeVariant.light, InkColors.light()),
+      (InkThemeVariant.highContrast, InkColors.highContrast()),
+    ]) {
+      testWidgets('$variant: on-color 前景取 surfaceCanvas 而非 fg1',
+          (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: buildAppTheme(variant: variant, textScale: 1),
+            home: Builder(
+              builder: (ctx) {
+                final scheme = Theme.of(ctx).colorScheme;
+                expect(scheme.onPrimary, colors.surfaceCanvas);
+                expect(scheme.onSecondary, colors.surfaceCanvas);
+                expect(scheme.onError, colors.surfaceCanvas);
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        );
+      });
+    }
+
     test('AppThemeExtension.lerp picks terminal state past halfway', () {
       final a = AppThemeExtension(
         colors: InkColors.dark(),

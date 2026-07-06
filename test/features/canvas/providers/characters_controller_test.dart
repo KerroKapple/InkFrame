@@ -114,6 +114,18 @@ void main() {
     expect(assets.deleted, hasLength(1));
   });
 
+  test('createFromImage：补偿 hardDelete 也失败 → 仍上抛原始错误且不掩盖', () async {
+    repo.failUpdate = true;
+    repo.failHardDelete = true;
+    final notifier = await boot('p1');
+    await expectLater(
+      notifier.createFromImage(name: 'Hero', sourceAbsolutePath: '/src/a.png'),
+      throwsA(isA<InkError>()),
+    );
+    // 补偿失败被静默（不掩盖原始错误），已导入的图仍被清理。
+    expect(assets.deleted, hasLength(1));
+  });
+
   test('rename：repo 抛 InkError → 乐观更新回滚', () async {
     repo.rows['c1'] = <String, Object?>{
       'id': 'c1',

@@ -344,6 +344,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nodeDeleteFailed => '节点删除失败';
 
   @override
+  String get nodeMoveFailed => '节点移动失败';
+
+  @override
   String get inspectorInputsLabel => '输入';
 
   @override

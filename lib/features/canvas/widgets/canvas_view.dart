@@ -465,7 +465,7 @@ class _CanvasStage extends ConsumerWidget {
               // 泳道分界线拖拽条：置于节点层之下——节点手势优先；strip 用
               // translucent，空白分界线处可拖、点击穿透到连线层（HI-1 fix）。
               if (lanes.length >= 2)
-                ..._buildResizeDividers(ref, lanes, direction),
+                ..._buildResizeDividers(context, ref, lanes, direction),
               for (final node in nodes)
                 Positioned(
                   key: ValueKey('node-card-${node.id}'),
@@ -602,6 +602,7 @@ class _CanvasStage extends ConsumerWidget {
 
   // 拖拽分界线调整相邻泳道大小（~10px 透明感应条，仅命中不绘制）。
   List<Widget> _buildResizeDividers(
+    BuildContext context,
     WidgetRef ref,
     List<StyleLane> lanes,
     LaneDirection direction,
@@ -623,13 +624,19 @@ class _CanvasStage extends ConsumerWidget {
       final double currentSize = upperLane.size;
       double delta = 0;
 
-      void commit() {
+      // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，这里补用户提示。
+      Future<void> commit() async {
         final newSize = clampLaneSize(currentSize, delta);
         delta = 0;
-        ref
-            .read(canvasLanesControllerProvider(canvasId).notifier)
-            .updateLane(upperLaneId, size: newSize)
-            .catchError((Object _) {});
+        try {
+          await ref
+              .read(canvasLanesControllerProvider(canvasId).notifier)
+              .updateLane(upperLaneId, size: newSize);
+        } on InkError catch (_) {
+          if (context.mounted) {
+            _showSnack(context, context.l10n.laneUpdateFailed);
+          }
+        }
       }
 
       result.add(
@@ -786,10 +793,20 @@ class _NodeCardSlot extends ConsumerWidget {
             lanes: laneSlices,
             direction: direction,
           );
-          ref
-              .read(canvasNodesControllerProvider(canvasId).notifier)
-              .moveNode(node.id, totalDelta, laneId: laneId)
-              .catchError((Object _) {});
+          // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，补用户提示。
+          Future<void> move() async {
+            try {
+              await ref
+                  .read(canvasNodesControllerProvider(canvasId).notifier)
+                  .moveNode(node.id, totalDelta, laneId: laneId);
+            } on InkError catch (_) {
+              if (context.mounted) {
+                _showSnack(context, context.l10n.nodeMoveFailed);
+              }
+            }
+          }
+
+          move();
         },
         onStartLink: () =>
             ref.read(linkModeControllerProvider.notifier).start(node.id),

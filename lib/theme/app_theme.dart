@@ -68,11 +68,13 @@ ThemeData buildAppTheme({
     colorScheme: ColorScheme(
       brightness: brightness,
       primary: colors.accent,
-      onPrimary: colors.fg1,
+      // 彩色底上的前景统一用画布最底色（对齐 InkAmberButton）：
+      // fg1 在暗色变体是浅米色，放琥珀/危险色上对比度不足。
+      onPrimary: colors.surfaceCanvas,
       secondary: colors.brand,
-      onSecondary: colors.fg1,
+      onSecondary: colors.surfaceCanvas,
       error: colors.danger,
-      onError: colors.fg1,
+      onError: colors.surfaceCanvas,
       surface: colors.surface2,
       onSurface: colors.fg1,
     ),
