@@ -6,7 +6,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../models/canvas_edge.dart';
+import '../models/canvas_node.dart';
 import 'canvas_edges_controller.dart';
+import 'canvas_nodes_controller.dart';
 import 'link_mode_controller.dart';
 
 /// 一次连线动作的结局。
@@ -42,9 +45,11 @@ class LinkActionController
       return;
     }
     try {
-      await ref
-          .read(canvasEdgesControllerProvider(arg).notifier)
-          .addEdge(sourceNodeId: sourceId, targetNodeId: targetNodeId);
+      await ref.read(canvasEdgesControllerProvider(arg).notifier).addEdge(
+            sourceNodeId: sourceId,
+            targetNodeId: targetNodeId,
+            role: _defaultRole(sourceId, targetNodeId),
+          );
       state = LinkActionEvent(LinkActionResult.created);
     } on InkError catch (e) {
       state = LinkActionEvent(
@@ -55,5 +60,34 @@ class LinkActionController
     } finally {
       linkCtrl.cancel();
     }
+  }
+
+  /// 智能默认 role：image 连 video 十有八九是图生视频首帧意图——
+  /// 目标 video 尚无 first_frame 入边时默认 [EdgeRole.firstFrame]；
+  /// 其余（图生图参考、非图像源、已有首帧、状态未就绪）一律 reference。
+  /// 用户可在 Inspector 入边区（NodeInputsSection）随时改。
+  EdgeRole _defaultRole(String sourceId, String targetId) {
+    final nodes = ref.read(canvasNodesControllerProvider(arg)).valueOrNull;
+    if (nodes == null) return EdgeRole.reference;
+    CanvasNode? byId(String id) {
+      for (final n in nodes) {
+        if (n.id == id) return n;
+      }
+      return null;
+    }
+
+    if (byId(targetId)?.type != CanvasNodeType.video ||
+        byId(sourceId)?.type != CanvasNodeType.image) {
+      return EdgeRole.reference;
+    }
+    final edges = ref.read(canvasEdgesControllerProvider(arg)).valueOrNull ??
+        const <CanvasEdge>[];
+    final hasFirstFrame = edges.any(
+      (e) =>
+          e.targetNodeId == targetId &&
+          e.edgeType == EdgeType.data &&
+          e.role == EdgeRole.firstFrame,
+    );
+    return hasFirstFrame ? EdgeRole.reference : EdgeRole.firstFrame;
   }
 }
