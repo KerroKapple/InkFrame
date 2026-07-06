@@ -182,6 +182,8 @@ class InkSpacing {
   static const double lg = 24;
   static const double xl = 32;
   static const double xxl = 48;
+  // macOS 原生红绿灯按钮占位宽度（frameless 窗口下 leading 需让位）
+  static const double macTrafficLightInset = 72;
   // 半阶档位
   static const double s10 = 10;
   static const double s12 = 12;
