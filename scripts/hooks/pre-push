@@ -2,6 +2,10 @@
 # pre-push: 先全量静态分析（catch 编译错误 / stale 生成物），再跑全量测试。失败阻断 push。
 set -euo pipefail
 
+# 同 pre-commit：linked worktree 下 git 导出的 GIT_DIR 等变量会劫持 Flutter SDK
+# 的 git 版本探测，flutter 调用前清掉。
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
@@ -10,7 +14,10 @@ cd "$REPO_ROOT"
 echo "[pre-push] flutter analyze"
 flutter analyze lib test
 
-echo "[pre-push] flutter test"
-flutter test
+# golden 基线锁 canonical 平台（CI ubuntu），本地 mac/win 字体光栅化必假红
+# （见 dart_test.yaml tags.golden）——golden 闸门在 CI，本地排除。
+# pg/ffmpeg 无需排除：未设环境变量时用例内 markTestSkipped 自跳。
+echo "[pre-push] flutter test (exclude golden — CI ubuntu 为 golden 闸门)"
+flutter test --exclude-tags golden
 
 echo "[pre-push] OK"

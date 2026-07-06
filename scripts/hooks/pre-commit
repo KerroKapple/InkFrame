@@ -13,6 +13,11 @@
 # 任一阻断步骤非零退出即阻断 commit。
 set -euo pipefail
 
+# git 在 linked worktree 中会向 hook 导出 GIT_DIR / GIT_INDEX_FILE 等变量，
+# 劫持 Flutter SDK 包装脚本内部的 git 版本探测（SDK 被误判 0.0.0-unknown，
+# pub 解析随即失败）。flutter/dart 调用前清掉；hook 自身 git 操作靠 cwd 定位。
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_PREFIX
+
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
