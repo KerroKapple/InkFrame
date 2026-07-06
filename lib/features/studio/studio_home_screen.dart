@@ -467,6 +467,11 @@ class _ProjectGrid extends ConsumerWidget {
                   .read(currentGalleryProjectProvider.notifier)
                   .state = (id: p.id, name: p.name),
               onRename: () => _renameProject(context, ref, p),
+              onManageCanvases: () => showDialog<void>(
+                context: context,
+                barrierColor: context.inkColors.scrim,
+                builder: (_) => _ManageCanvasesDialog(project: p),
+              ),
               onDelete: () => _deleteProject(context, ref, p),
             );
           },
@@ -551,5 +556,161 @@ class _ProjectGrid extends ConsumerWidget {
         ),
       );
     }
+  }
+}
+
+/// 画布管理对话框：列出项目内画布，行内重命名/删除（软删可恢复）。
+/// 本地列表随操作即时更新；工作库网格经 controller invalidate 自行刷新。
+class _ManageCanvasesDialog extends ConsumerStatefulWidget {
+  const _ManageCanvasesDialog({required this.project});
+
+  final ProjectWithCanvases project;
+
+  @override
+  ConsumerState<_ManageCanvasesDialog> createState() =>
+      _ManageCanvasesDialogState();
+}
+
+class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
+  late List<CanvasRef> _canvases;
+
+  @override
+  void initState() {
+    super.initState();
+    _canvases = List.of(widget.project.canvases);
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 3)),
+    );
+  }
+
+  Future<void> _rename(CanvasRef c) async {
+    final existing = _canvases
+        .where((o) => o.id != c.id)
+        .map((o) => o.name.trim().toLowerCase())
+        .toSet();
+    final title = context.l10n.studioRenameCanvas;
+    final confirm = context.l10n.studioRename;
+    final failedMsg = context.l10n.studioRenameCanvasFailed;
+    final name = await showDialog<String>(
+      context: context,
+      barrierColor: context.inkColors.scrim,
+      builder: (_) => _NewProjectDialog(
+        existingNames: existing,
+        initialName: c.name,
+        title: title,
+        confirmLabel: confirm,
+      ),
+    );
+    if (name == null || name.isEmpty || name == c.name || !mounted) return;
+    try {
+      await ref
+          .read(studioProjectsControllerProvider)
+          .renameCanvas(id: c.id, name: name);
+      if (!mounted) return;
+      setState(() {
+        _canvases = <CanvasRef>[
+          for (final o in _canvases)
+            if (o.id == c.id) CanvasRef(id: o.id, name: name) else o,
+        ];
+      });
+    } on InkError {
+      if (mounted) _showError(failedMsg);
+    }
+  }
+
+  Future<void> _delete(CanvasRef c) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: context.inkColors.scrim,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: ctx.inkColors.surface2,
+        title: Text(ctx.l10n.studioCanvasDeleteConfirmTitle),
+        content: Text(ctx.l10n.studioCanvasDeleteConfirmBody),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(ctx.l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(ctx.l10n.studioDelete),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final failedMsg = context.l10n.studioDeleteCanvasFailed;
+    try {
+      await ref.read(studioProjectsControllerProvider).deleteCanvas(c.id);
+      if (!mounted) return;
+      setState(() {
+        _canvases =
+            _canvases.where((o) => o.id != c.id).toList(growable: false);
+      });
+    } on InkError {
+      if (mounted) _showError(failedMsg);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return AlertDialog(
+      backgroundColor: colors.surface2,
+      title: Text(context.l10n.studioManageCanvases),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: _canvases.isEmpty
+            ? Text(
+                context.l10n.studioNoCanvases,
+                style: typo.body.copyWith(color: colors.fg3),
+              )
+            : ListView.builder(
+                shrinkWrap: true,
+                itemCount: _canvases.length,
+                itemBuilder: (_, i) {
+                  final c = _canvases[i];
+                  return Row(
+                    children: <Widget>[
+                      Expanded(
+                        child: Text(
+                          c.name,
+                          style: typo.body.copyWith(color: colors.fg1),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        tooltip: context.l10n.studioRenameCanvas,
+                        icon: Icon(
+                          Icons.edit_outlined,
+                          color: colors.fg2,
+                        ),
+                        onPressed: () => _rename(c),
+                      ),
+                      IconButton(
+                        tooltip: context.l10n.studioCanvasDeleteConfirmTitle,
+                        icon: Icon(
+                          Icons.delete_outline,
+                          color: colors.fg2,
+                        ),
+                        onPressed: () => _delete(c),
+                      ),
+                    ],
+                  );
+                },
+              ),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(context.l10n.commonClose),
+        ),
+      ],
+    );
   }
 }

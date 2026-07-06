@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/shortcut_labels.dart';
+import '../../../core/di/preferences.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -27,8 +28,13 @@ class CanvasTopChrome extends ConsumerWidget implements PreferredSizeWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return InkWindowChrome(
       leading: _LeadingRow(
-        onBack: () =>
-            ref.read(currentCanvasIdProvider.notifier).state = null,
+        onBack: () {
+          ref.read(currentCanvasIdProvider.notifier).state = null;
+          // 主动回首页 = 下次启动停留 Studio（fire-and-forget 清会话记录）。
+          ref.read(preferencesServiceProvider).update(
+                (p) => p.copyWith(clearLastCanvas: true),
+              );
+        },
       ),
       center: _Breadcrumb(canvasName: canvasName),
       trailing: const _Trailing(),

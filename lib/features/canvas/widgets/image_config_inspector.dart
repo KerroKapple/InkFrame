@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/character_assets.dart';
 import '../../../core/di/file_resolver.dart';
+import '../../../core/di/preferences.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart';
@@ -95,7 +96,14 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
     final savedProviderId = tc['provider_id'] as String?;
     final savedResolution = _parseResolution(tc['resolution']);
     final defaultProviderId = caps.isNotEmpty ? caps.first.providerId : null;
-    _providerId = savedProviderId ?? defaultProviderId;
+    // 默认值链：节点已存 > 上次使用（须仍在能力列表，防自定义 provider 已删）> first。
+    final lastUsed =
+        ref.read(preferencesServiceProvider).current.lastImageProviderId;
+    final lastUsedValid =
+        lastUsed != null && caps.any((c) => c.providerId == lastUsed)
+            ? lastUsed
+            : null;
+    _providerId = savedProviderId ?? lastUsedValid ?? defaultProviderId;
     final selectedCaps = caps.where((c) => c.providerId == _providerId);
     final sel = selectedCaps.isNotEmpty ? selectedCaps.first : null;
     final defaultResolution = sel != null && sel.supportedResolutions.isNotEmpty
@@ -271,6 +279,10 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
                         if (newAspect != null) 'aspect_ratio': newAspect.name,
                         'batch_size': 1,
                       });
+                      // 记住上次使用（fire-and-forget，服务内部吞盘错误）。
+                      ref.read(preferencesServiceProvider).update(
+                            (p) => p.copyWith(lastImageProviderId: v),
+                          );
                     },
             ),
             const SizedBox(height: InkSpacing.md),

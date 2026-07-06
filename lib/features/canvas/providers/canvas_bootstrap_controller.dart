@@ -6,8 +6,11 @@
 // 正式的项目/画布管理 UI 后续 sprint 重做；本 Controller 仅为让 T4 生成闭环
 // 端到端跑通的 dev 入口。
 
+import 'dart:async' show unawaited;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/preferences.dart';
 import '../../../core/di/repositories.dart';
 import 'current_canvas_id.dart';
 
@@ -32,6 +35,7 @@ class CanvasBootstrapController {
     final projectsFuture = _ref.read(projectRepositoryProvider.future);
     final canvasesFuture = _ref.read(canvasRepositoryProvider.future);
     final currentCanvasId = _ref.read(currentCanvasIdProvider.notifier);
+    final prefs = _ref.read(preferencesServiceProvider);
     final projects = await projectsFuture;
     final canvases = await canvasesFuture;
     final projectId = await projects.create(name: projectName);
@@ -40,6 +44,10 @@ class CanvasBootstrapController {
       name: canvasName,
     );
     currentCanvasId.state = canvasId;
+    // 记住上次会话（fire-and-forget，服务内部吞盘错误）。
+    unawaited(prefs.update(
+      (p) => p.copyWith(lastCanvasId: canvasId, lastProjectId: projectId),
+    ));
     return canvasId;
   }
 }

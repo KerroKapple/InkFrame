@@ -48,4 +48,21 @@ class StudioProjectsController {
     await repo.softDelete(id);
     _ref.invalidate(workspaceProjectsProvider);
   }
+
+  /// 重命名画布（单行 update）；成功后刷新工作库列表。错误走 InkError 冒泡。
+  Future<void> renameCanvas({
+    required String id,
+    required String name,
+  }) async {
+    final repo = await _ref.read(canvasRepositoryProvider.future);
+    await repo.update(id, <String, Object?>{CanvasCol.name: name});
+    _ref.invalidate(workspaceProjectsProvider);
+  }
+
+  /// 删除画布（软删——列表不再展示、可恢复）；成功后刷新列表。
+  Future<void> deleteCanvas(String id) async {
+    final repo = await _ref.read(canvasRepositoryProvider.future);
+    await repo.softDelete(id);
+    _ref.invalidate(workspaceProjectsProvider);
+  }
 }

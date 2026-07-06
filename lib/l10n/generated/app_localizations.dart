@@ -1244,6 +1244,54 @@ abstract class AppLocalizations {
   /// **'Failed to delete project'**
   String get studioDeleteFailed;
 
+  /// No description provided for @studioManageCanvases.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage canvases'**
+  String get studioManageCanvases;
+
+  /// No description provided for @studioRenameCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename canvas'**
+  String get studioRenameCanvas;
+
+  /// No description provided for @studioRenameCanvasFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to rename canvas'**
+  String get studioRenameCanvasFailed;
+
+  /// No description provided for @studioCanvasDeleteConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete canvas?'**
+  String get studioCanvasDeleteConfirmTitle;
+
+  /// No description provided for @studioCanvasDeleteConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The canvas will be removed from this project.'**
+  String get studioCanvasDeleteConfirmBody;
+
+  /// No description provided for @studioDeleteCanvasFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete canvas'**
+  String get studioDeleteCanvasFailed;
+
+  /// No description provided for @studioNoCanvases.
+  ///
+  /// In en, this message translates to:
+  /// **'No canvases in this project'**
+  String get studioNoCanvases;
+
+  /// No description provided for @commonClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get commonClose;
+
   /// No description provided for @studioProjectMenuTooltip.
   ///
   /// In en, this message translates to:

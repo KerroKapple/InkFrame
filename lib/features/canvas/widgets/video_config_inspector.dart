@@ -10,6 +10,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/preferences.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
@@ -64,8 +65,16 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     final tc = widget.node.typeConfig;
 
     final savedProviderId = tc['provider_id'] as String?;
-    _providerId =
-        savedProviderId ?? (caps.isNotEmpty ? caps.first.providerId : null);
+    // 默认值链：节点已存 > 上次使用（须仍在能力列表）> first。
+    final lastUsed =
+        ref.read(preferencesServiceProvider).current.lastVideoProviderId;
+    final lastUsedValid =
+        lastUsed != null && caps.any((c) => c.providerId == lastUsed)
+            ? lastUsed
+            : null;
+    _providerId = savedProviderId ??
+        lastUsedValid ??
+        (caps.isNotEmpty ? caps.first.providerId : null);
     final selected = _selectedCaps(caps);
     // 钳制到当前 provider 支持集，避免 DropdownButton "value 不在 items" 断言：
     // 持久化的旧值若不被当前 provider 支持，退回 first / null。
@@ -211,6 +220,10 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                           'duration_ms': newDuration * 1000,
                         if (newCamera != null) 'camera': newCamera.name,
                       });
+                      // 记住上次使用（fire-and-forget，服务内部吞盘错误）。
+                      ref.read(preferencesServiceProvider).update(
+                            (p) => p.copyWith(lastVideoProviderId: v),
+                          );
                     },
             ),
             const SizedBox(height: InkSpacing.md),

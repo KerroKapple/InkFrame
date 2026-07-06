@@ -20,6 +20,7 @@ import 'features/gallery/providers/current_gallery_project.dart';
 import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/studio/providers/restore_last_session.dart';
 import 'features/studio/studio_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
@@ -38,6 +39,11 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    // 首帧后触发上次会话恢复（best-effort，内部自会校验/清理，见 provider 注释）。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(restoreLastSessionProvider);
+    });
   }
 
   @override

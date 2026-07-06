@@ -54,15 +54,18 @@
 | 双语 README + 定位文案 | #136 |
 | wanx-i2v 对齐 wan2.7 服务端契约（`input.media` 数组；旧 `img_url` 被拒致 i2v 全线 400）+ macOS 标题栏平台惯例 | #137 |
 | 参考图/首尾帧 UI 收尾（B1–B3）+ 连线智能默认 role；i2v media×fail-fast 语义整合 | #138 |
+| 快修簇：暗色 on-color 对比度（colorScheme+InkButton）/ base64 守卫统一 / 捕获收窄 / 吞错补提示 / 僵尸清理 | #140 |
+| M1 补遗四项落地（见下表） | #141 |
 
-## M1 补遗（审计发现的悬空项，进行中）
+## M1 补遗（审计发现的悬空项）
 
 | 项 | 状态 | 备注 |
 |---|---|---|
-| 记住上次使用的 provider（新节点默认选中） | 🔵 | STATUS-AND-ROADMAP M1 承诺项，审计发现零实现 |
-| 重启回上次打开的画布 | 🔵 | 同上；preferences 已有持久化通道可复用 |
-| 项目复制 + 画布级重命名/删除 | 🔵 | Studio 项目管理只做了重命名/软删；复制需跨表事务 |
-| 设置页按钮统一设计系统组件 + onPrimary 暗色 bug | 🔵 | onPrimary/onSecondary 误设 fg1（app_theme.dart）随快修簇处理 |
+| 记住上次使用的 provider（新节点默认选中） | ✅ | 偏好 `lastImage/VideoProviderId`（按节点类型分记）；默认链=节点已存 > 上次使用（校验仍在能力列表）> first（#141） |
+| 重启回上次打开的画布 | ✅ | 偏好记 `lastCanvasId/lastProjectId`；启动 `restoreLastSessionProvider` 校验画布/项目均未软删才恢复，主动回首页即清记录（#141） |
+| 画布级重命名/删除 | ✅ | 项目卡菜单「管理画布」对话框，controller 走 canvasRepo update/softDelete（#141） |
+| 设置页按钮统一设计系统组件 + onPrimary 暗色 bug | ✅ | onPrimary/onSecondary/onError → surfaceCanvas + InkButton 禁用态（#140）；api_keys 两个 Material 裸按钮换 InkButton（#141） |
+| 项目复制 | 🅿️ | 设计已勘明（sprint 级）：需旧→新 id 映射含 nodes JSONB 内引用重写、仓储批量复制能力、projects/{id} 磁盘目录整体复制与失败补偿、jobs/batch_results 取舍拍板；单独立项 |
 
 ## 已延后 / 技术债
 
