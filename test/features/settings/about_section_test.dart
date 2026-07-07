@@ -55,4 +55,23 @@ void main() {
     expect(find.textContaining('Unavailable'), findsOneWidget);
     expect(find.textContaining('boom'), findsOneWidget);
   });
+
+  testWidgets('点开源许可按钮 → 打开 LicensePage', (tester) async {
+    await pumpInkApp(
+      tester,
+      const SingleChildScrollView(child: AboutSection()),
+      overrides: [
+        secureStorageServiceProvider.overrideWithValue(_OkSecure()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Open-source licenses'));
+    // 不用 pumpAndSettle：LicensePage 加载许可期间的进度指示器会持续调度帧，
+    // pumpAndSettle 会超时；只推进路由过场动画即可断言页面已入栈。
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.byType(LicensePage), findsOneWidget);
+  });
 }

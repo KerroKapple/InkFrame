@@ -11,6 +11,7 @@ import '../../../core/di/secure_storage.dart';
 import '../../../core/interfaces/secure_storage_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_card.dart';
 import '../../../theme/tokens.dart';
 
@@ -126,6 +127,29 @@ class AboutSection extends ConsumerWidget {
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: InkSpacing.sm),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: InkButton(
+            label: context.l10n.settingsAboutLicensesButton,
+            variant: InkButtonVariant.secondary,
+            icon: Icons.description_outlined,
+            onPressed: () {
+              final String version = packageAsync.maybeWhen(
+                data: (info) => info.version.isEmpty
+                    ? ''
+                    : '${info.version}+${info.buildNumber}',
+                orElse: () => '',
+              );
+              showLicensePage(
+                context: context,
+                applicationName: context.l10n.appTitle,
+                applicationVersion: version,
+                applicationLegalese: context.l10n.settingsAboutLegalese,
+              );
+            },
           ),
         ),
       ],
