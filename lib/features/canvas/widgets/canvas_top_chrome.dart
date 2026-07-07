@@ -11,8 +11,11 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
+import '../../export/widgets/export_video_dialog.dart';
 import '../../studio/controllers/studio_state.dart';
+import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
+import '../providers/canvas_nodes_controller.dart';
 import '../providers/current_canvas_id.dart';
 import 'base_style_editor_dialog.dart';
 
@@ -198,6 +201,8 @@ class _Trailing extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         if (canvasId != null) ...<Widget>[
+          _ExportVideoButton(canvasId: canvasId),
+          const SizedBox(width: InkSpacing.sm),
           _BaseStyleButton(canvasId: canvasId),
           const SizedBox(width: InkSpacing.sm),
         ],
@@ -233,6 +238,59 @@ class _Trailing extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// 「导出视频」入口：画布无可导出的 video result 时禁用。
+/// watch 用 select 收窄为可用性布尔，节点全量列表按压时再 read + 过滤，
+/// 避免任意节点变化（拖动等）触发顶栏重建。
+class _ExportVideoButton extends ConsumerWidget {
+  const _ExportVideoButton({required this.canvasId});
+
+  final String canvasId;
+
+  static bool _canExport(AsyncValue<List<CanvasNode>> async) {
+    final videoNodes =
+        exportableVideoNodes(async.valueOrNull ?? const <CanvasNode>[]);
+    return videoNodes.isNotEmpty && videoNodes.first.projectId != null;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final l = context.l10n;
+    final enabled = ref.watch(
+      canvasNodesControllerProvider(canvasId).select(_canExport),
+    );
+    return Tooltip(
+      message: enabled ? l.exportVideoTooltip : l.exportVideoDisabledTooltip,
+      child: IconButton(
+        icon: Icon(
+          Icons.movie_outlined,
+          size: 18,
+          color: enabled ? colors.fg2 : colors.fg4,
+        ),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        splashRadius: 16,
+        onPressed: enabled ? () => _open(context, ref) : null,
+      ),
+    );
+  }
+
+  void _open(BuildContext context, WidgetRef ref) {
+    final videoNodes = exportableVideoNodes(
+      ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+          const <CanvasNode>[],
+    );
+    final projectId =
+        videoNodes.isEmpty ? null : videoNodes.first.projectId;
+    if (projectId == null) return; // 按压瞬间节点已变化：静默不弹
+    showExportVideoDialog(
+      context,
+      projectId: projectId,
+      videoNodes: videoNodes,
     );
   }
 }

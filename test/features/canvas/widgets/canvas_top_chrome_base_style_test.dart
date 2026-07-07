@@ -4,10 +4,19 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/canvas_repository.dart';
+import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_top_chrome.dart';
 
 import '../../../_harness/test_app.dart';
+
+// 导出按钮 watch 节点集合；fake 隔离 DB DI。
+class _EmptyNodesController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async =>
+      const <CanvasNode>[];
+}
 
 // 最小化 fake：仅实现 findById（返回 base_style 字段），update 记录调用。
 class _FakeCanvasRepository implements CanvasRepository {
@@ -68,6 +77,7 @@ void main() {
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
         canvasRepositoryProvider.overrideWith((_) async => repo),
+        canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
       ],
     );
     await tester.pumpAndSettle();
@@ -99,6 +109,7 @@ void main() {
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
         canvasRepositoryProvider.overrideWith((_) async => repo),
+        canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
       ],
     );
     await tester.pumpAndSettle();

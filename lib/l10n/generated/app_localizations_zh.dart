@@ -860,4 +860,50 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get galleryKindVideo => '视频';
+
+  @override
+  String get exportVideoTooltip => '导出视频';
+
+  @override
+  String get exportVideoDisabledTooltip => '画布上还没有视频生成结果';
+
+  @override
+  String get exportVideoDialogTitle => '导出视频';
+
+  @override
+  String get exportVideoDialogHint => '选中的视频将按列表顺序拼接。';
+
+  @override
+  String get exportVideoOutputNameLabel => '输出文件名（可选）';
+
+  @override
+  String get exportVideoOutputNameHint => '留空使用时间戳默认名';
+
+  @override
+  String get exportVideoInvalidName =>
+      '文件名不能包含 \\ / : * ? \" < > | 字符、..、控制字符或系统保留名';
+
+  @override
+  String get exportVideoMoveUp => '上移';
+
+  @override
+  String get exportVideoMoveDown => '下移';
+
+  @override
+  String get exportVideoStart => '导出';
+
+  @override
+  String exportVideoSuccess(String path) {
+    return '已导出到 $path';
+  }
+
+  @override
+  String get exportVideoCopyPath => '复制路径';
+
+  @override
+  String get exportVideoPathCopied => '路径已复制到剪贴板';
+
+  @override
+  String get exportVideoFfmpegMissing =>
+      '未检测到 ffmpeg——安装后重试（可用 INKFRAME_FFMPEG 环境变量指定路径）';
 }

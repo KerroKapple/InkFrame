@@ -150,8 +150,10 @@ void main() {
 
       for (final bad in <String>[
         'a/b', r'a\b', '..', 'x..y', 'a:b', '',
-        // Windows 保留设备名(Win10 经典解析会重定向到设备)
-        'CON', 'nul', 'lpt3',
+        // Windows 文件名非法字符
+        'final*cut', 'a?b', 'x|y', 'a"b', 'x<y', 'x>y',
+        // Windows 保留设备名(Win10 经典解析会重定向到设备)，含带扩展名形态
+        'CON', 'nul', 'lpt3', 'con.backup', 'NUL.mp4', 'Com1.txt',
       ]) {
         await expectLater(
           svc.concat(
@@ -161,6 +163,21 @@ void main() {
           ),
           throwsA(isA<PathSecurityError>()),
           reason: 'should reject: $bad',
+        );
+      }
+    });
+
+    test('保留名按首个点段匹配：普通前缀 console / config-x 放行', () async {
+      final svc = buildService();
+
+      for (final ok in <String>['console', 'config-x']) {
+        expect(
+          await svc.concat(
+            projectId: projectId,
+            inputRelativePaths: const <String>[relA],
+            outputBaseName: ok,
+          ),
+          'exports/$ok.mp4',
         );
       }
     });

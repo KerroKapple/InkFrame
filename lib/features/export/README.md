@@ -1,0 +1,49 @@
+# features/export
+
+导出 UI 首切片（features/export 模块首件）——把当前画布的 video result 节点
+按序拼接为单个 mp4。服务层为 `VideoExportService.concat`（concat demuxer
+流拷贝，见 `docs/M3-SKELETON.md` §2），本模块只做编排与交互，**无新表**。
+
+> 相关 ADR：[0007 节点 type×role + JSONB](../../../docs/adr/0007-node-type-role-jsonb-config.md) · [0010 i18n/token 零硬编码](../../../docs/adr/0010-zero-hardcoding-i18n-and-design-tokens.md)
+
+## 分层
+
+```
+providers/  Riverpod 控制器（autoDispose）
+util/       纯函数（文件名预校验）
+widgets/    纯 UI（读 provider、走 token/l10n）
+```
+
+## providers
+- `export_controller.dart` — `ExportController`：状态机
+  idle/busy/success/failure；**路径根换算**在此层——节点 `type_config.video_url`
+  是画布根相对路径，concat 收项目根相对路径，统一补 `canvases/<canvasId>/`
+  前缀（`projectRelativeVideoPath`）。只捕 `InkError` 子类 +
+  防御性 `PathSecurityError`（翻译为 invalidParameter）。
+
+## util
+- `export_file_name.dart` — `isValidExportBaseName`：与服务端
+  `_assertPlainFileName` 同规则的本地预校验（分隔符/盘符冒号/`..`/控制字符/
+  Windows 非法字符 `* ? " < > |`/Windows 保留名，含 `con.backup` 带扩展名
+  形态），非法即禁用导出按钮，避免提交后才收 PathSecurityError。
+  两侧规则逐字等价是契约，改一侧必改另一侧。
+
+## widgets
+- `export_video_dialog.dart` — 导出对话框：video result 节点列表
+  （默认按 `position.x` 升序=分镜从左到右，默认全选）+ 复选/上移下移手动排序 +
+  输出文件名（留空=服务端时间戳默认名）+ busy 态（indeterminate 进度，concat
+  无进度回调）。成功：关对话框 + snackbar 相对路径 + 「复制路径」（复制绝对
+  路径）；失败：`InkError.messageKey` 走 l10n，**特例** ffmpeg_not_found
+  用专门文案（含 INKFRAME_FFMPEG 提示）。
+
+## 入口
+画布顶栏（`canvas_top_chrome.dart` 的 `_ExportVideoButton`）：当前画布存在
+video result 节点（`videoUrl` 非空）时可用，否则禁用 + 说明 tooltip。
+
+## 本切片不做（后续切片）
+narrative 链自动排序 / 转码与分辨率归一 / 导出历史列表 / 进度回调 /
+打包 ffmpeg 二进制评估。
+
+## 约束
+- 文案走 `context.l10n.*`，样式走 token（ADR-0010）
+- 路径解析只经 `FileResolverService`；绝对路径不落 DB/状态，仅剪贴板一次性使用

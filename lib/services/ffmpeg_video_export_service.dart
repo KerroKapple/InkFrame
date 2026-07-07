@@ -157,11 +157,16 @@ class FfmpegVideoExportService implements VideoExportService {
   static String _listLine(File f) =>
       "file '${f.path.replaceAll("'", "'\\''")}'";
 
-  static final RegExp _kWinReservedName =
-      RegExp(r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])$', caseSensitive: false);
+  // 保留名按首个点段匹配：`con.backup` 拒绝，`console` 放行。
+  static final RegExp _kWinReservedName = RegExp(
+    r'^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$',
+    caseSensitive: false,
+  );
+  static final RegExp _kWinIllegalChars = RegExp(r'[*?"<>|]');
 
   /// 输出文件名必须是单层纯文件名段：拒绝分隔符 / 盘符冒号 / '..' / 控制字符 /
-  /// Windows 保留设备名（CON/NUL/COM1…）。
+  /// Windows 非法字符 `* ? " < > |` / Windows 保留设备名（含带扩展名形态）。
+  /// 契约：与 UI 侧 isValidExportBaseName 逐字等价，改一侧必改另一侧。
   static void _assertPlainFileName(String name) {
     final hasControlChar =
         name.codeUnits.any((u) => u < 0x20 || u == 0x7f);
@@ -171,6 +176,7 @@ class FfmpegVideoExportService implements VideoExportService {
         name.contains('\\') ||
         name.contains(':') ||
         name.contains('..') ||
+        _kWinIllegalChars.hasMatch(name) ||
         _kWinReservedName.hasMatch(name)) {
       throw PathSecurityError(
         'outputBaseName must be a plain file name segment: $name',
