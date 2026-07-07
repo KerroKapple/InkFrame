@@ -33,8 +33,13 @@
   输出落 `projects/<id>/exports/`，返回项目相对路径。导出目录未走 `AppPaths`
   （其方法均为 app 级无 projectId），归口 FileResolverService。
 - **不打包 ffmpeg 二进制**（体积/许可评估延后）：系统无 ffmpeg →
-  `LocalIOError(reason=ffmpeg_not_found)`；错误全复用现有 InkErrorCode，零 l10n 变更。
-- 后续：UI 入口（`lib/features/export/`）、转码/分辨率归一、打包二进制评估。
+  `LocalIOError(reason=ffmpeg_not_found)`；错误全复用现有 InkErrorCode。
+- **UI 入口已落地**（`lib/features/export/`）：画布顶栏「导出视频」按钮（无
+  video result 时禁用）→ 对话框（position.x 升序默认全选、复选/上下移排序、
+  输出名本地预校验、busy 态、成功 snackbar+复制绝对路径、ffmpeg_not_found
+  专门文案）；`ExportController` 做画布相对→项目相对路径换算
+  （`canvases/<canvasId>/` 前缀）。现状见 `docs/BOARD.md` M3 表。
+- 后续：narrative 链自动排序、转码/分辨率归一、打包二进制评估。
 
 ## 3. 素材库 / Asset Gallery
 **目标**：跨画布浏览项目已生成的图片/视频 + 复用（拖入画布 / 存为角色）。

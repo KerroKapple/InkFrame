@@ -360,5 +360,20 @@
   "galleryEmptySubtitle": "该项目画布上生成的图片和视频会显示在这里。",
   "galleryLoadFailed": "画廊加载失败",
   "galleryKindImage": "图片",
-  "galleryKindVideo": "视频"
+  "galleryKindVideo": "视频",
+
+  "exportVideoTooltip": "导出视频",
+  "exportVideoDisabledTooltip": "画布上还没有视频生成结果",
+  "exportVideoDialogTitle": "导出视频",
+  "exportVideoDialogHint": "选中的视频将按列表顺序拼接。",
+  "exportVideoOutputNameLabel": "输出文件名（可选）",
+  "exportVideoOutputNameHint": "留空使用时间戳默认名",
+  "exportVideoInvalidName": "文件名不能包含 \\ / : * ? \" < > | 字符、..、控制字符或系统保留名",
+  "exportVideoMoveUp": "上移",
+  "exportVideoMoveDown": "下移",
+  "exportVideoStart": "导出",
+  "exportVideoSuccess": "已导出到 {path}",
+  "exportVideoCopyPath": "复制路径",
+  "exportVideoPathCopied": "路径已复制到剪贴板",
+  "exportVideoFfmpegMissing": "未检测到 ffmpeg——安装后重试（可用 INKFRAME_FFMPEG 环境变量指定路径）"
 }

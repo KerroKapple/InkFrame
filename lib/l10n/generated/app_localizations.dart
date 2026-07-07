@@ -1735,6 +1735,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Video'**
   String get galleryKindVideo;
+
+  /// No description provided for @exportVideoTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Export video'**
+  String get exportVideoTooltip;
+
+  /// No description provided for @exportVideoDisabledTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'No video results on this canvas yet'**
+  String get exportVideoDisabledTooltip;
+
+  /// No description provided for @exportVideoDialogTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Export video'**
+  String get exportVideoDialogTitle;
+
+  /// No description provided for @exportVideoDialogHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected clips are joined in list order.'**
+  String get exportVideoDialogHint;
+
+  /// No description provided for @exportVideoOutputNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Output file name (optional)'**
+  String get exportVideoOutputNameLabel;
+
+  /// No description provided for @exportVideoOutputNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty for a timestamped name'**
+  String get exportVideoOutputNameHint;
+
+  /// No description provided for @exportVideoInvalidName.
+  ///
+  /// In en, this message translates to:
+  /// **'File name cannot contain \\ / : * ? \" < > |, \'..\', control characters, or reserved device names'**
+  String get exportVideoInvalidName;
+
+  /// No description provided for @exportVideoMoveUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Move up'**
+  String get exportVideoMoveUp;
+
+  /// No description provided for @exportVideoMoveDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Move down'**
+  String get exportVideoMoveDown;
+
+  /// No description provided for @exportVideoStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get exportVideoStart;
+
+  /// Snackbar after a successful video export; path is project-relative
+  ///
+  /// In en, this message translates to:
+  /// **'Exported to {path}'**
+  String exportVideoSuccess(String path);
+
+  /// No description provided for @exportVideoCopyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path'**
+  String get exportVideoCopyPath;
+
+  /// No description provided for @exportVideoPathCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Path copied to clipboard'**
+  String get exportVideoPathCopied;
+
+  /// No description provided for @exportVideoFfmpegMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)'**
+  String get exportVideoFfmpegMissing;
 }
 
 class _AppLocalizationsDelegate

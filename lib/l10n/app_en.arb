@@ -397,5 +397,26 @@
   "galleryEmptySubtitle": "Images and videos generated on this project's canvases will appear here.",
   "galleryLoadFailed": "Failed to load gallery",
   "galleryKindImage": "Image",
-  "galleryKindVideo": "Video"
+  "galleryKindVideo": "Video",
+
+  "exportVideoTooltip": "Export video",
+  "exportVideoDisabledTooltip": "No video results on this canvas yet",
+  "exportVideoDialogTitle": "Export video",
+  "exportVideoDialogHint": "Selected clips are joined in list order.",
+  "exportVideoOutputNameLabel": "Output file name (optional)",
+  "exportVideoOutputNameHint": "Leave empty for a timestamped name",
+  "exportVideoInvalidName": "File name cannot contain \\ / : * ? \" < > |, '..', control characters, or reserved device names",
+  "exportVideoMoveUp": "Move up",
+  "exportVideoMoveDown": "Move down",
+  "exportVideoStart": "Export",
+  "exportVideoSuccess": "Exported to {path}",
+  "@exportVideoSuccess": {
+    "description": "Snackbar after a successful video export; path is project-relative",
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "exportVideoCopyPath": "Copy path",
+  "exportVideoPathCopied": "Path copied to clipboard",
+  "exportVideoFfmpegMissing": "ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)"
 }

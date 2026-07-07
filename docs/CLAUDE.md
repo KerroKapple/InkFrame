@@ -219,6 +219,10 @@ lib/
 │   │   ├── providers/                 # Riverpod ViewModels
 │   │   ├── util/
 │   │   └── widgets/
+│   ├── export/                        # Video export UI (concat dialog; entry in canvas top chrome)
+│   │   ├── providers/                 # ExportController (canvas→project path conversion)
+│   │   ├── util/                      # Output-name pre-validation
+│   │   └── widgets/
 │   ├── gallery/                       # Project-wide generated-asset gallery (read-only)
 │   │   ├── models/
 │   │   ├── providers/

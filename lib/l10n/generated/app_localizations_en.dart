@@ -888,4 +888,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get galleryKindVideo => 'Video';
+
+  @override
+  String get exportVideoTooltip => 'Export video';
+
+  @override
+  String get exportVideoDisabledTooltip =>
+      'No video results on this canvas yet';
+
+  @override
+  String get exportVideoDialogTitle => 'Export video';
+
+  @override
+  String get exportVideoDialogHint =>
+      'Selected clips are joined in list order.';
+
+  @override
+  String get exportVideoOutputNameLabel => 'Output file name (optional)';
+
+  @override
+  String get exportVideoOutputNameHint => 'Leave empty for a timestamped name';
+
+  @override
+  String get exportVideoInvalidName =>
+      'File name cannot contain \\ / : * ? \" < > |, \'..\', control characters, or reserved device names';
+
+  @override
+  String get exportVideoMoveUp => 'Move up';
+
+  @override
+  String get exportVideoMoveDown => 'Move down';
+
+  @override
+  String get exportVideoStart => 'Export';
+
+  @override
+  String exportVideoSuccess(String path) {
+    return 'Exported to $path';
+  }
+
+  @override
+  String get exportVideoCopyPath => 'Copy path';
+
+  @override
+  String get exportVideoPathCopied => 'Path copied to clipboard';
+
+  @override
+  String get exportVideoFfmpegMissing =>
+      'ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)';
 }
