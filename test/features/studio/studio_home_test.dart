@@ -4,10 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/current_screen.dart';
+import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/logging/logger_service.dart';
+import 'package:inkframe/features/generation/services/toast_service.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
+import 'package:inkframe/features/studio/widgets/project_card.dart';
 import 'package:inkframe/features/studio/widgets/studio_top_chrome.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
@@ -15,6 +20,30 @@ import 'package:inkframe/theme/app_theme.dart';
 import '../../_harness/fake_repositories.dart';
 import '../../_harness/fake_unit_of_work.dart';
 import '../../_harness/test_app.dart';
+import '../../helpers/recording_logger.dart';
+
+class _RecordingToastService implements ToastService {
+  final List<({String message, ToastKind kind})> calls =
+      <({String message, ToastKind kind})>[];
+
+  @override
+  void show(String message, {ToastKind kind = ToastKind.info}) {
+    calls.add((message: message, kind: kind));
+  }
+}
+
+/// create 必抛 LocalIOError 的画布仓储——驱动打开画布失败分支。
+class _FailingCreateCanvasRepository extends InMemoryCanvasRepository {
+  @override
+  Future<String> create({
+    required String projectId,
+    required String name,
+    String baseStylePrefix = '',
+    String baseStyleSuffix = '',
+  }) async {
+    throw const LocalIOError(extra: {'op': 'create'});
+  }
+}
 
 void main() {
   testWidgets('StudioHome 数据态：渲染 sidebar + Recent Projects 标题 + 卡片 + FAB',
@@ -201,6 +230,50 @@ void main() {
     await tester.tap(find.text('Cancel'));
     await tester.pumpAndSettle();
     expect(find.text('Create new project'), findsNothing);
+  });
+
+  testWidgets('打开画布失败：InkError 收窄捕获 → error toast + logger.error 留痕',
+      (tester) async {
+    final toast = _RecordingToastService();
+    final logger = RecordingLogger();
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => <ProjectWithCanvases>[
+            ProjectWithCanvases(
+              id: 'p1',
+              name: 'Alpha',
+              createdAt: DateTime.utc(2026, 5, 1),
+              // 无画布 → onTap 走 createCanvas → 仓储抛 LocalIOError
+              canvases: const <CanvasRef>[],
+            ),
+          ],
+        ),
+        canvasRepositoryProvider
+            .overrideWith((_) async => _FailingCreateCanvasRepository()),
+        toastServiceProvider.overrideWithValue(toast),
+        loggerProvider.overrideWithValue(logger),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(StudioProjectCard));
+    await tester.pumpAndSettle();
+
+    // 用户可见：error toast
+    expect(toast.calls, hasLength(1));
+    expect(toast.calls.single.message, "Couldn't open canvas");
+    expect(toast.calls.single.kind, ToastKind.error);
+    // 可观测性：失败必须留 error 日志且保留原始 cause（裸 catch 吞错是缺陷）
+    final errors = logger.byLevel(InkLogLevel.error);
+    expect(errors, hasLength(1),
+        reason: '打开画布失败必须写 error 日志，不能只弹 toast');
+    expect(errors.single.module, 'studio.home');
+    expect(errors.single.cause, isA<LocalIOError>());
+    expect(errors.single.stackTrace, isNotNull);
   });
 
   testWidgets('create 流程：dialog 提交 → controller 建项目 + 首画布并刷新列表',

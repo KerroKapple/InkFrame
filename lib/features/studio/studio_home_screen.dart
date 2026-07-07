@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/current_screen.dart';
+import '../../core/di/logger.dart';
 import '../../core/di/repositories.dart';
 import '../../core/errors/ink_error.dart';
 import '../../l10n/l10n_x.dart';
@@ -27,6 +28,8 @@ import 'widgets/project_card.dart';
 import 'widgets/studio_provider_banner.dart';
 import 'widgets/studio_top_chrome.dart';
 import '../generation/services/toast_service.dart';
+
+const String _logModule = 'studio.home';
 
 class StudioHomeScreen extends ConsumerWidget {
   const StudioHomeScreen({super.key});
@@ -454,7 +457,16 @@ class _ProjectGrid extends ConsumerWidget {
                       );
                     },
                   );
-                } catch (_) {
+                } on InkError catch (e, st) {
+                  // 捕获集 = try 体真实抛出集：仓储/打开链路只抛 InkError
+                  // （guard 翻译边界），不捕宽泛 Exception（铁律）。
+                  ref.read(loggerProvider).error(
+                        _logModule,
+                        'open project canvas failed',
+                        extra: {'project_id': p.id},
+                        cause: e,
+                        stackTrace: st,
+                      );
                   if (context.mounted) {
                     ref.read(toastServiceProvider).show(
                           failedMsg,
