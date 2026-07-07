@@ -1,6 +1,8 @@
 # InkFrame 活看板（单一事实源）
 
-> 这是"当前在做什么、做到哪"的唯一速查表。背景分析/行业借鉴见
+> 这是"当前在做什么、做到哪"的唯一速查表。**接下来做什么**(到 1.0 的全部任务卡与决策项)见
+> [`MASTERPLAN.md`](MASTERPLAN.md);**怎么做不踩坑**见 [`EXECUTION-PLAYBOOK.md`](EXECUTION-PLAYBOOK.md)。
+> 背景分析/行业借鉴见
 > [`STATUS-AND-ROADMAP-2026-06-30.md`](STATUS-AND-ROADMAP-2026-06-30.md)（快照，2026-06-30）。
 > 旧的散落文档（PROGRESS / ARCHITECTURE-SURVEY / AUDIT-REPORT / PROGRESS-VERIFICATION /
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
