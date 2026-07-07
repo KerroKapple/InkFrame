@@ -14,6 +14,10 @@ machine, across platforms. Contribution flow (branches, hooks, commits) lives in
 | Flutter | stable channel, ≥ 3.41 (CI: 3.41.6) | `.github/workflows/ci.yml` / `pubspec.yaml` |
 | Dart | ≥ 3.11 (ships with Flutter) | `pubspec.yaml` |
 | PostgreSQL | 17 (binaries locked to 17.2) | `scripts/pg/pg-version.txt` |
+| ffmpeg | optional — video export only | not pinned; runtime probe `INKFRAME_FFMPEG` env → PATH (`FfmpegLocator`) |
+
+> ffmpeg is **optional**: without it, only video export fails (with an explicit error) — everything
+> else works. / ffmpeg **可选**：缺失时仅视频导出报错，其余功能不受影响。
 
 After cloning, the common first steps on every platform:
 
@@ -131,6 +135,16 @@ To run the `@Tags(['pg'])` integration tests, also create a test DB and export
 ```powershell
 & "C:\Program Files\PostgreSQL\17\bin\createdb.exe" -U postgres inkframe_test
 $env:TEST_PG_URL = "postgres://postgres@127.0.0.1:5432/inkframe_test?sslmode=disable"
+```
+
+Likewise, the `@Tags(['ffmpeg'])` integration tests need ffmpeg on PATH plus `TEST_FFMPEG=1`
+(auto-skipped when unset):
+
+同理，`@Tags(['ffmpeg'])` 集成测试需要 PATH 里有 ffmpeg 并设 `TEST_FFMPEG=1`（不设自动 skip）：
+
+```powershell
+$env:TEST_FFMPEG = "1"
+flutter test --tags ffmpeg
 ```
 
 ### 4. PG runtime binaries for packaging / 打包用 PG 运行时二进制

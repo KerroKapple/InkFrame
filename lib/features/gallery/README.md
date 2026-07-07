@@ -35,6 +35,8 @@ widgets/    纯 UI（读 provider、走 token/l10n）
 ## 入口
 Studio 项目卡右上菜单「Gallery」→ 写 `currentGalleryProjectProvider` →
 `app.dart` `_UnlockedShell` 切到 `GalleryScreen`；返回按钮清空该状态回 Studio。
+路由优先级：`currentCanvasId` 优先于 gallery——画布打开时画廊被遮蔽（`app.dart`
+先判画布再判画廊）。
 
 ## 首切片不做（后续切片）
 拖入画布 / 存为角色（`characterAssetServiceProvider` 复用点）/ 筛选与搜索 /

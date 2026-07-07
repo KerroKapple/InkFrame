@@ -30,7 +30,7 @@
 | 层 | 工具 | 依赖 | 覆盖率门槛 | 跑在哪 |
 |---|---|---|---|---|
 | 单元测试 (core / utils / errors) | `flutter_test` | 零外部 | ≥ 70% | pre-commit / pre-push / CI |
-| Service 层 | `flutter_test` + Mocktail | Mock Repository | ≥ 70% | pre-push / CI |
+| Service 层 | `flutter_test` + 手写 Fake（`test/_harness/`） | Fake Repository | ≥ 70% | pre-push / CI |
 | Repository 层 | `flutter_test` + 真 PG | `TEST_PG_URL` | **≥ 75%**（数据层硬门槛）| pre-push (有 PG) / CI |
 | Riverpod Provider | `flutter_test` + `ProviderContainer` | override | ≥ 70% | pre-push / CI |
 | Widget | `flutter_test` + `ProviderScope` override | fake services | ≥ 70% | pre-push / CI |
@@ -71,34 +71,32 @@
 
 ```
 test/
-├── core/                              # 对应 lib/core/
-│   ├── errors/ink_error_test.dart
-│   ├── logging/logger_service_test.dart
-│   └── di/theme_controller_test.dart
-├── services/
-│   └── file_resolver_service_test.dart
-├── storage/
-│   ├── pg_controller_test.dart
-│   ├── pg_binary_locator_test.dart
-│   ├── migration_runner_integration_test.dart   # _integration 后缀 = 要 PG
-│   ├── schema/
-│   │   ├── violation_matrix_test.dart
-│   │   └── cascade_test.dart
-│   └── repositories/
-│       └── postgres_repositories_integration_test.dart
+├── _harness/                          # 共享测试基建（17 文件：fake_* / fixtures / golden_scaffold /
+│                                      #   test_app + 自身契约测试；见 test/_harness/README.md）
+├── app/                               # 应用级路由 / toast 测试
+├── core/                              # 对应 lib/core/（constants/db/di/errors/logging/models/paths）
+├── e2e/                               # 端到端主链路（生成管线 / 渲染节点）
+├── features/                          # 对应 lib/features/（canvas/gallery/generation/settings/studio）
+│   └── canvas/widgets/
+│       ├── goldens/                   # golden 基线 PNG（CI ubuntu 铸造，见 §8.3）
+│       └── node_card_golden_test.dart
+├── fixtures/
+│   └── providers/{id}/*.json          # Provider 真实响应脱敏 fixture
+├── helpers/
+│   └── recording_logger.dart          # 仅剩这一件；其余共享件已沉入 _harness/
+├── l10n/                              # ARB 键集一致性守卫
 ├── providers/                         # Provider 契约 + 单测
-│   ├── contract/provider_contract_suite.dart   # 公共 suite
-│   ├── gemini_image_provider_test.dart
-│   └── ...
-├── features/                          # 对应 lib/features/
-│   └── canvas/providers/canvas_view_model_test.dart
-├── widget_test.dart                   # 应用级 smoke
-├── fixtures/                          # 共享测试数据
-│   └── providers/{id}/*.json
-└── helpers/                           # 测试工具
-    ├── fake_provider.dart
-    ├── fake_repositories.dart
-    └── pg_test_harness.dart
+├── quality/                           # 铁律文本闸门（pre-commit 阻断式跑，见 §11.1）
+├── scripts/                           # 脚本测试（release_tag_test.sh）
+├── services/
+├── storage/
+│   ├── repositories/
+│   │   └── postgres_repositories_integration_test.dart   # @Tags(['pg'])
+│   └── schema/                        # violation_matrix / cascade / migration_chain
+│       └── pg_test_harness.dart       # 真 PG harness（见 §5.4）
+├── theme/
+├── flutter_test_config.dart           # 全局字体加载（golden_toolkit loadAppFonts）
+└── widget_test.dart                   # 应用级 smoke
 ```
 
 ### 命名约定
@@ -106,9 +104,32 @@ test/
 | 目标 | 文件名 | 备注 |
 |---|---|---|
 | 单元/逻辑 | `{subject}_test.dart` | 对应 `lib/` 同层路径 |
-| 集成（需 PG / 真 IO） | `{subject}_integration_test.dart` | `_integration` 后缀**硬约束** |
-| Golden | `{subject}_golden_test.dart` | CI 在 ubuntu 跑（canonical 基线平台） |
+| 集成（需 PG / 真 IO） | `{subject}_integration_test.dart` | 后缀仅**命名惯例**；运行分组靠 `@Tags`（见下节） |
+| Golden | `{subject}_golden_test.dart` | `@Tags(['golden'])`；CI 在 ubuntu 跑（canonical 基线平台） |
 | 契约复用 suite | `{subject}_suite.dart` | 不以 `_test.dart` 结尾，不被 runner 直接跑 |
+
+### 测试 tag 与环境开关
+
+运行分组的**唯一事实源**是根目录 `dart_test.yaml` 的三个 tag（文件名后缀只是命名惯例）：
+
+| tag | 用途 | 环境开关 | 开关未设置时 |
+|---|---|---|---|
+| `pg` | 真 PG 集成测（CHECK/CASCADE/迁移链/仓储） | `TEST_PG_URL` | 用例内 `markTestSkipped`，不算失败 |
+| `golden` | 像素基线测（canonical 平台 = CI ubuntu） | — | mac/win 用 `--exclude-tags golden` 排除（字体光栅化 false-fail） |
+| `ffmpeg` | 真 ffmpeg 集成测（concat 导出） | `TEST_FFMPEG=1` 且 PATH 有 ffmpeg | 用例内 `markTestSkipped`，不算失败 |
+
+`markTestSkipped` 语义：环境开关未设置时用例**主动标记跳过**——默认 `flutter test` 全量绿、
+不依赖外部环境；CI 对应 job 显式提供环境后，tag 内用例真实执行。
+
+真实跑法示例：
+
+```bash
+# 真 PG（先起库，见 §5.3）
+TEST_PG_URL="postgres://inkframe:inkframe@127.0.0.1:5432/inkframe_test" flutter test --tags pg
+
+# 真 ffmpeg（本机 PATH 需有 ffmpeg）
+TEST_FFMPEG=1 flutter test --tags ffmpeg
+```
 
 ### 测试名规范
 
@@ -196,6 +217,10 @@ export TEST_PG_URL="postgres://inkframe:inkframe@127.0.0.1:5432/inkframe_test"
 
 未设置时：集成测试**跳过**（打印 `TEST_PG_URL 未设置，跳过真 PG 集成测试`），单元测试继续跑。
 
+> 这是本仓「env 门控集成测」的通用模式，不只 PG 一家：需要外部环境的集成测一律
+> `@Tags` 分组 + 环境开关门控 + 未设置时 `markTestSkipped`（ffmpeg 测同款，走
+> `TEST_FFMPEG=1`，见 §3「测试 tag 与环境开关」）。
+
 ### 5.3 起库命令
 
 ```bash
@@ -209,7 +234,7 @@ docker run --rm -d --name inkframe-pg \
 
 ### 5.4 Harness
 
-`test/helpers/pg_test_harness.dart` 负责：
+`test/storage/schema/pg_test_harness.dart` 负责：
 
 1. 连接 `TEST_PG_URL`，建独立 schema（`test_{uuid}`），测试结束 drop
 2. 跑 migration_runner 初始化到当前 schema_version
@@ -313,13 +338,16 @@ testWidgets('InkFrameApp boots', (tester) async {
 ### 8.2 生成 / 更新
 
 ```bash
-# 新增或有意更新 golden
-flutter test --update-goldens test/widgets/node_golden_test.dart
-
 # 本地对比
-flutter test test/widgets/node_golden_test.dart
-# 失败时会在 test/widgets/failures/ 生成 diff 图
+flutter test test/features/canvas/widgets/node_card_golden_test.dart
+# 失败时会在 test/features/canvas/widgets/failures/ 生成 diff 图
+
+# 本地 --update-goldens 仅用于预览效果——产出的基线不得提交（平台光栅化差异，见 §8.3）
+flutter test --update-goldens test/features/canvas/widgets/node_card_golden_test.dart
 ```
+
+正式基线经 `.github/workflows/update-goldens.yml`（workflow_dispatch）在 ubuntu 上跑
+`--update-goldens` 后自动提交（§8.3）。
 
 **PR 规则**：更新 golden 必须在 PR 描述附一张前后对比图；没有视觉说明的 golden diff 视为未知变更，CR block。
 
@@ -334,11 +362,8 @@ flutter test test/widgets/node_golden_test.dart
 ## 9. Mock 边界
 
 ```dart
-// ✅ Mock 接口
+// ✅ 手写 Fake 实现接口（共享件集中在 test/_harness/）
 class FakeNodeRepository implements NodeRepository { ... }
-
-// ✅ Mocktail 对接口打桩
-when(() => mockNodeRepo.findById(any())).thenAnswer((_) async => fakeRow);
 
 // ❌ Mock 具体类
 class FakePostgresNodeRepository extends PostgresNodeRepository { ... }
@@ -346,6 +371,15 @@ class FakePostgresNodeRepository extends PostgresNodeRepository { ... }
 // ❌ Mock 被测对象的私有方法
 // 如果你需要这样做，说明被测对象设计有问题——先重构把它拆开
 ```
+
+本仓**不引入 mocking 框架**（pubspec 无 mocktail/mockito）：测试替身一律手写 Fake。共享件沉在
+`test/_harness/`（`fake_providers` / `fake_repositories` / `fake_secure_storage` /
+`fake_batch_result` 等，清单与用法见 `test/_harness/README.md`）；单测私有的 Fake 就近放测试文件内。
+
+**Fake 契约测试范式**：共享 fake 的行为必须与真仓储语义对齐，且每个共享 fake 配一个守护测试
+（放 `_harness/` 内）——如 `fake_batch_result_test` 守 `finalizePendingByJob / finalizeAllPending`
+只翻 `generating` slot、终态 slot 不动。真语义由 PG 集成测（`@Tags(['pg'])`）兜底；fake 与真实现
+漂移时先修 fake，不改测试迁就。
 
 **经验法则：** mock 的层要比被测对象"下一层"，不能同层或跨两层。
 
@@ -391,11 +425,13 @@ Node sampleNode({String? id, NodeStatus status = NodeStatus.idle}) => Node(
 
 | 阶段 | 跑什么 | 时长预算 |
 |---|---|---|
-| pre-commit | `flutter analyze` + 6 个 check 脚本 (i18n / inline styles / magic strings / direct instantiation / disposable cleanup / updated_at) | < 5s |
-| pre-push | `flutter test`（含 runAsync 真 I/O） | < 60s |
+| pre-commit | `flutter analyze` + **阻断式** `flutter test test/quality/`（DIP/生命周期/内联样式/魔法串/updated_at 铁律的真实闸门，纯文件 IO 不连库）+ **非阻断** `dart run custom_lint`（riverpod_lint 兼容 Dart 3.11+ AST 前暂不硬阻断） | ≤ 10s（目标） |
+| pre-push | `flutter analyze` + 全量 `flutter test` | < 60s |
 | CI (GitHub Actions) | analyze + test + coverage + golden + postgres:17-alpine service | < 8min |
 
-详见 `.github/workflows/ci.yml` 与 `scripts/hooks/`。
+> 旧的 `check-*` bash hook 脚本已删除，铁律由 `test/quality/` 的 Dart 测试兜底。
+> hook 实况以 `scripts/hooks/`（pre-commit / pre-push 脚本本体）与 `docs/SETUP.md`
+> 「Git hooks」节为准，本表仅速查。CI 见 `.github/workflows/ci.yml`。
 
 ### 11.2 PG 集成测试在 CI
 
@@ -429,22 +465,16 @@ env:
 ## 12. 覆盖率门禁
 
 ```bash
-# 本地生成
-flutter test --coverage
-
-# 数据层 ≥ 75%
-lcov --extract coverage/lcov.info 'lib/storage/*' -o coverage/storage.info
-genhtml coverage/storage.info -o coverage/storage/  # 可视化
-
-# 其余 ≥ 70%
-lcov --remove coverage/lcov.info 'lib/storage/*' -o coverage/rest.info
+# 本地口径与 CI 对齐：直接跑这个（应用 CI 同款 exclude 后输出覆盖率）
+bash scripts/coverage/report.sh
 ```
 
-**排除**（`coverage.yaml`）：
+> 裸 `flutter test --coverage` 的 lcov 原始数字**会误导**（Windows 反斜杠路径 + 不做排除，
+> 读数偏低）；`report.sh` 把 CI 的 very_good_coverage 口径 1:1 搬到本地。
 
-- `*.g.dart` / `*.freezed.dart`（生成代码）
-- `lib/main.dart`（入口 bootstrap，靠 smoke 测覆盖）
-- `lib/l10n/generated/`
+**排除清单的单一事实源是 `.github/workflows/ci.yml` 的 `exclude:` 行**（无独立 coverage.yaml；
+`report.sh` 运行时从 ci.yml 抽取，不另存副本）。当前排除：`lib/main.dart`（入口 bootstrap，
+靠 smoke 测覆盖）、`lib/l10n/generated/**`、media_kit 依赖件（headless CI 不可测，走人工回归）等。
 
 **不排除**：
 
@@ -462,7 +492,7 @@ lcov --remove coverage/lcov.info 'lib/storage/*' -o coverage/rest.info
 
 ### 13.2 Quarantine 流程
 
-1. 在 `test/FLAKY.md` 登记：文件路径 + 失败模式 + 怀疑原因
+1. 在 `test/FLAKY.md` 登记（该文件**按需创建**——当前无 flaky 项故不存在）：文件路径 + 失败模式 + 怀疑原因
 2. 给测试打 `@Tags(['flaky'])`，CI 配置中改为"失败不 block"但仍收集
 3. 开 issue / 登记 `docs/internal/tech-debt.md`
 4. **7 天内必须修复或删除**——超期视为债务违约
@@ -486,7 +516,7 @@ lcov --remove coverage/lcov.info 'lib/storage/*' -o coverage/rest.info
 6. ❌ Mock 具体类而非接口
 7. ❌ 修测试去迎合实现——先问是不是行为要求错了
 8. ❌ 用 `@skip: true` 绕过 red test
-9. ❌ 集成测试文件名不带 `_integration` 后缀——CI 分组靠它识别
+9. ❌ 需要外部环境（PG / ffmpeg / golden 基线）的测试不打 `@Tags`——CI 与本地分组靠 `dart_test.yaml` 三 tag（pg / golden / ffmpeg）识别，不靠文件名；`_integration` 后缀仅命名惯例
 10. ❌ 手写 Provider fixture——必须真采集后脱敏
 11. ❌ Golden 更新没截图说明
 12. ❌ Widget 测试启真 PG 或发真实网络请求
@@ -499,3 +529,4 @@ lcov --remove coverage/lcov.info 'lib/storage/*' -o coverage/rest.info
 | 日期 | 版本 | 内容 | 作者 |
 |---|---|---|---|
 | 2026-04-15 | v0.1.0 | 初版，基于 T1/T2 实战提炼；对齐 ARCHITECTURE §12 | P9 |
+| 2026-07-07 | v0.1.1 | 对齐实况：§3 目录树重生成 + 新增「测试 tag 与环境开关」（dart_test.yaml pg/golden/ffmpeg）；§5 env 门控泛化；§8.2 golden 路径与基线铸造流程；§9 去 Mocktail 改手写 Fake + 契约测试范式；§11.1 hooks 对齐 scripts/hooks 实况；§12 coverage 口径改 report.sh + ci.yml 单一事实源；FLAKY.md 改按需创建 | 文档清欠 |

@@ -31,7 +31,7 @@
 
 | 工具 | 版本 | 锁定位置 |
 |---|---|---|
-| Flutter | stable channel（见 `.fvmrc` 或 `flutter --version`） | `.fvmrc` / `pubspec.yaml` 的 `environment.flutter` |
+| Flutter | stable channel（CI: 3.41.6） | `.github/workflows/ci.yml` 的 `FLUTTER_VERSION` / `pubspec.yaml` 的 `environment` |
 | Dart | 随 Flutter | — |
 | PostgreSQL | **17.2** | `scripts/pg/pg-version.txt` |
 | Xcode | ≥ 15.0 | macOS 宿主 |
@@ -40,20 +40,18 @@
 
 ### 1.2 一次性设置
 
-```bash
-# macOS
-scripts/dev/setup-macos.sh    # 安装 cocoapods、xcodeproj、notarytool 凭据
-
-# Windows (PowerShell)
-scripts\dev\setup-windows.ps1 # 安装 signtool 路径、EV dongle 驱动
-```
+开发环境搭建（含 Windows 踩坑）见 `docs/SETUP.md`。
+（planned：`scripts/dev/setup-macos.sh` / `setup-windows.ps1` 一键脚本尚未存在。）
 
 ### 1.3 构建前自检
 
 ```bash
 flutter doctor -v             # 全绿
-dart --version                # 与 .fvmrc 一致
-ls resources/pg/{platform}/   # PG 二进制已拉取
+dart --version                # 与 ci.yml FLUTTER_VERSION 对应的 Dart 一致
+
+# PG 二进制已拉取（fetch-binaries.sh 的落点，按平台其一）
+ls macos/Runner/Resources/pg/macos-arm64/bin/    # 或 macos-x64
+ls windows/runner/resources/pg/windows-x64/bin/
 ```
 
 ### 1.4 视频依赖（T5 起）
@@ -64,6 +62,14 @@ T5 Sprint 引入 `media_kit` + `media_kit_libs_video` —— 视频生成结果�
 - **Windows**：`media_kit_libs_windows_video` 自带 libmpv 相关 DLL，CMake 自动收敛到 `build/windows/x64/runner/Release/`。MSIX / MSI 打包时自动包含。
 - **体积影响**：安装包 +~40 MB（libmpv x64）。alpha 阶段可接受；GA 前如需瘦身，考虑按需加载或切更轻量 player。
 - **CI 约束**：headless Ubuntu runner 无 GPU / 原生播放栈，`media_kit` 依赖文件（`lib/features/canvas/widgets/video_lightbox.dart` / `lib/services/media_kit_*_service.dart` 等）被 coverage 阈值排除，改由手动回归清单覆盖，见 `docs/internal/t5-manual-regression.md`。
+
+### 1.5 ffmpeg 不打包（发布决策）
+
+视频导出（M3 首切片，`FfmpegVideoExportService`）依赖外部 ffmpeg 二进制，**不随安装包分发**——
+许可（GPL/LGPL 构建差异）与体积（约 +70 MB）评估延后。运行时经 `FfmpegLocator` 探测：
+`INKFRAME_FFMPEG` env → PATH `-version` 探测（命中缓存）。用户侧含义：系统无 ffmpeg 时仅视频
+导出报 `LocalIOError(reason=ffmpeg_not_found)`，其余功能不受影响；打包评估重启前，发布物与
+签名/公证流程都不含 ffmpeg。
 
 ---
 
@@ -105,18 +111,21 @@ CI 由 git tag 推导：`v0.1.0-beta.1` → build-name = `0.1.0-beta.1`，build-
 
 ### 3.1 目录结构
 
+`scripts/pg/fetch-binaries.sh` 按平台落到（与 `PgBinaryLocator` 约定一致）：
+
 ```
-resources/pg/
-├── macos/
+macos/Runner/Resources/pg/
+├── macos-arm64/
 │   ├── bin/              # initdb, pg_ctl, postgres
-│   ├── lib/              # 共享库
-│   ├── share/            # 模板
-│   └── PG_VERSION        # 17
-├── windows/
-│   ├── bin/              # initdb.exe, pg_ctl.exe, postgres.exe
-│   ├── lib/
-│   └── share/
-└── README.md             # 用户可见的版权声明（PostgreSQL License）
+│   └── lib/              # 共享库
+└── macos-x64/            # 同上
+
+windows/runner/resources/pg/
+└── windows-x64/
+    ├── bin/              # initdb.exe, pg_ctl.exe, postgres.exe
+    └── lib/
+
+build/pg/linux-x64/       # 仅本地烟测，不进发布
 ```
 
 **大小预算**：每平台 ~60 MB，打包压缩后（DMG/MSIX）约 20 MB。
@@ -125,21 +134,15 @@ resources/pg/
 
 `scripts/pg/fetch-binaries.sh`：
 
-- 从可信镜像源下载（官方 / EDB / 自建 mirror 三选）
-- SHA256 校验（`scripts/pg/checksums.txt`）
-- 幂等：已存在且 SHA256 匹配则跳过
+- 从 `PG_ARTIFACT_BASE_URL` 指向的对象存储下载（未配置 → `NOT_CONFIGURED` 非零退出，日常开发用本地 PG 即可，见 `docs/SETUP.md`）
+- 版本锁 + SHA256 校验按 `scripts/pg/pg-version.txt`（17.2）
+- 幂等：`bin/postgres --version` 已匹配则跳过
 - 失败时明确报错，不静默降级
 
 ```bash
 # 本地首次 / 清理后执行
+export PG_ARTIFACT_BASE_URL=https://<bucket>/inkframe/pg
 bash scripts/pg/fetch-binaries.sh
-
-# CI 每次构建前执行（有缓存）
-- uses: actions/cache@v4
-  with:
-    path: resources/pg/
-    key: pg-17.2-${{ runner.os }}
-- run: bash scripts/pg/fetch-binaries.sh
 ```
 
 ### 3.3 运行时定位
@@ -147,8 +150,8 @@ bash scripts/pg/fetch-binaries.sh
 `PgBinaryLocator` 的查找顺序（高到低）：
 
 1. `INKFRAME_PG_BIN` 环境变量（开发/测试覆盖）
-2. App Bundle `Contents/Resources/pg/` (macOS) / `resources\pg\` (Windows)
-3. Repo 相对路径 `resources/pg/{platform}/`（`flutter run` 场景）
+2. App Bundle：`Platform.resolvedExecutable` → macOS `<App>.app/Contents/Resources/pg/<platform>/` / Windows `<exe 同级>/resources/pg/<platform>/`
+3. 仓库源码相对路径 `macos/Runner/Resources/pg/<platform>/`、`windows/runner/resources/pg/windows-x64/`（`flutter run` 场景）
 4. 全未命中 → `PgBinaryNotFoundError`
 
 见 `test/storage/pg_binary_locator_test.dart`。
@@ -166,8 +169,10 @@ bash scripts/pg/fetch-binaries.sh
 # Step 2: 依赖
 flutter pub get
 
-# Step 3: 代码生成（freezed / riverpod / json_serializable）
-dart run build_runner build --delete-conflicting-outputs
+# Step 3: 代码生成 —— 通常跳过：.freezed.dart / l10n 生成物已入库（§13.2，CI 不跑 codegen）。
+# 仅当本次改了 freezed 模型时定向重生成（全量 build 当前会挂死，见 docs/BOARD.md 的
+# build_runner 卡点；解除前禁用全量 --delete-conflicting-outputs）：
+dart run build_runner build --build-filter="lib/core/models/<changed>.dart"
 
 # Step 4: i18n 生成
 flutter gen-l10n
@@ -341,7 +346,7 @@ releases:
             build-number: $BUILD
 ```
 
-**MSI 备选**：用 WiX Toolset，模板见 `windows/installer/inkframe.wxs`。
+**MSI 备选**：用 WiX Toolset（planned——`windows/installer/inkframe.wxs` 模板尚未创建；当前实际打包配置是仓库根 `distribute_options.yaml`，见 §13.3）。
 
 ---
 

@@ -29,7 +29,9 @@
 > **M1「能用起来」**（偏好持久化 / 节点级进度 / 画布性能 / 项目管理 + 正确性簇，#133）·
 > **M2「创作者要的」**（参考图/首尾帧 UI / 角色一致性 / 批量变体 / 预设库 / 成本估算，#134/#138）·
 > M3 首切片 ×4（Shot 分镜 / ffmpeg 视频导出 / 产物画廊 / custom_providers 聚合器，#134）·
-> 内嵌 PG 装进 app bundle（#135）· 双语 README 定位落地（#136）· wanx-i2v wan2.7 契约（#137）。
+> 内嵌 PG 装进 app bundle（#135）· 双语 README 定位落地（#136）· wanx-i2v wan2.7 契约（#137）·
+> 快修簇：暗色 on-color 对比度 / base64 守卫统一 / 捕获收窄 / 吞错补提示 / 僵尸清理（#140）·
+> M1 补遗四项：记住上次 provider / 重启回上次画布 / 画布级管理 / 设置按钮统一（#141）。
 > 里程碑级实时状态见 [`docs/BOARD.md`](docs/BOARD.md)。
 
 ## 🛠 In Progress (Maintainer)

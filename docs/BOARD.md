@@ -1,9 +1,9 @@
 # InkFrame 活看板（单一事实源）
 
-> 这是"当前在做什么、做到哪"的唯一速查表。详细现状/路线图/行业借鉴见
-> [`STATUS-AND-ROADMAP-2026-06-30.md`](STATUS-AND-ROADMAP-2026-06-30.md)。
-> 旧的散落文档（PROGRESS / ARCHITECTURE-SURVEY / AUDIT-REPORT / PROGRESS-VERIFICATION）
-> 视为**归档快照**，不再更新；状态以本表为准。
+> 这是"当前在做什么、做到哪"的唯一速查表。背景分析/行业借鉴见
+> [`STATUS-AND-ROADMAP-2026-06-30.md`](STATUS-AND-ROADMAP-2026-06-30.md)（快照，2026-06-30）。
+> 旧的散落文档（PROGRESS / ARCHITECTURE-SURVEY / AUDIT-REPORT / PROGRESS-VERIFICATION /
+> ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
 > 最近更新：2026-07-06

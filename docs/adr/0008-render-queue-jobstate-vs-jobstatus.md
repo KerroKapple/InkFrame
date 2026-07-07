@@ -2,6 +2,7 @@
 
 - **Status**: accepted
 - **Date**: 2026-07-01
+- **Revised**: 2026-07-07（批量部分成功语义 + JobState 携带 resultNodeId——见文末修订记录）
 - **Deciders**: P9 (Tech Lead)
 - **Related**: ADR-0001 (jobs 表持久化) / ADR-0002 (Riverpod keepAlive) / `lib/features/generation/models/job_state.dart` / `lib/core/models/job_status.dart` / `lib/features/generation/providers/jobs_registry.dart`
 
@@ -86,3 +87,18 @@
 - 需要跨设备/多窗口同步 job 状态时（内存镜像不够）
 - `_track` 同步 bug 反复出现，考虑用单一持久事件源 + 投影
 - 至迟在引入"历史/重跑"模块前重审
+
+---
+
+## 修订记录
+
+### 2026-07-07 — 批量部分成功/取消保留语义（拍板）+ JobState 携带字段补 resultNodeId
+
+**触发**：M2「批量 / 变体」全链路落地（BOARD M2 表）——渲染队列之下新增 `batch_results` slot 子状态机，批量网格需要按结果节点定点刷新。
+
+**变化**：
+
+- **批量部分成功语义（拍板）**：一个 job 的 N 个 slot 独立收敛，**≥1 张成功即 job `success`**（首张成功图作结果节点主图 `image_url`）；cancel / error 时**已 success 的 slot 保留**，只翻仍在 `generating` 的 slot。收敛链绝不抛出，启动期 `finalizeAllPending` 兜底。语义正本见 ARCHITECTURE.md §5.1「批量 slot 收敛」，表侧注记见 DATABASE.md。
+- **JobState 携带字段**：Decision 第 2 点的携带集（canvasId / jobId / providerId / sourceNodeId）补 **`resultNodeId`**——`canvas_job_listener` 终态时据它定点 `invalidate(batchResultsControllerProvider(nodeId))` 刷新批量网格。
+
+**不变**：JobStatus/JobState 双模型分层、JobsRegistry 内存镜像 + jobs 表双层、fire-and-forget 提交。

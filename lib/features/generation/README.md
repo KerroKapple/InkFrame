@@ -24,6 +24,7 @@ widgets/job_queue_panel      队列面板 UI
 4. **单事务**预建 result 节点 + `jobs` 表行（batch_size>1 时同事务预建 `batch_results` slot 占位行；任一失败整体回滚）
 5. 组 `GenerationTask` → `JobQueueService.submit` → 拿 `JobHandle`
 6. **fire-and-forget**：立即返回 jobId；后台 `_track` 监听 `handle.status` 推进 `JobsRegistry`（queued→running→succeeded/failed/cancelled），失败时 `softDelete` 孤儿 result
+7. **批量写侧闭环**（batch_size>1）：JobQueue 注入 `BatchResultRepository?`，逐 slot 落终态（success→`output_url` / error→`error_code`），首张成功图作结果节点主图 `image_url`；**取消/失败保留已 success 的 slot**（部分成功拍板：≥1 成即 job success，见 ADR-0008 修订记录 / ARCHITECTURE §5.1）
 
 ## 两个状态模型（务必分清，ADR-0008）
 - `JobStatus`（`core/models/job_status.dart`）：Provider 单次 poll 的**瞬时**结果
@@ -32,6 +33,8 @@ widgets/job_queue_panel      队列面板 UI
 ## 消费者
 - `widgets/job_queue_panel` 与 canvas 的 `canvas_render_queue` 都读 `jobsRegistryProvider`
 - canvas 的 `node_active_job` / `inspector_status_panel` 用 `JobsRegistry.activeForSourceNode` 显示节点级进度
+- canvas 的 `canvas_job_listener` 监听终态、按 `resultNodeId` 定点 `invalidate(batchResultsControllerProvider(nodeId))` 刷新批量网格
 
 ## 约束
+- 批量仅对 image 节点生效；video 强制单张（`generation_controller` 解析 batch_size 时收口）
 - 不 catch 泛型异常，只处理 `InkError` 子类 + `GenerationError`；文案经 l10n（ADR-0010）

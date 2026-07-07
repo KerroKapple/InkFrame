@@ -1,5 +1,8 @@
 # Road to Beta — 关键路径与验收清单
 
+> ⚠️ **归档快照，不再更新**：本文冻结于 2026-06-11。§3 的 beta DoD 已于 2026-07-02 达成
+> （见 [BOARD.md](BOARD.md) M2 表末行，CI run 28595968123 全绿）。现状唯一事实源见 [BOARD.md](BOARD.md)。
+>
 > 快照日期：2026-06-11 · 当前：`v0.1.0-alpha.9`（105 commits）
 > 这份文档回答一个问题：**alpha → beta 还差什么，怎样算达成。**
 > 与 `ROADMAP.md` 的关系：ROADMAP 列「方向与认领」，本文列「到 beta 的收口路径与 DoD」。

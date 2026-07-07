@@ -15,7 +15,7 @@
 </div>
 
 InkFrame 是一个面向 AI 影视创作的桌面工作站。节点画布让你把 prompt → 图片 → 视频串成一条链，
-接到真实的 provider —— DashScope（Wanx）、Kling、Gemini —— 而每一个工程文件和 API Key
+接到真实的 provider —— DashScope（Wanx）、Kling、Gemini 等 9 款内置 —— 而每一个工程文件和 API Key
 都留在**你自己的磁盘**上。无需云账号，不上传，不绑定 SaaS。
 
 <p align="center">
@@ -62,8 +62,11 @@ flowchart LR
 | Wanx (DashScope) | image · i2v · r2v · t2v | ✅ 已实现 |
 | Kling V3 / V3 Omni | video | ✅ 已实现 |
 | Gemini Image | image | ✅ 已实现 |
+| OpenAI GPT-Image（`gpt-image-1`） | image | ✅ 已实现 |
+| Stability Stable Image Core | image | ✅ 已实现 |
+| OpenAI 兼容自定义端点（`custom_providers.json`） | image | ✅ 已实现 |
 | Stable Diffusion (本地 ComfyUI) | image | 🟢 Help wanted |
-| OpenAI DALL·E 3 / GPT-Image | image | 🟢 Help wanted |
+| OpenAI DALL·E 3（专用接入） | image | 🟢 Help wanted |
 | Runway Gen-3 / Gen-4 | video | 🟢 Help wanted |
 | Midjourney · Pika · Luma | image/video | 🟢 Help wanted |
 
@@ -89,7 +92,7 @@ flutter run -d macos
 ```bash
 flutter analyze              # 0 warning（CI 用 --fatal-infos）
 flutter test                 # 全量
-flutter test --tags integration
+flutter test --tags pg       # 真 PG 集成测试（需 TEST_PG_URL，未设自动跳过）
 ```
 
 环境变量、密钥后端、数据目录布局见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
@@ -100,9 +103,10 @@ Flutter（桌面）· Riverpod（状态 + DI）· Freezed（不可变模型）·
 
 ## 📍 状态
 
-**Alpha**（`v0.1.0-alpha.9`）。单份 Dart 代码同时发布 macOS + Windows。核心画布、生成循环、
-安全密钥存储和首批 provider 已就位；通往 beta 的路是测试覆盖、跨平台烟测和性能基线。
-已发布与待办见 [ROADMAP.md](ROADMAP.md)。
+**Alpha**（`v0.1.0-alpha.9`）。单份 Dart 代码同时发布 macOS + Windows。M1「能用起来」与
+M2「创作者要的」（角色一致性 / 批量变体 / 预设库 / 成本估算）已完成、CI 全绿；M3 四方向
+首切片进行中（分镜 / 自定义 Provider / 画廊 / 视频导出）。剩余 beta 缺口见
+[docs/BOARD.md](docs/BOARD.md)；已发布与待办见 [ROADMAP.md](ROADMAP.md)。
 
 ## 📚 文档
 

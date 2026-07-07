@@ -297,6 +297,7 @@ enum InkErrorCode {
   networkOffline('network_offline'),
   providerServer('provider_5xx'),
   providerBusy('provider_busy'),
+  providerInvalidResponse('provider_invalid_response'),
   pollTimeout('poll_timeout'),
   downloadFailed('download_failed'),
   localIOError('local_io_error'),
@@ -322,11 +323,11 @@ sealed class InkError implements Exception {
   final Object? cause;                // 原始异常，仅用于日志
   final StackTrace? stackTrace;
 
-  String get messageKey => _messageKeys[code]!;       // ARB key，UI 层用 context.l10n 渲染
-  bool get retryable => _retryable.contains(code);    // 是否可重试（影响 JobQueue 行为）
+  String get messageKey => kInkErrorMessageKeys[code]!; // ARB key，UI 层用 context.l10n 渲染
+  bool get retryable => _retryable.contains(code);      // 是否可重试（影响 JobQueue 行为）
 }
 
-// Provider / 鉴权 / 配额 / 参数 / Provider 5xx / Busy / Poll 超时
+// Provider / 鉴权 / 配额 / 参数 / Provider 5xx / Busy / 响应结构不符 / Poll 超时
 final class ProviderError extends InkError {
   const ProviderError({required super.code, super.extra, super.cause, super.stackTrace});
 }
@@ -361,11 +362,11 @@ final class UnknownError extends InkError {
 }
 ```
 
-`messageKey` 与 `retryable` 由顶层 `_messageKeys` / `_retryable` 表按 code 静态查表（详见
-`lib/core/errors/ink_error.dart:39-63`），子类不重写、不通过构造参数注入——新增 code 改两张表即可，
+`messageKey` 与 `retryable` 由顶层 `kInkErrorMessageKeys` / `_retryable` 表按 code 静态查表（见
+`lib/core/errors/ink_error.dart`），子类不重写、不通过构造参数注入——新增 code 改两张表即可，
 子类层级保持稳定。
 
-**§10.6 完整 14 个错误码：**
+**完整 15 个错误码（PRD §10.6 的 14 码 + 新增 `provider_invalid_response`）：**
 
 | code (`wire`) | 子类 | retryable | messageKey (ARB) |
 |---------------|------|-----------|------------------|
@@ -375,6 +376,7 @@ final class UnknownError extends InkError {
 | `invalid_parameter` | ProviderError | false | `errorInvalidParameter` |
 | `provider_5xx` | ProviderError | true | `errorProviderServer` |
 | `provider_busy` | ProviderError | true | `errorProviderBusy` |
+| `provider_invalid_response` | ProviderError | false | `errorProviderInvalidResponse` |
 | `poll_timeout` | ProviderError | false | `errorPollTimeout` |
 | `network_timeout` | NetworkError | true | `errorNetworkTimeout` |
 | `network_offline` | NetworkError | true | `errorNetworkOffline` |
@@ -383,6 +385,17 @@ final class UnknownError extends InkError {
 | `cancelled_by_user` | CancelledError | false | `errorCancelled` |
 | `cancelled_on_exit` | CancelledError | false | `errorCancelledOnExit` |
 | `unknown` | UnknownError | false | `errorUnknown` |
+
+**体系外错误（不在 InkError 层级内，各有明确定位）：**
+
+- **`PathSecurityError`**（`lib/core/interfaces/file_resolver_service.dart`，`ArgumentError` 子类）：
+  路径穿越/绝对路径/空串/控制字符/越界——**编程契约错**，不是运行时业务错误。服务边界（如
+  JobQueueService 落盘链路）统一翻译为 `LocalIOError(extra.reason='unsafe_path')` 再入 InkError
+  体系；**渲染路径的 widget 允许只捕它**做占位兜底（node_card / batch_results_grid /
+  gallery_tile 等）——这是 §4.2「Widget 层禁 try-catch」的**显式豁免**，且只豁免这一种。
+- **`GenerationError` 族**（`lib/features/generation/generation_controller.dart`，sealed：
+  `MissingApiKeyError` / `InvalidGenerationConfigError` / `ProviderNotRegisteredError`）：
+  提交前置校验失败，属 UI 可直接消化的领域错误，不落 `jobs.error_code`，不进 InkError 层级。
 
 ### 4.2 跨层传播规则
 
@@ -437,6 +450,7 @@ final result = ref.watch(someProvider).value!; // 可能是 loading 或 error �
 Per-Provider 并发上限（ProviderCapabilities.maxConcurrentJobs）
   gemini-image=1 / openai-image=1 / stability-image-core=1
   wanx-image=2 / 视频系（wanx-t2v/i2v/r2v、kling-v3、kling-v3-omni）=1
+  custom:*（协议模板派生，openai-image 模板）=1
 
 实际可调度数 = min(全局剩余槽位, per-provider 剩余槽位)
 ```
@@ -456,17 +470,32 @@ pending ──► submitted ──► polling ──► success
 
 `jobs.status` 的 CHECK 取值恰好是 7 个：`pending / submitted / polling / success / error / cancelled / timeout`。**末态只有一个 `cancelled`**；取消原因由 `jobs.error_code` 区分：
 
-- `cancelled_by_user`：用户主动调用 `cancel(jobId)`（`lib/services/job_queue_service.dart:121-142`，写入见 `_persistCancel` 行 395-408）。
-- `cancelled_on_exit`：app 启动时对上次未结束的 `submitted / polling` 行做扫尾（`init()` 行 82-99）。
+- `cancelled_by_user`：用户主动调用 `cancel(jobId)`（`lib/services/job_queue_service.dart` 的 `cancel`，写入见 `_persistCancel`）。
+- `cancelled_on_exit`：app 启动时对上次未结束的 `pending / submitted / polling` 行做扫尾（`init()`，一条 bulkTransition）。启动期同时做两件收尾：孤儿 batch slot 收敛 `finalizeAllPending`（见下方「批量 slot 收敛」）与 jobs 表 housekeeping purge（`purgeExpired` 30 天保留 + `purgePerCanvasCap` 单画布 500 条，失败不阻断启动）。
 
-**出队策略：** FIFO，同 provider 按 `created_at` 升序；跨 provider 抢占全局槽位也按 FIFO，被 per-provider 上限卡住的 pending 会让位给后面 provider 槽位有空的任务（`_pickNextSchedulable` 行 178-186）。
+**出队策略：** FIFO，同 provider 按 `created_at` 升序；跨 provider 抢占全局槽位也按 FIFO，被 per-provider 上限卡住的 pending 会让位给后面 provider 槽位有空的任务（`_pickNextSchedulable`）。
 
 **Cancel 性能 invariant：**
 
 - `cancel(jobId)` 对 pending 队列**摊还 O(1)**（与 pending 长度无关），对 running 任务为 O(1) + provider cancel 网络往返。
-- 数据结构：`Queue<_PendingJob> _pending` 维持 FIFO，`Map<String, _PendingJob> _pendingIndex` 提供 jobId → 队列条目的 O(1) 索引；cancel 走"软删除"——`_pendingIndex.remove + _PendingJob.cancelled = true`，**不重建 Queue**；dispatch loop 在队头顺手丢弃 cancelled 条目（`_schedule` 行 161-176）。源码顶部注释行 27-32 是契约说明。
+- 数据结构：`Queue<_PendingJob> _pending` 维持 FIFO，`Map<String, _PendingJob> _pendingIndex` 提供 jobId → 队列条目的 O(1) 索引；cancel 走"软删除"——`_pendingIndex.remove + _PendingJob.cancelled = true`，**不重建 Queue**；dispatch loop 在队头顺手丢弃 cancelled 条目（`_schedule`）。源码顶部「数据结构」注释是契约说明。
 - 回归基线：N=10000 pending 全量 cancel < 500 ms（`test/services/job_queue_service_test.dart` 中的 perf 用例）。
 - 实现引用：commit `41afffb` (`fix(jobqueue): O(1) cancel via pendingIndex + soft-delete`)，并入 PR #86。修改这块数据结构前先看测试与本节 invariant。
+
+**批量 slot 收敛（batch_size > 1）：**
+
+批量任务在 `jobs` 状态机之下再挂一层 **slot 子状态机**（`batch_results` 表，表侧注记见
+DATABASE.md「batch_results 生命周期」，本节为语义正本）：提交事务预建 N 个 `generating`
+slot 占位行 → JobQueue 下载阶段逐 slot 落终态（成功 → `success` + `output_url`；失败 →
+`error` + `error_code`；取消 → `cancelled`），入口 `_convergeSlots` →
+`BatchResultRepository.finalizePendingByJob`。三条 invariant：
+
+1. **slot 只从 `generating` 单向收敛**——终态 slot（success/error/cancelled）绝不被改写，
+   条件批量 UPDATE 只圈 `status = 'generating'` 行。
+2. **cancel / error 保留已 success 的 slot**（部分成功拍板语义）：≥1 张成功即整体 job
+   `success`，首张成功图作结果节点主图 `image_url`；用户中途取消只翻未完成 slot。
+3. **收敛链绝不抛出**——收敛失败仅记 WARN（抛出会跳过 emit、handle 永挂）；启动期
+   `init()` 的 `finalizeAllPending`（孤儿 slot → cancelled_on_exit）兜底。
 
 ### 5.2 ProviderRateLimiter — Token Bucket
 
@@ -507,9 +536,9 @@ InMemoryJobQueueService({
 ```
 
 **可重试白名单：** `network_timeout / network_offline / provider_5xx / provider_busy / download_failed`（事实源：`ink_error.dart` 的 `_retryable` 表，消费侧读 `InkError.retryable`）。
-**不可重试：** `invalid_key / insufficient_balance / content_policy / invalid_parameter / poll_timeout / local_io_error / cancelled_by_user / cancelled_on_exit / unknown`。
+**不可重试：** `invalid_key / insufficient_balance / content_policy / invalid_parameter / provider_invalid_response / poll_timeout / local_io_error / cancelled_by_user / cancelled_on_exit / unknown`。
 
-> **Planned**：自动重试调度（次数上限 + 指数退避）尚未实现（`job_queue_service.dart` 顶部 `b3.1 ⏳`）；当前可重试错误进 `error` 终态后由 UI "重试"人工触发。
+> **Planned**：自动重试调度（次数上限 + 指数退避）尚未实现（`job_queue_service.dart` 顶注 b3.1 明确「重试 / 续传未实现」）；当前可重试错误进 `error` 终态后由 UI "重试"人工触发。
 
 ---
 
@@ -517,12 +546,16 @@ InMemoryJobQueueService({
 
 ### 6.1 存储规则
 
-数据库中 **只存相对路径**，根为画布目录。禁止任何层持有绝对路径字符串。
+数据库中 **只存相对路径**，按用途分**两个根**。禁止任何层持有绝对路径字符串。
+
+- **canvas 根**（节点产物）：`projects/{projectId}/canvases/{canvasId}/`——`type_config.image_url` 等节点级产物以它为根
+- **project 根**（跨画布/项目级产物）：`projects/{projectId}/`——视频导出落 `exports/`、画廊等跨画布读取以它为根（`resolveInProject`）
 
 ```
-存储值（type_config.image_url）：  "images/node-abc123.png"
-存储值（type_config.video_url）：  "videos/node-def456.mp4"
-存储值（type_config.thumbnail_url）： "images/node-abc123_thumb.jpg"
+存储值（type_config.image_url）：  "images/node-abc123.png"          # canvas 根相对
+存储值（type_config.video_url）：  "videos/node-def456.mp4"          # canvas 根相对
+存储值（type_config.thumbnail_url）： "images/node-abc123_thumb.jpg" # canvas 根相对
+导出产物 / 跨画布读：              "exports/out.mp4"、"canvases/<c>/videos/<f>.mp4"  # project 根相对
 
 运行时由 FileResolverService 拼接为绝对路径：
   {dataDir}/projects/{projectId}/canvases/{canvasId}/images/node-abc123.png
@@ -537,6 +570,14 @@ abstract class FileResolverService {
   File resolve({
     required String projectId,
     required String canvasId,
+    required String relativePath,
+  });
+
+  /// 项目根相对路径 → 绝对 File（守 `projects/{project-id}/` 边界）。
+  /// 跨画布/项目级产物（如 `exports/<name>.mp4`、`canvases/<c>/videos/<f>`）
+  /// 走此入口；相对路径非法时抛 [PathSecurityError]。
+  File resolveInProject({
+    required String projectId,
     required String relativePath,
   });
 

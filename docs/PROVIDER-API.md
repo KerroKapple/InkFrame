@@ -13,7 +13,7 @@
 3. [ProviderCapabilities 能力声明](#3-providercapabilities-能力声明)
 4. [CostModel 计费口径](#4-costmodel-计费口径)
 5. [生命周期契约（submit / poll / cancel）](#5-生命周期契约submit--poll--cancel)
-6. [错误契约（InkError ↔ 14 错误码）](#6-错误契约inkerror--14-错误码)
+6. [错误契约（InkError ↔ 15 错误码）](#6-错误契约inkerror--15-错误码)
 7. [限流契约（Per-Provider Token Bucket）](#7-限流契约per-provider-token-bucket)
 8. [产物下载契约](#8-产物下载契约)
 9. [已实现 Provider 差异矩阵](#9-已实现-provider-差异矩阵)
@@ -179,11 +179,14 @@ sealed class CostModel with _$CostModel {
 
 ```
 pending ──► submitted ──► polling ──► success / error / timeout
-   │                                         │
-   └── cancelled_by_user                     │
-                                             │
-  任何阶段 ──► cancelled_on_exit  ◄──────────┘
+   │              │           │
+   └──────────────┴───────────┴────► cancelled
 ```
+
+`jobs.status` 的末态**只有一个 `cancelled`**（schema CHECK 共 7 值：pending / submitted /
+polling / success / error / cancelled / timeout，见 `lib/storage/schema/001_init.sql`）；
+取消**原因**不是独立状态，由 `jobs.error_code` 区分 `cancelled_by_user` / `cancelled_on_exit`
+（对齐 ARCHITECTURE.md §5.1）。
 
 | 阶段 | 定义 | 谁负责推进 |
 |---|---|---|
@@ -192,8 +195,8 @@ pending ──► submitted ──► polling ──► success / error / timeou
 | `polling` | 进入轮询循环；每次 `poll()` 返回 inProgress 不改状态 | JobQueueService 驱动 |
 | `success` | `poll()` 返回 success **且** 产物下载成功 | 下载阶段闭环后才写 |
 | `error` | 任意阶段抛 `InkError` 且重试耗尽 | JobQueueService |
-| `cancelled_by_user` | 用户显式取消（队列中 or 进行中） | JobQueueService |
-| `cancelled_on_exit` | app 退出时 graceful 取消 | 应用层 shutdown |
+| `timeout` | 轮询超过 pollTimeout | JobQueueService |
+| `cancelled` | 任意非终态被取消；`error_code=cancelled_by_user`（用户显式取消）或 `cancelled_on_exit`（app 启动对上次未结束 job 扫尾） | JobQueueService |
 
 ### 5.2 submit() 契约
 
@@ -283,7 +286,7 @@ network_timeout / network_offline / provider_5xx / provider_busy / download_fail
 
 **其他一律不重试**。白名单的唯一事实源是 `lib/core/errors/ink_error.dart` 顶层 `_retryable` 表，消费侧只读 `InkError.retryable`，禁止散落 switch。
 
-> **Planned**：JobQueueService 侧的自动重试调度（次数上限 + 指数退避）尚未实现（`job_queue_service.dart` 顶部 `b3.1 ⏳`）；当前可重试错误直接进 `error` 终态，由 UI "重试"按钮人工触发。
+> **Planned**：JobQueueService 侧的自动重试调度（次数上限 + 指数退避）尚未实现（`job_queue_service.dart` 顶注 b3.1 明确「重试 / 续传未实现」）；当前可重试错误直接进 `error` 终态，由 UI "重试"按钮人工触发。
 
 ### 6.3 映射规则（HTTP → InkError）
 
@@ -359,7 +362,7 @@ polling ─success─► downloading ──► local_ready (node.status = succes
                                      UI 提供"重试"入口
 ```
 
-> **Planned**：下载失败的自动重试 + 断点续传尚未实现（`job_queue_service.dart` 顶部 `b3.1 ⏳`）。
+> **Planned**：下载失败的自动重试 + 断点续传尚未实现（`job_queue_service.dart` 顶注 b3.1 明确「重试 / 续传未实现」）。
 
 **Provider 层**只需要：
 
@@ -426,7 +429,7 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 - [ ] **Step 4 · 实现 `validateApiKey`**：用最轻量端点，禁止消耗生成配额
 - [ ] **Step 5 · 实现 `submit`**：内置 `await rateLimiter.acquire()`，参数验证用 `capabilities` 字段
 - [ ] **Step 6 · 实现 `poll`**：单次请求；退避参数不能覆盖全局默认（如需覆盖，改 `capabilities.pollInterval`）
-- [ ] **Step 7 · 错误映射**：所有 `DioException` 经 `mapDioError(e, providerId: ...)`（`lib/providers/dio_error_mapper.dart`），所有业务错误码映射到 §6.1 14 码
+- [ ] **Step 7 · 错误映射**：所有 `DioException` 经 `mapDioError(e, providerId: ...)`（`lib/providers/dio_error_mapper.dart`），所有业务错误码映射到 §6.1 全码表（15 码）
 - [ ] **Step 8 · 注册到 DI**：`lib/core/di/providers.dart` 加 `provider_id → factory` 映射，`ProviderRegistry` 扫描生效
 - [ ] **Step 9 · 测试三件套**：FakeProvider 单测 + 错误矩阵测试 + fixture 回放 E2E（见 §12）
 
@@ -446,7 +449,8 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 lib/
 ├── core/
 │   ├── interfaces/
-│   │   └── generation_provider.dart       # 4 接口 + JobId typedef
+│   │   ├── generation_provider.dart       # 4 接口 + JobId typedef
+│   │   └── custom_provider_source.dart    # 自定义 Provider 配置源契约（同步只读）
 │   ├── models/
 │   │   ├── provider_capabilities.dart     # freezed + 枚举（Region/Mode/Ratio/Resolution/Camera）
 │   │   ├── cost_model.dart                # freezed sealed
@@ -456,10 +460,8 @@ lib/
 │   │   ├── custom_provider_config.dart    # freezed + json（自定义 Provider 配置条目，§13）
 │   │   ├── provider_protocol_template.dart # 协议模板白名单 const + 派生函数（§13.2）
 │   │   └── provider_quota.dart            # freezed（配额展示模型，暂无消费方）
-│   ├── interfaces/
-│   │   └── custom_provider_source.dart    # 自定义 Provider 配置源契约（同步只读）
 │   └── errors/
-│       └── ink_error.dart                 # sealed hierarchy + InkErrorCode 14 码
+│       └── ink_error.dart                 # sealed hierarchy + InkErrorCode 15 码
 ├── services/
 │   └── custom_providers_file_service.dart # custom_providers.json 读取/校验/兜底（§13.1）
 ├── providers/
@@ -511,7 +513,7 @@ lib/
 - 契约用例对每个真实 Provider 验证：
   - `submit()` → `JobId` 非空
   - `poll()` 直到 `success` / `failure` 的状态序列合法
-  - 错误码在 14 码白名单内
+  - 错误码在 §6.1 的 15 码白名单内
   - `validateApiKey()` 三种结果（valid / invalid / networkError）齐全
 
 ### 12.3 Fixture 目录（实际布局）
@@ -595,7 +597,7 @@ capabilities = 模板基线.copyWith(providerId: 'custom:<id>', displayName: dis
 
 - 结果走同步 inlineBytes 通道（§5.5 / ADR-0004）：解析 `data[0].b64_json`，poll 一次性消费；**基类禁止在 Provider 内下载远端 URL**，故请求体显式要求 `b64_json`
 - `size` 由 AspectRatio 映射：1:1→`1024x1024`，16:9→`1536x1024`，9:16→`1024x1536`
-- 错误映射与内置同步 Provider 完全一致（`mapDioError` + §6.1 14 码）
+- 错误映射与内置同步 Provider 完全一致（`mapDioError` + §6.1 全码表）
 
 ### 13.4 Key 存储
 
