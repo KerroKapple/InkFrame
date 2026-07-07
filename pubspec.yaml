@@ -1,7 +1,7 @@
 name: inkframe
 description: "InkFrame — 开源本地优先的 AI 影视创作工作站 (Flutter Desktop)."
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.1.0-alpha.10+10
 
 environment:
   sdk: ^3.11.0
