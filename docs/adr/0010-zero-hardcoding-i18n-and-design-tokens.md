@@ -4,6 +4,7 @@
 - **Date**: 2026-07-01
 - **Deciders**: P9 (Tech Lead)
 - **Related**: ADR-0002 (Riverpod / ThemeExtension) / `docs/CLAUDE.md` / `lib/l10n/app_en.arb` + `app_zh.arb` / `lib/theme/tokens.dart` / `lib/theme/app_theme.dart`
+- **Revised**: 2026-07-07（执行机制具体化：测试化闸门——见文末修订记录）
 
 ---
 
@@ -91,3 +92,22 @@
 - 若 gen-l10n / ARB 维护成本显著上升，考虑键管理工具
 - 出现确需运行时主题（用户自定义主题/插件主题，见 ADR-0011）时，重审 token 的开放面
 - 至迟在首个非 en/zh locale 接入前重审
+
+---
+
+## 修订记录
+
+### 2026-07-07 — 执行机制具体化：bash hook 时代结束，闸门测试化（不改两条硬约束）
+
+本 ADR 只写了"由 CI/评审守"，未指明执行点；早期执行点是 `check-*.sh` bash hook，现已删除。
+现行机制（以代码为准）：
+
+- **样式零硬编码**：`test/quality/no_inline_styles_test.dart` + `no_magic_strings_test.dart`
+  ——随 pre-commit `flutter test test/quality/` 与 CI 阻断执行
+- **i18n 键集一致**：`test/l10n/arb_hygiene_test.dart`（en/zh 双向差集为空）+
+  `test/core/errors/ink_error_i18n_test.dart`（错误码 messageKey 全在 ARB）——随 pre-push /
+  CI 全量测试阻断执行
+- `dart run custom_lint` 为 AST 级增强，暂非阻断（riverpod_lint 兼容 Dart 3.11 AST 前）；
+  硬约束防护不依赖它
+
+两条硬约束本体、"tokens.dart 是唯一字面量文件"、"prompt 不 i18n"均不变。

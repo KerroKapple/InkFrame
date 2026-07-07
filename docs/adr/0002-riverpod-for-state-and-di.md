@@ -4,6 +4,7 @@
 - **Date**: 2026-04-15
 - **Deciders**: P9 (Tech Lead)
 - **Related**: CLAUDE.md §Dependency Injection / ARCHITECTURE §2 / PRD §3.2
+- **Revised**: 2026-07-07（codegen 机制未采用，现行为全仓手写 Provider——见文末修订记录）
 
 ---
 
@@ -112,3 +113,21 @@ InkFrame 需要同时解决两个问题，且必须是同一套机制：
 - 发现 `autoDispose` 与长连接（WebSocket 生成任务）有不可调和冲突
 - 团队反馈代码生成成本超出收益
 - 至迟在 v0.2.0 Sprint 启动前重审
+
+---
+
+## 修订记录
+
+### 2026-07-07 — codegen 未采用，全仓手写 Provider 为现行风格（不改"Riverpod 统一状态与 DI"决策）
+
+**现状**：Decision 中的 `riverpod_generator` + `@riverpod` codegen 机制**未落地**——全仓
+以手写顶层 Provider（`final x = Provider/FutureProvider/NotifierProvider(...)`, `.autoDispose`
+/ `.family` 变体）实现，接线集中 `lib/core/di/`。该风格已由决策 D-1（2026-05，
+`docs/internal/architecture-drift-decisions-2026-05.md`）确认为"文档跟代码"。
+
+**原因**：build_runner 全量构建当前损坏（analyzer 无法序列化 Dart 3.11 dot-shorthand，
+riverpod_generator 崩溃挂死）。codegen 待卡点解除后随 **Riverpod 3 迁移**一并评估——
+追踪见 `docs/BOARD.md` 停车场与 `BLOCKERS-2026-07-06.md` §2。
+
+**不变**：Riverpod 同时承担状态管理与 DI、接口注入、`ProviderScope` override 可测性、
+禁 Bloc/GetIt/ServiceLocator——决策本体全部有效；ARCHITECTURE §2 示例已改为手写风格。

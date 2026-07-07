@@ -27,7 +27,8 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-FLUTTER="${FLUTTER_BIN:-C:/Users/Kerro/flutter/bin/flutter.bat}"
+# 默认走 PATH 上的 flutter；特殊环境（如 Windows 绝对路径）用 FLUTTER_BIN 覆盖。
+FLUTTER="${FLUTTER_BIN:-flutter}"
 CI_FILE=".github/workflows/ci.yml"
 LCOV="coverage/lcov.info"
 THRESHOLD=70

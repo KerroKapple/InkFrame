@@ -31,7 +31,7 @@
 |---|---|---|---|---|
 | 单元测试 (core / utils / errors) | `flutter_test` | 零外部 | ≥ 70% | pre-commit / pre-push / CI |
 | Service 层 | `flutter_test` + 手写 Fake（`test/_harness/`） | Fake Repository | ≥ 70% | pre-push / CI |
-| Repository 层 | `flutter_test` + 真 PG | `TEST_PG_URL` | **≥ 75%**（数据层硬门槛）| pre-push (有 PG) / CI |
+| Repository 层 | `flutter_test` + 真 PG | `TEST_PG_URL` | ≥ 70%（全仓单门，见下） | pre-push (有 PG) / CI |
 | Riverpod Provider | `flutter_test` + `ProviderContainer` | override | ≥ 70% | pre-push / CI |
 | Widget | `flutter_test` + `ProviderScope` override | fake services | ≥ 70% | pre-push / CI |
 | Golden | `golden_toolkit` | Skia 渲染 | 关键 Widget 必须有 | CI（ubuntu，canonical 基线平台） |
@@ -40,7 +40,7 @@
 **口径：**
 
 - "覆盖率"统一用 `lcov line coverage`，不用 branch coverage
-- 数据层 75% 的理由：bug 传播代价最高
+- 门槛是**全仓 70% 单门**（`ci.yml` `min_coverage: 70`，与 `scripts/coverage/report.sh` 同口径；决策 D-4，2026-05）——无分层机器门禁，数据层鼓励更高但不单设闸
 - 覆盖率是**最低门槛**不是**目标**——过了就是合格，想冲 85%+ 看 T2（实测 85.0%）
 
 ---
