@@ -764,6 +764,15 @@ void main() {
       expect(repo.rows['orphan-2']!['error_code'], 'cancelled_on_exit');
       expect(repo.rows['orphan-3']!['status'], 'cancelled');
       expect(repo.rows['orphan-3']!['error_code'], 'cancelled_on_exit');
+      // 回收即终态：必须补写 completed_at，否则 purgeExpired 的
+      // completed_at < now() - interval 谓词对 NULL 恒假 → 永久逃过 retention。
+      for (final id in ['orphan-1', 'orphan-2', 'orphan-3']) {
+        final completedAt = repo.rows[id]!['completed_at'];
+        expect(completedAt, isNotNull,
+            reason: '$id 被孤儿回收后 completed_at 不能为 NULL');
+        expect(completedAt, isA<String>());
+        expect(DateTime.parse(completedAt! as String).isUtc, isTrue);
+      }
       // 终态不动
       expect(repo.rows['completed']!['status'], 'success');
       svc.dispose();
