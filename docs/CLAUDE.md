@@ -3,9 +3,11 @@
 ## Tech Stack
 
 - **Framework**: Flutter Desktop (Dart)
-- **State**: Riverpod (with code generation)
+- **State**: Riverpod (manual providers; codegen pending — build_runner toolchain blocked, see `docs/BOARD.md`)
+- **Models**: freezed (immutable + copyWith + JSON; generated files checked in)
 - **Storage**: Embedded PostgreSQL
 - **Network**: dio
+- **App metadata**: package_info_plus (version info, About section)
 - **i18n**: flutter_localizations + ARB files
 - **Video playback / thumbnail**: media_kit (+ media_kit_video, media_kit_libs_video)
 - **Video export**: external ffmpeg binary (runtime probe via `FfmpegLocator`; not bundled)
@@ -14,7 +16,7 @@
 - **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager)
 - **Platforms**: macOS + Windows
 
-> Modules not yet implemented (e.g. script editor) are tracked in `docs/BOARD.md` (M3 table). This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
+> Modules not yet implemented (e.g. script parsing / sequence preview) are tracked in `docs/BOARD.md` (status) and the repo-root `ROADMAP.md` (community roadmap). This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
 
 ## Architecture Principles
 
@@ -82,10 +84,10 @@ final projectProvider = Provider((ref) {
 ### File Structure
 
 ```
+l10n.yaml               # Flutter gen-l10n config (repo root)
 lib/l10n/
 ├── app_en.arb          # English (source of truth)
-├── app_zh.arb          # Chinese (must match all keys)
-└── l10n.yaml           # Flutter gen-l10n config
+└── app_zh.arb          # Chinese (must match all keys)
 ```
 
 ### Usage
@@ -188,7 +190,7 @@ Container(
 
 ## Project Structure
 
-> **Snapshot, not blueprint.** Mirrors the current `lib/` tree. Planned-but-unimplemented modules belong in `ROADMAP.md`, not here. Keep this in sync — if your PR adds/removes a directory, update this section in the same commit.
+> **Snapshot, not blueprint.** Mirrors the current `lib/` tree. Planned-but-unimplemented modules belong in `docs/BOARD.md` (status) and the repo-root `ROADMAP.md` (community roadmap), not here. Keep this in sync — if your PR adds/removes a directory, update this section in the same commit.
 
 ```
 lib/

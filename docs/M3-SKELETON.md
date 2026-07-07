@@ -1,8 +1,8 @@
 # M3 骨架与落地设计
 
-> 状态：M3「差异化」尚未开工。本文是**可落地的骨架设计**——每项给出模块位置、
-> 接口、依赖与首个可编译切片，供后续按 characters/presets 同样的「存储切片 + 控制器 +
-> UI」节奏推进。已落地部分见 `docs/BOARD.md`。
+> 状态：M3「差异化」**进行中**——四方向首切片均已落地（实时状态见 `docs/BOARD.md` M3 表）。
+> 本文余下部分是**后续切片的骨架设计**——每项给出模块位置、接口与依赖，
+> 按 characters/presets 同样的「存储切片 + 控制器 + UI」节奏推进。
 
 ## 已落地的 M3 起点
 - **shot 分镜节点编辑**（本轮）：`shot` 本就是真实节点类型（`CanvasNodeType.shot`），
@@ -14,8 +14,9 @@
 - 模块：`lib/features/storyboard/`（新）。
 - 数据：复用 `nodes(type='shot')` + `type_config.shot_notes`（已在）；镜头顺序用现有
   `edges`（narrative 类型）或 `lane`（泳道=场景）。**无需新表即可起步**。
-- 首个切片：`ShotConfigInspector` 增「用本镜备注生成图像」——把 shot_notes 作为 prompt
-  预填一个 image config 节点（复用现有生成链路）。
+- **首切片已落地**：`ShotConfigInspector`「用本镜备注生成图像」（`_generateImageFromNotes`）——
+  把 shot_notes 作为 prompt 新建 image config 节点 + narrative 边（复用现有生成链路）。
+  现状见 `docs/BOARD.md` M3 表。
 - 后续：脚本解析器（文本→多 shot）、镜头级参数（时长/机位）、序列预览。
 
 ## 2. 视频导出 / 拼接
@@ -41,8 +42,10 @@
 - 数据：扫描项目目录产物（`projects/{id}/canvases/*/images|videos/`）或聚合
   `nodes`（result 角色）+ `batch_results` + `characters` 的 `reference_image_paths`。
   优先**读现有落盘 + DB 行**，无需新表。
-- 首个切片：`GalleryController`（project 维度，列出 result 节点的 image_url/video_url）
-  + 网格 UI（复用 `BatchResultsGrid` 的 slot 渲染思路）。
+- **首切片已落地**（`lib/features/gallery/`）：`GalleryController`（project 维度，聚合 result
+  节点 image_url/video_url + batch_results 成功 slot）+ 网格 UI；实际形态：入口=Studio
+  项目卡菜单「Gallery」（路由走 `currentGalleryProjectProvider`），tile 渲染走 fileResolver，
+  未复用 `BatchResultsGrid`。现状见 `docs/BOARD.md` M3 表。
 - 复用点：`characterAssetServiceProvider`（存为角色）、`fileResolverServiceProvider`。
 
 ## 4. 模型聚合器 / 自定义 Provider（BYO-key 多模型）
@@ -50,7 +53,8 @@
 本地）。**最高杠杆差异化**——一次接入解锁 N 个模型。
 > **2026-07-02 拍板**：配置存 **`custom_providers.json` 文件**（可手编/分享，需校验+损坏
 > 兜底）；capabilities 由**协议白名单模板**派生（用户选模板 + 填 base_url/key/model，
-> 不自由填能力位）——即 PROVIDER-API §13 现稿方向。开工时重写 §13 为单一方案。
+> 不自由填能力位）——即 PROVIDER-API §13 现稿。§13 重写已完成（PROVIDER-API v0.2.0，
+> 2026-07-03；ADR-0009 修订 2026-07-02）。
 
 - 原详细设计 `docs/superpowers/plans/2026-05-21-custom-providers.md` 已漂移（写于 5 月），
   开工时按 2026-07-02 就绪度审计校正，要点：
@@ -66,8 +70,9 @@
     模板派生），必须保持同步读（image inspector initState 里 `ref.read`）。
   - ADR-0009（const-only capabilities）需小修：协议模板本身仍是代码内 const，
     仅实例化参数（base_url/model_id）来自用户配置，修订幅度小。
-- 首个切片：单个硬编码 OpenAI 兼容 provider（base_url/model 从 SecureStorage/config 读），
-  跑通「文生图」，再抽象为 json 配置列表。
+- **首切片已落地**（直达 json 配置列表，未走硬编码过渡）：`custom_providers.json` →
+  协议模板派生 → `OpenAICompatibleImageProvider`，`main.dart` bootstrap 启动期一次性注册。
+  后续：设置页编辑 UI、运行时增删。
 
 ## 落地顺序建议（价值/风险）
 1. **模型聚合器**（差异化最强，已设计，风险中）——先做单端点跑通。

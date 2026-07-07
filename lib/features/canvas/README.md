@@ -1,6 +1,6 @@
 # features/canvas
 
-节点画布编辑器——InkFrame 的标志性界面。用户在这里摆放节点（角色/场景/分镜/图像·视频生成）、连线、配置并发起生成。
+节点画布编辑器——InkFrame 的标志性界面。用户在这里摆放节点（text 文本 / image 图像 / video 视频 / shot 分镜，即 `CanvasNodeType` 四型）、连线、配置并发起生成。
 
 > 相关 ADR：[0007 节点 type×role + JSONB](../../../docs/adr/0007-node-type-role-jsonb-config.md) · [0008 渲染队列](../../../docs/adr/0008-render-queue-jobstate-vs-jobstatus.md) · [0009 Provider 能力/接口隔离](../../../docs/adr/0009-provider-capability-and-interface-segregation.md) · [0010 i18n/token 零硬编码](../../../docs/adr/0010-zero-hardcoding-i18n-and-design-tokens.md)
 
@@ -33,8 +33,9 @@ util/       无副作用的几何/命中/预设工具
 ## widgets（关键）
 - `canvas_screen` — 整屏骨架：`canvas_top_chrome` + `canvas_left_toolbar` + `canvas_view` + `canvas_render_queue`
 - `canvas_view` / `edge_painter` — 画布视口与连线绘制
-- `node_card` / `canvas_node_card` / `video_node_body` — 节点卡片各形态
+- `node_card` / `video_node_body` — 节点卡片各形态
 - `node_inspector_router` — 按 (role, type) 分发：config → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`（前二者共用 `inspector_status_panel`）；result+image → `image_result_inspector`
+- `node_inputs_section` — config 节点入边列表 + role 切换（reference/first_frame/last_frame，按能力位门控），被 image/video config inspector 挂载
 - `batch_results_grid` — 结果节点的批量/变体槽位网格（挂载于 `image_result_inspector`）
 - `canvas_render_queue` — 右侧渲染队列（消费 `jobsRegistry`）
 - `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_add_node_fab` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`
@@ -47,6 +48,8 @@ util/       无副作用的几何/命中/预设工具
 2. inspector 控件按 **provider 能力位**显隐（分辨率/比例/时长/运镜/seed/负向/批量，ADR-0009），改动经 `inspector_submit_controller.saveConfig` 落 `type_config`
 3. 点"生成" → `inspector_submit_controller.submit` 落最终 config → `GenerationController.submitFromConfigNode`（见 [features/generation](../generation/README.md)）
 4. 进度：`node_active_job` / `inspector_status_panel` 从 `jobsRegistry` 读该节点活跃 job 的真实进度；渲染队列面板同源展示
+
+shot 分支：`shot_config_inspector` 的「用备注生成图像」以 `shot_notes` 为 prompt 新建 image config 节点 + narrative 边（复用同一生成链路）
 
 ## 约束
 - 文案走 `context.l10n.*`，样式走 `context.inkColors` / `InkSpacing` 等 token（ADR-0010，widget 内零硬编码）

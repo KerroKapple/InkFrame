@@ -15,8 +15,9 @@
 </div>
 
 InkFrame is a desktop workstation for AI-driven filmmaking. A node-based canvas lets you chain
-prompt → image → video through real providers — DashScope (Wanx), Kling, and Gemini — while every
-project file and API key stays on **your disk**. No cloud account, no upload, no SaaS lock-in.
+prompt → image → video through real providers — DashScope (Wanx), Kling, Gemini, and more (9
+built-in) — while every project file and API key stays on **your disk**. No cloud account, no
+upload, no SaaS lock-in.
 
 <p align="center">
   <img src="docs/media/hero-canvas.png" alt="InkFrame node canvas — prompt, provider config and a generated cinematic still" width="100%">
@@ -62,8 +63,11 @@ providers — caching results and project state locally as it goes.
 | Wanx (DashScope) | image · i2v · r2v · t2v | ✅ Implemented |
 | Kling V3 / V3 Omni | video | ✅ Implemented |
 | Gemini Image | image | ✅ Implemented |
+| OpenAI GPT-Image (`gpt-image-1`) | image | ✅ Implemented |
+| Stability Stable Image Core | image | ✅ Implemented |
+| OpenAI-compatible custom endpoint (`custom_providers.json`) | image | ✅ Implemented |
 | Stable Diffusion (local ComfyUI) | image | 🟢 Help wanted |
-| OpenAI DALL·E 3 / GPT-Image | image | 🟢 Help wanted |
+| OpenAI DALL·E 3 (dedicated integration) | image | 🟢 Help wanted |
 | Runway Gen-3 / Gen-4 | video | 🟢 Help wanted |
 | Midjourney · Pika · Luma | image/video | 🟢 Help wanted |
 
@@ -89,7 +93,7 @@ For real generation, drop `INKFRAME_FAKE_PROVIDERS` and add keys in **Settings �
 ```bash
 flutter analyze              # 0 warnings (CI uses --fatal-infos)
 flutter test                 # full suite
-flutter test --tags integration
+flutter test --tags pg       # real-PG integration tests (need TEST_PG_URL; auto-skipped otherwise)
 ```
 
 Environment variables, key storage, and data-directory layout: see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
@@ -100,9 +104,11 @@ Flutter (desktop) · Riverpod (state + DI) · Freezed (immutable models) · embe
 
 ## 📍 Status
 
-**Alpha** (`v0.1.0-alpha.9`). Single Dart codebase shipping on macOS + Windows. Core canvas, generation
-loop, secure key storage, and the first providers are in place; the road to beta is test coverage,
-cross-platform smoke tests, and a performance baseline. See [ROADMAP.md](ROADMAP.md) for what's shipped and what's next.
+**Alpha** (`v0.1.0-alpha.9`). Single Dart codebase shipping on macOS + Windows. M1 ("usable") and
+M2 ("what creators need" — character consistency, batch variants, prompt presets, cost estimation)
+are complete with CI fully green; M3 first slices are in progress across four tracks (shot
+storyboarding, custom providers, asset gallery, video export). Remaining beta gaps are tracked in
+[docs/BOARD.md](docs/BOARD.md). See [ROADMAP.md](ROADMAP.md) for what's shipped and what's next.
 
 ## 📚 Documentation
 

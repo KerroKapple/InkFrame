@@ -4,9 +4,9 @@
 
 ## Schema 版本管理
 
-- 当前版本 `schema_version.version = 3`
-- 真相源：`lib/storage/schema/schema_v1.dart` / `schema_v2.dart` / `schema_v3.dart`
-- 文档镜像：`lib/storage/schema/00N_*.sql`（不被运行时加载）
+- 当前版本 `schema_version.version = 7`
+- 真相源：`lib/storage/schema/schema_v1.dart` … `schema_v7.dart`（v4 删死列 next_poll_at；v5 复合索引 idx_jobs_canvas_created；v6 characters 表；v7 prompt_presets 表）
+- 文档镜像：`lib/storage/schema/001_init.sql` / `002_*.sql` / `003_*.sql` / `004_drop_next_poll.sql` / `005_jobs_canvas_created_idx.sql`（不被运行时加载）；**v6 起真相源仅 .dart，不再落 .sql 镜像**
 - `MigrationRunner`（`lib/storage/migrations/migration_runner.dart`）由 `database.dart` 组装迁移列表
 - 数据库版本 > 应用期望 → 抛 `SchemaMigrationError`，提示升级应用
 - 数据库版本 < 应用期望 → 按序执行；每条迁移的 DDL 与 `schema_version` UPSERT 在 **同一事务**（runTx）内，失败整体回滚，版本号统一由 runner 写（迁移 SQL 不自写）
@@ -31,6 +31,8 @@ erDiagram
   jobs ||--o{ batch_results : "ON DELETE CASCADE"
   nodes ||--o{ batch_results : "ON DELETE CASCADE"
   nodes }o--o| batch_results : "promoted_node_id ON DELETE SET NULL"
+  projects ||--o{ characters : "ON DELETE CASCADE"
+  projects ||--o{ prompt_presets : "ON DELETE CASCADE"
 ```
 
 ## ON DELETE 策略矩阵
@@ -52,6 +54,8 @@ erDiagram
 | jobs | batch_results | job_id | CASCADE |  |
 | nodes | batch_results | node_id | CASCADE |  |
 | nodes | batch_results | promoted_node_id | SET NULL |  |
+| projects | characters | project_id | CASCADE | v=6（项目级角色，schema_v6.dart） |
+| projects | prompt_presets | project_id | CASCADE | v=7（项目级预设库，schema_v7.dart） |
 
 ## CHECK 约束清单
 
@@ -81,6 +85,10 @@ erDiagram
 | style_lanes.label | 100 | 同 |
 | style_lanes.style_prompt | 4096 | 同 |
 | nodes.label | 200 | 同 |
+| characters.name | 200 | 同（v=6，chk_characters_name） |
+| characters.description | 4096 | 同（v=6，chk_characters_desc） |
+| prompt_presets.name | 200 | 同（v=7，chk_prompt_presets_name） |
+| prompt_presets.prompt | 4096 | 同（v=7，chk_prompt_presets_prompt） |
 | jobs.full_prompt | 131072 | 128KB 硬截断 |
 | nodes.type_config.prompt | — | 32KB |
 | nodes.type_config.negative_prompt | — | 8KB |
@@ -113,9 +121,14 @@ JSONB 内字段长度不落 DB CHECK（路径查询开销大），由 freezed + 
 | idx_edges_canvas_id / source / target / deleted | edges | canvas_id / source_node_id / target_node_id / deleted_at | 常规 / 常规 / 常规 / 部分 |
 | idx_jobs_status | jobs | status | 常规 |
 | idx_jobs_canvas_id | jobs | canvas_id | 常规 |
+| idx_jobs_canvas_created | jobs | (canvas_id, created_at DESC) | 复合（v=5，listByCanvas 过滤+排序同索引） |
 | idx_jobs_completed | jobs | completed_at | 部分（WHERE completed_at IS NOT NULL） |
 | idx_batch_results_node_id / job_id | batch_results | node_id / job_id | 常规 |
 | idx_projects_deleted | projects | deleted_at | 部分 |
+| idx_characters_project_id | characters | project_id | 常规（v=6） |
+| idx_characters_deleted | characters | deleted_at | 部分（v=6） |
+| idx_prompt_presets_project_id | prompt_presets | project_id | 常规（v=7） |
+| idx_prompt_presets_deleted | prompt_presets | deleted_at | 部分（v=7） |
 
 ## updated_at 维护
 
@@ -123,7 +136,7 @@ PRD §21 硬规则：**应用层维护，禁止 DB trigger**。
 
 - `BaseRepository.withUpdatedAt(patch)` 统一注入时间戳
 - `BaseRepository.buildUpdate(table, id, patch)` 自动拼 `updated_at = @p_updated_at`
-- CI `scripts/hooks/check-updated-at.sh` 扫描 `lib/storage/*.dart`，`UPDATE <table> SET` 若缺少 `updated_at` 即 exit 1
+- 质量闸门 `test/quality/updated_at_test.dart`（pre-commit 阻断式跑，取代已删的 check-updated-at.sh）扫描 `lib/storage/`，`UPDATE <table> SET` 若缺少 `updated_at` 即红
 - 白名单：`edges` / `jobs` / `batch_results` / `schema_version` 表无 `updated_at` 列，天然豁免
 
 ## Retention 策略（PRD §21）
@@ -135,15 +148,35 @@ Jobs 表的 30 天保留 + 单 canvas 500 条上限（常量：`lib/core/constan
 - 排除"孤儿 result 节点依赖"的 job（§4.5.1 要求 jobs 是真相源）
 - 实现：`PostgresJobRepository.purgeExpired` + `purgePerCanvasCap`
 
+## batch_results 生命周期（表侧注记）
+
+> 语义正本是 ARCHITECTURE.md §5.1「批量 slot 收敛」；本节只记表侧事实。
+
+- 行由**提交事务预建**（batch_size>1 时与 result 节点 / jobs 行同事务，status=`generating`
+  占位），此后 JobQueue 逐 slot 收敛到终态（`success` / `error` / `cancelled`，见 status CHECK）
+- **slot 只从 `generating` 单向收敛**：收敛写全部是「条件批量 UPDATE，只圈 `status='generating'`
+  行」——终态行绝不被改写（取消/失败保留已 success slot 的部分成功语义靠这一点成立）
+- `BatchResultRepository` 三个非 CRUD 方法（`lib/core/interfaces/batch_result_repository.dart`，
+  实现 `postgres_batch_result_repository.dart`）：
+  - `listSuccessByProject(projectId)` — 本仓**唯一跨表 JOIN 读**：`batch_results JOIN nodes
+    JOIN canvases`，两层 `deleted_at IS NULL` 过滤（节点/画布任一软删即不见），画廊消费
+  - `finalizePendingByJob(jobId, toStatus, errorCode)` — 单 job 终态收敛（JobQueue 终态链）
+  - `finalizeAllPending(toStatus, errorCode)` — 全表孤儿收敛（启动期 `JobQueueService.init()`）
+  - 后两者是本仓**唯二的条件批量收敛写**
+
 ## Migration 命名规范
 
 ```
 lib/storage/schema/001_init.sql                              # v=1 文档镜像（运行时不加载）
 lib/storage/schema/002_jobs_result_node_id_set_null.sql      # v=2 增量镜像
 lib/storage/schema/003_edges_unique_cover_fk_retry_drop.sql  # v=3 增量镜像
+lib/storage/schema/004_drop_next_poll.sql                    # v=4 增量镜像
+lib/storage/schema/005_jobs_canvas_created_idx.sql           # v=5 增量镜像（最后一个 .sql 镜像）
 ```
 
 文件名格式：`<三位版本号>_<短描述>.sql`，版本号必须单调递增无缺口。
+**v6 起不再落 .sql 镜像**——真相源仅 `schema_vN.dart`（v6 characters / v7 prompt_presets），
+新迁移走 `schema_vN.dart` + `kAppMigrations` 追加一行。
 
 ## 嵌入式 PG 运维（PRD §22.1）
 

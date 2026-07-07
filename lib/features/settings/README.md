@@ -8,7 +8,8 @@
 
 ```
 settings_screen.dart                整屏容器
-widgets/api_keys_section            每个 provider 的 Key：保存/清除/校验（经 SecureStorageService）
+widgets/api_keys_section            API Key 行集：按 SecureStorageKeys.scopeOf 折叠为每 scope 一行
+                                    （DashScope 家族 6 款合一行）；保存/清除/校验（经 SecureStorageService）
 widgets/theme_section               深色 / 浅色 / 高对比 + 字号缩放
 widgets/language_section            English / 中文
 widgets/storage_path_section        数据库目录展示 + 复制路径
@@ -18,6 +19,7 @@ providers/api_key_scope_controller  API Key 输入/校验的作用域状态
 
 ## 关键点
 - **API Key 只经 `SecureStorageService` 接口**（macOS Keychain / Windows Credential Manager）——绝不落代码/配置/DB。保存时可触发 provider 端校验，返回 已保存/未验证/被拒 三态（`settingsApiKey*` l10n）
+- Key 行集来源 `providerCapabilitiesListProvider`（内置 const + `custom_providers.json` 模板派生的合并列表）——新增 custom provider 零改动自动多一行
 - 主题切换驱动 `buildAppTheme(variant, textScale)`（三套变体 + a11y 缩放，ADR-0010）
 - 存储目录本版本固定（`settingsStorageReadOnlyHint`），迁移流程见 ROADMAP
 
