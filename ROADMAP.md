@@ -14,6 +14,7 @@
 
 | Tag | 主题 / Theme | 日期 |
 |-----|--------------|------|
+| alpha.10 | M1/M2 收官 + M3 全方向首切片（分镜 / 自定义 Provider / 画廊 / 视频导出服务+UI）+ 内嵌 PG 打包 + 上线总体规划（release.yml 首次自动出双平台产物） | 2026-07 |
 | alpha.9 | UI Sprint 1+2 — CineFlow tokens + 9 primitives + 开源准备（README / LICENSE / MIT） | 2026-04 |
 | alpha.8 | T5 video node UI loop — 5 款视频 Provider UI 接入 + Lightbox | 2026-04 |
 | alpha.7 | canvas UX 收口 — 节点删除 / Inspector autosave / FAB | 2026-04 |
@@ -21,24 +22,19 @@
 | alpha.5 | canvas 点击选中连线 + midpoint 删除按钮 | 2026-04 |
 | earlier | alpha.1 ~ alpha.4 — 基础 canvas / DI / i18n 骨架（见 `git tag`） | — |
 
-> **已合并 main，未打 tag（→ alpha.10）/ Merged on main, untagged (→ alpha.10):**
-> Amber Noir shell 重写（frameless chrome + Studio + Canvas，取代 CineFlow，#100/#101）·
-> 生成流程接入 canvas（open-canvas + 实时 job 进度 + 去 mock 渲染队列，#104/#105）·
-> 移除 Lock 启动闸门，直接进入 Studio（#108）·
-> 后端 P0–P2 加固（UnitOfWork 事务 / 仓储类型化 / SyncProviderBase，#126–#132）·
-> **M1「能用起来」**（偏好持久化 / 节点级进度 / 画布性能 / 项目管理 + 正确性簇，#133）·
-> **M2「创作者要的」**（参考图/首尾帧 UI / 角色一致性 / 批量变体 / 预设库 / 成本估算，#134/#138）·
-> M3 首切片 ×4（Shot 分镜 / ffmpeg 视频导出 / 产物画廊 / custom_providers 聚合器，#134）·
-> 内嵌 PG 装进 app bundle（#135）· 双语 README 定位落地（#136）· wanx-i2v wan2.7 契约（#137）·
-> 快修簇：暗色 on-color 对比度 / base64 守卫统一 / 捕获收窄 / 吞错补提示 / 僵尸清理（#140）·
-> M1 补遗四项：记住上次 provider / 重启回上次画布 / 画布级管理 / 设置按钮统一（#141）。
-> 里程碑级实时状态见 [`docs/BOARD.md`](docs/BOARD.md)。
+> alpha.10 收录内容（已进 Shipped 表）：Amber Noir shell 重写 · 生成流程接入 canvas ·
+> 移除 Lock 闸门 · 后端 P0–P2 加固 · M1「能用起来」· M2「创作者要的」· M3 首切片 ×4 +
+> 导出 UI（#143）· 内嵌 PG 打包 · 双语 README · 全量文档对账（#142）· 上线总体规划（#144）。
+> 里程碑级实时状态见 [`docs/BOARD.md`](docs/BOARD.md);到 1.0 的完整任务库见 [`docs/MASTERPLAN.md`](docs/MASTERPLAN.md)。
 
 ## 🛠 In Progress (Maintainer)
 
-- **M3 差异化深化** — Shot 脚本解析/序列预览 · 视频导出 UI/转码归一 · 画廊拖入画布/筛选 · 自定义 Provider 设置页 UI（见 [`docs/BOARD.md`](docs/BOARD.md) M3 表）
-- **发布管线** — 签名/公证/打包（chore/release-pipeline 分支起步）
-- **稳定 alpha → beta** — 测试覆盖 / 跨平台烟测 / 性能基线
+> 完整任务库(到 1.0 的 100+ 张卡、波次、决策区)见 [`docs/MASTERPLAN.md`](docs/MASTERPLAN.md);
+> 开发规程见 [`docs/EXECUTION-PLAYBOOK.md`](docs/EXECUTION-PLAYBOOK.md)。以下为当前焦点摘要。
+
+- **M4 能力完整** — 分镜流水线(脚本解析/序列预览) · 导出转码归一 · 画廊复用(存角色/发送画布) · 自定义 Provider 设置页 UI · 角色一致性进阶(见 MASTERPLAN §2)
+- **M5 能上生产** — 数据安全(备份/导出导入/崩溃钩子,现全为零) · 签名公证打包 · 应用内更新 · onboarding
+- **发布工程** — release.yml 已首跑出双平台产物;待补:PG 分发源(干净机可装)、签名凭据(U1/U2)
 
 ## 🙋 Help Wanted
 
