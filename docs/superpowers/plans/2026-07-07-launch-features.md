@@ -1,5 +1,6 @@
 # 上线规划:功能模块 Epic 任务卡(2026-07-07)
 
+> 本文冻结于 2026-07-07(main@b2be25e)。开卡前先按当前 main 复核 file:line;完成状态记 BOARD/MASTERPLAN,不回写本文。
 > MASTERPLAN §2 的明细。基于 main@b2be25e 行级核实。开工前先读 `docs/EXECUTION-PLAYBOOK.md`。
 > ⚠️ **时效校正**:本规划审计时 PR #143(导出 UI 入口)尚未合入——**EX-1 已基本交付**
 > (画布顶栏按钮+对话框+position.x 排序+手动调序+ffmpeg 缺失文案),剩余增量见 EX-1′。
@@ -51,10 +52,13 @@ narrative 链可序列播放且与导出同序。
   确定性全序。验收:单链/多链/分叉/环/孤立全用例。
 - **SB-6 序列预览播放器**(L,依赖 SB-5/SB-3;弱依赖 XM-1):新 storyboard feature——
   `sequence_preview_dialog` + artifacts util(链上节点→最新 result 产物:sourceNodeId 匹配+
-  role==result+url 非空,取列表序最后;需先确认 listByCanvas 的 ORDER BY);图片停留 duration_ms
+  role==result+url 非空;`nodes.listByCanvas` ORDER BY 为 z_index ASC, created_at ASC——
+  **不能取列表序末位**,须在候选中按 created_at 取最新,row 里有该列;
+  util 随 **EX-1′ 首建**(Wave 2),本卡只消费);图片停留 duration_ms
   (缺省 3s),视频经 videoPlayerServiceProvider(position≥duration 推进),无产物镜显 notes
   占位同计时;控件 play/pause/前后镜/进度点;**dispose 必须 handle.dispose**(media_kit 泄漏
-  高发);入口=顶栏「预览序列」(有 narrative 边才 enable,**与导出按钮同区,先合者定结构**)。
+  高发);入口=顶栏「预览序列」(有 narrative 边才 enable,与导出按钮同区,
+  **跟随 PR #143 交付的顶栏结构**)。
 
 ## E2. 画廊二切片
 
@@ -69,7 +73,8 @@ narrative 链可序列播放且与导出同序。
 - **GA-3 筛选/搜索**(S/M):`gallery_filter.dart` StateProvider 手写模型 {kind, canvasId?, query};
   SegmentedButton+画布下拉+搜索框(匹配 canvasName;prompt 搜索标注 non-goal);纯内存过滤;
   空结果复用 empty 态+清除筛选。
-- **GA-4 存为角色**(S):仅 image 项;命名对话框(仿 _promptForName)→
+- **GA-4 存为角色**(S):仅 image 项;命名对话框(仿 `_promptName`/`_NameDialog`,
+  image_config_inspector.dart L799-812)→
   `charactersController.createFromImage(name, absPath)`(补偿逻辑已有);分捕三类异常。
 - **GA-5 发送到画布**(M,依赖 D-M4-2):画布选择对话框→**跨画布必须复制文件**(路径双根契约,
   目标=resolve(目标画布, `images/gallery-<uuid>.png`))→UoW 建 config+result 节点对
@@ -115,7 +120,8 @@ narrative 链可序列播放且与导出同序。
 
 - **EX-1′ narrative 自动排序预填**(S,**EX-1 主体已随 PR #143 交付**):导出对话框默认序从
   position.x 改为 SB-5 的 narrative 链序(无链退回 position.x);列表项加缩略图
-  (thumbnail_url,GA-1 同源);与 SB-6 共用 artifacts util。依赖:SB-5。
+  (thumbnail_url,GA-1 同源);与 SB-6 共用 artifacts util——**裁决:util 随本卡首建(Wave 2),
+  SB-6 只消费**。依赖:SB-5;**PR #143 合入 main**。
 - **EX-2 转码/分辨率归一**(M/L,依赖 EX-1′;弱依赖 XM-1):接口加
   `ExportMode {streamCopy, normalize}`;normalize 走 filter_complex
   (`scale=W:H:force_original_aspect_ratio=decrease,pad=...,setsar=1,fps=30` × N → concat);
@@ -133,11 +139,14 @@ narrative 链可序列播放且与导出同序。
 **完整态**:有参考图能力的视频 provider 自动带角色图;video inspector 有角色区;角色库管理页。
 
 - **CH-1 视频角色注入**(S/M):`_injectCharacterRefs` 门改双分支——image 保持现规则;
-  **video 分支仅要求 maxRefImages>0(不得检查 modes,见事实 #3)**;注入后 mode 推断沿现逻辑;
-  provider 侧 take(maxRefImages) 已收口不截断。验收:r2v/omni caps 的 fake 断言注入,
-  i2v(maxRefImages=0)零注入,image 回归不变。
-- **CH-2 视频 Inspector 角色区**(M,依赖 CH-1):从 image_config_inspector L583-857 机械抽取
+  **video 分支仅要求 maxRefImages>0(不得检查 modes,见事实 #3)**;注入后 mode 推断沿现逻辑
+  ——即推断为 imageToVideo,r2v/omni 不校验 mode 不炸,**执行者不得顺手加 mode∈caps.modes 校验**;
+  provider 侧 take(maxRefImages) 已收口不截断。验收:r2v/omni caps 的 fake 断言注入
+  (**测试断言 mode==imageToVideo**),i2v(maxRefImages=0)零注入,image 回归不变。
+- **CH-2 视频 Inspector 角色区**(M,依赖 CH-1):从 image_config_inspector L583-808 抽取
   `_CharactersSection` → 共享 `characters_section.dart`(参数化 node+caps,行为零变化);
+  **决策说明:`_NameDialog`(L812-859)与 `_CharacterChip`(L860-928)同时被 `_PresetsSection`
+  使用——需决策:留原文件共享 or 一并抽公共 widget;这不是零决策机械搬移**;
   video 侧挂 NodeInputsSection 前,门控 maxRefImages>0;顺带给 1019 行的 image inspector 减重
   (勿与 P1-17 _PromptPreview 债同窗)。
 - **CH-3 角色库管理页**(M/L,可并行;入口形态 D-M4-8 默认 A 可先行):新 `features/characters/`
@@ -148,6 +157,9 @@ narrative 链可序列播放且与导出同序。
 
 ## E6. 项目复制(BOARD M1 补遗)
 
+> ⚠️ **裁决(2026-07-08 复审)**:项目复制排**上线后**(≡ backend BP-11,复用 LB-12 机器);
+> 本节三卡保留为实现细化参考,不进 M4 波次。
+
 **完整态**:一键完整克隆(数据+磁盘),id 引用全重写,失败零残留。
 
 - **PD-1 复制领域服务(DB 侧)**(L,依赖 D-M4-7):单 UoW 事务——projects.create('原名 (copy)')
@@ -155,7 +167,8 @@ narrative 链可序列播放且与导出同序。
   nodes(新 canvasId/laneId 映射/sourceNodeId 先 null/typeConfig 深拷:character_ids 经映射重写,
   **image_url 等相对路径原样**——随 PD-2 目录重命名天然有效)→nodeIdMap → 二遍回填
   source_node_id → edges(端点映射,保 role/sortOrder)→ prompt_presets。
-  jobs/batch_results 不复制(D-M4-7 推荐 A)。角色映射缺失(被软删)→该 id 丢弃(与生成链路
+  jobs/batch_results 不复制(D-M4-7 推荐 A);projects.cover_node_id 现无写入方恒 NULL,
+  不映射(注明即可)。角色映射缺失(被软删)→该 id 丢弃(与生成链路
   静默跳过语义一致)。验收:fake 契约(id 全新/四类引用/软删不带/闭环不悬挂/事务回滚)+
   PG 集成测 happy path。
 - **PD-2 磁盘复制+补偿**(M,依赖 PD-1):DB 成功后复制 projects/{old}→{new}
@@ -174,27 +187,34 @@ narrative 链可序列播放且与导出同序。
   headless(null 注入)零行为变化;DATABASE.md 登记 type_config 元数据键清单。
 - **XM-2 图片元数据(seed/width/height 含 batch slot 列)**(S/M,**与 XM-1 同窗同人**——
   同文件防冲突):新纯函数 `png_dimensions.dart`(PNG 签名+IHDR,非 PNG null);四个落盘点
-  顺手解析(bytes 在手零额外 IO);`_slotSuccessPatch` 加 width/height/seed 列
+  顺手解析(inline 两点 bytes 在手;remote 两点为 downloader 直落文件,需回读文件头 33 字节,
+  小额外 IO);`_slotSuccessPatch` 加 width/height/seed 列
   (schema 已建未用);解析失败静默缺省。⚠️ JobQueue 两卡后若逼近 1500 行触发拆分线,先落卡后拆。
 
 ## 跨 epic 排程
 
-**硬依赖**:SB-5→SB-6/EX-1′;XM-1→GA-7/EX-3(EX-2/SB-6 弱);SB-3→SB-4;SB-1→SB-2;
-AG-1→AG-2→AG-4;CH-1→CH-2;PD-1→PD-2→PD-3。
+**硬依赖**:SB-5→SB-6/EX-1′;**PR #143 合入 main → EX-1′/SB-6**;XM-1→GA-7(硬);
+XM-1→EX-3/EX-2/SB-6(弱:缺 duration 走 indeterminate/默认比例);SB-3→SB-4;SB-1→SB-2;
+AG-1→AG-2→AG-4;CH-1→CH-2;PD-1→PD-2→PD-3(上线后)。
 **决策阻塞**:GA-5←D-M4-2;GA-6←D-M4-3;AG-4←D-M4-4;AG-5←D-M4-5;EX-2 音频←D-M4-6;
 PD-1←D-M4-7;CH-3←D-M4-8(弱)。
 
-**波次(波内可并行,不同执行者不踩文件)**:
-- Wave 1:**XM-1(最优先)**、SB-1、SB-3、SB-5、AG-1、GA-1+GA-2(一人)、CH-1、PD-1
-- Wave 2:XM-2(接 XM-1 同人)、SB-2、SB-4、GA-3、GA-4、AG-2、AG-3、EX-1′、CH-2、PD-2
-- Wave 3:SB-6、EX-2、EX-3、AG-4、AG-5、GA-5、GA-6、GA-7、CH-3、PD-3
+**波次(波内可并行,不同执行者不踩文件;PD-1~3 已移出 M4 波次,见 E6 裁决)**:
+- Wave 1:**XM-1(最优先)**、SB-1、SB-3、SB-5、AG-1、GA-1+GA-2(一人)、CH-1
+- Wave 2:XM-2(接 XM-1 同人)、SB-2、SB-4、GA-3、GA-4、AG-2、AG-3、EX-1′(#143 合入后)、CH-2
+- Wave 3:SB-6、EX-2、EX-3、AG-4、AG-5、GA-5、GA-6、GA-7、CH-3
 
 **文件冲突热区**:job_queue_service.dart(XM-1/XM-2/AG-4——XM 同窗一人,AG-4 错峰);
-shot_config_inspector.dart(SB-3/SB-4 一人);canvas_top_chrome.dart(SB-6/EX-1′ 先合者定结构);
-app.dart 路由(CH-3 独占);image_config_inspector.dart(CH-2 抽取勿与 P1-17 同窗)。
+shot_config_inspector.dart(SB-3/SB-4 一人);canvas_top_chrome.dart(SB-6 vs
+**PR #143 交付的顶栏结构**——SB-6 跟随);artifacts util 文件(EX-1′ 首建,SB-6 消费);
+app.dart 路由(CH-3 独占);image_config_inspector.dart(CH-2 抽取勿与 P1-17 同窗);
+**Wave 内冲突**:EX-2/EX-3 同改 ffmpeg 服务+对话框(同人或先后)、AG-4/AG-5 同改
+di/providers.dart、GA-3/GA-4 与 GA-5/GA-6 的 gallery 文件组;
+几乎每卡都碰 ARB 双文件,遵循 rebase 惯例。
 **关键路径**:XM-1→EX-3(导出闭环)与 SB-5→SB-6/EX-1′(叙事闭环);只能保一条先保 SB 线+XM-1。
 
-**规模合计**:S×11、S/M×5、M×10、M/L×3、L×4 ≈ 2-3 个 sprint。
+**规模合计**(口径:全部 29 张;XS×1、S×9、S/M×5、M×8、M/L×3、L×3;其中 PD 三卡
+(PD-1 L/PD-2 M/PD-3 S)另计上线后,M4 波次实际 26 张)≈ 2-3 个 sprint。
 
 ## 产品分叉(→ MASTERPLAN §9,D-M4-1~8)
 

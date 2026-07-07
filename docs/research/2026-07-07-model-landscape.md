@@ -21,8 +21,8 @@
 
 | 模型/版本 | 最新版(时间) | API 形态 | 关键能力 | 价格量级 | 接入建议 |
 |---|---|---|---|---|---|
-| Kling | **3.0 世代(2026-02-04):Video 3.0/3.0 Omni/Image 3.0/Image 3.0 Omni;3.0 Turbo(2026-06-17)**;Motion Control 3.0 | kling.ai/dev REST 异步 | 15s 多镜头(单 prompt 2–6 shots 智能分镜)、4K/60fps、原生音频+5 语对口型、首尾帧、元素一致性、动作迁移 | 官方 $0.075/s 起;fal Standard $0.084/s | **内置(已有 v3+omni)——补 Turbo 变体与 Motion Control(P0/P1)** |
-| 通义万相 Wan | 2.6(2026-03-28);**wan2.7 已上百炼**(i2v:首帧/首尾帧/视频续写;r2v 参考生视频) | DashScope 异步 create→poll(与现有基类一致) | 1080p24、15s、多镜头、原生音频+对口型、r2v | $0.04–0.07/s | **内置(已有)——P0 升级 2.6/2.7 模型 ID + 首尾帧/续写任务类型** |
+| Kling | **3.0 世代(2026-02-04):Video 3.0/3.0 Omni/Image 3.0/Image 3.0 Omni;3.0 Turbo(2026-06-17)**;Motion Control 3.0 | kling.ai/dev REST 异步 | 15s 多镜头(单 prompt 2–6 shots 智能分镜)、4K/60fps、原生音频+5 语对口型、首尾帧、元素一致性、动作迁移 | 官方 $0.075/s 起;fal Standard $0.084/s | **内置(已有 v3+omni)——补 Turbo 变体与 Motion Control(P0/P1)**。⚠️ 现有 provider 走 DashScope 渠道(非 kling.ai 官方 API);Turbo/Motion Control 以渠道上架为前提 |
+| 通义万相 Wan | 2.6(2026-03-28);**wan2.7 已上百炼**(i2v:首帧/首尾帧/视频续写;r2v 参考生视频) | DashScope 异步 create→poll(与现有基类一致) | 1080p24、15s、多镜头、原生音频+对口型、r2v | $0.04–0.07/s | **内置(已有)——P0 升级 2.6/2.7 模型 ID + 首尾帧/续写任务类型**(复审勘正:仓库四件已全在 wan2.7,首尾帧/r2v 已实现;P0 仅剩『视频续写』) |
 | Google Veo | 3.1 + 3.1 Fast + **3.1 Lite(最具性价比)** | Gemini API 异步 long-running | **3 张参考图**、首尾帧、**extend 视频延长(1 分钟+)**、原生音频 | Lite ~$0.05/s、Fast $0.15/s、Std $0.40/s | **P1 新内置首选:能力矩阵最贴分镜;可复用 Gemini key 生态** |
 | OpenAI Sora | sora-2 / pro | Videos API 异步 | — | $0.10–0.50/s | **不接(红线):2026-03-24 宣布弃用,API 2026-09-24 关停,无后继** |
 | Runway | Gen-4.5;Aleph 2(v2v 编辑) | 开发者 API credits | 高质量运动、v2v | ~$0.1–0.25/s(口径冲突) | 不接原生;聚合器(P2) |
@@ -56,7 +56,8 @@
 ## 行动建议(已转任务卡,见 MASTERPLAN §6)
 
 - **P0**:OpenAI 升级 gpt-image-1.5/2(死线 2026-10-23);移除一切 Sora 规划;Gemini 升级 NB2/Pro + 多参考图;
-  Wanx 升级 2.6/2.7 + 首尾帧/续写/r2v 任务;Kling 3.0 Turbo 入列。
+  Wanx(复审勘正:仓库四件已全在 wan2.7,首尾帧/r2v 已实现)仅剩补『视频续写』任务类型;
+  Kling 3.0 Turbo 入列(⚠️ 以 DashScope 渠道上架为前提,见视频表)。
 - **P1**:Veo 3.1(Lite);OpenRouter 图像模板(可配路径);Recraft 写入已验证端点文档;Seedream/Seedance 经模板。
 - **P2**:OpenRouter 视频模板(优先)或 fal 队列模板;Vidu 经百炼验证。
 - **横切**:现有 OpenAI 兼容模板仅 t2i、maxRefImages=0——参考图工作流需模板扩展(`/images/edits`/多图输入);

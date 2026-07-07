@@ -70,7 +70,7 @@
 - macOS 公证:PG 几十个可执行+dylib 逐个 `codesign -o runtime`(CI inside-out 脚本化);数据目录写
   Application Support(bundle 内不可写且写了破签名);常规运行无需特殊 entitlement(无 JIT 构建)。
 - 其他:Windows PG 只能 TCP 127.0.0.1(防火墙首启弹窗+端口冲突处理);macOS 可 unix socket 免网络面;
-  postmaster.pid 崩溃残留自愈路径要有(app_teardown 已有序关停,补"上次未清理"恢复)。
+  postmaster.pid:stale pid 自愈已具备(pg_controller 复用/清理逻辑),无需新做。
 
 ## 来源(节选)
 

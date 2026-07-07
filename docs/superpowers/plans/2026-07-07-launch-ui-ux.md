@@ -1,5 +1,6 @@
 # 上线规划:UI/UX 完整性任务卡(2026-07-07)
 
+> 本文冻结于 2026-07-07(main@b2be25e)。开卡前先按当前 main 复核 file:line;完成状态记 BOARD/MASTERPLAN,不回写本文。
 > MASTERPLAN §4 的明细。基于 main@b2be25e 逐屏核实。规模:S≈半天 / M≈0.5–2天 / L≈2–5天 / XL≈1周+。
 > 每卡默认继承铁律:文案/样式零硬编码、ARB 双语同 commit、widget 测试用 ProviderScope overrides、
 > golden 走 `test/_harness/golden_scaffold.dart`、错误只捕 InkError 并经 `l10nError` 渲染。
@@ -19,13 +20,19 @@
 9. a11y:高对比主题+字号缩放已有;**focusRing token 定义了但全仓零消费**(键盘焦点不可见)。
 10. **死 UI 清单**:canvas_left_toolbar 8 个空 onTap 图标、⌘K chip×2、顶栏 ▶、avatar×2、
     sidebar footer 4 icon、ARCHIVE 行硬编码 '0' 不可点、SectionLabel '+'。
+    补注:library_sidebar 树行折叠箭头与根行同属「看似可交互」边缘,CV-1 的扫空 onTap
+    quality 测试统一判定口径。
 11. **渲染队列无取消入口(重要)**:带 cancel 的 `JobQueuePanel` 未在任何屏挂载;实际挂的
     `CanvasRenderQueue` 无 cancel,失败行直接消失。后端 cancel 链路+测试齐全。
 12. batch slot error 只有图标无文案(errorCode 字段可映射)。
 13. AsyncValue 吞 error 点位:batch_results_grid:25、image_result_inspector:23、canvas_view:390-394、
-    node_inputs_section:45-46、image_config_inspector:504/651/654/676/949-968、lane_toolbar:22。
+    node_inputs_section:45-46、image_config_inspector:504/651/654/676/949-968、lane_toolbar:22;
+    复审补充:library_sidebar:45(error→shrink)、canvas_view:70(_LoadError 渲染裸 toString,
+    违 l10nError 铁律);canvas_screen:26 / inspector_status_panel:81 为有意兜底,豁免。
 14. custom provider 只能手编 json+重启;API Keys 行对 custom 显示原始 id。
-15. gallery 视频 tile 图标占位;thumbnailService 已存在(video_node_body 在用)可复用。
+15. gallery 视频 tile 图标占位;thumbnailService 的唯一消费方是 JobQueueService(生成时抽帧
+    落盘);video_node_body 读的是已持久化 thumbnailUrl+FileResolver——画廊应走同一路线,
+    而非现场抽帧(见 GAP-5 让渡)。
 16. ffmpeg 缺失走通用 errorLocalIO 文案;ARB 无 ffmpeg 相关 key;设置页无探测状态。
 17. i18n 键集 en/zh 各 273 完全一致;质量(硬翻味/native polish)待人工 pass。
 18. camera 运镜:9 个 provider `supportedCameras` 全空,控件永久隐藏(带而不用)。
@@ -74,7 +81,9 @@
 - 风险:为后续"运行时增删"留接口,本卡明确不做热生效。
 
 ### GAP-2 软删项目回收站 UI(M)
-- 仓储 restore/listTrashed 已就绪;sidebar ARCHIVE 死行一起还。点 ARCHIVE→已删项目列表
+- **≡ backend LB-15,同一工作,实现细节两卡互补,排期一处。**
+- 前置:canvas 侧无 listTrashed——先补 `CanvasRepository.listTrashedByProject`(接口+PG+fake)。
+- project 仓储 restore/listTrashed 已就绪;sidebar ARCHIVE 死行一起还。点 ARCHIVE→已删项目列表
   (菜单:恢复;首版不做永久删除并在卡里显式排除——涉磁盘产物清理策略)+ `_ManageCanvasesDialog`
   加已删画布折叠段。验收:删→计数+1→恢复→回网格;controller+widget 测试;硬编码 '0' 消灭。
 
@@ -85,24 +94,26 @@
 
 ### GAP-4 batch slot error 可读化(S)
 - error tile 包 Tooltip(errorCode→l10nError,未知退 errorUnknown)+一行 danger caption;
-  排 GAP-3 后(同文件)。
+  排 GAP-3 后(同文件)。errorCode 为 InkErrorCode.wire 字符串——链路:wire →
+  InkErrorCode.fromWire(**容错包裹,未知 wire 勿让 firstWhere 抛**)→ kInkErrorMessageKeys → 文案。
 
-### GAP-5 Gallery 视频缩略图+播放(M)
-- gallery_tile 视频分支接 thumbnailServiceProvider(模式抄 video_node_body);点击复用
-  showVideoLightbox;时长写侧若超范围单列小卡(features 规划有对应卡)。
-  验收:缩略显示、可播;fake ThumbnailService 测试;真机人工回归(media_kit 测试环境限制)。
+### GAP-5 Gallery 视频缩略图+播放(让渡指针)
+- **让渡 ≡ features GA-1+GA-2(读已落库 thumbnail_url + FileResolver 路线,非现场抽帧——
+  thumbnailService 唯一消费方是 JobQueueService,见 §0.15);本卡仅指针,不单独排期。**
 
-### GAP-6 导出接续:narrative 链自动排序(登记,导出 UI 合入后立项)
-- 导出片段顺序按 shot→video narrative 边拓扑排序预填;与序列预览共享逻辑。
+### GAP-6 导出接续:narrative 链自动排序(让渡指针)
+- **让渡 ≡ features EX-1′(#143 合入后可开工);本卡仅指针,不单独排期。**
+  导出片段顺序按 shot→video narrative 边拓扑排序预填;与序列预览共享逻辑。
 
 ### GAP-7 Inspector widget 测试欠账(S–M)
-- BOARD 行 92:预设点选应用 + 成本文案断言,仿同文件参考图区/角色区测试模式补齐。
+- BOARD 债表「M2 Inspector 区 widget 级测试」行(行号易碎,以文字锚为准):预设点选应用 +
+  成本文案断言,仿同文件参考图区/角色区测试模式补齐。
 
 ### GAP-8 渲染队列取消入口(M,**建议提级上线前**)
 - 为什么:跑错 prompt 的长视频任务只能干等烧钱;后端全齐只差 UI。
 - 怎么做:canvas_render_queue 的 _JobRow 非终态加 cancel icon(实现参考未挂载的
-  job_queue_panel.dart:234-261);**顺带处置 JobQueuePanel:挂载或删除**(死代码;删则 BOARD
-  P1-x2 错误映射双源债自动清);失败行保留 N 秒或加"最近失败"折叠段。
+  job_queue_panel.dart:231-262,cancel 分支+_cancel);**顺带处置 JobQueuePanel:挂载或删除**
+  (死代码;删则 BOARD P1-x2 错误映射双源债自动清);失败行保留 N 秒或加"最近失败"折叠段。
 - 验收:running 可取消→cancelled→slot 遵守"保留已成功"拍板;widget 测试 override jobsRegistry。
 
 ## 3. 画布方向:不是选型,是 V1 保真度收口
@@ -127,8 +138,8 @@ frameless chrome 全落地)。V3/V4/V5 换装成本 XL 且与既定反毛玻璃�
 - CV-2 节点类型色条(S–M,d2 批准后):单一 lookup 进 `canvas/util/`。
 - CV-3 Inspector 形态落定(M 浮动/0 维持)。
 - CV-4 左工具栏实装第一批(M–L,d4-A 时):select/pan/add-node,其余裁;依赖 PL-2。
-- CV-5 视口 chrome(M,不含 minimap):zoom % 指示+[-][+][fit](TransformationController 提升);
-  minimap 后置(L)。
+- CV-5 视口 chrome(M,不含 minimap):zoom % 指示+[-][+][fit](**新建** TransformationController
+  挂到 InteractiveViewer——现无 controller,以成员/provider 持有);minimap 后置(L)。
 
 ## 4. 打磨
 
@@ -138,7 +149,8 @@ frameless chrome 全落地)。V3/V4/V5 换装成本 XL 且与既定反毛玻璃�
 
 ### PL-2 画布快捷键基建+第一批(M)
 - canvas_screen 包 CallbackShortcuts:Delete/Backspace=删除选中(走 PL-4a 语义)、Esc=退 link 模式/
-  清选中、⌘A 全选、⌘+/−/0 缩放(TransformationController 提升为成员/provider)、空格 pan 可后置。
+  清选中、⌘A 全选、⌘+/−/0 缩放(**新建** TransformationController 挂到 InteractiveViewer——
+  现无 controller,以成员/provider 持有)、空格 pan 可后置。
 - 验收:五组键位 sendKeyEvent 测试;**inspector 输入框聚焦时不劫持**(焦点链测试必须有——主要坑)。
 - 依赖:PL-4a。
 
@@ -152,8 +164,9 @@ frameless chrome 全落地)。V3/V4/V5 换装成本 XL 且与既定反毛玻璃�
 
 ### PL-4b 通用 undo/redo 栈(XL,**上线后**,勿塞上线范围)
 - command 模式逆操作栈,per-canvasId controller,⌘Z/⌘⇧Z 挂 PL-2;首版只覆盖 move/add/remove
-  node/edge;inspector 字段不进栈。**前置依赖:canvas_nodes_controller 乐观快照并发债(BOARD 行 87)
-  同窗修**,否则 undo 放大丢更新竞态。
+  node/edge;inspector 字段不进栈。**前置依赖:canvas_nodes_controller 乐观快照并发债
+  (BOARD 债表「canvas_nodes_controller 乐观新增…」行,行号易碎,以文字锚为准)同窗修**,
+  否则 undo 放大丢更新竞态。
 
 ### PL-5 多选群体操作(M):计数 chip 扩操作条(群删走 PL-4a);框选 marquee 独立 M 可后置。
 ### PL-6 窗口状态记忆(S–M):偏好加 windowBounds/maximized(手写类,勿 freezed);teardown 时
@@ -171,12 +184,26 @@ frameless chrome 全落地)。V3/V4/V5 换装成本 XL 且与既定反毛玻璃�
 ## 6. 排序
 
 **上线前必做**(阻断"陌生用户第一天"或伤可信度):
-CV-1(先做,纯减法)→ ON-1+ON-2 → GAP-8(资金相关唯一缺口)→ PL-4a → PL-2+PL-1(二选一落定)
+(D-7 d4/d5/d6 拍板 + **#143 合入**后)CV-1(纯减法)→ ON-1+ON-2 → GAP-8(资金相关唯一缺口)
+→ PL-4a → PL-2+PL-1(二选一落定)
 → GAP-3+GAP-4 → GAP-1 → GAP-2 → PL-6 → ON-3(等导出 UI)+ON-4+i18n pass → GAP-7+ON-5(质量闸随窗)。
 
 **上线后首迭代起**:PL-4b(等并发债)、CV-4/CV-5(minimap)、CV-2/CV-3(拍板后随时)、PL-3(尽早)、
-PL-5 框选、PL-7、PL-8、GAP-5(视频用户多则提级)、GAP-6(等导出合入)、d3 camera 填表(独立轨道)。
+PL-5 框选、PL-7、PL-8、d3 camera 填表(独立轨道);GAP-5/GAP-6 已让渡为指针
+(≡ features GA-1+GA-2 / EX-1′,不在本文排期)。
 
-**关键依赖链**:PL-4a → PL-2 → PL-5;CV-1 与 PL-1 先拍板;ON-3/GAP-6 等导出 UI;PL-4b 等 BOARD 行 87。
+**关键依赖链**:PL-4a → {PL-2, PL-5}(PL-5 对 PL-2 无硬依赖,⌘A 仅可选增强);CV-1 与 PL-1 先拍板;
+ON-3/GAP-6 等导出 UI(#143);PL-4b 等 BOARD 债表「canvas_nodes_controller 乐观新增…」行并发债。
 **风险**:与导出 UI 分支的文件冲突面(排其后);新偏好字段一律手写类避开 build_runner;
 勿再为 5 版 mockup 开选型会。
+
+## 附录:PR #143 合入后需更新
+
+1. §0.16「ARB 无 ffmpeg key」失效——#143 新增 `exportVideoFfmpegMissing`;ON-3 改为
+   复用/对齐该键防双源。
+2. ffmpeg 缺失文案半失效:导出对话框已专门映射;ON-3 剩余范围=设置页探测行。
+3. §0.17 键数 273→287(#143 净增 14 键)。
+4. CV-1 执行须基于 #143 后的 canvas_top_chrome(勿误裁功能性导出按钮;3 个顶栏测试文件同步)。
+5. InkInput 已有 enabled 参数(GAP-1/ON-1 可直用)。
+6. ON-3/GAP-6 由「等待」转「可开工」。
+7. i18n pass 基数含 14 个 exportVideo* 键。

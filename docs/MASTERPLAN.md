@@ -84,24 +84,32 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 | E1 Storyboard(核心差异化) | 粘贴脚本→shot 链;镜头参数传导;图/视频双直达;序列预览与导出同序 | SB-1~6 |
 | E2 画廊 | 视频缩略/播/时长;筛选;存角色;发送画布;删除(文件+DB 同步收敛) | GA-1~7 |
 | E3 聚合器 | 设置页可视化 CRUD+key 校验;≥2 协议模板;(二期)新增热生效 | AG-1~5 |
-| E4 导出 | narrative 自动排序(主体已随 PR #143 交付,剩 EX-1′)+转码归一+进度取消 | EX-1′~3 |
+| E4 导出 | narrative 自动排序(主体已随 PR #143 落地,**待合入**;剩 EX-1′)+转码归一+进度取消 | EX-1′~3 |
 | E5 角色进阶 | 视频生成自动带角色图;video inspector 角色区;角色库管理页 | CH-1~3 |
-| E6 项目复制 | 一键完整克隆(id 全重写+磁盘复制),失败零残留 | PD-1~3 |
+| E6 项目复制 | ⚠️ **裁决:排上线后**(BOARD 原判"单独立项";≡ backend BP-11,复用 LB-12 导入机器后
+  成本减半)。features 的 PD-1~3 保留为**实现细化参考**,不进 M4 波次;若用户要提前,依赖 LB-12 | PD-1~3(细化) |
 | E7 跨模块 metadata | duration/width/height/seed 回填 result 与 batch slot(**多 epic 阻塞点**) | XM-1~2 |
 
-**波次**(波内并行、不同执行者不踩文件;冲突热区与硬依赖见明细):
-- Wave 1:**XM-1(最优先,三处下游)**、SB-1、SB-3、SB-5、AG-1、GA-1+2、CH-1、PD-1
-- Wave 2:XM-2(与 XM-1 同人)、SB-2、SB-4、GA-3、GA-4、AG-2、AG-3、EX-1′、CH-2、PD-2
-- Wave 3:SB-6、EX-2、EX-3、AG-4、AG-5、GA-5、GA-6、GA-7、CH-3、PD-3
+**波次**(波内并行、不同执行者不踩文件;冲突热区与硬依赖见明细;**PR #143 合入是 EX-1′/SB-6 的硬前置**):
+- Wave 1:**XM-1(最优先,三处下游)**、SB-1、SB-3、SB-5、AG-1、GA-1+2、CH-1
+- Wave 2:XM-2(与 XM-1 同人)、SB-2、SB-4、GA-3、GA-4、AG-2、AG-3、EX-1′(#143 合入后)、CH-2
+- Wave 3:SB-6、EX-2、EX-3、AG-4、AG-5、GA-5、GA-6、GA-7、CH-3
 
-规模合计 ≈ 2-3 个 sprint;关键路径 = XM-1→EX-3(导出闭环)与 SB-5→SB-6/EX-1′(叙事闭环),
-只能保一条先保 SB 线 + XM-1。**开 Wave 前先拍 §9 的 D-M4 系分叉**(GA-5/6、AG-4/5、EX-2、PD-1 被阻塞)。
+卡数口径:E1-E7 共 29 张(EX-1′ 为增量卡;PD-1~3 已移出 M4);规模 ≈ 2-3 个 sprint。
+关键路径 = SB-5→SB-6/EX-1′(叙事闭环);XM-1→EX-3 为**弱**依赖(duration 缺失→indeterminate 进度,
+不阻塞)。只能保一条先保 SB 线 + XM-1。**开 Wave 前先拍 §9 的 D-M4 系分叉**
+(SB-1、GA-5/6、AG-4/5、EX-2 被阻塞)。
 
 ## 3. M5「能上生产」——后端/数据安全/性能任务卡
 
-> 全量任务卡(LB-01~21 + PL-01~16 + 24 行债表处置)见
+> 全量任务卡(LB-01~24 + BP-01~16 上线后系 + 24 行债表处置)见
 > [`superpowers/plans/2026-07-07-launch-backend.md`](superpowers/plans/2026-07-07-launch-backend.md)。
-> 与 UI 卡去重:LB-06≡GAP-3、LB-15≡GAP-2、LB-05 联动 GAP-8——同一工作只排一张。
+> ⚠️ 前缀说明:backend 上线后卡已改用 **BP-xx** 前缀(原 PL-xx),与 UI 打磨卡 PL-1~8 区分。
+> 与 UI 卡去重:LB-06≡GAP-3、LB-15≡GAP-2、LB-05 联动 GAP-8——同一工作只排一张;
+> Inspector 测试欠账裁决为**上线前**(UI GAP-7 为准,backend 债 #19 让渡)。
+> 严格复审新增三卡:**LB-22 备份还原路径**(SCRAM 后用户无法手工 pg_restore——app 内还原入口,
+> beta 前 M)、**LB-23 内存基线**(ImageCache 上限/长会话水位,S-M)、**LB-24 网络代理支持**
+> (dio 不读系统代理,中文用户连不上海外模型商——`HTTPS_PROXY` env 先行 + 设置页代理区,上线前 M)。
 
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、
 上线后 9、永久接受 3(buildUpdate 白名单/InkWindowChrome/displayName 英文)。
@@ -138,7 +146,9 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
 4. **PL-4a 删除防误伤垫层**(S)——节点/边删除改「已删除[撤销]」snackbar(软删已支持,
    是真 undo 的最小子集)。**PL-4b 通用 undo/redo(XL)明确排上线后**,前置=BOARD 行 87 并发债。
 5. **PL-2 快捷键第一批**(M:Delete/Esc/⌘A/⌘±0)+ **PL-1 ⌘K 做真或摘牌**(二选一,D-8)。
-6. **GAP-3 AsyncValue error 态统一**(M,新共享件 InkAsyncSlot)+ **GAP-4 slot error 文案**(S)。
+6. **GAP-3 AsyncValue error 态统一**(M,新共享件 InkAsyncSlot;清单含复审补充的
+   library_sidebar:45 与 canvas_view 裸 toString 站点)+ **GAP-4 slot error 文案**(S,
+   注意 errorCode 是 wire 串,需经 InkErrorCode.fromWire 容错转 messageKey)。
 7. **GAP-1 设置页 Custom Provider 编辑 UI**(L,守住"重启生效"边界)。
 8. **GAP-2 软删项目回收站 UI**(M,顺带激活 ARCHIVE 死行)。
 9. **PL-6 窗口状态记忆**(S–M)。
@@ -147,7 +157,13 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
 
 **上线后首迭代起**:PL-4b undo 栈、CV-4 左工具栏实装/CV-5 视口 chrome(zoom 指示+fit,minimap 后置)、
 CV-2/CV-3(节点色条/Inspector 浮动,拍板后随时)、PL-3 右键菜单(建议尽早)、PL-5 框选群拖、
-PL-7 焦点环、PL-8 文件拖入(与画廊拖入统一设计)、GAP-5 画廊视频缩略图、GAP-6 narrative 自动排序。
+PL-7 焦点环、PL-8 文件拖入(与画廊拖入统一设计)。
+**让渡声明**:画廊视频缩略图/播放 ≡ features **GA-1+GA-2**(M4 Wave 1,技术路线以 GA 为准:
+读已落库 thumbnail_url,非现场抽帧);narrative 自动排序 ≡ features **EX-1′**(GAP-5/GAP-6 仅指针)。
+
+**排序修正(复审)**:CV-1 虽是纯减法,但有两道门——①D-7 的 d4/d5/d6 拍板;②**PR #143 合入**
+(CV-1 要动的 canvas_top_chrome 正被 #143 修改)。实际首发顺序:拍板 → #143 合入 → CV-1。
+UI 文档内 BOARD 行号引用一律以**文字锚**为准(本 PR 自己给 BOARD 加了两行,行号已位移)。
 
 **重要澄清**:画布 UI 方向**不存在五选一**——mockups 索引明标 Selected: V1 Amber Noir,代码就是它;
 真正的决策是 V1 spec 保真度收口的 7 个子项(见 §9 D-7),勿再开选型会。
@@ -162,9 +178,20 @@ PL-7 焦点环、PL-8 文件拖入(与画廊拖入统一设计)、GAP-5 画廊�
 alpha.6 错挂 "Latest";PG 分发源未配(干净机装不上);good-first-issue 池为 0。
 
 **模型侧可立即并行、零用户依赖**:PKG-1 流水线首演练(S)、PKG-2A PG 上游直拉(M)、
-PKG-5 安装文档(S)、PKG-6 Release 卫生(XS)、QG-1 回归清单 v2(S)、QG-4 升级演练测试(M)、
-QG-6 checksums+清单落地(S)、UPD-1 应用内检查更新(M)、WEB-1 Pages 官网(M)、
-WEB-2 示例模板(M)、COM-1 gfi 池重建(S)、COM-2 Issue 模板对账(XS)、COM-3 CONTRIBUTING 英文摘要(S)。
+PKG-5 安装文档(S,复审补充:Defender/EDR 排除段、卸载与数据、迁移新机 SOP、零遥测承诺句)、
+PKG-6 Release 卫生(XS)、QG-1 回归清单 v2(S)、QG-6 checksums+清单落地(S)、
+UPD-1 应用内检查更新(M,新增依赖 url_launcher 需评审)、WEB-1 Pages 官网(M,FAQ 补
+「为什么没有 Linux」)、WEB-2 示例模板(M)、COM-1 gfi 池重建(S,候选与 backend W0/W1 卡
+双占用需协调)、COM-2 Issue 模板+SECURITY.md scope 对账(XS)、COM-3 CONTRIBUTING 英文摘要(S)。
+(QG-4 升级演练从本清单**移除**——依赖 D-4/U7 拍板,非零用户依赖。)
+
+**复审新增卡(见 release 明细)**:**LEG-1 第三方许可聚合**(M,⚠️ libmpv LGPL 义务已随 alpha.9
+分发触发——核实 media_kit 构建变体、建 NOTICE/THIRD-PARTY、关于区许可入口、字体 OFL 文本);
+**PKG-8 winget manifest**(S,依赖签名)、**PKG-9 Homebrew cask**(S,含 depends_on ffmpeg);
+**AST-1~3 上线素材制作**(demo 视频依赖 SB-6/EX-3/WEB-2;HN 答辩稿+karma 前置=日历时间项);
+QG-2 矩阵加 **CJK 用户名 VM** 一列(中文用户首启失败头号现场);
+beta 准入追加第 9 条:**第三方许可 NOTICE 上线**。用户必办追加 **U11**(HN 账号 karma 预热)、
+**U12**(B站/小红书账号,若走中文渠道)。
 
 **用户必办**(U1-U10 全表见明细文档;三条互不阻塞的关键路径):
 - **U1** Apple Developer($99/年)+ 证书 6 值进 Secrets → 解锁 macOS 签名公证
@@ -175,12 +202,20 @@ WEB-2 示例模板(M)、COM-1 gfi 池重建(S)、COM-2 Issue 模板对账(XS)、
 
 ## 6. 模型接入路线(2026-07 调研,全表与来源见 [`research/2026-07-07-model-landscape.md`](research/2026-07-07-model-landscape.md))
 
+> MOD 系为方向卡(一行制):**开工前须按附录模板扩成完整任务卡**(做法/验收/依赖);
+> P0=M4 窗口内完成(gpt-image-1 有死线),P1=beta 前后,P2=1.0 前后评估。
+
 **P0(上线前,全部是现有 provider 的模型 ID/任务类型升级,零新协议)**
-- MOD-1 OpenAI 升级 gpt-image-1.5/2——**gpt-image-1 于 2026-10-23 弃用,有死线**(S)。
+- MOD-1 OpenAI 升级 gpt-image-1.5/2——**gpt-image-1 于 2026-10-23 弃用,有死线**(S;
+  现值 gpt-image-1 已核实)。
 - MOD-2 从一切规划移除 Sora——API 2026-09-24 关停,无后继(0)。
-- MOD-3 Gemini 升级 Nano Banana 2/Pro + 多参考图(≤14 张,5 人角色一致性——分镜第一刚需)(M)。
-- MOD-4 Wanx 升级 wan2.6/2.7 模型 ID + 首尾帧/视频续写/r2v 任务类型(现有 DashScope 基类零协议改动)(M)。
-- MOD-5 Kling 3.0 Turbo 变体入列(现有 provider 加模型枚举)(S)。
+- MOD-3 Gemini 升级 Nano Banana 2/Pro + 多参考图(≤14 张,5 人角色一致性——分镜第一刚需)(M;
+  现值 gemini-2.5-flash-image-preview 已核实)。
+- MOD-4 Wanx **补「视频续写」任务类型**(S-M)——复审勘正:四件已全在 wan2.7、首尾帧/r2v 均已实现,
+  调研的"升级模型 ID"项不成立,勿重复立项。
+- MOD-5 Kling 3.0 Turbo 变体(S)——⚠️ 现有 provider 走 **DashScope 渠道**非 kling.ai 官方 API;
+  Turbo/Motion Control 可行性取决于 DashScope 上架,否则等于新开官方 API provider(ROADMAP 已有
+  该 Open 项)。Motion Control 3.0:P2 观察,渠道上架再评估。
 
 **P1(上线后第一批)**
 - MOD-6 Veo 3.1(含 Lite):首尾帧+3 参考图+extend+原生音频,能力矩阵最贴分镜;复用 Gemini key 生态(L)。
@@ -188,20 +223,24 @@ WEB-2 示例模板(M)、COM-1 gfi 池重建(S)、COM-2 Issue 模板对账(XS)、
   一个模板解锁 30+ 模型(M);Recraft 已验证 OpenAI 兼容,零代码写入「已验证端点」文档(XS)。
 - MOD-8 自定义模板扩展参考图输入(`/images/edits`/多图)——现有模板仅 t2i、maxRefImages=0(M)。
 
-**P2**:OpenRouter 视频模板(优先)或 fal 队列模板;Vidu Q3 经阿里百炼通道验证(复用 DashScope);
-Seedream/Seedance 经模板,量大再原生。
+**P1(续)**:Seedream/Seedance 经 OpenRouter/模板接入(调研定级 P1——性价比与多参考能力第一梯队;
+原稿误归 P2,已对齐),量大再原生 Volcano Ark。
+**P2**:OpenRouter 视频模板(优先)或 fal 队列模板;Vidu Q3 经阿里百炼通道验证(复用 DashScope)。
 
 **能力趋势对产品的含义**(功能规划输入):multi-shot 单节点产出"一场戏"、音频开关/音轨概念、
 参考类型体系(角色/道具/场景/风格/音色)、视频延长"接着拍"——纳入 M4 各 epic 设计考量。
 
 ## 7. 里程碑准入清单(Definition of Done)
 
-**M4「能力完整」**:各 epic 的"完整态定义"达成(待 §2 填充);M4 期间可随时发 alpha tag。
-**beta.1 准入**(发布工程 8 条,详见明细文档):双平台含 PG 安装物 ✓ / macOS 签名公证 ✓ /
-Windows 签名产物 ✓ / 应用内检查更新 ✓ / 数据政策拍板+升级演练 ✓ / 回归清单双平台一轮 ✓ /
-安装文档上线 ✓ / 导出 UI+画廊可用 ✓。
+**M4「能力完整」出口**:§2 表中各 epic 的"完整态定义"达成(E6 项目复制除外,已裁决上线后);
+M4 期间可随时发 alpha tag。
+**M5「能上生产」出口 = beta.1 准入**(发布工程 8+1 条,详见明细文档):双平台含 PG 安装物 ✓ /
+macOS 签名公证 ✓ / Windows 签名产物 ✓ / 应用内检查更新 ✓ / 数据政策拍板+升级演练 ✓ /
+回归清单双平台一轮 ✓ / 安装文档上线 ✓ / 导出 UI+画廊可用 ✓ / **第三方许可 NOTICE 上线 ✓(复审补)**。
+**M6「公开上线」出口**:官网可访问 + 素材三件套(AST 系)就绪 + 冷启动首发(§1.4 渠道 1-2)执行完毕。
 **1.0**:script→storyboard→generate→export 贯通;undo/redo;软删恢复 UI;检查更新稳定 ≥1 beta 周期;
-日志一键打包;真机帧率基线达标;无 P0/P1 open bug;beta 全周期零数据事故;官网稳定;SLA 演练过一次。
+日志一键打包;真机帧率基线达标;**Windows 签名信誉建立;发布节奏公开**;无 P0/P1 open bug;
+beta 全周期零数据事故;官网稳定;SLA 演练过一次。
 
 ## 8. 远期(1.0 后,不排卡只记方向)
 
@@ -218,9 +257,25 @@ Windows 签名产物 ✓ / 应用内检查更新 ✓ / 数据政策拍板+升级
 
 ## 9. 决策区(需用户拍板,格式:选项+推荐;拍板后记 BOARD 并解锁对应卡)
 
+**决策→阻塞→最晚拍板点速查**:
+
+| 决策 | 阻塞 | 最晚拍板点 |
+|---|---|---|
+| D-2 许可证 / D-3 商业承诺 / D-1 口号 | README/官网/公告措辞 | M6 素材制作前 |
+| D-4 数据升级政策(=U7) | QG-4/5、SCRAM 覆盖面、**每个 schema PR**、LB-12 manifest 策略 | 下一个 schema 变更前 |
+| D-5 Win 安装物(=U6)/ D-6 Win 证书(=U2) | PKG-4、beta 准入 | PKG-4 实测后即拍 |
+| D-7 画布保真度 d4-d7 / D-8 ⌘K | CV-1(排序第一位) | CV-1 开工前 |
+| D-M4-1~8 | GA-5/6、AG-4/5、EX-2、SB-1、CH-3 | M4 对应 Wave 开工前 |
+| D-BE-1/2 | LB-13A、LB-11/12 | 对应卡开工前 |
+| D-9 任务状态载体 / D-10 数据目录选址 | 规划运维 / LB-10 备份路径与安装文档 | 首个 M4/M5 卡完成前 / LB-10 前 |
+
 - **D-1 主口号与定位措辞**:A. storyboard-first 新口号(推荐,见 §1.2)/ B. 维持现口号。
-- **D-2 开源许可证**:A. Apache 2.0(宽松,同 InvokeAI,利采用)/ B. AGPL-3.0(同 NodeTool,
-  防云厂商白嫖)。影响:云增值路线选 B 更安全;纯社区路线 A 摩擦最小。**上线前必须拍**。
+- **D-2 开源许可证**:⚠️ **现状=仓库已以 MIT 公开发布**(LICENSE 文件 + README badge,alpha.9 有
+  公开分发物)——已发布版本的 MIT 授权不可撤回,既有 clone/fork 永久保留 MIT 权利;变更只对未来
+  版本有效,且需外部贡献者(如有)同意,社区观感风险("rug pull" 指控)正撞冷启动叙事。
+  选项:A. **维持 MIT**(推荐——摩擦最小,与 BYO-key 社区定位相容;"防白嫖"对存量代码本就达不成)/
+  B. 未来版本转 Apache 2.0(增加专利条款,迁移成本低)/ C. 未来版本转 AGPL(防云厂商,
+  但保护不了已 MIT 化的全部存量,且观感成本最高)。**上线前拍**。
 - **D-3 商业模式承诺**:A. 个人永久全功能免费 + 远期团队版(推荐)/ B. 全免费+捐赠。
   决定 README/官网的承诺措辞,一旦公开难收回。
 - **D-4 数据升级政策(=QG-5,牵动铁律文本)**:A(推荐). 政策重定义为「单线前向迁移是唯一升级路径;
@@ -249,7 +304,14 @@ Windows 签名产物 ✓ / 应用内检查更新 ✓ / 数据政策拍板+升级
 - **D-BE-1 purge retention 语义**:A 有 success slot 的 job 永不 purge(推荐,保画廊)/
   B purge 连文件删(接受 30 天窗口)。
 - **D-BE-2 项目导入是否携带 jobs**:A 仅携带拥有 success slot 的终态 jobs(推荐,slot FK 需要)/
-  B 全舍弃(导入项目画廊不可见)。
+  B 全舍弃(导入项目画廊不可见)。⚠️ LB-11 卡体现按 A 案写就,拍 B 需改卡。
+
+**新增(严格复审补充)**:
+- **D-9 任务状态载体**:A. markdown 勾选(BOARD+MASTERPLAN,现状)(推荐起步)/
+  B. GitHub Projects/issue 化(100+ 卡可视化好,维护重)。
+- **D-10 数据目录选址**:A. 维持 `~/InkFrame`(现状,直观)/ B. 迁 `%LOCALAPPDATA%`
+  (调研建议,降杀软误报面;迁移成本+文档改动)。牵动 LB-10 备份路径与 PKG-5 文档;
+  **无论选谁,PKG-5 都要写 Defender 排除建议**。
 
 ## 10. 文档地图
 
@@ -261,8 +323,13 @@ Windows 签名产物 ✓ / 应用内检查更新 ✓ / 数据政策拍板+升级
 | [`research/2026-07-07-release-engineering.md`](research/2026-07-07-release-engineering.md) | 签名公证/更新/ffmpeg 合规/遥测/内嵌 PG 调研(含来源) |
 | [`superpowers/plans/2026-07-07-launch-ui-ux.md`](superpowers/plans/2026-07-07-launch-ui-ux.md) | UI/UX 全量任务卡(ON/GAP/CV/PL 系) |
 | [`superpowers/plans/2026-07-07-launch-release-engineering.md`](superpowers/plans/2026-07-07-launch-release-engineering.md) | 发布工程全量任务卡(PKG/UPD/QG/WEB/COM 系)+ alpha.10 SOP + U1-U10 |
-| [`superpowers/plans/2026-07-07-launch-backend.md`](superpowers/plans/2026-07-07-launch-backend.md) | 后端/数据安全全量任务卡(BE 系) |
-| [`superpowers/plans/2026-07-07-launch-features.md`](superpowers/plans/2026-07-07-launch-features.md) | 功能模块 epic 全量任务卡(FE 系) |
+| [`superpowers/plans/2026-07-07-launch-backend.md`](superpowers/plans/2026-07-07-launch-backend.md) | 后端/数据安全任务卡(LB-xx 上线前 / BP-xx 上线后) |
+| [`superpowers/plans/2026-07-07-launch-features.md`](superpowers/plans/2026-07-07-launch-features.md) | 功能 epic 任务卡(SB/GA/AG/EX/CH/PD/XM 系) |
+
+> ⚠️ 前缀警示:UI 打磨卡 **PL-1~8** 与 backend 上线后卡 **BP-01~16**(原 PL-xx,已改名)无关;
+> 引用任务卡一律带文档名。规模刻度全集:XS<2h / S≈半天 / M≈0.5-2天 / L≈2-5天 / XL≈1周+。
+> 4 份明细 plan = **冻结于 2026-07-07 的开工快照**:开卡前先按当前 main 复核 file:line,
+> 完成状态只记 BOARD/MASTERPLAN,不回写明细。
 
 ---
 

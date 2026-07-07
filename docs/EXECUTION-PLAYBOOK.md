@@ -141,6 +141,7 @@
 | `docs/ARCHITECTURE.md` / `PROVIDER-API.md` / `DATABASE.md` | 契约(签名级) | 改契约的 PR 内同步 |
 | `docs/adr/` | 决策记录;修订走"修订记录"段(见 0008/0009 先例),索引加 rev 注记 | 架构级决策变化时 |
 | `lib/features/*/README.md` | 模块速查(文件清单/数据流) | 模块内增删文件同 commit |
+| 4 份 launch 明细 plan(`docs/superpowers/plans/2026-07-07-launch-*.md`) | 冻结开工快照(2026-07-07) | 永不回写完成状态;开卡前按当前 main 复核 file:line |
 | `docs/TESTING.md` / `SETUP.md` / `BUILD-RELEASE.md` | 操作手册 | 相应流程变化时 |
 | 归档快照(带 banner) | 只读历史 | 永不更新 |
 

@@ -1,5 +1,6 @@
 # 上线规划:发布工程与上线运营任务卡(2026-07-07)
 
+> 本文冻结于 2026-07-07(main@b2be25e)。开卡前先按当前 main 复核 file:line;完成状态记 BOARD/MASTERPLAN,不回写本文。
 > MASTERPLAN §5 的明细。现状全部实测核实(非文档转述)。开工前先读 `docs/EXECUTION-PLAYBOOK.md`。
 > 调研支撑:`docs/research/2026-07-07-release-engineering.md`(签名/更新/合规/遥测/内嵌 PG)。
 
@@ -33,7 +34,7 @@
 - 风险:EDB URL 变动(SHA256 锁死+失败硬报错)。
 
 ### PKG-3 macOS 签名+公证接入(S 模型侧,硬阻塞=U1)
-- 脚本已就绪只差 secrets(§13.4 六个值);打 tag 演练→`codesign --verify`+`stapler validate`+
+- 脚本已就绪只差 secrets(BUILD-RELEASE.md §13.4 六个值);打 tag 演练→`codesign --verify`+`stapler validate`+
   干净 mac 双击直开。注意:嵌套二进制(PG 全套+libmpv)逐个签,`--deep` 的覆盖需实测
   (调研:inside-out 是正道)。
 
@@ -41,12 +42,20 @@
 - **先实测 MSIX+内嵌 PG 兼容性**(容器化文件系统虚拟化 vs fork postgres+写 ~/InkFrame,
   本项目特有风险):开发者模式装→首启 initdb→数据落哪。不干净则转 Inno Setup
   (签名复用 sign-windows.ps1);无论哪种,alpha/beta 期保留 unsigned zip 兜底。
-- 验收:干净 Win11 装→首启建库 ≤8s→重启数据在→卸载干净。
+- 验收:干净 Win11 装→首启建库 ≤8s→重启数据在→卸载干净;含 **CJK 用户名 Windows VM**
+  (C:\Users\小明\)一轮——嵌入式 PG initdb/ffmpeg 路径转义/INKFRAME_FFMPEG 带空格。
 
 ### PKG-5 用户安装文档(S)
 - 新 docs/INSTALL.md(或官网页):下载表、Gatekeeper/SmartScreen 过渡说明(未签名期截图)、
   「首启自动初始化本地数据库,无需装 PostgreSQL」、视频导出前置(ffmpeg 装法+INKFRAME_FFMPEG)、
-  数据目录位置与备份建议。验收:没读过代码的人按文档双平台装好+生成一张图。
+  数据目录位置与备份建议。
+- **Defender/EDR 排除建议**:数据目录与 postgres.exe 的排除项写法(引调研实案:Defender 曾把
+  PG 事务日志误判隔离致库损坏);预期部分企业 EDR 需开工单。
+- **卸载与数据**:数据目录处置说明——Inno 卸载器可选删数据,默认保留。
+- **迁移到新机器 SOP**:导出各项目 zip + 重配 Key(Key 不可导出是设计,Keychain/凭据管理器
+  不随文件走)。
+- **零遥测承诺**:「本应用默认不发任何遥测/统计请求」写入 INSTALL 与官网 FAQ(联动 D-1 措辞)。
+- 验收:没读过代码的人按文档双平台装好+生成一张图。
 
 ### PKG-6 Release 列表卫生(XS,立即)
 - alpha.2~.6 逐个 `gh api PATCH -f prerelease=true`;alpha.9 手工 DMG 的 body 加"未签名,右键打开"。
@@ -54,6 +63,14 @@
 
 ### PKG-7 macOS x64/universal(XS 标注 / M 真做)
 - alpha 期只标注 "Apple Silicon only";Intel 需求出现(issue)再加 macos-13 matrix(PG x64 套跟随)。
+
+### PKG-8 winget manifest(S,依赖 U2 签名)
+- 向 winget-pkgs 提交 manifest(EXE/安装物 SHA256);**无签名产物勿提**(信誉);每版发布随
+  SOP 更新 SHA256。
+
+### PKG-9 Homebrew cask(S,依赖 PKG-3 公证)
+- 提交 cask + `depends_on formula: "ffmpeg"`(调研:brew 依赖机制成熟,winget 依赖有实锤缺陷);
+  公证产物就绪后再提。
 
 ## 2. 发布流程(releaseFlow)
 
@@ -71,6 +88,9 @@
 5  bash scripts/release-tag.sh <SHA> v0.1.0-alpha.10 "<一句描述>"
    (自动:双守卫→annotated tag→push→gh release create --generate-notes --prerelease)
 6  tag 触发 release.yml → 三 job 绿 → 产物自动附加(幂等)
+6.5 核对 release notes 未被 workflow 覆盖(publish 的 generate_release_notes 与
+   release-tag.sh notes 的组合行为**首次真实验证就是本次**);顺带记录 build_only input
+   现为摆设(零引用)
 7  人工润色 notes:按 BUILD-RELEASE §11.3 结构重排 ROADMAP「未打 tag」段
    (Highlights/Features/Fixes/Breaking=schema v7 说明/Known Issues)
 8  (签名就绪前过渡)维护者 mac 本地:make-relocatable → build → create-dmg →
@@ -85,7 +105,7 @@
 1 双平台安装物含 PG,干净机验收(PKG-2/4);2 macOS 签名公证生效(PKG-3/U1);
 3 Windows 至少签名产物(PKG-4/U2);4 应用内检查更新(UPD-1);5 数据升级政策拍板+演练(QG-5/4);
 6 回归清单 v2 双平台各一轮(QG-1);7 用户安装文档上线(PKG-5/WEB-1);
-8 产品底线:M4 中至少 导出 UI+画廊 可用。
+8 产品底线:M4 中至少 导出 UI+画廊 可用;9 第三方许可 NOTICE 上线(→ LEG-1,§8 法务)。
 
 ### 1.0 定义(建议)
 功能:script→storyboard→generate→export 贯通;undo/redo;软删恢复 UI。
@@ -98,11 +118,12 @@
 - GitHub Releases API(`/releases?per_page=10`,含 prerelease),SemVer 比较含 prerelease 序
   (alpha.10>alpha.9,测试矩阵要全);About 区按钮+新版提示+url_launcher 开 Release 页;
   启动静默检查做成偏好开关(默认开,失败静默 INFO,**6h 节流**防匿名限流 60/h);
-  错误走 NetworkError 体系。涉及:新 update_check_service(接口+DI)、about_section、ARB。
+  错误走 NetworkError 体系。涉及:新 update_check_service(接口+DI)、about_section、ARB、
+  `url_launcher`(**新依赖,需评审**)。
 - 验收:旧版运行→检查→显示可用→打开页面;无网静默;偏好可关。
 
 ### UPD-2 updates.json 自动更新协议(L,**1.0 后**,依赖 U4 域名)
-- §10 设计已备;触发条件:用户量让"打开下载页"成摩擦。
+- BUILD-RELEASE.md §10 设计已备;触发条件:用户量让"打开下载页"成摩擦。
 
 ## 4. 质量门槛(QG)
 
@@ -112,8 +133,9 @@
   升级(接 QG-4)。每条标平台。控制 ≤40 条,超出转自动化。mac 侧执行依赖 U5。
 
 ### QG-2 双平台真机烟测矩阵(S)
-- {mac arm64, Win11}×{安装物}×{首启/二启} 结果记进每次 release PR;smoke 脚本可加
-  INKFRAME_PG_BIN 真 PG 模式(本地硬信号)。
+- {mac arm64, Win11, **CJK 用户名 Windows VM**(C:\Users\小明\)——嵌入式 PG initdb/
+  ffmpeg 路径转义/INKFRAME_FFMPEG 带空格}×{安装物}×{首启/二启} 结果记进每次 release PR;
+  smoke 脚本可加 INKFRAME_PG_BIN 真 PG 模式(本地硬信号)。
 
 ### QG-3 性能基线复测:真 GPU 帧率(M)
 - 现基线是 headless CPU 代理(perf-baseline.md 自注);新 integration_test 用 FrameTiming 采
@@ -127,11 +149,11 @@
 
 ### QG-5 ⚠️ 政策决策:Zero Backward Compatibility vs 用户数据(→ MASTERPLAN 决策区 D-4,必须拍板)
 - 冲突:铁律写 "NO migration scripts",代码实际维护 v1→v7 迁移链且 alpha.9 有真实用户;
-  连带 SCRAM 加固(BLOCKERS §3)被"只对新 initdb 生效"卡住覆盖面。
+  连带 SCRAM 加固(docs/BLOCKERS-2026-07-06.md §3)被"只对新 initdb 生效"卡住覆盖面。
 - 选项:**A(推荐)**=政策重定义为「单线前向迁移是唯一升级路径;禁的是降级/旧格式并行/僵尸 API」,
   迁移链转正配 QG-4,SCRAM 可对存量一次性 ALTER;B=字面执行(版本不匹配提示重置——公开测试期
   不可接受);C=alpha 期 B、beta.1 起 A 并承诺 beta→1.0 数据延续。
-- 落地:改 CLAUDE.md(根+docs)/CONTRIBUTING/DATABASE.md;Release notes 模板加「数据兼容性」固定段。
+- 落地:改 docs/CLAUDE.md(根文件仅一行指针)/CONTRIBUTING/DATABASE.md;Release notes 模板加「数据兼容性」固定段。
 
 ### QG-6 发布 checklist 落地(S,立即)
 - BUILD-RELEASE §9 分层为「现在就执行」vs「凭据就绪后追加」;release.yml publish job 加
@@ -143,7 +165,8 @@
 - 形态:`website/` 纯静态(复用 Amber Noir 视觉;不引前端框架)+ pages.yml;README=开发者入口,
   官网=用户入口。内容:Hero(定位一句+已有 hero-canvas.png/demo GIF)、三条价值主张、下载区
   (Releases API fetch latest prerelease,标注 alpha/签名状态/Apple Silicon only)、5 分钟上手、
-  Provider 矩阵(与 README 同源)、FAQ(Gatekeeper/SmartScreen/数据在哪/备份/离线)、页脚。
+  Provider 矩阵(与 README 同源)、FAQ(Gatekeeper/SmartScreen/数据在哪/备份/离线/
+  **为什么没有 Linux、何时有**)、页脚。
 - 验收:kerrokapple.github.io/InkFrame 可访问,repo homepage 指过去。域名(U4)后接 CNAME 一行。
 
 ### WEB-2 示例项目/模板画布(M,与 ON-1/ON-2 联动)
@@ -155,10 +178,15 @@
 ### COM-1 good-first-issue 池重建(S,发布前用户过目)
 - 现成候选:slot 常量化、job_queue_panel 错误映射(若 GAP-8 删 panel 则换)、pollTimeout 消费或删、
   AsyncValue `.when`、ARB 双语 review、第三语言;格式复用 new-issue-drafts.md(#69-73 成熟模板);
-  顺带把 ROADMAP Provider 表 9 条 Open 开成 help-wanted issue。验收:≥6 gfi + ≥5 provider issue。
+  顺带把 ROADMAP Provider 表 9 条 Open 开成 help-wanted issue。
+  ⚠️ 候选双占用:slot 常量化/pollTimeout/错误映射/AsyncValue 四条 ≡ backend LB-01/02/05/06
+  (W0/W1)——**开池前核对 LB 进度,已做则换补**(备选:CanvasRepository.listTrashedByProject、
+  library_sidebar error 态、Linux FAQ 文档、第三语言、ARB review)。
+  验收:≥6 gfi + ≥5 provider issue。
 
 ### COM-2 Issue 模板对账(XS):bug 模板 Provider 下拉对齐 provider_registry 9 款+custom;
-  版本示例更新;日志路径核对。
+  版本示例更新;日志路径核对;**SECURITY.md scope 对账**——删「Script editor XSS/HMAC/JWT」等
+  幽灵条目(对应功能不存在),补 zip 导入(LB-12)/诊断包(LB-18)两个真实攻击面。
 
 ### COM-3 CONTRIBUTING 英文摘要(S;全译可开成 gfi 吃狗粮);声明中文为权威防双语漂移。
 
@@ -183,8 +211,34 @@
 | U8 | Discord 开不开(建议暂缓) | COM-4 | — |
 | U9 | 公告渠道/时机/账号 | COM-5 | — |
 | U10 | alpha.10 放行:review release PR + notes 终稿 | SOP 3/7 | 0.5h |
+| U11 | HN 账号 karma 预热(Show HN 前;冷账号首发权重差) | AST-2 | 日历时间项,零散 |
+| U12 | 中文渠道账号(B站/小红书,若走中文渠道) | AST-3 | 1h 注册+养号 |
 
 **主干**:U1/U2/U3 三条互不阻塞的用户侧关键路径;**alpha.10 可以不等它们先发**(unsigned+手工 DMG,
 复制 alpha.9 模式:PKG-1/6+QG-6+SOP 即可);**beta.1 被 U1+U2+(U3 或 PKG-2A)+UPD-1+QG-5 硬阻塞**。
-模型侧可立即并行且零用户依赖:PKG-1、PKG-2A、PKG-5、PKG-6、QG-1、QG-4、QG-6、UPD-1、WEB-1、WEB-2、
-COM-1、COM-2、COM-3。
+模型侧可立即并行且零用户依赖:PKG-1、PKG-2A、PKG-5、PKG-6、QG-1、QG-6、UPD-1、WEB-1、WEB-2、
+COM-1、COM-2、COM-3、LEG-1(核实+NOTICE 部分零依赖)。
+(QG-4 已从本清单移除——依赖 U7/D-4 拍板,非零用户依赖。)
+
+## 8. 法务(LEG,beta 硬门槛)
+
+### LEG-1 第三方许可聚合(M,beta 硬门槛,≡ beta 准入第 9 条)
+- 为什么:libmpv(FFmpeg 衍生,LGPL)已随 alpha.9 分发,**义务已触发**——本卡是调研
+  `docs/research/2026-07-07-release-engineering.md` §3 警报的承接卡。
+- 怎么做:①核实 media_kit_libs_* 实际构建变体与 LICENSE;②仓库根 NOTICE/THIRD-PARTY.md
+  (libmpv/FFmpeg+构建仓链接、PostgreSQL License、Cormorant Garamond+JetBrains Mono 的 OFL 全文、
+  主要 pub 依赖);③关于区加开源许可入口(showLicensePage 或自绘);④安装包内含 NOTICE。
+- 验收:双平台安装物含 NOTICE、关于区可见、字体目录含 OFL。
+- 依赖:核实+NOTICE 部分零依赖可立即做;安装物含 NOTICE 联动 PKG-3/4。
+
+## 9. 素材(AST,M6 公开上线)
+
+### AST-1 素材制作(M,依赖 SB-6/EX-3/WEB-2)
+- 主 demo 30-90s(前 5-7 秒先出成片再倒叙工作流,静音可看)、两张对比图
+  (vs ComfyUI 开箱即用 / vs 云平台价目表)、3-5 个单功能 GIF——先出脚本与录制清单再录。
+
+### AST-2 HN 前置(S,第 0 天启动)
+- 答辩稿:「为什么不用 Electron / 为什么内嵌 PG / vs NodeTool」;karma 预热=用户侧(U11)。
+
+### AST-3 中文渠道内容(M)
+- B站长教程脚本 + 小红书长尾词帖(「AI 分镜 本地」「可灵 API 工作流」类);账号=用户侧(U12)。

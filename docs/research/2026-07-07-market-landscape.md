@@ -15,7 +15,7 @@
 | Recraft | 云无限画布 | 无 | 设计向(V4,2026-02) | 否 | $10/月起 | 赛道不同(设计资产) |
 | Kaiber Superstudio | 云 | 弱 | 无限画布+节点,多模型 | 否 | $10-99/月 credit | 全云 credit,无 BYOK |
 | Weavy→**Figma Weave** | 云节点画布 | 无 | 节点工作流 | 否 | credit | **2025-10 被 Figma ~$200M 收购**——范式被重金验证,local-first 位置让出 |
-| 即梦(字节) | 云+App | **强**:Seedance 2.0 九宫格分镜→一键成片;剪映集成 | 智能画布 | 否 | 免费额度+订阅 | 云生态封闭 Key 不可自带;其模型可被我们编排 |
+| 即梦(字节) | 云+App | **强**:Seedance 2.0 九宫格分镜→一键成片;剪映集成 | 智能画布 | 否 | 免费额度+订阅(未核实) | 云生态封闭 Key 不可自带;其模型可被我们编排 |
 | 可灵(快手) | 云 | **强**:3.0 智能分镜多镜头(2026-05);6000 万创作者,年化 $2.4 亿 | 无节点 | 否 | credit | 「模型即导演」vs 我们「你当导演的本地工作台」;已有 kling provider |
 | **NodeTool** ⚠️ | **开源桌面(Electron,AGPL)** | 有 storyboard 工作流用例 | 节点画布,16+ provider + 本地模型 | **是,BYOK 无抽成** | 免费 | **最直接近邻**:口号 "Every model. Your keys. Your canvas." 与我们几乎重合;424★ v0.7-RC 活跃;但泛工作台非叙事优先,成熟度低 |
 | PAI Pro / Inline-Studio | 开源桌面 | PAI Pro:画布+时间线+角色持久,**须配 coding agent** | 节点 | 是 | 免费 | 314/149★ 早期;验证"local AI filmmaking"需求存在 |
