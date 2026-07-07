@@ -13,7 +13,7 @@
 - **Video export**: external ffmpeg binary (runtime probe via `FfmpegLocator`; not bundled)
 - **Window chrome**: window_manager (frameless shell)
 - **File import**: file_selector
-- **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager)
+- **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager); Debug+macOS falls back to a plaintext dev file (see Provider API Keys)
 - **Platforms**: macOS + Windows
 
 > Modules not yet implemented (e.g. script parsing / sequence preview) are tracked in `docs/BOARD.md` (status) and the repo-root `ROADMAP.md` (community roadmap). This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
@@ -291,7 +291,8 @@ lib/
     ├── ffmpeg_video_export_service.dart  # VideoExportService impl (concat demuxer, stream copy)
     ├── media_kit_video_player_service.dart
     ├── media_kit_thumbnail_service.dart
-    └── platform_secure_storage_service.dart
+    ├── platform_secure_storage_service.dart
+    └── file_secure_storage_service.dart   # Debug+macOS plaintext dev key store (see Provider API Keys)
 ```
 
 ## Code Rules
@@ -326,4 +327,5 @@ lib/
 
 - Stored in platform-secure storage (macOS Keychain / Windows Credential Manager)
 - NEVER in code, config files, or database
+- **Debug-only exception (macOS)**: unsigned Debug builds cannot reach Keychain (errSecMissingEntitlement, -34018), so `kDebugMode && Platform.isMacOS` routes to `FileSecureStorageService` — plaintext `config/secrets.dev.json`, local development only. Never distribute builds on this path.
 - Access through `SecureStorageService` interface only
