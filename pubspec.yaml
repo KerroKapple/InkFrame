@@ -82,6 +82,7 @@ flutter:
 
   assets:
     - assets/fonts/
+    - assets/licenses/
 
   fonts:
     - family: CormorantGaramond

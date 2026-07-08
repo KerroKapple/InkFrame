@@ -104,6 +104,8 @@
       "reason": { "type": "String" }
     }
   },
+  "settingsAboutLicensesButton": "开源许可",
+  "settingsAboutLegalese": "InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 Cormorant Garamond 与 JetBrains Mono 字体（SIL OFL 1.1）。",
 
   "generationMissingKey": "API Key 未配置",
   "generationInvalidConfig": "配置无效：{reason}",

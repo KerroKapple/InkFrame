@@ -572,6 +572,18 @@ abstract class AppLocalizations {
   /// **'Unavailable: {reason}'**
   String settingsAboutSecureStorageUnavailable(String reason);
 
+  /// No description provided for @settingsAboutLicensesButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Open-source licenses'**
+  String get settingsAboutLicensesButton;
+
+  /// No description provided for @settingsAboutLegalese.
+  ///
+  /// In en, this message translates to:
+  /// **'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the Cormorant Garamond and JetBrains Mono fonts (SIL OFL 1.1).'**
+  String get settingsAboutLegalese;
+
   /// No description provided for @generationMissingKey.
   ///
   /// In en, this message translates to:

@@ -16,6 +16,7 @@ import 'package:window_manager/window_manager.dart';
 
 import 'app.dart';
 import 'core/di/custom_providers.dart';
+import 'core/licenses.dart';
 import 'core/di/logger.dart';
 import 'core/di/paths.dart';
 import 'core/di/preferences.dart';
@@ -30,6 +31,10 @@ import 'theme/tokens.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   MediaKit.ensureInitialized();
+
+  // 第三方许可补册：随发布分发的 libmpv/FFmpeg(LGPL-2.1)、内嵌 PostgreSQL、
+  // 打包字体(OFL-1.1)不在 pub 自动聚合内，入册后经关于页 showLicensePage 呈现。
+  registerThirdPartyLicenses();
 
   await windowManager.ensureInitialized();
 
