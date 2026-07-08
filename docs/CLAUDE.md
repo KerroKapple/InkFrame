@@ -62,10 +62,12 @@ final projectProvider = Provider((ref) {
 
 ### Zero Backward Compatibility
 
-- NO migration scripts for old data formats
 - NO legacy support code
 - NO deprecated APIs kept "just in case"
-- If a schema changes, the old version is dead. Period.
+- NO parallel old-data-format parsing paths
+- NO downgrade — an older app opening a newer DB is rejected (`SchemaDowngradeError`), never silently reinterpreted
+
+**Carve-out — user data durability (ADR-0012):** the user's persisted PostgreSQL workspace is the one exception. A schema change MUST NOT wipe or reset the user's data; the database is advanced through the single forward-migration chain (`lib/storage/migrations/`, `schema_version` table). Every schema change ADDS one contiguously-numbered forward migration; shipped migrations are immutable (never edit a released migration — add `v_next`). Single-line forward migration is the *only* supported upgrade path. See `docs/adr/0012-forward-migration-as-sole-data-upgrade-path.md`.
 
 ## i18n — Zero Hardcoded Strings
 
