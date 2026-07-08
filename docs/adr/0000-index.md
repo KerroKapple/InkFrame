@@ -27,7 +27,7 @@ proposed ──► accepted ──► superseded (by ADR-NNNN)
 | [ADR-0009](0009-provider-capability-and-interface-segregation.md) | Provider 抽象：能力声明(const) + 接口隔离 + registry 作为唯一接入点 | accepted | 2026-07-01（rev. 2026-07-02） |
 | [ADR-0010](0010-zero-hardcoding-i18n-and-design-tokens.md) | 两条硬约束：i18n 零硬编码文案 + design-token 零硬编码样式 | accepted | 2026-07-01 |
 | [ADR-0011](0011-plugin-oriented-extension-points.md) | 面向插件的扩展点：现在守住接缝，运行时插件系统延后到 ROADMAP | accepted | 2026-07-01 |
-| [ADR-0012](0012-forward-migration-as-sole-data-upgrade-path.md) | 单线前向迁移是用户数据的唯一升级路径（D-4/U7/QG-5 拍板） | proposed | 2026-07-08 |
+| [ADR-0012](0012-forward-migration-as-sole-data-upgrade-path.md) | 单线前向迁移是用户数据的唯一升级路径（D-4/U7/QG-5 拍板） | accepted | 2026-07-08 |
 
 ---
 

@@ -169,7 +169,8 @@ lcov --summary coverage/lcov.info      # 摘要
 - 在 widget 里写硬编码字符串（用 `context.l10n`）
 - 在 widget 里写硬编码颜色/字号（用 `context.inkColors` / `context.inkTypography`）
 - 直接 `new Service()`（必须走 Riverpod provider）
-- 为老 schema 留 migration / 向后兼容代码（InkFrame 明确 zero backward compat）
+- 为旧数据**格式**留并行解析 / 回退兼容代码，或保留"以防万一"的僵尸 API（zero backward compat）
+- 事后**编辑已发布的迁移**，或让 schema 变更**删/重置用户数据**——升级只走追加的前向迁移（ADR-0012）
 
 
 ## 本地 PostgreSQL（T2 存储层）
@@ -224,6 +225,7 @@ flutter build macos --debug                      # Podfile 的 "Bundle Embedded 
 
 - `lib/storage/schema/schema_v1.dart`：v=1 首版 DDL（真相源）
 - `lib/storage/schema/001_init.sql`：文档镜像，运行时不加载
-- `MigrationRunner` 按版本号扫描后续 `002_*.sql`，高版本拒绝回滚
+- `MigrationRunner` 按 `app_migrations.dart` 里组装的 `schema_vN.dart` 常量列表顺序执行（**不扫 `.sql` 文件**）；单迁移 = DDL + 版本 UPSERT 同事务（ME-31）；库版本高于应用期望时拒绝降级（`SchemaDowngradeError`）
+- 升级唯一路径 = 追加编号连续的前向迁移；已发布迁移不可变、不删用户数据（ADR-0012）
 
 所有 `UPDATE` 语句必须 `SET updated_at = ...`（应用层维护）。pre-commit 的 `check-updated-at.sh` 会拦截违规。
