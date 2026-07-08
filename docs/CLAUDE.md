@@ -271,7 +271,12 @@ lib/
 │   ├── repositories/                  # Concrete postgres_*_repository.dart
 │   └── schema/                        # DDL (.sql) + schema version (.dart)
 └── services/                          # App-level services
-    ├── job_queue_service.dart         # Dual-layer concurrency + persisted state machine
+    ├── job_queue_service.dart         # InMemoryJobQueueService orchestrator (<500 lines): scheduling + state machine + cancel-race arbitration
+    ├── job_queue/                      # JobQueue collaborators (LB-03 split)
+    │   ├── job_media_persister.dart    # JobMediaPersisterImpl + NullJobMediaPersister (inlineBytes/remoteUrls 落盘 + slot 收敛)
+    │   ├── job_state_persister.dart    # JobStatePersister (jobs 表写库 + 启动孤儿回收 init)
+    │   ├── job_handle_impl.dart        # JobHandleImpl (last-value replay + done completer)
+    │   └── job_queue_util.dart         # RunningJob + lostToCancel/truncate + log module 常量
     ├── file_resolver_service.dart     # Relative ↔ absolute path resolution
     ├── file_preferences_service.dart  # config/preferences.json load/save
     ├── custom_providers_file_service.dart  # config/custom_providers.json parse + fallback
