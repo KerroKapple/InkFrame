@@ -9,12 +9,13 @@ import 'package:inkframe/storage/schema/schema_v1.dart';
 import 'package:inkframe/storage/schema/schema_v3.dart';
 import 'package:inkframe/storage/schema/schema_v4.dart';
 import 'package:inkframe/storage/schema/schema_v5.dart';
-import 'package:postgres/postgres.dart';
+
+import 'fake_session_executor.dart';
 
 void main() {
   group('MigrationRunner', () {
     test('schema_version 表返回空 → 视为 v=0，事务内执行 v=1 + 写版本', () async {
-      final exec = _FakeExecutor()
+      final exec = FakeSessionExecutor()
         ..session.queueResult(const [], forQueryFragment: 'FROM schema_version');
       final runner = MigrationRunner(
         exec,
@@ -34,7 +35,7 @@ void main() {
     });
 
     test('已 v=1 无缺失 → no-op，不开事务', () async {
-      final exec = _FakeExecutor()
+      final exec = FakeSessionExecutor()
         ..session.queueResult(const [
           [1],
         ], forQueryFragment: 'FROM schema_version');
@@ -48,7 +49,7 @@ void main() {
     });
 
     test('当前 v=1，目标 v=3 → 每版本独立事务：DDL + 版本 UPSERT 同事务', () async {
-      final exec = _FakeExecutor()
+      final exec = FakeSessionExecutor()
         ..session.queueResult(const [
           [1],
         ], forQueryFragment: 'FROM schema_version');
@@ -78,7 +79,7 @@ void main() {
     });
 
     test('迁移 SQL 抛错 → 事务回滚，版本号不写入，错误冒泡', () async {
-      final exec = _FakeExecutor()
+      final exec = FakeSessionExecutor()
         ..session.queueResult(const [
           [1],
         ], forQueryFragment: 'FROM schema_version')
@@ -101,7 +102,7 @@ void main() {
     });
 
     test('数据库版本高于应用期望 → 拒绝', () async {
-      final exec = _FakeExecutor()
+      final exec = FakeSessionExecutor()
         ..session.queueResult(const [
           [5],
         ], forQueryFragment: 'FROM schema_version');
@@ -116,7 +117,7 @@ void main() {
     });
 
     test('迁移列表存在 gap → 拒绝', () async {
-      final exec = _FakeExecutor()
+      final exec = FakeSessionExecutor()
         ..session.queueResult(const [
           [1],
         ], forQueryFragment: 'FROM schema_version');
@@ -190,137 +191,4 @@ void main() {
       expect(kSchemaV5, contains('jobs(canvas_id, created_at DESC)'));
     });
   });
-}
-
-/// 假 SessionExecutor：run 直通共享 session；runTx 记录 BEGIN/COMMIT/ROLLBACK。
-class _FakeExecutor implements SessionExecutor {
-  final _FakeSession session = _FakeSession();
-  int txCount = 0;
-
-  @override
-  Future<R> run<R>(
-    Future<R> Function(Session session) fn, {
-    SessionSettings? settings,
-  }) =>
-      fn(session);
-
-  @override
-  Future<R> runTx<R>(
-    Future<R> Function(TxSession session) fn, {
-    TransactionSettings? settings,
-  }) async {
-    txCount += 1;
-    session.executedSql.add('BEGIN');
-    try {
-      final r = await fn(_FakeTxSession(session));
-      session.executedSql.add('COMMIT');
-      return r;
-    } catch (_) {
-      session.executedSql.add('ROLLBACK');
-      rethrow;
-    }
-  }
-
-  @override
-  Future<void> close({bool force = false}) async {}
-}
-
-class _FakeTxSession implements TxSession {
-  _FakeTxSession(this._inner);
-  final _FakeSession _inner;
-
-  @override
-  Future<Result> execute(
-    Object query, {
-    Object? parameters,
-    bool ignoreRows = false,
-    QueryMode? queryMode,
-    Duration? timeout,
-  }) =>
-      _inner.execute(
-        query,
-        parameters: parameters,
-        ignoreRows: ignoreRows,
-        queryMode: queryMode,
-        timeout: timeout,
-      );
-
-  @override
-  Future<void> rollback() async {}
-
-  @override
-  Future<Statement> prepare(Object query) =>
-      throw UnimplementedError('prepare not used in migration tests');
-
-  @override
-  bool get isOpen => true;
-
-  @override
-  Future<void> get closed async {}
-}
-
-class _FakeSession implements Session {
-  final List<String> executedSql = <String>[];
-  final List<_Expectation> _queue = <_Expectation>[];
-
-  /// 命中该片段的 SQL 直接抛错（模拟迁移失败）。
-  String? failOn;
-
-  void queueResult(List<List<Object?>> rows,
-      {required String forQueryFragment}) {
-    _queue.add(_Expectation(fragment: forQueryFragment, rows: rows));
-  }
-
-  @override
-  Future<Result> execute(
-    Object query, {
-    Object? parameters,
-    bool ignoreRows = false,
-    QueryMode? queryMode,
-    Duration? timeout,
-  }) async {
-    final sql = query.toString();
-    executedSql.add(sql);
-    final f = failOn;
-    if (f != null && sql.contains(f)) {
-      throw StateError('boom: $f');
-    }
-    final idx = _queue.indexWhere((e) => sql.contains(e.fragment));
-    if (idx == -1) {
-      return _emptyResult();
-    }
-    final match = _queue.removeAt(idx);
-    return Result(
-      rows: match.rows
-          .map(
-            (values) =>
-                ResultRow(values: values, schema: ResultSchema(const [])),
-          )
-          .toList(),
-      affectedRows: 0,
-      schema: ResultSchema(const []),
-    );
-  }
-
-  Result _emptyResult() => Result(
-        rows: const [],
-        affectedRows: 0,
-        schema: ResultSchema(const []),
-      );
-
-  @override
-  Future<Statement> prepare(Object query) =>
-      throw UnimplementedError('prepare not used in migration tests');
-
-  @override
-  bool get isOpen => true;
-
-  @override
-  Future<void> get closed async {}
-}
-
-class _Expectation {
-  _Expectation({required this.fragment, required this.rows});
-  final String fragment;
-  final List<List<Object?>> rows;
 }
