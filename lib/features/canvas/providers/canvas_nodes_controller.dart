@@ -19,6 +19,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/node_repository.dart';
 import '../models/canvas_node.dart';
 import 'canvas_edges_controller.dart';
+import 'serial_mutation_queue.dart';
 
 final canvasNodesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
     CanvasNodesController, List<CanvasNode>, String>(
@@ -27,7 +28,8 @@ final canvasNodesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
 );
 
 class CanvasNodesController
-    extends AutoDisposeFamilyAsyncNotifier<List<CanvasNode>, String> {
+    extends AutoDisposeFamilyAsyncNotifier<List<CanvasNode>, String>
+    with SerialMutationQueue {
   /// ME-27：autoDispose family 下，await 期间 provider 可能被 dispose——
   /// 之后再触 ref / state 会抛 StateError。依赖在方法入口一次性解析，
   /// await 之后的 ref / state 访问一律先查本标志。
@@ -65,40 +67,44 @@ class CanvasNodesController
       role != NodeRole.result || sourceNodeId != null,
       'result node requires sourceNodeId (PRD 4.5.1)',
     );
-    final repo = _repo; // 入口一次性解析，await 后不再触 ref
-    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    final repo = _repo; // 入口一次性解析，串行 op 内不再触 ref
     final canvasId = arg;
-    try {
-      final id = await repo.create(
-        canvasId: canvasId,
-        type: type.name,
-        nodeRole: role.name,
-        label: label,
-        sourceNodeId: sourceNodeId,
-        positionX: position.dx,
-        positionY: position.dy,
-        width: size.width,
-        height: size.height,
-        typeConfig: typeConfig,
-      );
-      final inserted = CanvasNode(
-        id: id,
-        label: label,
-        type: type,
-        role: role,
-        canvasId: canvasId,
-        sourceNodeId: sourceNodeId,
-        typeConfig: typeConfig,
-        position: position,
-        size: size,
-      );
-      if (_alive) state = AsyncData([...previous, inserted]);
-      return inserted;
-    } on InkError catch (_) {
-      // 保底：确保 state 停在 previous，不被外层框架翻成 AsyncError。
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+    return serialize<CanvasNode>(() async {
+      // 快照在串行 op 内读取，保证读到前序变更已提交的最新态（LB-04）。
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      try {
+        final id = await repo.create(
+          canvasId: canvasId,
+          type: type.name,
+          nodeRole: role.name,
+          label: label,
+          sourceNodeId: sourceNodeId,
+          positionX: position.dx,
+          positionY: position.dy,
+          width: size.width,
+          height: size.height,
+          typeConfig: typeConfig,
+        );
+        final inserted = CanvasNode(
+          id: id,
+          label: label,
+          type: type,
+          role: role,
+          canvasId: canvasId,
+          sourceNodeId: sourceNodeId,
+          typeConfig: typeConfig,
+          position: position,
+          size: size,
+        );
+        if (_alive) state = AsyncData([...previous, inserted]);
+        return inserted;
+      } on InkError catch (_) {
+        // 保底：确保 state 停在 previous，不被外层框架翻成 AsyncError。
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
   /// 软删除节点 + 级联软删所有关联 edges（入/出）——单事务原子（PRD §4.3）。
@@ -106,60 +112,70 @@ class CanvasNodesController
   /// schema 的 ON DELETE CASCADE 仅在硬删时兜底；软删走应用层级联。
   /// 乐观更新内存；事务内任一步失败 → 整体回滚 + 内存复原 + InkError 冒泡。
   /// 成功后让 CanvasEdgesController(canvasId) 失效，UI 重新加载新边集。
-  Future<void> removeNode(String id) async {
+  Future<void> removeNode(String id) {
     final canvasId = arg;
-    final previous = state.valueOrNull ?? const <CanvasNode>[];
-    final next = previous.where((n) => n.id != id).toList(growable: false);
-    state = AsyncData(next); // 同步乐观更新，先于 await
+    final uowFuture = ref.read(unitOfWorkProvider.future); // 入口解析，串行 op 内不触 ref
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      final next = previous.where((n) => n.id != id).toList(growable: false);
+      if (_alive) state = AsyncData(next); // 乐观更新
 
-    try {
-      final uow = await ref.read(unitOfWorkProvider.future);
-      await uow.run((scope) async {
-        final outgoing = await scope.edges.listOutgoing(id);
-        final incoming = await scope.edges.listIncoming(id);
-        final edgeIds = <String>{
-          for (final r in outgoing) r.reqId(EdgeCol.id),
-          for (final r in incoming) r.reqId(EdgeCol.id),
-        };
-        for (final eid in edgeIds) {
-          await scope.edges.softDelete(eid);
-        }
-        await scope.nodes.softDelete(id);
-      });
-      if (_alive) ref.invalidate(canvasEdgesControllerProvider(canvasId));
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+      try {
+        final uow = await uowFuture;
+        await uow.run((scope) async {
+          final outgoing = await scope.edges.listOutgoing(id);
+          final incoming = await scope.edges.listIncoming(id);
+          final edgeIds = <String>{
+            for (final r in outgoing) r.reqId(EdgeCol.id),
+            for (final r in incoming) r.reqId(EdgeCol.id),
+          };
+          for (final eid in edgeIds) {
+            await scope.edges.softDelete(eid);
+          }
+          await scope.nodes.softDelete(id);
+        });
+        if (_alive) ref.invalidate(canvasEdgesControllerProvider(canvasId));
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
   /// 拖动结束：持久化新位置 + 归属泳道（laneId 可为 null=移出所有泳道）。
   /// 乐观更新内存，DB 失败回滚并上抛（UI toast）。
-  Future<void> moveNode(String id, Offset delta, {required String? laneId}) async {
+  Future<void> moveNode(String id, Offset delta, {required String? laneId}) {
     final repo = _repo;
-    final previous = state.valueOrNull ?? const <CanvasNode>[];
-    CanvasNode? target;
-    for (final n in previous) {
-      if (n.id == id) target = n;
-    }
-    if (target == null) return;
-    final newPos = target.position + delta;
-    state = AsyncData([
-      for (final n in previous)
-        if (n.id == id)
-          n.copyWith(position: newPos, laneId: laneId, clearLaneId: laneId == null)
-        else
-          n,
-    ]);
-    try {
-      await repo.update(id, <String, Object?>{
-        NodeCol.positionX: newPos.dx,
-        NodeCol.positionY: newPos.dy,
-        NodeCol.laneId: laneId,
-      });
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      CanvasNode? target;
+      for (final n in previous) {
+        if (n.id == id) target = n;
+      }
+      if (target == null) return;
+      final newPos = target.position + delta;
+      if (_alive) {
+        state = AsyncData([
+          for (final n in previous)
+            if (n.id == id)
+              n.copyWith(
+                  position: newPos, laneId: laneId, clearLaneId: laneId == null)
+            else
+              n,
+        ]);
+      }
+      try {
+        await repo.update(id, <String, Object?>{
+          NodeCol.positionX: newPos.dx,
+          NodeCol.positionY: newPos.dy,
+          NodeCol.laneId: laneId,
+        });
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 }

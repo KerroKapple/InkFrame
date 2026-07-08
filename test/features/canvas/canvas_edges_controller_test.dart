@@ -19,6 +19,10 @@ class _FakeEdgeRepo implements EdgeRepository {
   bool createThrows = false;
   bool softDeleteThrows = false;
   bool updateThrows = false;
+
+  /// 置入后 create 会先 await 此 gate，用于制造两次 create 交错（LB-04）。
+  Completer<void>? createGate;
+
   int _seq = 0;
 
   @override
@@ -30,6 +34,7 @@ class _FakeEdgeRepo implements EdgeRepository {
     String role = 'reference',
     int sortOrder = 0,
   }) async {
+    if (createGate != null) await createGate!.future;
     if (createThrows) {
       throw const LocalIOError(extra: {'op': 'create', 'table': 'edges'});
     }
@@ -180,6 +185,24 @@ void main() {
 
       expect(repo.createCalls.last['edge_type'], 'generation_source');
       expect(repo.createCalls[0]['role'], 'first_frame');
+    });
+
+    test('addEdge 两次并发交错不丢更新（LB-04 串行化）', () async {
+      await container.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl =
+          container.read(canvasEdgesControllerProvider(canvasId).notifier);
+
+      final gate = Completer<void>();
+      repo.createGate = gate;
+
+      final fa = ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+      final fb = ctrl.addEdge(sourceNodeId: 'c', targetNodeId: 'd');
+      gate.complete();
+      await Future.wait([fa, fb]);
+
+      final state = container.read(canvasEdgesControllerProvider(canvasId));
+      expect(state.valueOrNull, hasLength(2),
+          reason: '两次并发 addEdge 都应保留，交错快照不得覆盖');
     });
 
     test('addEdge DB 失败 → 回滚 + rethrow', () async {

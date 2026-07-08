@@ -13,6 +13,9 @@ class FakePromptPresetRepo implements PromptPresetRepository {
   /// 置 true 时 create 抛 LocalIOError（模拟落库失败路径）。
   bool failCreate = false;
 
+  /// 仅对集合内 id 的 update 抛 LocalIOError（模拟并发下部分失败——LB-04 回滚交错）。
+  final Set<String> failUpdateIds = <String>{};
+
   @override
   Future<String> create({
     required String projectId,
@@ -48,6 +51,7 @@ class FakePromptPresetRepo implements PromptPresetRepository {
 
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
+    if (failUpdateIds.contains(id)) throw const LocalIOError();
     final row = rows[id];
     if (row == null) return 0;
     rows[id] = <String, Object?>{...row, ...patch};

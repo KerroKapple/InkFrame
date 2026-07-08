@@ -9,6 +9,7 @@ import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/edge_repository.dart';
 import '../models/canvas_edge.dart';
+import 'serial_mutation_queue.dart';
 
 final canvasEdgesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
     CanvasEdgesController, List<CanvasEdge>, String>(
@@ -17,7 +18,8 @@ final canvasEdgesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
 );
 
 class CanvasEdgesController
-    extends AutoDisposeFamilyAsyncNotifier<List<CanvasEdge>, String> {
+    extends AutoDisposeFamilyAsyncNotifier<List<CanvasEdge>, String>
+    with SerialMutationQueue {
   bool _alive = false;
 
   @override
@@ -45,62 +47,78 @@ class CanvasEdgesController
     EdgeType edgeType = EdgeType.data,
     EdgeRole role = EdgeRole.reference,
     int sortOrder = 0,
-  }) async {
+  }) {
     final canvasId = arg;
-    final previous = state.valueOrNull ?? const <CanvasEdge>[];
-    try {
-      final id = await _repo.create(
-        canvasId: canvasId,
-        sourceNodeId: sourceNodeId,
-        targetNodeId: targetNodeId,
-        edgeType: CanvasEdgeMapping.typeToDb(edgeType),
-        role: CanvasEdgeMapping.roleToDb(role),
-        sortOrder: sortOrder,
-      );
-      final edge = CanvasEdge(
-        id: id,
-        canvasId: canvasId,
-        sourceNodeId: sourceNodeId,
-        targetNodeId: targetNodeId,
-        edgeType: edgeType,
-        role: role,
-        sortOrder: sortOrder,
-      );
-      if (_alive) state = AsyncData([...previous, edge]);
-      return edge;
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+    final repo = _repo;
+    return serialize<CanvasEdge>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasEdge>[]) : const <CanvasEdge>[];
+      try {
+        final id = await repo.create(
+          canvasId: canvasId,
+          sourceNodeId: sourceNodeId,
+          targetNodeId: targetNodeId,
+          edgeType: CanvasEdgeMapping.typeToDb(edgeType),
+          role: CanvasEdgeMapping.roleToDb(role),
+          sortOrder: sortOrder,
+        );
+        final edge = CanvasEdge(
+          id: id,
+          canvasId: canvasId,
+          sourceNodeId: sourceNodeId,
+          targetNodeId: targetNodeId,
+          edgeType: edgeType,
+          role: role,
+          sortOrder: sortOrder,
+        );
+        if (_alive) state = AsyncData([...previous, edge]);
+        return edge;
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
-  Future<void> removeEdge(String id) async {
-    final previous = state.valueOrNull ?? const <CanvasEdge>[];
-    state = AsyncData(previous.where((e) => e.id != id).toList(growable: false));
-    try {
-      await _repo.softDelete(id);
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+  Future<void> removeEdge(String id) {
+    final repo = _repo;
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasEdge>[]) : const <CanvasEdge>[];
+      if (_alive) {
+        state =
+            AsyncData(previous.where((e) => e.id != id).toList(growable: false));
+      }
+      try {
+        await repo.softDelete(id);
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
   /// 变更已存在连线的 role（data edge 专用：reference / firstFrame / lastFrame）。
   /// 乐观更新内存后 DB 失败回滚。
-  Future<void> updateRole(String id, EdgeRole role) async {
-    final previous = state.valueOrNull ?? const <CanvasEdge>[];
-    final next = [
-      for (final e in previous)
-        if (e.id == id) e.copyWith(role: role) else e,
-    ];
-    state = AsyncData(next);
-    try {
-      await _repo.update(id, <String, Object?>{
-        'role': CanvasEdgeMapping.roleToDb(role),
-      });
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+  Future<void> updateRole(String id, EdgeRole role) {
+    final repo = _repo;
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasEdge>[]) : const <CanvasEdge>[];
+      if (_alive) {
+        state = AsyncData([
+          for (final e in previous)
+            if (e.id == id) e.copyWith(role: role) else e,
+        ]);
+      }
+      try {
+        await repo.update(id, <String, Object?>{
+          'role': CanvasEdgeMapping.roleToDb(role),
+        });
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 }

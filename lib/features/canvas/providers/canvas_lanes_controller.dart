@@ -9,6 +9,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/style_lane_repository.dart';
 import '../models/style_lane.dart';
 import '../util/lane_geometry.dart';
+import 'serial_mutation_queue.dart';
 
 final canvasLanesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
     CanvasLanesController, List<StyleLane>, String>(
@@ -17,7 +18,8 @@ final canvasLanesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
 );
 
 class CanvasLanesController
-    extends AutoDisposeFamilyAsyncNotifier<List<StyleLane>, String> {
+    extends AutoDisposeFamilyAsyncNotifier<List<StyleLane>, String>
+    with SerialMutationQueue {
   bool _alive = false;
 
   @override
@@ -41,29 +43,33 @@ class CanvasLanesController
     String label = '',
     String stylePrompt = '',
     String? tintColor,
-  }) async {
+  }) {
     final repo = _repo;
     final canvasId = arg;
-    final previous = state.valueOrNull ?? const <StyleLane>[];
-    final nextOrder =
-        previous.isEmpty ? 0 : previous.map((l) => l.sortOrder).reduce((a, b) => a > b ? a : b) + 1;
-    final id = await repo.create(
-      canvasId: canvasId,
-      label: label,
-      stylePrompt: stylePrompt,
-      sortOrder: nextOrder,
-      tintColor: tintColor,
-    );
-    final lane = StyleLane(
-      id: id,
-      canvasId: canvasId,
-      label: label,
-      stylePrompt: stylePrompt,
-      sortOrder: nextOrder,
-      tintColor: tintColor,
-    );
-    if (_alive) state = AsyncData([...previous, lane]);
-    return lane;
+    return serialize<StyleLane>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <StyleLane>[]) : const <StyleLane>[];
+      final nextOrder = previous.isEmpty
+          ? 0
+          : previous.map((l) => l.sortOrder).reduce((a, b) => a > b ? a : b) + 1;
+      final id = await repo.create(
+        canvasId: canvasId,
+        label: label,
+        stylePrompt: stylePrompt,
+        sortOrder: nextOrder,
+        tintColor: tintColor,
+      );
+      final lane = StyleLane(
+        id: id,
+        canvasId: canvasId,
+        label: label,
+        stylePrompt: stylePrompt,
+        sortOrder: nextOrder,
+        tintColor: tintColor,
+      );
+      if (_alive) state = AsyncData([...previous, lane]);
+      return lane;
+    });
   }
 
   Future<void> updateLane(
@@ -73,78 +79,90 @@ class CanvasLanesController
     String? tintColor,
     bool clearTint = false,
     double? size,
-  }) async {
+  }) {
     final repo = _repo;
-    final previous = state.valueOrNull ?? const <StyleLane>[];
-    final patch = <String, Object?>{
-      StyleLaneCol.label: ?label,
-      StyleLaneCol.stylePrompt: ?stylePrompt,
-      if (clearTint)
-        StyleLaneCol.tintColor: null
-      else
-        StyleLaneCol.tintColor: ?tintColor,
-      StyleLaneCol.size: ?size,
-    };
-    if (patch.isEmpty) return;
-    state = AsyncData([
-      for (final l in previous)
-        if (l.id == id)
-          l.copyWith(
-            label: label,
-            stylePrompt: stylePrompt,
-            tintColor: tintColor,
-            clearTint: clearTint,
-            size: size,
-          )
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <StyleLane>[]) : const <StyleLane>[];
+      final patch = <String, Object?>{
+        StyleLaneCol.label: ?label,
+        StyleLaneCol.stylePrompt: ?stylePrompt,
+        if (clearTint)
+          StyleLaneCol.tintColor: null
         else
-          l,
-    ]);
-    try {
-      await repo.update(id, patch);
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+          StyleLaneCol.tintColor: ?tintColor,
+        StyleLaneCol.size: ?size,
+      };
+      if (patch.isEmpty) return;
+      if (_alive) {
+        state = AsyncData([
+          for (final l in previous)
+            if (l.id == id)
+              l.copyWith(
+                label: label,
+                stylePrompt: stylePrompt,
+                tintColor: tintColor,
+                clearTint: clearTint,
+                size: size,
+              )
+            else
+              l,
+        ]);
+      }
+      try {
+        await repo.update(id, patch);
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
   /// 按给定 id 顺序重排泳道，sort_order=下标。乐观更新 + 失败回滚。
   /// 所有 sort_order 更新落在单个 UnitOfWork 事务内（原子，半重排不可见）。
-  Future<void> reorderLanes(List<String> orderedIds) async {
-    final previous = state.valueOrNull ?? const <StyleLane>[];
-    final byId = {for (final l in previous) l.id: l};
-    final reordered = <StyleLane>[];
-    for (var i = 0; i < orderedIds.length; i++) {
-      final lane = byId[orderedIds[i]];
-      if (lane != null) reordered.add(lane.copyWith(sortOrder: i));
-    }
-    if (reordered.length != previous.length) return; // 不完整顺序，跳过
-    state = AsyncData(reordered);
-    try {
-      final uow = await ref.read(unitOfWorkProvider.future);
-      await uow.run((scope) async {
-        for (var i = 0; i < reordered.length; i++) {
-          if (byId[reordered[i].id]!.sortOrder != i) {
-            await scope.styleLanes.update(
-                reordered[i].id, <String, Object?>{StyleLaneCol.sortOrder: i});
+  Future<void> reorderLanes(List<String> orderedIds) {
+    final uowFuture = ref.read(unitOfWorkProvider.future); // 入口解析
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <StyleLane>[]) : const <StyleLane>[];
+      final byId = {for (final l in previous) l.id: l};
+      final reordered = <StyleLane>[];
+      for (var i = 0; i < orderedIds.length; i++) {
+        final lane = byId[orderedIds[i]];
+        if (lane != null) reordered.add(lane.copyWith(sortOrder: i));
+      }
+      if (reordered.length != previous.length) return; // 不完整顺序，跳过
+      if (_alive) state = AsyncData(reordered);
+      try {
+        final uow = await uowFuture;
+        await uow.run((scope) async {
+          for (var i = 0; i < reordered.length; i++) {
+            if (byId[reordered[i].id]!.sortOrder != i) {
+              await scope.styleLanes.update(
+                  reordered[i].id, <String, Object?>{StyleLaneCol.sortOrder: i});
+            }
           }
-        }
-      });
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+        });
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
-  Future<void> deleteLane(String id) async {
+  Future<void> deleteLane(String id) {
     final repo = _repo;
-    final previous = state.valueOrNull ?? const <StyleLane>[];
-    state = AsyncData(previous.where((l) => l.id != id).toList());
-    try {
-      await repo.softDelete(id);
-    } on InkError catch (_) {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <StyleLane>[]) : const <StyleLane>[];
+      if (_alive) state = AsyncData(previous.where((l) => l.id != id).toList());
+      try {
+        await repo.softDelete(id);
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 }
 

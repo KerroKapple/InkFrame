@@ -9,6 +9,7 @@ import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/prompt_preset_repository.dart';
 import '../models/prompt_preset.dart';
+import 'serial_mutation_queue.dart';
 
 final promptPresetsControllerProvider =
     AutoDisposeAsyncNotifierProviderFamily<
@@ -18,7 +19,8 @@ final promptPresetsControllerProvider =
     >(PromptPresetsController.new, name: 'promptPresetsControllerProvider');
 
 class PromptPresetsController
-    extends AutoDisposeFamilyAsyncNotifier<List<PromptPreset>, String> {
+    extends AutoDisposeFamilyAsyncNotifier<List<PromptPreset>, String>
+    with SerialMutationQueue {
   bool _alive = false;
 
   @override
@@ -42,49 +44,60 @@ class PromptPresetsController
     String negative = '',
     String prefix = '',
     String suffix = '',
-  }) async {
+  }) {
     final repo = _repo;
-    final id = await repo.create(
-      projectId: arg,
-      name: name,
-      prompt: prompt,
-      negative: negative,
-      prefix: prefix,
-      suffix: suffix,
-    );
-    await _reload();
-    return id;
+    final projectId = arg;
+    return serialize<String>(() async {
+      final id = await repo.create(
+        projectId: projectId,
+        name: name,
+        prompt: prompt,
+        negative: negative,
+        prefix: prefix,
+        suffix: suffix,
+      );
+      await _reload(repo, projectId);
+      return id;
+    });
   }
 
-  Future<void> rename(String id, String name) async {
+  Future<void> rename(String id, String name) {
     final repo = _repo;
-    final previous = state.valueOrNull ?? const <PromptPreset>[];
-    state = AsyncData(<PromptPreset>[
-      for (final p in previous)
-        if (p.id == id) p.copyWith(name: name) else p,
-    ]);
-    try {
-      await repo.update(id, <String, Object?>{PromptPresetCol.name: name});
-    } on InkError {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <PromptPreset>[]) : const <PromptPreset>[];
+      if (_alive) {
+        state = AsyncData(<PromptPreset>[
+          for (final p in previous)
+            if (p.id == id) p.copyWith(name: name) else p,
+        ]);
+      }
+      try {
+        await repo.update(id, <String, Object?>{PromptPresetCol.name: name});
+      } on InkError {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
-  Future<void> delete(String id) async {
+  Future<void> delete(String id) {
     final repo = _repo;
-    final previous = state.valueOrNull ?? const <PromptPreset>[];
-    state = AsyncData(previous.where((p) => p.id != id).toList());
-    try {
-      await repo.softDelete(id);
-    } on InkError {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <PromptPreset>[]) : const <PromptPreset>[];
+      if (_alive) state = AsyncData(previous.where((p) => p.id != id).toList());
+      try {
+        await repo.softDelete(id);
+      } on InkError {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
-  Future<void> _reload() async {
-    final rows = await _repo.listByProject(arg);
+  Future<void> _reload(PromptPresetRepository repo, String projectId) async {
+    final rows = await repo.listByProject(projectId);
     if (_alive) {
       state = AsyncData(rows.map(PromptPreset.fromRow).toList(growable: false));
     }

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/providers/prompt_presets_controller.dart';
 
 import '../../../_harness/fake_prompt_preset.dart';
@@ -79,5 +80,32 @@ void main() {
         .read(promptPresetsControllerProvider('proj'))
         .valueOrNull!;
     expect(list, isEmpty);
+  });
+
+  test('并发 rename：失败一方回滚不得清掉已成功的并发更新（LB-04 串行化）', () async {
+    repo.rows['p1'] = <String, Object?>{
+      'id': 'p1',
+      'project_id': 'proj',
+      'name': 'Old1',
+    };
+    repo.rows['p2'] = <String, Object?>{
+      'id': 'p2',
+      'project_id': 'proj',
+      'name': 'Old2',
+    };
+    repo.failUpdateIds.add('p1'); // p1 落库失败，p2 成功
+    final notifier = await boot('proj');
+
+    final fa = notifier.rename('p1', 'New1');
+    final fb = notifier.rename('p2', 'New2');
+    await expectLater(fa, throwsA(isA<InkError>()));
+    await fb;
+
+    final list =
+        container.read(promptPresetsControllerProvider('proj')).valueOrNull!;
+    final p1 = list.firstWhere((p) => p.id == 'p1');
+    final p2 = list.firstWhere((p) => p.id == 'p2');
+    expect(p1.name, 'Old1', reason: 'p1 落库失败 → 正确回滚');
+    expect(p2.name, 'New2', reason: 'p2 已成功，不得被 p1 的回滚清掉');
   });
 }
