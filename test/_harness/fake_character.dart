@@ -14,6 +14,9 @@ class FakeCharacterRepo implements CharacterRepository {
   /// 置 true 时 update 抛 LocalIOError（模拟回滚/失败路径）。
   bool failUpdate = false;
 
+  /// 仅对集合内 id 的 update 抛 LocalIOError（模拟并发下部分失败——LB-04 回滚交错）。
+  final Set<String> failUpdateIds = <String>{};
+
   /// 置 true 时 create 抛 LocalIOError（模拟落库失败路径）。
   bool failCreate = false;
 
@@ -51,7 +54,7 @@ class FakeCharacterRepo implements CharacterRepository {
 
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
-    if (failUpdate) throw const LocalIOError();
+    if (failUpdate || failUpdateIds.contains(id)) throw const LocalIOError();
     final row = rows[id];
     if (row == null) return 0;
     rows[id] = <String, Object?>{...row, ...patch};

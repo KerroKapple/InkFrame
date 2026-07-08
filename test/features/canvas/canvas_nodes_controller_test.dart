@@ -26,6 +26,9 @@ class _FakeNodeRepository implements NodeRepository {
   String? softDeleteError;
   String? updateError;
 
+  /// 置入后 create 会先 await 此 gate，用于制造两次 create 交错（LB-04）。
+  Completer<void>? createGate;
+
   int _idCounter = 0;
 
   @override
@@ -43,6 +46,7 @@ class _FakeNodeRepository implements NodeRepository {
     int zIndex = 0,
     Map<String, Object?> typeConfig = const <String, Object?>{},
   }) async {
+    if (createGate != null) await createGate!.future;
     createCalls.add(<String, Object?>{
       'canvas_id': canvasId,
       'type': type,
@@ -265,6 +269,30 @@ void main() {
 
       expect(repo.createCalls.first['type_config'], isEmpty);
       expect(inserted.typeConfig, isEmpty);
+    });
+
+    test('addNode 两次并发交错不丢更新（LB-04 串行化）', () async {
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl =
+          container.read(canvasNodesControllerProvider(canvasId).notifier);
+
+      // gate 挂起两次 create，使二者在任一写回 state 之前都读到同一空快照。
+      final gate = Completer<void>();
+      repo.createGate = gate;
+
+      final fa = ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final fb = ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      gate.complete();
+      await Future.wait([fa, fb]);
+
+      final state = container.read(canvasNodesControllerProvider(canvasId));
+      // 未串行化时后者用空快照覆盖前者 → 只剩 1 个（RED）。
+      expect(state.valueOrNull, hasLength(2),
+          reason: '两次并发 addNode 都应保留，交错快照不得覆盖');
+      expect(
+        state.valueOrNull!.map((n) => n.label),
+        containsAll(<String>['A', 'B']),
+      );
     });
 
     test('addNode DB 失败抛给调用方，内存不写入', () async {

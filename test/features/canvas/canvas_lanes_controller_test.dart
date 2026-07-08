@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -38,6 +40,30 @@ class _ThrowingOnUpdateRepo extends _FakeLaneRepo {
       Future.error(const LocalIOError(extra: {'op': 'update'}));
 }
 
+/// create 先阻塞在 gate，用于制造两次 createLane 交错（LB-04）。
+class _GatedCreateLaneRepo extends _FakeLaneRepo {
+  final Completer<void> gate = Completer<void>();
+  @override
+  Future<String> create({
+    required String canvasId,
+    String label = '',
+    String stylePrompt = '',
+    int sortOrder = 0,
+    String? tintColor,
+    double size = 400.0,
+  }) async {
+    await gate.future;
+    return super.create(
+      canvasId: canvasId,
+      label: label,
+      stylePrompt: stylePrompt,
+      sortOrder: sortOrder,
+      tintColor: tintColor,
+      size: size,
+    );
+  }
+}
+
 void main() {
   test('createLane appends and updates state', () async {
     final repo = _FakeLaneRepo();
@@ -50,6 +76,27 @@ void main() {
     expect(lane.label, 'A');
     final lanes = c.read(canvasLanesControllerProvider('cv')).valueOrNull!;
     expect(lanes.map((l) => l.id), contains(lane.id));
+  });
+
+  test('createLane 两次并发交错不丢更新（LB-04 串行化）', () async {
+    final repo = _GatedCreateLaneRepo();
+    final c = ProviderContainer(overrides: [
+      styleLaneRepositoryProvider.overrideWith((ref) async => repo),
+    ]);
+    addTearDown(c.dispose);
+    await c.read(canvasLanesControllerProvider('cv').future);
+    final notifier = c.read(canvasLanesControllerProvider('cv').notifier);
+
+    final fa = notifier.createLane(label: 'A');
+    final fb = notifier.createLane(label: 'B');
+    repo.gate.complete();
+    await Future.wait([fa, fb]);
+
+    final lanes = c.read(canvasLanesControllerProvider('cv')).valueOrNull!;
+    expect(lanes, hasLength(2),
+        reason: '两次并发 createLane 都应保留，交错快照不得覆盖');
+    expect(lanes.map((l) => l.sortOrder).toSet(), <int>{0, 1},
+        reason: '串行化后 sort_order 应各自递增，不撞号');
   });
 
   test('deleteLane removes from state', () async {

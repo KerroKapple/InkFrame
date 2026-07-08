@@ -13,6 +13,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart';
 import '../../../core/interfaces/character_repository.dart';
 import '../models/character.dart';
+import 'serial_mutation_queue.dart';
 
 final charactersControllerProvider =
     AutoDisposeAsyncNotifierProviderFamily<
@@ -22,7 +23,8 @@ final charactersControllerProvider =
     >(CharactersController.new, name: 'charactersControllerProvider');
 
 class CharactersController
-    extends AutoDisposeFamilyAsyncNotifier<List<Character>, String> {
+    extends AutoDisposeFamilyAsyncNotifier<List<Character>, String>
+    with SerialMutationQueue {
   bool _alive = false;
 
   @override
@@ -49,80 +51,91 @@ class CharactersController
   Future<String> createFromImage({
     required String name,
     required String sourceAbsolutePath,
-  }) async {
+  }) {
     final projectId = arg;
     final repo = _repo;
-    final id = await repo.create(projectId: projectId, name: name);
-    String? rel;
-    // 补偿：清记录 + 清可能已落盘的图（best-effort），补偿失败不掩盖原始错误。
-    Future<void> compensate() async {
+    final assets = _assets;
+    return serialize<String>(() async {
+      final id = await repo.create(projectId: projectId, name: name);
+      String? rel;
+      // 补偿：清记录 + 清可能已落盘的图（best-effort），补偿失败不掩盖原始错误。
+      Future<void> compensate() async {
+        try {
+          await repo.hardDelete(id);
+        } on InkError catch (_) {
+          // 仓储层只抛 InkError；补偿失败也不掩盖原始错误。
+        }
+        final imported = rel;
+        if (imported != null) {
+          await assets.delete(projectId: projectId, relativePath: imported);
+        }
+      }
+
+      // 捕获集 = try 体真实抛出集：仓储 InkError / 资产服务 CharacterAssetError /
+      // dart:io FileSystemException——不捕宽泛 Exception（铁律）。
       try {
-        await repo.hardDelete(id);
-      } on InkError catch (_) {
-        // 仓储层只抛 InkError；补偿失败也不掩盖原始错误。
+        rel = await assets.importImage(
+          projectId: projectId,
+          sourceAbsolutePath: sourceAbsolutePath,
+          fileBaseName: '$id-0',
+        );
+        await repo.update(id, <String, Object?>{
+          CharacterCol.referenceImagePaths: <String>[rel],
+        });
+      } on InkError catch (e, st) {
+        await compensate();
+        Error.throwWithStackTrace(e, st);
+      } on CharacterAssetError catch (e, st) {
+        await compensate();
+        Error.throwWithStackTrace(e, st);
+      } on FileSystemException catch (e, st) {
+        await compensate();
+        Error.throwWithStackTrace(e, st);
       }
-      final imported = rel;
-      if (imported != null) {
-        await _assets.delete(projectId: projectId, relativePath: imported);
+      await _reload(repo, projectId);
+      return id;
+    });
+  }
+
+  Future<void> rename(String id, String name) {
+    final repo = _repo;
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <Character>[]) : const <Character>[];
+      if (_alive) {
+        state = AsyncData(<Character>[
+          for (final c in previous)
+            if (c.id == id) c.copyWith(name: name) else c,
+        ]);
       }
-    }
-
-    // 捕获集 = try 体真实抛出集：仓储 InkError / 资产服务 CharacterAssetError /
-    // dart:io FileSystemException——不捕宽泛 Exception（铁律）。
-    try {
-      rel = await _assets.importImage(
-        projectId: projectId,
-        sourceAbsolutePath: sourceAbsolutePath,
-        fileBaseName: '$id-0',
-      );
-      await repo.update(id, <String, Object?>{
-        CharacterCol.referenceImagePaths: <String>[rel],
-      });
-    } on InkError catch (e, st) {
-      await compensate();
-      Error.throwWithStackTrace(e, st);
-    } on CharacterAssetError catch (e, st) {
-      await compensate();
-      Error.throwWithStackTrace(e, st);
-    } on FileSystemException catch (e, st) {
-      await compensate();
-      Error.throwWithStackTrace(e, st);
-    }
-    await _reload();
-    return id;
+      try {
+        await repo.update(id, <String, Object?>{CharacterCol.name: name});
+      } on InkError {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
   }
 
-  Future<void> rename(String id, String name) async {
+  Future<void> delete(String id) {
     final repo = _repo;
-    final previous = state.valueOrNull ?? const <Character>[];
-    state = AsyncData(<Character>[
-      for (final c in previous)
-        if (c.id == id) c.copyWith(name: name) else c,
-    ]);
-    try {
-      await repo.update(id, <String, Object?>{CharacterCol.name: name});
-    } on InkError {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <Character>[]) : const <Character>[];
+      if (_alive) state = AsyncData(previous.where((c) => c.id != id).toList());
+      try {
+        await repo.softDelete(id);
+      } on InkError {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+      // 软删可恢复（restore 存在于契约）：不销毁参考图资产，留待 hardDelete/清理路径，
+      // 否则 restore 后角色参考图指向已删文件（评审 F2）。
+    });
   }
 
-  Future<void> delete(String id) async {
-    final repo = _repo;
-    final previous = state.valueOrNull ?? const <Character>[];
-    state = AsyncData(previous.where((c) => c.id != id).toList());
-    try {
-      await repo.softDelete(id);
-    } on InkError {
-      if (_alive) state = AsyncData(previous);
-      rethrow;
-    }
-    // 软删可恢复（restore 存在于契约）：不销毁参考图资产，留待 hardDelete/清理路径，
-    // 否则 restore 后角色参考图指向已删文件（评审 F2）。
-  }
-
-  Future<void> _reload() async {
-    final rows = await _repo.listByProject(arg);
+  Future<void> _reload(CharacterRepository repo, String projectId) async {
+    final rows = await repo.listByProject(projectId);
     if (_alive) {
       state = AsyncData(rows.map(Character.fromRow).toList(growable: false));
     }
