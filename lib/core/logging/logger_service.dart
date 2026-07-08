@@ -18,6 +18,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../paths/app_paths.dart';
+import 'log_sanitizer.dart';
 
 enum InkLogLevel { debug, info, warn, error }
 
@@ -97,20 +98,6 @@ class FileLoggerService implements LoggerService {
   int _debugCountInWindow = 0;
   int _debugDroppedInWindow = 0;
 
-  static const Set<String> _redactKeys = <String>{
-    'key',
-    'api_key',
-    'apikey',
-    'token',
-    'authorization',
-    'authorisation',
-    'prompt',
-    'password',
-    'proxy_password',
-    'proxypassword',
-    'secret',
-  };
-
   File get _activeFile => File(p.join(_paths.logs.path, 'inkframe.log'));
 
   void _ensureDir() {
@@ -120,51 +107,12 @@ class FileLoggerService implements LoggerService {
     }
   }
 
-  // key 形态字符串掩码：值里内嵌的凭证（sk-xxx / Bearer xxx / key=xxx）也要打码。
-  static final List<RegExp> _valuePatterns = <RegExp>[
-    RegExp(r'sk-[A-Za-z0-9_\-]{8,}'),
-    RegExp(r'[Bb]earer\s+[A-Za-z0-9._~+/\-]+=*'),
-    RegExp(r'AIza[0-9A-Za-z_\-]{10,}'),
-    RegExp(
-      '(api[_-]?key|apikey|token|secret|password|authorization)'
-      r'''["']?\s*[=:]\s*["']?[^"'\s,;}&]+''',
-      caseSensitive: false,
-    ),
-  ];
-
-  String _maskString(String s) {
-    var out = s;
-    for (final re in _valuePatterns) {
-      out = out.replaceAll(re, '***');
-    }
-    return out;
-  }
-
-  // 递归脱敏：嵌套 Map / List 全深度处理；命中敏感 key 整值置 ***，
-  // 其余 String 值走 key 形态掩码。
-  Object? _redactValue(Object? v) {
-    if (v is String) return _maskString(v);
-    if (v is Map) {
-      final out = <String, Object?>{};
-      for (final entry in v.entries) {
-        final key = entry.key.toString();
-        out[key] = _redactKeys.contains(key.toLowerCase())
-            ? '***'
-            : _redactValue(entry.value);
-      }
-      return out;
-    }
-    if (v is Iterable) {
-      return <Object?>[for (final e in v) _redactValue(e)];
-    }
-    return v;
-  }
-
+  // 脱敏走 LogSanitizer（与 FileCrashReporter 共用同一套 key/正则规则，单一真相源）。
   Map<String, Object?> _redact(Map<String, Object?>? extra) {
     if (extra == null || extra.isEmpty) {
       return const <String, Object?>{};
     }
-    return _redactValue(extra)! as Map<String, Object?>;
+    return LogSanitizer.redactValue(extra)! as Map<String, Object?>;
   }
 
   String _serialize(
