@@ -14,6 +14,9 @@ abstract class AppPaths {
   /// `~/InkFrame/logs/`
   Directory get logs;
 
+  /// `~/InkFrame/crashes/`（未捕获错误崩溃落盘，与 logs 平级）
+  Directory get crashes;
+
   /// `~/InkFrame/config/`
   Directory get config;
 
@@ -56,6 +59,9 @@ class DefaultAppPaths implements AppPaths {
   Directory get logs => Directory(p.join(_root.path, 'logs'));
 
   @override
+  Directory get crashes => Directory(p.join(_root.path, 'crashes'));
+
+  @override
   Directory get config => Directory(p.join(_root.path, 'config'));
 
   @override
@@ -66,7 +72,14 @@ class DefaultAppPaths implements AppPaths {
 
   @override
   Future<void> ensureInitialized() async {
-    for (final Directory d in <Directory>[root, logs, config, database, projects]) {
+    for (final Directory d in <Directory>[
+      root,
+      logs,
+      crashes,
+      config,
+      database,
+      projects,
+    ]) {
       if (!await d.exists()) {
         await d.create(recursive: true);
       }
