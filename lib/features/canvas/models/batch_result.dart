@@ -3,6 +3,7 @@
 // 一次批量生成（batch_size>1）在 batch_results 表落多行，每行一个 slot；本模型是其读侧投影。
 import 'package:flutter/foundation.dart';
 
+import '../../../core/constants/job_statuses.dart';
 import '../../../core/db/columns.dart';
 import '../../../core/db/row_reader.dart';
 
@@ -13,7 +14,7 @@ class BatchResult {
     required this.nodeId,
     required this.jobId,
     required this.slotIndex,
-    this.status = 'generating',
+    this.status = SlotStatuses.generating,
     this.outputUrl,
     this.thumbnailUrl,
     this.width,
@@ -42,8 +43,8 @@ class BatchResult {
   final String? errorCode;
   final String? errorMessage;
 
-  bool get isSuccess => status == 'success';
-  bool get isError => status == 'error';
+  bool get isSuccess => status == SlotStatuses.success;
+  bool get isError => status == SlotStatuses.error;
 
   @override
   bool operator ==(Object other) =>
@@ -77,7 +78,7 @@ class BatchResult {
     nodeId: row.reqId(BatchResultCol.nodeId),
     jobId: row.reqId(BatchResultCol.jobId),
     slotIndex: row.optInt(BatchResultCol.slotIndex) ?? 0,
-    status: row.optString(BatchResultCol.status) ?? 'generating',
+    status: row.optString(BatchResultCol.status) ?? SlotStatuses.generating,
     outputUrl: row.optString(BatchResultCol.outputUrl),
     thumbnailUrl: row.optString(BatchResultCol.thumbnailUrl),
     width: row.optInt(BatchResultCol.width),

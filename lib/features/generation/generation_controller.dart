@@ -22,6 +22,7 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/constants/default_providers.dart';
+import '../../core/constants/job_statuses.dart';
 import '../../core/constants/secure_storage_keys.dart';
 import '../../core/db/columns.dart';
 import '../../core/db/row_reader.dart';
@@ -314,7 +315,7 @@ class GenerationController {
               nodeId: rNode,
               jobId: jId,
               slotIndex: i,
-              status: 'generating',
+              status: SlotStatuses.generating,
             );
           }
         }
@@ -535,7 +536,7 @@ class GenerationController {
   Future<bool> _hasSuccessSlot(String resultNodeId) async {
     try {
       final slots = await batchResults.listByNode(resultNodeId);
-      return slots.any((r) => r[BatchResultCol.status] == 'success');
+      return slots.any((r) => r[BatchResultCol.status] == SlotStatuses.success);
     } on InkError catch (e) {
       logger?.warn(
         _logModule,
