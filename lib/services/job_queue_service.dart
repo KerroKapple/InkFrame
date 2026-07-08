@@ -12,6 +12,7 @@ import 'dart:io';
 import 'dart:math';
 
 import '../core/constants/job_housekeeping.dart';
+import '../core/constants/job_statuses.dart';
 import '../core/db/columns.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/batch_result_repository.dart';
@@ -96,12 +97,16 @@ class InMemoryJobQueueService implements JobQueueService {
     if (repo == null) return;
     // ME-02：pending 也在回收范围——建行后未 submit / dispose 前未跑的行
     // 否则永远没有出口。
-    const orphanStatuses = ['pending', 'submitted', 'polling'];
+    const orphanStatuses = [
+      JobStatuses.pending,
+      JobStatuses.submitted,
+      JobStatuses.polling,
+    ];
     // 批量回收：一条 UPDATE 把所有遗留 in-flight job 终结为 cancelled，消除 N+1。
     // 启动期无并发，无需 per-row from 守卫。
     final cancelled = await repo.bulkTransition(
       fromStatuses: orphanStatuses,
-      toStatus: 'cancelled',
+      toStatus: JobStatuses.cancelled,
       extra: {
         JobCol.errorCode: InkErrorCode.cancelledOnExit.wire,
         JobCol.errorMessage: 'app exited while job was not finished',
@@ -111,12 +116,12 @@ class InMemoryJobQueueService implements JobQueueService {
       _logger?.info(_logModule, 'startup recovery: orphan jobs cancelled',
           extra: {'count': cancelled});
     }
-    // 孤儿 slot 同步收敛：启动期无在途 job，任何 'generating' slot 都已无人推进，
+    // 孤儿 slot 同步收敛：启动期无在途 job，任何 generating 态 slot 都已无人推进，
     // 不收敛则批量网格永久转圈。已终态 slot（success/error）不动。
     final batchRepo = _batchResults;
     if (batchRepo != null) {
       final slots = await batchRepo.finalizeAllPending(
-        toStatus: 'cancelled',
+        toStatus: SlotStatuses.cancelled,
         errorCode: InkErrorCode.cancelledOnExit.wire,
       );
       if (slots > 0) {
@@ -164,12 +169,12 @@ class InMemoryJobQueueService implements JobQueueService {
     if (pending != null) {
       // 软删除：标记后 dispatch loop 自然跳过并出队，避免重建 Queue。
       pending.cancelled = true;
-      await _persistCancel(jobId, fromStatuses: const ['pending']);
+      await _persistCancel(jobId, fromStatuses: const [JobStatuses.pending]);
       // 排队期取消：预建的 slot 占位行同步收敛（仅批量 job 有 slot 行）。
       if (pending.task.batchSize > 1) {
         await _convergeSlots(
           jobId,
-          toStatus: 'cancelled',
+          toStatus: SlotStatuses.cancelled,
           errorCode: InkErrorCode.cancelledByUser.wire,
         );
       }
@@ -179,7 +184,8 @@ class InMemoryJobQueueService implements JobQueueService {
     final running = _running[jobId];
     if (running == null) return; // idempotent
     running.cancelled = true;
-    await _persistCancel(jobId, fromStatuses: const ['submitted', 'polling']);
+    await _persistCancel(jobId,
+        fromStatuses: const [JobStatuses.submitted, JobStatuses.polling]);
     running.wake(); // ME-01：中断退避睡眠，让 _pollLoop 立即收敛到 cancelled
     final provider = running.provider;
     if (provider is Cancellable) {
@@ -200,7 +206,8 @@ class InMemoryJobQueueService implements JobQueueService {
     for (final p in _pending) {
       if (p.cancelled) continue; // 已 cancel 的事件已发过
       // dispose 是同步接口，持久化只能 fire-and-forget；init() 的 pending 回收兜底。
-      unawaited(_persistCancel(p.task.jobId, fromStatuses: const ['pending']));
+      unawaited(
+          _persistCancel(p.task.jobId, fromStatuses: const [JobStatuses.pending]));
       _emitFailure(p.handle, _cancelledError(p.task.jobId));
     }
     _pending.clear();
@@ -273,8 +280,8 @@ class InMemoryJobQueueService implements JobQueueService {
       // pending → submitted（写 submitted_at）
       await _persistTransition(
         task.jobId,
-        from: const ['pending'],
-        to: 'submitted',
+        from: const [JobStatuses.pending],
+        to: JobStatuses.submitted,
         extra: {JobCol.submittedAt: DateTime.now().toUtc().toIso8601String()},
       );
 
@@ -340,12 +347,12 @@ class InMemoryJobQueueService implements JobQueueService {
     Future<void> emitCancelled() async {
       await _persistCancel(
         task.jobId,
-        fromStatuses: const ['submitted', 'polling'],
+        fromStatuses: const [JobStatuses.submitted, JobStatuses.polling],
       );
       if (task.batchSize > 1) {
         await _convergeSlots(
           task.jobId,
-          toStatus: 'cancelled',
+          toStatus: SlotStatuses.cancelled,
           errorCode: InkErrorCode.cancelledByUser.wire,
         );
       }
@@ -381,8 +388,8 @@ class InMemoryJobQueueService implements JobQueueService {
           if (!enteredPolling) {
             await _persistTransition(
               task.jobId,
-              from: const ['submitted'],
-              to: 'polling',
+              from: const [JobStatuses.submitted],
+              to: JobStatuses.polling,
               extra: {JobCol.progress: progress},
             );
             enteredPolling = true;
@@ -437,8 +444,8 @@ class InMemoryJobQueueService implements JobQueueService {
           }
           final rows = await _persistTransition(
             task.jobId,
-            from: const ['submitted', 'polling'],
-            to: 'success',
+            from: const [JobStatuses.submitted, JobStatuses.polling],
+            to: JobStatuses.success,
             extra: {
               JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
               JobCol.progress: 1.0,
@@ -544,8 +551,8 @@ class InMemoryJobQueueService implements JobQueueService {
     );
     final rows = await _persistTransition(
       task.jobId,
-      from: const ['pending', 'submitted', 'polling'],
-      to: 'error',
+      from: const [JobStatuses.pending, JobStatuses.submitted, JobStatuses.polling],
+      to: JobStatuses.error,
       extra: {
         JobCol.errorCode: error.code.wire,
         JobCol.errorMessage: _truncate(error.toString(), 2000),
@@ -568,8 +575,8 @@ class InMemoryJobQueueService implements JobQueueService {
     );
     final rows = await _persistTransition(
       task.jobId,
-      from: const ['submitted', 'polling'],
-      to: 'timeout',
+      from: const [JobStatuses.submitted, JobStatuses.polling],
+      to: JobStatuses.timeout,
       extra: {
         JobCol.errorCode: error.code.wire,
         JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
@@ -581,7 +588,7 @@ class InMemoryJobQueueService implements JobQueueService {
 
   // ---- batch slot 落库 helpers（batchSize>1 专用；未注入 repo 时全 no-op） ----
 
-  /// job 落终态后收敛遗留 'generating' slot。
+  /// job 落终态后收敛遗留 generating 态 slot。
   ///
   /// 取消语境由 [_lostToCancel]（running.cancelled + 竞态裁决）显式判定，
   /// 绝不单凭 affectedRows==0 反推——二次失败写库同样是 0 行，但对外终态
@@ -596,7 +603,7 @@ class InMemoryJobQueueService implements JobQueueService {
     final cancelWon = _lostToCancel(rows, running);
     return _convergeSlots(
       task.jobId,
-      toStatus: cancelWon ? 'cancelled' : 'error',
+      toStatus: cancelWon ? SlotStatuses.cancelled : SlotStatuses.error,
       errorCode:
           cancelWon ? InkErrorCode.cancelledByUser.wire : error.code.wire,
     );
@@ -641,13 +648,13 @@ class InMemoryJobQueueService implements JobQueueService {
   }
 
   Map<String, Object?> _slotSuccessPatch(String relPath) => <String, Object?>{
-        BatchResultCol.status: 'success',
+        BatchResultCol.status: SlotStatuses.success,
         BatchResultCol.outputUrl: relPath,
         BatchResultCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       };
 
   Map<String, Object?> _slotErrorPatch(InkError error) => <String, Object?>{
-        BatchResultCol.status: 'error',
+        BatchResultCol.status: SlotStatuses.error,
         BatchResultCol.errorCode: error.code.wire,
         BatchResultCol.errorMessage: _truncate(error.toString(), 2000),
         BatchResultCol.completedAt: DateTime.now().toUtc().toIso8601String(),
@@ -660,7 +667,7 @@ class InMemoryJobQueueService implements JobQueueService {
     return _persistTransition(
       jobId,
       from: fromStatuses,
-      to: 'cancelled',
+      to: JobStatuses.cancelled,
       extra: {
         JobCol.errorCode: InkErrorCode.cancelledByUser.wire,
         JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
@@ -818,14 +825,14 @@ class InMemoryJobQueueService implements JobQueueService {
       // 取消中断：未完成 slot 收敛 cancelled；job 对外终态由 cancel 竞态裁决收口。
       await _convergeSlots(
         task.jobId,
-        toStatus: 'cancelled',
+        toStatus: SlotStatuses.cancelled,
         errorCode: InkErrorCode.cancelledByUser.wire,
       );
     } else {
       // Provider 返回张数不足 batchSize：缺失 slot 收敛 error，避免永久 generating。
       await _convergeSlots(
         task.jobId,
-        toStatus: 'error',
+        toStatus: SlotStatuses.error,
         errorCode: InkErrorCode.providerInvalidResponse.wire,
       );
     }
@@ -1055,14 +1062,14 @@ class InMemoryJobQueueService implements JobQueueService {
       // 取消中断：未完成 slot 收敛 cancelled；job 对外终态由 cancel 竞态裁决收口。
       await _convergeSlots(
         task.jobId,
-        toStatus: 'cancelled',
+        toStatus: SlotStatuses.cancelled,
         errorCode: InkErrorCode.cancelledByUser.wire,
       );
     } else {
       // Provider 返回 URL 数不足 batchSize：缺失 slot 收敛 error，避免永久 generating。
       await _convergeSlots(
         task.jobId,
-        toStatus: 'error',
+        toStatus: SlotStatuses.error,
         errorCode: InkErrorCode.providerInvalidResponse.wire,
       );
     }

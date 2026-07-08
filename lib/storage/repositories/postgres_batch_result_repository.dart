@@ -1,6 +1,7 @@
 // PostgresBatchResultRepository —— batch_results 表实现。
 import 'package:postgres/postgres.dart';
 
+import '../../core/constants/job_statuses.dart';
 import '../../core/interfaces/batch_result_repository.dart';
 import '../base_repository.dart';
 
@@ -85,7 +86,7 @@ class PostgresBatchResultRepository
           'SELECT br.*, n.canvas_id, c.project_id FROM batch_results br '
           'JOIN nodes n ON n.id = br.node_id AND n.deleted_at IS NULL '
           'JOIN canvases c ON c.id = n.canvas_id AND c.deleted_at IS NULL '
-          "WHERE c.project_id = @pid AND br.status = 'success' "
+          "WHERE c.project_id = @pid AND br.status = '${SlotStatuses.success}' "
           'ORDER BY br.created_at DESC',
         ),
         parameters: <String, Object?>{'pid': projectId},
@@ -127,7 +128,7 @@ class PostgresBatchResultRepository
         Sql.named(
           'UPDATE batch_results SET status = @st, completed_at = now()'
           '${hasEc ? ', error_code = @ec' : ''} '
-          "WHERE job_id = @jid AND status = 'generating'",
+          "WHERE job_id = @jid AND status = '${SlotStatuses.generating}'",
         ),
         parameters: <String, Object?>{
           'jid': jobId,
@@ -150,7 +151,7 @@ class PostgresBatchResultRepository
         Sql.named(
           'UPDATE batch_results SET status = @st, completed_at = now()'
           '${hasEc ? ', error_code = @ec' : ''} '
-          "WHERE status = 'generating'",
+          "WHERE status = '${SlotStatuses.generating}'",
         ),
         parameters: <String, Object?>{
           'st': toStatus,

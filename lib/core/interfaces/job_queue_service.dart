@@ -39,7 +39,7 @@ abstract class JobQueueService {
   /// 真实 Provider 调用、轮询、状态推进在后台异步执行。
   /// 同 jobId 重复 submit 抛 [StateError]。
   ///
-  /// **前置条件**：调用方需先在 jobs 表创建 status='pending' 的行（PRD §10.3）。
+  /// **前置条件**：调用方需先在 jobs 表创建 status 为 pending 的行（PRD §10.3）。
   Future<JobHandle> submit(GenerationTask task);
 
   /// 取消任务。pending 直接踢出队列；running 调 Provider.cancel（若支持）。

@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:postgres/postgres.dart';
 
+import '../../core/constants/job_statuses.dart';
 import '../../core/interfaces/job_repository.dart';
 import '../base_repository.dart';
 
@@ -186,7 +187,8 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
       final r = await session.execute(
         Sql.named(
           'DELETE FROM jobs j '
-          "WHERE j.status IN ('success','error','cancelled','timeout') "
+          "WHERE j.status IN ('${JobStatuses.success}','${JobStatuses.error}',"
+          "'${JobStatuses.cancelled}','${JobStatuses.timeout}') "
           "AND j.completed_at < now() - (@days::text || ' days')::interval "
           'AND NOT EXISTS ( '
           'SELECT 1 FROM nodes n WHERE n.id = j.result_node_id '
@@ -209,7 +211,8 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
           '  SELECT id, ROW_NUMBER() OVER ( '
           '    PARTITION BY canvas_id ORDER BY created_at DESC) AS rn, '
           '    result_node_id FROM jobs '
-          "  WHERE status IN ('success','error','cancelled','timeout')) "
+          "  WHERE status IN ('${JobStatuses.success}','${JobStatuses.error}',"
+          "'${JobStatuses.cancelled}','${JobStatuses.timeout}')) "
           'DELETE FROM jobs WHERE id IN ( '
           '  SELECT r.id FROM ranked r WHERE r.rn > @cap '
           '  AND NOT EXISTS ( '
