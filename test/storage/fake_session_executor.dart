@@ -79,6 +79,10 @@ class FakeSession implements Session {
   /// 命中该片段的 SQL 直接抛错（模拟执行失败）。
   String? failOn;
 
+  /// [failOn] 命中时抛出的具体异常；为 null 时抛默认 StateError。
+  /// 用于注入真 ServerException（经 buildExceptionFromErrorFields 构造）。
+  Object? failWith;
+
   void queueResult(
     List<List<Object?>> rows, {
     required String forQueryFragment,
@@ -98,7 +102,7 @@ class FakeSession implements Session {
     executedSql.add(sql);
     final f = failOn;
     if (f != null && sql.contains(f)) {
-      throw StateError('boom: $f');
+      throw failWith ?? StateError('boom: $f');
     }
     final idx = _queue.indexWhere((e) => sql.contains(e.fragment));
     if (idx == -1) {

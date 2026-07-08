@@ -1,7 +1,7 @@
-// DatabaseBootstrap 真 PG 集成测：
+// DatabaseBootstrap 真 PG 集成测（防御纵深；翻译/吞并分支已在单测用
+// buildExceptionFromErrorFields 覆盖，这里对真库端到端复核）：
 //   1) 幂等——连跑两次不报错，schema_version 稳定在目标版本；
-//   2) 迁移 DDL 触发的 ServerException 在储层边界翻成 DatabaseBootstrapError。
-// ServerException 构造函数私有，翻译分支只能对真库断言（fake 造不出 ServerException）。
+//   2) 真 DDL 语法错误产生的真 ServerException 在储层边界翻成 DatabaseBootstrapError。
 @Tags(['pg'])
 library;
 

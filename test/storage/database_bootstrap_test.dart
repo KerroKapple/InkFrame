@@ -1,12 +1,24 @@
-// DatabaseBootstrap 单测：编排顺序（pgcrypto → 迁移链）与重复调用安全。
-// 真 PG 场景（幂等两次 run、ServerException 翻译）由
-// database_bootstrap_integration_test.dart（@Tags(['pg'])）覆盖——
-// ServerException 构造函数私有，无法在 fake 中构造，只能走真库。
+// DatabaseBootstrap 单测：编排顺序（pgcrypto → 迁移链）、重复调用安全、
+// ServerException 在储层边界的翻译（→ DatabaseBootstrapError）与 23505 吞并。
+// ServerException 经 buildExceptionFromErrorFields 构造（同 repository_error_translation_test）。
+// 真库 roundtrip 幂等另由 database_bootstrap_integration_test.dart（@Tags(['pg'])）覆盖。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/storage/database_bootstrap.dart';
 import 'package:inkframe/storage/migrations/migration_runner.dart';
+import 'package:postgres/messages.dart';
+import 'package:postgres/postgres.dart';
+// ignore: implementation_imports
+import 'package:postgres/src/exceptions.dart' show buildExceptionFromErrorFields;
 
 import 'fake_session_executor.dart';
+
+ServerException _serverException(String code) {
+  return buildExceptionFromErrorFields(<ErrorField>[
+    ErrorField(ErrorFieldId.severity, 'ERROR'),
+    ErrorField(ErrorFieldId.code, code),
+    ErrorField(ErrorFieldId.message, 'boom'),
+  ]);
+}
 
 void main() {
   group('DatabaseBootstrap', () {
@@ -75,6 +87,50 @@ void main() {
           migrations: const [Migration(version: 1, sql: 'DDL-v1')],
         ).run(),
         throwsA(isA<SchemaDowngradeError>()),
+      );
+    });
+
+    test('pgcrypto 遇 23505（并发建扩展竞争）→ 吞掉并继续迁移', () async {
+      final exec = FakeSessionExecutor()
+        ..session.queueResult(const [], forQueryFragment: 'FROM schema_version')
+        ..session.failOn = 'CREATE EXTENSION'
+        ..session.failWith = _serverException('23505');
+
+      // 不抛错，且迁移照常推进（DDL 执行）。
+      await DatabaseBootstrap(
+        exec,
+        migrations: const [Migration(version: 1, sql: 'DDL-v1')],
+      ).run();
+
+      expect(exec.session.executedSql, contains('DDL-v1'));
+    });
+
+    test('pgcrypto 非 23505 ServerException → 翻成 DatabaseBootstrapError', () async {
+      final exec = FakeSessionExecutor()
+        ..session.failOn = 'CREATE EXTENSION'
+        ..session.failWith = _serverException('42501'); // insufficient_privilege
+
+      await expectLater(
+        DatabaseBootstrap(
+          exec,
+          migrations: const [Migration(version: 1, sql: 'DDL-v1')],
+        ).run(),
+        throwsA(isA<DatabaseBootstrapError>()),
+      );
+    });
+
+    test('迁移期 ServerException → 翻成 DatabaseBootstrapError', () async {
+      final exec = FakeSessionExecutor()
+        ..session.queueResult(const [], forQueryFragment: 'FROM schema_version')
+        ..session.failOn = 'DDL-v1'
+        ..session.failWith = _serverException('42601'); // syntax_error
+
+      await expectLater(
+        DatabaseBootstrap(
+          exec,
+          migrations: const [Migration(version: 1, sql: 'DDL-v1')],
+        ).run(),
+        throwsA(isA<DatabaseBootstrapError>()),
       );
     });
   });
