@@ -12,9 +12,11 @@
 ```
 
 - 模块名 `app.lifecycle`、`stage` 值、`msg` 均为英文常量（非用户可见文案）。
-- 计时以注入的 `Clock`（`lib/core/di/clock.dart`）`nowUtc()` 差值为准——生产走
-  `SystemClock`，单测走 `FakeClock`，故 `ms` 在测试里确定性可断言（不用真
-  `Stopwatch`，其单调时钟无法注入/伪造）。
+- 计时走注入的**单调** `ElapsedSource`（生产 `StopwatchElapsed` 基于 `Stopwatch`
+  单调时钟；单测 `FakeElapsed` 手动推进）。选单调源的真实理由有二：其一可注入/
+  可伪造，故 `ms` 在测试里确定性可断言；其二免受启动期墙钟跳变（NTP 校正 / 手动
+  改表）污染——冷启 `pg_ready`（含 `initdb`，紧随开机、首次 NTP 校正易落此窗口）
+  是唯一的冷启基线样本，墙钟阶跃会把它写成负数或虚高。
 
 ### 阶段清单
 
@@ -31,6 +33,11 @@
 
 `first_frame` / `pg_ready` 从进程起点起算，对应“启动到可见 / 启动到库可用”的
 端到端时长；其余阶段为该阶段自身耗时。
+
+> 读数注意：PG 在 `runApp` 后被主动读一次以触发迁移池构建（原本懒启），这把 PG
+> 引导与首帧光栅化并行了。故 `first_frame` 反映的是**与 PG bootstrap 并发**下的
+> 首帧耗时（PG 启动抢占 CPU/IO 可能略微抬高首帧），而非纯 UI 渲染时长——对比历史
+> 数据时按此口径读。
 
 ### 采集方法
 

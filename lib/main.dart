@@ -55,17 +55,20 @@ void main() {
   LoggerService? logger;
   CrashReporter? reporter;
 
-  // 进程起点：paths/logger 就绪前的极早期段也计入首帧/PG-ready 总时长，故用裸 Clock
-  // 先记起点；LifecycleTimer 装配后各阶段随手计时，起点段用 record 回补。
+  // 进程起点：单调流逝源在 main 入口起表——paths/logger 就绪前的极早期段也计入
+  // 首帧/PG-ready 总时长；LifecycleTimer 装配后各阶段随手计时，起点段用 record 回补。
+  // 单调（非墙钟）故启动期 NTP 校正 / 手动改表不会把 ms 写成负数或虚高。
+  final StopwatchElapsed elapsed = StopwatchElapsed();
+  final Duration processStart = elapsed.elapsed;
+  // 日志时间戳（ts 字段）仍用墙钟。
   const Clock clock = SystemClock();
-  final DateTime processStart = clock.nowUtc();
 
   runZonedGuarded<Future<void>>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
       // 崩溃钩子所需最小依赖尽早就绪，最大化未捕获错误覆盖面（覆盖其后整段 bootstrap）。
-      final DateTime pathsStart = clock.nowUtc();
+      final Duration pathsStart = elapsed.elapsed;
       final AppPaths paths = await DefaultAppPaths.create();
       await paths.ensureInitialized();
 
@@ -78,7 +81,7 @@ void main() {
       // 启动计时埋点：logger 就绪即装配，先回补 paths 阶段，其后各阶段随手计时
       // （app.lifecycle {stage, ms}，验收线见 docs/perf-baseline.md）。
       final LifecycleTimer lifecycle =
-          LifecycleTimer(logger: fileLogger, clock: clock);
+          LifecycleTimer(logger: fileLogger, elapsed: elapsed);
       lifecycle.record('paths', pathsStart);
 
       // app 版本从平台读一次，注入 CrashReporter（崩溃文件含版本，便于事后归因）。
