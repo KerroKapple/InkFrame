@@ -232,7 +232,8 @@ void main() {
       expect(spy.lastParams?['to'], 'polling');
     });
 
-    test('purgeExpired 包含 retention 30 天字面量 + 孤儿保留子查询', () async {
+    test('purgeExpired 包含 retention 30 天字面量 + 孤儿保留子查询 + 成功 slot 守卫',
+        () async {
       final spy = _SpySession();
       await PostgresJobRepository(spy)
           .purgeExpired(retention: const Duration(days: 30));
@@ -240,9 +241,14 @@ void main() {
       expect(spy.lastSql, contains('completed_at <'));
       expect(spy.lastSql, contains('source_node_id IS NULL'));
       expect(spy.lastParams?['days'], 30);
+      // LB-13a：成功 slot 守卫——含 success batch_result 的 job 绝不被清（保护 gallery）。
+      expect(spy.lastSql, contains('NOT EXISTS (SELECT 1 FROM batch_results br'));
+      expect(spy.lastSql, contains('br.job_id = j.id'));
+      expect(spy.lastSql, contains("br.status = 'success'"));
     });
 
-    test('purgePerCanvasCap 使用 ROW_NUMBER PARTITION BY，且只清终态行', () async {
+    test('purgePerCanvasCap 使用 ROW_NUMBER PARTITION BY，只清终态行 + 成功 slot 守卫',
+        () async {
       final spy = _SpySession();
       await PostgresJobRepository(spy).purgePerCanvasCap(cap: 500);
       expect(spy.lastSql, contains('ROW_NUMBER() OVER'));
@@ -253,6 +259,10 @@ void main() {
         spy.lastSql,
         contains("status IN ('success','error','cancelled','timeout')"),
       );
+      // LB-13a：成功 slot 守卫——引用 ranked 行 job id（br.job_id = r.id）。
+      expect(spy.lastSql, contains('NOT EXISTS (SELECT 1 FROM batch_results br'));
+      expect(spy.lastSql, contains('br.job_id = r.id'));
+      expect(spy.lastSql, contains("br.status = 'success'"));
     });
 
     test('update 对 parameters 做 ::jsonb cast', () async {

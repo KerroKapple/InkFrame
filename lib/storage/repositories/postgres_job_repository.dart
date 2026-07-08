@@ -184,6 +184,8 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
   Future<int> purgeExpired({required Duration retention}) {
     return guard('purgeExpired', 'jobs', () async {
       // PRD §21 retention：30 天终态 job，保留孤儿 result 依赖。
+      // LB-13a：含 success slot 的 job 绝不清——删 job 会 CASCADE 删其 batch_results，
+      // 否则成功产物从 gallery 静默消失。
       final r = await session.execute(
         Sql.named(
           'DELETE FROM jobs j '
@@ -192,7 +194,9 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
           "AND j.completed_at < now() - (@days::text || ' days')::interval "
           'AND NOT EXISTS ( '
           'SELECT 1 FROM nodes n WHERE n.id = j.result_node_id '
-          'AND n.deleted_at IS NULL AND n.source_node_id IS NULL)',
+          'AND n.deleted_at IS NULL AND n.source_node_id IS NULL) '
+          'AND NOT EXISTS (SELECT 1 FROM batch_results br '
+          "WHERE br.job_id = j.id AND br.status = '${SlotStatuses.success}')",
         ),
         parameters: <String, Object?>{'days': retention.inDays},
       );
@@ -205,6 +209,7 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
     return guard('purgePerCanvasCap', 'jobs', () async {
       // ME-32：只对终态行排名和清除——在途 job（pending/submitted/polling）
       // 既不占限额槽位也绝不被删。
+      // LB-13a：含 success slot 的 job 绝不清（CASCADE 保护 gallery 产物）。
       final r = await session.execute(
         Sql.named(
           'WITH ranked AS ( '
@@ -217,7 +222,9 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
           '  SELECT r.id FROM ranked r WHERE r.rn > @cap '
           '  AND NOT EXISTS ( '
           '    SELECT 1 FROM nodes n WHERE n.id = r.result_node_id '
-          '    AND n.deleted_at IS NULL AND n.source_node_id IS NULL))',
+          '    AND n.deleted_at IS NULL AND n.source_node_id IS NULL) '
+          '  AND NOT EXISTS (SELECT 1 FROM batch_results br '
+          "  WHERE br.job_id = r.id AND br.status = '${SlotStatuses.success}'))",
         ),
         parameters: <String, Object?>{'cap': cap},
       );

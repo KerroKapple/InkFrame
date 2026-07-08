@@ -319,6 +319,112 @@ void main() {
     }
   });
 
+  // LB-13a：删 job 会 CASCADE 删其 batch_results（含 success slot），会把成功产物
+  // 从 gallery 静默抹掉。故 purge 两法都加守卫：任一 success slot 的 job 绝不被清。
+  test('purgeExpired 成功 slot 守卫：含 success batch_result 的过期终态 job 不被清（LB-13a）',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final nodes = PostgresNodeRepository(h.conn);
+      final src = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'config');
+      final resKeep = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'result', sourceNodeId: src);
+      final resDrop = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'result', sourceNodeId: src);
+      final jobs = PostgresJobRepository(h.conn);
+      final batch = PostgresBatchResultRepository(h.conn);
+
+      // keep：有 success slot → 过期也保留（保护 gallery 产物）。
+      // 两条都不设 result_node_id，避免孤儿节点守卫干扰，隔离 batch_results 守卫。
+      final keep = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: src,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await batch.create(
+          nodeId: resKeep, jobId: keep, slotIndex: 0, status: 'success');
+      // drop：仅 error slot（无 success）→ 过期即清。
+      final drop = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: src,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await batch.create(
+          nodeId: resDrop, jobId: drop, slotIndex: 0, status: 'error');
+
+      // 两条都置成过期终态。
+      await h.conn.execute(
+        "UPDATE jobs SET status='success', "
+        "completed_at = now() - interval '60 days'",
+      );
+
+      expect(await jobs.purgeExpired(retention: const Duration(days: 30)), 1);
+      expect(await jobs.findById(keep), isNotNull, reason: 'success slot 保护');
+      expect(await jobs.findById(drop), isNull, reason: '无 success slot → 清除');
+    } on _Skip {
+      return;
+    }
+  });
+
+  test('purgePerCanvasCap 成功 slot 守卫：超限含 success batch_result 的 job 不被清（LB-13a）',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final nodes = PostgresNodeRepository(h.conn);
+      final src = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'config');
+      final resKeep = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'result', sourceNodeId: src);
+      final resDrop = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'result', sourceNodeId: src);
+      final jobs = PostgresJobRepository(h.conn);
+      final batch = PostgresBatchResultRepository(h.conn);
+
+      final keep = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: src,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await batch.create(
+          nodeId: resKeep, jobId: keep, slotIndex: 0, status: 'success');
+      final drop = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: src,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await batch.create(
+          nodeId: resDrop, jobId: drop, slotIndex: 0, status: 'error');
+
+      // 两条置终态；cap=0 → 全部超限，仅靠守卫留存（隔离 batch_results 守卫）。
+      await h.conn.execute("UPDATE jobs SET status='success'");
+
+      expect(await jobs.purgePerCanvasCap(cap: 0), 1);
+      expect(await jobs.findById(keep), isNotNull, reason: 'success slot 保护');
+      expect(await jobs.findById(drop), isNull, reason: '无 success slot → 超限清除');
+    } on _Skip {
+      return;
+    }
+  });
+
   test('BatchResultRepository 全链路 + markPromoted', () async {
     try {
       final h = req();
