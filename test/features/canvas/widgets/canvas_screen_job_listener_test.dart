@@ -62,6 +62,9 @@ class _CountingNodeRepository implements NodeRepository {
       throw UnimplementedError();
 
   @override
+  Future<int> softDeleteEmptyOrphanResults() async => 0;
+
+  @override
   Future<int> update(String id, Map<String, Object?> patch) =>
       throw UnimplementedError();
 

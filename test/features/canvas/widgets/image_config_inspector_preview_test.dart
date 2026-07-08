@@ -248,6 +248,10 @@ class _PreloadedNodeRepository implements NodeRepository {
       _inner.listOrphanResults(canvasId);
 
   @override
+  Future<int> softDeleteEmptyOrphanResults() async =>
+      _inner.softDeleteEmptyOrphanResults();
+
+  @override
   Future<int> update(String id, Map<String, Object?> patch) async {
     if (id == _row['id']) {
       _row.addAll(patch);

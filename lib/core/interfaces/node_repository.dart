@@ -32,4 +32,9 @@ abstract class NodeRepository {
   Future<int> softDelete(String id);
   Future<int> restore(String id);
   Future<int> hardDelete(String id);
+
+  /// 崩溃遗留的空 result 壳收敛（LB-14）：启动时软删所有无任何产物、
+  /// 无成功 slot、也无在途 job 的 result 节点（进回收站，LB-15 可恢复）。
+  /// 返回被收敛的行数。
+  Future<int> softDeleteEmptyOrphanResults();
 }

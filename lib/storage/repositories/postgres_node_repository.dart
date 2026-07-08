@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:postgres/postgres.dart';
 
+import '../../core/constants/job_statuses.dart';
 import '../../core/interfaces/node_repository.dart';
 import '../base_repository.dart';
 
@@ -168,6 +169,32 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
       final r = await session.execute(
         Sql.named('DELETE FROM nodes WHERE id = @id'),
         parameters: <String, Object?>{'id': id},
+      );
+      return r.affectedRows;
+    });
+  }
+
+  @override
+  Future<int> softDeleteEmptyOrphanResults() {
+    return guard('softDeleteEmptyOrphanResults', 'nodes', () async {
+      // LB-14：空 result 壳判据不能只看 3 个 url——批量部分成功后崩溃时主图
+      // 可能尚未回写节点，故必须再排除「有 success slot」与「有在途 job」的节点，
+      // 否则会误删仍有 slot 产物的节点。status 字面量一律引 LB-01 常量。
+      final r = await session.execute(
+        Sql.named(
+          'UPDATE nodes SET deleted_at = now(), updated_at = now() '
+          "WHERE node_role = 'result' "
+          'AND deleted_at IS NULL '
+          "AND COALESCE(type_config->>'image_url','') = '' "
+          "AND COALESCE(type_config->>'video_url','') = '' "
+          "AND COALESCE(type_config->>'thumbnail_url','') = '' "
+          'AND NOT EXISTS (SELECT 1 FROM batch_results br '
+          "WHERE br.node_id = nodes.id AND br.status = '${SlotStatuses.success}') "
+          'AND NOT EXISTS (SELECT 1 FROM jobs j '
+          'WHERE j.result_node_id = nodes.id '
+          "AND j.status IN ('${JobStatuses.pending}','${JobStatuses.submitted}',"
+          "'${JobStatuses.polling}'))",
+        ),
       );
       return r.affectedRows;
     });

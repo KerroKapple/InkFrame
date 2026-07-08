@@ -8,6 +8,7 @@ import '../../core/errors/ink_error.dart';
 import '../../core/interfaces/batch_result_repository.dart';
 import '../../core/interfaces/job_media_persister.dart';
 import '../../core/interfaces/job_repository.dart';
+import '../../core/interfaces/node_repository.dart';
 import '../../core/logging/logger_service.dart';
 import '../../core/models/generation_task.dart';
 import 'job_queue_util.dart';
@@ -17,15 +18,18 @@ class JobStatePersister {
   JobStatePersister({
     JobRepository? repo,
     BatchResultRepository? batchResults,
+    NodeRepository? nodeRepo,
     LoggerService? logger,
     required JobMediaPersister media,
   })  : _repo = repo,
         _batchResults = batchResults,
+        _nodeRepo = nodeRepo,
         _logger = logger,
         _media = media;
 
   final JobRepository? _repo;
   final BatchResultRepository? _batchResults;
+  final NodeRepository? _nodeRepo;
   final LoggerService? _logger;
   final JobMediaPersister _media;
 
@@ -76,6 +80,23 @@ class JobStatePersister {
       await repo.purgePerCanvasCap(cap: kJobPerCanvasCap);
     } on LocalIOError {
       // 下次启动重试；orphan 回收已完成，不影响队列可用性。
+    }
+    // LB-14：孤儿回收之后再收敛崩溃遗留的空 result 壳（软删进回收站，
+    // LB-15 可恢复）。同为 housekeeping——失败只 warn，绝不阻断启动。
+    final nodeRepo = _nodeRepo;
+    if (nodeRepo != null) {
+      try {
+        final converged = await nodeRepo.softDeleteEmptyOrphanResults();
+        if (converged > 0) {
+          _logger?.info(kJobQueueLogModule,
+              'startup recovery: empty orphan result nodes soft-deleted',
+              extra: {'count': converged});
+        }
+      } on LocalIOError catch (e) {
+        _logger?.warn(kJobQueueLogModule,
+            'startup convergence of empty orphan result nodes failed',
+            extra: {'error_code': e.code.wire});
+      }
     }
   }
 

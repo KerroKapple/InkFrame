@@ -434,6 +434,69 @@ void main() {
       return;
     }
   });
+
+  test('NodeRepository.softDeleteEmptyOrphanResults 崩溃遗留空壳收敛（LB-14）',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final nodes = PostgresNodeRepository(h.conn);
+      final jobs = PostgresJobRepository(h.conn);
+      final batch = PostgresBatchResultRepository(h.conn);
+
+      // (a) 纯空 result：无 url / 无成功 slot / 无在途 job → 应被软删。
+      final a =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      // (b) 空 result 但有 success batch_result → 保留（部分成功后崩溃场景）。
+      final b =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      final jb = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: a,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await batch.create(nodeId: b, jobId: jb, slotIndex: 0, status: 'success');
+      // (c) 空 result 但有在途 job（result_node_id=c, polling）→ 保留。
+      final c =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      final jc = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: a,
+        resultNodeId: c,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await jobs.transitionStatus(
+        id: jc,
+        fromStatuses: const ['pending'],
+        toStatus: 'polling',
+      );
+      // (d) result 但 image_url 已写 → 保留。
+      final d = await nodes.create(
+        canvasId: cid,
+        type: 'image',
+        nodeRole: 'result',
+        typeConfig: {'image_url': 'images/d.png'},
+      );
+
+      // 仅 (a) 被收敛。
+      expect(await nodes.softDeleteEmptyOrphanResults(), 1);
+
+      expect(await nodes.findById(a), isNull, reason: '(a) 空壳进回收站');
+      expect(await nodes.findById(b), isNotNull, reason: '(b) success slot 保护');
+      expect(await nodes.findById(c), isNotNull, reason: '(c) 在途 job 保护');
+      expect(await nodes.findById(d), isNotNull, reason: '(d) 有 image_url 保护');
+    } on _Skip {
+      return;
+    }
+  });
 }
 
 class _Skip implements Exception {}

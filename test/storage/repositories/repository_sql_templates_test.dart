@@ -130,6 +130,30 @@ void main() {
       expect(spy.lastSql, contains('c.project_id'));
       expect(spy.lastSql, contains('JOIN canvases c ON c.id = n.canvas_id'));
     });
+
+    test('softDeleteEmptyOrphanResults 空壳判据 + 双守卫 + LB-01 状态常量',
+        () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).softDeleteEmptyOrphanResults();
+      final sql = spy.lastSql!;
+      // SET deleted_at + updated_at（updated_at 质量闸）。
+      expect(sql, contains('UPDATE nodes SET'));
+      expect(sql, contains('deleted_at = now()'));
+      expect(sql, contains('updated_at = now()'));
+      // 目标：未删的 result 节点。
+      expect(sql, contains("node_role = 'result'"));
+      expect(sql, contains('deleted_at IS NULL'));
+      // 空判据：3 个 url 键皆空。
+      expect(sql, contains("COALESCE(type_config->>'image_url','') = ''"));
+      expect(sql, contains("COALESCE(type_config->>'video_url','') = ''"));
+      expect(sql, contains("COALESCE(type_config->>'thumbnail_url','') = ''"));
+      // 成功 slot 守卫（SlotStatuses.success，LB-01）。
+      expect(sql, contains('NOT EXISTS (SELECT 1 FROM batch_results br'));
+      expect(sql, contains("br.status = 'success'"));
+      // 在途 job 守卫（JobStatuses.pending/submitted/polling，LB-01）。
+      expect(sql, contains('NOT EXISTS (SELECT 1 FROM jobs j'));
+      expect(sql, contains("j.status IN ('pending','submitted','polling')"));
+    });
   });
 
   group('EdgeRepository SQL', () {

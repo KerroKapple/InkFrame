@@ -83,6 +83,9 @@ class _FakeNodeRepository implements NodeRepository {
       const [];
 
   @override
+  Future<int> softDeleteEmptyOrphanResults() async => 0;
+
+  @override
   Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async => 1;
 
   @override

@@ -180,6 +180,8 @@ class _FakeNodeRepo implements NodeRepository {
   Future<List<Map<String, Object?>>> listOrphanResults(String canvasId) =>
       throw UnimplementedError();
   @override
+  Future<int> softDeleteEmptyOrphanResults() async => 0;
+  @override
   Future<int> update(String id, Map<String, Object?> patch) =>
       throw UnimplementedError();
   @override

@@ -76,6 +76,7 @@ class InMemoryJobQueueService implements JobQueueService {
     _state = JobStatePersister(
       repo: repo,
       batchResults: batchResultRepo,
+      nodeRepo: nodeRepo,
       logger: logger,
       media: _media,
     );
