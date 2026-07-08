@@ -300,7 +300,17 @@ class InMemoryJobQueueService implements JobQueueService {
           },
         );
       }
-      await _pollLoop(provider as Pollable, providerJobId, task, handle, running);
+      // LB-02：能力声明的 poll 超时/间隔覆盖实例默认（未声明则回落默认）。
+      final caps = provider.capabilities;
+      await _pollLoop(
+        provider as Pollable,
+        providerJobId,
+        task,
+        handle,
+        running,
+        pollTimeout: caps.pollTimeout ?? _pollTimeout,
+        pollInitial: caps.pollInterval ?? _pollInitial,
+      );
     } on InkError catch (e) {
       final rows = await _persistFailure(task, e, running);
       _emitFailure(handle, _arbitrate(rows, running, e, task.jobId));
@@ -326,10 +336,12 @@ class InMemoryJobQueueService implements JobQueueService {
     String providerJobId,
     GenerationTask task,
     _Handle handle,
-    _RunningJob running,
-  ) async {
-    final deadline = DateTime.now().add(_pollTimeout);
-    var interval = _pollInitial;
+    _RunningJob running, {
+    required Duration pollTimeout,
+    required Duration pollInitial,
+  }) async {
+    final deadline = DateTime.now().add(pollTimeout);
+    var interval = pollInitial;
     var enteredPolling = false;
 
     // 退避 + jitter；可中断（cancel/dispose wake 后立即返回）。

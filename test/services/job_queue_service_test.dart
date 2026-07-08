@@ -33,6 +33,8 @@ class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable
     this.pollError,
     this.pollErrors = const [],
     this.cancelHandler,
+    Duration? capPollTimeout,
+    Duration? capPollInterval,
   }) : _capabilities = ProviderCapabilities(
           providerId: providerId,
           region: ProviderRegion.global,
@@ -56,6 +58,8 @@ class FakeProvider implements Submittable, Pollable, Cancellable, KeyValidatable
           maxConcurrentJobs: maxConcurrentJobs,
           qps: 10,
           burst: 10,
+          pollTimeout: capPollTimeout,
+          pollInterval: capPollInterval,
         );
 
   final ProviderCapabilities _capabilities;
@@ -936,6 +940,29 @@ void main() {
       expect((terminal as JobFailure).error.code, InkErrorCode.invalidKey);
       expect(fake.pollCalls, 1);
       expect(repo.rows['j1']!['status'], 'error');
+      svc.dispose();
+    });
+
+    test('capabilities.pollTimeout 覆盖实例默认（provider 声明短超时即生效）',
+        () async {
+      final fake = FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [JobStatus.inProgress(progress: 0.1)],
+        capPollTimeout: const Duration(milliseconds: 50),
+      );
+      final repo = FakeJobRepository()..seedPending('j1');
+      // 实例默认 5s；能力声明 50ms——能力生效则应远早于 5s timeout。
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        repo: repo,
+        pollTimeout: const Duration(seconds: 5),
+      );
+      final h = await svc.submit(_task('j1', 'fake'));
+      final terminal = await h.done.timeout(const Duration(seconds: 2));
+
+      expect(terminal, isA<JobFailure>());
+      expect((terminal as JobFailure).error.code, InkErrorCode.pollTimeout);
+      expect(repo.rows['j1']!['status'], 'timeout');
       svc.dispose();
     });
 
