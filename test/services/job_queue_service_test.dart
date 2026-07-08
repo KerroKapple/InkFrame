@@ -349,6 +349,9 @@ class FakeNodeRepository implements NodeRepository {
       throw UnimplementedError();
 
   @override
+  Future<int> softDeleteEmptyOrphanResults() async => 0;
+
+  @override
   Future<int> update(String id, Map<String, Object?> patch) =>
       throw UnimplementedError();
 
@@ -360,6 +363,27 @@ class FakeNodeRepository implements NodeRepository {
 
   @override
   Future<int> hardDelete(String id) => throw UnimplementedError();
+}
+
+/// LB-14 专用：记录 softDeleteEmptyOrphanResults 调用次数；throwOnConverge 时
+/// 抛 LocalIOError 验证 init() 只 warn 不阻断启动。其余成员触达即测试有误。
+class _SpyNodeRepo implements NodeRepository {
+  _SpyNodeRepo({this.throwOnConverge = false});
+  final bool throwOnConverge;
+  int convergeCalls = 0;
+
+  @override
+  Future<int> softDeleteEmptyOrphanResults() async {
+    convergeCalls += 1;
+    if (throwOnConverge) {
+      throw const LocalIOError(
+          extra: <String, Object?>{'op': 'softDeleteEmptyOrphanResults'});
+    }
+    return 0;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
 }
 
 /// 性能护栏专用：maxConcurrentJobs=0 → 任务全部堆 pending，便于压 cancel 路径。
@@ -759,6 +783,28 @@ void main() {
       final repo = FakeJobRepository()..purgeThrows = true;
       final svc = _build(_registryOf({}), repo: repo);
       await expectLater(svc.init(), completes);
+      svc.dispose();
+    });
+
+    test('init() 在孤儿回收之后收敛空 result 壳（LB-14）', () async {
+      final repo = FakeJobRepository()..seedRow('orphan', 'polling');
+      final node = _SpyNodeRepo();
+      final svc = _build(_registryOf({}), repo: repo, nodeRepo: node);
+      await svc.init();
+
+      // 孤儿回收已发生（recovery），空壳收敛紧随其后被调用一次。
+      expect(repo.rows['orphan']!['status'], 'cancelled');
+      expect(node.convergeCalls, 1);
+      svc.dispose();
+    });
+
+    test('init() 空壳收敛抛 LocalIOError 只 warn 不阻断启动（LB-14）', () async {
+      final repo = FakeJobRepository();
+      final node = _SpyNodeRepo(throwOnConverge: true);
+      final svc = _build(_registryOf({}), repo: repo, nodeRepo: node);
+
+      await expectLater(svc.init(), completes);
+      expect(node.convergeCalls, 1);
       svc.dispose();
     });
   });

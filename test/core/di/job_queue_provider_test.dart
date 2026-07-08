@@ -55,6 +55,15 @@ class _FakeJobRepo implements JobRepository {
 }
 
 class _FakeNodeRepo implements NodeRepository {
+  int convergeCalls = 0;
+
+  // LB-14：init() 应在孤儿回收后调用一次空 result 壳收敛。
+  @override
+  Future<int> softDeleteEmptyOrphanResults() async {
+    convergeCalls += 1;
+    return 0;
+  }
+
   @override
   dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
 }
@@ -67,6 +76,7 @@ class _FakeResolver implements FileResolverService {
 void main() {
   test('jobQueueServiceProvider 注入 repo 且解析时跑 init() 清理孤儿', () async {
     final fakeRepo = _FakeJobRepo();
+    final fakeNode = _FakeNodeRepo();
     final fakeBatch = FakeBatchResultRepo();
     await fakeBatch.create(
       nodeId: 'n1',
@@ -78,7 +88,7 @@ void main() {
       overrides: <Override>[
         secureStorageServiceProvider.overrideWithValue(_NoopSecure()),
         jobRepositoryProvider.overrideWith((ref) async => fakeRepo),
-        nodeRepositoryProvider.overrideWith((ref) async => _FakeNodeRepo()),
+        nodeRepositoryProvider.overrideWith((ref) async => fakeNode),
         batchResultRepositoryProvider.overrideWith((ref) async => fakeBatch),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
         thumbnailServiceProvider.overrideWithValue(null),
@@ -100,5 +110,8 @@ void main() {
     final slot = fakeBatch.rows.values.single;
     expect(slot['status'], 'cancelled');
     expect(slot['error_code'], 'cancelled_on_exit');
+    // LB-14：init() 全链路应调用一次空 result 壳收敛 —— 证明 nodeRepo 已穿到
+    // JobStatePersister.init()。
+    expect(fakeNode.convergeCalls, 1);
   });
 }

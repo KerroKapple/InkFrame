@@ -96,6 +96,8 @@ class _FakeNodeRepo implements NodeRepository {
   Future<List<Map<String, Object?>>> listOrphanResults(String canvasId) async =>
       [];
   @override
+  Future<int> softDeleteEmptyOrphanResults() async => 0;
+  @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
   Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async => 0;

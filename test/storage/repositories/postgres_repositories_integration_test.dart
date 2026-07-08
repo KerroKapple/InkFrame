@@ -7,6 +7,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/file_resolver_service.dart';
+import 'package:inkframe/services/job_queue/job_media_persister.dart';
+import 'package:inkframe/services/job_queue/job_state_persister.dart';
 import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
@@ -430,6 +432,128 @@ void main() {
             .listSuccessByProject('00000000-0000-0000-0000-000000000000'),
         isEmpty,
       );
+    } on _Skip {
+      return;
+    }
+  });
+
+  // 直接调用 softDeleteEmptyOrphanResults() 的守卫矩阵（防御纵深）。
+  // 注意：这是把收敛单独调用时的过滤契约——不是生产启动路径。生产里
+  // JobStatePersister.init() 会先把 pending/submitted/polling 全部 bulkTransition
+  // 成 cancelled，再跑收敛，届时不存在在途 job（见下方 full-init() 用例）。故场景
+  // (c) 的「在途 job 保护」是 direct-call 路径的防御纵深守卫，非启动语义。
+  test('NodeRepository.softDeleteEmptyOrphanResults 直调守卫矩阵（防御纵深，LB-14）',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final nodes = PostgresNodeRepository(h.conn);
+      final jobs = PostgresJobRepository(h.conn);
+      final batch = PostgresBatchResultRepository(h.conn);
+
+      // (a) 纯空 result：无 url / 无成功 slot / 无在途 job → 应被软删。
+      final a =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      // (b) 空 result 但有 success batch_result → 保留（部分成功后崩溃场景）。
+      final b =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      final jb = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: a,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await batch.create(nodeId: b, jobId: jb, slotIndex: 0, status: 'success');
+      // (c) 空 result 但有 LIVE polling job（result_node_id=c）→ 直调时保留。
+      // 防御纵深：仅当收敛被单独调用、且 job 仍在途时才成立；启动路径下 job 已先被
+      // 取消（见 full-init() 用例），故该节点在生产里会被清扫，不会被此守卫救回。
+      final c =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      final jc = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: a,
+        resultNodeId: c,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await jobs.transitionStatus(
+        id: jc,
+        fromStatuses: const ['pending'],
+        toStatus: 'polling',
+      );
+      // (d) result 但 image_url 已写 → 保留。
+      final d = await nodes.create(
+        canvasId: cid,
+        type: 'image',
+        nodeRole: 'result',
+        typeConfig: {'image_url': 'images/d.png'},
+      );
+
+      // 仅 (a) 被收敛。
+      expect(await nodes.softDeleteEmptyOrphanResults(), 1);
+
+      expect(await nodes.findById(a), isNull, reason: '(a) 空壳进回收站');
+      expect(await nodes.findById(b), isNotNull, reason: '(b) success slot 保护');
+      expect(await nodes.findById(c), isNotNull,
+          reason: '(c) LIVE 在途 job 保护（direct-call 防御纵深）');
+      expect(await nodes.findById(d), isNotNull, reason: '(d) 有 image_url 保护');
+    } on _Skip {
+      return;
+    }
+  });
+
+  // 生产启动全序列：init() 先取消在途 job（bulkTransition），再收敛空壳。故崩溃时
+  // 处于 polling 的空 result 节点，其 job 会被取消、随后节点被清扫——证明真实
+  // post-recovery 路径，而非 direct-call 守卫。
+  test('JobStatePersister.init() 全序列：崩溃时 polling 的空 result 节点被取消后清扫（LB-14）',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final nodes = PostgresNodeRepository(h.conn);
+      final jobs = PostgresJobRepository(h.conn);
+
+      // 崩溃现场：一个空 result 节点，其 job 崩溃时停在 polling（result_node_id 指向它）。
+      final crashed =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      final job = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: crashed,
+        resultNodeId: crashed,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      await jobs.transitionStatus(
+        id: job,
+        fromStatuses: const ['pending'],
+        toStatus: 'polling',
+      );
+
+      // 驱动真实启动恢复序列（孤儿回收 → slot 收敛 → purge → 空壳收敛）。
+      final persister = JobStatePersister(
+        repo: PostgresJobRepository(h.conn),
+        batchResults: PostgresBatchResultRepository(h.conn),
+        nodeRepo: PostgresNodeRepository(h.conn),
+        media: const NullJobMediaPersister(),
+      );
+      await persister.init();
+
+      // 在途 job 先被取消（recovery）……
+      expect((await jobs.findById(job))?['status'], 'cancelled',
+          reason: '在途 job 启动时被 bulkTransition 取消');
+      // ……随后空壳无在途 job 保护，被清扫进回收站。
+      expect(await nodes.findById(crashed), isNull,
+          reason: 'polling-at-crash 空壳在 job 取消后被清扫');
     } on _Skip {
       return;
     }

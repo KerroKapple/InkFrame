@@ -310,6 +310,32 @@ class InMemoryNodeRepository implements NodeRepository {
   Future<int> hardDelete(String id) async {
     return _rows.remove(id) == null ? 0 : 1;
   }
+
+  @override
+  Future<int> softDeleteEmptyOrphanResults() async {
+    // LB-14 真实过滤逻辑：node_role='result' 且未删、3 个 url 键皆空的壳软删。
+    // 本内存仓储不持有 batch_results / jobs，故成功 slot / 在途 job 两道守卫
+    // 在此库上恒成立（无相关数据）——url 空判据部分与真库同语义。
+    int count = 0;
+    for (final Map<String, Object?> row in _rows.values) {
+      if (row['deleted_at'] != null) continue;
+      if (row['node_role'] != 'result') continue;
+      final Map<String, Object?> cfg =
+          (row['type_config'] as Map<String, Object?>?) ??
+              const <String, Object?>{};
+      if (_blank(cfg['image_url']) &&
+          _blank(cfg['video_url']) &&
+          _blank(cfg['thumbnail_url'])) {
+        row['deleted_at'] = _utcNow();
+        row['updated_at'] = _utcNow();
+        count += 1;
+      }
+    }
+    return count;
+  }
+
+  // COALESCE(->>'x','') = '' 语义：JSON 文本值为 null 或空串即视为空。
+  bool _blank(Object? v) => v == null || v == '';
 }
 
 // ─── Edge ────────────────────────────────────────────────────────────

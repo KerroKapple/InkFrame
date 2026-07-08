@@ -125,6 +125,28 @@ void main() {
       final List<Map<String, Object?>> orphans = await r.listOrphanResults('c1');
       expect(orphans, hasLength(1));
     });
+
+    test('softDeleteEmptyOrphanResults 只软删空 result 壳（LB-14）', () async {
+      final InMemoryNodeRepository r = InMemoryNodeRepository();
+      // 空 result 壳 → 会进回收站
+      final String empty =
+          await r.create(canvasId: 'c1', type: 'image', nodeRole: 'result');
+      // 有 image_url 的 result → 保留
+      final String withImage = await r.create(
+        canvasId: 'c1',
+        type: 'image',
+        nodeRole: 'result',
+        typeConfig: <String, Object?>{'image_url': 'images/a.png'},
+      );
+      // config 节点 → 不受影响
+      final String cfg =
+          await r.create(canvasId: 'c1', type: 'image', nodeRole: 'config');
+
+      expect(await r.softDeleteEmptyOrphanResults(), 1);
+      expect(await r.findById(empty), isNull);
+      expect(await r.findById(withImage), isNotNull);
+      expect(await r.findById(cfg), isNotNull);
+    });
   });
 
   group('InMemoryEdgeRepository', () {
