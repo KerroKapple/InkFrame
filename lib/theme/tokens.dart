@@ -4,8 +4,9 @@
 // 通过 InkSpacing / InkRadius / InkShadow / InkTypography / context.inkColors 消费。
 //
 // 三态变体：dark / light / highContrast。highContrast 是 A11y §20.1 基线的
-// 开关目标，前景色与背景色的对比度 ≥ 7:1（WCAG AAA 参考值），实际 CI 不做
-// 自动对比度检查——值由人工维护。
+// 开关目标，前景色与背景色的对比度 ≥ 7:1（WCAG AAA 参考值），整体基线值由
+// 人工维护；彩底前景（onAccent/onDanger）的 AA ≥4.5 对比率由 tokens_test
+// 自动锁定。
 import 'package:flutter/widgets.dart';
 
 /// 启动阶段（main 进入 runApp 前）唯一可暴露的原始色板常量入口。
@@ -36,10 +37,12 @@ class InkColors {
     required this.accent,
     required this.accentHover,
     required this.accentPressed,
+    required this.onAccent,
     required this.brand,
     required this.cta,
     required this.ctaHover,
     required this.danger,
+    required this.onDanger,
     required this.warning,
     required this.success,
     required this.info,
@@ -66,10 +69,14 @@ class InkColors {
         accent: Color(0xFFC9A85B),
         accentHover: Color(0xFFD8B66B),
         accentPressed: Color(0xFFB89A4F),
+        // 琥珀底前景 = 画布黑（accent 8.74 / cta 9.29）
+        onAccent: InkPalette.surfaceCanvasDark,
         brand: Color(0xFFC9A85B),
         cta: Color(0xFFE3A648),
         ctaHover: Color(0xFFF0B556),
         danger: Color(0xFFC8523A),
+        // danger 红偏暗，surfaceCanvas 只有 4.47 差 0.03；取纯黑过线（4.72）
+        onDanger: Color(0xFF000000),
         warning: Color(0xFFD88B3A),
         success: Color(0xFF5C8A4E),
         info: Color(0xFF4B7A92),
@@ -96,10 +103,15 @@ class InkColors {
         accent: Color(0xFFA88340),
         accentHover: Color(0xFFB89150),
         accentPressed: Color(0xFF8C6A30),
+        // 中调琥珀上自家浅色 surfaceCanvas 仅 3.06、最深 fg1 仅 4.33，
+        // 借暗色画布黑过线（accent 5.66 / cta 6.75）
+        onAccent: InkPalette.surfaceCanvasDark,
         brand: Color(0xFFA88340),
         cta: Color(0xFFC68B2E),
         ctaHover: Color(0xFFD89A3E),
         danger: Color(0xFFB04030),
+        // danger 红够深，纸白前景可读（5.06）
+        onDanger: Color(0xFFF5EFE3),
         warning: Color(0xFFC07028),
         success: Color(0xFF4C7240),
         info: Color(0xFF3C6478),
@@ -126,10 +138,14 @@ class InkColors {
         accent: Color(0xFFFFCB52),
         accentHover: Color(0xFFFFD874),
         accentPressed: Color(0xFFF0BA3C),
+        // 高饱琥珀 × 纯黑（13.92）
+        onAccent: Color(0xFF000000),
         brand: Color(0xFFFFCB52),
         cta: Color(0xFFFFCB52),
         ctaHover: Color(0xFFFFD874),
         danger: Color(0xFFFF6A4A),
+        // 高饱红 × 纯黑（7.41）
+        onDanger: Color(0xFF000000),
         warning: Color(0xFFFFB04A),
         success: Color(0xFF7AD06A),
         info: Color(0xFF6BB5D0),
@@ -162,6 +178,8 @@ class InkColors {
   final Color fg4; // 极弱辅助文本（text-quaternary）
   final Color accentHover;
   final Color accentPressed;
+  final Color onAccent; // accent/brand/cta 琥珀底上的前景（AA ≥4.5）
+  final Color onDanger; // danger 彩底上的前景（AA ≥4.5）
   final Color cta; // 品牌红 CTA
   final Color ctaHover;
   final Color info; // 语义信息蓝

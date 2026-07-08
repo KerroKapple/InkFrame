@@ -5,6 +5,8 @@ import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/components/ink_button.dart';
 import 'package:inkframe/theme/tokens.dart';
 
+import '../wcag.dart';
+
 void main() {
   Future<void> pump(
     WidgetTester tester,
@@ -24,15 +26,15 @@ void main() {
     return text.style!.color!;
   }
 
-  testWidgets('primary 前景用 surfaceCanvas（brand 底上不用浅色 fg1）', (tester) async {
+  testWidgets('primary 前景用 onAccent（brand 底上不用浅色 fg1）', (tester) async {
     await pump(
       tester,
       InkButton(label: 'Go', onPressed: () {}),
     );
-    expect(labelColor(tester, 'Go'), InkColors.dark().surfaceCanvas);
+    expect(labelColor(tester, 'Go'), InkColors.dark().onAccent);
   });
 
-  testWidgets('danger 前景用 surfaceCanvas', (tester) async {
+  testWidgets('danger 前景用 onDanger', (tester) async {
     await pump(
       tester,
       InkButton(
@@ -41,7 +43,7 @@ void main() {
         variant: InkButtonVariant.danger,
       ),
     );
-    expect(labelColor(tester, 'Del'), InkColors.dark().surfaceCanvas);
+    expect(labelColor(tester, 'Del'), InkColors.dark().onDanger);
   });
 
   testWidgets('secondary/ghost 中性底保持 fg1 前景', (tester) async {
@@ -66,6 +68,50 @@ void main() {
     expect(labelColor(tester, 'Sec'), InkColors.dark().fg1);
     expect(labelColor(tester, 'Gho'), InkColors.dark().fg1);
   });
+
+  // 对比率锁定（WCAG AA ≥4.5:1）：彩底（brand/danger）× 三变体逐一锁死，
+  // 防 per-variant 前景取色再翻车（历史 bug：light 一刀切 surfaceCanvas）。
+  for (final variant in InkThemeVariant.values) {
+    testWidgets('$variant: primary/danger 前景对底色对比率 ≥4.5', (tester) async {
+      await pump(
+        tester,
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            InkButton(label: 'Go', onPressed: () {}),
+            InkButton(
+              label: 'Del',
+              onPressed: () {},
+              variant: InkButtonVariant.danger,
+            ),
+          ],
+        ),
+        variant: variant,
+      );
+      Color bgOf(String label) {
+        final box = tester.widget<DecoratedBox>(
+          find
+              .ancestor(
+                of: find.text(label),
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        );
+        return (box.decoration as BoxDecoration).color!;
+      }
+
+      expect(
+        wcagContrast(bgOf('Go'), labelColor(tester, 'Go')),
+        greaterThanOrEqualTo(4.5),
+        reason: '$variant primary(brand 底)',
+      );
+      expect(
+        wcagContrast(bgOf('Del'), labelColor(tester, 'Del')),
+        greaterThanOrEqualTo(4.5),
+        reason: '$variant danger(danger 底)',
+      );
+    });
+  }
 
   testWidgets('禁用态（onPressed=null）前景压灰为 fg4 且不可点', (tester) async {
     await pump(

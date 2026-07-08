@@ -68,13 +68,14 @@ ThemeData buildAppTheme({
     colorScheme: ColorScheme(
       brightness: brightness,
       primary: colors.accent,
-      // 彩色底上的前景统一用画布最底色（对齐 InkAmberButton）：
-      // fg1 在暗色变体是浅米色，放琥珀/危险色上对比度不足。
-      onPrimary: colors.surfaceCanvas,
+      // 彩色底上的前景 per-variant 取语义 on-color token（WCAG AA ≥4.5，
+      // tokens_test 对比率锁定）：一刀切 surfaceCanvas 在 light 变体
+      // 只有 3.06:1（历史回归）。
+      onPrimary: colors.onAccent,
       secondary: colors.brand,
-      onSecondary: colors.surfaceCanvas,
+      onSecondary: colors.onAccent,
       error: colors.danger,
-      onError: colors.surfaceCanvas,
+      onError: colors.onDanger,
       surface: colors.surface2,
       onSurface: colors.fg1,
     ),

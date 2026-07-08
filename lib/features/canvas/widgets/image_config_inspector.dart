@@ -902,20 +902,20 @@ class _CharacterChip extends StatelessWidget {
                   errorBuilder: (_, _, _) => Icon(
                     Icons.person_outline,
                     size: 14,
-                    color: selected ? colors.surfaceCanvas : colors.fg3,
+                    color: selected ? colors.onAccent : colors.fg3,
                   ),
                 ),
               ),
               const SizedBox(width: InkSpacing.xs),
             ],
             if (selected) ...[
-              Icon(Icons.check, size: 14, color: colors.surfaceCanvas),
+              Icon(Icons.check, size: 14, color: colors.onAccent),
               const SizedBox(width: InkSpacing.xs),
             ],
             Text(
               label,
               style: typo.caption.copyWith(
-                color: selected ? colors.surfaceCanvas : colors.fg1,
+                color: selected ? colors.onAccent : colors.fg1,
               ),
             ),
           ],
