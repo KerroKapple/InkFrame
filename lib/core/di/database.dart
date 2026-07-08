@@ -12,9 +12,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:postgres/postgres.dart';
 
+import '../../storage/database_bootstrap.dart';
 import '../../storage/pg_binary_locator.dart';
-import '../../storage/migrations/app_migrations.dart';
-import '../../storage/migrations/migration_runner.dart';
 import '../../storage/pg_controller.dart';
 import 'logger.dart';
 import 'paths.dart';
@@ -76,19 +75,12 @@ final pgPoolProvider = FutureProvider<Pool<void>>(
 );
 
 /// Pool + schema migrated——应用层仓储层实际应该依赖的 provider。
-/// 首次读：启动 PG → 建池 → CREATE EXTENSION pgcrypto → MigrationRunner.migrate()。
+/// 首次读：启动 PG → 建池 → DatabaseBootstrap.run()（pgcrypto + 迁移链；
+/// 底层 PG 异常在储层边界收口，见 storage/database_bootstrap.dart）。
 final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
   (ref) async {
     final pool = await ref.watch(pgPoolProvider.future);
-    // pgcrypto：gen_random_uuid() 依赖；IF NOT EXISTS 幂等。
-    try {
-      await pool.execute('CREATE EXTENSION IF NOT EXISTS pgcrypto');
-    } on ServerException catch (e) {
-      // 23505 并发竞争；其余重抛。
-      if (e.code != '23505') rethrow;
-    }
-    final runner = MigrationRunner(pool, migrations: kAppMigrations);
-    await runner.migrate();
+    await DatabaseBootstrap(pool).run();
     return pool;
   },
   name: 'pgMigratedPoolProvider',
