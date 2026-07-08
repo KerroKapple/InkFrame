@@ -770,12 +770,13 @@ final hint = context.l10n.geminiSystemPrompt;
 
 如需在 prompt 内**注入**与用户语言相关的文本（例如 "respond in the user's UI language"），把 UI locale code 作为参数传入；prompt 模板本身保持英文。
 
-### 8.4 ARB 一致性门禁（Claude Code hook + pre-commit）
+### 8.4 ARB 一致性门禁（CI 测试 + Claude Code hook + pre-commit）
 
-`scripts/hooks/check-i18n-coverage.sh` 是真正强制的执行点，由两条链路触发：
+三层强制，任一层挡住 key 集合不一致 / 空值：
 
-1. **Claude Code PostToolUse hook**：每次 Write/Edit ARB 文件后立即跑（脚本 line 8 接受单文件参数 `$1`）
-2. **`scripts/hooks/pre-commit`**：commit 前再跑一次双重保护
+0. **CI 测试（权威硬闸）**：`test/l10n/arb_hygiene_test.dart` 断言 en/zh message key 集合完全一致，随 `flutter test --coverage`（`.github/workflows/ci.yml`）阻断式执行——PR 上 key 不齐即测试红、不可合。
+1. **Claude Code PostToolUse hook**：`scripts/hooks/check-i18n-coverage.sh` 每次 Write/Edit ARB 文件后立即跑（脚本 line 8 接受单文件参数 `$1`）——本地即时反馈。
+2. **`scripts/hooks/pre-commit`**：commit 前再跑一次，双重保护。
 
 脚本动作（line 56-60）：
 
@@ -786,8 +787,9 @@ final hint = context.l10n.geminiSystemPrompt;
 
 **每次 commit 必须满足：en 和 zh 的 key 集合完全一致，无空值。**
 
-> ⚠️ GitHub Actions 侧目前**未**配置独立的 i18n workflow——保护仅靠本地 hook。若需 CI 端兜底，应在
-> `.github/workflows/` 下加 `i18n.yml`（追踪 issue 待立）。
+> **CI 兜底（勘正 2026-07-08，LB-19）**：无需独立 i18n workflow——`test/l10n/arb_hygiene_test.dart`
+> 随 `ci.yml` 的 `flutter test --coverage` 阻断式执行，en/zh key 集合不一致即测试失败、PR 变红。
+> 本地 hook 是快速即时层，CI 测试是权威硬闸。
 
 ### 8.5 新增字符串流程（强制顺序）
 
