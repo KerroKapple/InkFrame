@@ -54,7 +54,9 @@ void reportUncaught({
   try {
     logger.error(_kModule, 'uncaught error', cause: error, stackTrace: stack);
     reporter.report(error, stack);
-    unawaited(logger.flush());
+    // flush 的异步错误也吞掉：否则会逃逸到本 zone 的 onError → 重入死循环
+    // （N-2）。当前 flush 为同步 no-op，此 catchError 是对未来 async 实现的护栏。
+    unawaited(logger.flush().catchError((Object _) {}));
   } catch (_) {
     // 见上：sanctioned last-resort exemption——刻意吞掉一切（含崩溃写盘失败）。
   }

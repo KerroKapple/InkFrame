@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../core/interfaces/crash_reporter.dart';
+import '../core/logging/log_sanitizer.dart';
 import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
 
@@ -41,25 +42,48 @@ class FileCrashReporter implements CrashReporter {
       dir.createSync(recursive: true);
     }
     final DateTime now = _clock.nowUtc();
-    final File file =
-        File(p.join(dir.path, '$_prefix${_stamp(now)}$_suffix'));
     // flush: true 强制 fsync，崩溃时刻确保内容真正落盘。
-    file.writeAsStringSync(_render(now, error, stackTrace), flush: true);
+    _uniqueFile(dir, _stamp(now))
+        .writeAsStringSync(_render(now, error, stackTrace), flush: true);
     _rotate(dir);
   }
 
-  // 文件名时间戳：紧凑、定宽（毫秒恒 3 位）、字典序即时间序——供轮转判定最旧。
-  String _stamp(DateTime now) =>
-      now.toIso8601String().replaceAll(RegExp(r'[:.\-]'), '');
+  // 文件名时间戳：定宽 YYYYMMDDThhmmss + 6 位微秒 + Z——字典序严格等于时间序，供轮转
+  // 判定"最旧"。绝不能用 toIso8601String：micro==0 时它省略到 3 位小数、否则 6 位，
+  // 宽度不定 → compareTo 反转（较早的 `…123Z` 会排在较晚的 `…123456Z` 之后）→ 误删较新崩溃。
+  String _stamp(DateTime now) {
+    String pad(int v, int width) => v.toString().padLeft(width, '0');
+    final int frac = now.millisecond * 1000 + now.microsecond; // 0..999999
+    return '${pad(now.year, 4)}${pad(now.month, 2)}${pad(now.day, 2)}'
+        'T${pad(now.hour, 2)}${pad(now.minute, 2)}${pad(now.second, 2)}'
+        '${pad(frac, 6)}Z';
+  }
+
+  // 同一时钟刻度内多次崩溃 → 追加 -$n 序号避免同名覆盖（丢崩溃），同 FileLoggerService。
+  File _uniqueFile(Directory dir, String stamp) {
+    File target = File(p.join(dir.path, '$_prefix$stamp$_suffix'));
+    var n = 0;
+    while (target.existsSync()) {
+      n += 1;
+      target = File(p.join(dir.path, '$_prefix$stamp-$n$_suffix'));
+    }
+    return target;
+  }
 
   String _render(DateTime now, Object error, StackTrace? stackTrace) {
+    // 防御性脱敏：error/stack 可能夹带凭证（LB-07 起 PG 口令流经连接层，其失败是未捕获
+    // 崩溃高发点）→ 与日志共用 LogSanitizer 打码后再落盘，杜绝明文密钥写盘。
+    final String maskedError = LogSanitizer.maskString(error.toString());
+    final String maskedStack = stackTrace == null
+        ? '<no stack>'
+        : LogSanitizer.maskString(stackTrace.toString());
     return (StringBuffer()
           ..writeln('InkFrame crash report')
           ..writeln('timestamp: ${now.toIso8601String()}')
           ..writeln('version: $_appVersion')
-          ..writeln('error: $error')
+          ..writeln('error: $maskedError')
           ..writeln('stack:')
-          ..writeln(stackTrace?.toString() ?? '<no stack>'))
+          ..writeln(maskedStack))
         .toString();
   }
 

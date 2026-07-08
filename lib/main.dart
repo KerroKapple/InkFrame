@@ -16,6 +16,7 @@
 //   7) setPreventClose + 显示窗口
 //   8) runApp(UncontrolledProviderScope + InkFrameApp)
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -43,8 +44,10 @@ import 'services/file_preferences_service.dart';
 import 'theme/tokens.dart';
 
 void main() {
-  // logger / reporter 提升到 zone 外的函数作用域（非全局），供 onError 回退复用；
-  // 二者在 bootstrap 早期赋值前为 null（极早期错误走 runZonedGuarded 默认 stderr 上报）。
+  // logger / reporter 提升到 zone 外的函数作用域（非全局），供 onError 回退复用。
+  // 二者在 bootstrap 早期赋值前为 null——注意 runZonedGuarded 自定义 onError 已【顶替】
+  // root zone 的 stderr handler，不会自动回退；故 onError 在 reporter 未就绪时必须
+  // 自行落 stderr（见下），否则极早期错误彻底消失。logger 比 reporter 更早赋值。
   LoggerService? logger;
   CrashReporter? reporter;
 
@@ -145,12 +148,20 @@ void main() {
       );
     },
     (Object error, StackTrace stack) {
-      // zone 未捕获错误：钩子就绪后走完整落盘；就绪前（极早期）默认已上报 stderr。
       final LoggerService? l = logger;
       final CrashReporter? r = reporter;
       if (l != null && r != null) {
+        // 钩子已就绪：完整落盘（日志 ERROR + 崩溃文件 + flush）。
         reportUncaught(logger: l, reporter: r, error: error, stack: stack);
+        return;
       }
+      // reporter 未就绪（zone 入口 → 版本解析之间的极早期错误）：自定义 onError 已顶替
+      // root zone 的 stderr 上报，必须自行落 stderr；logger 若已就绪则一并补记 ERROR
+      // （不把日志门槛卡在 reporter 就绪之后）。
+      l?.error('app.bootstrap', 'uncaught error before crash reporter ready',
+          cause: error, stackTrace: stack);
+      stderr.writeln('InkFrame uncaught (pre-reporter): $error');
+      stderr.writeln(stack.toString());
     },
   );
 }
