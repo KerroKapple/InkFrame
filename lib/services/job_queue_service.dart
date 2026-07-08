@@ -57,9 +57,13 @@ class InMemoryJobQueueService implements JobQueueService {
         _pollMultiplier = pollBackoffMultiplier,
         _pollTimeout = pollTimeout,
         _random = random ?? Random(),
-        // 依赖齐备（fileResolver + nodeRepo）→ 真实落盘器；否则 null-object 全 no-op。
-        // batchResults / downloader / thumbnail 仍可空，由 Impl 内各自守卫跳过。
-        _media = (fileResolver != null && nodeRepo != null)
+        // 任一媒体依赖注入即用真实落盘器（各方法按自身依赖独立守卫跳过，保持拆分前
+        // 的 per-dep 独立性）；全部未注入（纯内存）才用 null-object 全 no-op。
+        _media = (fileResolver != null ||
+                nodeRepo != null ||
+                batchResultRepo != null ||
+                videoDownloader != null ||
+                thumbnailService != null)
             ? JobMediaPersisterImpl(
                 fileResolver: fileResolver,
                 nodeRepo: nodeRepo,

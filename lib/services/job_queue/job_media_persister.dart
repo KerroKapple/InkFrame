@@ -1,6 +1,7 @@
 // JobMediaPersister 实现（LB-03 从 JobQueue 抽出）：inlineBytes / remoteUrls 落盘
-// + 批量 slot 收敛。依赖齐备时用 [JobMediaPersisterImpl]；缺失时注入
-// [NullJobMediaPersister]（null-object，全 no-op），orchestrator 不再分支判空。
+// + 批量 slot 收敛。任一媒体依赖注入即用 [JobMediaPersisterImpl]（各方法按自身
+// 依赖独立守卫跳过，保持拆分前的 per-dep 独立性）；全部未注入（纯内存）时用
+// [NullJobMediaPersister]（null-object，全 no-op），编排器对 _media 恒非空、不判空。
 import 'dart:io';
 import 'dart:math';
 
@@ -18,12 +19,15 @@ import '../../core/models/generation_task.dart';
 import '../../core/models/provider_capabilities.dart';
 import 'job_queue_util.dart';
 
-/// 依赖齐备（fileResolver + nodeRepo 必注入）的真实落盘器。
-/// batchResults / downloader / thumbnail / logger 仍可空——各自方法内守卫跳过。
+/// 真实落盘器。所有媒体依赖均可空——每个方法只守卫自己实际用到的依赖：
+///   - persistInlineBytes：fileResolver + nodeRepo
+///   - persistRemoteUrls：fileResolver + nodeRepo + downloader
+///   - convergeSlots / convergeSlotsAfterTerminal / _updateSlot：batchResults
+/// 缺失即该路 no-op（返回 null / 直接 return），与拆分前逐依赖跳过语义逐字节一致。
 class JobMediaPersisterImpl implements JobMediaPersister {
   JobMediaPersisterImpl({
-    required FileResolverService fileResolver,
-    required NodeRepository nodeRepo,
+    FileResolverService? fileResolver,
+    NodeRepository? nodeRepo,
     BatchResultRepository? batchResults,
     VideoDownloadService? downloader,
     ThumbnailService? thumbnail,
@@ -35,8 +39,8 @@ class JobMediaPersisterImpl implements JobMediaPersister {
         _thumbnail = thumbnail,
         _logger = logger;
 
-  final FileResolverService _fileResolver;
-  final NodeRepository _nodeRepo;
+  final FileResolverService? _fileResolver;
+  final NodeRepository? _nodeRepo;
   final BatchResultRepository? _batchResults;
   final VideoDownloadService? _downloader;
   final ThumbnailService? _thumbnail;
@@ -122,7 +126,8 @@ class JobMediaPersisterImpl implements JobMediaPersister {
   /// b3：把同步 Provider 返回的 inline bytes 写到 canvas/images/，
   /// 更新 node.type_config.image_url。
   ///
-  /// 关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure，不静默丢产物）。
+  /// 依赖（fileResolver/nodeRepo）未注入 = 单测/纯内存模式：跳过落盘（返回 null）。
+  /// 依赖已注入但关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure，不静默丢产物）。
   @override
   Future<InkError?> persistInlineBytes(
     GenerationTask task,
@@ -132,7 +137,13 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     final projectId = task.projectId;
     final canvasId = task.canvasId;
     final resultNodeId = task.resultNodeId;
-    // 关键 ID 缺失 = 生产故障：必须失败，绝不静默丢产物当成功。
+    final fileResolver = _fileResolver;
+    final nodeRepo = _nodeRepo;
+    // 依赖未注入 = 纯内存/单测模式：跳过落盘（非故障）。
+    if (fileResolver == null || nodeRepo == null) {
+      return null;
+    }
+    // 依赖已注入但关键 ID 缺失 = 生产故障：必须失败，绝不静默丢产物当成功。
     if (projectId == null || canvasId == null || resultNodeId == null) {
       return LocalIOError(
         extra: <String, Object?>{
@@ -150,6 +161,8 @@ class JobMediaPersisterImpl implements JobMediaPersister {
         projectId: projectId,
         canvasId: canvasId,
         resultNodeId: resultNodeId,
+        fileResolver: fileResolver,
+        nodeRepo: nodeRepo,
       );
     }
     try {
@@ -157,7 +170,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
       for (var i = 0; i < bytesList.length; i++) {
         final bytes = bytesList[i];
         final relPath = 'images/${task.jobId}-$i.png';
-        final file = _fileResolver.resolve(
+        final file = fileResolver.resolve(
           projectId: projectId,
           canvasId: canvasId,
           relativePath: relPath,
@@ -167,7 +180,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
         relativePaths.add(relPath);
       }
       // 多张时只取首张做主图（PRD §4.4：image_url 单值；批量在 batch_results 表）。
-      await _nodeRepo.patchTypeConfig(resultNodeId, {
+      await nodeRepo.patchTypeConfig(resultNodeId, {
         'image_url': relativePaths.first,
       });
       return null;
@@ -202,6 +215,8 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     required String projectId,
     required String canvasId,
     required String resultNodeId,
+    required FileResolverService fileResolver,
+    required NodeRepository nodeRepo,
   }) async {
     String? firstSuccessRel;
     InkError? lastError;
@@ -212,7 +227,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
       final relPath = 'images/${task.jobId}-$i.png';
       InkError? slotError;
       try {
-        final file = _fileResolver.resolve(
+        final file = fileResolver.resolve(
           projectId: projectId,
           canvasId: canvasId,
           relativePath: relPath,
@@ -276,7 +291,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
             },
           );
     }
-    await _nodeRepo.patchTypeConfig(resultNodeId, {
+    await nodeRepo.patchTypeConfig(resultNodeId, {
       'image_url': firstSuccessRel,
     });
     return null;
@@ -292,8 +307,8 @@ class JobMediaPersisterImpl implements JobMediaPersister {
   ///   - [FileSystemException] → [LocalIOError]
   ///   - [PathSecurityError]   → [LocalIOError]
   ///
-  /// downloader 未注入 = 单测/纯内存模式：跳过下载落盘（返回 null）。
-  /// 关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure）。
+  /// 依赖未注入 = 单测/纯内存模式：跳过下载落盘（返回 null）。
+  /// 依赖已注入但关键 ID 缺失 = 生产故障：返回 LocalIOError（转 failure）。
   /// batch_size=1 只取 remoteUrls.first；batchSize>1 走批量分支（逐 slot 落终态）。
   @override
   Future<InkError?> persistRemoteUrls(
@@ -304,12 +319,14 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     final projectId = task.projectId;
     final canvasId = task.canvasId;
     final resultNodeId = task.resultNodeId;
+    final fileResolver = _fileResolver;
+    final nodeRepo = _nodeRepo;
     final downloader = _downloader;
-    // downloader 未注入 = 纯内存/单测模式：跳过下载落盘（非故障）。
-    if (downloader == null) {
+    // 依赖未注入 = 纯内存/单测模式：跳过下载落盘（非故障）。
+    if (fileResolver == null || nodeRepo == null || downloader == null) {
       return null;
     }
-    // 关键 ID 缺失 = 生产故障：失败，不静默丢产物。
+    // 依赖已注入但关键 ID 缺失 = 生产故障：失败，不静默丢产物。
     if (projectId == null || canvasId == null || resultNodeId == null) {
       return LocalIOError(
         extra: <String, Object?>{
@@ -328,6 +345,8 @@ class JobMediaPersisterImpl implements JobMediaPersister {
         projectId: projectId,
         canvasId: canvasId,
         resultNodeId: resultNodeId,
+        fileResolver: fileResolver,
+        nodeRepo: nodeRepo,
         downloader: downloader,
       );
     }
@@ -341,7 +360,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     final relPath = '$subdir/${task.jobId}.$ext';
 
     try {
-      final file = _fileResolver.resolve(
+      final file = fileResolver.resolve(
         projectId: projectId,
         canvasId: canvasId,
         relativePath: relPath,
@@ -355,7 +374,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
       if (isVideo && thumbnail != null) {
         try {
           final thumbRel = 'videos/${task.jobId}.jpg';
-          final thumbFile = _fileResolver.resolve(
+          final thumbFile = fileResolver.resolve(
             projectId: projectId,
             canvasId: canvasId,
             relativePath: thumbRel,
@@ -381,7 +400,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
         }
       }
 
-      await _nodeRepo.patchTypeConfig(resultNodeId, patch);
+      await nodeRepo.patchTypeConfig(resultNodeId, patch);
       return null;
     } on VideoDownloadError catch (e) {
       // ME-05：产物下载失败是 DownloadError 域（downloadFailed，可重试），
@@ -426,6 +445,8 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     required String projectId,
     required String canvasId,
     required String resultNodeId,
+    required FileResolverService fileResolver,
+    required NodeRepository nodeRepo,
     required VideoDownloadService downloader,
   }) async {
     String? firstSuccessRel;
@@ -437,7 +458,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
       final relPath = 'images/${task.jobId}-$i.png';
       InkError? slotError;
       try {
-        final file = _fileResolver.resolve(
+        final file = fileResolver.resolve(
           projectId: projectId,
           canvasId: canvasId,
           relativePath: relPath,
@@ -512,15 +533,15 @@ class JobMediaPersisterImpl implements JobMediaPersister {
             },
           );
     }
-    await _nodeRepo.patchTypeConfig(resultNodeId, {
+    await nodeRepo.patchTypeConfig(resultNodeId, {
       'image_url': firstSuccessRel,
     });
     return null;
   }
 }
 
-/// null-object：媒体依赖（fileResolver/nodeRepo）未注入时注入，全 no-op。
-/// orchestrator 因此对 _media 恒非空、无需判空分支。
+/// null-object：所有媒体依赖均未注入（纯内存模式）时注入，全 no-op。
+/// 编排器因此对 _media 恒非空、无需判空分支。
 class NullJobMediaPersister implements JobMediaPersister {
   const NullJobMediaPersister();
 
