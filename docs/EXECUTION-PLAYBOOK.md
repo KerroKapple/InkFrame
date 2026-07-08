@@ -97,7 +97,7 @@
 | 8 | 禁 `catch Exception/dynamic`;只捕具体 InkError 子类;`PathSecurityError`(ArgumentError 系)在**服务边界**翻译为 `LocalIOError(reason='unsafe_path')`,仅渲染路径 widget 允许直捕它做占位兜底 | ARCHITECTURE §4 |
 | 9 | `JobStatus`(Provider 单次 poll 瞬时值)≠ `JobState`(UI 状态机) | ADR-0008;混用必错 |
 | 10 | 同步 Provider 一律 `extends SyncProviderBase`(inlineBytes poll 通道,`response_format:'b64_json'`,禁在 provider 内下载 URL) | ADR-0004;JobQueue 对非 Pollable 防御性失败 |
-| 11 | 零向后兼容(schema 改版旧格式即死) | ⚠️ 发布后与真实用户数据的冲突点是**待拍板决策**(见 MASTERPLAN 决策区) |
+| 11 | 零向后兼容:禁旧格式并行解析/僵尸 API/降级;**但用户数据必须存活**——schema 变更只走追加的前向迁移,不删库、不改已发布迁移 | **已拍板** ADR-0012(D-4);升级唯一路径=前向迁移链,`SchemaDowngradeError` 拒降级 |
 | 12 | l10n:用户可见文案必进 ARB 且 en/zh 同 commit;LLM prompt/log/错误码**永不** i18n | CLAUDE.md i18n 节 |
 
 ## 4. 评审驱动质量:为什么必须两路
