@@ -43,9 +43,10 @@
 
 ## 2. 工具链地雷(症状 → 原因 → 规避)
 
-### 2.1 flutter 不在 PATH
-- 一律用绝对路径:`C:\Users\Kerro\flutter\bin\flutter.bat` / `dart.bat`(POSIX shell 下
-  `C:/Users/Kerro/flutter/bin/flutter.bat`)。
+### 2.1 flutter 不在 PATH(仅 Windows 机)
+- **Windows 机**:一律用绝对路径 `C:\Users\Kerro\flutter\bin\flutter.bat` / `dart.bat`
+  (POSIX shell 下 `C:/Users/Kerro/flutter/bin/flutter.bat`)。
+- **macOS 机**:flutter 在 PATH,直接 `flutter` / `dart`。
 
 ### 2.2 build_runner 全量构建损坏(高危)
 - **症状**:`dart run build_runner build` 在 riverpod_generator 处理 `lib/app.dart` 时崩
@@ -78,7 +79,9 @@
 
 ### 2.7 其他
 - git 输出大量 `LF will be replaced by CRLF` 警告:无害噪音,忽略。
-- 本机未设 `core.hooksPath`(flutter 不在 PATH 所致):hook 逻辑由 CI 兜底,自查闸门(§1.3)手动跑。
+- hooks 状态分机器:**Windows 机**未设 `core.hooksPath`(flutter 不在 PATH 所致),hook 逻辑由
+  CI 兜底、自查闸门(§1.3)手动跑;**macOS 机** `.git/hooks/pre-commit|pre-push` 已符号链接到
+  `scripts/hooks/`(pre-push=analyze+全量测试排 golden),本地闸门真实生效。
 - Edit 类工具做精确匹配时注意**全半角标点**(，vs ,):中文文档里极易 old_string 不匹配,
   以 Read 到的原文为准复制。
 - ~~系统 python~~ 禁用;脚本比对用 jq / Dart。

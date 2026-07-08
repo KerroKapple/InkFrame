@@ -98,3 +98,7 @@
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | 🅿️ | 产品面缺口,M3 排期 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | 🅿️ | 收口到 core/constants 一次性改 |
 | canvas→generation 跨 feature import 违例（18 处 / 11 文件：job_state / jobs_registry / batch_results_controller / cost_estimator 等,违反 ARCHITECTURE §1.3 互 import 禁令） | 🅿️ | 待 import 边界 lint（custom_lint 卡点解除后）收口:上提共享模型到 core/ 或建白名单逐步清零 |
+| 导出 busy 模态无取消/无超时（2026-07-08 深审:`Process.run` 无 timeout/kill 通道,busy 期 PopScope+禁按钮+barrier 三重封死,ffmpeg 挂起唯一逃生口=退出应用;export_video_dialog.dart:95 + system_process_runner.dart:11） | 🅿️ | 与 MASTERPLAN EX-3「进度取消」同卡收口:ProcessRunner 加 kill/timeout 通道 + 对话框取消 |
+| export 打磨两件（2026-07-08 深审）:失败 SnackBar 弹在模态 barrier 之下易漏看（export_video_dialog.dart:256）;同名输出 `-y` 静默覆盖无存在性提示（ffmpeg_video_export_service.dart:135） | 🅿️ | 小 PR:失败提示改对话框内嵌 banner;导出前 exists 检查 |
+| restore_last_session 抢占守卫过窄（2026-07-08 深审:只查 currentCanvasId,PG 就绪窗口内用户进 Settings/Gallery 会被恢复流程硬拉进画布;restore_last_session.dart:38） | 🅿️ | 守卫扩为「用户已发生任何导航」即放弃恢复 |
+| link 智能默认 role 竞态残留（2026-07-08 深审:_defaultRole 读内存 edges 快照,首条 first_frame 边写在途时连第二条可产双 first_frame,uq_edges_live 不拦不同 source 同 role;link_action_controller.dart:83） | 🅿️ | 毫秒级低频;随上表「乐观新增竞态」并发模型债同窗处理 |
