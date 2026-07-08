@@ -15,6 +15,8 @@
 //      handler 必须先就位，否则 AppDelegate 立即 reply 终止、teardown 从未执行 → PG 孤儿
 //   7) setPreventClose + 显示窗口
 //   8) runApp(UncontrolledProviderScope + InkFrameApp)
+//   * 各 bootstrap 阶段 + 首帧 + PG-ready 由 LifecycleTimer 埋点（app.lifecycle
+//     {stage, ms}），性能预算验收线见 docs/perf-baseline.md（LB-16）。
 import 'dart:async';
 import 'dart:io';
 
@@ -28,6 +30,7 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'core/di/crash_reporter.dart';
 import 'core/di/custom_providers.dart';
+import 'core/di/database.dart';
 import 'core/di/logger.dart';
 import 'core/di/paths.dart';
 import 'core/di/preferences.dart';
@@ -41,6 +44,7 @@ import 'services/crash_reporter.dart';
 import 'services/custom_providers_file_service.dart';
 import 'services/error_hooks.dart';
 import 'services/file_preferences_service.dart';
+import 'services/lifecycle_timer.dart';
 import 'theme/tokens.dart';
 
 void main() {
@@ -51,27 +55,43 @@ void main() {
   LoggerService? logger;
   CrashReporter? reporter;
 
+  // 进程起点：单调流逝源在 main 入口起表——paths/logger 就绪前的极早期段也计入
+  // 首帧/PG-ready 总时长；LifecycleTimer 装配后各阶段随手计时，起点段用 record 回补。
+  // 单调（非墙钟）故启动期 NTP 校正 / 手动改表不会把 ms 写成负数或虚高。
+  final StopwatchElapsed elapsed = StopwatchElapsed();
+  final Duration processStart = elapsed.elapsed;
+  // 日志时间戳（ts 字段）仍用墙钟。
+  const Clock clock = SystemClock();
+
   runZonedGuarded<Future<void>>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
 
       // 崩溃钩子所需最小依赖尽早就绪，最大化未捕获错误覆盖面（覆盖其后整段 bootstrap）。
+      final Duration pathsStart = elapsed.elapsed;
       final AppPaths paths = await DefaultAppPaths.create();
       await paths.ensureInitialized();
 
       // Logger 在容器前构造（bootstrap 期加载即可写 WARN），随后 overrideWithValue
       // 保持全 app 单实例；参数与 di/logger.dart 默认装配一致（SystemClock + 默认配置）。
       final FileLoggerService fileLogger =
-          FileLoggerService(paths: paths, clock: const SystemClock());
+          FileLoggerService(paths: paths, clock: clock);
       logger = fileLogger;
 
+      // 启动计时埋点：logger 就绪即装配，先回补 paths 阶段，其后各阶段随手计时
+      // （app.lifecycle {stage, ms}，验收线见 docs/perf-baseline.md）。
+      final LifecycleTimer lifecycle =
+          LifecycleTimer(logger: fileLogger, elapsed: elapsed);
+      lifecycle.record('paths', pathsStart);
+
       // app 版本从平台读一次，注入 CrashReporter（崩溃文件含版本，便于事后归因）。
-      final PackageInfo pkg = await PackageInfo.fromPlatform();
+      final PackageInfo pkg =
+          await lifecycle.timeAsync('package_info', PackageInfo.fromPlatform);
       final String appVersion =
           pkg.version.isEmpty ? 'unknown' : '${pkg.version}+${pkg.buildNumber}';
       final FileCrashReporter crashReporter = FileCrashReporter(
         paths: paths,
-        clock: const SystemClock(),
+        clock: clock,
         appVersion: appVersion,
       );
       reporter = crashReporter;
@@ -79,17 +99,17 @@ void main() {
       // 立即安装框架错误 + 平台异步错误钩子（zone 错误由本函数 onError 接入）。
       installErrorHooks(logger: fileLogger, reporter: crashReporter);
 
-      MediaKit.ensureInitialized();
+      lifecycle.timeSync<void>('media_kit', MediaKit.ensureInitialized);
 
       // 第三方许可补册：随发布分发的 libmpv/FFmpeg(LGPL-2.1)、内嵌 PostgreSQL、
       // 打包字体(OFL-1.1)不在 pub 自动聚合内，入册后经关于页 showLicensePage 呈现。
       registerThirdPartyLicenses();
 
-      await windowManager.ensureInitialized();
+      await lifecycle.timeAsync<void>(
+          'window_manager', windowManager.ensureInitialized);
 
       // 启动即加载持久化偏好（主题/语言/对比度/缩放），供控制器 build 期 seed。
       final FilePreferencesService prefsService = FilePreferencesService(paths);
-      await prefsService.load();
 
       // 自定义 Provider 配置：容器构建前完成加载（providerRegistryProvider /
       // providerCapabilitiesListProvider 构建时同步读取；会话内不变，改 json 重启生效）。
@@ -101,7 +121,12 @@ void main() {
           for (final c in kAllProviderCapabilities) c.providerId,
         },
       );
-      await customProviders.load();
+
+      // 两项 bootstrap 期磁盘预加载合计为一个 preload 阶段。
+      await lifecycle.timeAsync<void>('preload', () async {
+        await prefsService.load();
+        await customProviders.load();
+      });
 
       final ProviderContainer container = ProviderContainer(
         overrides: <Override>[
@@ -140,10 +165,27 @@ void main() {
         await windowManager.focus();
       });
 
-      runApp(
-        UncontrolledProviderScope(
-          container: container,
-          child: const InkFrameApp(),
+      // 首帧埋点：注册在 runApp 前，回调在首帧渲染完成后触发（进程起点→首帧）。
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        lifecycle.record('first_frame', processStart);
+      });
+
+      lifecycle.timeSync<void>('run_app', () {
+        runApp(
+          UncontrolledProviderScope(
+            container: container,
+            child: const InkFrameApp(),
+          ),
+        );
+      });
+
+      // PG-ready 埋点：迁移池 future 结算即记录（进程起点→PG 可用，含冷启 initdb）。
+      // fire-and-forget，不阻塞窗口/首帧；此处主动读触发懒建的池以便计时。引导失败
+      // 由既有错误路径处理（restoreLastSession / 仓储读），此处仅不记录成功时长。
+      unawaited(
+        container.read(pgMigratedPoolProvider.future).then<void>(
+          (_) => lifecycle.record('pg_ready', processStart),
+          onError: (Object _, StackTrace _) {},
         ),
       );
     },

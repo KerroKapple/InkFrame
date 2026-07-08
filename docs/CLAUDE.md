@@ -284,6 +284,7 @@ lib/
     ├── app_teardown.dart              # Ordered shutdown (JobQueue → Pool → PG)
     ├── crash_reporter.dart            # FileCrashReporter (uncaught-error crash file + keep-3 rotation, no context/extra)
     ├── error_hooks.dart               # installErrorHooks + reportUncaught (FlutterError/PlatformDispatcher/zone → logger + CrashReporter)
+    ├── lifecycle_timer.dart           # LifecycleTimer (startup stage timing → app.lifecycle {stage, ms}; see docs/perf-baseline.md)
     ├── dio_video_download_service.dart
     ├── system_process_runner.dart     # ProcessRunner impl (Process.run)
     ├── ffmpeg_locator.dart            # ffmpeg discovery (INKFRAME_FFMPEG env → PATH probe)
