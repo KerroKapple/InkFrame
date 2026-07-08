@@ -444,6 +444,12 @@ final result = ref.watch(someProvider).value!; // 可能是 loading 或 error �
 
 `JobQueueService` 是 app-scoped keepAlive 单例（实现 `lib/services/job_queue_service.dart` 的 `InMemoryJobQueueService`），横跨所有画布和项目。
 
+> **LB-03 结构（编排器 < 500 行 + 三协作者）**：`InMemoryJobQueueService` 只保留调度、单任务状态机与 cancel 竞态裁决（`_lostToCancel` / `_arbitrate`），落盘与写库经构造注入的协作者完成：
+> - `lib/services/job_queue/job_media_persister.dart` —— `JobMediaPersister`（接口在 `lib/core/interfaces/job_media_persister.dart`）：inlineBytes / remoteUrls 落盘 + 批量 slot 收敛（`convergeSlots` / `convergeSlotsAfterTerminal`）。依赖未注入时注入 `NullJobMediaPersister`（null-object 全 no-op），编排器不再判空分支。
+> - `lib/services/job_queue/job_state_persister.dart` —— `JobStatePersister`：`jobs` 表写库漏斗（`persistTransition` / `persistUpdate` / `persistFailure` / `persistTimeout` / `persistCancel`）与启动孤儿回收 `init()`。`affectedRows`(int?) 语义严格保持——`0` = 被抢写 / 行不存在，`null` = 未注入 repo（纯内存），编排器据此做 cancel 竞态裁决。
+> - `lib/services/job_queue/job_handle_impl.dart` —— `JobHandleImpl`：`JobStatus` 流的 last-value 重放 + `done` completer。
+> - `lib/services/job_queue/job_queue_util.dart` —— 共享内件：`RunningJob` 运行态值对象、`lostToCancel` 裁决谓词（单一真相源）、`truncate`、日志 module 常量。
+
 ```
 全局并发上限（构造参数 globalConcurrency，默认 2）
       ↕ min()
@@ -455,7 +461,7 @@ Per-Provider 并发上限（ProviderCapabilities.maxConcurrentJobs）
 实际可调度数 = min(全局剩余槽位, per-provider 剩余槽位)
 ```
 
-> **Planned (b4)**：UI 性能档位 → `globalConcurrency` 动态联动（省电 / 均衡 / 性能 / 极致 = 1/2/3/4），目前未实现，参数固定为构造时注入值。源码注释见 `lib/services/job_queue_service.dart:7`（`// b4 ⏳ 性能档位 → globalConcurrency 联动`）。`PerformanceTier` 枚举与 `PerformanceDegradationController` 仍属 ROADMAP。
+> **Planned (b4)**：UI 性能档位 → `globalConcurrency` 动态联动（省电 / 均衡 / 性能 / 极致 = 1/2/3/4），目前未实现，`globalConcurrency` 固定为构造时注入值。`PerformanceTier` 枚举与 `PerformanceDegradationController` 仍属 ROADMAP。
 
 **调度状态机（`jobs.status`，schema 见 `lib/storage/schema/001_init.sql:156-158`）：**
 
@@ -470,8 +476,8 @@ pending ──► submitted ──► polling ──► success
 
 `jobs.status` 的 CHECK 取值恰好是 7 个：`pending / submitted / polling / success / error / cancelled / timeout`。**末态只有一个 `cancelled`**；取消原因由 `jobs.error_code` 区分：
 
-- `cancelled_by_user`：用户主动调用 `cancel(jobId)`（`lib/services/job_queue_service.dart` 的 `cancel`，写入见 `_persistCancel`）。
-- `cancelled_on_exit`：app 启动时对上次未结束的 `pending / submitted / polling` 行做扫尾（`init()`，一条 bulkTransition）。启动期同时做两件收尾：孤儿 batch slot 收敛 `finalizeAllPending`（见下方「批量 slot 收敛」）与 jobs 表 housekeeping purge（`purgeExpired` 30 天保留 + `purgePerCanvasCap` 单画布 500 条，失败不阻断启动）。
+- `cancelled_by_user`：用户主动调用 `cancel(jobId)`（`InMemoryJobQueueService.cancel`，写入见 `JobStatePersister.persistCancel`）。
+- `cancelled_on_exit`：app 启动时对上次未结束的 `pending / submitted / polling` 行做扫尾（`JobStatePersister.init()`，一条 bulkTransition）。启动期同时做两件收尾：孤儿 batch slot 收敛 `finalizeAllPending`（见下方「批量 slot 收敛」）与 jobs 表 housekeeping purge（`purgeExpired` 30 天保留 + `purgePerCanvasCap` 单画布 500 条，失败不阻断启动）。
 
 **出队策略：** FIFO，同 provider 按 `created_at` 升序；跨 provider 抢占全局槽位也按 FIFO，被 per-provider 上限卡住的 pending 会让位给后面 provider 槽位有空的任务（`_pickNextSchedulable`）。
 
@@ -487,7 +493,7 @@ pending ──► submitted ──► polling ──► success
 批量任务在 `jobs` 状态机之下再挂一层 **slot 子状态机**（`batch_results` 表，表侧注记见
 DATABASE.md「batch_results 生命周期」，本节为语义正本）：提交事务预建 N 个 `generating`
 slot 占位行 → JobQueue 下载阶段逐 slot 落终态（成功 → `success` + `output_url`；失败 →
-`error` + `error_code`；取消 → `cancelled`），入口 `_convergeSlots` →
+`error` + `error_code`；取消 → `cancelled`），入口 `JobMediaPersister.convergeSlots` →
 `BatchResultRepository.finalizePendingByJob`。三条 invariant：
 
 1. **slot 只从 `generating` 单向收敛**——终态 slot（success/error/cancelled）绝不被改写，
@@ -495,7 +501,7 @@ slot 占位行 → JobQueue 下载阶段逐 slot 落终态（成功 → `success
 2. **cancel / error 保留已 success 的 slot**（部分成功拍板语义）：≥1 张成功即整体 job
    `success`，首张成功图作结果节点主图 `image_url`；用户中途取消只翻未完成 slot。
 3. **收敛链绝不抛出**——收敛失败仅记 WARN（抛出会跳过 emit、handle 永挂）；启动期
-   `init()` 的 `finalizeAllPending`（孤儿 slot → cancelled_on_exit）兜底。
+   `JobStatePersister.init()` 的 `finalizeAllPending`（孤儿 slot → cancelled_on_exit）兜底。
 
 ### 5.2 ProviderRateLimiter — Token Bucket
 
@@ -538,7 +544,7 @@ InMemoryJobQueueService({
 **可重试白名单：** `network_timeout / network_offline / provider_5xx / provider_busy / download_failed`（事实源：`ink_error.dart` 的 `_retryable` 表，消费侧读 `InkError.retryable`）。
 **不可重试：** `invalid_key / insufficient_balance / content_policy / invalid_parameter / provider_invalid_response / poll_timeout / local_io_error / cancelled_by_user / cancelled_on_exit / unknown`。
 
-> **Planned**：自动重试调度（次数上限 + 指数退避）尚未实现（`job_queue_service.dart` 顶注 b3.1 明确「重试 / 续传未实现」）；当前可重试错误进 `error` 终态后由 UI "重试"人工触发。
+> **Planned**：自动重试调度（次数上限 + 指数退避）尚未实现（remoteUrls 下载的重试 / 续传亦未实现）；当前可重试错误进 `error` 终态后由 UI "重试"人工触发。
 
 ---
 
@@ -851,7 +857,7 @@ abstract class SecureStorageService {
 
 ## 10. 性能降级控制器
 
-> ⚠️ **Planned —— 本章整体未实现。** `PerformanceTier` / `PerformanceDegradationController` / `FpsMonitor` 在 repo 中均不存在（见 `ROADMAP.md` "稳定 alpha → beta" 性能基线方向，及 `job_queue_service.dart` 顶部 `b4 ⏳`）。以下为设计蓝图，实现时以本节为验收基准，落地后删除本横幅。
+> ⚠️ **Planned —— 本章整体未实现。** `PerformanceTier` / `PerformanceDegradationController` / `FpsMonitor` 在 repo 中均不存在（见 `ROADMAP.md` "稳定 alpha → beta" 性能基线方向，及 §5.1 的 **Planned (b4)** 注）。以下为设计蓝图，实现时以本节为验收基准，落地后删除本横幅。
 
 ### 10.1 PerformanceDegradationController
 
