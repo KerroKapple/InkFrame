@@ -4,6 +4,8 @@
 // 用手写不可变类（与 canvas 模型同例外）：避免为一个配置 DTO 引 freezed/json 代码生成。
 import 'package:flutter/foundation.dart';
 
+import 'window_bounds.dart';
+
 @immutable
 class AppPreferences {
   const AppPreferences({
@@ -15,6 +17,8 @@ class AppPreferences {
     this.lastVideoProviderId,
     this.lastCanvasId,
     this.lastProjectId,
+    this.windowBounds,
+    this.windowMaximized = false,
   });
 
   /// 'dark' | 'light' | 'system'
@@ -34,6 +38,12 @@ class AppPreferences {
   final String? lastCanvasId;
   final String? lastProjectId;
 
+  /// 上次窗口尺寸/位置（logical px）；恢复时须 clamp 到当前可见显示器。null = 无记忆。
+  final WindowBounds? windowBounds;
+
+  /// 上次退出时窗口是否最大化。
+  final bool windowMaximized;
+
   AppPreferences copyWith({
     String? themePreference,
     bool? highContrast,
@@ -45,6 +55,8 @@ class AppPreferences {
     String? lastCanvasId,
     String? lastProjectId,
     bool clearLastCanvas = false,
+    WindowBounds? windowBounds,
+    bool? windowMaximized,
   }) {
     return AppPreferences(
       themePreference: themePreference ?? this.themePreference,
@@ -57,6 +69,8 @@ class AppPreferences {
           clearLastCanvas ? null : (lastCanvasId ?? this.lastCanvasId),
       lastProjectId:
           clearLastCanvas ? null : (lastProjectId ?? this.lastProjectId),
+      windowBounds: windowBounds ?? this.windowBounds,
+      windowMaximized: windowMaximized ?? this.windowMaximized,
     );
   }
 
@@ -69,6 +83,8 @@ class AppPreferences {
         'last_video_provider_id': lastVideoProviderId,
         'last_canvas_id': lastCanvasId,
         'last_project_id': lastProjectId,
+        'window_bounds': windowBounds?.toMap(),
+        'window_maximized': windowMaximized,
       };
 
   /// 容错解析：缺失/类型不符/非法值一律退默认，绝不抛——损坏的偏好文件不该炸启动。
@@ -82,6 +98,7 @@ class AppPreferences {
     final lvp = m['last_video_provider_id'];
     final lcv = m['last_canvas_id'];
     final lpj = m['last_project_id'];
+    final wm = m['window_maximized'];
     return AppPreferences(
       themePreference:
           pref is String && allowedTheme.contains(pref) ? pref : 'dark',
@@ -92,6 +109,8 @@ class AppPreferences {
       lastVideoProviderId: lvp is String ? lvp : null,
       lastCanvasId: lcv is String ? lcv : null,
       lastProjectId: lpj is String ? lpj : null,
+      windowBounds: WindowBounds.fromMap(m['window_bounds']),
+      windowMaximized: wm is bool ? wm : false,
     );
   }
 
@@ -106,7 +125,9 @@ class AppPreferences {
           other.lastImageProviderId == lastImageProviderId &&
           other.lastVideoProviderId == lastVideoProviderId &&
           other.lastCanvasId == lastCanvasId &&
-          other.lastProjectId == lastProjectId;
+          other.lastProjectId == lastProjectId &&
+          other.windowBounds == windowBounds &&
+          other.windowMaximized == windowMaximized;
 
   @override
   int get hashCode => Object.hash(
@@ -118,5 +139,7 @@ class AppPreferences {
         lastVideoProviderId,
         lastCanvasId,
         lastProjectId,
+        windowBounds,
+        windowMaximized,
       );
 }

@@ -11,7 +11,7 @@
 - **i18n**: flutter_localizations + ARB files
 - **Video playback / thumbnail**: media_kit (+ media_kit_video, media_kit_libs_video)
 - **Video export**: external ffmpeg binary (runtime probe via `FfmpegLocator`; not bundled)
-- **Window chrome**: window_manager (frameless shell)
+- **Window chrome**: window_manager (frameless shell); screen_retriever (multi-monitor enumeration for window-state restore clamp)
 - **File import**: file_selector
 - **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager); Debug+macOS falls back to a plaintext dev file (see Provider API Keys)
 - **Platforms**: macOS + Windows
@@ -284,7 +284,9 @@ lib/
     ├── custom_providers_file_service.dart  # config/custom_providers.json parse + fallback
     ├── character_asset_service.dart
     ├── orphan_file_reaper.dart        # DiskOrphanFileReaper (disk orphan media GC; DRY-RUN v1 — logs only, never deletes; LB-13)
-    ├── app_teardown.dart              # Ordered shutdown (JobQueue → Pool → PG)
+    ├── app_teardown.dart              # Ordered shutdown (capture window state → JobQueue → Pool → PG)
+    ├── window_state_service.dart      # DefaultWindowStateService + clampBoundsToVisible pure fn (window size/pos/maximized memory; multi-monitor clamp; PL-6)
+    ├── window_manager_adapters.dart   # WindowManagerWindowController + ScreenRetrieverDisplayQuery (real plugin seams behind WindowController/DisplayQuery)
     ├── crash_reporter.dart            # FileCrashReporter (uncaught-error crash file + keep-3 rotation, no context/extra)
     ├── error_hooks.dart               # installErrorHooks + reportUncaught (FlutterError/PlatformDispatcher/zone → logger + CrashReporter)
     ├── lifecycle_timer.dart           # LifecycleTimer (startup stage timing → app.lifecycle {stage, ms}; see docs/perf-baseline.md)

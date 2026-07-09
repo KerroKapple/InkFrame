@@ -35,6 +35,7 @@ import 'core/di/logger.dart';
 import 'core/di/paths.dart';
 import 'core/di/preferences.dart';
 import 'core/di/providers.dart';
+import 'core/di/window_state.dart';
 import 'core/interfaces/crash_reporter.dart';
 import 'core/licenses.dart';
 import 'core/logging/logger_service.dart';
@@ -161,6 +162,9 @@ void main() {
       );
       await windowManager.setPreventClose(true);
       await windowManager.waitUntilReadyToShow(winOpts, () async {
+        // 恢复上次窗口尺寸/位置/最大化（clamp 到当前可见显示器）——在 winOpts 默认尺寸
+        // 之后、show 之前应用，避免可见跳变；任何失败退默认窗口（服务内部吞错，PL-6）。
+        await container.read(windowStateServiceProvider).restore();
         await windowManager.show();
         await windowManager.focus();
       });

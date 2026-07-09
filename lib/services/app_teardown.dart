@@ -15,6 +15,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/di/database.dart';
 import '../core/di/job_queue.dart';
+import '../core/di/window_state.dart';
 
 class AppTeardown {
   Future<void>? _running;
@@ -26,6 +27,14 @@ class AppTeardown {
       _running ??= _run(container);
 
   Future<void> _run(ProviderContainer container) async {
+    // 0) 记忆窗口尺寸/位置/最大化 —— 窗口此刻仍存活（destroy 在 run 返回后才调）。
+    //    尽力而为：服务内部已吞错，此处再兜一层，绝不阻断后续资源回收。
+    try {
+      await container.read(windowStateServiceProvider).capture();
+    } on Object {
+      // 记忆窗口状态失败不影响退出回收。
+    }
+
     // 1) JobQueue：已挂载则等其初始化完成（可能在途）再 dispose，避免漏回收在途实例。
     //    初始化失败 → 无实例可收，吞掉异常继续。
     if (_isMounted(container, jobQueueServiceProvider)) {

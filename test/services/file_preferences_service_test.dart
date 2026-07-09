@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/models/app_preferences.dart';
+import 'package:inkframe/core/models/window_bounds.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 
@@ -44,5 +45,20 @@ void main() {
     File('${paths.config.path}/preferences.json')
         .writeAsStringSync('{not valid json');
     expect(await FilePreferencesService(paths).load(), const AppPreferences());
+  });
+
+  test('窗口状态 update 落盘 + 新实例 load 读回', () async {
+    final svc = FilePreferencesService(paths);
+    await svc.load();
+    await svc.update((p) => p.copyWith(
+          windowBounds:
+              const WindowBounds(x: 120, y: 80, width: 1440, height: 900),
+          windowMaximized: true,
+        ));
+
+    final loaded = await FilePreferencesService(paths).load();
+    expect(loaded.windowBounds,
+        const WindowBounds(x: 120, y: 80, width: 1440, height: 900));
+    expect(loaded.windowMaximized, true);
   });
 }
