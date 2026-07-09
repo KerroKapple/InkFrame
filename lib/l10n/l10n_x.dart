@@ -8,10 +8,19 @@ extension AppL10nX on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
 }
 
-/// InkError → 用户可读的本地化字符串。复用 messageKey 做 switch，全 ARB key 一一映射。
-String l10nError(BuildContext context, InkError e) {
+/// InkError → 用户可读的本地化字符串。
+String l10nError(BuildContext context, InkError e) =>
+    _l10nByMessageKey(context, e.messageKey);
+
+/// InkErrorCode（如从 wire 字符串还原的裸错误码）→ 本地化文案。
+/// 与 l10nError 共用同一 messageKey→ARB 映射，保持单一真相源。
+String l10nErrorCode(BuildContext context, InkErrorCode code) =>
+    _l10nByMessageKey(context, kInkErrorMessageKeys[code]!);
+
+/// messageKey → ARB 字符串的唯一 switch（l10nError / l10nErrorCode 共用）。
+String _l10nByMessageKey(BuildContext context, String messageKey) {
   final l = context.l10n;
-  return switch (e.messageKey) {
+  return switch (messageKey) {
     'errorInvalidKey' => l.errorInvalidKey,
     'errorInsufficientBalance' => l.errorInsufficientBalance,
     'errorContentPolicy' => l.errorContentPolicy,
