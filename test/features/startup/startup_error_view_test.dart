@@ -2,7 +2,7 @@
 //   - StartupErrorView 渲染标题 / 正文 / 日志目录路径 / 本地化错误 / 两个按钮
 //   - "打开日志目录" 调 FolderOpener.open(logs 路径)
 //   - _StartupGate：DB-ready AsyncError → 全屏 surface；AsyncLoading → 照常进 shell
-//   - "重试" 失效 pg 链 → pgMigratedPool 重建
+//   - "重试" 先 await stop 再重建 start（顺序），重启中禁用防重复点击
 import 'dart:async';
 import 'dart:io';
 
@@ -23,6 +23,9 @@ import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 import 'package:inkframe/l10n/generated/app_localizations_en.dart';
+import 'package:inkframe/storage/pg_binary_locator.dart';
+import 'package:inkframe/storage/pg_controller.dart';
+import 'package:inkframe/theme/components/ink_button.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../_harness/test_app.dart';
@@ -33,6 +36,29 @@ class _SpyFolderOpener implements FolderOpener {
 
   @override
   Future<void> open(String path) async => opened.add(path);
+}
+
+/// 记录调用顺序的 PgController 假体：不起真进程，start/stop 只记账；
+/// stop 可经 [stopGate] 卡住以观测「重启进行中」窗口（禁用重复点击 + 顺序）。
+class _RecordingPgController extends PgController {
+  _RecordingPgController(AppPaths paths)
+      : super(paths: paths, locator: DefaultPgBinaryLocator());
+
+  final List<String> calls = <String>[];
+  Completer<void>? stopGate;
+
+  @override
+  Future<void> stop() async {
+    calls.add('stop');
+    final Completer<void>? gate = stopGate;
+    if (gate != null) await gate.future;
+  }
+
+  @override
+  Future<PgRuntime> start() async {
+    calls.add('start');
+    return PgRuntime(host: '127.0.0.1', port: 1, dataDir: dataDir);
+  }
 }
 
 /// 仅需 logs 路径字符串——不落盘，无需 ensureInitialized。
@@ -155,20 +181,26 @@ void main() {
     expect(find.byType(StudioHomeScreen), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
-  testWidgets('点击"重试" → 失效 pg 链，pgMigratedPool 重建', (tester) async {
+  testWidgets('点击"重试"：先 await stop 再重建 start（顺序）+ 重启中禁用防重复点击',
+      (tester) async {
     final AppPaths paths = _tempPaths();
     await tester.runAsync(() => paths.ensureInitialized());
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    int builds = 0;
+    final _RecordingPgController fake = _RecordingPgController(paths);
+    final Completer<void> gate = Completer<void>();
+    fake.stopGate = gate; // 卡住 stop 以观测「重启进行中」窗口。
+
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
           ..._bootSeals(paths, _SpyFolderOpener()),
-          pgMigratedPoolProvider.overrideWith((ref) {
-            builds++;
-            throw LocalIOError(cause: StateError('boom-$builds'));
+          pgControllerProvider.overrideWith((ref) => fake),
+          // 重建时经假控制器 start() 记账，随后仍失败以保持 surface 在场。
+          pgMigratedPoolProvider.overrideWith((ref) async {
+            await ref.read(pgControllerProvider).start();
+            throw LocalIOError(cause: StateError('still failing'));
           }),
         ],
         child: const InkFrameApp(),
@@ -178,14 +210,30 @@ void main() {
     await tester.pump();
 
     expect(find.byType(StartupErrorView), findsOneWidget);
-    expect(builds, 1);
+    expect(fake.calls, <String>['start']);
 
+    // 首次点击「重试」→ _reboot 进入，stop() 被 gate 卡住（进行中）。
     await tester.tap(find.text(l10n.commonRetry));
     await tester.pump();
+
+    // stop 已调用一次，start 尚未再触发；此刻「重试」按钮禁用。
+    expect(fake.calls, <String>['start', 'stop']);
+    final InkButton retryBtn = tester.widget<InkButton>(
+      find.widgetWithText(InkButton, l10n.commonRetry),
+    );
+    expect(retryBtn.onPressed, isNull);
+
+    // 重启进行中重复点击应无效——不产生第二次 stop。
+    await tester.tap(find.text(l10n.commonRetry), warnIfMissed: false);
+    await tester.pump();
+    expect(fake.calls, <String>['start', 'stop']);
+
+    // 放行 stop → 失效链 → pgMigratedPool 重建 → 第二次 start（严格晚于 stop）。
+    gate.complete();
+    await tester.pump();
     await tester.pump();
 
-    // 重试触发 ref.invalidate(pgMigratedPoolProvider) → 重新构建（builds 递增）。
-    expect(builds, 2);
+    expect(fake.calls, <String>['start', 'stop', 'start']);
     expect(find.byType(StartupErrorView), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../storage/database_bootstrap.dart';
+import '../../storage/migrations/migration_runner.dart';
 import '../../storage/pg_binary_locator.dart';
 import '../../storage/pg_controller.dart';
 import '../errors/ink_error.dart';
@@ -79,19 +80,28 @@ final pgPoolProvider = FutureProvider<Pool<void>>(
 /// 首次读：启动 PG → 建池 → DatabaseBootstrap.run()（pgcrypto + 迁移链；
 /// 底层 PG 异常在储层边界收口，见 storage/database_bootstrap.dart）。
 ///
-/// LB-09：DI 边界统一把 PG 生命周期 / 迁移 / 引导失败（PgLifecycleError·
-/// SchemaMigrationError·SchemaDowngradeError·DatabaseBootstrapError 均属
-/// StateError 系）翻成可渲染的 [LocalIOError]，AsyncError 因此携带 InkError，
-/// 供启动失败 surface 经 l10nAsyncError 本地化呈现，而非白屏泄漏裸 StateError。
+/// LB-09：DI 边界只把**已知的启动失败**（PG 生命周期 / 引导 / 迁移，含
+/// SchemaDowngradeError——它 extends SchemaMigrationError）翻成可渲染的
+/// [LocalIOError]，AsyncError 因此携带 InkError，供启动失败 surface 经
+/// l10nAsyncError 本地化呈现，而非白屏泄漏裸错误。
+///
+/// 泛化 [StateError]（如 postgres "Cannot execute on a closed pool"、误用 .first
+/// 等真正的程序 bug）刻意**不**翻译、原样上抛，交由 runZonedGuarded / CrashReporter
+/// 捕获——避免把编程错误误标成用户可读的磁盘 I/O 错误并吞掉诊断线索。
 final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
   (ref) async {
     try {
       final pool = await ref.watch(pgPoolProvider.future);
       await DatabaseBootstrap(pool).run();
       return pool;
-    } on StateError catch (e, st) {
-      // TODO(LB-07): SCRAM 28P01（cause 为 ServerException code '28P01'）应走
-      //   "重置数据库口令" 引导分支，而非泛化 LocalIOError。
+    } on PgLifecycleError catch (e, st) {
+      throw LocalIOError(cause: e, stackTrace: st);
+    } on DatabaseBootstrapError catch (e, st) {
+      // TODO(LB-07): SCRAM 28P01（引导期 ServerException code '28P01'，此处已被
+      //   收口成 DatabaseBootstrapError）应走"重置数据库口令"引导分支，而非泛化 LocalIOError。
+      throw LocalIOError(cause: e, stackTrace: st);
+    } on SchemaMigrationError catch (e, st) {
+      // SchemaDowngradeError 亦属此族（extends SchemaMigrationError）。
       throw LocalIOError(cause: e, stackTrace: st);
     }
   },

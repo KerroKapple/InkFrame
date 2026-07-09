@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/storage/database_bootstrap.dart';
+import 'package:inkframe/storage/migrations/migration_runner.dart';
 import 'package:inkframe/storage/pg_controller.dart';
 
 void main() {
@@ -37,6 +38,41 @@ void main() {
     await expectLater(
       container.read(pgMigratedPoolProvider.future),
       throwsA(isA<LocalIOError>()),
+    );
+  });
+
+  test('SchemaDowngradeError（extends SchemaMigrationError）→ LocalIOError',
+      () async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        pgPoolProvider.overrideWith(
+          (ref) async => throw SchemaDowngradeError('库版本高于应用期望'),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(pgMigratedPoolProvider.future),
+      throwsA(isA<LocalIOError>()),
+    );
+  });
+
+  test('泛化 StateError 不翻译 → 原样透出（交给 crash reporter，绝不误标 LocalIOError）',
+      () async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        // 例：postgres "Cannot execute on a closed pool" 之类的程序 bug。
+        pgPoolProvider.overrideWith(
+          (ref) async => throw StateError('Bad state: Cannot execute on a closed pool'),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(pgMigratedPoolProvider.future),
+      throwsA(allOf(isA<StateError>(), isNot(isA<InkError>()))),
     );
   });
 
