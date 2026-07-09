@@ -43,6 +43,7 @@ import 'core/paths/app_paths.dart';
 import 'services/app_teardown.dart';
 import 'services/crash_reporter.dart';
 import 'services/custom_providers_file_service.dart';
+import 'features/settings/providers/update_check_controller.dart';
 import 'services/error_hooks.dart';
 import 'services/file_preferences_service.dart';
 import 'services/lifecycle_timer.dart';
@@ -191,6 +192,14 @@ void main() {
           (_) => lifecycle.record('pg_ready', processStart),
           onError: (Object _, StackTrace _) {},
         ),
+      );
+
+      // UPD-1 启动静默检查更新：fire-and-forget,受偏好开关 + 6h 节流约束,
+      // 失败只落 INFO 日志——绝不阻塞启动、不打扰首帧。
+      unawaited(
+        container
+            .read(updateCheckControllerProvider.notifier)
+            .maybeCheckOnStartup(),
       );
     },
     (Object error, StackTrace stack) {

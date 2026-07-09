@@ -1,9 +1,18 @@
-// AboutSection widget test — 探测可用 / 不可用两条路径。
+// AboutSection widget test — 探测可用 / 不可用两条路径 + UPD-1 检查更新流。
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/core/di/update_check.dart';
+import 'package:inkframe/core/di/url_opener.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
+import 'package:inkframe/core/interfaces/update_check_service.dart';
+import 'package:inkframe/core/interfaces/url_opener_service.dart';
+import 'package:inkframe/core/models/update_check_result.dart';
 import 'package:inkframe/features/settings/widgets/about_section.dart';
+import 'package:inkframe/services/file_preferences_service.dart';
 
 import '../../_harness/test_app.dart';
 
@@ -30,11 +39,49 @@ class _BrokenSecure implements SecureStorageService {
   Future<bool> exists(String k) async => false;
 }
 
+const UpdateCheckResult _kNewVersion = UpdateCheckResult(
+  currentVersion: '0.1.0-alpha.10',
+  latestVersion: '0.1.0-alpha.11',
+  releaseUrl:
+      'https://github.com/KerroKapple/InkFrame/releases/tag/v0.1.0-alpha.11',
+);
+
+class _FakeUpdate implements UpdateCheckService {
+  _FakeUpdate({this.result = _kNewVersion, this.error});
+  final UpdateCheckResult result;
+  final InkError? error;
+  @override
+  Future<UpdateCheckResult> check() async {
+    final e = error;
+    if (e != null) throw e;
+    return result;
+  }
+}
+
+class _RecordingOpener implements UrlOpenerService {
+  final List<Uri> opened = <Uri>[];
+  @override
+  Future<void> openExternal(Uri url) async => opened.add(url);
+}
+
+List<Override> _updateOverrides({
+  UpdateCheckService? service,
+  UrlOpenerService? opener,
+  InMemoryPreferencesService? prefs,
+}) =>
+    <Override>[
+      secureStorageServiceProvider.overrideWithValue(_OkSecure()),
+      updateCheckServiceProvider.overrideWithValue(service ?? _FakeUpdate()),
+      urlOpenerServiceProvider
+          .overrideWithValue(opener ?? _RecordingOpener()),
+      if (prefs != null) preferencesServiceProvider.overrideWithValue(prefs),
+    ];
+
 void main() {
   testWidgets('探测成功显示 Available', (tester) async {
     await pumpInkApp(
       tester,
-      const SingleChildScrollView(child: AboutSection()),
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
       overrides: [
         secureStorageServiceProvider.overrideWithValue(_OkSecure()),
       ],
@@ -46,7 +93,7 @@ void main() {
   testWidgets('探测抛错显示 Unavailable + 原因', (tester) async {
     await pumpInkApp(
       tester,
-      const SingleChildScrollView(child: AboutSection()),
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
       overrides: [
         secureStorageServiceProvider.overrideWithValue(_BrokenSecure()),
       ],
@@ -59,7 +106,7 @@ void main() {
   testWidgets('点开源许可按钮 → 打开 LicensePage', (tester) async {
     await pumpInkApp(
       tester,
-      const SingleChildScrollView(child: AboutSection()),
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
       overrides: [
         secureStorageServiceProvider.overrideWithValue(_OkSecure()),
       ],
@@ -73,5 +120,86 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
 
     expect(find.byType(LicensePage), findsOneWidget);
+  });
+
+  testWidgets('检查更新：有新版 → 显示版本与查看发布页,点开走 UrlOpener', (tester) async {
+    final opener = _RecordingOpener();
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+      overrides: _updateOverrides(opener: opener),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Check for updates'));
+    await tester.tap(find.text('Check for updates'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('New version 0.1.0-alpha.11 available'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('View release'));
+    await tester.tap(find.text('View release'));
+    await tester.pumpAndSettle();
+
+    expect(opener.opened, [Uri.parse(_kNewVersion.releaseUrl!)]);
+  });
+
+  testWidgets('检查更新：已是最新 → up-to-date 文案,无发布页按钮', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+      overrides: _updateOverrides(
+        service: _FakeUpdate(
+          result: const UpdateCheckResult(currentVersion: '0.1.0-alpha.10'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Check for updates'));
+    await tester.tap(find.text('Check for updates'));
+    await tester.pumpAndSettle();
+
+    expect(find.text("You're on the latest version"), findsOneWidget);
+    expect(find.text('View release'), findsNothing);
+  });
+
+  testWidgets('检查更新：失败 → 轻提示文案,不炸', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+      overrides: _updateOverrides(
+        service: _FakeUpdate(
+          error: const NetworkError(code: InkErrorCode.networkOffline),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Check for updates'));
+    await tester.tap(find.text('Check for updates'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Could not check for updates'), findsOneWidget);
+  });
+
+  testWidgets('启动检查开关：默认开,点击后持久化为关', (tester) async {
+    final prefs = InMemoryPreferencesService();
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+      overrides: _updateOverrides(prefs: prefs),
+    );
+    await tester.pumpAndSettle();
+
+    final switchFinder = find.byType(Switch);
+    await tester.ensureVisible(switchFinder);
+    expect(tester.widget<Switch>(switchFinder).value, isTrue);
+
+    await tester.tap(switchFinder);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<Switch>(switchFinder).value, isFalse);
+    expect(prefs.current.updateCheckEnabled, isFalse);
   });
 }

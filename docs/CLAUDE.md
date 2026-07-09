@@ -297,6 +297,8 @@ lib/
     ├── ffmpeg_video_export_service.dart  # VideoExportService impl (concat demuxer, stream copy)
     ├── media_kit_video_player_service.dart
     ├── media_kit_thumbnail_service.dart
+    ├── github_update_check_service.dart   # UPD-1 in-app update check (releases list, SemVer max incl. prerelease)
+    ├── process_url_opener_service.dart    # Open external URL via system command (open / rundll32; no url_launcher)
     ├── platform_secure_storage_service.dart
     └── file_secure_storage_service.dart   # Debug+macOS plaintext dev key store (see Provider API Keys)
 ```

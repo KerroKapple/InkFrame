@@ -274,6 +274,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the Cormorant Garamond and JetBrains Mono fonts (SIL OFL 1.1).';
 
   @override
+  String get settingsAboutUpdateCheckButton => 'Check for updates';
+
+  @override
+  String get settingsAboutUpdateChecking => 'Checking for updates…';
+
+  @override
+  String get settingsAboutUpdateUpToDate => 'You\'re on the latest version';
+
+  @override
+  String settingsAboutUpdateAvailable(String version) {
+    return 'New version $version available';
+  }
+
+  @override
+  String get settingsAboutUpdateViewRelease => 'View release';
+
+  @override
+  String get settingsAboutUpdateCheckFailed => 'Could not check for updates';
+
+  @override
+  String get settingsAboutUpdateOpenFailed => 'Could not open the release page';
+
+  @override
+  String get settingsAboutUpdateAutoCheckLabel =>
+      'Check for updates at startup';
+
+  @override
   String get generationMissingKey => 'API key is missing';
 
   @override

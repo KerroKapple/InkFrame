@@ -261,6 +261,32 @@ class AppLocalizationsZh extends AppLocalizations {
       'InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 Cormorant Garamond 与 JetBrains Mono 字体（SIL OFL 1.1）。';
 
   @override
+  String get settingsAboutUpdateCheckButton => '检查更新';
+
+  @override
+  String get settingsAboutUpdateChecking => '正在检查更新…';
+
+  @override
+  String get settingsAboutUpdateUpToDate => '已是最新版本';
+
+  @override
+  String settingsAboutUpdateAvailable(String version) {
+    return '发现新版本 $version';
+  }
+
+  @override
+  String get settingsAboutUpdateViewRelease => '查看发布页';
+
+  @override
+  String get settingsAboutUpdateCheckFailed => '检查更新失败';
+
+  @override
+  String get settingsAboutUpdateOpenFailed => '无法打开发布页';
+
+  @override
+  String get settingsAboutUpdateAutoCheckLabel => '启动时自动检查更新';
+
+  @override
   String get generationMissingKey => 'API Key 未配置';
 
   @override
