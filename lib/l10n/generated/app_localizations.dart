@@ -1322,6 +1322,54 @@ abstract class AppLocalizations {
   /// **'Couldn\'t create sample project'**
   String get studioCreateSampleFailed;
 
+  /// No description provided for @onboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to InkFrame'**
+  String get onboardingTitle;
+
+  /// Onboarding wizard progress indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Step {current} of {total}'**
+  String onboardingStepIndicator(int current, int total);
+
+  /// No description provided for @onboardingSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingStartEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Start empty'**
+  String get onboardingStartEmpty;
+
+  /// No description provided for @onboardingKeysConsoleHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Get an API key from your provider\'s console and paste it above — you can also add or change keys later in Settings.'**
+  String get onboardingKeysConsoleHint;
+
+  /// No description provided for @onboardingStepSampleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Start creating'**
+  String get onboardingStepSampleTitle;
+
+  /// No description provided for @onboardingStepSampleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a sample project to explore the canvas, or start from an empty studio.'**
+  String get onboardingStepSampleBody;
+
   /// No description provided for @canvasRenderQueue.
   ///
   /// In en, this message translates to:

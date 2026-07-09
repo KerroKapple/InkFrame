@@ -650,6 +650,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioCreateSampleFailed => '创建示例项目失败';
 
   @override
+  String get onboardingTitle => '欢迎使用 InkFrame';
+
+  @override
+  String onboardingStepIndicator(int current, int total) {
+    return '第 $current 步 / 共 $total 步';
+  }
+
+  @override
+  String get onboardingSkip => '跳过';
+
+  @override
+  String get onboardingNext => '下一步';
+
+  @override
+  String get onboardingStartEmpty => '从空白开始';
+
+  @override
+  String get onboardingKeysConsoleHint =>
+      '先到对应服务商控制台获取 API Key 粘贴到上方；也可以之后在设置中随时添加或修改。';
+
+  @override
+  String get onboardingStepSampleTitle => '开始创作';
+
+  @override
+  String get onboardingStepSampleBody => '创建一个示例项目快速了解画布，也可以从空白工作台开始。';
+
+  @override
   String get canvasRenderQueue => '渲染队列';
 
   @override

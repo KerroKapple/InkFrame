@@ -10,9 +10,12 @@ import 'package:inkframe/app.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/orphan_reaper.dart';
 import 'package:inkframe/core/di/paths.dart';
+import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
+import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/features/generation/services/toast_service.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -33,6 +36,12 @@ void main() {
     final container = ProviderContainer(
       overrides: <Override>[
         appPathsProvider.overrideWithValue(paths),
+        // 本测试关注 messenger 装配，非首启路径：跳过 ON-1 向导。
+        preferencesServiceProvider.overrideWithValue(
+          InMemoryPreferencesService(
+            const AppPreferences(onboardingCompleted: true),
+          ),
+        ),
         anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
         currentCanvasIdProvider.overrideWith((_) => null),
         // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。

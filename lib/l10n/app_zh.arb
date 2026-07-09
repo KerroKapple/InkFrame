@@ -305,6 +305,22 @@
   "studioCreateSampleProject": "创建示例项目",
   "studioCreateSampleFailed": "创建示例项目失败",
 
+  "onboardingTitle": "欢迎使用 InkFrame",
+  "onboardingStepIndicator": "第 {current} 步 / 共 {total} 步",
+  "@onboardingStepIndicator": {
+    "description": "Onboarding wizard progress indicator",
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "onboardingSkip": "跳过",
+  "onboardingNext": "下一步",
+  "onboardingStartEmpty": "从空白开始",
+  "onboardingKeysConsoleHint": "先到对应服务商控制台获取 API Key 粘贴到上方；也可以之后在设置中随时添加或修改。",
+  "onboardingStepSampleTitle": "开始创作",
+  "onboardingStepSampleBody": "创建一个示例项目快速了解画布，也可以从空白工作台开始。",
+
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",
   "windowClose": "关闭",

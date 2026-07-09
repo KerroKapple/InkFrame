@@ -21,6 +21,7 @@ class AppPreferences {
     this.windowMaximized = false,
     this.updateCheckEnabled = true,
     this.lastUpdateCheckAtIso,
+    this.onboardingCompleted = false,
   });
 
   /// 'dark' | 'light' | 'system'
@@ -52,6 +53,9 @@ class AppPreferences {
   /// 上次成功检查更新的 UTC 时刻（ISO-8601 字符串,6h 节流依据）。null=从未检查。
   final String? lastUpdateCheckAtIso;
 
+  /// 首启向导是否已完成/跳过（ON-1）。false → 冷启弹向导且该次跳过会话恢复。
+  final bool onboardingCompleted;
+
   AppPreferences copyWith({
     String? themePreference,
     bool? highContrast,
@@ -67,6 +71,7 @@ class AppPreferences {
     bool? windowMaximized,
     bool? updateCheckEnabled,
     String? lastUpdateCheckAtIso,
+    bool? onboardingCompleted,
   }) {
     return AppPreferences(
       themePreference: themePreference ?? this.themePreference,
@@ -83,6 +88,7 @@ class AppPreferences {
       windowMaximized: windowMaximized ?? this.windowMaximized,
       updateCheckEnabled: updateCheckEnabled ?? this.updateCheckEnabled,
       lastUpdateCheckAtIso: lastUpdateCheckAtIso ?? this.lastUpdateCheckAtIso,
+      onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
     );
   }
 
@@ -99,6 +105,7 @@ class AppPreferences {
         'window_maximized': windowMaximized,
         'update_check_enabled': updateCheckEnabled,
         'last_update_check_at': lastUpdateCheckAtIso,
+        'onboarding_completed': onboardingCompleted,
       };
 
   /// 容错解析：缺失/类型不符/非法值一律退默认，绝不抛——损坏的偏好文件不该炸启动。
@@ -115,6 +122,7 @@ class AppPreferences {
     final wm = m['window_maximized'];
     final uce = m['update_check_enabled'];
     final luc = m['last_update_check_at'];
+    final ob = m['onboarding_completed'];
     return AppPreferences(
       themePreference:
           pref is String && allowedTheme.contains(pref) ? pref : 'dark',
@@ -129,6 +137,7 @@ class AppPreferences {
       windowMaximized: wm is bool ? wm : false,
       updateCheckEnabled: uce is bool ? uce : true,
       lastUpdateCheckAtIso: luc is String ? luc : null,
+      onboardingCompleted: ob is bool ? ob : false,
     );
   }
 
@@ -147,7 +156,8 @@ class AppPreferences {
           other.windowBounds == windowBounds &&
           other.windowMaximized == windowMaximized &&
           other.updateCheckEnabled == updateCheckEnabled &&
-          other.lastUpdateCheckAtIso == lastUpdateCheckAtIso;
+          other.lastUpdateCheckAtIso == lastUpdateCheckAtIso &&
+          other.onboardingCompleted == onboardingCompleted;
 
   @override
   int get hashCode => Object.hash(
@@ -163,5 +173,6 @@ class AppPreferences {
         windowMaximized,
         updateCheckEnabled,
         lastUpdateCheckAtIso,
+        onboardingCompleted,
       );
 }

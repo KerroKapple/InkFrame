@@ -11,8 +11,11 @@ import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/orphan_reaper.dart';
 import 'package:inkframe/core/di/paths.dart';
+import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
+import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
@@ -39,6 +42,13 @@ Future<AppPaths> _setupPaths(WidgetTester tester, String prefix) async {
   return paths;
 }
 
+/// 本文件只测路由，非首启路径：跳过 ON-1 向导。
+Override _onboardingDone() => preferencesServiceProvider.overrideWithValue(
+      InMemoryPreferencesService(
+        const AppPreferences(onboardingCompleted: true),
+      ),
+    );
+
 void main() {
   testWidgets('unlocked + studio screen → 渲染 StudioHomeScreen', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -49,6 +59,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
+          _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.studio),
           currentCanvasIdProvider.overrideWith((_) => null),
@@ -78,6 +89,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
+          _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.settings),
           currentCanvasIdProvider.overrideWith((_) => null),
@@ -107,6 +119,7 @@ void main() {
       ProviderScope(
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
+          _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.studio),
           currentCanvasIdProvider.overrideWith((_) => null),

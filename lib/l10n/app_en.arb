@@ -297,6 +297,22 @@
   "studioCreateSampleProject": "Create sample project",
   "studioCreateSampleFailed": "Couldn't create sample project",
 
+  "onboardingTitle": "Welcome to InkFrame",
+  "onboardingStepIndicator": "Step {current} of {total}",
+  "@onboardingStepIndicator": {
+    "description": "Onboarding wizard progress indicator",
+    "placeholders": {
+      "current": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "onboardingSkip": "Skip",
+  "onboardingNext": "Next",
+  "onboardingStartEmpty": "Start empty",
+  "onboardingKeysConsoleHint": "Get an API key from your provider's console and paste it above — you can also add or change keys later in Settings.",
+  "onboardingStepSampleTitle": "Start creating",
+  "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty studio.",
+
   "canvasRenderQueue": "Render Queue",
   "canvasNodeTypeCharacter": "Character",
   "canvasNodeTypeScene": "Scene",
