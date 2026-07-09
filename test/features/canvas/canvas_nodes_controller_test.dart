@@ -20,10 +20,12 @@ class _FakeNodeRepository implements NodeRepository {
   final List<Map<String, Object?>> rows = <Map<String, Object?>>[];
   final List<Map<String, Object?>> createCalls = <Map<String, Object?>>[];
   final List<String> softDeleted = <String>[];
+  final List<String> restored = <String>[];
   final List<Map<String, Object?>> updateCalls = <Map<String, Object?>>[];
 
   String? createError;
   String? softDeleteError;
+  String? restoreError;
   String? updateError;
 
   /// 置入后 create 会先 await 此 gate，用于制造两次 create 交错（LB-04）。
@@ -119,7 +121,15 @@ class _FakeNodeRepository implements NodeRepository {
   Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async =>
       0;
   @override
-  Future<int> restore(String id) async => 0;
+  Future<int> restore(String id) async {
+    if (restoreError != null) {
+      throw LocalIOError(
+          extra: {'op': 'restore', 'table': 'nodes', 'msg': restoreError});
+    }
+    restored.add(id);
+    return 1;
+  }
+
   @override
   Future<int> hardDelete(String id) async => 0;
 }
@@ -127,6 +137,7 @@ class _FakeNodeRepository implements NodeRepository {
 class _FakeEdgeRepo implements EdgeRepository {
   final List<Map<String, Object?>> rows = [];
   final List<String> softDeleted = [];
+  final List<String> restored = [];
 
   @override
   Future<String> create({
@@ -168,7 +179,11 @@ class _FakeEdgeRepo implements EdgeRepository {
   @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
-  Future<int> restore(String id) async => 0;
+  Future<int> restore(String id) async {
+    restored.add(id);
+    return 1;
+  }
+
   @override
   Future<int> hardDelete(String id) async => 0;
 }
@@ -390,6 +405,78 @@ void main() {
       // b 的 2 条入边 + 1 条出边都应被 softDelete
       expect(edgeRepo.softDeleted, hasLength(3));
       expect(repo.softDeleted, contains(b.id));
+    });
+
+    test('removeNode 返回撤销令牌：节点 + 级联 edge id（PL-4a）', () async {
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl =
+          container.read(canvasNodesControllerProvider(canvasId).notifier);
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final e1 = await edgeRepo.create(
+        canvasId: canvasId,
+        sourceNodeId: a.id,
+        targetNodeId: b.id,
+        edgeType: 'data',
+      );
+      final e2 = await edgeRepo.create(
+        canvasId: canvasId,
+        sourceNodeId: b.id,
+        targetNodeId: a.id,
+        edgeType: 'narrative',
+      );
+
+      final deletion = await ctrl.removeNode(a.id);
+
+      expect(deletion, isNotNull);
+      expect(deletion!.node.id, a.id);
+      expect(deletion.edgeIds, containsAll(<String>[e1, e2]));
+    });
+
+    test('restore 复原节点 + 级联 edges，节点回到 state（PL-4a）', () async {
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl =
+          container.read(canvasNodesControllerProvider(canvasId).notifier);
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final e1 = await edgeRepo.create(
+        canvasId: canvasId,
+        sourceNodeId: a.id,
+        targetNodeId: b.id,
+        edgeType: 'data',
+      );
+
+      final deletion = await ctrl.removeNode(a.id);
+      expect(deletion, isNotNull);
+      expect(
+        container
+            .read(canvasNodesControllerProvider(canvasId))
+            .valueOrNull!
+            .any((n) => n.id == a.id),
+        isFalse,
+      );
+
+      await ctrl.restore(deletion!);
+
+      expect(repo.restored, contains(a.id));
+      expect(edgeRepo.restored, contains(e1));
+      final state = container.read(canvasNodesControllerProvider(canvasId));
+      expect(state.valueOrNull!.any((n) => n.id == a.id), isTrue);
+    });
+
+    test('restore DB 失败 → 乐观复原回滚（节点仍不在内存）（PL-4a）', () async {
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl =
+          container.read(canvasNodesControllerProvider(canvasId).notifier);
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final deletion = await ctrl.removeNode(a.id);
+      expect(deletion, isNotNull);
+      repo.restoreError = 'nope';
+
+      await expectLater(
+          ctrl.restore(deletion!), throwsA(isA<LocalIOError>()));
+      final state = container.read(canvasNodesControllerProvider(canvasId));
+      expect(state.valueOrNull!.any((n) => n.id == a.id), isFalse);
     });
 
     test('removeNode 无关联 edges → 只软删节点', () async {

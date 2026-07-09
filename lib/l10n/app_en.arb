@@ -138,6 +138,8 @@
   "nodeDeleted": "Node deleted",
   "nodeDeleteFailed": "Failed to delete node",
   "nodeMoveFailed": "Failed to move node",
+  "edgeDeleted": "Link deleted",
+  "undoFailed": "Couldn't undo",
 
   "inspectorInputsLabel": "Inputs",
   "inspectorInputsEmpty": "No input connections",
@@ -266,6 +268,7 @@
   "studioDeleteCanvasFailed": "Failed to delete canvas",
   "studioNoCanvases": "No canvases in this project",
   "commonClose": "Close",
+  "commonUndo": "Undo",
   "studioProjectMenuTooltip": "Project options",
   "studioProjectMetaLine": "{date} · {count, plural, =1{1 canvas} other{{count} canvases}}",
   "@studioProjectMetaLine": {

@@ -15,9 +15,11 @@ class _FakeEdgeRepo implements EdgeRepository {
   final List<Map<String, Object?>> rows = <Map<String, Object?>>[];
   final List<Map<String, Object?>> createCalls = <Map<String, Object?>>[];
   final List<String> softDeleted = <String>[];
+  final List<String> restored = <String>[];
   final List<Map<String, Object?>> updateCalls = <Map<String, Object?>>[];
   bool createThrows = false;
   bool softDeleteThrows = false;
+  bool restoreThrows = false;
   bool updateThrows = false;
 
   /// 置入后 create 会先 await 此 gate，用于制造两次 create 交错（LB-04）。
@@ -92,7 +94,14 @@ class _FakeEdgeRepo implements EdgeRepository {
     return 1;
   }
   @override
-  Future<int> restore(String id) async => 0;
+  Future<int> restore(String id) async {
+    if (restoreThrows) {
+      throw const LocalIOError(extra: {'op': 'restore', 'table': 'edges'});
+    }
+    restored.add(id);
+    return 1;
+  }
+
   @override
   Future<int> hardDelete(String id) async => 0;
 }
@@ -230,6 +239,53 @@ void main() {
       await ctrl.removeEdge(e.id);
 
       expect(repo.softDeleted, contains(e.id));
+      expect(container
+              .read(canvasEdgesControllerProvider(canvasId))
+              .valueOrNull,
+          isEmpty);
+    });
+
+    test('removeEdge 返回被删边（PL-4a undo 令牌）', () async {
+      await container.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasEdgesControllerProvider(canvasId).notifier);
+      final e = await ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+
+      final removed = await ctrl.removeEdge(e.id);
+
+      expect(removed, isNotNull);
+      expect(removed!.id, e.id);
+    });
+
+    test('restore 复原连线到内存 + repo.restore（PL-4a）', () async {
+      await container.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasEdgesControllerProvider(canvasId).notifier);
+      final e = await ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+      final removed = await ctrl.removeEdge(e.id);
+      expect(container
+              .read(canvasEdgesControllerProvider(canvasId))
+              .valueOrNull,
+          isEmpty);
+
+      await ctrl.restore(removed!);
+
+      expect(repo.restored, contains(e.id));
+      final state = container.read(canvasEdgesControllerProvider(canvasId));
+      expect(state.valueOrNull, hasLength(1));
+      expect(state.valueOrNull!.first.id, e.id);
+    });
+
+    test('restore DB 失败 → 乐观复原回滚（PL-4a）', () async {
+      await container.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasEdgesControllerProvider(canvasId).notifier);
+      final e = await ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+      final removed = await ctrl.removeEdge(e.id);
+      repo.restoreThrows = true;
+
+      await expectLater(
+          ctrl.restore(removed!), throwsA(isA<LocalIOError>()));
       expect(container
               .read(canvasEdgesControllerProvider(canvasId))
               .valueOrNull,

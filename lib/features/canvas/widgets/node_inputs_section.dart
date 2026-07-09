@@ -216,7 +216,8 @@ class _InputRow extends ConsumerWidget {
             tooltip: context.l10n.inspectorRemoveInput,
             icon: Icon(Icons.link_off, size: 16, color: colors.danger),
             onPressed: () {
-              ctrl.removeEdge(edge.id).catchError((Object _) {});
+              // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染。
+              ctrl.removeEdge(edge.id).catchError((Object _) => null);
             },
           ),
         ],

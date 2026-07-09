@@ -80,17 +80,40 @@ class CanvasEdgesController
     });
   }
 
-  Future<void> removeEdge(String id) {
+  /// 软删除连线。返回被删 [CanvasEdge] 供 PL-4a undo；连线不在内存时返回 null。
+  Future<CanvasEdge?> removeEdge(String id) {
     final repo = _repo;
-    return serialize<void>(() async {
+    return serialize<CanvasEdge?>(() async {
       final previous =
           _alive ? (state.valueOrNull ?? const <CanvasEdge>[]) : const <CanvasEdge>[];
+      CanvasEdge? removed;
+      for (final e in previous) {
+        if (e.id == id) removed = e;
+      }
       if (_alive) {
         state =
             AsyncData(previous.where((e) => e.id != id).toList(growable: false));
       }
       try {
         await repo.softDelete(id);
+        return removed;
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+  }
+
+  /// 撤销 removeEdge（PL-4a 删除防误伤）：清 deleted_at + 把连线放回内存；
+  /// DB 失败回滚并上抛。
+  Future<void> restore(CanvasEdge edge) {
+    final repo = _repo;
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasEdge>[]) : const <CanvasEdge>[];
+      if (_alive) state = AsyncData([...previous, edge]); // 乐观复原
+      try {
+        await repo.restore(edge.id);
       } on InkError catch (_) {
         if (_alive) state = AsyncData(previous);
         rethrow;
