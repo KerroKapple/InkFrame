@@ -31,6 +31,10 @@ void main() {
 
     test('fromWire falls back to unknown on garbage', () {
       expect(InkErrorCode.fromWire('not_a_real_code'), InkErrorCode.unknown);
+      // 未知 wire 串不得抛异常（GAP-4：batch slot errorCode 可读化的容错前提）。
+      expect(InkErrorCode.fromWire('bogus_wire'), InkErrorCode.unknown);
+      expect(() => InkErrorCode.fromWire('bogus_wire'), returnsNormally);
+      expect(InkErrorCode.fromWire(''), InkErrorCode.unknown);
     });
   });
 

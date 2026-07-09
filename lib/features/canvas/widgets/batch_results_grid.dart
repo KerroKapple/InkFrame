@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/file_resolver.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -87,12 +88,15 @@ class _BatchSlotTile extends ConsumerWidget {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(InkRadius.sm),
-        child: AspectRatio(aspectRatio: 1, child: _content(ref, colors)),
+        child: AspectRatio(
+          aspectRatio: 1,
+          child: _content(context, ref, colors),
+        ),
       ),
     );
   }
 
-  Widget _content(WidgetRef ref, InkColors colors) {
+  Widget _content(BuildContext context, WidgetRef ref, InkColors colors) {
     final url = slot.outputUrl;
     final projectId = node.projectId;
     final canvasId = node.canvasId;
@@ -121,9 +125,38 @@ class _BatchSlotTile extends ConsumerWidget {
       }
     }
     if (slot.isError) {
-      return _placeholder(colors, Icons.error_outline);
+      return _errorTile(context, colors);
     }
     return _placeholder(colors, Icons.hourglass_empty);
+  }
+
+  /// 失败 slot：errorCode（wire 串）→ InkErrorCode.fromWire（容错，未知回退
+  /// unknown）→ 本地化文案。整块套 Tooltip（悬停看全文），底部叠一行 danger 摘要。
+  Widget _errorTile(BuildContext context, InkColors colors) {
+    final typo = context.inkTypography;
+    final code = InkErrorCode.fromWire(slot.errorCode ?? '');
+    final text = l10nErrorCode(context, code);
+    return Tooltip(
+      message: text,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _placeholder(colors, Icons.error_outline),
+          Positioned(
+            left: InkSpacing.xs,
+            right: InkSpacing.xs,
+            bottom: InkSpacing.xs,
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: typo.caption.copyWith(color: colors.danger),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _placeholder(InkColors colors, IconData icon) =>
