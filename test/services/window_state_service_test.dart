@@ -136,11 +136,11 @@ void main() {
   });
 
   group('capture', () {
-    test('读 getBounds + isMaximized 各一次并落盘', () async {
+    test('非最大化：读 getBounds + isMaximized 各一次，边界更新落盘', () async {
       const current = WindowBounds(x: 50, y: 60, width: 1400, height: 900);
       final controller = _FakeWindowController()
         ..bounds = current
-        ..maximized = true;
+        ..maximized = false;
       final prefs = InMemoryPreferencesService();
       final svc = build(
         initial: const AppPreferences(),
@@ -154,6 +154,31 @@ void main() {
       expect(controller.getBoundsCount, 1);
       expect(controller.isMaximizedCount, 1);
       expect(prefs.current.windowBounds, current);
+      expect(prefs.current.windowMaximized, false);
+    });
+
+    test('最大化：保留上次非最大化边界，不用全屏 getBounds 覆盖', () async {
+      // 上次退出记下的正常窗口矩形。
+      const priorNormal = WindowBounds(x: 100, y: 100, width: 900, height: 600);
+      // 最大化时 getBounds 返回全屏矩形——绝不能当作正常边界写回。
+      const fullScreen = WindowBounds(x: 0, y: 0, width: 1920, height: 1040);
+      final controller = _FakeWindowController()
+        ..bounds = fullScreen
+        ..maximized = true;
+      final prefs = InMemoryPreferencesService(
+        const AppPreferences(windowBounds: priorNormal),
+      );
+      final svc = build(
+        initial: const AppPreferences(windowBounds: priorNormal),
+        controller: controller,
+        displays: _FakeDisplayQuery(<WindowBounds>[primary]),
+        prefs: prefs,
+      );
+
+      await svc.capture();
+
+      // 正常边界保持不变；仅最大化标志翻真。下次取消最大化才能回到真正的正常尺寸。
+      expect(prefs.current.windowBounds, priorNormal);
       expect(prefs.current.windowMaximized, true);
     });
 

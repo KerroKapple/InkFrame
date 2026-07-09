@@ -39,6 +39,27 @@ void main() {
     );
   });
 
+  test('fromMap 容错：宽/高为 NaN/Infinity → null（不被 <=0 判定绕过）', () {
+    expect(
+      WindowBounds.fromMap(<String, Object?>{
+        'x': 0,
+        'y': 0,
+        'width': double.nan,
+        'height': 100,
+      }),
+      isNull,
+    );
+    expect(
+      WindowBounds.fromMap(<String, Object?>{
+        'x': 0,
+        'y': 0,
+        'width': 100,
+        'height': double.infinity,
+      }),
+      isNull,
+    );
+  });
+
   test('fromMap 接受整数并转 double', () {
     final b = WindowBounds.fromMap(
         <String, Object?>{'x': 1, 'y': 2, 'width': 3, 'height': 4});

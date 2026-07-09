@@ -105,8 +105,10 @@ class DefaultWindowStateService implements WindowStateService {
     try {
       final bounds = await _controller.getBounds();
       final maximized = await _controller.isMaximized();
+      // 最大化时 getBounds 返回全屏矩形，不能当正常边界写回——否则下次取消最大化会
+      // 吸附到全屏、真正的正常尺寸永久丢失。故最大化时保留上次记下的正常边界。
       await _prefs.update((p) => p.copyWith(
-            windowBounds: bounds,
+            windowBounds: maximized ? p.windowBounds : bounds,
             windowMaximized: maximized,
           ));
     } on Object catch (e) {

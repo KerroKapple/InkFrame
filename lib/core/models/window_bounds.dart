@@ -38,7 +38,8 @@ class WindowBounds {
     final w = raw['width'];
     final h = raw['height'];
     if (x is! num || y is! num || w is! num || h is! num) return null;
-    if (w <= 0 || h <= 0) return null;
+    // NaN/Infinity 会绕过 w<=0 判定（两者与 0 比较均为 false）——显式拒绝非有限值。
+    if (!w.isFinite || !h.isFinite || w <= 0 || h <= 0) return null;
     return WindowBounds(
       x: x.toDouble(),
       y: y.toDouble(),
