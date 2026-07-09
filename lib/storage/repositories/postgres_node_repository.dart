@@ -199,4 +199,27 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
       return r.affectedRows;
     });
   }
+
+  @override
+  Future<List<String>> listAllMediaUrls() {
+    return guard('listAllMediaUrls', 'nodes', () async {
+      // LB-13：孤儿回收引用集。**不加 deleted_at 过滤**——软删节点产物仍占盘、
+      // 仍可 LB-15 恢复，必须算「被引用」（安全#2）。三个 url 键 UNION 后滤空。
+      final r = await session.execute(
+        Sql.named(
+          'SELECT url FROM ('
+          "SELECT type_config->>'image_url' AS url FROM nodes "
+          'UNION ALL '
+          "SELECT type_config->>'video_url' FROM nodes "
+          'UNION ALL '
+          "SELECT type_config->>'thumbnail_url' FROM nodes"
+          ") t WHERE url IS NOT NULL AND url <> ''",
+        ),
+      );
+      return <String>[
+        for (final row in r)
+          if (row[0] is String) row[0]! as String,
+      ];
+    });
+  }
 }

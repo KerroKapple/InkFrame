@@ -252,6 +252,9 @@ class _PreloadedNodeRepository implements NodeRepository {
       _inner.softDeleteEmptyOrphanResults();
 
   @override
+  Future<List<String>> listAllMediaUrls() async => _inner.listAllMediaUrls();
+
+  @override
   Future<int> update(String id, Map<String, Object?> patch) async {
     if (id == _row['id']) {
       _row.addAll(patch);

@@ -664,6 +664,91 @@ void main() {
       return;
     }
   });
+
+  // LB-13：磁盘孤儿回收的引用集来源。含软删节点是安全#2 的核心——软删产物可
+  // LB-15 恢复，必须算「被引用」，绝不能当孤儿删。
+  test('NodeRepository.listAllMediaUrls：三键聚合 + 含软删节点（LB-13 引用集，安全#2）',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final nodes = PostgresNodeRepository(h.conn);
+
+      await nodes.create(
+        canvasId: cid,
+        type: 'image',
+        nodeRole: 'result',
+        typeConfig: {'image_url': 'images/a.png'},
+      );
+      await nodes.create(
+        canvasId: cid,
+        type: 'video',
+        nodeRole: 'result',
+        typeConfig: {
+          'video_url': 'videos/b.mp4',
+          'thumbnail_url': 'videos/b.jpg',
+        },
+      );
+      // 软删节点：其 url 仍必须出现在引用集。
+      final gone = await nodes.create(
+        canvasId: cid,
+        type: 'image',
+        nodeRole: 'result',
+        typeConfig: {'image_url': 'images/gone.png'},
+      );
+      await nodes.softDelete(gone);
+
+      final urls = (await nodes.listAllMediaUrls()).toSet();
+      expect(
+        urls,
+        containsAll(<String>[
+          'images/a.png',
+          'videos/b.mp4',
+          'videos/b.jpg',
+          'images/gone.png',
+        ]),
+      );
+    } on _Skip {
+      return;
+    }
+  });
+
+  test('BatchResultRepository.listAllOutputUrls：全表非空 output_url（LB-13 引用集）',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final nodes = PostgresNodeRepository(h.conn);
+      final jobs = PostgresJobRepository(h.conn);
+      final batch = PostgresBatchResultRepository(h.conn);
+
+      final n =
+          await nodes.create(canvasId: cid, type: 'image', nodeRole: 'result');
+      final j = await jobs.create(
+        canvasId: cid,
+        sourceNodeId: n,
+        providerId: 'kling',
+        jobType: 'image',
+        fullPrompt: 'fp',
+        userPrompt: 'up',
+      );
+      final s0 =
+          await batch.create(nodeId: n, jobId: j, slotIndex: 0, status: 'success');
+      await batch.update(s0, {'output_url': 'images/s0.png'});
+      // 未写 output_url 的 slot 不应出现在引用集。
+      await batch.create(nodeId: n, jobId: j, slotIndex: 1, status: 'error');
+
+      final urls = (await batch.listAllOutputUrls()).toSet();
+      expect(urls, contains('images/s0.png'));
+      expect(urls, hasLength(1));
+    } on _Skip {
+      return;
+    }
+  });
 }
 
 class _Skip implements Exception {}

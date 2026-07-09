@@ -281,6 +281,7 @@ lib/
     ├── file_preferences_service.dart  # config/preferences.json load/save
     ├── custom_providers_file_service.dart  # config/custom_providers.json parse + fallback
     ├── character_asset_service.dart
+    ├── orphan_file_reaper.dart        # DiskOrphanFileReaper (disk orphan media GC; DRY-RUN v1 — logs only, never deletes; LB-13)
     ├── app_teardown.dart              # Ordered shutdown (JobQueue → Pool → PG)
     ├── crash_reporter.dart            # FileCrashReporter (uncaught-error crash file + keep-3 rotation, no context/extra)
     ├── error_hooks.dart               # installErrorHooks + reportUncaught (FlutterError/PlatformDispatcher/zone → logger + CrashReporter)

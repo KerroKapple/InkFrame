@@ -141,4 +141,14 @@ class FakeBatchResultRepo implements BatchResultRepository {
     rows.remove(id);
     return 1;
   }
+
+  @override
+  Future<List<String>> listAllOutputUrls() async {
+    final out = <String>[];
+    for (final r in rows.values) {
+      final v = r['output_url'];
+      if (v is String && v.isNotEmpty) out.add(v);
+    }
+    return out;
+  }
 }

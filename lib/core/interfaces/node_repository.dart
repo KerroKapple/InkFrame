@@ -37,4 +37,10 @@ abstract class NodeRepository {
   /// 无成功 slot、也无在途 job 的 result 节点（进回收站，LB-15 可恢复）。
   /// 返回被收敛的行数。
   Future<int> softDeleteEmptyOrphanResults();
+
+  /// 磁盘孤儿回收的引用集来源（LB-13）：返回所有节点 type_config 里
+  /// image_url / video_url / thumbnail_url 的全部非空画布相对路径。
+  /// 只读；**含软删节点**（deleted_at IS NOT NULL 也算引用）——软删产物可 LB-15
+  /// 恢复，必须视为「被引用」，绝不能当孤儿删（安全#2）。
+  Future<List<String>> listAllMediaUrls();
 }

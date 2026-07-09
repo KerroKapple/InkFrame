@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/current_screen.dart';
 import 'core/di/locale.dart';
+import 'core/di/orphan_reaper.dart';
 import 'core/di/theme.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
@@ -43,6 +44,9 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       ref.read(restoreLastSessionProvider);
+      // LB-13：首帧后触发磁盘孤儿文件回收（DRY-RUN + ≥7d 节流）。fire-and-forget，
+      // housekeeping，内部吞错只 warn，绝不阻断启动或抢占其它流程。
+      ref.read(orphanReapStartupProvider);
     });
   }
 

@@ -98,6 +98,19 @@ void main() {
       expect(spy.lastParams?['cfg'], contains('"prompt":"hello"'));
     });
 
+    test('listAllMediaUrls UNION 三个 url 键 + 不过滤软删（LB-13 引用集）',
+        () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).listAllMediaUrls();
+      expect(spy.lastSql, contains("type_config->>'image_url'"));
+      expect(spy.lastSql, contains("type_config->>'video_url'"));
+      expect(spy.lastSql, contains("type_config->>'thumbnail_url'"));
+      expect(spy.lastSql, contains('UNION ALL'));
+      // 关键：绝不含 deleted_at 过滤——软删产物必须算被引用（安全#2）。
+      expect(spy.lastSql, isNot(contains('deleted_at')));
+      expect(spy.lastSql, contains("url IS NOT NULL AND url <> ''"));
+    });
+
     test('listOrphanResults 使用 node_role result + source_node_id IS NULL',
         () async {
       final spy = _SpySession();
@@ -289,6 +302,16 @@ void main() {
           .markPromoted(id: 'br1', promotedNodeId: 'n2');
       expect(spy.lastSql, contains('promoted = true'));
       expect(spy.lastSql, contains('promoted_node_id = @pnid'));
+    });
+
+    test('listAllOutputUrls 过滤空 output_url（LB-13 引用集）', () async {
+      final spy = _SpySession();
+      await PostgresBatchResultRepository(spy).listAllOutputUrls();
+      expect(spy.lastSql, contains('SELECT output_url FROM batch_results'));
+      expect(
+        spy.lastSql,
+        contains("output_url IS NOT NULL AND output_url <> ''"),
+      );
     });
   });
 }
