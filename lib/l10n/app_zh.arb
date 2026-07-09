@@ -116,31 +116,6 @@
   },
   "generationProviderNotRegistered": "Provider 未注册",
 
-  "generationQueueTitle": "渲染队列",
-  "generationQueueEmpty": "暂无活跃任务",
-  "generationQueueClearTerminated": "清理已完成",
-  "generationQueueRemove": "移除",
-  "generationQueueCancel": "取消任务",
-  "generationQueueRetry": "重试",
-  "generationStatusQueued": "排队中",
-  "generationStatusSubmitting": "提交中",
-  "generationStatusRunning": "生成中",
-  "generationStatusRunningWithProgress": "生成中 {percent}%",
-  "@generationStatusRunningWithProgress": {
-    "placeholders": {
-      "percent": { "type": "int" }
-    }
-  },
-  "generationStatusSucceeded": "已完成",
-  "generationStatusFailed": "失败",
-  "generationStatusCancelled": "已取消",
-  "generationCountActive": "{count} 个进行中",
-  "@generationCountActive": {
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
-
   "resultNodePending": "等待生成",
   "resultNodeImageMissing": "图像文件缺失",
 
@@ -299,6 +274,14 @@
   },
   "canvasRenderQueueEmpty": "暂无渲染任务",
   "canvasRenderQueueStatusQueued": "排队中",
+  "canvasRenderQueueCancel": "取消任务",
+  "@canvasRenderQueueCancel": {
+    "description": "Render queue — tooltip/label on the per-job cancel control that stops a running or queued generation"
+  },
+  "canvasRenderQueueFailures": "最近失败",
+  "@canvasRenderQueueFailures": {
+    "description": "Render queue — section header above the recently-failed jobs list"
+  },
 
   "canvasDefaultName": "未命名画布",
   "studioOpenCanvasFailed": "打开画布失败",

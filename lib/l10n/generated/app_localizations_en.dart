@@ -285,52 +285,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get generationProviderNotRegistered => 'Provider not registered';
 
   @override
-  String get generationQueueTitle => 'Render Queue';
-
-  @override
-  String get generationQueueEmpty => 'No active jobs';
-
-  @override
-  String get generationQueueClearTerminated => 'Clear completed';
-
-  @override
-  String get generationQueueRemove => 'Dismiss';
-
-  @override
-  String get generationQueueCancel => 'Cancel job';
-
-  @override
-  String get generationQueueRetry => 'Retry';
-
-  @override
-  String get generationStatusQueued => 'Queued';
-
-  @override
-  String get generationStatusSubmitting => 'Submitting';
-
-  @override
-  String get generationStatusRunning => 'Running';
-
-  @override
-  String generationStatusRunningWithProgress(int percent) {
-    return 'Running $percent%';
-  }
-
-  @override
-  String get generationStatusSucceeded => 'Done';
-
-  @override
-  String get generationStatusFailed => 'Failed';
-
-  @override
-  String get generationStatusCancelled => 'Cancelled';
-
-  @override
-  String generationCountActive(int count) {
-    return '$count active';
-  }
-
-  @override
   String get resultNodePending => 'Waiting for generation';
 
   @override
@@ -741,6 +695,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get canvasRenderQueueStatusQueued => 'Queued';
+
+  @override
+  String get canvasRenderQueueCancel => 'Cancel job';
+
+  @override
+  String get canvasRenderQueueFailures => 'Recent failures';
 
   @override
   String get windowMinimize => 'Minimize';
