@@ -6,12 +6,15 @@
 // - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
 // - 锁屏后路由：currentCanvasId 优先；其次 currentGalleryProject（项目产物画廊）；
 //   否则按 currentScreenProvider 在 Studio / Settings 切换
+// - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
+//   时以 StartupErrorView 替代白屏；loading/data 均照常进 _UnlockedShell
 // - 新增节点 FAB 已下沉到 CanvasScreen 内部，本文件不再托管
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/current_screen.dart';
+import 'core/di/database.dart';
 import 'core/di/locale.dart';
 import 'core/di/orphan_reaper.dart';
 import 'core/di/theme.dart';
@@ -21,6 +24,7 @@ import 'features/gallery/providers/current_gallery_project.dart';
 import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
 import 'features/studio/studio_home_screen.dart';
 import 'l10n/generated/app_localizations.dart';
@@ -76,9 +80,25 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       scaffoldMessengerKey: messengerKey,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const _UnlockedShell(),
+      home: const _StartupGate(),
       debugShowCheckedModeBanner: false,
     );
+  }
+}
+
+/// 启动 gate（LB-09）：监听 DB-ready future——AsyncError 时全屏呈现 StartupErrorView，
+/// 否则（loading / data）照常进 _UnlockedShell。loading 期不阻断，spinner/首屏照旧，
+/// 唯 error 态换上启动失败 surface。
+class _StartupGate extends ConsumerWidget {
+  const _StartupGate();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final dbReady = ref.watch(pgMigratedPoolProvider);
+    return switch (dbReady) {
+      AsyncError(:final error) => StartupErrorView(error: error),
+      _ => const _UnlockedShell(),
+    };
   }
 }
 

@@ -15,6 +15,7 @@ import 'package:postgres/postgres.dart';
 import '../../storage/database_bootstrap.dart';
 import '../../storage/pg_binary_locator.dart';
 import '../../storage/pg_controller.dart';
+import '../errors/ink_error.dart';
 import 'logger.dart';
 import 'paths.dart';
 
@@ -77,11 +78,22 @@ final pgPoolProvider = FutureProvider<Pool<void>>(
 /// Pool + schema migrated——应用层仓储层实际应该依赖的 provider。
 /// 首次读：启动 PG → 建池 → DatabaseBootstrap.run()（pgcrypto + 迁移链；
 /// 底层 PG 异常在储层边界收口，见 storage/database_bootstrap.dart）。
+///
+/// LB-09：DI 边界统一把 PG 生命周期 / 迁移 / 引导失败（PgLifecycleError·
+/// SchemaMigrationError·SchemaDowngradeError·DatabaseBootstrapError 均属
+/// StateError 系）翻成可渲染的 [LocalIOError]，AsyncError 因此携带 InkError，
+/// 供启动失败 surface 经 l10nAsyncError 本地化呈现，而非白屏泄漏裸 StateError。
 final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
   (ref) async {
-    final pool = await ref.watch(pgPoolProvider.future);
-    await DatabaseBootstrap(pool).run();
-    return pool;
+    try {
+      final pool = await ref.watch(pgPoolProvider.future);
+      await DatabaseBootstrap(pool).run();
+      return pool;
+    } on StateError catch (e, st) {
+      // TODO(LB-07): SCRAM 28P01（cause 为 ServerException code '28P01'）应走
+      //   "重置数据库口令" 引导分支，而非泛化 LocalIOError。
+      throw LocalIOError(cause: e, stackTrace: st);
+    }
   },
   name: 'pgMigratedPoolProvider',
 );

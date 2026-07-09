@@ -1777,6 +1777,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)'**
   String get exportVideoFfmpegMissing;
+
+  /// Full-screen startup failure surface title shown when the embedded database fails to start or migrate
+  ///
+  /// In en, this message translates to:
+  /// **'InkFrame couldn\'t start'**
+  String get startupErrorTitle;
+
+  /// Startup failure surface body explaining the database boot failure and reassuring data durability
+  ///
+  /// In en, this message translates to:
+  /// **'The embedded database failed to start or upgrade. Your projects on disk are safe. Review the logs below, then retry.'**
+  String get startupErrorBody;
+
+  /// Label above the log directory path on the startup failure surface
+  ///
+  /// In en, this message translates to:
+  /// **'Log directory'**
+  String get startupErrorLogPathLabel;
+
+  /// Button that opens the log directory in the OS file browser from the startup failure surface
+  ///
+  /// In en, this message translates to:
+  /// **'Open log directory'**
+  String get startupErrorOpenLogDir;
 }
 
 class _AppLocalizationsDelegate

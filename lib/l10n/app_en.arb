@@ -406,5 +406,22 @@
   },
   "exportVideoCopyPath": "Copy path",
   "exportVideoPathCopied": "Path copied to clipboard",
-  "exportVideoFfmpegMissing": "ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)"
+  "exportVideoFfmpegMissing": "ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)",
+
+  "startupErrorTitle": "InkFrame couldn't start",
+  "@startupErrorTitle": {
+    "description": "Full-screen startup failure surface title shown when the embedded database fails to start or migrate"
+  },
+  "startupErrorBody": "The embedded database failed to start or upgrade. Your projects on disk are safe. Review the logs below, then retry.",
+  "@startupErrorBody": {
+    "description": "Startup failure surface body explaining the database boot failure and reassuring data durability"
+  },
+  "startupErrorLogPathLabel": "Log directory",
+  "@startupErrorLogPathLabel": {
+    "description": "Label above the log directory path on the startup failure surface"
+  },
+  "startupErrorOpenLogDir": "Open log directory",
+  "@startupErrorOpenLogDir": {
+    "description": "Button that opens the log directory in the OS file browser from the startup failure surface"
+  }
 }
