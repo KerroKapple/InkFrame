@@ -12,6 +12,7 @@ import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
@@ -20,6 +21,7 @@ import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
+import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/primitives/ink_dashed_slot.dart';
 
 import '../../../_harness/fake_character.dart';
@@ -275,5 +277,76 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to import character'), findsOneWidget);
+  });
+
+  group('LB-06 分区加载失败错误态', () {
+    const localIoText = 'Local disk I/O error. Check space and permissions.';
+
+    /// 除指定抛错仓储外其余全用工作 fake；隔离单个分区的错误态。
+    Future<void> pumpWith(
+      WidgetTester tester,
+      CanvasNode node, {
+      required bool failCharacters,
+      required bool failPresets,
+    }) async {
+      await pumpInkApp(
+        tester,
+        Scaffold(
+          body: SingleChildScrollView(child: ImageConfigInspector(node: node)),
+        ),
+        locale: const Locale('en'),
+        overrides: [
+          providerCapabilitiesListProvider.overrideWith(
+            (ref) => [_refCapableCaps],
+          ),
+          secureStorageServiceProvider.overrideWithValue(_FakeSecure()),
+          nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
+          edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+          canvasRepositoryProvider.overrideWith((ref) async => _FakeCanvasRepo()),
+          styleLaneRepositoryProvider.overrideWith(
+            (ref) async => _FakeLaneRepo(),
+          ),
+          characterRepositoryProvider.overrideWith(
+            (ref) async =>
+                failCharacters ? throw const LocalIOError() : charRepo,
+          ),
+          characterAssetServiceProvider.overrideWithValue(
+            FakeCharacterAssetService(),
+          ),
+          promptPresetRepositoryProvider.overrideWith(
+            (ref) async => failPresets ? throw const LocalIOError() : presetRepo,
+          ),
+          fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
+        ],
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('角色列表加载失败 → 错误横幅（不再误报"无角色"）', (tester) async {
+      final node = await seedConfigNode();
+      await pumpWith(
+        tester,
+        node,
+        failCharacters: true,
+        failPresets: false,
+      );
+
+      expect(find.byType(InkErrorBanner), findsOneWidget);
+      expect(find.text(localIoText), findsOneWidget);
+      expect(find.text('No characters yet'), findsNothing);
+    });
+
+    testWidgets('预设列表加载失败 → 错误横幅（不再误报"无预设"）', (tester) async {
+      final node = await seedConfigNode();
+      await pumpWith(
+        tester,
+        node,
+        failCharacters: false,
+        failPresets: true,
+      );
+
+      expect(find.byType(InkErrorBanner), findsOneWidget);
+      expect(find.text(localIoText), findsOneWidget);
+    });
   });
 }

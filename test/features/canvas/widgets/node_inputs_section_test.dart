@@ -9,12 +9,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/node_inputs_section.dart';
+import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/primitives/ink_dashed_slot.dart';
 
 import '../../../_harness/fake_repositories.dart';
@@ -347,6 +349,45 @@ void main() {
       await pump(tester, s.target, _bothFramesCaps);
 
       expect(find.byType(Image), findsNothing);
+    });
+  });
+
+  group('LB-06 加载失败错误态', () {
+    testWidgets('入边加载失败 → 错误横幅（不再误报"无入边"）', (tester) async {
+      const target = CanvasNode(
+        id: 'cfg',
+        label: 'cfg',
+        type: CanvasNodeType.video,
+        role: NodeRole.config,
+        canvasId: _kCanvasId,
+        projectId: _kProjectId,
+      );
+      await pumpInkApp(
+        tester,
+        const Scaffold(
+          body: NodeInputsSection(
+            targetNode: target,
+            selectedCaps: _bothFramesCaps,
+          ),
+        ),
+        locale: const Locale('en'),
+        overrides: [
+          nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
+          // 边仓储 future 抛错 → edgesController 落 AsyncError。
+          edgeRepositoryProvider.overrideWith(
+            (ref) async => throw const LocalIOError(),
+          ),
+          fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
+        ],
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(InkErrorBanner), findsOneWidget);
+      expect(
+        find.text('Local disk I/O error. Check space and permissions.'),
+        findsOneWidget,
+      );
+      expect(find.text('No input connections'), findsNothing);
     });
   });
 }

@@ -14,6 +14,7 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/primitives/ink_dashed_slot.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_edge.dart';
@@ -42,6 +43,21 @@ class NodeInputsSection extends ConsumerWidget {
 
     final edgesAsync = ref.watch(canvasEdgesControllerProvider(canvasId));
     final nodesAsync = ref.watch(canvasNodesControllerProvider(canvasId));
+    // 入边/节点任一加载失败 → 错误横幅（此前静默降级为空 = 误报"无入边"）。
+    final loadError = edgesAsync.error ?? nodesAsync.error;
+    if (loadError != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.inspectorInputsLabel,
+            style: typo.caption.copyWith(color: colors.fg3),
+          ),
+          const SizedBox(height: InkSpacing.xs),
+          InkErrorBanner(message: l10nAsyncError(context, loadError)),
+        ],
+      );
+    }
     final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
     final nodes = nodesAsync.valueOrNull ?? const <CanvasNode>[];
     final nodesById = {for (final n in nodes) n.id: n};

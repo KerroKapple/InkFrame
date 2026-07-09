@@ -21,6 +21,7 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/primitives/ink_dashed_slot.dart';
 import '../../../theme/tokens.dart';
@@ -500,9 +501,8 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
     if (projectId == null) return const SizedBox.shrink();
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final presets =
-        ref.watch(promptPresetsControllerProvider(projectId)).valueOrNull ??
-        const <PromptPreset>[];
+    final presetsAsync = ref.watch(promptPresetsControllerProvider(projectId));
+    final presets = presetsAsync.valueOrNull ?? const <PromptPreset>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -512,7 +512,12 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
           style: typo.caption.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.xs),
-        if (presets.isEmpty)
+        // 加载失败 → 错误横幅（此前静默降级为空 = 误报"无预设"）。
+        if (presetsAsync.hasError)
+          InkErrorBanner(
+            message: l10nAsyncError(context, presetsAsync.error!),
+          )
+        else if (presets.isEmpty)
           Text(
             context.l10n.inspectorPresetsEmpty,
             style: typo.caption.copyWith(color: colors.fg3),
@@ -672,9 +677,8 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
     if (projectId == null) return const SizedBox.shrink();
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final characters =
-        ref.watch(charactersControllerProvider(projectId)).valueOrNull ??
-        const <Character>[];
+    final charactersAsync = ref.watch(charactersControllerProvider(projectId));
+    final characters = charactersAsync.valueOrNull ?? const <Character>[];
     final refSource = _referenceSource();
 
     return Column(
@@ -693,7 +697,12 @@ class _CharactersSectionState extends ConsumerState<_CharactersSection> {
               style: typo.caption.copyWith(color: colors.warning),
             ),
           ),
-        if (characters.isEmpty)
+        // 加载失败 → 错误横幅（此前静默降级为空 = 误报"无角色"）。
+        if (charactersAsync.hasError)
+          InkErrorBanner(
+            message: l10nAsyncError(context, charactersAsync.error!),
+          )
+        else if (characters.isEmpty)
           InkDashedSlot(
             onPressed: _importFromFile,
             child: Text(

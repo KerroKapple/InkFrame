@@ -29,3 +29,8 @@ String l10nError(BuildContext context, InkError e) {
     _ => l.errorUnknown,
   };
 }
+
+/// AsyncValue.error（静态类型 Object）→ 本地化文案。
+/// InkError 走 l10nError 精确映射；非 InkError 兜底 errorUnknown。
+String l10nAsyncError(BuildContext context, Object error) =>
+    error is InkError ? l10nError(context, error) : context.l10n.errorUnknown;

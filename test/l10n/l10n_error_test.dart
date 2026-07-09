@@ -93,4 +93,38 @@ void main() {
       expect(zh, '已被用户取消。');
     });
   });
+
+  group('l10nAsyncError 桥接（AsyncValue.error 类型 Object）', () {
+    testWidgets('InkError → 与 l10nError 逐字一致', (tester) async {
+      late String viaAsync;
+      late String viaDirect;
+      const err = NetworkError(code: InkErrorCode.networkTimeout);
+      await pumpInkApp(
+        tester,
+        Builder(
+          builder: (ctx) {
+            viaAsync = l10nAsyncError(ctx, err);
+            viaDirect = l10nError(ctx, err);
+            return Text(viaAsync);
+          },
+        ),
+      );
+      expect(viaAsync, viaDirect);
+      expect(viaAsync, 'Network timed out. Please retry.');
+    });
+
+    testWidgets('非 InkError（普通异常）→ 兜底 errorUnknown', (tester) async {
+      late String s;
+      await pumpInkApp(
+        tester,
+        Builder(
+          builder: (ctx) {
+            s = l10nAsyncError(ctx, Exception('boom'));
+            return Text(s);
+          },
+        ),
+      );
+      expect(s, 'An unknown error occurred.');
+    });
+  });
 }
