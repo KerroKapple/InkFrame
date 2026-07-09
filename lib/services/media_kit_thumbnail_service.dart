@@ -1,8 +1,10 @@
-// MediaKitThumbnailService：用 media_kit 的 Player.screenshot 抽视频首帧。
+// MediaKitThumbnailService：用 media_kit 的 Player.screenshot 抽视频首帧 +
+// 顺读 player.state 探针时长 / 宽 / 高。
 //
 // 流程：Player.open(play: false) → seek(Duration.zero) → 300ms 等待解码 →
-// screenshot(format: 'image/jpeg') → 写入 destination → dispose。
+// screenshot(format: 'image/jpeg') → 写入 destination → 顺读 player.state → dispose。
 // 任一步失败均转成 [ThumbnailError]。
+// player.state 的时长 / 宽 / 高经 [VideoProbeResult.fromProbe] 归一（非正 → null，绝不臆造）。
 
 import 'dart:io';
 
@@ -12,7 +14,7 @@ import '../core/interfaces/thumbnail_service.dart';
 
 class MediaKitThumbnailService implements ThumbnailService {
   @override
-  Future<File> extractFirstFrame({
+  Future<VideoProbeResult> extractFirstFrame({
     required String videoPath,
     required File destination,
   }) async {
@@ -27,7 +29,14 @@ class MediaKitThumbnailService implements ThumbnailService {
       }
       await destination.parent.create(recursive: true);
       await destination.writeAsBytes(bytes);
-      return destination;
+      // 首帧已解码，顺读一次 state 快照探针元数据（不可得的字段归一为 null）。
+      final state = player.state;
+      return VideoProbeResult.fromProbe(
+        thumbnail: destination,
+        duration: state.duration,
+        width: state.width,
+        height: state.height,
+      );
     } catch (e) {
       if (e is ThumbnailError) rethrow;
       throw ThumbnailError('media_kit_failed', cause: e);

@@ -379,11 +379,20 @@ class JobMediaPersisterImpl implements JobMediaPersister {
             canvasId: canvasId,
             relativePath: thumbRel,
           );
-          await thumbnail.extractFirstFrame(
+          final probe = await thumbnail.extractFirstFrame(
             videoPath: file.path,
             destination: thumbFile,
           );
           patch['thumbnail_url'] = thumbRel;
+          // XM-1：探针元数据落 type_config——仅非空且 >0 才写（防 0/null 垃圾键）。
+          final durationMs = probe.durationMs;
+          if (durationMs != null && durationMs > 0) {
+            patch['duration_ms'] = durationMs;
+          }
+          final width = probe.width;
+          if (width != null && width > 0) patch['width'] = width;
+          final height = probe.height;
+          if (height != null && height > 0) patch['height'] = height;
         } on ThumbnailError catch (e) {
           // 抽帧失败不阻断视频可用，仅没有 thumbnail_url。
           _logger?.warn(kJobQueueLogModule,

@@ -412,10 +412,87 @@ void main() {
       final patch = nodeRepo.patches['node-1']!.first;
       expect(patch['video_url'], 'videos/jt.mp4');
       expect(patch['thumbnail_url'], 'videos/jt.jpg');
+      // 探针元数据缺省（null）→ 不落任何元数据键。
+      expect(patch.keys, isNot(contains('duration_ms')));
+      expect(patch.keys, isNot(contains('width')));
+      expect(patch.keys, isNot(contains('height')));
       final thumbFile = File(
         '${tmp.path}/projects/proj-1/canvases/canvas-1/videos/jt.jpg',
       );
       expect(thumbFile.existsSync(), isTrue);
+      svc.dispose();
+    });
+
+    // XM-1：探针元数据 >0 → duration_ms / width / height 落 type_config。
+    test('video 模式 + 探针元数据 >0：patch 含 duration_ms/width/height', () async {
+      final provider = _FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [
+          JobStatus.success(remoteUrls: ['https://fake/v.mp4']),
+        ],
+      );
+      final registry = CachingProviderRegistry({'fake': () => provider});
+      final repo = _FakeJobRepo()..seedPending('jm');
+      final nodeRepo = _FakeNodeRepo();
+      final thumbnail =
+          _RecordingThumbnail(durationMs: 5000, width: 1920, height: 1080);
+
+      final svc = _build(
+        registry: registry,
+        repo: repo,
+        nodeRepo: nodeRepo,
+        fileResolver: fileResolver,
+        downloader: _RecordingDownloader(),
+        thumbnail: thumbnail,
+      );
+
+      final h = await svc.submit(
+        _task(jobId: 'jm', mode: GenerationMode.textToVideo),
+      );
+      final terminal = await h.done;
+
+      expect(terminal, isA<JobSuccess>());
+      final patch = nodeRepo.patches['node-1']!.first;
+      expect(patch['thumbnail_url'], 'videos/jm.jpg');
+      expect(patch['duration_ms'], 5000);
+      expect(patch['width'], 1920);
+      expect(patch['height'], 1080);
+      svc.dispose();
+    });
+
+    // XM-1：探针元数据为 0（占位垃圾值）→ 不落任何元数据键。
+    test('video 模式 + 探针元数据为 0：patch 不含 duration_ms/width/height', () async {
+      final provider = _FakeProvider(
+        providerId: 'fake',
+        pollSequence: const [
+          JobStatus.success(remoteUrls: ['https://fake/v.mp4']),
+        ],
+      );
+      final registry = CachingProviderRegistry({'fake': () => provider});
+      final repo = _FakeJobRepo()..seedPending('jz');
+      final nodeRepo = _FakeNodeRepo();
+      final thumbnail = _RecordingThumbnail(durationMs: 0, width: 0, height: 0);
+
+      final svc = _build(
+        registry: registry,
+        repo: repo,
+        nodeRepo: nodeRepo,
+        fileResolver: fileResolver,
+        downloader: _RecordingDownloader(),
+        thumbnail: thumbnail,
+      );
+
+      final h = await svc.submit(
+        _task(jobId: 'jz', mode: GenerationMode.textToVideo),
+      );
+      final terminal = await h.done;
+
+      expect(terminal, isA<JobSuccess>());
+      final patch = nodeRepo.patches['node-1']!.first;
+      expect(patch['thumbnail_url'], 'videos/jz.jpg');
+      expect(patch.keys, isNot(contains('duration_ms')));
+      expect(patch.keys, isNot(contains('width')));
+      expect(patch.keys, isNot(contains('height')));
       svc.dispose();
     });
 
@@ -498,23 +575,33 @@ void main() {
 }
 
 class _RecordingThumbnail implements ThumbnailService {
+  _RecordingThumbnail({this.durationMs, this.width, this.height});
+
   int calls = 0;
+  final int? durationMs;
+  final int? width;
+  final int? height;
 
   @override
-  Future<File> extractFirstFrame({
+  Future<VideoProbeResult> extractFirstFrame({
     required String videoPath,
     required File destination,
   }) async {
     calls++;
     await destination.parent.create(recursive: true);
     await destination.writeAsBytes(const [0xFF, 0xD8], flush: true); // JPEG sig
-    return destination;
+    return VideoProbeResult(
+      thumbnail: destination,
+      durationMs: durationMs,
+      width: width,
+      height: height,
+    );
   }
 }
 
 class _FailingThumbnail implements ThumbnailService {
   @override
-  Future<File> extractFirstFrame({
+  Future<VideoProbeResult> extractFirstFrame({
     required String videoPath,
     required File destination,
   }) async {

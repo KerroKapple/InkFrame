@@ -106,6 +106,24 @@ JSONB 内字段长度不落 DB CHECK（路径查询开销大），由 freezed + 
 | edges 部分唯一索引 uq_edges_live (source_node_id, target_node_id, edge_type) WHERE deleted_at IS NULL | 同向同类型 **活** 连线唯一；软删行不占槽位（v=3，原 v=1 为表级 UNIQUE） |
 | batch_results UNIQUE(node_id, slot_index) | 同 batch 节点内 slot 不重复 |
 
+## nodes.type_config 元数据键（JSONB）
+
+> `nodes.type_config` 为无 schema JSONB，键由应用层约定。下表登记生成产物与视频元数据键；
+> 长度受约束的文本键见上「字段长度约束」表。产物相对路径均为 canvas 相对（PRD §12.6）。
+
+| 键 | 类型 | 写入方 | 含义 |
+|----|------|--------|------|
+| image_url | string | JobMediaPersister | 图片产物相对路径（`images/...`） |
+| video_url | string | JobMediaPersister | 视频产物相对路径（`videos/...`） |
+| thumbnail_url | string | JobMediaPersister | 视频首帧缩略图相对路径（`videos/*.jpg`） |
+| duration_ms | int | JobMediaPersister（XM-1） | 视频时长（毫秒）；探针值 **非空且 >0** 才写，否则缺省 |
+| width | int | JobMediaPersister（XM-1） | 视频像素宽；探针值 **非空且 >0** 才写，否则缺省 |
+| height | int | JobMediaPersister（XM-1） | 视频像素高；探针值 **非空且 >0** 才写，否则缺省 |
+
+> XM-1：视频 `duration_ms` / `width` / `height` 由 `_persistRemoteUrls` 视频分支在写 `thumbnail_url`
+> 同块落库——媒体来源 `ThumbnailService.extractFirstFrame` 返回的 `VideoProbeResult`
+> （media_kit 顺读 `player.state`）。探针不可得（0/null）→ 不写该键（无垃圾键），读侧缺省为 null。
+
 ## 索引
 
 | 索引 | 表 | 列 | 类型 |
