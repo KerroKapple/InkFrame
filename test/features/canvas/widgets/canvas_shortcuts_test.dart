@@ -23,6 +23,8 @@ import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
+import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
+import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
 
 import '../../../_harness/test_app.dart';
 
@@ -120,15 +122,23 @@ List<Override> _overrides(List<CanvasNode> nodes) => <Override>[
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   required List<CanvasNode> nodes,
+  Size? surfaceSize,
 }) async {
   await pumpInkApp(
     tester,
     const Scaffold(body: CanvasShortcuts(child: CanvasView())),
     overrides: _overrides(nodes),
+    surfaceSize: surfaceSize,
   );
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byType(CanvasView)));
 }
+
+/// 通过 InteractiveViewer widget 读当前变换——与 transform provider 是否 family 无关。
+Matrix4 _ivTransform(WidgetTester tester) => tester
+    .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+    .transformationController!
+    .value;
 
 /// 发送带 Ctrl 修饰的按键（跨平台注册了 meta+control 双变体）。
 Future<void> _sendCtrl(WidgetTester tester, LogicalKeyboardKey key) async {
@@ -219,27 +229,107 @@ void main() {
   });
 
   testWidgets('⌘±（Ctrl+= / Ctrl+-）改变缩放变换', (tester) async {
-    final container = await _pump(tester, nodes: twoNodes);
-    final controller = container.read(canvasTransformControllerProvider);
-    expect(controller.value, Matrix4.identity());
+    await _pump(tester, nodes: twoNodes);
+    expect(_ivTransform(tester), Matrix4.identity());
 
     await _sendCtrl(tester, LogicalKeyboardKey.equal);
-    expect(scaleOf(controller.value), greaterThan(1.0));
+    expect(scaleOf(_ivTransform(tester)), greaterThan(1.0));
 
-    final zoomedIn = scaleOf(controller.value);
+    final zoomedIn = scaleOf(_ivTransform(tester));
     await _sendCtrl(tester, LogicalKeyboardKey.minus);
-    expect(scaleOf(controller.value), lessThan(zoomedIn));
+    expect(scaleOf(_ivTransform(tester)), lessThan(zoomedIn));
   });
 
   testWidgets('⌘0（Ctrl+0）缩放复位到单位矩阵', (tester) async {
-    final container = await _pump(tester, nodes: twoNodes);
-    final controller = container.read(canvasTransformControllerProvider);
+    await _pump(tester, nodes: twoNodes);
 
     await _sendCtrl(tester, LogicalKeyboardKey.equal);
-    expect(controller.value, isNot(Matrix4.identity()));
+    expect(_ivTransform(tester), isNot(Matrix4.identity()));
 
     await _sendCtrl(tester, LogicalKeyboardKey.digit0);
-    expect(controller.value, Matrix4.identity());
+    expect(_ivTransform(tester), Matrix4.identity());
+  });
+
+  // ===== D2：缩放围绕视口中心（viewport size 存活，不自毁复位 Size.zero）=====
+  testWidgets('⌘+ 围绕视口中心而非 (0,0)：viewport size 存活', (tester) async {
+    final container = await _pump(
+      tester,
+      nodes: twoNodes,
+      surfaceSize: const Size(800, 600),
+    );
+    // viewport size 已上报且未被 autoDispose 复位。
+    final size = container.read(canvasViewportSizeProvider);
+    expect(size, isNot(Size.zero));
+    expect(size.width, greaterThan(0));
+
+    await _sendCtrl(tester, LogicalKeyboardKey.equal); // ⌘+
+    final m = _ivTransform(tester);
+    final scale = scaleOf(m);
+    // 围绕视口中心 → 平移 tx = (1-scale)*centerX，非 0；若支点落 (0,0) 则 tx==0。
+    final expectedTx = (1 - scale) * (size.width / 2);
+    expect(m.storage[12], closeTo(expectedTx, 1e-3));
+    expect(m.storage[12].abs(), greaterThan(1.0)); // 不是 (0,0) 支点
+  });
+
+  // ===== D3：切换画布不继承旧画布的 pan/zoom（transform 按 canvasId 隔离）=====
+  testWidgets('切换画布 → InteractiveViewer 变换复位为单位矩阵', (tester) async {
+    final container = await _pump(tester, nodes: twoNodes);
+    // 预热并保活 c2 的节点：否则切换瞬间出现 loading 空档，InteractiveViewer 短暂卸载，
+    // autoDispose 顺带把（非 family 的）共享 transform 复位，反而掩盖了串味 bug。
+    // 保活后切换无空档、舞台持续挂载，才能真实暴露"新画布继承旧变换"。
+    final sub = container.listen(
+      canvasNodesControllerProvider('c2'),
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await tester.pumpAndSettle();
+
+    // 缩放当前画布 c1。
+    await _sendCtrl(tester, LogicalKeyboardKey.equal);
+    expect(_ivTransform(tester), isNot(Matrix4.identity()));
+
+    // 切到 c2（同一 CanvasScreen 常驻，仅换 canvasId；c2 已 AsyncData，无 loading 空档）。
+    container.read(currentCanvasIdProvider.notifier).state = 'c2';
+    await tester.pumpAndSettle();
+
+    expect(
+      _ivTransform(tester),
+      Matrix4.identity(),
+      reason: '新画布不得继承旧画布的 pan/zoom',
+    );
+  });
+
+  // ===== D1：生产嵌套下画布仍拿到焦点（PL-1 ⌘K 层在外层）=====
+  testWidgets('生产嵌套：CommandPaletteShortcuts 外层时画布仍持焦（Delete 生效 + ⌘K 仍开面板）', (
+    tester,
+  ) async {
+    // 复现 app.dart 的嵌套：命令面板层(autofocus) 包 画布快捷键层。
+    await pumpInkApp(
+      tester,
+      const Scaffold(
+        body: CommandPaletteShortcuts(
+          child: CanvasShortcuts(child: CanvasView()),
+        ),
+      ),
+      overrides: _overrides(twoNodes),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CanvasView)),
+    );
+    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    await tester.pump();
+
+    // 不点击任何东西：Delete 应删除节点（证明画布抢回了焦点，未被 PL-1 autofocus 独占）。
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+    expect(find.text('Node A'), findsNothing);
+
+    // ⌘K 仍冒泡到祖先命令面板层 → 打开面板（证明没弄坏 ⌘K）。
+    await _sendCtrl(tester, LogicalKeyboardKey.keyK);
+    await tester.pumpAndSettle();
+    expect(find.byType(CommandPaletteDialog), findsOneWidget);
   });
 
   // ===== 焦点链陷阱（MANDATORY）=====

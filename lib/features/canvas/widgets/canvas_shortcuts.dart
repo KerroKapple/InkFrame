@@ -126,43 +126,74 @@ _kCanvasShortcuts = <ShortcutActivator, Intent>{
       const CanvasZoomResetIntent(),
 };
 
-/// 画布快捷键层：包裹画布主体（含 Inspector），autofocus 使按键无需先点击即生效。
-class CanvasShortcuts extends ConsumerWidget {
+/// 画布快捷键层：包裹画布主体（含 Inspector）。
+///
+/// 焦点归属（D1）：不用 autofocus——同一 FocusScope 内，autofocus 会输给更早挂载的
+/// 祖先节点（PL-1 的 app 级 ⌘K 层 `CommandPaletteShortcuts.Focus(autofocus:true)`），
+/// 导致按键根本进不到画布快捷键。改为持有显式 FocusNode 并在挂载后 post-frame
+/// 显式 requestFocus 抢回焦点。⌘K 未在本层映射，画布持焦时仍冒泡到祖先命令面板层。
+class CanvasShortcuts extends ConsumerStatefulWidget {
   const CanvasShortcuts({super.key, required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CanvasShortcuts> createState() => _CanvasShortcutsState();
+}
+
+class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
+  final FocusNode _focusNode = FocusNode(debugLabel: 'CanvasShortcuts');
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _focusNode.requestFocus();
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Shortcuts(
       shortcuts: _kCanvasShortcuts,
       child: Actions(
         actions: <Type, Action<Intent>>{
           DeleteSelectionIntent: _EditingAwareAction<DeleteSelectionIntent>(
-            (_) => _deleteSelection(context, ref),
+            (_) => _deleteSelection(),
           ),
           SelectAllNodesIntent: _EditingAwareAction<SelectAllNodesIntent>(
-            (_) => _selectAll(ref),
+            (_) => _selectAll(),
           ),
           CanvasEscapeIntent: CallbackAction<CanvasEscapeIntent>(
-            onInvoke: (_) => _escape(ref),
+            onInvoke: (_) => _escape(),
           ),
-          CanvasZoomInIntent: CallbackAction<CanvasZoomInIntent>(
-            onInvoke: (_) => _zoom(ref, kCanvasZoomStep),
+          // 缩放同样对文本编辑让位（与删除/全选一致），免得在数值输入框里打字触发缩放。
+          CanvasZoomInIntent: _EditingAwareAction<CanvasZoomInIntent>(
+            (_) => _zoom(kCanvasZoomStep),
           ),
-          CanvasZoomOutIntent: CallbackAction<CanvasZoomOutIntent>(
-            onInvoke: (_) => _zoom(ref, 1 / kCanvasZoomStep),
+          CanvasZoomOutIntent: _EditingAwareAction<CanvasZoomOutIntent>(
+            (_) => _zoom(1 / kCanvasZoomStep),
           ),
-          CanvasZoomResetIntent: CallbackAction<CanvasZoomResetIntent>(
-            onInvoke: (_) => _zoomReset(ref),
+          CanvasZoomResetIntent: _EditingAwareAction<CanvasZoomResetIntent>(
+            (_) => _zoomReset(),
           ),
         },
-        child: Focus(autofocus: true, child: child),
+        child: Focus(
+          focusNode: _focusNode,
+          skipTraversal: true,
+          child: widget.child,
+        ),
       ),
     );
   }
 
-  void _deleteSelection(BuildContext context, WidgetRef ref) {
+  void _deleteSelection() {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
     final selected = ref.read(canvasSelectionControllerProvider);
@@ -171,7 +202,7 @@ class CanvasShortcuts extends ConsumerWidget {
     deleteNodesWithUndo(context, ref, canvasId: canvasId, nodeIds: selected);
   }
 
-  void _selectAll(WidgetRef ref) {
+  void _selectAll() {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
     final nodes = ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull;
@@ -181,7 +212,7 @@ class CanvasShortcuts extends ConsumerWidget {
         .selectAll(nodes.map((n) => n.id));
   }
 
-  void _escape(WidgetRef ref) {
+  void _escape() {
     if (ref.read(linkModeControllerProvider) != null) {
       ref.read(linkModeControllerProvider.notifier).cancel();
       return;
@@ -190,8 +221,10 @@ class CanvasShortcuts extends ConsumerWidget {
     ref.read(selectedEdgeControllerProvider.notifier).clear();
   }
 
-  void _zoom(WidgetRef ref, double factor) {
-    final controller = ref.read(canvasTransformControllerProvider);
+  void _zoom(double factor) {
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    final controller = ref.read(canvasTransformControllerProvider(canvasId));
     final size = ref.read(canvasViewportSizeProvider);
     controller.value = zoomedTransform(
       current: controller.value,
@@ -200,7 +233,10 @@ class CanvasShortcuts extends ConsumerWidget {
     );
   }
 
-  void _zoomReset(WidgetRef ref) {
-    ref.read(canvasTransformControllerProvider).value = resetTransform();
+  void _zoomReset() {
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    ref.read(canvasTransformControllerProvider(canvasId)).value =
+        resetTransform();
   }
 }

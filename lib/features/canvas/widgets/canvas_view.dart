@@ -439,8 +439,10 @@ class _CanvasStage extends ConsumerWidget {
       nodes: nodes,
     );
 
-    // PL-2：绑定快捷键缩放共用的变换控制器（gesture 平移/缩放照常工作）。
-    final transformController = ref.watch(canvasTransformControllerProvider);
+    // PL-2：绑定快捷键缩放共用的变换控制器（按 canvasId 分族；gesture 平移/缩放照常）。
+    final transformController = ref.watch(
+      canvasTransformControllerProvider(canvasId),
+    );
 
     return Container(
       color: colors.surface1,
