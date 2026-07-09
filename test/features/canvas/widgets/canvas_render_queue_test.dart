@@ -157,4 +157,56 @@ void main() {
     // 失败任务不进入活跃列表 → 无取消控件。
     expect(find.byTooltip('Cancel job'), findsNothing);
   });
+
+  testWidgets('已取消任务不进入最近失败区（cancelled ≠ failure）', (tester) async {
+    await tester.pumpWidget(_host(
+      const <JobState>[
+        JobState.cancelled(jobId: 'c', providerId: 'gemini-image', canvasId: 'c1'),
+      ],
+      'c1',
+    ));
+    await tester.pump();
+    // cancelled 是终态但非 JobFailed → 不渲染最近失败区。
+    expect(find.text('RECENT FAILURES'), findsNothing);
+    expect(find.text('No active renders'), findsOneWidget);
+  });
+
+  testWidgets('跨画布失败隔离：c2 的失败不出现在 c1 的最近失败区', (tester) async {
+    await tester.pumpWidget(_host(
+      const <JobState>[
+        JobState.failed(
+          jobId: 'f2',
+          providerId: 'gemini-image',
+          canvasId: 'c2',
+          error: NetworkError(code: InkErrorCode.networkTimeout),
+        ),
+      ],
+      'c1',
+    ));
+    await tester.pump();
+    // 当前画布 c1 无任何任务 → 空态，无最近失败区。
+    expect(find.text('RECENT FAILURES'), findsNothing);
+    expect(find.text('Network timed out. Please retry.'), findsNothing);
+    expect(find.text('No active renders'), findsOneWidget);
+  });
+
+  testWidgets('最近失败区最多展示最近 3 条（sublist(len-3) 边界）', (tester) async {
+    await tester.pumpWidget(_host(
+      const <JobState>[
+        JobState.failed(jobId: 'f1', providerId: 'p', canvasId: 'c1', error: NetworkError(code: InkErrorCode.networkTimeout)),
+        JobState.failed(jobId: 'f2', providerId: 'p', canvasId: 'c1', error: NetworkError(code: InkErrorCode.networkOffline)),
+        JobState.failed(jobId: 'f3', providerId: 'p', canvasId: 'c1', error: ProviderError(code: InkErrorCode.invalidKey)),
+        JobState.failed(jobId: 'f4', providerId: 'p', canvasId: 'c1', error: DownloadError()),
+      ],
+      'c1',
+    ));
+    await tester.pump();
+
+    expect(find.text('RECENT FAILURES'), findsOneWidget);
+    // 4 条失败按插入序取最新 3 条（f2/f3/f4）；最旧的 f1 被截掉。
+    expect(find.text('Network timed out. Please retry.'), findsNothing); // f1 (最旧) 被截
+    expect(find.text('Network is offline. Check your connection.'), findsOneWidget); // f2
+    expect(find.text('API key is invalid. Check your provider settings.'), findsOneWidget); // f3
+    expect(find.text('Failed to download the generated asset.'), findsOneWidget); // f4
+  });
 }

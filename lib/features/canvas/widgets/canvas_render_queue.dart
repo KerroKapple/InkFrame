@@ -176,7 +176,7 @@ class _JobRow extends ConsumerWidget {
   }
 }
 
-/// 单任务取消控件：小号 icon 按钮，tap 区 ≥ InkSpacing.xl。
+/// 单任务取消控件：小号 icon 按钮，tap 区 ≥ InkSpacing.xxl（48，Material 最小可交互）。
 class _CancelButton extends StatelessWidget {
   const _CancelButton({required this.onCancel});
 
@@ -195,8 +195,8 @@ class _CancelButton extends StatelessWidget {
       padding: EdgeInsets.zero,
       visualDensity: VisualDensity.compact,
       constraints: const BoxConstraints(
-        minWidth: InkSpacing.xl,
-        minHeight: InkSpacing.xl,
+        minWidth: InkSpacing.xxl,
+        minHeight: InkSpacing.xxl,
       ),
     );
   }
