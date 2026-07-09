@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/features/studio/controllers/studio_state.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -13,7 +14,7 @@ import 'package:inkframe/theme/app_theme.dart';
 import '../../../_harness/test_app.dart';
 
 void main() {
-  testWidgets('LibrarySidebar 渲染 section labels + footer icons (空 projects)',
+  testWidgets('LibrarySidebar 渲染 LIBRARY 树；CV-1 死件（ARCHIVE/stub icons/"+"）不再出现',
       (tester) async {
     await pumpInkApp(
       tester,
@@ -26,16 +27,46 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('LIBRARY'), findsOneWidget);
-    expect(find.text('ARCHIVE'), findsOneWidget);
-    expect(find.text('Archived Projects'), findsOneWidget);
     // currentStudioProvider 默认 null → en 兜底 studioDefaultName。
     expect(find.text('My Studio'), findsOneWidget);
     expect(find.text('Projects'), findsOneWidget);
 
+    // CV-1（D-7 d6）：ARCHIVE 死行随裁（GAP-2 激活时再回）。
+    expect(find.text('ARCHIVE'), findsNothing);
+    expect(find.text('Archived Projects'), findsNothing);
+    // footer 只留接真的 settings；archive/people/trash stub 已裁。
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.inventory_2_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.person_outline), findsOneWidget);
-    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+    expect(find.byIcon(Icons.inventory_2_outlined), findsNothing);
+    expect(find.byIcon(Icons.person_outline), findsNothing);
+    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    // SectionLabel 的装饰性 '+'（无功能）已裁。
+    expect(find.byIcon(Icons.add), findsNothing);
+  });
+
+  testWidgets('footer settings icon 点击导航到设置页（currentScreenProvider）',
+      (tester) async {
+    final container = ProviderContainer(overrides: <Override>[
+      workspaceProjectsProvider.overrideWith((_) async => const []),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.binding.setSurfaceSize(const Size(400, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const Scaffold(body: LibrarySidebar()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(container.read(currentScreenProvider), AppScreen.studio);
+    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.pump();
+    expect(container.read(currentScreenProvider), AppScreen.settings);
   });
 
   testWidgets('LibrarySidebar 显示 project 行 + 点击切换 selectedProjectIdProvider',

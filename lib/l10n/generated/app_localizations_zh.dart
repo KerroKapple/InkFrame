@@ -497,12 +497,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioLibraryProjects => '项目';
 
   @override
-  String get studioArchive => '归档';
-
-  @override
-  String get studioArchivedProjects => '已归档项目';
-
-  @override
   String get studioBreadcrumbAll => '全部项目';
 
   @override

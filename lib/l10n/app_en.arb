@@ -236,8 +236,6 @@
   "studioNewProject": "New Project",
   "studioLibrary": "LIBRARY",
   "studioLibraryProjects": "Projects",
-  "studioArchive": "ARCHIVE",
-  "studioArchivedProjects": "Archived Projects",
   "studioBreadcrumbAll": "All Projects",
   "studioEmptyTitle": "No projects yet",
   "studioEmptySubtitle": "Create your first project to start building storyboards.",

@@ -515,12 +515,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioLibraryProjects => 'Projects';
 
   @override
-  String get studioArchive => 'ARCHIVE';
-
-  @override
-  String get studioArchivedProjects => 'Archived Projects';
-
-  @override
   String get studioBreadcrumbAll => 'All Projects';
 
   @override

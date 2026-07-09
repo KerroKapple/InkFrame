@@ -1,5 +1,5 @@
 // Studio 顶栏：复用 InkWindowChrome，三槽位填 leading=小 logo / center=breadcrumb /
-// trailing=⌘K + Settings + Avatar。
+// trailing=⌘K + Settings。avatar 已随 CV-1 裁撤（无功能装饰件）。
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/shortcut_labels.dart';
@@ -33,10 +33,7 @@ class StudioTopChrome extends StatelessWidget implements PreferredSizeWidget {
         studioName: studioName,
         breadcrumbTail: breadcrumbTail,
       ),
-      trailing: _ChromeTrailing(
-        studioName: studioName,
-        onOpenSettings: onOpenSettings,
-      ),
+      trailing: _ChromeTrailing(onOpenSettings: onOpenSettings),
     );
   }
 }
@@ -104,15 +101,9 @@ class _Breadcrumb extends StatelessWidget {
 }
 
 class _ChromeTrailing extends StatelessWidget {
-  const _ChromeTrailing({required this.studioName, this.onOpenSettings});
+  const _ChromeTrailing({this.onOpenSettings});
 
-  final String studioName;
   final VoidCallback? onOpenSettings;
-
-  String get _avatarInitial {
-    final trimmed = studioName.trim();
-    return trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -139,21 +130,6 @@ class _ChromeTrailing extends StatelessWidget {
         ),
         const SizedBox(width: InkSpacing.md),
         _SettingsIconButton(onPressed: onOpenSettings),
-        const SizedBox(width: InkSpacing.md),
-        Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colors.surface3,
-            shape: BoxShape.circle,
-            border: Border.all(color: colors.borderSubtle),
-          ),
-          child: Text(
-            _avatarInitial,
-            style: typo.label.copyWith(color: colors.accent),
-          ),
-        ),
       ],
     );
   }

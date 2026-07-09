@@ -6,7 +6,7 @@ import 'package:inkframe/features/studio/widgets/studio_top_chrome.dart';
 import '../../../_harness/test_app.dart';
 
 void main() {
-  testWidgets('StudioTopChrome 渲染 logo + breadcrumb + ⌘K + Settings + avatar',
+  testWidgets('StudioTopChrome 渲染 logo + breadcrumb + ⌘K + Settings',
       (tester) async {
     var settingsTaps = 0;
     await pumpInkApp(
@@ -28,7 +28,8 @@ void main() {
     expect(find.text('All'), findsOneWidget);
     // 非 macOS 平台（测试默认 android）显示 Ctrl 修饰键。
     expect(find.text('Ctrl K'), findsOneWidget);
-    expect(find.text('K'), findsWidgets);
+    // CV-1：avatar 首字母圆徽（'K'）已裁。
+    expect(find.text('K'), findsNothing);
 
     final size = tester.getSize(find.byType(StudioTopChrome));
     expect(size.height, 56);

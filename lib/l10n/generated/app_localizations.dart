@@ -1040,18 +1040,6 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get studioLibraryProjects;
 
-  /// No description provided for @studioArchive.
-  ///
-  /// In en, this message translates to:
-  /// **'ARCHIVE'**
-  String get studioArchive;
-
-  /// No description provided for @studioArchivedProjects.
-  ///
-  /// In en, this message translates to:
-  /// **'Archived Projects'**
-  String get studioArchivedProjects;
-
   /// No description provided for @studioBreadcrumbAll.
   ///
   /// In en, this message translates to:

@@ -1,5 +1,6 @@
 // CanvasTopChrome：Canvas 顶栏 —— 复用 InkWindowChrome，三槽位
-// leading=Ink/Frame 小 logo，center=breadcrumb，trailing=调色板+⌘K + ▶ + avatar。
+// leading=Ink/Frame 小 logo，center=breadcrumb，trailing=导出+调色板+⌘K。
+// ▶（序列预览占位）与 avatar 已随 CV-1 裁撤（D-7 d5）。
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,7 +13,6 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
 import '../../export/widgets/export_video_dialog.dart';
-import '../../studio/controllers/studio_state.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
 import '../providers/canvas_nodes_controller.dart';
@@ -191,11 +191,6 @@ class _Trailing extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final studioName =
-        ref.watch(currentStudioProvider) ?? context.l10n.studioDefaultName;
-    final trimmed = studioName.trim();
-    final avatarInitial =
-        trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
     final canvasId = ref.watch(currentCanvasIdProvider);
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -218,23 +213,6 @@ class _Trailing extends ConsumerWidget {
           child: Text(
             commandPaletteShortcutLabel(),
             style: typo.caption.copyWith(color: colors.fg3),
-          ),
-        ),
-        const SizedBox(width: InkSpacing.md),
-        Icon(Icons.play_arrow, size: 18, color: colors.fg2),
-        const SizedBox(width: InkSpacing.md),
-        Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colors.surface3,
-            shape: BoxShape.circle,
-            border: Border.all(color: colors.borderSubtle),
-          ),
-          child: Text(
-            avatarInitial,
-            style: typo.label.copyWith(color: colors.accent),
           ),
         ),
       ],
