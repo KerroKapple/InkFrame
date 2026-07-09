@@ -14,14 +14,43 @@
 //   - 端口分配使用 ServerSocket.bind(port: 0) 让系统挑可用端口，
 //     立刻关闭后把该端口传给 pg_ctl；PG 起得快（1-3s）时碰撞概率极低
 //   - 不缓存 Connection，PgController 只负责进程与端口，连接由 database provider 按需创建
+//
+// LB-07（SCRAM）：
+//   - 新集群 initdb 走 --auth=scram-sha-256 + --pwfile（trust 已移除）；
+//     随机 32 字节密码先入 SecureStorage 再 initdb（反序会产出密码丢失的死集群），
+//     pwfile 用后即删（finally 兜底失败路径）
+//   - 存量 trust 集群 Zero-BC：无迁移。SecureStorage 无条目 → password=null，
+//     trust 集群带 / 不带密码连接均成功，行为不变
+//   - SecureStorage 故障（非缺条目）→ LocalIOError 原样上抛（平台实现已翻译），
+//     经 pool provider 变成 AsyncError 冒泡到启动门（LB-09）
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
 import 'package:path/path.dart' as p;
 
+import '../core/constants/secure_storage_keys.dart';
+import '../core/interfaces/secure_storage_service.dart';
 import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
 import 'pg_binary_locator.dart';
+
+/// 嵌入式 PG 超级用户名——initdb 与连接串共用，禁止散落字面量。
+const String kPgSuperuser = 'inkframe';
+
+/// 嵌入式 PG 默认库名。
+const String kPgDatabaseName = 'postgres';
+
+/// SCRAM 随机密码字节数（base64url 去填充后 43 字符）。
+const int kPgPasswordBytes = 32;
+
+/// 生成 initdb 引导密码：加密安全随机源，URL-safe 字符集（pwfile 单行明文安全）。
+String generatePgPassword({Random? random}) {
+  final rng = random ?? Random.secure();
+  final bytes = List<int>.generate(kPgPasswordBytes, (_) => rng.nextInt(256));
+  return base64UrlEncode(bytes).replaceAll('=', '');
+}
 
 /// 端到端配置结果：给上层 provider 构造 Endpoint。
 class PgRuntime {
@@ -29,10 +58,14 @@ class PgRuntime {
     required this.host,
     required this.port,
     required this.dataDir,
+    this.password,
   });
   final String host;
   final int port;
   final Directory dataDir;
+
+  /// 超级用户密码。null = SecureStorage 无条目（存量 trust 集群，LB-07 Zero-BC）。
+  final String? password;
 }
 
 /// 抽象进程执行：单测注入 fake；生产使用 [SystemPgProcessRunner]。
@@ -40,6 +73,7 @@ abstract class PgProcessRunner {
   Future<ProcessResult> initdb({
     required File initdbBin,
     required Directory dataDir,
+    required File pwFile,
   });
 
   /// 启动 postgres，返回 true 代表 pg_ctl 退出码 0。
@@ -62,19 +96,32 @@ abstract class PgProcessRunner {
 class SystemPgProcessRunner implements PgProcessRunner {
   const SystemPgProcessRunner();
 
+  /// initdb 参数构造（LB-07）：SCRAM-SHA-256 + pwfile，trust 已移除。
+  /// 抽成 static 纯函数供单测直接断言参数面。
+  static List<String> initdbArgs({
+    required Directory dataDir,
+    required File pwFile,
+  }) {
+    return <String>[
+      '-D', dataDir.path,
+      '-U', kPgSuperuser,
+      '--auth=scram-sha-256',
+      '--pwfile=${pwFile.path}',
+      '-E', 'UTF8',
+      '--locale=C',
+    ];
+  }
+
   @override
   Future<ProcessResult> initdb({
     required File initdbBin,
     required Directory dataDir,
+    required File pwFile,
   }) {
-    // -U inkframe: 超级用户名；--auth=trust: 本地 127.0.0.1 + socket 均信任；-E UTF8
-    return Process.run(initdbBin.path, <String>[
-      '-D', dataDir.path,
-      '-U', 'inkframe',
-      '-A', 'trust',
-      '-E', 'UTF8',
-      '--locale=C',
-    ]);
+    return Process.run(
+      initdbBin.path,
+      initdbArgs(dataDir: dataDir, pwFile: pwFile),
+    );
   }
 
   @override
@@ -143,17 +190,20 @@ class PgController {
   PgController({
     required AppPaths paths,
     required PgBinaryLocator locator,
+    required SecureStorageService secureStorage,
     PgProcessRunner runner = const SystemPgProcessRunner(),
     Future<int> Function()? portPicker,
     LoggerService? logger,
   })  : _paths = paths,
         _locator = locator,
+        _secureStorage = secureStorage,
         _runner = runner,
         _portPicker = portPicker ?? _defaultPortPicker,
         _logger = logger;
 
   final AppPaths _paths;
   final PgBinaryLocator _locator;
+  final SecureStorageService _secureStorage;
   final PgProcessRunner _runner;
   final Future<int> Function() _portPicker;
   final LoggerService? _logger;
@@ -177,7 +227,12 @@ class PgController {
   bool get _isInitialized =>
       File(p.join(dataDir.path, 'PG_VERSION')).existsSync();
 
-  /// 首次启动：确保 PGDATA 已 initdb，幂等。
+  /// 首次启动：确保 PGDATA 已 initdb（SCRAM-SHA-256），幂等。
+  ///
+  /// 密码生命周期（LB-07）：
+  ///   生成 32 字节随机密码 → 先入 SecureStorage（initdb 失败重试会覆盖；
+  ///   反序则可能产出密码未持久化的 SCRAM 集群 = 死库）→ 写临时 pwfile →
+  ///   initdb --pwfile → finally 删 pwfile（含失败路径）。
   Future<void> ensureInitialized() async {
     if (_isInitialized) return;
 
@@ -195,27 +250,70 @@ class PgController {
     }
 
     final binLocation = _locator.locate();
-    _logger?.info(_logModule, 'initdb start');
-    final result = await _runner.initdb(
-      initdbBin: binLocation.initdb,
-      dataDir: dataDir,
-    );
-    if (result.exitCode != 0) {
-      _logger?.error(_logModule, 'initdb failed',
-          extra: {'exit_code': result.exitCode});
-      throw PgLifecycleError(
-        'initdb failed (exit ${result.exitCode}): ${result.stderr}',
+
+    // 密码先持久化：SecureStorage 故障（LocalIOError）在 initdb 前上抛，零残留。
+    final password = generatePgPassword();
+    await _secureStorage.store(SecureStorageKeys.databasePassword, password);
+
+    final pwFile = File(p.join(_paths.config.path, 'pg.pwfile.tmp'));
+    if (!pwFile.parent.existsSync()) {
+      pwFile.parent.createSync(recursive: true);
+    }
+    pwFile.writeAsStringSync(password, flush: true);
+    _restrictToOwner(pwFile);
+
+    _logger?.info(_logModule, 'initdb start (auth=scram-sha-256)');
+    try {
+      final result = await _runner.initdb(
+        initdbBin: binLocation.initdb,
+        dataDir: dataDir,
+        pwFile: pwFile,
       );
+      if (result.exitCode != 0) {
+        _logger?.error(_logModule, 'initdb failed',
+            extra: {'exit_code': result.exitCode});
+        throw PgLifecycleError(
+          'initdb failed (exit ${result.exitCode}): ${result.stderr}',
+        );
+      }
+    } finally {
+      // 明文密码文件绝不落盘超过 initdb 存活期。
+      if (pwFile.existsSync()) {
+        pwFile.deleteSync();
+      }
     }
     _logger?.info(_logModule, 'initdb done');
   }
 
-  /// 启动：存活复用 / 崩溃恢复 + pg_ctl start；写端口文件；返回 runtime。
+  /// pwfile 收紧为 600（POSIX）。Windows 用户目录 ACL 默认仅本人可读，跳过。
+  void _restrictToOwner(File file) {
+    if (Platform.isWindows) return;
+    try {
+      Process.runSync('chmod', <String>['600', file.path]);
+    } on ProcessException {
+      _logger?.warn(_logModule, 'chmod 600 on pwfile failed; continuing');
+    }
+  }
+
+  /// 取存储密码：无条目 = 存量 trust 集群（Zero-BC，无迁移）→ null；
+  /// storage 故障 → LocalIOError 原样上抛（平台实现已在边界翻译为 InkError）。
+  Future<String?> _readStoredPassword() async {
+    final password =
+        await _secureStorage.retrieve(SecureStorageKeys.databasePassword);
+    if (password == null) {
+      _logger?.info(_logModule,
+          'no stored database password; assuming legacy trust cluster');
+    }
+    return password;
+  }
+
+  /// 启动：存活复用 / 崩溃恢复 + pg_ctl start；写端口文件；返回 runtime（携密码）。
   Future<PgRuntime> start() async {
     await ensureInitialized();
+    final password = await _readStoredPassword();
 
     // 上次会话遗留的存活实例（如非正常退出）→ 直接复用其端口，禁止二次启动。
-    final reused = _reuseAliveInstanceOrCleanStale();
+    final reused = _reuseAliveInstanceOrCleanStale(password);
     if (reused != null) {
       portFile.writeAsStringSync('${reused.port}\n');
       _runtime = reused;
@@ -248,7 +346,12 @@ class PgController {
     }
 
     portFile.writeAsStringSync('$port\n');
-    _runtime = PgRuntime(host: '127.0.0.1', port: port, dataDir: dataDir);
+    _runtime = PgRuntime(
+      host: '127.0.0.1',
+      port: port,
+      dataDir: dataDir,
+      password: password,
+    );
     _logger?.info(_logModule, 'postgres started', extra: {'port': port});
     return _runtime!;
   }
@@ -257,7 +360,7 @@ class PgController {
   ///   - 进程仍活 → 解析 pid 文件第 4 行端口并复用（PGDATA 为本应用独占，
   ///     存活实例只可能是上次会话的孤儿 PG）；
   ///   - 进程已死 → 删 stale pid 文件，返回 null 走正常 pg_ctl start。
-  PgRuntime? _reuseAliveInstanceOrCleanStale() {
+  PgRuntime? _reuseAliveInstanceOrCleanStale(String? password) {
     if (!_postmasterPid.existsSync()) return null;
     final lines = _postmasterPid.readAsLinesSync();
     if (lines.isEmpty) {
@@ -283,7 +386,12 @@ class PgController {
     }
     _logger?.info(_logModule, 'live postmaster detected; reusing instance',
         extra: {'pid': pid, 'port': port});
-    return PgRuntime(host: '127.0.0.1', port: port, dataDir: dataDir);
+    return PgRuntime(
+      host: '127.0.0.1',
+      port: port,
+      dataDir: dataDir,
+      password: password,
+    );
   }
 
   /// 停止 PG，幂等：未启动时 no-op。

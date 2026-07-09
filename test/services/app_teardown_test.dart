@@ -16,6 +16,8 @@ import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:inkframe/storage/pg_controller.dart';
 import 'package:postgres/postgres.dart';
 
+import '../_harness/fake_secure_storage.dart';
+
 void main() {
   late Directory tempRoot;
   late List<String> order;
@@ -197,6 +199,7 @@ class _RecordingPgController extends PgController {
       : super(
           paths: DefaultAppPaths.forRoot(root),
           locator: _ThrowingLocator(),
+          secureStorage: FakeSecureStorage(),
         );
   final void Function() onStop;
 

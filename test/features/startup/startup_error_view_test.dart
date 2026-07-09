@@ -28,6 +28,7 @@ import 'package:inkframe/storage/pg_controller.dart';
 import 'package:inkframe/theme/components/ink_button.dart';
 import 'package:postgres/postgres.dart';
 
+import '../../_harness/fake_secure_storage.dart';
 import '../../_harness/test_app.dart';
 
 /// FolderOpener 探针：记录被请求打开的路径。
@@ -42,7 +43,11 @@ class _SpyFolderOpener implements FolderOpener {
 /// stop 可经 [stopGate] 卡住以观测「重启进行中」窗口（禁用重复点击 + 顺序）。
 class _RecordingPgController extends PgController {
   _RecordingPgController(AppPaths paths)
-      : super(paths: paths, locator: DefaultPgBinaryLocator());
+      : super(
+          paths: paths,
+          locator: DefaultPgBinaryLocator(),
+          secureStorage: FakeSecureStorage(),
+        );
 
   final List<String> calls = <String>[];
   Completer<void>? stopGate;

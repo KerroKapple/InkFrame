@@ -19,6 +19,7 @@ import '../../storage/pg_controller.dart';
 import '../errors/ink_error.dart';
 import 'logger.dart';
 import 'paths.dart';
+import 'secure_storage.dart';
 
 /// 二进制定位器——默认按平台探测；单测可以覆盖为指向测试 fixture。
 final pgBinaryLocatorProvider = Provider<PgBinaryLocator>(
@@ -32,6 +33,7 @@ final pgControllerProvider = Provider<PgController>(
     final controller = PgController(
       paths: ref.watch(appPathsProvider),
       locator: ref.watch(pgBinaryLocatorProvider),
+      secureStorage: ref.watch(secureStorageServiceProvider),
       logger: ref.watch(loggerProvider),
     );
     ref.onDispose(() async {
@@ -50,6 +52,10 @@ final pgControllerProvider = Provider<PgController>(
 const int kPgMaxConnections = 4;
 
 /// Pool——首次读触发 PG 启动 + 建池；连接懒建，断线自动换新（ME-33）。
+///
+/// LB-07：runtime.password 由 PgController 从 SecureStorage 取出——
+/// 新集群 SCRAM 必需；存量 trust 集群为 null（trust 忽略密码，Zero-BC）。
+/// SslMode.disable 保留：回环内无窃听面。
 final pgPoolProvider = FutureProvider<Pool<void>>(
   (ref) async {
     final controller = ref.watch(pgControllerProvider);
@@ -59,8 +65,9 @@ final pgPoolProvider = FutureProvider<Pool<void>>(
         Endpoint(
           host: runtime.host,
           port: runtime.port,
-          database: 'postgres',
-          username: 'inkframe',
+          database: kPgDatabaseName,
+          username: kPgSuperuser,
+          password: runtime.password,
         ),
       ],
       settings: const PoolSettings(
