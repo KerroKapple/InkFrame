@@ -1,19 +1,27 @@
-// AboutSection — 应用信息 + SecureStorage 可用性自检。
+// AboutSection — 应用信息 + SecureStorage 可用性自检 + 检查更新（UPD-1）。
 //
 // SecureStorage 写一条 sentinel 再读再删，三步都成功才视作可用——这种探测
 // 比"按平台名字硬编码 backend 字符串"更接近事实，避免给用户假阳性。
+// 检查更新：手动按钮走 UpdateCheckController.checkNow;结果/失败就地轻呈现,
+// 新版给发布页链接（UrlOpenerService）;启动静默检查由偏好开关控制。
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/package_info.dart';
 import '../../../core/di/secure_storage.dart';
+import '../../../core/di/url_opener.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/secure_storage_service.dart';
+import '../../../core/models/update_check_result.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_card.dart';
 import '../../../theme/tokens.dart';
+import '../providers/update_check_controller.dart';
 
 const _kSecureStoragePingKey = 'inkframe.settings.secure_storage_probe';
 
@@ -152,7 +160,129 @@ class AboutSection extends ConsumerWidget {
             },
           ),
         ),
+        const SizedBox(height: InkSpacing.md),
+        const _UpdateCheckBlock(),
       ],
+    );
+  }
+}
+
+/// 检查更新块：手动按钮 + 状态行 + 启动检查偏好开关。
+class _UpdateCheckBlock extends ConsumerWidget {
+  const _UpdateCheckBlock();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final updateState = ref.watch(updateCheckControllerProvider);
+    final bool autoCheck = ref.watch(updateCheckPrefControllerProvider);
+    // AsyncError.value 会 rethrow,必须走 valueOrNull。
+    final UpdateCheckResult? result = updateState.valueOrNull;
+    final String? releaseUrl =
+        (result?.updateAvailable ?? false) ? result?.releaseUrl : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Wrap(
+          spacing: InkSpacing.sm,
+          runSpacing: InkSpacing.xs,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: <Widget>[
+            InkButton(
+              label: context.l10n.settingsAboutUpdateCheckButton,
+              variant: InkButtonVariant.secondary,
+              icon: Icons.update_outlined,
+              onPressed: updateState.isLoading
+                  ? null
+                  : () => unawaited(
+                        ref
+                            .read(updateCheckControllerProvider.notifier)
+                            .checkNow(),
+                      ),
+            ),
+            _UpdateStatusText(state: updateState),
+            if (releaseUrl != null)
+              InkButton(
+                label: context.l10n.settingsAboutUpdateViewRelease,
+                variant: InkButtonVariant.ghost,
+                icon: Icons.open_in_new,
+                onPressed: () =>
+                    unawaited(_openRelease(context, ref, releaseUrl)),
+              ),
+          ],
+        ),
+        const SizedBox(height: InkSpacing.xs),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Switch(
+              value: autoCheck,
+              onChanged: ref
+                  .read(updateCheckPrefControllerProvider.notifier)
+                  .setEnabled,
+            ),
+            const SizedBox(width: InkSpacing.xs),
+            Text(
+              context.l10n.settingsAboutUpdateAutoCheckLabel,
+              style: typo.body.copyWith(color: colors.fg2),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _openRelease(
+    BuildContext context,
+    WidgetRef ref,
+    String url,
+  ) async {
+    try {
+      await ref.read(urlOpenerServiceProvider).openExternal(Uri.parse(url));
+    } on InkError {
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(context.l10n.settingsAboutUpdateOpenFailed)),
+      );
+    }
+  }
+}
+
+/// 检查更新状态行：空闲不占位;checking/最新/新版/失败四态轻呈现。
+class _UpdateStatusText extends StatelessWidget {
+  const _UpdateStatusText({required this.state});
+
+  final AsyncValue<UpdateCheckResult?> state;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    if (state.isLoading) {
+      return Text(
+        context.l10n.settingsAboutUpdateChecking,
+        style: typo.body.copyWith(color: colors.fg2),
+      );
+    }
+    if (state.hasError) {
+      return Text(
+        context.l10n.settingsAboutUpdateCheckFailed,
+        style: typo.body.copyWith(color: colors.fg3),
+      );
+    }
+    final UpdateCheckResult? result = state.valueOrNull;
+    if (result == null) return const SizedBox.shrink();
+    if (result.updateAvailable) {
+      return Text(
+        context.l10n.settingsAboutUpdateAvailable(result.latestVersion!),
+        style: typo.body.copyWith(color: colors.success),
+      );
+    }
+    return Text(
+      context.l10n.settingsAboutUpdateUpToDate,
+      style: typo.body.copyWith(color: colors.fg2),
     );
   }
 }

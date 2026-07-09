@@ -106,4 +106,39 @@ void main() {
     expect(updated.copyWith().windowBounds, updated.windowBounds);
     expect(updated.copyWith().windowMaximized, true);
   });
+
+  test('更新检查字段默认值：开关默认开、时间戳空', () {
+    const p = AppPreferences();
+    expect(p.updateCheckEnabled, isTrue);
+    expect(p.lastUpdateCheckAtIso, isNull);
+  });
+
+  test('更新检查字段 toMap/fromMap 往返', () {
+    const p = AppPreferences(
+      updateCheckEnabled: false,
+      lastUpdateCheckAtIso: '2026-07-09T08:00:00.000Z',
+    );
+    expect(AppPreferences.fromMap(p.toMap()), p);
+  });
+
+  test('更新检查字段 fromMap 容错：类型错/缺失 → 默认', () {
+    final p = AppPreferences.fromMap(<String, Object?>{
+      'update_check_enabled': 'yes', // 类型错
+      'last_update_check_at': 42, // 类型错
+    });
+    expect(p.updateCheckEnabled, isTrue);
+    expect(p.lastUpdateCheckAtIso, isNull);
+  });
+
+  test('copyWith 更新检查字段', () {
+    const p = AppPreferences();
+    final q = p.copyWith(
+      updateCheckEnabled: false,
+      lastUpdateCheckAtIso: '2026-07-09T08:00:00.000Z',
+    );
+    expect(q.updateCheckEnabled, isFalse);
+    expect(q.lastUpdateCheckAtIso, '2026-07-09T08:00:00.000Z');
+    // 不传时保留原值。
+    expect(q.copyWith().lastUpdateCheckAtIso, '2026-07-09T08:00:00.000Z');
+  });
 }

@@ -19,6 +19,8 @@ class AppPreferences {
     this.lastProjectId,
     this.windowBounds,
     this.windowMaximized = false,
+    this.updateCheckEnabled = true,
+    this.lastUpdateCheckAtIso,
   });
 
   /// 'dark' | 'light' | 'system'
@@ -44,6 +46,12 @@ class AppPreferences {
   /// 上次退出时窗口是否最大化。
   final bool windowMaximized;
 
+  /// 启动时静默检查更新（UPD-1）。默认开;关闭后仅手动检查。
+  final bool updateCheckEnabled;
+
+  /// 上次成功检查更新的 UTC 时刻（ISO-8601 字符串,6h 节流依据）。null=从未检查。
+  final String? lastUpdateCheckAtIso;
+
   AppPreferences copyWith({
     String? themePreference,
     bool? highContrast,
@@ -57,6 +65,8 @@ class AppPreferences {
     bool clearLastCanvas = false,
     WindowBounds? windowBounds,
     bool? windowMaximized,
+    bool? updateCheckEnabled,
+    String? lastUpdateCheckAtIso,
   }) {
     return AppPreferences(
       themePreference: themePreference ?? this.themePreference,
@@ -71,6 +81,8 @@ class AppPreferences {
           clearLastCanvas ? null : (lastProjectId ?? this.lastProjectId),
       windowBounds: windowBounds ?? this.windowBounds,
       windowMaximized: windowMaximized ?? this.windowMaximized,
+      updateCheckEnabled: updateCheckEnabled ?? this.updateCheckEnabled,
+      lastUpdateCheckAtIso: lastUpdateCheckAtIso ?? this.lastUpdateCheckAtIso,
     );
   }
 
@@ -85,6 +97,8 @@ class AppPreferences {
         'last_project_id': lastProjectId,
         'window_bounds': windowBounds?.toMap(),
         'window_maximized': windowMaximized,
+        'update_check_enabled': updateCheckEnabled,
+        'last_update_check_at': lastUpdateCheckAtIso,
       };
 
   /// 容错解析：缺失/类型不符/非法值一律退默认，绝不抛——损坏的偏好文件不该炸启动。
@@ -99,6 +113,8 @@ class AppPreferences {
     final lcv = m['last_canvas_id'];
     final lpj = m['last_project_id'];
     final wm = m['window_maximized'];
+    final uce = m['update_check_enabled'];
+    final luc = m['last_update_check_at'];
     return AppPreferences(
       themePreference:
           pref is String && allowedTheme.contains(pref) ? pref : 'dark',
@@ -111,6 +127,8 @@ class AppPreferences {
       lastProjectId: lpj is String ? lpj : null,
       windowBounds: WindowBounds.fromMap(m['window_bounds']),
       windowMaximized: wm is bool ? wm : false,
+      updateCheckEnabled: uce is bool ? uce : true,
+      lastUpdateCheckAtIso: luc is String ? luc : null,
     );
   }
 
@@ -127,7 +145,9 @@ class AppPreferences {
           other.lastCanvasId == lastCanvasId &&
           other.lastProjectId == lastProjectId &&
           other.windowBounds == windowBounds &&
-          other.windowMaximized == windowMaximized;
+          other.windowMaximized == windowMaximized &&
+          other.updateCheckEnabled == updateCheckEnabled &&
+          other.lastUpdateCheckAtIso == lastUpdateCheckAtIso;
 
   @override
   int get hashCode => Object.hash(
@@ -141,5 +161,7 @@ class AppPreferences {
         lastProjectId,
         windowBounds,
         windowMaximized,
+        updateCheckEnabled,
+        lastUpdateCheckAtIso,
       );
 }

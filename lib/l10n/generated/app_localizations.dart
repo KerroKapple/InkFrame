@@ -584,6 +584,54 @@ abstract class AppLocalizations {
   /// **'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the Cormorant Garamond and JetBrains Mono fonts (SIL OFL 1.1).'**
   String get settingsAboutLegalese;
 
+  /// No description provided for @settingsAboutUpdateCheckButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get settingsAboutUpdateCheckButton;
+
+  /// No description provided for @settingsAboutUpdateChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get settingsAboutUpdateChecking;
+
+  /// No description provided for @settingsAboutUpdateUpToDate.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re on the latest version'**
+  String get settingsAboutUpdateUpToDate;
+
+  /// No description provided for @settingsAboutUpdateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'New version {version} available'**
+  String settingsAboutUpdateAvailable(String version);
+
+  /// No description provided for @settingsAboutUpdateViewRelease.
+  ///
+  /// In en, this message translates to:
+  /// **'View release'**
+  String get settingsAboutUpdateViewRelease;
+
+  /// No description provided for @settingsAboutUpdateCheckFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not check for updates'**
+  String get settingsAboutUpdateCheckFailed;
+
+  /// No description provided for @settingsAboutUpdateOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the release page'**
+  String get settingsAboutUpdateOpenFailed;
+
+  /// No description provided for @settingsAboutUpdateAutoCheckLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates at startup'**
+  String get settingsAboutUpdateAutoCheckLabel;
+
   /// No description provided for @generationMissingKey.
   ///
   /// In en, this message translates to:
