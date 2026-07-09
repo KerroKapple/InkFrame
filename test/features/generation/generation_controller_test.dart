@@ -97,6 +97,9 @@ class _FakeNodeRepo implements NodeRepository {
       [];
   @override
   Future<int> softDeleteEmptyOrphanResults() async => 0;
+
+  @override
+  Future<List<String>> listAllMediaUrls() async => const <String>[];
   @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override

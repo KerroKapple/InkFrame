@@ -189,4 +189,21 @@ class PostgresBatchResultRepository
       return r.affectedRows;
     });
   }
+
+  @override
+  Future<List<String>> listAllOutputUrls() {
+    return guard('listAllOutputUrls', 'batch_results', () async {
+      // LB-13：孤儿回收引用集。全表非空 output_url，不分状态。
+      final r = await session.execute(
+        Sql.named(
+          'SELECT output_url FROM batch_results '
+          "WHERE output_url IS NOT NULL AND output_url <> ''",
+        ),
+      );
+      return <String>[
+        for (final row in r)
+          if (row[0] is String) row[0]! as String,
+      ];
+    });
+  }
 }

@@ -41,4 +41,8 @@ abstract class BatchResultRepository {
   Future<int> markPromoted({required String id, required String promotedNodeId});
 
   Future<int> hardDelete(String id);
+
+  /// 磁盘孤儿回收的引用集来源（LB-13）：返回全表所有非空 output_url
+  /// （画布相对路径）。只读，不分状态、不分节点软删。
+  Future<List<String>> listAllOutputUrls();
 }

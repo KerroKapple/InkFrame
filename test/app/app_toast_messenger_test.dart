@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/app.dart';
+import 'package:inkframe/core/di/orphan_reaper.dart';
 import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
@@ -31,6 +32,8 @@ void main() {
         appPathsProvider.overrideWithValue(paths),
         anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
         currentCanvasIdProvider.overrideWith((_) => null),
+        // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
+        orphanReapStartupProvider.overrideWith((_) async {}),
         // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
         workspaceProjectsProvider
             .overrideWith((_) async => const <ProjectWithCanvases>[]),

@@ -336,6 +336,22 @@ class InMemoryNodeRepository implements NodeRepository {
 
   // COALESCE(->>'x','') = '' 语义：JSON 文本值为 null 或空串即视为空。
   bool _blank(Object? v) => v == null || v == '';
+
+  @override
+  Future<List<String>> listAllMediaUrls() async {
+    // LB-13：含软删节点（不过滤 deleted_at）——软删产物仍算被引用（安全#2）。
+    final out = <String>[];
+    for (final Map<String, Object?> row in _rows.values) {
+      final Map<String, Object?> cfg =
+          (row['type_config'] as Map<String, Object?>?) ??
+              const <String, Object?>{};
+      for (final key in const ['image_url', 'video_url', 'thumbnail_url']) {
+        final v = cfg[key];
+        if (v is String && v.isNotEmpty) out.add(v);
+      }
+    }
+    return out;
+  }
 }
 
 // ─── Edge ────────────────────────────────────────────────────────────
