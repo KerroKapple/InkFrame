@@ -710,6 +710,12 @@ abstract class AppLocalizations {
   /// **'Node deleted'**
   String get nodeDeleted;
 
+  /// No description provided for @nodesDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{{count} node deleted} other{{count} nodes deleted}}'**
+  String nodesDeleted(int count);
+
   /// No description provided for @nodeDeleteFailed.
   ///
   /// In en, this message translates to:

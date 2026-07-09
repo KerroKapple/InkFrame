@@ -142,6 +142,12 @@
 
   "nodeDelete": "删除节点",
   "nodeDeleted": "节点已删除",
+  "nodesDeleted": "{count, plural, other{已删除 {count} 个节点}}",
+  "@nodesDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "nodeDeleteFailed": "节点删除失败",
   "nodeMoveFailed": "节点移动失败",
   "edgeDeleted": "连线已删除",

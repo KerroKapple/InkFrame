@@ -55,5 +55,18 @@ void main() {
       ctrl.removed('zzz');
       expect(identical(s(), before), isTrue);
     });
+
+    test('selectAll 整体替换为给定集合', () {
+      ctrl.select('x');
+      ctrl.selectAll(<String>['a', 'b', 'c']);
+      expect(s(), {'a', 'b', 'c'});
+    });
+
+    test('selectAll 集合等价时不改变 state 引用', () {
+      ctrl.selectAll(<String>['a', 'b']);
+      final before = s();
+      ctrl.selectAll(<String>['b', 'a']); // 顺序不同但等价
+      expect(identical(s(), before), isTrue);
+    });
   });
 }

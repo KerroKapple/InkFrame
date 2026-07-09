@@ -150,6 +150,12 @@
 
   "nodeDelete": "Delete node",
   "nodeDeleted": "Node deleted",
+  "nodesDeleted": "{count, plural, one{{count} node deleted} other{{count} nodes deleted}}",
+  "@nodesDeleted": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "nodeDeleteFailed": "Failed to delete node",
   "nodeMoveFailed": "Failed to move node",
   "edgeDeleted": "Link deleted",
