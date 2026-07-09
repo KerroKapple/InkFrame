@@ -811,7 +811,7 @@ final hint = context.l10n.geminiSystemPrompt;
 
 ### 9.1 存储规则
 
-API Key 和代理密码**只允许**通过 `SecureStorageService` 存取，不得出现在：
+API Key、代理密码与嵌入式 PG 超级用户密码（LB-07 SCRAM）**只允许**通过 `SecureStorageService` 存取，不得出现在：
 
 - Dart 源文件
 - 配置文件（JSON / YAML / .env）
@@ -842,6 +842,8 @@ abstract class SecureStorageService {
 //     → 全部存到 'provider.dashscope.api_key'
 //   - 非家族成员 scope 直接等于 providerId（如 'provider.gemini-image.api_key'）
 // proxy password：    'network.proxy.password'（无 provider 维度）
+// PG 超级用户密码：   'database.pg.password'（LB-07：initdb 时随机生成入库；
+//   连接期取出注入 Endpoint。无条目 = 存量 trust 集群，password 传 null，Zero-BC 免迁移）
 ```
 
 > ⚠️ 新加 Provider 时务必走 `SecureStorageKeys.providerApiKey(providerId)` 工厂方法构造 key，

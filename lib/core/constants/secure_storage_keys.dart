@@ -40,4 +40,8 @@ class SecureStorageKeys {
 
   /// 全局代理密码（无 provider 维度）。
   static const String proxyPassword = 'network.proxy.password';
+
+  /// 嵌入式 PostgreSQL 超级用户密码（LB-07 SCRAM；无 provider 维度）。
+  /// initdb 时随机生成入库；连接期取出注入 Endpoint。
+  static const String databasePassword = 'database.pg.password';
 }

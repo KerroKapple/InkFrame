@@ -1,6 +1,8 @@
 tags:
   pg:
     # 真 PG 集成测：需环境变量 TEST_PG_URL
+    # （pg_scram_integration_test 例外：需 TEST_PG_SCRAM=1 + 本机 PG 二进制，
+    #   自建临时集群，不走 TEST_PG_URL——见该文件头注释）
     # 未设置时用例内 markTestSkipped，不阻塞默认测试运行。
   golden:
     # golden 像素测：基线锁定 canonical 平台（CI ubuntu）。
