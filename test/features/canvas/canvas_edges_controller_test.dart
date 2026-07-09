@@ -292,6 +292,24 @@ void main() {
           isEmpty);
     });
 
+    test('restore 在 provider dispose 后 no-op，不抛 StateError（PL-4a 入口守卫）',
+        () async {
+      final c = ProviderContainer(overrides: [
+        edgeRepositoryProvider.overrideWith((ref) async => repo),
+      ]);
+      await c.read(canvasEdgesControllerProvider(canvasId).future);
+      final ctrl = c.read(canvasEdgesControllerProvider(canvasId).notifier);
+      final e = await ctrl.addEdge(sourceNodeId: 'a', targetNodeId: 'b');
+      final removed = await ctrl.removeEdge(e.id);
+      expect(removed, isNotNull);
+
+      c.dispose(); // 画布关闭 → notifier autoDispose，_alive=false
+
+      // 窗口内点 Undo：入口 _alive 守卫先于 _repo 的 ref.read → no-op，无 StateError。
+      await expectLater(ctrl.restore(removed!), completes);
+      expect(repo.restored, isEmpty, reason: 'dispose 后 restore 不落 DB');
+    });
+
     test('updateRole 写 DB role 字段 + 内存更新', () async {
       await container.read(canvasEdgesControllerProvider(canvasId).future);
       final ctrl = container

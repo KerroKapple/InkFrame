@@ -162,6 +162,11 @@ class CanvasNodesController
   /// 单事务原子；乐观把节点放回内存，DB 失败回滚并上抛。成功后让
   /// CanvasEdgesController(canvasId) 失效，重新加载复原后的边集。
   Future<void> restore(NodeDeletion deletion) {
+    // 入口守卫（先于任何同步 ref.read）：画布关闭后 snackbar 仍挂在全局
+    // messenger 上可点，此时 notifier 已 autoDispose——复原进已销毁画布无意义，
+    // 且 ref.read 会同步抛 StateError。ME-27 的 _alive 只护 await 后的写，故这里
+    // 补一道方法入口守卫。
+    if (!_alive) return Future<void>.value();
     final canvasId = arg;
     final uowFuture = ref.read(unitOfWorkProvider.future);
     return serialize<void>(() async {

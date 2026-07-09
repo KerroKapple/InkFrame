@@ -83,6 +83,62 @@ class _SeededEdgesController extends CanvasEdgesController {
   }
 }
 
+/// 级联 undo 测试用：删节点时连带软删其关联边（token 记 edge id），restore 时
+/// 连带复原——复刻真控制器 removeNode 级联 + restore + invalidate 的净效果。
+class _CascadeNodesController extends CanvasNodesController {
+  _CascadeNodesController(this._seed, this._edges);
+  final List<CanvasNode> _seed;
+  final _SeededEdgesController _edges;
+  final Map<String, CanvasEdge> _removedEdges = <String, CanvasEdge>{};
+
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => _seed;
+
+  @override
+  Future<NodeDeletion?> removeNode(String id) async {
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    CanvasNode? removed;
+    for (final n in previous) {
+      if (n.id == id) removed = n;
+    }
+    state = AsyncData(previous.where((n) => n.id != id).toList(growable: false));
+    // 级联软删该节点的关联边，边 id 记入撤销令牌。
+    final edgeIds = <String>[];
+    final edges = _edges.state.valueOrNull ?? const <CanvasEdge>[];
+    for (final e in List<CanvasEdge>.of(edges)) {
+      if (e.sourceNodeId == id || e.targetNodeId == id) {
+        final r = await _edges.removeEdge(e.id);
+        if (r != null) {
+          edgeIds.add(r.id);
+          _removedEdges[r.id] = r;
+        }
+      }
+    }
+    if (removed == null) return null;
+    return (node: removed, edgeIds: edgeIds);
+  }
+
+  @override
+  Future<void> restore(NodeDeletion deletion) async {
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    state = AsyncData([...previous, deletion.node]);
+    for (final eid in deletion.edgeIds) {
+      final edge = _removedEdges[eid];
+      if (edge != null) await _edges.restore(edge);
+    }
+  }
+}
+
+/// restore 抛 InkError → 触发 canvas_view 的 undoFailed 兜底提示。
+class _RestoreFailNodesController extends _FakeNodesController {
+  _RestoreFailNodesController(super.seed);
+
+  @override
+  Future<void> restore(NodeDeletion deletion) async {
+    throw const LocalIOError();
+  }
+}
+
 class _MoveFailNodesController extends _FakeNodesController {
   _MoveFailNodesController(super.seed);
 
@@ -476,6 +532,58 @@ void main() {
 
       expect(fakeEdges.restoreCalls, hasLength(1));
       expect(fakeEdges.restoreCalls.first.id, 'e1');
+    });
+
+    testWidgets('删除有边节点 → Undo 同时复原节点与其级联边', (tester) async {
+      const edge = CanvasEdge(
+        id: 'e1',
+        canvasId: 'c1',
+        sourceNodeId: 'a',
+        targetNodeId: 'b',
+        edgeType: EdgeType.data,
+      );
+      final fakeEdges = _SeededEdgesController(const <CanvasEdge>[edge]);
+      final fakeNodes = _CascadeNodesController(twoNodes, fakeEdges);
+      await pumpWith(tester, nodes: fakeNodes, edges: fakeEdges);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(CanvasView)),
+      );
+
+      await tester.tap(find.text('Node A'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Delete node'));
+      await tester.pumpAndSettle();
+
+      // 删后：节点 A 与级联边 e1 都不在。
+      expect(find.byType(NodeCard), findsOneWidget);
+      expect(container.read(canvasEdgesControllerProvider('c1')).valueOrNull,
+          isEmpty);
+
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+
+      // Undo 后：节点 A 与级联边 e1 都复原。
+      expect(find.byType(NodeCard), findsNWidgets(2));
+      final edges =
+          container.read(canvasEdgesControllerProvider('c1')).valueOrNull;
+      expect(edges, hasLength(1));
+      expect(edges!.first.id, 'e1');
+    });
+
+    testWidgets('restore 抛 InkError → 显示 undoFailed 提示', (tester) async {
+      final fakeNodes = _RestoreFailNodesController(twoNodes);
+      await pumpWith(tester,
+          nodes: fakeNodes, edges: _FakeEdgesController());
+
+      await tester.tap(find.text('Node A'));
+      await tester.pump();
+      await tester.tap(find.byTooltip('Delete node'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Undo'));
+      await tester.pumpAndSettle();
+
+      expect(find.text("Couldn't undo"), findsOneWidget);
     });
   });
 }

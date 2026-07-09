@@ -107,6 +107,10 @@ class CanvasEdgesController
   /// 撤销 removeEdge（PL-4a 删除防误伤）：清 deleted_at + 把连线放回内存；
   /// DB 失败回滚并上抛。
   Future<void> restore(CanvasEdge edge) {
+    // 入口守卫（先于 _repo 的同步 ref.read）：画布关闭后 snackbar 仍挂全局
+    // messenger 可点，此时 notifier 已 autoDispose——复原无意义且 ref.read 会同步
+    // 抛 StateError。ME-27 的 _alive 只护 await 后写，这里补方法入口守卫。
+    if (!_alive) return Future<void>.value();
     final repo = _repo;
     return serialize<void>(() async {
       final previous =

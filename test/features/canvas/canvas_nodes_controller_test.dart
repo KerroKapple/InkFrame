@@ -479,6 +479,30 @@ void main() {
       expect(state.valueOrNull!.any((n) => n.id == a.id), isFalse);
     });
 
+    test('restore 在 provider dispose 后 no-op，不抛 StateError（PL-4a 入口守卫）',
+        () async {
+      final c = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) async => repo),
+        edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+        unitOfWorkProvider.overrideWith(
+          (ref) async => FakeUnitOfWork(
+            FakeRepositoryScope(nodes: repo, edges: edgeRepo),
+          ),
+        ),
+      ]);
+      await c.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = c.read(canvasNodesControllerProvider(canvasId).notifier);
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final deletion = await ctrl.removeNode(a.id);
+      expect(deletion, isNotNull);
+
+      c.dispose(); // 画布关闭 → notifier autoDispose，_alive=false
+
+      // 窗口内点 Undo：入口 _alive 守卫先于 ref.read → no-op，绝不 StateError。
+      await expectLater(ctrl.restore(deletion!), completes);
+      expect(repo.restored, isEmpty, reason: 'dispose 后 restore 不落 DB');
+    });
+
     test('removeNode 无关联 edges → 只软删节点', () async {
       await container.read(canvasNodesControllerProvider(canvasId).future);
       final ctrl = container
