@@ -1,12 +1,24 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../constants/secure_storage_keys.dart';
 import '../interfaces/secure_storage_service.dart';
+import '../../services/file_secure_storage_service.dart';
 import '../../services/platform_secure_storage_service.dart';
+import 'paths.dart';
 import 'providers.dart';
 
 /// app-scoped 单实例：SecureStorage 是平台级资源，进程内共享。
+///
+/// Debug + macOS：走文件型实现（AppPaths.config/secrets.dev.json），
+/// 绕开 Keychain 对 ad-hoc 签名缺 application-identifier entitlement
+/// 的硬约束（-34018）。Release / Windows 走 Keychain / Credential Manager。
 final secureStorageServiceProvider = Provider<SecureStorageService>((ref) {
+  if (kDebugMode && Platform.isMacOS) {
+    return FileSecureStorageService(() => ref.read(appPathsProvider));
+  }
   return PlatformSecureStorageService();
 });
 
