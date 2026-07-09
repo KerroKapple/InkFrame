@@ -20,11 +20,15 @@ import '../providers/canvas_bootstrap_controller.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
+import '../providers/canvas_transform_controller.dart';
 import '../providers/current_canvas_id.dart';
 import '../providers/link_action_controller.dart';
 import '../providers/link_mode_controller.dart';
 import '../providers/playable_video_path.dart';
 import '../providers/selected_edge_controller.dart';
+import '../util/canvas_node_delete.dart';
+import '../util/canvas_snackbars.dart';
+import '../util/canvas_zoom.dart';
 import '../util/edge_hit_test.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_lanes_controller.dart';
@@ -40,42 +44,8 @@ import 'node_card.dart';
 import 'node_inspector_router.dart';
 import 'video_lightbox.dart';
 
-const _kSnackBarDuration = Duration(seconds: 2);
-
-// 删除防误伤（PL-4a）：Deleted · [Undo] 的驻留时长即撤销窗口（~5s）。
-const _kUndoSnackBarDuration = Duration(seconds: 5);
-
 // InteractiveViewer 平移越界余量（画布外延展空间，非视觉 token）
 const double kCanvasBoundaryMargin = 2000;
-
-void _showSnack(BuildContext context, String text) {
-  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-    SnackBar(content: Text(text), duration: _kSnackBarDuration),
-  );
-}
-
-/// 删除防误伤（PL-4a）：弹一条带 Undo 动作的 snackbar，[onUndo] 在窗口内点击时
-/// 触发复原；窗口内不点 → snackbar 自行消失，软删生效。
-void _showUndoSnack(
-  BuildContext context, {
-  required String message,
-  required VoidCallback onUndo,
-}) {
-  final colors = context.inkColors;
-  ScaffoldMessenger.maybeOf(context)
-    ?..clearSnackBars()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: _kUndoSnackBarDuration,
-        action: SnackBarAction(
-          label: context.l10n.commonUndo,
-          textColor: colors.accent,
-          onPressed: onUndo,
-        ),
-      ),
-    );
-}
 
 class CanvasView extends ConsumerWidget {
   const CanvasView({super.key});
@@ -209,8 +179,7 @@ class _NoCanvasOpen extends ConsumerWidget {
             const SizedBox(height: InkSpacing.md),
             FilledButton(
               onPressed: () async {
-                final bootstrap =
-                    ref.read(canvasBootstrapControllerProvider);
+                final bootstrap = ref.read(canvasBootstrapControllerProvider);
                 await bootstrap.createSample(
                   projectName: context.l10n.canvasSampleProjectName,
                   canvasName: context.l10n.canvasSampleCanvasName,
@@ -274,7 +243,7 @@ class _CanvasBody extends ConsumerWidget {
       LinkActionResult.duplicate => l10n.linkAlreadyExists,
       LinkActionResult.failed => l10n.linkCreateFailed,
     };
-    _showSnack(context, text);
+    showCanvasSnack(context, text);
   }
 
   Future<void> _handleNodeTap(
@@ -301,7 +270,8 @@ class _CanvasBody extends ConsumerWidget {
     }
 
     final keyboard = HardwareKeyboard.instance;
-    final modifierHeld = keyboard.isShiftPressed ||
+    final modifierHeld =
+        keyboard.isShiftPressed ||
         keyboard.isControlPressed ||
         keyboard.isMetaPressed;
     selectionCtrl.select(node.id, toggle: modifierHeld);
@@ -395,57 +365,19 @@ class _CanvasStage extends ConsumerWidget {
   final void Function(CanvasNode node) onNodeTap;
   final VoidCallback onEmptyTap;
 
-  Future<void> _handleNodeDelete(
-    BuildContext context,
-    WidgetRef ref,
-    String nodeId,
-  ) async {
-    ref.read(canvasSelectionControllerProvider.notifier).removed(nodeId);
-    final nodesCtrl =
-        ref.read(canvasNodesControllerProvider(canvasId).notifier);
-    try {
-      final deletion = await nodesCtrl.removeNode(nodeId);
-      if (!context.mounted) return;
-      if (deletion == null) {
-        _showSnack(context, context.l10n.nodeDeleted);
-        return;
-      }
-      _showUndoSnack(
-        context,
-        message: context.l10n.nodeDeleted,
-        onUndo: () => _restoreNode(context, nodesCtrl, deletion),
-      );
-    } on InkError catch (_) {
-      if (context.mounted) {
-        _showSnack(context, context.l10n.nodeDeleteFailed);
-      }
-    }
-  }
-
-  Future<void> _restoreNode(
-    BuildContext context,
-    CanvasNodesController ctrl,
-    NodeDeletion deletion,
-  ) async {
-    try {
-      await ctrl.restore(deletion);
-    } on InkError catch (_) {
-      if (context.mounted) _showSnack(context, context.l10n.undoFailed);
-    }
-  }
-
   Future<void> _handleEdgeDelete(
     BuildContext context,
     WidgetRef ref,
     CanvasEdge edge,
   ) async {
     ref.read(selectedEdgeControllerProvider.notifier).clear();
-    final edgesCtrl =
-        ref.read(canvasEdgesControllerProvider(canvasId).notifier);
+    final edgesCtrl = ref.read(
+      canvasEdgesControllerProvider(canvasId).notifier,
+    );
     try {
       final removed = await edgesCtrl.removeEdge(edge.id);
       if (removed == null || !context.mounted) return;
-      _showUndoSnack(
+      showCanvasUndoSnack(
         context,
         message: context.l10n.edgeDeleted,
         onUndo: () => _restoreEdge(context, edgesCtrl, removed),
@@ -463,7 +395,7 @@ class _CanvasStage extends ConsumerWidget {
     try {
       await ctrl.restore(edge);
     } on InkError catch (_) {
-      if (context.mounted) _showSnack(context, context.l10n.undoFailed);
+      if (context.mounted) showCanvasSnack(context, context.l10n.undoFailed);
     }
   }
 
@@ -473,11 +405,16 @@ class _CanvasStage extends ConsumerWidget {
     // 选中/链接态不在本层 watch——下沉到 _NodeCardSlot 各自 watch，改选中
     // 只重建涉及的卡片，不再整层重建（丝滑核心）。
     final selectedEdgeId = ref.watch(selectedEdgeControllerProvider);
-    final edges = ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+    final edges =
+        ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[];
     // 泳道数据。
-    final lanes = ref.watch(canvasLanesControllerProvider(canvasId)).valueOrNull ?? const <StyleLane>[];
-    final direction = ref.watch(canvasLaneDirectionProvider(canvasId)).valueOrNull ?? LaneDirection.horizontal;
+    final lanes =
+        ref.watch(canvasLanesControllerProvider(canvasId)).valueOrNull ??
+        const <StyleLane>[];
+    final direction =
+        ref.watch(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
+        LaneDirection.horizontal;
     // 折叠态（纯 UI，不持久化）。
     final collapsedIds = ref.watch(laneCollapseProvider(canvasId));
     // 拖拽落点 → 泳道归属用的切片，整层算一次复用给各卡片插槽。
@@ -502,96 +439,129 @@ class _CanvasStage extends ConsumerWidget {
       nodes: nodes,
     );
 
+    // PL-2：绑定快捷键缩放共用的变换控制器（按 canvasId 分族；gesture 平移/缩放照常）。
+    final transformController = ref.watch(
+      canvasTransformControllerProvider(canvasId),
+    );
+
     return Container(
       color: colors.surface1,
-      child: InteractiveViewer(
-        constrained: false,
-        boundaryMargin: const EdgeInsets.all(kCanvasBoundaryMargin),
-        minScale: 0.1,
-        maxScale: 3.0,
-        child: SizedBox(
-          width: 4000,
-          height: 4000,
-          child: Stack(
-            children: [
-              // 泳道背景层：最底部，不拦截事件。
-              if (lanes.isNotEmpty)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: LaneBackground(
-                      lanes: lanes,
-                      direction: direction,
-                      canvasExtent: 4000,
-                      dividerColor: colors.borderSubtle,
-                      collapsedIds: collapsedIds,
+      // 视口尺寸上报给缩放层（围绕视口中心缩放需要）。
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final size = constraints.biggest;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (context.mounted) {
+              ref.read(canvasViewportSizeProvider.notifier).setSize(size);
+            }
+          });
+          return InteractiveViewer(
+            transformationController: transformController,
+            constrained: false,
+            boundaryMargin: const EdgeInsets.all(kCanvasBoundaryMargin),
+            minScale: kCanvasMinScale,
+            maxScale: kCanvasMaxScale,
+            child: SizedBox(
+              width: 4000,
+              height: 4000,
+              child: Stack(
+                children: [
+                  // 泳道背景层：最底部，不拦截事件。
+                  if (lanes.isNotEmpty)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: LaneBackground(
+                          lanes: lanes,
+                          direction: direction,
+                          canvasExtent: 4000,
+                          dividerColor: colors.borderSubtle,
+                          collapsedIds: collapsedIds,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              // 连线层（含点击命中）。translucent 让空白处也冒泡。
-              Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTapDown: onEdgeLayerTap,
-                  // HI-15：连线层独立 layer，节点局部动画不连带边层重绘。
-                  child: RepaintBoundary(
-                    child: CustomPaint(
-                      painter: EdgePainter(
-                        edges: edges,
-                        nodes: nodes,
-                        dataColor: colors.accent,
-                        narrativeColor: colors.fg3,
-                        generationSourceColor: colors.fg3,
-                        selectedColor: colors.brand,
-                        selectedEdgeId: selectedEdgeId,
+                  // 连线层（含点击命中）。translucent 让空白处也冒泡。
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.translucent,
+                      onTapDown: onEdgeLayerTap,
+                      // HI-15：连线层独立 layer，节点局部动画不连带边层重绘。
+                      child: RepaintBoundary(
+                        child: CustomPaint(
+                          painter: EdgePainter(
+                            edges: edges,
+                            nodes: nodes,
+                            dataColor: colors.accent,
+                            narrativeColor: colors.fg3,
+                            generationSourceColor: colors.fg3,
+                            selectedColor: colors.brand,
+                            selectedEdgeId: selectedEdgeId,
+                          ),
+                        ),
                       ),
                     ),
                   ),
-                ),
+                  // 泳道分界线拖拽条：置于节点层之下——节点手势优先；strip 用
+                  // translucent，空白分界线处可拖、点击穿透到连线层（HI-1 fix）。
+                  if (lanes.length >= 2)
+                    ..._buildResizeDividers(context, ref, lanes, direction),
+                  for (final node in nodes)
+                    Positioned(
+                      key: ValueKey('node-card-${node.id}'),
+                      left: node.position.dx,
+                      top: node.position.dy,
+                      // HI-13/HI-15：拖拽位移在 NodeCard 内部局部累积，落点一次性
+                      // 提交 moveNode；选中/链接态下沉到 _NodeCardSlot 各自 watch，
+                      // RepaintBoundary 把拖拽/重绘隔离在本卡片 layer。
+                      child: _NodeCardSlot(
+                        node: node,
+                        canvasId: canvasId,
+                        laneSlices: laneSlices,
+                        direction: direction,
+                        onTap: () => onNodeTap(node),
+                        onDelete: () => deleteNodeWithUndo(
+                          context,
+                          ref,
+                          canvasId: canvasId,
+                          nodeId: node.id,
+                        ),
+                      ),
+                    ),
+                  // 泳道标题栏：节点层之上，边删除按钮之下。
+                  if (lanes.isNotEmpty)
+                    ..._buildLaneTitleBars(
+                      context,
+                      ref,
+                      lanes,
+                      direction,
+                      collapsedIds,
+                    ),
+                  if (selectedGeometry != null)
+                    Positioned(
+                      left:
+                          edgeMidpoint(
+                            source: selectedGeometry.source,
+                            target: selectedGeometry.target,
+                          ).dx -
+                          14,
+                      top:
+                          edgeMidpoint(
+                            source: selectedGeometry.source,
+                            target: selectedGeometry.target,
+                          ).dy -
+                          14,
+                      child: _EdgeDeleteButton(
+                        onPressed: () => _handleEdgeDelete(
+                          context,
+                          ref,
+                          selectedGeometry.edge,
+                        ),
+                      ),
+                    ),
+                ],
               ),
-              // 泳道分界线拖拽条：置于节点层之下——节点手势优先；strip 用
-              // translucent，空白分界线处可拖、点击穿透到连线层（HI-1 fix）。
-              if (lanes.length >= 2)
-                ..._buildResizeDividers(context, ref, lanes, direction),
-              for (final node in nodes)
-                Positioned(
-                  key: ValueKey('node-card-${node.id}'),
-                  left: node.position.dx,
-                  top: node.position.dy,
-                  // HI-13/HI-15：拖拽位移在 NodeCard 内部局部累积，落点一次性
-                  // 提交 moveNode；选中/链接态下沉到 _NodeCardSlot 各自 watch，
-                  // RepaintBoundary 把拖拽/重绘隔离在本卡片 layer。
-                  child: _NodeCardSlot(
-                    node: node,
-                    canvasId: canvasId,
-                    laneSlices: laneSlices,
-                    direction: direction,
-                    onTap: () => onNodeTap(node),
-                    onDelete: () => _handleNodeDelete(context, ref, node.id),
-                  ),
-                ),
-              // 泳道标题栏：节点层之上，边删除按钮之下。
-              if (lanes.isNotEmpty)
-                ..._buildLaneTitleBars(context, ref, lanes, direction, collapsedIds),
-              if (selectedGeometry != null)
-                Positioned(
-                  left: edgeMidpoint(
-                        source: selectedGeometry.source,
-                        target: selectedGeometry.target,
-                      ).dx -
-                      14,
-                  top: edgeMidpoint(
-                        source: selectedGeometry.source,
-                        target: selectedGeometry.target,
-                      ).dy -
-                      14,
-                  child: _EdgeDeleteButton(
-                    onPressed: () =>
-                        _handleEdgeDelete(context, ref, selectedGeometry.edge),
-                  ),
-                ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -709,7 +679,7 @@ class _CanvasStage extends ConsumerWidget {
               .updateLane(upperLaneId, size: newSize);
         } on InkError catch (_) {
           if (context.mounted) {
-            _showSnack(context, context.l10n.laneUpdateFailed);
+            showCanvasSnack(context, context.l10n.laneUpdateFailed);
           }
         }
       }
@@ -727,8 +697,7 @@ class _CanvasStage extends ConsumerWidget {
             // translucent：strip 接收拖拽，但 tap 等穿透到下方连线层。
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onPanUpdate: (d) =>
-                  delta += horizontal ? d.delta.dy : d.delta.dx,
+              onPanUpdate: (d) => delta += horizontal ? d.delta.dy : d.delta.dx,
               onPanEnd: (_) => commit(),
             ),
           ),
@@ -758,7 +727,7 @@ class _CanvasStage extends ConsumerWidget {
           );
     } on InkError catch (_) {
       if (context.mounted) {
-        _showSnack(context, context.l10n.laneUpdateFailed);
+        showCanvasSnack(context, context.l10n.laneUpdateFailed);
       }
     }
   }
@@ -796,14 +765,15 @@ class _CanvasStage extends ConsumerWidget {
           .deleteLane(lane.id);
     } on InkError catch (_) {
       if (context.mounted) {
-        _showSnack(context, context.l10n.laneDeleteFailed);
+        showCanvasSnack(context, context.l10n.laneDeleteFailed);
       }
     }
   }
 }
 
 /// 在 [edges]/[nodes] 中定位选中边及其端点节点；任一缺失返回 null。
-({CanvasEdge edge, CanvasNode source, CanvasNode target})? _selectedEdgeGeometry({
+({CanvasEdge edge, CanvasNode source, CanvasNode target})?
+_selectedEdgeGeometry({
   required String? selectedEdgeId,
   required List<CanvasEdge> edges,
   required List<CanvasNode> nodes,
@@ -860,7 +830,8 @@ class _NodeCardSlot extends ConsumerWidget {
         onTap: onTap,
         onDragEnd: (totalDelta) {
           // 拖拽落点中心 → 计算归属泳道，一并传给 moveNode。
-          final center = node.position +
+          final center =
+              node.position +
               totalDelta +
               Offset(node.size.width / 2, node.size.height / 2);
           final laneId = laneIdAtPoint(
@@ -876,7 +847,7 @@ class _NodeCardSlot extends ConsumerWidget {
                   .moveNode(node.id, totalDelta, laneId: laneId);
             } on InkError catch (_) {
               if (context.mounted) {
-                _showSnack(context, context.l10n.nodeMoveFailed);
+                showCanvasSnack(context, context.l10n.nodeMoveFailed);
               }
             }
           }
@@ -910,10 +881,12 @@ class _EdgeLaneErrorSlotState extends ConsumerState<_EdgeLaneErrorSlot> {
 
   @override
   Widget build(BuildContext context) {
-    final edgesError =
-        ref.watch(canvasEdgesControllerProvider(widget.canvasId)).error;
-    final lanesError =
-        ref.watch(canvasLanesControllerProvider(widget.canvasId)).error;
+    final edgesError = ref
+        .watch(canvasEdgesControllerProvider(widget.canvasId))
+        .error;
+    final lanesError = ref
+        .watch(canvasLanesControllerProvider(widget.canvasId))
+        .error;
     final error = edgesError ?? lanesError;
     if (error == null || identical(error, _dismissed)) {
       return const SizedBox.shrink();

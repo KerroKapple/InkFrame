@@ -3,13 +3,14 @@
 // 与节点集合分离：节点加载/刷新是异步 (AsyncValue)，而选中态只随用户交互变化，
 // 独立存活在一个 autoDispose Notifier 中，避免 AsyncValue reload 时丢选择。
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final canvasSelectionControllerProvider =
     AutoDisposeNotifierProvider<CanvasSelectionController, Set<String>>(
-  CanvasSelectionController.new,
-  name: 'canvasSelectionControllerProvider',
-);
+      CanvasSelectionController.new,
+      name: 'canvasSelectionControllerProvider',
+    );
 
 class CanvasSelectionController extends AutoDisposeNotifier<Set<String>> {
   @override
@@ -24,6 +25,13 @@ class CanvasSelectionController extends AutoDisposeNotifier<Set<String>> {
         ..clear()
         ..add(id);
     }
+    state = next;
+  }
+
+  /// 全选：把选择整体替换为 [ids]（⌘A / Ctrl+A）。集合等价则跳过，避免空重建。
+  void selectAll(Iterable<String> ids) {
+    final next = ids.toSet();
+    if (setEquals(next, state)) return;
     state = next;
   }
 

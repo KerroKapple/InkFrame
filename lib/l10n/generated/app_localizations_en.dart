@@ -343,6 +343,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nodeDeleted => 'Node deleted';
 
   @override
+  String nodesDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count nodes deleted',
+      one: '$count node deleted',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get nodeDeleteFailed => 'Failed to delete node';
 
   @override

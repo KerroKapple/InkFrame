@@ -328,6 +328,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nodeDeleted => '节点已删除';
 
   @override
+  String nodesDeleted(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已删除 $count 个节点',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get nodeDeleteFailed => '节点删除失败';
 
   @override
