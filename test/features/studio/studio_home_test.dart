@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/features/generation/services/toast_service.dart';
@@ -130,6 +131,59 @@ void main() {
     );
     // CTA 文本 = studioNewProject = 'New Project'：empty 态 only 1 个，FAB 不渲染
     expect(find.text('New Project'), findsOneWidget);
+  });
+
+  testWidgets('StudioHome 空态：示例项目入口与 New Project 并存（ON-2）',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => const <ProjectWithCanvases>[],
+        ),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('New Project'), findsOneWidget);
+    expect(find.text('Create sample project'), findsOneWidget);
+  });
+
+  testWidgets('空态点击示例项目入口：createSample 建项目+画布并切 currentCanvasId（ON-2）',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final projects = InMemoryProjectRepository();
+    final canvases = InMemoryCanvasRepository();
+    final container = ProviderContainer(overrides: <Override>[
+      workspaceProjectsProvider.overrideWith(
+        (_) async => const <ProjectWithCanvases>[],
+      ),
+      projectRepositoryProvider.overrideWith((_) async => projects),
+      canvasRepositoryProvider.overrideWith((_) async => canvases),
+    ]);
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const StudioHomeScreen(),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Create sample project'));
+    await tester.pumpAndSettle();
+
+    // 示例项目 + 首画布落库（i18n 样例名），并直达画布
+    expect(projects.rows.values.single['name'], 'Sample Project');
+    expect(canvases.rows.values.single['name'], 'Canvas 1');
+    expect(container.read(currentCanvasIdProvider), isNotNull);
   });
 
   testWidgets('StudioHome loading 态：CircularProgressIndicator',

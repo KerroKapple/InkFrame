@@ -644,6 +644,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioNoKeyBannerAction => '前往设置配置';
 
   @override
+  String get studioCreateSampleProject => '创建示例项目';
+
+  @override
+  String get studioCreateSampleFailed => '创建示例项目失败';
+
+  @override
   String get canvasRenderQueue => '渲染队列';
 
   @override

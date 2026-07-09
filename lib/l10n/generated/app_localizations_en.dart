@@ -670,6 +670,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioNoKeyBannerAction => 'Configure in Settings';
 
   @override
+  String get studioCreateSampleProject => 'Create sample project';
+
+  @override
+  String get studioCreateSampleFailed => 'Couldn\'t create sample project';
+
+  @override
   String get canvasRenderQueue => 'Render Queue';
 
   @override

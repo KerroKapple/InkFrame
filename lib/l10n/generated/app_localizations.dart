@@ -1310,6 +1310,18 @@ abstract class AppLocalizations {
   /// **'Configure in Settings'**
   String get studioNoKeyBannerAction;
 
+  /// No description provided for @studioCreateSampleProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Create sample project'**
+  String get studioCreateSampleProject;
+
+  /// No description provided for @studioCreateSampleFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t create sample project'**
+  String get studioCreateSampleFailed;
+
   /// No description provided for @canvasRenderQueue.
   ///
   /// In en, this message translates to:

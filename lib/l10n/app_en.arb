@@ -294,6 +294,8 @@
   "studioOpenCanvasFailed": "Couldn't open canvas",
   "studioNoKeyBannerText": "No provider API key configured — generation needs one.",
   "studioNoKeyBannerAction": "Configure in Settings",
+  "studioCreateSampleProject": "Create sample project",
+  "studioCreateSampleFailed": "Couldn't create sample project",
 
   "canvasRenderQueue": "Render Queue",
   "canvasNodeTypeCharacter": "Character",

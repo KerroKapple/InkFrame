@@ -302,6 +302,8 @@
   "studioOpenCanvasFailed": "打开画布失败",
   "studioNoKeyBannerText": "尚未配置任何 Provider API Key——生成需要先配置。",
   "studioNoKeyBannerAction": "前往设置配置",
+  "studioCreateSampleProject": "创建示例项目",
+  "studioCreateSampleFailed": "创建示例项目失败",
 
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",
