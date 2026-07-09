@@ -75,8 +75,8 @@
 | 项 | 状态 | 原因 |
 |---|---|---|
 | T6 生成 N+1（findByIds） | 🅿️ | 接口加方法强制 15 个实现体同步改、收益边际；单独 PR |
-| 三大上帝类拆分（JobQueue/GenController/CanvasView） | 🅿️ | 非阻塞但**仍在膨胀**（JobQueue 790→1168 行）；拆分触发线：单文件 >1500 行或并行改动冲突频发 |
-| DI 层泄漏 ServerException + 迁移 DDL 编排在 provider body（AUDIT P1-5） | 🅿️ | 影响面小；随 storage 下次改动收口 |
+| 三大上帝类拆分（JobQueue/GenController/CanvasView） | 🔵 | JobQueue 已拆（LB-03/#159：1168→504 行 + `job_queue/` 四协作者）；剩 GenController(BP-02)/CanvasView(BP-03) 上线后 |
+| DI 层泄漏 ServerException + 迁移 DDL 编排在 provider body（AUDIT P1-5） | ✅ | LB-08/#153：`database_bootstrap.dart`（`core/di` 无 ServerException 泄漏） |
 | buildUpdate 无列名白名单（AUDIT P1-11） | 🅿️ | 列名全部来自 core/db/columns.dart 常量，注入面受控；加白名单属加固 |
 | components/primitives 双组件族无收敛文档（AUDIT P1-12） | 🅿️ | 需一篇 ADR 定分层规则 |
 | InkWindowChrome 直依赖 window_manager（AUDIT P1-13） | 🅿️ | 单点依赖，抽象收益低；随 chrome 重构顺带 |
@@ -85,9 +85,9 @@
 | JobRepository 胖接口拆分（AUDIT P1-18） | 🅿️ | 与 findByIds 同窗处理 |
 | job_queue_panel 手写错误映射与 ink_error messageKey 双源（AUDIT P1-x2，缺 providerInvalidResponse 分支走 unknown 兜底） | 🅿️ | 统一改读 messageKey 映射表，单独小 PR |
 | ARCHIVE/footer 死 stub（AUDIT P1-x3） | 🅿️ | 产品定义未决 |
-| capabilities.pollTimeout 全仓零消费（AUDIT P1-x4） | 🅿️ | 接入 JobQueue 或删字段，二选一 |
+| capabilities.pollTimeout 全仓零消费（AUDIT P1-x4） | ✅ | LB-02/#157：接入 JobQueue `_runJob`（pollTimeout/pollInterval 双读） |
 | provider displayName 英文常量（AUDIT P1-7） | 🅿️ | 品牌名不译是有意为之；若要本地化需过 l10n 例外评审 |
-| canvas_nodes_controller 乐观新增基于 previous 快照重建（丢更新竞态，VERIFICATION §5.3） | 🅿️ | 需要改并发模型，非一行修；排 M3 稳定期 |
+| canvas_nodes_controller 乐观新增基于 previous 快照重建（丢更新竞态，VERIFICATION §5.3） | ✅ | LB-04/#158：`serial_mutation_queue.dart` FIFO 串行（nodes/edges/lanes/characters/presets 五处） |
 | 未消费依赖卫生（riverpod_annotation/json_annotation/logging/uuid，VERIFICATION §5.4） | 🅿️ | 待 build_runner 卡点解除后一并清（codegen 链相关） |
 | 嵌入式 PG `-A trust` 认证（AUDIT 安全附录） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §3）：单用户桌面现状与 Postgres.app/Supabase local 同水位,可接受;多用户共享机器是真实边际风险。推荐 SCRAM+随机密码进 Keychain（约 1–2 人日,实施路径已给）;多用户/局域网功能立项即升必须 |
 | 补两档设计令牌（图标尺寸/控件高度） | 🅿️ | P2 一致性 |
@@ -96,4 +96,9 @@
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
 | Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | 🅿️ | 原捆绑的 3 处 `on Exception` 吞错与 `batch_results_grid` 裸 catch 已修（PR #138 B3）,仅剩 error 态展示 |
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | 🅿️ | 产品面缺口,M3 排期 |
-| slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | 🅿️ | 收口到 core/constants 一次性改 |
+| slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | ✅ | LB-01/#156：`core/constants/job_statuses.dart` 单一真相源 |
+| canvas→generation 跨 feature import 违例（18 处 / 11 文件：job_state / jobs_registry / batch_results_controller / cost_estimator 等,违反 ARCHITECTURE §1.3 互 import 禁令） | 🅿️ | 待 import 边界 lint（custom_lint 卡点解除后）收口:上提共享模型到 core/ 或建白名单逐步清零 |
+| 导出 busy 模态无取消/无超时（2026-07-08 深审:`Process.run` 无 timeout/kill 通道,busy 期 PopScope+禁按钮+barrier 三重封死,ffmpeg 挂起唯一逃生口=退出应用;export_video_dialog.dart:95 + system_process_runner.dart:11） | 🅿️ | 与 MASTERPLAN EX-3「进度取消」同卡收口:ProcessRunner 加 kill/timeout 通道 + 对话框取消 |
+| export 打磨两件（2026-07-08 深审）:失败 SnackBar 弹在模态 barrier 之下易漏看（export_video_dialog.dart:256）;同名输出 `-y` 静默覆盖无存在性提示（ffmpeg_video_export_service.dart:135） | 🅿️ | 小 PR:失败提示改对话框内嵌 banner;导出前 exists 检查 |
+| restore_last_session 抢占守卫过窄（2026-07-08 深审:只查 currentCanvasId,PG 就绪窗口内用户进 Settings/Gallery 会被恢复流程硬拉进画布;restore_last_session.dart:38） | 🅿️ | 守卫扩为「用户已发生任何导航」即放弃恢复 |
+| link 智能默认 role 竞态残留（2026-07-08 深审:_defaultRole 读内存 edges 快照,首条 first_frame 边写在途时连第二条可产双 first_frame,uq_edges_live 不拦不同 source 同 role;link_action_controller.dart:83） | 🅿️ | 毫秒级低频;随上表「乐观新增竞态」并发模型债同窗处理 |

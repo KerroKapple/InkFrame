@@ -4,6 +4,7 @@
 - **Date**: 2026-04-15
 - **Deciders**: P9 (Tech Lead)
 - **Related**: PRD §3.2 / §21 / ARCHITECTURE §1 / DATABASE.md
+- **Revised**: 2026-07-07（端口文件实际路径勘误——见文末修订记录）
 
 ---
 
@@ -104,3 +105,14 @@ InkFrame 是桌面单机应用（macOS + Windows），用户本地存储：
 - 若未来上云同步（跨设备），PG 嵌入不再合适，需要走服务端方案
 - PostgreSQL 18 发布后评估升级路径
 - 至迟在 v0.2.0 Sprint 启动前重审
+
+---
+
+## 修订记录
+
+### 2026-07-07 — 端口文件实际路径勘误（不改决策）
+
+Consequences 中性段所写端口文件 `~/InkFrame/.pg_port` 与实现不符：实际落地为
+**`~/InkFrame/config/pg.port`**（`lib/storage/pg_controller.dart` 的 `portFile`，与其他
+config 文件同目录）。决策本体（随机高位端口 + 强制 127.0.0.1）不变，仅路径以代码为准；
+DATABASE.md「嵌入式 PG 运维」一节记载的即为正确路径。

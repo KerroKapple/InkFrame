@@ -93,6 +93,12 @@ Feature 之间**不得互相 import**。跨 feature 通信通过以下方式：
 2. **导航参数**：通过路由传递简单值（ID、枚举），不传复杂对象。
 
 > **Planned**：独立事件总线（`lib/services/event_bus.dart`）尚未实现；确有一对多广播需求时再立项，不提前造设施。
+>
+> ⚠️ **已知违例（2026-07 审计）**：`canvas → generation` 存在 18 处跨 feature import（11 个文件，
+> 集中在 `job_state.dart` / `jobs_registry.dart` / `batch_results_controller.dart` / `cost_estimator.dart`
+> 等——生成状态与画布 UI 深度耦合的历史结果）。已登记 `docs/BOARD.md` 停车场，待 import 边界 lint
+> （custom_lint 卡点解除后）收口：或上提共享模型到 `core/`，或建 lint 白名单逐步清零。新增代码**不得**
+> 以此为先例。
 
 ---
 
@@ -112,11 +118,11 @@ abstract class NodeRepository {
   Future<void> upsert(Node node);
 }
 
-// core/di/repositories.dart
-@Riverpod(keepAlive: true)
-NodeRepository nodeRepository(NodeRepositoryRef ref) {
-  return PostgresNodeRepository(ref.watch(databaseProvider));
-}
+// core/di/repositories.dart —— 真实风格：手写顶层 Provider（keepAlive 是顶层默认）
+final nodeRepositoryProvider = FutureProvider<NodeRepository>((ref) async {
+  final pool = await ref.watch(pgMigratedPoolProvider.future);
+  return PostgresNodeRepository(pool);
+}, name: 'nodeRepositoryProvider');
 
 // ❌ 错误：在 Widget 或 Service 里直接 new
 class GenerationService {
@@ -124,30 +130,31 @@ class GenerationService {
 }
 ```
 
+> **手写 Provider 是现行风格（决策 D-1，2026-05）**：`riverpod_generator` codegen（`@riverpod` / `@Riverpod(keepAlive: true)`）**未采用**——build_runner 全量构建当前损坏（analyzer 与 Dart 3.11 dot-shorthand 冲突，见 `docs/BOARD.md` 停车场 / `BLOCKERS-2026-07-06.md` §2）。codegen 待卡点解除后随 Riverpod 3 迁移一并评估；在那之前本节所有示例以手写风格为准。
+
 ### 2.2 生命周期矩阵
 
-| 生命周期 | Riverpod 注解 | 适用场景 | 典型示例 |
-|---------|--------------|---------|---------|
-| **app-scoped 单例** | `@Riverpod(keepAlive: true)` | 整个 app 生命周期内唯一 | DatabaseConnection, JobQueueService, SecureStorageService |
-| **feature-scoped** | `@riverpod`（autoDispose 默认） | 随 Widget 树挂载/卸载 | CanvasViewModel, NodeEditorViewModel |
-| **参数化** | `@riverpod` + `.family` | 同类但不同实例 | `nodeProvider(nodeId)`, `providerClientProvider(providerId)` |
-| **异步单次** | `@riverpod` autoDispose + `FutureProvider` | 一次性请求，结果缓存在 Widget 树内 | 单个节点详情加载 |
+| 生命周期 | 手写 Provider 写法 | 适用场景 | 典型示例（真实 DI 名） |
+|---------|------------------|---------|---------|
+| **app-scoped 单例** | 顶层 `final x = Provider<T>(...)` / `FutureProvider<T>(...)`（顶层默认即 keepAlive） | 整个 app 生命周期内唯一 | `pgControllerProvider` / `pgMigratedPoolProvider`（`core/di/database.dart`）、`jobQueueServiceProvider`（`core/di/job_queue.dart`）、`secureStorageServiceProvider` |
+| **feature-scoped** | `NotifierProvider.autoDispose<...>` 等 `.autoDispose` 变体 | 随 Widget 树挂载/卸载 | Canvas / Inspector 各 ViewModel（`lib/features/*/providers/`） |
+| **参数化** | `.family` 变体 | 同类但不同实例 | `nodeActiveJobProvider(nodeId)` 一类 |
+| **异步单次** | `FutureProvider.autoDispose` | 一次性请求，结果缓存在 Widget 树内 | 单个节点详情加载 |
 
 **清理规则（无一例外）：**
 
 ```dart
-// keepAlive Provider 必须注册 onDispose
-@Riverpod(keepAlive: true)
-DatabaseConnection database(DatabaseRef ref) {
-  final db = DatabaseConnection();
-  ref.onDispose(db.close);  // ← 必须
-  return db;
-}
+// keepAlive Provider 必须注册 onDispose（真实例：core/di/job_queue.dart）
+final jobQueueServiceProvider = FutureProvider<JobQueueService>((ref) async {
+  final service = InMemoryJobQueueService(/* 注入 registry / repo / resolver ... */);
+  await service.init();
+  ref.onDispose(service.dispose); // ← 必须
+  return service;
+});
 
 // autoDispose Provider 中的 StreamSubscription 必须取消
-@riverpod
-class CanvasViewModel extends _$CanvasViewModel {
-  StreamSubscription? _sub;
+class CanvasViewModel extends AutoDisposeFamilyNotifier<CanvasState, String> {
+  StreamSubscription<Object?>? _sub;
 
   @override
   CanvasState build(String canvasId) {
@@ -176,8 +183,7 @@ Widget build(BuildContext context, WidgetRef ref) {
 }
 
 // ❌ autoDispose Provider 持有跨请求共享状态
-@riverpod
-class TempProvider extends _$TempProvider {
+class TempNotifier extends AutoDisposeNotifier<TempState> {
   static final _sharedCache = <String, Node>{}; // 禁止，static = 跨 autoDispose 实例共享
 }
 ```
@@ -362,11 +368,11 @@ final class UnknownError extends InkError {
 }
 ```
 
-`messageKey` 与 `retryable` 由顶层 `kInkErrorMessageKeys` / `_retryable` 表按 code 静态查表（见
-`lib/core/errors/ink_error.dart`），子类不重写、不通过构造参数注入——新增 code 改两张表即可，
-子类层级保持稳定。
+`messageKey` 与 `retryable` 由顶层 `kInkErrorMessageKeys`（公开，供 `ink_error_i18n_test`
+做"每 code 有 key 且 key 在 ARB 内"闸门）/ `_retryable` 表按 code 静态查表（`lib/core/errors/ink_error.dart`），
+子类不重写、不通过构造参数注入——新增 code 改两张表即可，子类层级保持稳定。
 
-**完整 15 个错误码（PRD §10.6 的 14 码 + 新增 `provider_invalid_response`）：**
+**完整 15 个错误码**（PRD §10.6 的 14 个 + `provider_invalid_response`——远端报终态成功却无产物 URL，确定性失败不可重试，避免轮询风暴）：
 
 | code (`wire`) | 子类 | retryable | messageKey (ARB) |
 |---------------|------|-----------|------------------|
@@ -415,9 +421,8 @@ Widget 层           → 读取 AsyncValue.error，用 messageKey 显示 i18n �
 ### 4.3 AsyncValue 使用规范
 
 ```dart
-// ✅ ViewModel 层：用 AsyncValue.guard 自动捕获并转换
-@riverpod
-class GenerationViewModel extends _$GenerationViewModel {
+// ✅ ViewModel 层：用 AsyncValue.guard 自动捕获并转换（手写 Notifier 风格）
+class GenerationViewModel extends AutoDisposeNotifier<AsyncValue<void>> {
   Future<void> generate(GenerationTask task) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() => _service.generate(task));
@@ -727,12 +732,15 @@ InkCard(child: ...)
 lib/l10n/
 ├── app_en.arb          # 英文（source of truth，开发语言）
 ├── app_zh.arb          # 中文（key 集合必须与 en 完全一致）
+├── generated/          # flutter gen-l10n 产物（app_localizations*.dart，入 git）
 └── l10n_x.dart         # 手写扩展：BuildContext.l10n getter（非生成代码）
 ```
 
-`AppLocalizations` 由 `flutter gen-l10n` 在 `pubspec.yaml: generate: true` 驱动下写入
-`.dart_tool/flutter_gen/gen_l10n/`（synthetic package），开发者**不直接访问**该目录、不入 git；
-所有 UI 通过 `context.l10n.<key>` 触达，由 `l10n_x.dart` 桥接。
+`AppLocalizations` 由 `flutter gen-l10n` 按根目录 `l10n.yaml`（`output-dir: lib/l10n/generated`）
+生成并**提交入库**（非 synthetic package）；所有 UI 通过 `context.l10n.<key>` 触达，由
+`l10n_x.dart` 桥接。改 ARB 后必须重跑 `flutter gen-l10n` 并把 `generated/` 一起提交——
+stale 生成物只有 pre-push 的全量 `flutter analyze lib test` 能拦住（`flutter test` 编译不到未被
+import 的破文件）。
 
 ### 8.2 Key 命名规范
 
@@ -776,26 +784,16 @@ final hint = context.l10n.geminiSystemPrompt;
 
 如需在 prompt 内**注入**与用户语言相关的文本（例如 "respond in the user's UI language"），把 UI locale code 作为参数传入；prompt 模板本身保持英文。
 
-### 8.4 ARB 一致性门禁（CI 测试 + Claude Code hook + pre-commit）
+### 8.4 ARB 一致性门禁（测试化）
 
-三层强制，任一层挡住 key 集合不一致 / 空值：
+原 `check-i18n-coverage.sh` bash hook 已删除，门禁固化为可执行断言：
 
-0. **CI 测试（权威硬闸）**：`test/l10n/arb_hygiene_test.dart` 断言 en/zh message key 集合完全一致，随 `flutter test --coverage`（`.github/workflows/ci.yml`）阻断式执行——PR 上 key 不齐即测试红、不可合。
-1. **Claude Code PostToolUse hook**：`scripts/hooks/check-i18n-coverage.sh` 每次 Write/Edit ARB 文件后立即跑（脚本 line 8 接受单文件参数 `$1`）——本地即时反馈。
-2. **`scripts/hooks/pre-commit`**：commit 前再跑一次，双重保护。
+1. **`test/l10n/arb_hygiene_test.dart`**：en/zh message key 集合双向差集必须为空 + 死 key 检查
+2. **`test/core/errors/ink_error_i18n_test.dart`**：每个 `InkErrorCode` 都有 messageKey 且 key 真实存在于 ARB
 
-脚本动作（line 56-60）：
-
-1. 提取 `app_en.arb` 和 `app_zh.arb` 的所有 key（扁平化 + 排序）
-2. 求差集，任一方向有差集立即 **exit 1**
-3. 检查 value 是否为空字符串或 `"TODO"` / `"待翻译"`，发现即 exit 1
-4. 校验 JSON 语法有效性
+两者随 pre-push 全量 `flutter test` 与 CI test job 阻断式执行——**CI 端已有兜底**，无需独立 i18n workflow。
 
 **每次 commit 必须满足：en 和 zh 的 key 集合完全一致，无空值。**
-
-> **CI 兜底（勘正 2026-07-08，LB-19）**：无需独立 i18n workflow——`test/l10n/arb_hygiene_test.dart`
-> 随 `ci.yml` 的 `flutter test --coverage` 阻断式执行，en/zh key 集合不一致即测试失败、PR 变红。
-> 本地 hook 是快速即时层，CI 测试是权威硬闸。
 
 ### 8.5 新增字符串流程（强制顺序）
 
@@ -864,10 +862,12 @@ abstract class SecureStorageService {
 单例 keepAlive，监听系统信号，自动切换 effectiveTier。
 
 ```dart
-// lib/services/performance_degradation_controller.dart（规划路径）
-@Riverpod(keepAlive: true)
-class PerformanceDegradationController
-    extends _$PerformanceDegradationController {
+// lib/services/performance_degradation_controller.dart（规划路径；手写 Provider 风格，见 §2.1）
+// final performanceDegradationControllerProvider =
+//     NotifierProvider<PerformanceDegradationController, PerformanceTier>(
+//   PerformanceDegradationController.new,
+// );
+class PerformanceDegradationController extends Notifier<PerformanceTier> {
 
   // 基准档位（用户配置）
   PerformanceTier get baseTier => ref.watch(settingsProvider).performanceTier;
@@ -983,7 +983,7 @@ FocusableActionDetector(
 
 **P0-Beta 前必须满足：** 所有鼠标操作有等价键盘路径（框选除外，用 Tab 遍历替代）。
 
-> **Planned**：键盘覆盖检查 hook（`scripts/hooks/check-keyboard-semantics.sh`）尚未编写——设计为扫描 `lib/features/` 下的 `GestureDetector` / `InkWell`，无对应 `onKey` / `KeyboardListener` / `Shortcuts` 覆盖即 exit 1。
+> **Planned**：键盘覆盖检查闸门尚未编写——按现行铁律机制应落为 `test/quality/` 静态测试（非 bash hook，见 §14.6）：扫描 `lib/features/` 下的 `GestureDetector` / `InkWell`，无对应 `onKey` / `KeyboardListener` / `Shortcuts` 覆盖即红。
 
 **VoiceOver / Narrator 验收：** 人工验证 + 录屏归档（Sprint 1 T4 验收条件），不做自动化（Flutter Semantics 测试无法覆盖实际朗读行为）。
 
@@ -993,18 +993,18 @@ FocusableActionDetector(
 
 ### 12.1 分层工具矩阵
 
-| 层 | 工具 | 范围 | 覆盖率门槛 |
-|----|------|------|----------|
-| core / utils | `flutter_test` (Dart 单测) | 纯函数，无 mock | 70% |
-| Service 层 | `flutter_test` + 手写 Fake（`test/_harness/`，接口实现，无 mock 框架） | fake Repository / Provider 接口 | 70% |
-| Provider 层 | `flutter_test` + `http_mock_adapter` + fixture（`test/fixtures/providers/`） | HTTP 层 mock | 70% |
-| Repository 层 | `flutter_test` + `test/storage/schema/pg_test_harness.dart` | 真实 PG（`TEST_PG_URL`，本地无 PG 时 skip） | **75%** |
-| Riverpod Provider | `ProviderContainer` + override | override Provider | 70% |
-| Widget | `flutter_test` + `ProviderScope` overrides | 渲染 + 交互 | 70% |
-| Golden | `golden_toolkit` | UI 回归 | 关键 Widget 必须有 |
-| E2E | `test/e2e/`（fixture 回放）+ 手动场景 | 核心闭环 | Sprint 2 收口 |
+| 层 | 工具 | 范围 |
+|----|------|------|
+| core / utils | `flutter_test` (Dart 单测) | 纯函数，无 mock |
+| Service 层 | `flutter_test` + 手写 Fake（`test/_harness/`，接口实现，无 mock 框架） | fake Repository / Provider 接口 |
+| Provider 层 | `flutter_test` + `http_mock_adapter` + fixture（`test/fixtures/providers/`） | HTTP 层 mock |
+| Repository 层 | `flutter_test` + `test/storage/schema/pg_test_harness.dart` | 真实 PG（`TEST_PG_URL`，本地无 PG 时 skip） |
+| Riverpod Provider | `ProviderContainer` + override | override Provider |
+| Widget | `flutter_test` + `ProviderScope` overrides | 渲染 + 交互 |
+| Golden | `matchesGoldenFile`（基线锁 CI ubuntu） | UI 回归，关键 Widget 必须有 |
+| E2E | `test/e2e/`（fake provider 回放，2 用例）+ 手动场景 | 核心闭环 |
 
-**数据层（Repository + schema）门槛 75% 的理由：** 数据层是基座，bug 向上传播代价最高，必须更严格。
+**覆盖率门槛：全仓单门 70%**（决策 D-4，2026-05）——CI `very_good_coverage min_coverage: 70` 是唯一门禁，不再按层分档；早期"数据层 75%"分层门已废除。排除清单唯一事实源是 `ci.yml` 的 `exclude:` 行（本地镜像 `scripts/coverage/report.sh`）。
 
 ### 12.2 TDD 节奏（强制）
 
@@ -1037,35 +1037,36 @@ class FakePostgresNodeRepository extends PostgresNodeRepository { ... } // 违�
 ### 12.4 集成测试配置
 
 ```yaml
-# dart_test.yaml（根目录）
+# dart_test.yaml（根目录，真实内容）——三个 tag，配环境变量门控
 tags:
-  integration:
-    timeout: 60s   # PG 集成测需要更长时间
-  unit:
-    timeout: 10s
+  pg:      # 真 PG 集成测：需 TEST_PG_URL；未设置时用例内 markTestSkipped
+  golden:  # golden 像素测：基线锁 CI ubuntu；mac/win 以 --exclude-tags golden 排除
+  ffmpeg:  # 真 ffmpeg 集成测：需 TEST_FFMPEG=1 且 PATH 有 ffmpeg；否则自跳
 ```
 
 ```bash
-# 单独跑集成测试（需要 PG 进程）
-flutter test --tags integration
+# 本地全量（pre-push 同款）：golden 排除，pg/ffmpeg 未设 env 自跳
+flutter test --exclude-tags golden
 
-# 单独跑单元测试（无外部依赖）
-flutter test --exclude-tags integration
+# 单独跑真 PG 集成测（先起库并 export TEST_PG_URL）
+flutter test --tags pg
 ```
 
 ### 12.5 CI 覆盖率门禁
 
 ```yaml
-# .github/workflows/ci.yml
-- name: Check coverage
-  run: |
-    flutter test --coverage
-    # Repository 层必须 ≥ 75%
-    lcov --extract coverage/lcov.info 'lib/storage/*' -o storage_coverage.info
-    check_coverage storage_coverage.info 75
-    # 其余层 ≥ 70%
-    check_coverage coverage/lcov.info 70
+# .github/workflows/ci.yml（test job，真实机制）
+- name: flutter test --coverage
+  run: flutter test --coverage
+- name: enforce coverage threshold (70%)
+  uses: VeryGoodOpenSource/very_good_coverage@v3
+  with:
+    path: coverage/lcov.info
+    min_coverage: 70
+    exclude: '...'   # 唯一事实源在 ci.yml 本体；report.sh 运行时抽取此行
 ```
+
+本地按同一口径复算：`bash scripts/coverage/report.sh`（从 ci.yml 抽取 exclude、归一化路径、ΣLH/ΣLF 对阈值）。
 
 ---
 
@@ -1157,7 +1158,7 @@ DEBUG 写入限流：每秒最多 100 行，超限丢弃 + 写一条 WARN 汇总
 
 | 事件 | 触发流程 |
 |------|---------|
-| PR → `main` | CI 检查（analyze + test + hooks） |
+| PR → `main` | CI 检查（analyze + test/coverage + golden + release-scripts，见 §14.6） |
 | push `main` tag `v*` | Release Build（三平台矩阵） |
 | 手动触发 | 可指定平台和渠道 |
 
@@ -1230,24 +1231,27 @@ signtool sign /tr http://timestamp.digicert.com /td sha256 \
   /fd sha256 /a InkFrame.exe
 ```
 
-### 14.6 CI Hook 清单
+### 14.6 铁律闸门清单（测试化）
 
-每次 `PostToolUse Write/Edit` 触发（由 `.claude/settings.json` 配置）：
+原 6 个 `check-*.sh` bash hook 已删除（python3 + bash 双依赖、Windows 跨平台脆弱），铁律迁为
+**Dart 静态测试**，跨平台随 `flutter test` 稳定执行：
 
-| Hook | 检测内容 | 失败行为 |
-|------|---------|---------|
-| `check-magic-strings.sh` | 硬编码 UI 字符串、魔法数字、状态字符串比较 | exit 1 打回 |
-| `check-inline-styles.sh` | `Color(0xFF...)` / 硬编码 EdgeInsets / BoxShadow | exit 1 打回 |
-| `check-direct-instantiation.sh` | Widget/Service 内 `new ConcreteClass()` | exit 1 打回 |
-| `check-disposable-cleanup.sh` | StreamSubscription / Timer / Controller 未 dispose | exit 1 打回 |
-| `check-i18n-coverage.sh` | ARB key 不一致 / 空值 | exit 1 打回 |
-| `check-updated-at.sh` | UPDATE 语句缺少 `updated_at` | exit 1 打回 |
+| 测试（`test/quality/`） | 检测内容 | 执行点 |
+|------|---------|--------|
+| `no_magic_strings_test.dart` | 硬编码 UI 字符串、状态字符串比较 | pre-commit + CI |
+| `no_inline_styles_test.dart` | `Color(0xFF...)` / 硬编码 EdgeInsets / BoxShadow | pre-commit + CI |
+| `no_direct_instantiation_test.dart` | Widget/Service 内直接 new 具体实现 | pre-commit + CI |
+| `disposable_cleanup_test.dart` | StreamSubscription / Timer / Controller 未 dispose | pre-commit + CI |
+| `updated_at_test.dart` | `lib/storage/` 的 UPDATE 语句缺 `updated_at` | pre-commit + CI |
+| `migration_registry_test.dart` | `kAppMigrations` 版本连续性 / 注册完整性 | pre-commit + CI |
 
-> **Planned**：`check-keybindings.sh`（默认快捷键命中 OS 保留键检测）尚未编写。
+i18n 平权闸门在 `test/l10n/arb_hygiene_test.dart`（见 §8.4），随全量测试跑。
+`dart run custom_lint` 作为 AST 级增强挂在 pre-commit 与 CI，**暂非阻断**（riverpod_lint 兼容
+Dart 3.11 AST 前），铁律防护不依赖它。
 
-**pre-commit（本地 git hook）：** analyze + ARB check + 5 个快速 hook（秒级完成）。
-**pre-push（本地 git hook）：** flutter test 完整单测。
-**CI PR check：** analyze + test + coverage ≥ 阈值 + golden diff。
+**pre-commit（本地 git hook）：** `flutter analyze` + `flutter test test/quality/` + custom_lint（非阻断）。
+**pre-push（本地 git hook）：** `flutter analyze lib test` + `flutter test --exclude-tags golden`。
+**CI PR check：** analyze / test + coverage 70% 闸 / golden + 基线守卫 / release-scripts 四并行 job。
 
 ### 14.7 发布渠道
 

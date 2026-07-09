@@ -4,6 +4,7 @@
 - **Date**: 2026-04-15
 - **Deciders**: P9 (Tech Lead)
 - **Related**: CLAUDE.md §Code Rules / ARCHITECTURE §3 / T2 P7 实现 (`lib/core/interfaces/*.dart`)
+- **Revised**: 2026-07-07（updated_at 闸门机制更新——见文末修订记录）
 
 ---
 
@@ -115,3 +116,15 @@
 - 若项目引入大量聚合查询（跨 5+ 表 join）导致 Map 返回膨胀难维护，考虑局部 ORM
 - freezed / Dart record 未来演进允许零样板 Row 解构时重审
 - 至迟在 v0.2.0 Sprint 启动前重审
+
+---
+
+## 修订记录
+
+### 2026-07-07 — updated_at 闸门机制更新（不改决策）
+
+Consequences 所引 `check-updated-at.sh` bash hook 已删除，闸门迁为
+**`test/quality/updated_at_test.dart`**（纯 Dart 静态扫描 `lib/storage/`，随 pre-commit
+`flutter test test/quality/` 与 CI 阻断执行），语义等价：`UPDATE <table> SET` 缺
+`updated_at` 即红，无列表白名单 + UPSERT 子句豁免。注入点仍是
+`BaseRepository.withUpdatedAt / buildUpdate`，决策本体（Map 边界 + freezed 领域层）不变。

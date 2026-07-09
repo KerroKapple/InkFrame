@@ -4,6 +4,7 @@
 - **Date**: 2026-04-22
 - **Deciders**: P9 (Tech Lead)
 - **Related**: PRD §5 / T5 Sprint 方向选型 (`docs/specs/2026-04-22-t5-direction-candidates.md`) / CLAUDE.md Tech Stack
+- **Revised**: 2026-07-07（LGPL 声明义务追踪位勘误——见文末修订记录）
 
 ---
 
@@ -89,3 +90,15 @@ T5 Sprint 已拍板做**视频节点 UI 接入**（6 款视频 Provider 已就�
 - `lib/features/canvas/widgets/video_lightbox.dart`（T5-S5 新增）：全屏 Lightbox
 - `docs/adr/0000-index.md`：登记 ADR-0006
 - `docs/CLAUDE.md` Tech Stack 段：`Video Playback: media_kit`（后续 PR 补）
+
+---
+
+## 修订记录
+
+### 2026-07-07 — LGPL 声明义务追踪位勘误（不改选型决策）
+
+Consequences 所写「TD-003 登记」失效：`docs/internal/tech-debt.md` 的 **TD-003 编号已被
+"VideoNodeBody widget test 挂死"债占用**（且已修复关闭），LGPL 声明义务从未在 tech-debt
+获得有效编号。义务落实追踪：**PR #147（LEG-1 第三方许可聚合）**——THIRD-PARTY.md +
+`assets/licenses/`（LGPL-2.1 / PostgreSQL / 字体 OFL）+ About 页许可入口 + 测试；
+合入即闭环，本 ADR 不再另设追踪位。

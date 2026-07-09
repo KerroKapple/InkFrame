@@ -13,7 +13,7 @@
 ## 0. 总览:里程碑与主线
 
 ```
-现状(2026-07-07):M1 ✅ M2 ✅ M3 🔵(四方向首切片) alpha.10 待打 tag
+现状(2026-07-08):M1 ✅ M2 ✅ M3 🔵(四方向首切片+导出 UI 入口 #143) alpha.10 已发布(release.yml 首跑,双平台 unsigned 产物;欠 PG 分发源/checksums/Latest 卫生)
    │
 M4 「能力完整」……… M3 各方向二/三切片:storyboard 流水线成型、聚合器可视化配置、
    │                画廊可复用、导出可用可靠 + 角色进阶
@@ -84,15 +84,15 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 | E1 Storyboard(核心差异化) | 粘贴脚本→shot 链;镜头参数传导;图/视频双直达;序列预览与导出同序 | SB-1~6 |
 | E2 画廊 | 视频缩略/播/时长;筛选;存角色;发送画布;删除(文件+DB 同步收敛) | GA-1~7 |
 | E3 聚合器 | 设置页可视化 CRUD+key 校验;≥2 协议模板;(二期)新增热生效 | AG-1~5 |
-| E4 导出 | narrative 自动排序(主体已随 PR #143 落地,**待合入**;剩 EX-1′)+转码归一+进度取消 | EX-1′~3 |
+| E4 导出 | narrative 自动排序(主体已随 PR #143 合入 main;剩 EX-1′)+转码归一+进度取消 | EX-1′~3 |
 | E5 角色进阶 | 视频生成自动带角色图;video inspector 角色区;角色库管理页 | CH-1~3 |
 | E6 项目复制 | ⚠️ **裁决:排上线后**(BOARD 原判"单独立项";≡ backend BP-11,复用 LB-12 导入机器后
   成本减半)。features 的 PD-1~3 保留为**实现细化参考**,不进 M4 波次;若用户要提前,依赖 LB-12 | PD-1~3(细化) |
 | E7 跨模块 metadata | duration/width/height/seed 回填 result 与 batch slot(**多 epic 阻塞点**) | XM-1~2 |
 
-**波次**(波内并行、不同执行者不踩文件;冲突热区与硬依赖见明细;**PR #143 合入是 EX-1′/SB-6 的硬前置**):
+**波次**(波内并行、不同执行者不踩文件;冲突热区与硬依赖见明细;PR #143 已合入,EX-1′/SB-6 前置已解锁):
 - Wave 1:**XM-1(最优先,三处下游)**、SB-1、SB-3、SB-5、AG-1、GA-1+2、CH-1
-- Wave 2:XM-2(与 XM-1 同人)、SB-2、SB-4、GA-3、GA-4、AG-2、AG-3、EX-1′(#143 合入后)、CH-2
+- Wave 2:XM-2(与 XM-1 同人)、SB-2、SB-4、GA-3、GA-4、AG-2、AG-3、EX-1′、CH-2
 - Wave 3:SB-6、EX-2、EX-3、AG-4、AG-5、GA-5、GA-6、GA-7、CH-3
 
 卡数口径:E1-E7 共 29 张(EX-1′ 为增量卡;PD-1~3 已移出 M4);规模 ≈ 2-3 个 sprint。
@@ -114,18 +114,19 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、
 上线后 9、永久接受 3(buildUpdate 白名单/InkWindowChrome/displayName 英文)。
 
-**上线前硬门槛(数据安全,当前全部为零)**:
-- **LB-07 PG trust→SCRAM**(随机密码入 Keychain,存量库零迁移)
+**上线前硬门槛(数据安全)** — 进度 2026-07-08:LB-13a/14/17 ✅ 已合入,余下待做:
+- **LB-07 PG trust→SCRAM**(随机密码入 Keychain,存量库零迁移;D-4 已拍 ADR-0012 解锁,代码待落)
 - **LB-10 每日 pg_dump 冷备**(保留 7 份,失败绝不阻断)
 - **LB-11/12 项目导出/导入**(zip=manifest+data+files;导入=全表 ID 重映射,**全计划最大风险卡**,
   roundtrip 测试先行;同时产出项目复制的全部机器)
-- **LB-13 purge 语义修正+孤儿文件回收**(⚠️ 已核实:现 purge 会蒸发画廊 slot 行,盘上产物文件
-  全仓零删除点;回收器三重防误删+dry-run 灰度)
-- **LB-14 崩溃遗留空 result 节点收敛**;**LB-09 启动失败 surface**(现=白屏);
-  **LB-17 全局错误钩子**(现=未捕获异常凭空消失)+ **LB-18 诊断包**
+- **LB-13 purge 语义修正+孤儿文件回收**:✅ 切片 A(#163,purge 加 success-slot 守卫保画廊);
+  ⬜ 切片 B = **LB-13b**(OrphanFileReaper 磁盘孤儿回收,盘上产物文件仍零删除点——独立追踪卡)
+- **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);**LB-09 启动失败 surface**(现=白屏);
+  **LB-17 全局错误钩子**:✅ #160(runZonedGuarded + crash 落盘)+ **LB-18 诊断包**(待做)
 
-**正确性簇**:LB-01 状态常量化 → LB-03 JobQueue 拆分(1168→<500 行,竞态裁决留编排器,
-特征化测试网先行)→ LB-04 三控制器乐观竞态(FIFO 串行队列)→ LB-05/06 错误呈现统一。
+**正确性簇**(LB-01/03/04 ✅ 已合入,余 LB-05/06):LB-01 状态常量化 ✅#156 → LB-03 JobQueue 拆分 ✅#159
+(1168→504 行,竞态裁决留编排器 + `job_queue/` 四协作者)→ LB-04 乐观竞态 ✅#158(FIFO 串行队列,五控制器)
+→ LB-05/06 错误呈现统一(待做)。
 
 **波次**:W0(S 簇:LB-01/02/05/08/19 + 第 0 天启动 LB-20 资源置备与 LB-21 盯 freezed)→
 W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 压轴)。
@@ -161,8 +162,8 @@ PL-7 焦点环、PL-8 文件拖入(与画廊拖入统一设计)。
 **让渡声明**:画廊视频缩略图/播放 ≡ features **GA-1+GA-2**(M4 Wave 1,技术路线以 GA 为准:
 读已落库 thumbnail_url,非现场抽帧);narrative 自动排序 ≡ features **EX-1′**(GAP-5/GAP-6 仅指针)。
 
-**排序修正(复审)**:CV-1 虽是纯减法,但有两道门——①D-7 的 d4/d5/d6 拍板;②**PR #143 合入**
-(CV-1 要动的 canvas_top_chrome 正被 #143 修改)。实际首发顺序:拍板 → #143 合入 → CV-1。
+**排序修正(复审)**:CV-1 虽是纯减法,但有一道门——D-7 的 d4/d5/d6 拍板(原第二道门 PR #143
+已合入,canvas_top_chrome 冲突源已消)。实际首发顺序:拍板 → CV-1。
 UI 文档内 BOARD 行号引用一律以**文字锚**为准(本 PR 自己给 BOARD 加了两行,行号已位移)。
 
 **重要澄清**:画布 UI 方向**不存在五选一**——mockups 索引明标 Selected: V1 Amber Noir,代码就是它;
@@ -174,10 +175,13 @@ UI 文档内 BOARD 行号引用一律以**文字锚**为准(本 PR 自己给 BOA
 > [`superpowers/plans/2026-07-07-launch-release-engineering.md`](superpowers/plans/2026-07-07-launch-release-engineering.md);
 > 调研支撑见 [`research/2026-07-07-release-engineering.md`](research/2026-07-07-release-engineering.md)。
 
-**现状要害**(实测):release.yml 从未跑过;alpha.9 只有手工未签名 mac DMG,Windows 零安装物;
-alpha.6 错挂 "Latest";PG 分发源未配(干净机装不上);good-first-issue 池为 0。
+**现状要害**(2026-07-08 更新):release.yml 已随 alpha.10 首跑成功(双平台 build+publish 一次通过,
+macOS arm64 zip/dmg + Windows x64 zip,均 unsigned);仍欠:**PG 分发源未配**(gh variable 空,产物不含
+嵌入式 PG,干净机装不上)、alpha.6 仍错挂 "Latest"(alpha.2–.6 prerelease=false 未 PATCH)、release
+notes 双重生成致重复+基线错(#66 起)、无 checksums;good-first-issue 池为 0。
 
-**模型侧可立即并行、零用户依赖**:PKG-1 流水线首演练(S)、PKG-2A PG 上游直拉(M)、
+**模型侧可立即并行、零用户依赖**:PKG-1 流水线首演练(✅ 已随 alpha.10 以真实 tag 实质完成,
+notes 双重生成问题随 PKG-6 收口)、PKG-2A PG 上游直拉(M)、
 PKG-5 安装文档(S,复审补充:Defender/EDR 排除段、卸载与数据、迁移新机 SOP、零遥测承诺句)、
 PKG-6 Release 卫生(XS)、QG-1 回归清单 v2(S)、QG-6 checksums+清单落地(S)、
 UPD-1 应用内检查更新(M,新增依赖 url_launcher 需评审)、WEB-1 Pages 官网(M,FAQ 补
@@ -197,7 +201,7 @@ beta 准入追加第 9 条:**第三方许可 NOTICE 上线**。用户必办追�
 - **U1** Apple Developer($99/年)+ 证书 6 值进 Secrets → 解锁 macOS 签名公证
 - **U2** Windows 证书拍板(OV ~$100-200/年 / Certum 开源 €69 首年;Azure 中国个人不可用)
 - **U7** 数据升级政策拍板(→ D-4,牵动铁律文本与 SCRAM 覆盖面)
-- **alpha.10 可以不等 U1/U2 先发**(unsigned+手工 DMG 复制 alpha.9 模式);
+- alpha.10 已按"不等 U1/U2"路线发出(release.yml 产 unsigned 双平台产物);
   **beta.1 被 U1+U2+PG 分发源+UPD-1+D-4 硬阻塞**。
 
 ## 6. 模型接入路线(2026-07 调研,全表与来源见 [`research/2026-07-07-model-landscape.md`](research/2026-07-07-model-landscape.md))
@@ -303,8 +307,7 @@ beta 全周期零数据事故;官网稳定;SLA 演练过一次。
 - **D-M4-8 角色库入口**:A 独立整屏仿 Gallery(推荐)/ B Gallery tab / C 设置页(不建议)。
 
 **后端系(D-BE,详见 backend 明细)**:
-- **D-BE-1 purge retention 语义**:A 有 success slot 的 job 永不 purge(推荐,保画廊)/
-  B purge 连文件删(接受 30 天窗口)。
+- **D-BE-1 purge retention 语义**:✅ **已拍 A**(LB-13a/#163 落地:有 success slot 的 job 永不 purge,保画廊)。
 - **D-BE-2 项目导入是否携带 jobs**:A 仅携带拥有 success slot 的终态 jobs(推荐,slot FK 需要)/
   B 全舍弃(导入项目画廊不可见)。⚠️ LB-11 卡体现按 A 案写就,拍 B 需改卡。
 
