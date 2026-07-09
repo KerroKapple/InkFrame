@@ -674,6 +674,18 @@ abstract class AppLocalizations {
   /// **'Failed to move node'**
   String get nodeMoveFailed;
 
+  /// No description provided for @edgeDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Link deleted'**
+  String get edgeDeleted;
+
+  /// No description provided for @undoFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t undo'**
+  String get undoFailed;
+
   /// No description provided for @inspectorInputsLabel.
   ///
   /// In en, this message translates to:
@@ -1219,6 +1231,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get commonClose;
+
+  /// No description provided for @commonUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get commonUndo;
 
   /// No description provided for @studioProjectMenuTooltip.
   ///

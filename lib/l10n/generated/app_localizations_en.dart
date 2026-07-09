@@ -322,6 +322,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nodeMoveFailed => 'Failed to move node';
 
   @override
+  String get edgeDeleted => 'Link deleted';
+
+  @override
+  String get undoFailed => 'Couldn\'t undo';
+
+  @override
   String get inspectorInputsLabel => 'Inputs';
 
   @override
@@ -608,6 +614,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commonClose => 'Close';
+
+  @override
+  String get commonUndo => 'Undo';
 
   @override
   String get studioProjectMenuTooltip => 'Project options';

@@ -130,6 +130,8 @@
   "nodeDeleted": "节点已删除",
   "nodeDeleteFailed": "节点删除失败",
   "nodeMoveFailed": "节点移动失败",
+  "edgeDeleted": "连线已删除",
+  "undoFailed": "撤销失败",
 
   "inspectorInputsLabel": "输入",
   "inspectorInputsEmpty": "无输入连线",
@@ -242,6 +244,7 @@
   "studioDeleteCanvasFailed": "删除画布失败",
   "studioNoCanvases": "该项目暂无画布",
   "commonClose": "关闭",
+  "commonUndo": "撤销",
   "studioProjectMenuTooltip": "项目操作",
   "studioProjectMetaLine": "{date} · {count, plural, other{{count} 个画布}}",
   "@studioProjectMetaLine": {

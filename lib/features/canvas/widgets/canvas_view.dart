@@ -42,6 +42,9 @@ import 'video_lightbox.dart';
 
 const _kSnackBarDuration = Duration(seconds: 2);
 
+// 删除防误伤（PL-4a）：Deleted · [Undo] 的驻留时长即撤销窗口（~5s）。
+const _kUndoSnackBarDuration = Duration(seconds: 5);
+
 // InteractiveViewer 平移越界余量（画布外延展空间，非视觉 token）
 const double kCanvasBoundaryMargin = 2000;
 
@@ -49,6 +52,29 @@ void _showSnack(BuildContext context, String text) {
   ScaffoldMessenger.maybeOf(context)?.showSnackBar(
     SnackBar(content: Text(text), duration: _kSnackBarDuration),
   );
+}
+
+/// 删除防误伤（PL-4a）：弹一条带 Undo 动作的 snackbar，[onUndo] 在窗口内点击时
+/// 触发复原；窗口内不点 → snackbar 自行消失，软删生效。
+void _showUndoSnack(
+  BuildContext context, {
+  required String message,
+  required VoidCallback onUndo,
+}) {
+  final colors = context.inkColors;
+  ScaffoldMessenger.maybeOf(context)
+    ?..clearSnackBars()
+    ..showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: _kUndoSnackBarDuration,
+        action: SnackBarAction(
+          label: context.l10n.commonUndo,
+          textColor: colors.accent,
+          onPressed: onUndo,
+        ),
+      ),
+    );
 }
 
 class CanvasView extends ConsumerWidget {
@@ -378,14 +404,66 @@ class _CanvasStage extends ConsumerWidget {
     final nodesCtrl =
         ref.read(canvasNodesControllerProvider(canvasId).notifier);
     try {
-      await nodesCtrl.removeNode(nodeId);
-      if (context.mounted) {
+      final deletion = await nodesCtrl.removeNode(nodeId);
+      if (!context.mounted) return;
+      if (deletion == null) {
         _showSnack(context, context.l10n.nodeDeleted);
+        return;
       }
+      _showUndoSnack(
+        context,
+        message: context.l10n.nodeDeleted,
+        onUndo: () => _restoreNode(context, nodesCtrl, deletion),
+      );
     } on InkError catch (_) {
       if (context.mounted) {
         _showSnack(context, context.l10n.nodeDeleteFailed);
       }
+    }
+  }
+
+  Future<void> _restoreNode(
+    BuildContext context,
+    CanvasNodesController ctrl,
+    NodeDeletion deletion,
+  ) async {
+    try {
+      await ctrl.restore(deletion);
+    } on InkError catch (_) {
+      if (context.mounted) _showSnack(context, context.l10n.undoFailed);
+    }
+  }
+
+  Future<void> _handleEdgeDelete(
+    BuildContext context,
+    WidgetRef ref,
+    CanvasEdge edge,
+  ) async {
+    ref.read(selectedEdgeControllerProvider.notifier).clear();
+    final edgesCtrl =
+        ref.read(canvasEdgesControllerProvider(canvasId).notifier);
+    try {
+      final removed = await edgesCtrl.removeEdge(edge.id);
+      if (removed == null || !context.mounted) return;
+      _showUndoSnack(
+        context,
+        message: context.l10n.edgeDeleted,
+        onUndo: () => _restoreEdge(context, edgesCtrl, removed),
+      );
+    } on InkError catch (_) {
+      // 删失败：EdgesController 已回滚内存，SelectedEdge 已清，用户可重试。
+    }
+  }
+
+  Future<void> _restoreEdge(
+    BuildContext context,
+    CanvasEdgesController ctrl,
+    CanvasEdge edge,
+  ) async {
+    try {
+      await ctrl.restore(edge);
+    } on InkError catch (_) {
+      if (context.mounted) _showSnack(context, context.l10n.undoFailed);
     }
   }
 
@@ -507,19 +585,8 @@ class _CanvasStage extends ConsumerWidget {
                       ).dy -
                       14,
                   child: _EdgeDeleteButton(
-                    onPressed: () async {
-                      final id = selectedGeometry.edge.id;
-                      ref.read(selectedEdgeControllerProvider.notifier).clear();
-                      try {
-                        await ref
-                            .read(canvasEdgesControllerProvider(canvasId)
-                                .notifier)
-                            .removeEdge(id);
-                      } on InkError catch (_) {
-                        // 删失败时 SelectedEdge 已清，EdgesController 已回滚内存，
-                        // 用户可重试。
-                      }
-                    },
+                    onPressed: () =>
+                        _handleEdgeDelete(context, ref, selectedGeometry.edge),
                   ),
                 ),
             ],

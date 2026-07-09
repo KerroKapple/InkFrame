@@ -308,6 +308,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nodeMoveFailed => '节点移动失败';
 
   @override
+  String get edgeDeleted => '连线已删除';
+
+  @override
+  String get undoFailed => '撤销失败';
+
+  @override
   String get inspectorInputsLabel => '输入';
 
   @override
@@ -585,6 +591,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commonClose => '关闭';
+
+  @override
+  String get commonUndo => '撤销';
 
   @override
   String get studioProjectMenuTooltip => '项目操作';
