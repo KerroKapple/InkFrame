@@ -114,18 +114,19 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、
 上线后 9、永久接受 3(buildUpdate 白名单/InkWindowChrome/displayName 英文)。
 
-**上线前硬门槛(数据安全,当前全部为零)**:
-- **LB-07 PG trust→SCRAM**(随机密码入 Keychain,存量库零迁移)
+**上线前硬门槛(数据安全)** — 进度 2026-07-08:LB-13a/14/17 ✅ 已合入,余下待做:
+- **LB-07 PG trust→SCRAM**(随机密码入 Keychain,存量库零迁移;D-4 已拍 ADR-0012 解锁,代码待落)
 - **LB-10 每日 pg_dump 冷备**(保留 7 份,失败绝不阻断)
 - **LB-11/12 项目导出/导入**(zip=manifest+data+files;导入=全表 ID 重映射,**全计划最大风险卡**,
   roundtrip 测试先行;同时产出项目复制的全部机器)
-- **LB-13 purge 语义修正+孤儿文件回收**(⚠️ 已核实:现 purge 会蒸发画廊 slot 行,盘上产物文件
-  全仓零删除点;回收器三重防误删+dry-run 灰度)
-- **LB-14 崩溃遗留空 result 节点收敛**;**LB-09 启动失败 surface**(现=白屏);
-  **LB-17 全局错误钩子**(现=未捕获异常凭空消失)+ **LB-18 诊断包**
+- **LB-13 purge 语义修正+孤儿文件回收**:✅ 切片 A(#163,purge 加 success-slot 守卫保画廊);
+  ⬜ 切片 B = **LB-13b**(OrphanFileReaper 磁盘孤儿回收,盘上产物文件仍零删除点——独立追踪卡)
+- **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);**LB-09 启动失败 surface**(现=白屏);
+  **LB-17 全局错误钩子**:✅ #160(runZonedGuarded + crash 落盘)+ **LB-18 诊断包**(待做)
 
-**正确性簇**:LB-01 状态常量化 → LB-03 JobQueue 拆分(1168→<500 行,竞态裁决留编排器,
-特征化测试网先行)→ LB-04 三控制器乐观竞态(FIFO 串行队列)→ LB-05/06 错误呈现统一。
+**正确性簇**(LB-01/03/04 ✅ 已合入,余 LB-05/06):LB-01 状态常量化 ✅#156 → LB-03 JobQueue 拆分 ✅#159
+(1168→504 行,竞态裁决留编排器 + `job_queue/` 四协作者)→ LB-04 乐观竞态 ✅#158(FIFO 串行队列,五控制器)
+→ LB-05/06 错误呈现统一(待做)。
 
 **波次**:W0(S 簇:LB-01/02/05/08/19 + 第 0 天启动 LB-20 资源置备与 LB-21 盯 freezed)→
 W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 压轴)。
@@ -306,8 +307,7 @@ beta 全周期零数据事故;官网稳定;SLA 演练过一次。
 - **D-M4-8 角色库入口**:A 独立整屏仿 Gallery(推荐)/ B Gallery tab / C 设置页(不建议)。
 
 **后端系(D-BE,详见 backend 明细)**:
-- **D-BE-1 purge retention 语义**:A 有 success slot 的 job 永不 purge(推荐,保画廊)/
-  B purge 连文件删(接受 30 天窗口)。
+- **D-BE-1 purge retention 语义**:✅ **已拍 A**(LB-13a/#163 落地:有 success slot 的 job 永不 purge,保画廊)。
 - **D-BE-2 项目导入是否携带 jobs**:A 仅携带拥有 success slot 的终态 jobs(推荐,slot FK 需要)/
   B 全舍弃(导入项目画廊不可见)。⚠️ LB-11 卡体现按 A 案写就,拍 B 需改卡。
 
