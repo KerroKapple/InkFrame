@@ -90,11 +90,11 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
         },
       );
       // ── DRY-RUN 边界 ──────────────────────────────────────────────────
-      // 真实删除只在 dryRun=false 时发生。本卡任何调用点都不传 false（默认 true），
-      // 故此分支不可达——保证本卡「永不删除」。未来卡验证 dry-run 日志无误后翻开关，
-      // 无需改动本文件其它逻辑。
-      // coverage:ignore-start —— 未来卡（slice C）的删除路径；本卡 dryRun 恒 true 不可达，
-      // 刻意不为覆盖率而 wire dryRun:false（那会真的删文件，违背 dry-run 唯一性）。
+      // 真实删除只在 dryRun=false 时发生。本卡任何调用点都不传 false（默认 true），故此
+      // 分支不可达——保证本卡「永不删除」。未来卡验证 dry-run 日志无误后翻开关。下段整体
+      // 排除覆盖率统计（不为覆盖率 wire dryRun:false，那会真的删文件）。marker 须独占整行，
+      // 尾部不能带注释文字，否则 coverage 解析器（锚定行尾）识别不到 start → 报 unmatched。
+      // coverage:ignore-start
       if (!dryRun) {
         await _reapFile(c.file);
       }
@@ -220,7 +220,8 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
     }
   }
 
-  // coverage:ignore-start —— 未来卡的删除路径，本卡不可达（无处 wire dryRun:false）。
+  // 未来卡的删除路径，本卡不可达（无处 wire dryRun:false）；下方方法整体排除覆盖率统计。
+  // coverage:ignore-start
   /// 真实删除——仅 reap(dryRun:false) 触达。本卡不可达（无处 wire false）。
   Future<void> _reapFile(File file) async {
     try {

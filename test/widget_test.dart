@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/app.dart';
+import 'package:inkframe/core/di/orphan_reaper.dart';
 import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
@@ -26,6 +27,9 @@ void main() {
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
+          // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io，否则 fire-and-forget
+          // 的 PG initdb 泄漏会让 test+coverage 的覆盖率收集永挂（VM service 等 isolate 空闲）。
+          orphanReapStartupProvider.overrideWith((_) async {}),
           // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
           workspaceProjectsProvider
               .overrideWith((_) async => const <ProjectWithCanvases>[]),
