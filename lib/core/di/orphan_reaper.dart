@@ -1,7 +1,6 @@
 // OrphanFileReaper DI + 启动触发（LB-13 slice B，DRY-RUN v1）。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../errors/ink_error.dart';
 import '../interfaces/orphan_file_reaper.dart';
 import '../../services/orphan_file_reaper.dart';
 import 'clock.dart';
@@ -30,13 +29,20 @@ final orphanReapStartupProvider = FutureProvider<void>((ref) async {
   try {
     final reaper = await ref.watch(orphanFileReaperProvider.future);
     await reaper.reap();
-  } on InkError catch (e) {
-    // housekeeping 顶层兜底：存储/仓储层错误（如 PG 未就绪、磁盘 I/O）失败只记 warn，
-    // 下次启动再试——绝不让孤儿回收阻断应用可用性。
+  } catch (e, st) {
+    // ── 放行点（sanctioned swallow）─────────────────────────────────────────
+    // 启动 housekeeping 绝不阻断启动：这是与崩溃处理器同级的、被授权的全捕获吞点。
+    // 孤儿回收任何失败——InkError（PG 未就绪/磁盘 I/O）、乃至逻辑异常（StateError
+    // 等非 InkError）——都只记 warn，下次启动再试。fire-and-forget，异常绝不逃逸。
+    // 刻意用 catch-all 而非 on InkError：否则非 InkError 会绕过 warn、静默落进
+    // Riverpod AsyncError，违背「全吞、必 warn」意图。
     logger.warn(
       kOrphanReapModule,
       'orphan.reap.failed',
-      extra: <String, Object?>{'error_code': e.code.wire},
+      extra: <String, Object?>{
+        'error': e.toString(),
+        'stack': st.toString(),
+      },
     );
   }
 }, name: 'orphanReapStartupProvider');

@@ -93,9 +93,12 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
       // 真实删除只在 dryRun=false 时发生。本卡任何调用点都不传 false（默认 true），
       // 故此分支不可达——保证本卡「永不删除」。未来卡验证 dry-run 日志无误后翻开关，
       // 无需改动本文件其它逻辑。
+      // coverage:ignore-start —— 未来卡（slice C）的删除路径；本卡 dryRun 恒 true 不可达，
+      // 刻意不为覆盖率而 wire dryRun:false（那会真的删文件，违背 dry-run 唯一性）。
       if (!dryRun) {
         await _reapFile(c.file);
       }
+      // coverage:ignore-end
     }
 
     _logger?.info(
@@ -217,6 +220,7 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
     }
   }
 
+  // coverage:ignore-start —— 未来卡的删除路径，本卡不可达（无处 wire dryRun:false）。
   /// 真实删除——仅 reap(dryRun:false) 触达。本卡不可达（无处 wire false）。
   Future<void> _reapFile(File file) async {
     try {
@@ -229,6 +233,7 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
       );
     }
   }
+  // coverage:ignore-end
 }
 
 /// 孤儿候选：一个被判定为孤儿的文件 + 元信息。

@@ -4,7 +4,13 @@
 // 引用集构建（含软删节点）、节流、以及 dry-run「绝不删除 + 记 orphan.reap.dryrun」。
 import 'dart:io';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/logger.dart';
+import 'package:inkframe/core/di/orphan_reaper.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/node_repository.dart';
+import 'package:inkframe/core/interfaces/orphan_file_reaper.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/orphan_file_reaper.dart';
@@ -241,4 +247,94 @@ void main() {
       expect(urls, <String>{'images/a.png', 'images/b.png'});
     });
   });
+
+  group('引用集构建失败中止', () {
+    test('reap 上抛、无 dryrun 日志、不写节流标记（下次仍执行）', () async {
+      // 有一个本会被判孤儿的文件在场——若未中止就会产生 dryrun 日志。
+      seed('images', 'orphan.png', age: const Duration(days: 9));
+      final reaper = DiskOrphanFileReaper(
+        paths: paths,
+        nodeRepo: _ThrowingNodeRepo(),
+        batchResultRepo: batch,
+        clock: clock,
+        logger: logger,
+      );
+
+      // 引用集构建失败 → reap 上抛（不吞：安全上不敢在缺引用集时判孤儿）。
+      await expectLater(reaper.reap(), throwsA(isA<InkError>()));
+
+      // 中止发生在识别之前：没有任何 orphan.reap.dryrun。
+      expect(
+        logger.records.where((r) => r.msg == 'orphan.reap.dryrun'),
+        isEmpty,
+      );
+
+      // 节流标记未写 → 失败的一次不毒化节流。
+      final marker = File('${tempRoot.path}/config/orphan_reap.marker');
+      expect(marker.existsSync(), isFalse);
+
+      // 佐证「下次仍执行」：换回可用 repo 立刻能跑（未被节流跳过）。
+      final report = await buildReaper().reap();
+      expect(report.throttledSkip, isFalse);
+      expect(report.orphanCount, 1);
+    });
+  });
+
+  group('orphanReapStartupProvider 启动兜底', () {
+    // 启动兜底把 reaper 失败转成 warn、绝不逃逸/阻断启动。覆盖 InkError 与非 InkError。
+    Future<void> runStartupWith(Object error) async {
+      final rec = RecordingLogger();
+      final container = ProviderContainer(
+        overrides: <Override>[
+          loggerProvider.overrideWithValue(rec),
+          orphanFileReaperProvider
+              .overrideWith((ref) async => _ThrowingReaper(error)),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // fire-and-forget 兜底：读取必须正常 complete，绝不抛。
+      await expectLater(
+        container.read(orphanReapStartupProvider.future),
+        completes,
+      );
+
+      final warns = rec.records
+          .where(
+            (r) => r.level == InkLogLevel.warn && r.msg == 'orphan.reap.failed',
+          )
+          .toList();
+      expect(warns, hasLength(1));
+    }
+
+    test('reap 抛 InkError → warn(orphan.reap.failed)，不逃逸', () async {
+      await runStartupWith(const LocalIOError());
+    });
+
+    test('reap 抛非 InkError（StateError）→ 仍 warn，不逃逸（catch-all 覆盖）',
+        () async {
+      await runStartupWith(StateError('boom'));
+    });
+  });
+}
+
+/// listAllMediaUrls 抛 InkError 的 NodeRepo——验证引用集构建失败会中止 reap。
+class _ThrowingNodeRepo implements NodeRepository {
+  @override
+  Future<List<String>> listAllMediaUrls() async => throw const LocalIOError(
+        extra: <String, Object?>{'op': 'listAllMediaUrls'},
+      );
+
+  @override
+  dynamic noSuchMethod(Invocation i) => throw UnimplementedError();
+}
+
+/// reap() 抛给定异常的 reaper——验证启动兜底吞成 warn（InkError 与非 InkError 皆可）。
+class _ThrowingReaper implements OrphanFileReaper {
+  _ThrowingReaper(this._error);
+
+  final Object _error;
+
+  @override
+  Future<OrphanReapReport> reap({bool dryRun = true}) async => throw _error;
 }
