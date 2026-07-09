@@ -4,6 +4,8 @@ import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/tokens.dart';
 import 'package:inkframe/theme/typography.dart';
 
+import 'wcag.dart';
+
 void main() {
   group('InkColors variants', () {
     test('dark variant returns opaque dark surface1', () {
@@ -69,6 +71,37 @@ void main() {
       expect(c.cta, const Color(0xFFC68B2E));
       expect(c.fg1, const Color(0xFF2A2520));
     });
+
+    // 语义 on-color token：selected chip 等组件绕过 ColorScheme 直接消费
+    // token，值本身必须锁 WCAG AA（cta 底历史上 light 只有 2.57:1）。
+    for (final (name, c) in [
+      ('dark', InkColors.dark()),
+      ('light', InkColors.light()),
+      ('highContrast', InkColors.highContrast()),
+    ]) {
+      test('$name: onAccent/onDanger 对全部彩底对比率 ≥4.5', () {
+        expect(
+          wcagContrast(c.accent, c.onAccent),
+          greaterThanOrEqualTo(4.5),
+          reason: '$name accent × onAccent',
+        );
+        expect(
+          wcagContrast(c.brand, c.onAccent),
+          greaterThanOrEqualTo(4.5),
+          reason: '$name brand × onAccent',
+        );
+        expect(
+          wcagContrast(c.cta, c.onAccent),
+          greaterThanOrEqualTo(4.5),
+          reason: '$name cta × onAccent',
+        );
+        expect(
+          wcagContrast(c.danger, c.onDanger),
+          greaterThanOrEqualTo(4.5),
+          reason: '$name danger × onDanger',
+        );
+      });
+    }
 
     test('every variant exposes all 15 semantic slots', () {
       for (final InkColors c in <InkColors>[
@@ -235,14 +268,14 @@ void main() {
       );
     });
 
-    // 彩色底上的前景 = 画布最底色（对齐 InkAmberButton）——fg1 在暗色变体
-    // 是浅米色，放琥珀/危险色上对比度不足（历史 bug）。三变体逐一锁定。
+    // 彩色底上的前景 = 语义 on-color token（per-variant 取色）——一刀切
+    // surfaceCanvas 在 light 变体只有 3.06:1（历史 bug）。三变体逐一锁定。
     for (final (variant, colors) in [
       (InkThemeVariant.dark, InkColors.dark()),
       (InkThemeVariant.light, InkColors.light()),
       (InkThemeVariant.highContrast, InkColors.highContrast()),
     ]) {
-      testWidgets('$variant: on-color 前景取 surfaceCanvas 而非 fg1',
+      testWidgets('$variant: on-color 前景取 onAccent/onDanger 而非一刀切',
           (tester) async {
         await tester.pumpWidget(
           MaterialApp(
@@ -250,13 +283,38 @@ void main() {
             home: Builder(
               builder: (ctx) {
                 final scheme = Theme.of(ctx).colorScheme;
-                expect(scheme.onPrimary, colors.surfaceCanvas);
-                expect(scheme.onSecondary, colors.surfaceCanvas);
-                expect(scheme.onError, colors.surfaceCanvas);
+                expect(scheme.onPrimary, colors.onAccent);
+                expect(scheme.onSecondary, colors.onAccent);
+                expect(scheme.onError, colors.onDanger);
                 return const SizedBox.shrink();
               },
             ),
           ),
+        );
+      });
+    }
+
+    // 对比率锁定（WCAG AA ≥4.5:1）：只锁 on-color 相等不锁对比率的话，
+    // per-variant 换底色时回归测不出（历史 bug：light 一刀切 surfaceCanvas
+    // 只有 3.06:1）。三变体 × 三对色全量锁死。
+    for (final variant in InkThemeVariant.values) {
+      test('$variant: ColorScheme 三对 on-color 对比率 ≥4.5', () {
+        final scheme =
+            buildAppTheme(variant: variant, textScale: 1).colorScheme;
+        expect(
+          wcagContrast(scheme.primary, scheme.onPrimary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$variant primary/onPrimary',
+        );
+        expect(
+          wcagContrast(scheme.secondary, scheme.onSecondary),
+          greaterThanOrEqualTo(4.5),
+          reason: '$variant secondary/onSecondary',
+        );
+        expect(
+          wcagContrast(scheme.error, scheme.onError),
+          greaterThanOrEqualTo(4.5),
+          reason: '$variant error/onError',
         );
       });
     }

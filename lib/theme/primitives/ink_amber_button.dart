@@ -42,13 +42,13 @@ class _InkAmberButtonState extends State<InkAmberButton> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: <Widget>[
           if (widget.icon != null) ...<Widget>[
-            Icon(widget.icon, size: 18, color: colors.surfaceCanvas),
+            Icon(widget.icon, size: 18, color: colors.onAccent),
             const SizedBox(width: InkSpacing.sm),
           ],
           Text(
             widget.label,
             style: typo.body.copyWith(
-              color: colors.surfaceCanvas,
+              color: colors.onAccent,
               fontWeight: FontWeight.w500,
             ),
           ),
