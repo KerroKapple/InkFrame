@@ -366,5 +366,10 @@
   "startupErrorTitle": "InkFrame 无法启动",
   "startupErrorBody": "内嵌数据库启动或升级失败。磁盘上的项目数据安全无损。请查看下方日志后重试。",
   "startupErrorLogPathLabel": "日志目录",
-  "startupErrorOpenLogDir": "打开日志目录"
+  "startupErrorOpenLogDir": "打开日志目录",
+
+  "commandPaletteTooltip": "命令面板",
+  "commandPaletteSearchHint": "输入命令…",
+  "commandPaletteNoResults": "没有匹配的命令",
+  "commandBackToStudio": "返回 Studio"
 }

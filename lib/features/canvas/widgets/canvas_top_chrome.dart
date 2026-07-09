@@ -1,17 +1,17 @@
 // CanvasTopChrome：Canvas 顶栏 —— 复用 InkWindowChrome，三槽位
 // leading=Ink/Frame 小 logo，center=breadcrumb，trailing=导出+调色板+⌘K。
-// ▶（序列预览占位）与 avatar 已随 CV-1 裁撤（D-7 d5）。
+// ▶（序列预览占位）与 avatar 已随 CV-1 裁撤（D-7 d5）；⌘K chip 为真实入口（PL-1）。
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/constants/shortcut_labels.dart';
 import '../../../core/di/preferences.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
+import '../../command_palette/widgets/command_palette_chip.dart';
 import '../../export/widgets/export_video_dialog.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
@@ -189,8 +189,6 @@ class _Trailing extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
     final canvasId = ref.watch(currentCanvasIdProvider);
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -201,20 +199,7 @@ class _Trailing extends ConsumerWidget {
           _BaseStyleButton(canvasId: canvasId),
           const SizedBox(width: InkSpacing.sm),
         ],
-        Container(
-          height: 26,
-          padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colors.surface2,
-            borderRadius: BorderRadius.circular(InkRadius.sm),
-            border: Border.all(color: colors.borderSubtle),
-          ),
-          child: Text(
-            commandPaletteShortcutLabel(),
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-        ),
+        const CommandPaletteChip(),
       ],
     );
   }

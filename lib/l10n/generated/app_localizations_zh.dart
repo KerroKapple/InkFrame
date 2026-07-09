@@ -888,4 +888,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get startupErrorOpenLogDir => '打开日志目录';
+
+  @override
+  String get commandPaletteTooltip => '命令面板';
+
+  @override
+  String get commandPaletteSearchHint => '输入命令…';
+
+  @override
+  String get commandPaletteNoResults => '没有匹配的命令';
+
+  @override
+  String get commandBackToStudio => '返回 Studio';
 }
