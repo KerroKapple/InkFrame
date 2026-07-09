@@ -602,90 +602,6 @@ abstract class AppLocalizations {
   /// **'Provider not registered'**
   String get generationProviderNotRegistered;
 
-  /// No description provided for @generationQueueTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Render Queue'**
-  String get generationQueueTitle;
-
-  /// No description provided for @generationQueueEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No active jobs'**
-  String get generationQueueEmpty;
-
-  /// No description provided for @generationQueueClearTerminated.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear completed'**
-  String get generationQueueClearTerminated;
-
-  /// No description provided for @generationQueueRemove.
-  ///
-  /// In en, this message translates to:
-  /// **'Dismiss'**
-  String get generationQueueRemove;
-
-  /// No description provided for @generationQueueCancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel job'**
-  String get generationQueueCancel;
-
-  /// No description provided for @generationQueueRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry'**
-  String get generationQueueRetry;
-
-  /// No description provided for @generationStatusQueued.
-  ///
-  /// In en, this message translates to:
-  /// **'Queued'**
-  String get generationStatusQueued;
-
-  /// No description provided for @generationStatusSubmitting.
-  ///
-  /// In en, this message translates to:
-  /// **'Submitting'**
-  String get generationStatusSubmitting;
-
-  /// No description provided for @generationStatusRunning.
-  ///
-  /// In en, this message translates to:
-  /// **'Running'**
-  String get generationStatusRunning;
-
-  /// No description provided for @generationStatusRunningWithProgress.
-  ///
-  /// In en, this message translates to:
-  /// **'Running {percent}%'**
-  String generationStatusRunningWithProgress(int percent);
-
-  /// No description provided for @generationStatusSucceeded.
-  ///
-  /// In en, this message translates to:
-  /// **'Done'**
-  String get generationStatusSucceeded;
-
-  /// No description provided for @generationStatusFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed'**
-  String get generationStatusFailed;
-
-  /// No description provided for @generationStatusCancelled.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancelled'**
-  String get generationStatusCancelled;
-
-  /// No description provided for @generationCountActive.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} active'**
-  String generationCountActive(int count);
-
   /// No description provided for @resultNodePending.
   ///
   /// In en, this message translates to:
@@ -1447,6 +1363,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Queued'**
   String get canvasRenderQueueStatusQueued;
+
+  /// Render queue — tooltip/label on the per-job cancel control that stops a running or queued generation
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel job'**
+  String get canvasRenderQueueCancel;
+
+  /// Render queue — section header above the recently-failed jobs list
+  ///
+  /// In en, this message translates to:
+  /// **'Recent failures'**
+  String get canvasRenderQueueFailures;
 
   /// Window chrome minimize button a11y label
   ///

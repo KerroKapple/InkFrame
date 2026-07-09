@@ -124,31 +124,6 @@
   },
   "generationProviderNotRegistered": "Provider not registered",
 
-  "generationQueueTitle": "Render Queue",
-  "generationQueueEmpty": "No active jobs",
-  "generationQueueClearTerminated": "Clear completed",
-  "generationQueueRemove": "Dismiss",
-  "generationQueueCancel": "Cancel job",
-  "generationQueueRetry": "Retry",
-  "generationStatusQueued": "Queued",
-  "generationStatusSubmitting": "Submitting",
-  "generationStatusRunning": "Running",
-  "generationStatusRunningWithProgress": "Running {percent}%",
-  "@generationStatusRunningWithProgress": {
-    "placeholders": {
-      "percent": { "type": "int" }
-    }
-  },
-  "generationStatusSucceeded": "Done",
-  "generationStatusFailed": "Failed",
-  "generationStatusCancelled": "Cancelled",
-  "generationCountActive": "{count} active",
-  "@generationCountActive": {
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
-
   "resultNodePending": "Waiting for generation",
   "resultNodeImageMissing": "Image file missing",
 
@@ -331,6 +306,14 @@
   },
   "canvasRenderQueueEmpty": "No active renders",
   "canvasRenderQueueStatusQueued": "Queued",
+  "canvasRenderQueueCancel": "Cancel job",
+  "@canvasRenderQueueCancel": {
+    "description": "Render queue — tooltip/label on the per-job cancel control that stops a running or queued generation"
+  },
+  "canvasRenderQueueFailures": "Recent failures",
+  "@canvasRenderQueueFailures": {
+    "description": "Render queue — section header above the recently-failed jobs list"
+  },
 
   "windowMinimize": "Minimize",
   "@windowMinimize": {

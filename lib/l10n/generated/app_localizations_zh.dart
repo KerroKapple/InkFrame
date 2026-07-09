@@ -272,52 +272,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generationProviderNotRegistered => 'Provider 未注册';
 
   @override
-  String get generationQueueTitle => '渲染队列';
-
-  @override
-  String get generationQueueEmpty => '暂无活跃任务';
-
-  @override
-  String get generationQueueClearTerminated => '清理已完成';
-
-  @override
-  String get generationQueueRemove => '移除';
-
-  @override
-  String get generationQueueCancel => '取消任务';
-
-  @override
-  String get generationQueueRetry => '重试';
-
-  @override
-  String get generationStatusQueued => '排队中';
-
-  @override
-  String get generationStatusSubmitting => '提交中';
-
-  @override
-  String get generationStatusRunning => '生成中';
-
-  @override
-  String generationStatusRunningWithProgress(int percent) {
-    return '生成中 $percent%';
-  }
-
-  @override
-  String get generationStatusSucceeded => '已完成';
-
-  @override
-  String get generationStatusFailed => '失败';
-
-  @override
-  String get generationStatusCancelled => '已取消';
-
-  @override
-  String generationCountActive(int count) {
-    return '$count 个进行中';
-  }
-
-  @override
   String get resultNodePending => '等待生成';
 
   @override
@@ -715,6 +669,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasRenderQueueStatusQueued => '排队中';
+
+  @override
+  String get canvasRenderQueueCancel => '取消任务';
+
+  @override
+  String get canvasRenderQueueFailures => '最近失败';
 
   @override
   String get windowMinimize => '最小化';

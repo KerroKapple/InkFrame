@@ -14,7 +14,6 @@ providers/batch_results_controller.dart 批量/变体结果读侧（按 nodeId �
 services/prompt_assembler    prompt 拼装：base 前缀 + 泳道风格 + 关联文本 + 用户 prompt + base 后缀
 services/cost_estimator      成本估算
 services/toast_service       轻提示
-widgets/job_queue_panel      队列面板 UI
 ```
 
 ## 核心流程（`GenerationController.submitFromConfigNode`）
@@ -31,7 +30,7 @@ widgets/job_queue_panel      队列面板 UI
 - `JobState`（本模块）：UI 端**完整状态机**，带 `sourceNodeId`（供 inspector 按节点回读进度）与 `resultNodeId`（供批量网格终态定点刷新）
 
 ## 消费者
-- `widgets/job_queue_panel` 与 canvas 的 `canvas_render_queue` 都读 `jobsRegistryProvider`
+- canvas 的 `canvas_render_queue` 读 `jobsRegistryProvider`（活跃任务进度 + 取消入口 + 最近失败区）
 - canvas 的 `node_active_job` / `inspector_status_panel` 用 `JobsRegistry.activeForSourceNode` 显示节点级进度
 - canvas 的 `canvas_job_listener` 监听终态、按 `resultNodeId` 定点 `invalidate(batchResultsControllerProvider(nodeId))` 刷新批量网格
 
