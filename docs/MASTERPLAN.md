@@ -13,7 +13,7 @@
 ## 0. 总览:里程碑与主线
 
 ```
-现状(2026-07-08):M1 ✅ M2 ✅ M3 🔵(四方向首切片+导出 UI 入口 #143) alpha.10 已发布(release.yml 首跑,双平台 unsigned 产物;欠 PG 分发源/checksums/Latest 卫生)
+现状(2026-07-09):M1 ✅ M2 ✅ M3 🔵(四方向首切片+导出 UI 入口 #143) alpha.10 已发布(release.yml 首跑,双平台 unsigned 产物;欠 PG 分发源/checksums/Latest 卫生);M5 backend 线飞推(LB-01~04/08/13a/14/16/17/19 已合)+**UI 线破零**(GAP-8/#164);D-7/D-8/D-BE-2/D-10 已拍(见 §9)
    │
 M4 「能力完整」……… M3 各方向二/三切片:storyboard 流水线成型、聚合器可视化配置、
    │                画廊可复用、导出可用可靠 + 角色进阶
@@ -120,17 +120,23 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 - **LB-11/12 项目导出/导入**(zip=manifest+data+files;导入=全表 ID 重映射,**全计划最大风险卡**,
   roundtrip 测试先行;同时产出项目复制的全部机器)
 - **LB-13 purge 语义修正+孤儿文件回收**:✅ 切片 A(#163,purge 加 success-slot 守卫保画廊);
-  ⬜ 切片 B = **LB-13b**(OrphanFileReaper 磁盘孤儿回收,盘上产物文件仍零删除点——独立追踪卡)
-- **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);**LB-09 启动失败 surface**(现=白屏);
+  ✅ 切片 B = **LB-13b**(#165,OrphanFileReaper DRY-RUN v1 只记不删;真删除待 dry-run 灰度后)
+- **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);
+  **LB-09 启动失败 surface**:✅ #169(PG 引导失败全屏错误替代白屏);
   **LB-17 全局错误钩子**:✅ #160(runZonedGuarded + crash 落盘)+ **LB-18 诊断包**(待做)
 
 **正确性簇**(LB-01/03/04 ✅ 已合入,余 LB-05/06):LB-01 状态常量化 ✅#156 → LB-03 JobQueue 拆分 ✅#159
 (1168→504 行,竞态裁决留编排器 + `job_queue/` 四协作者)→ LB-04 乐观竞态 ✅#158(FIFO 串行队列,五控制器)
-→ LB-05/06 错误呈现统一(待做)。
+→ LB-05 已**消解**(#164 退役 JobQueuePanel,卡面自动消解条款触发)/LB-06 在途(#166)。
 
 **波次**:W0(S 簇:LB-01/02/05/08/19 + 第 0 天启动 LB-20 资源置备与 LB-21 盯 freezed)→
 W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 压轴)。
 体量 ≈ 22-28 人日。关键路径:LB-08→07→10(备份链)、LB-11→12(导入链)、LB-20(日历时间)。
+
+**新增卡(D-10 拍板后,2026-07-09)**:**DIR-1 数据目录迁移**(M)——AppPaths 从 `~/InkFrame` 迁平台
+惯例路径(Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`);存量目录
+启动时一次性迁移(检测旧址→原子搬移/失败回退,对齐 ADR-0012 前向语义);SETUP/PKG-5/README 路径全改。
+**依赖:无;是 LB-10(冷备路径)的前置**。验收:新装落新址、存量升级数据无损、旧址留迁移标记。
 
 ## 4. M5「能上生产」——UI/UX 完整性任务卡
 
@@ -142,17 +148,17 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
    裁撤或做真(联动决策 D-7);死按钮=坏承诺,先做腾出界面真相。
 2. **ON-1 首启向导**(L)+ **ON-2 示例项目入口**(S)——语言→Key→示例项目三步;
    `createSample` 能力已在只差入口。
-3. **GAP-8 渲染队列取消入口**(M)——⚠️ 新发现:后端 cancel 链路+测试全齐但 UI 不可达,
+3. **GAP-8 渲染队列取消入口**(M)✅ **已随 #164 合入**(取消入口+最近失败区,顺带退役 JobQueuePanel 清 P1-x2 债)——原发现:后端 cancel 链路+测试全齐但 UI 不可达,
    用户烧真钱的任务无法取消;顺带处置未挂载的 JobQueuePanel(挂或删,删则 P1-x2 债自动清)。
-4. **PL-4a 删除防误伤垫层**(S)——节点/边删除改「已删除[撤销]」snackbar(软删已支持,
-   是真 undo 的最小子集)。**PL-4b 通用 undo/redo(XL)明确排上线后**,前置=BOARD 行 87 并发债。
+4. **PL-4a 删除防误伤垫层**(S)✅ **#168 已合**(节点/连线删除 Deleted·Undo)。
+   **PL-4b 通用 undo/redo(XL)明确排上线后**,前置=BOARD 行 87 并发债。
 5. **PL-2 快捷键第一批**(M:Delete/Esc/⌘A/⌘±0)+ **PL-1 ⌘K 做真或摘牌**(二选一,D-8)。
 6. **GAP-3 AsyncValue error 态统一**(M,新共享件 InkAsyncSlot;清单含复审补充的
-   library_sidebar:45 与 canvas_view 裸 toString 站点)+ **GAP-4 slot error 文案**(S,
-   注意 errorCode 是 wire 串,需经 InkErrorCode.fromWire 容错转 messageKey)。
+   library_sidebar:45 与 canvas_view 裸 toString 站点;LB-06/#166 在途)+ **GAP-4 slot error 文案**(S)
+   ✅ **#167 已合**(Tooltip + danger 文案)。
 7. **GAP-1 设置页 Custom Provider 编辑 UI**(L,守住"重启生效"边界)。
 8. **GAP-2 软删项目回收站 UI**(M,顺带激活 ARCHIVE 死行)。
-9. **PL-6 窗口状态记忆**(S–M)。
+9. **PL-6 窗口状态记忆**(S–M)✅ **#170 已合**(退出捕获+启动恢复+多显示器 clamp)。
 10. **ON-3 ffmpeg 引导**(S–M,排导出 UI 合入后)+ **ON-4/i18n pass**(S)+
     **GAP-7 Inspector 测试欠账 + ON-5 空态 golden**(质量闸随窗)。
 
@@ -199,10 +205,13 @@ beta 准入追加第 9 条:**第三方许可 NOTICE 上线**。用户必办追�
 
 **用户必办**(U1-U10 全表见明细文档;三条互不阻塞的关键路径):
 - **U1** Apple Developer($99/年)+ 证书 6 值进 Secrets → 解锁 macOS 签名公证
+  ⏸️ **已拍推迟(2026-07-09):暂不购买**——开发/alpha 期继续 unsigned 分发;beta 冲量前优先补 U1(mac 主平台)
 - **U2** Windows 证书拍板(OV ~$100-200/年 / Certum 开源 €69 首年;Azure 中国个人不可用)
+  ⏸️ **已拍推迟(2026-07-09):暂不购买**——推荐档=Certum 开源证书;可后于 U1,极端情况 beta 期 Win 继续
+  unsigned+安装文档说明 SmartScreen 绕行,1.0 前补。**beta.1 准入的签名两条(第 2/3 条)执行顺延至补购后**
 - **U7** 数据升级政策拍板(→ D-4,牵动铁律文本与 SCRAM 覆盖面)
 - alpha.10 已按"不等 U1/U2"路线发出(release.yml 产 unsigned 双平台产物);
-  **beta.1 被 U1+U2+PG 分发源+UPD-1+D-4 硬阻塞**。
+  **beta.1 被 U1+U2+PG 分发源+UPD-1+QG-4 升级演练硬阻塞**(D-4 已拍 ADR-0012,从阻塞名单移除)。
 
 ## 6. 模型接入路线(2026-07 调研,全表与来源见 [`research/2026-07-07-model-landscape.md`](research/2026-07-07-model-landscape.md))
 
@@ -268,10 +277,10 @@ beta 全周期零数据事故;官网稳定;SLA 演练过一次。
 | D-2 许可证 / D-3 商业承诺 / D-1 口号 | README/官网/公告措辞 | M6 素材制作前 |
 | D-4 数据升级政策(=U7) ✅ **已拍→ADR-0012** | QG-4/5、SCRAM 覆盖面、**每个 schema PR**、LB-12 manifest 策略 | ~~下一个 schema 变更前~~ 2026-07-08 拍板 |
 | D-5 Win 安装物(=U6)/ D-6 Win 证书(=U2) | PKG-4、beta 准入 | PKG-4 实测后即拍 |
-| D-7 画布保真度 d4-d7 / D-8 ⌘K | CV-1(排序第一位) | CV-1 开工前 |
+| D-7 画布保真度 d4-d7 / D-8 ⌘K ✅ **已拍(2026-07-09)** | ~~CV-1~~ 已解锁 | ~~CV-1 开工前~~ 已拍板 |
 | D-M4-1~8 | GA-5/6、AG-4/5、EX-2、SB-1、CH-3 | M4 对应 Wave 开工前 |
 | D-BE-1/2 | LB-13A、LB-11/12 | 对应卡开工前 |
-| D-9 任务状态载体 / D-10 数据目录选址 | 规划运维 / LB-10 备份路径与安装文档 | 首个 M4/M5 卡完成前 / LB-10 前 |
+| D-9 任务状态载体 / D-10 数据目录选址 ✅ **D-10 已拍(2026-07-09)** | 规划运维 / ~~LB-10~~ 已解锁(新增迁移卡) | 首个 M4/M5 卡完成前 / ~~LB-10 前~~ 已拍板 |
 
 - **D-1 主口号与定位措辞**:A. storyboard-first 新口号(推荐,见 §1.2)/ B. 维持现口号。
 - **D-2 开源许可证**:⚠️ **现状=仓库已以 MIT 公开发布**(LICENSE 文件 + README badge,alpha.9 有
@@ -291,10 +300,11 @@ beta 全周期零数据事故;官网稳定;SLA 演练过一次。
   C. 先 zip 兜底。建议看 PKG-4 实测结果再定。
 - **D-6 Windows 证书路径**:A. OV 软证书(~$100-200/年,脚本即用)/ B. Certum 开源证书
   (€69 首年,限个人+开源)/ C. Azure Artifact Signing(**中国个人不可用**,需组织实体)。
-- **D-7 画布 V1 spec 保真度收口(7 子项,见 UI 明细 §3)**:d1 Inspector 浮动 vs 右栏 /
-  d2 节点类型色条 / d3 camera 能力填表 vs 撤控件 / d4 左工具栏实装 vs 裁 / d5 顶栏死件处置 /
-  d6 sidebar footer 处置 / d7 text 节点补全 vs 移除。**CV-1 死件清理开工前需 d4-d7 拍板**。
-- **D-8 ⌘K 命令面板**:A. 做真(M,首版 ≤6 动作)/ B. 摘牌(随 CV-1)。
+- **D-7 画布 V1 spec 保真度收口** ✅ **d4/d5/d6 已拍(2026-07-09):裁撤优先**——d4=B(左工具栏裁到
+  只留有功能的)/ d5=▶与 avatar 裁、⌘K 保留做真(联动 D-8)/ d6=footer settings 接真跳设置页、
+  archive/people/trash 裁(ARCHIVE 随 GAP-2 激活再回)。**CV-1 已解锁**(feat/cv1-pl1 分支在途)。
+  d1(Inspector 形态)/d2(色条)/d3(camera)/d7(text 节点)不卡 CV-1,后拍。
+- **D-8 ⌘K 命令面板** ✅ **已拍(2026-07-09):A 做真**(首版 ≤6 动作,随 CV-1 同分支交付 PL-1)。
 
 **功能模块系(D-M4-1~8,详见 features 明细文档;开 M4 Wave 前拍)**:
 - **D-M4-1 脚本拆分**:A 规则拆分(推荐)/ B LLM / C A 先行后加 AI 按钮。
@@ -308,15 +318,17 @@ beta 全周期零数据事故;官网稳定;SLA 演练过一次。
 
 **后端系(D-BE,详见 backend 明细)**:
 - **D-BE-1 purge retention 语义**:✅ **已拍 A**(LB-13a/#163 落地:有 success slot 的 job 永不 purge,保画廊)。
-- **D-BE-2 项目导入是否携带 jobs**:A 仅携带拥有 success slot 的终态 jobs(推荐,slot FK 需要)/
-  B 全舍弃(导入项目画廊不可见)。⚠️ LB-11 卡体现按 A 案写就,拍 B 需改卡。
+- **D-BE-2 项目导入是否携带 jobs** ✅ **已拍(2026-07-09):A 仅携带拥有 success slot 的终态 jobs**
+  (导入后画廊完整可见;LB-11 卡面按 A 写就零改动)。**LB-11/12 导入链已解锁**。
 
 **新增(严格复审补充)**:
 - **D-9 任务状态载体**:A. markdown 勾选(BOARD+MASTERPLAN,现状)(推荐起步)/
   B. GitHub Projects/issue 化(100+ 卡可视化好,维护重)。
-- **D-10 数据目录选址**:A. 维持 `~/InkFrame`(现状,直观)/ B. 迁 `%LOCALAPPDATA%`
-  (调研建议,降杀软误报面;迁移成本+文档改动)。牵动 LB-10 备份路径与 PKG-5 文档;
-  **无论选谁,PKG-5 都要写 Defender 排除建议**。
+- **D-10 数据目录选址** ✅ **已拍(2026-07-09):B 迁平台惯例路径**——Windows `%LOCALAPPDATA%\InkFrame`、
+  macOS `~/Library/Application Support/InkFrame`(降杀软误报面)。**LB-10 冷备路径已解锁**。
+  ⚠️ 新增追踪卡 **DIR-1 数据目录迁移**(见 §3 末):AppPaths 改造 + 存量 `~/InkFrame` 一次性迁移
+  (前向迁移语义,对齐 ADR-0012)+ PKG-5/SETUP 文档全改;**LB-10 备份路径按新址实现,DIR-1 是其前置**。
+  PKG-5 仍要写 Defender 排除建议(路径迁移只是降误报面,不是消除)。
 
 ## 10. 文档地图
 

@@ -8,7 +8,7 @@
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-07-08 · 最新发布：**v0.1.0-alpha.10**（release.yml 首跑,双平台 unsigned 产物;
+> 最近更新：2026-07-09 · 最新发布：**v0.1.0-alpha.10**（release.yml 首跑,双平台 unsigned 产物;
 > 待 PG 分发源 PKG-2 + 签名 U1/U2 方为干净机可装）
 
 ## M1 —「能用起来」✅ 完成（已随 PR #133 合入 main）
@@ -59,6 +59,17 @@
 | 参考图/首尾帧 UI 收尾（B1–B3）+ 连线智能默认 role；i2v media×fail-fast 语义整合 | #138 |
 | 快修簇：暗色 on-color 对比度（colorScheme+InkButton）/ base64 守卫统一 / 捕获收窄 / 吞错补提示 / 僵尸清理 | #140 |
 | M1 补遗四项落地（见下表） | #141 |
+| 孤儿任务补写 completed_at 堵 retention 漏洞 + studio 裸 catch 收窄 | #149 |
+| light 变体 on-color 对比度回归修复 + WCAG 对比率三层锁定测试（新增 onAccent/onDanger 语义 token） | #151 |
+| 审计收口差量：D-1/D-4 文档执行 + ADR 修订记录×5 + LB-01~17 回填 | #150 |
+| Debug+macOS 文件型密钥存储绕 Keychain -34018（dev-only，本地真实生成解锁） | #148 |
+| GAP-8 渲染队列取消入口 + 最近失败区，退役 JobQueuePanel（清 P1-x2 债） | #164 |
+| **D-7(d4-d6 裁撤优先)/D-8(⌘K 做真)/D-BE-2(A 携带终态 jobs)/D-10(B 迁平台惯例路径) 四决策拍板** | 2026-07-09，详见 MASTERPLAN §9 |
+| GAP-4 batch slot 失败可读化（Tooltip + danger 文案） | #167 |
+| PL-4a 删除防误伤垫层（节点/连线删除 Deleted·Undo） | #168 |
+| LB-09 启动失败 surface（PG 引导失败全屏错误替代白屏） | #169 |
+| PL-6 窗口状态记忆（退出捕获+启动恢复+多显示器 clamp） | #170 |
+| LB-13b OrphanFileReaper 磁盘孤儿 GC DRY-RUN v1 | #165 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -83,7 +94,7 @@
 | 缩略图 300ms 固定延时 + open 无超时（AUDIT P1-16） | 🅿️ | media_kit 行为依赖，需真机回归验证 |
 | _PromptPreview 双份拼装（AUDIT P1-17） | 🅿️ | 随 image_config_inspector 拆分处理 |
 | JobRepository 胖接口拆分（AUDIT P1-18） | 🅿️ | 与 findByIds 同窗处理 |
-| job_queue_panel 手写错误映射与 ink_error messageKey 双源（AUDIT P1-x2，缺 providerInvalidResponse 分支走 unknown 兜底） | 🅿️ | 统一改读 messageKey 映射表，单独小 PR |
+| job_queue_panel 手写错误映射与 ink_error messageKey 双源（AUDIT P1-x2，缺 providerInvalidResponse 分支走 unknown 兜底） | ✅ | #164 退役 JobQueuePanel（-332 行），双源随组件删除即清 |
 | ARCHIVE/footer 死 stub（AUDIT P1-x3） | 🅿️ | 产品定义未决 |
 | capabilities.pollTimeout 全仓零消费（AUDIT P1-x4） | ✅ | LB-02/#157：接入 JobQueue `_runJob`（pollTimeout/pollInterval 双读） |
 | provider displayName 英文常量（AUDIT P1-7） | 🅿️ | 品牌名不译是有意为之；若要本地化需过 l10n 例外评审 |
