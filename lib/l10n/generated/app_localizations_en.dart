@@ -912,4 +912,17 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get exportVideoFfmpegMissing =>
       'ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)';
+
+  @override
+  String get startupErrorTitle => 'InkFrame couldn\'t start';
+
+  @override
+  String get startupErrorBody =>
+      'The embedded database failed to start or upgrade. Your projects on disk are safe. Review the logs below, then retry.';
+
+  @override
+  String get startupErrorLogPathLabel => 'Log directory';
+
+  @override
+  String get startupErrorOpenLogDir => 'Open log directory';
 }

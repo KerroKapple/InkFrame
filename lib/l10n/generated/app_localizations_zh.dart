@@ -882,4 +882,16 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get exportVideoFfmpegMissing =>
       '未检测到 ffmpeg——安装后重试（可用 INKFRAME_FFMPEG 环境变量指定路径）';
+
+  @override
+  String get startupErrorTitle => 'InkFrame 无法启动';
+
+  @override
+  String get startupErrorBody => '内嵌数据库启动或升级失败。磁盘上的项目数据安全无损。请查看下方日志后重试。';
+
+  @override
+  String get startupErrorLogPathLabel => '日志目录';
+
+  @override
+  String get startupErrorOpenLogDir => '打开日志目录';
 }

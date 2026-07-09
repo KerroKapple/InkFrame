@@ -239,6 +239,8 @@ lib/
 │   │   ├── settings_screen.dart
 │   │   ├── providers/
 │   │   └── widgets/
+│   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
+│   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
 │   └── studio/                        # Project / workspace shell (home + open-canvas)
 │       ├── studio_home_screen.dart
 │       ├── open_canvas.dart           # Open/create a canvas from Studio
@@ -288,6 +290,7 @@ lib/
     ├── lifecycle_timer.dart           # LifecycleTimer (startup stage timing → app.lifecycle {stage, ms}; see docs/perf-baseline.md)
     ├── dio_video_download_service.dart
     ├── system_process_runner.dart     # ProcessRunner impl (Process.run)
+    ├── system_folder_opener.dart      # FolderOpener impl (explorer/open — reveal a dir in the OS file browser; LB-09 startup surface)
     ├── ffmpeg_locator.dart            # ffmpeg discovery (INKFRAME_FFMPEG env → PATH probe)
     ├── ffmpeg_video_export_service.dart  # VideoExportService impl (concat demuxer, stream copy)
     ├── media_kit_video_player_service.dart
