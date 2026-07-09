@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
@@ -315,6 +316,13 @@ class _CanvasBody extends ConsumerWidget {
     final Widget leftArea = Stack(
       children: [
         Positioned.fill(child: canvasArea),
+        // 边/泳道加载失败 → 非阻塞横幅（节点照常渲染），可忽略。
+        Positioned(
+          top: InkSpacing.md,
+          left: InkSpacing.md,
+          right: InkSpacing.md,
+          child: _EdgeLaneErrorSlot(canvasId: canvasId),
+        ),
         // 链接提示条：仅随 linkMode 重建。
         const Positioned(
           top: InkSpacing.md,
@@ -814,6 +822,49 @@ class _NodeCardSlot extends ConsumerWidget {
         isLinkSource: linkSourceId == node.id,
         isLinkCandidate: linkSourceId != null && linkSourceId != node.id,
       ),
+    );
+  }
+}
+
+/// 边/泳道加载失败横幅插槽：非阻塞——节点已在 _CanvasStage 用 valueOrNull 降级
+/// 照常渲染，这里仅补一条可忽略的错误横幅解释失败原因（此前静默吞错）。
+class _EdgeLaneErrorSlot extends ConsumerStatefulWidget {
+  const _EdgeLaneErrorSlot({required this.canvasId});
+
+  final String canvasId;
+
+  @override
+  ConsumerState<_EdgeLaneErrorSlot> createState() => _EdgeLaneErrorSlotState();
+}
+
+class _EdgeLaneErrorSlotState extends ConsumerState<_EdgeLaneErrorSlot> {
+  // 已被用户忽略的错误对象；仅当出现新错误时横幅重新弹出。
+  Object? _dismissed;
+
+  @override
+  Widget build(BuildContext context) {
+    final edgesError =
+        ref.watch(canvasEdgesControllerProvider(widget.canvasId)).error;
+    final lanesError =
+        ref.watch(canvasLanesControllerProvider(widget.canvasId)).error;
+    final error = edgesError ?? lanesError;
+    if (error == null || identical(error, _dismissed)) {
+      return const SizedBox.shrink();
+    }
+    final colors = context.inkColors;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: InkErrorBanner(message: l10nAsyncError(context, error)),
+        ),
+        const SizedBox(width: InkSpacing.xs),
+        IconButton(
+          tooltip: context.l10n.commonClose,
+          icon: Icon(Icons.close, size: InkSpacing.md, color: colors.danger),
+          onPressed: () => setState(() => _dismissed = error),
+        ),
+      ],
     );
   }
 }

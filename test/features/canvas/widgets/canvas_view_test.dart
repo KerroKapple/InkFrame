@@ -11,13 +11,16 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/models/style_lane.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
+import 'package:inkframe/theme/components/ink_error_banner.dart';
 
 import '../../../_harness/test_app.dart';
 
@@ -75,6 +78,20 @@ class _FakeEdgesController extends CanvasEdgesController {
       sortOrder: sortOrder,
     );
   }
+}
+
+/// build 抛 InkError → edgesController 落 AsyncError（模拟连线加载失败）。
+class _ErrorEdgesController extends CanvasEdgesController {
+  @override
+  Future<List<CanvasEdge>> build(String canvasId) async {
+    throw const LocalIOError();
+  }
+}
+
+/// 泳道恒空且不触 PG，隔离测试只让边失败。
+class _EmptyLanesController extends CanvasLanesController {
+  @override
+  Future<List<StyleLane>> build(String canvasId) async => const <StyleLane>[];
 }
 
 class _StubResolver implements FileResolverService {
@@ -260,6 +277,38 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to move node'), findsOneWidget);
+  });
+
+  testWidgets('边加载失败 → 非阻塞错误横幅，节点照常渲染；可关闭', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: CanvasView()),
+      overrides: <Override>[
+        currentCanvasIdProvider.overrideWith((ref) => 'c1'),
+        canvasNodesControllerProvider
+            .overrideWith(() => _FakeNodesController(twoNodes)),
+        canvasEdgesControllerProvider.overrideWith(() => _ErrorEdgesController()),
+        canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
+        fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    // 非阻塞：两个节点仍渲染。
+    expect(find.byType(NodeCard), findsNWidgets(2));
+    expect(find.text('Node A'), findsOneWidget);
+    // 边失败横幅出现（走 l10nError 文案）。
+    expect(find.byType(InkErrorBanner), findsOneWidget);
+    expect(
+      find.text('Local disk I/O error. Check space and permissions.'),
+      findsOneWidget,
+    );
+
+    // 关闭横幅 → 消失，节点仍在。
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+    expect(find.byType(InkErrorBanner), findsNothing);
+    expect(find.byType(NodeCard), findsNWidgets(2));
   });
 
   testWidgets('video result 节点文件缺失 → 不开 lightbox，走常规选中', (tester) async {

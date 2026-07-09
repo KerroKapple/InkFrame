@@ -9,6 +9,7 @@ import '../../../core/di/file_resolver.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/providers/batch_results_controller.dart';
 import '../models/batch_result.dart';
@@ -21,10 +22,36 @@ class BatchResultsGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final slots =
-        ref.watch(batchResultsControllerProvider(resultNode.id)).valueOrNull ??
-        const <BatchResult>[];
-    if (slots.isEmpty) return const SizedBox.shrink();
+    final async = ref.watch(batchResultsControllerProvider(resultNode.id));
+    // 加载态维持原样（不占面板）；错误态渲染错误横幅，不再静默吞错。
+    return async.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, _) => _labeled(
+        context,
+        InkErrorBanner(message: l10nAsyncError(context, error)),
+      ),
+      data: (slots) {
+        if (slots.isEmpty) return const SizedBox.shrink();
+        return _labeled(
+          context,
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: 2,
+            mainAxisSpacing: InkSpacing.xs,
+            crossAxisSpacing: InkSpacing.xs,
+            children: [
+              for (final slot in slots)
+                _BatchSlotTile(slot: slot, node: resultNode),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// 标题（批量结果标签）+ 内容体的统一列布局。
+  Widget _labeled(BuildContext context, Widget body) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return Column(
@@ -35,17 +62,7 @@ class BatchResultsGrid extends ConsumerWidget {
           style: typo.caption.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.xs),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: InkSpacing.xs,
-          crossAxisSpacing: InkSpacing.xs,
-          children: [
-            for (final slot in slots)
-              _BatchSlotTile(slot: slot, node: resultNode),
-          ],
-        ),
+        body,
       ],
     );
   }

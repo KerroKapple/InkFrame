@@ -8,7 +8,6 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/providers/batch_results_controller.dart';
-import '../models/batch_result.dart';
 import '../models/canvas_node.dart';
 import 'batch_results_grid.dart';
 
@@ -19,10 +18,11 @@ class ImageResultInspector extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final slots =
-        ref.watch(batchResultsControllerProvider(node.id)).valueOrNull ??
-        const <BatchResult>[];
-    if (slots.isEmpty) return const SizedBox.shrink();
+    final async = ref.watch(batchResultsControllerProvider(node.id));
+    // 加载态 / 空数据态不占面板；错误态与有数据态才浮出面板——
+    // 错误文案交由内部 BatchResultsGrid 渲染，避免面板与网格重复横幅。
+    final hasContent = async.hasError || (async.valueOrNull?.isNotEmpty ?? false);
+    if (!hasContent) return const SizedBox.shrink();
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return Container(
