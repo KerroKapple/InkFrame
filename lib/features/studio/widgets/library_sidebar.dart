@@ -1,10 +1,12 @@
 // LibrarySidebar：左侧 280 宽工作库树。
 //
-// 两段 section：LIBRARY（Studio → Projects → episode 节点）和 ARCHIVE。
-// 底部一行图标 quick-actions（settings / archive / people / trash）—— 当前 stub onTap。
+// LIBRARY section（Studio → Projects → project 节点）+ 底部 settings 入口。
+// CV-1（D-7 d6）：ARCHIVE 死行、SectionLabel '+'、archive/people/trash stub
+// 图标均已裁撤；footer 只留接真的 settings（GAP-2 激活时 ARCHIVE 再回）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/current_screen.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -51,15 +53,6 @@ class LibrarySidebar extends ConsumerWidget {
                           .read(selectedProjectIdProvider.notifier)
                           .state = id,
                     ),
-                  ),
-                  const SizedBox(height: InkSpacing.md),
-                  _SectionLabel(label: context.l10n.studioArchive),
-                  _TreeRow(
-                    indent: 0,
-                    twirl: '▸',
-                    icon: Icons.archive_outlined,
-                    label: context.l10n.studioArchivedProjects,
-                    trailing: '0',
                   ),
                 ],
               ),
@@ -136,19 +129,12 @@ class _SectionLabel extends StatelessWidget {
         InkSpacing.lg,
         InkSpacing.sm,
       ),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              label,
-              style: typo.caption.copyWith(
-                color: colors.fg3,
-                letterSpacing: 2,
-              ),
-            ),
-          ),
-          Icon(Icons.add, size: 14, color: colors.fg3),
-        ],
+      child: Text(
+        label,
+        style: typo.caption.copyWith(
+          color: colors.fg3,
+          letterSpacing: 2,
+        ),
       ),
     );
   }
@@ -255,10 +241,12 @@ class _SidebarLoading extends StatelessWidget {
   }
 }
 
-class _SidebarFooter extends StatelessWidget {
+/// footer 唯一入口：settings，导航到设置页（与顶栏 Settings 同语义）。
+class _SidebarFooter extends ConsumerWidget {
   const _SidebarFooter();
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -268,39 +256,51 @@ class _SidebarFooter extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: colors.borderSubtle)),
       ),
-      child: const Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: <Widget>[
-          _FooterIcon(icon: Icons.settings_outlined),
-          _FooterIcon(icon: Icons.inventory_2_outlined),
-          _FooterIcon(icon: Icons.person_outline),
-          _FooterIcon(icon: Icons.delete_outline),
-        ],
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: _FooterSettingsButton(
+          onTap: () => ref.read(currentScreenProvider.notifier).state =
+              AppScreen.settings,
+        ),
       ),
     );
   }
 }
 
-class _FooterIcon extends StatefulWidget {
-  const _FooterIcon({required this.icon});
-  final IconData icon;
+class _FooterSettingsButton extends StatefulWidget {
+  const _FooterSettingsButton({required this.onTap});
+  final VoidCallback onTap;
 
   @override
-  State<_FooterIcon> createState() => _FooterIconState();
+  State<_FooterSettingsButton> createState() => _FooterSettingsButtonState();
 }
 
-class _FooterIconState extends State<_FooterIcon> {
+class _FooterSettingsButtonState extends State<_FooterSettingsButton> {
   bool _hover = false;
+
   @override
   Widget build(BuildContext context) {
     final colors = context.inkColors;
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      child: Icon(
-        widget.icon,
-        size: 16,
-        color: _hover ? colors.accent : colors.fg3,
+    final label = context.l10n.studioOpenSettings;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          onEnter: (_) => setState(() => _hover = true),
+          onExit: (_) => setState(() => _hover = false),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            child: Icon(
+              Icons.settings_outlined,
+              size: 16,
+              color: _hover ? colors.accent : colors.fg3,
+            ),
+          ),
+        ),
       ),
     );
   }

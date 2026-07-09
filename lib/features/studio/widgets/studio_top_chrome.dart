@@ -1,12 +1,13 @@
 // Studio 顶栏：复用 InkWindowChrome，三槽位填 leading=小 logo / center=breadcrumb /
-// trailing=⌘K + Settings + Avatar。
+// trailing=⌘K + Settings。avatar 已随 CV-1 裁撤（无功能装饰件）；
+// ⌘K chip 为真实入口（PL-1）。
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/shortcut_labels.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
+import '../../command_palette/widgets/command_palette_chip.dart';
 
 class StudioTopChrome extends StatelessWidget implements PreferredSizeWidget {
   const StudioTopChrome({
@@ -33,10 +34,7 @@ class StudioTopChrome extends StatelessWidget implements PreferredSizeWidget {
         studioName: studioName,
         breadcrumbTail: breadcrumbTail,
       ),
-      trailing: _ChromeTrailing(
-        studioName: studioName,
-        onOpenSettings: onOpenSettings,
-      ),
+      trailing: _ChromeTrailing(onOpenSettings: onOpenSettings),
     );
   }
 }
@@ -104,56 +102,18 @@ class _Breadcrumb extends StatelessWidget {
 }
 
 class _ChromeTrailing extends StatelessWidget {
-  const _ChromeTrailing({required this.studioName, this.onOpenSettings});
+  const _ChromeTrailing({this.onOpenSettings});
 
-  final String studioName;
   final VoidCallback? onOpenSettings;
-
-  String get _avatarInitial {
-    final trimmed = studioName.trim();
-    return trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
-  }
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Container(
-          height: 26,
-          padding: const EdgeInsets.symmetric(
-            horizontal: InkSpacing.sm,
-          ),
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colors.surface2,
-            borderRadius: BorderRadius.circular(InkRadius.sm),
-            border: Border.all(color: colors.borderSubtle),
-          ),
-          child: Text(
-            commandPaletteShortcutLabel(),
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-        ),
+        const CommandPaletteChip(),
         const SizedBox(width: InkSpacing.md),
         _SettingsIconButton(onPressed: onOpenSettings),
-        const SizedBox(width: InkSpacing.md),
-        Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: colors.surface3,
-            shape: BoxShape.circle,
-            border: Border.all(color: colors.borderSubtle),
-          ),
-          child: Text(
-            _avatarInitial,
-            style: typo.label.copyWith(color: colors.accent),
-          ),
-        ),
       ],
     );
   }

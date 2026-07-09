@@ -221,6 +221,9 @@ lib/
 │   │   ├── providers/                 # Riverpod ViewModels
 │   │   ├── util/
 │   │   └── widgets/
+│   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps _UnlockedShell)
+│   │   ├── command_actions.dart       # CommandAction + context-aware hardwired action list (≤6)
+│   │   └── widgets/                   # palette dialog / top-chrome chip / app-level shortcuts wrapper
 │   ├── export/                        # Video export UI (concat dialog; entry in canvas top chrome)
 │   │   ├── providers/                 # ExportController (canvas→project path conversion)
 │   │   ├── util/                      # Output-name pre-validation

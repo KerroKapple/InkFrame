@@ -1088,18 +1088,6 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get studioLibraryProjects;
 
-  /// No description provided for @studioArchive.
-  ///
-  /// In en, this message translates to:
-  /// **'ARCHIVE'**
-  String get studioArchive;
-
-  /// No description provided for @studioArchivedProjects.
-  ///
-  /// In en, this message translates to:
-  /// **'Archived Projects'**
-  String get studioArchivedProjects;
-
   /// No description provided for @studioBreadcrumbAll.
   ///
   /// In en, this message translates to:
@@ -1849,6 +1837,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open log directory'**
   String get startupErrorOpenLogDir;
+
+  /// Tooltip / semantics label of the ⌘K chip that opens the command palette
+  ///
+  /// In en, this message translates to:
+  /// **'Command palette'**
+  String get commandPaletteTooltip;
+
+  /// No description provided for @commandPaletteSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a command…'**
+  String get commandPaletteSearchHint;
+
+  /// No description provided for @commandPaletteNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching commands'**
+  String get commandPaletteNoResults;
+
+  /// Command palette action — leave canvas/gallery/settings and return to the Studio home
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Studio'**
+  String get commandBackToStudio;
 }
 
 class _AppLocalizationsDelegate

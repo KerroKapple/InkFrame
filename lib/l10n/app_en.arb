@@ -250,8 +250,6 @@
   "studioNewProject": "New Project",
   "studioLibrary": "LIBRARY",
   "studioLibraryProjects": "Projects",
-  "studioArchive": "ARCHIVE",
-  "studioArchivedProjects": "Archived Projects",
   "studioBreadcrumbAll": "All Projects",
   "studioEmptyTitle": "No projects yet",
   "studioEmptySubtitle": "Create your first project to start building storyboards.",
@@ -437,5 +435,16 @@
   "startupErrorOpenLogDir": "Open log directory",
   "@startupErrorOpenLogDir": {
     "description": "Button that opens the log directory in the OS file browser from the startup failure surface"
+  },
+
+  "commandPaletteTooltip": "Command palette",
+  "@commandPaletteTooltip": {
+    "description": "Tooltip / semantics label of the ⌘K chip that opens the command palette"
+  },
+  "commandPaletteSearchHint": "Type a command…",
+  "commandPaletteNoResults": "No matching commands",
+  "commandBackToStudio": "Back to Studio",
+  "@commandBackToStudio": {
+    "description": "Command palette action — leave canvas/gallery/settings and return to the Studio home"
   }
 }

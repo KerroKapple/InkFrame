@@ -9,6 +9,7 @@
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
 //   时以 StartupErrorView 替代白屏；loading/data 均照常进 _UnlockedShell
 // - 新增节点 FAB 已下沉到 CanvasScreen 内部，本文件不再托管
+// - ⌘K/Ctrl+K 命令面板（PL-1）：CommandPaletteShortcuts 包住 shell 全路由生效
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +21,7 @@ import 'core/di/orphan_reaper.dart';
 import 'core/di/theme.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
+import 'features/command_palette/widgets/command_palette_shortcuts.dart';
 import 'features/gallery/providers/current_gallery_project.dart';
 import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
@@ -108,19 +110,20 @@ class _UnlockedShell extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final canvasId = ref.watch(currentCanvasIdProvider);
-    if (canvasId != null) {
-      return const CanvasScreen();
-    }
     final gallery = ref.watch(currentGalleryProjectProvider);
-    if (gallery != null) {
-      return Scaffold(
+    final Widget body;
+    if (canvasId != null) {
+      body = const CanvasScreen();
+    } else if (gallery != null) {
+      body = Scaffold(
         body: GalleryScreen(projectId: gallery.id, projectName: gallery.name),
       );
+    } else {
+      body = switch (ref.watch(currentScreenProvider)) {
+        AppScreen.studio => const Scaffold(body: StudioHomeScreen()),
+        AppScreen.settings => const SettingsScreen(),
+      };
     }
-    final screen = ref.watch(currentScreenProvider);
-    return switch (screen) {
-      AppScreen.studio => const Scaffold(body: StudioHomeScreen()),
-      AppScreen.settings => const SettingsScreen(),
-    };
+    return CommandPaletteShortcuts(child: body);
   }
 }

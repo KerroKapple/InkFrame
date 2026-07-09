@@ -542,12 +542,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioLibraryProjects => 'Projects';
 
   @override
-  String get studioArchive => 'ARCHIVE';
-
-  @override
-  String get studioArchivedProjects => 'Archived Projects';
-
-  @override
   String get studioBreadcrumbAll => 'All Projects';
 
   @override
@@ -952,4 +946,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get startupErrorOpenLogDir => 'Open log directory';
+
+  @override
+  String get commandPaletteTooltip => 'Command palette';
+
+  @override
+  String get commandPaletteSearchHint => 'Type a command…';
+
+  @override
+  String get commandPaletteNoResults => 'No matching commands';
+
+  @override
+  String get commandBackToStudio => 'Back to Studio';
 }

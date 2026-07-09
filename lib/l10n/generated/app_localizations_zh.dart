@@ -523,12 +523,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioLibraryProjects => '项目';
 
   @override
-  String get studioArchive => '归档';
-
-  @override
-  String get studioArchivedProjects => '已归档项目';
-
-  @override
   String get studioBreadcrumbAll => '全部项目';
 
   @override
@@ -920,4 +914,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get startupErrorOpenLogDir => '打开日志目录';
+
+  @override
+  String get commandPaletteTooltip => '命令面板';
+
+  @override
+  String get commandPaletteSearchHint => '输入命令…';
+
+  @override
+  String get commandPaletteNoResults => '没有匹配的命令';
+
+  @override
+  String get commandBackToStudio => '返回 Studio';
 }

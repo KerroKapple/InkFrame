@@ -36,6 +36,12 @@ void main() {
     expect(find.text('Studio'), findsOneWidget);
     expect(find.byIcon(Icons.arrow_back), findsOneWidget);
     expect(find.text('Test Canvas'), findsOneWidget);
+
+    // CV-1：⌘K chip 保留（测试平台非 macOS → Ctrl K）；▶ 与 avatar 已裁。
+    expect(find.text('Ctrl K'), findsOneWidget);
+    expect(find.byIcon(Icons.play_arrow), findsNothing);
+    // avatar 曾渲染 studioDefaultName("My Studio") 首字母 'M'。
+    expect(find.text('M'), findsNothing);
   });
 
   testWidgets('点击 Studio 按钮清空 currentCanvasIdProvider', (tester) async {
