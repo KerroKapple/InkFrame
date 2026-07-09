@@ -7,7 +7,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/job_queue.dart';
+import 'package:inkframe/core/di/window_state.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
+import 'package:inkframe/core/interfaces/window_state.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/app_teardown.dart';
 import 'package:inkframe/storage/pg_binary_locator.dart';
@@ -29,9 +31,12 @@ void main() {
     }
   });
 
-  ProviderContainer buildContainer() {
+  // 窗口捕获缝在退出路径被读取——单测统一 override 成假实现，绝不触真实插件。
+  ProviderContainer buildContainer([WindowStateService? windowState]) {
     return ProviderContainer(
       overrides: <Override>[
+        windowStateServiceProvider
+            .overrideWithValue(windowState ?? _NoopWindowState()),
         jobQueueServiceProvider.overrideWith(
           (ref) async => _FakeJobQueue(() => order.add('jobQueue.dispose')),
         ),
@@ -68,6 +73,7 @@ void main() {
     final gate = Completer<void>();
     final container = ProviderContainer(
       overrides: <Override>[
+        windowStateServiceProvider.overrideWithValue(_NoopWindowState()),
         pgPoolProvider.overrideWith((ref) async {
           await gate.future; // 模拟 PgController.start 仍在途
           return _FakePool(() => order.add('pool.close'));
@@ -127,6 +133,39 @@ void main() {
 
     expect(order, <String>['pg.stop']);
   });
+
+  test('退出路径捕获窗口状态一次（重复/并发 run 也只捕获一次）', () async {
+    final windowState = _CountingWindowState();
+    final container = buildContainer(windowState);
+    container.read(pgControllerProvider);
+
+    final teardown = AppTeardown();
+    // 并发 + 重复调用共享同一次回收 → capture 至多一次。
+    await Future.wait(<Future<void>>[
+      teardown.run(container),
+      teardown.run(container),
+    ]);
+    await teardown.run(container);
+
+    expect(windowState.captureCount, 1);
+  });
+}
+
+/// 无副作用窗口状态：默认容器用它，绝不触真实 window_manager / screen_retriever。
+class _NoopWindowState implements WindowStateService {
+  @override
+  Future<void> capture() async {}
+  @override
+  Future<void> restore() async {}
+}
+
+/// 计数窗口状态：验证退出路径「捕获一次」。
+class _CountingWindowState implements WindowStateService {
+  int captureCount = 0;
+  @override
+  Future<void> capture() async => captureCount++;
+  @override
+  Future<void> restore() async {}
 }
 
 class _FakeJobQueue implements JobQueueService {

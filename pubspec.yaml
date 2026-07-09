@@ -51,6 +51,8 @@ dependencies:
 
   # 无边框窗口管理（Amber Noir frameless chrome）
   window_manager: ^0.4.3
+  # 多显示器枚举（窗口状态记忆的 clamp 需要可见显示器工作区）
+  screen_retriever: ^0.2.0
   package_info_plus: ^10.1.0
   file_selector: ^1.1.0
 
