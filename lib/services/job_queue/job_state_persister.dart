@@ -53,6 +53,9 @@ class JobStatePersister {
       extra: {
         JobCol.errorCode: InkErrorCode.cancelledOnExit.wire,
         JobCol.errorMessage: 'app exited while job was not finished',
+        // 回收即终态：与正常终态路径一致补写 completed_at，否则 purgeExpired
+        // 的 completed_at < now() - interval 谓词对 NULL 恒假 → 永久逃过 retention。
+        JobCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       },
     );
     if (cancelled > 0) {
