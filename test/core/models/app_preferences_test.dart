@@ -64,6 +64,27 @@ void main() {
     expect(p.lastProjectId, isNull);
   });
 
+  test('onboardingCompleted 默认 false + toMap/fromMap 往返 + 容错', () {
+    expect(const AppPreferences().onboardingCompleted, isFalse);
+
+    const done = AppPreferences(onboardingCompleted: true);
+    expect(AppPreferences.fromMap(done.toMap()), done);
+    expect(AppPreferences.fromMap(done.toMap()).onboardingCompleted, isTrue);
+
+    // 类型错/缺失 → 退 false
+    final bad = AppPreferences.fromMap(<String, Object?>{
+      'onboarding_completed': 'yes',
+    });
+    expect(bad.onboardingCompleted, isFalse);
+
+    // copyWith 置位
+    expect(
+      const AppPreferences().copyWith(onboardingCompleted: true)
+          .onboardingCompleted,
+      isTrue,
+    );
+  });
+
   test('copyWith clearLastCanvas 同时清画布与项目，不动 provider 记忆', () {
     const p = AppPreferences(
       lastImageProviderId: 'gemini-image',

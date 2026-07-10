@@ -11,10 +11,13 @@ import 'package:inkframe/app.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/orphan_reaper.dart';
 import 'package:inkframe/core/di/paths.dart';
+import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
+import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:postgres/postgres.dart';
 
 void main() {
@@ -35,8 +38,15 @@ void main() {
           orphanReapStartupProvider.overrideWith((_) async {}),
           // 密封 LB-09 DB-ready gate：pgMigratedPoolProvider 停在 loading，
           // _StartupGate 照常进 _UnlockedShell，不触发真 PG。
+          // （ON-1 首帧决策也挂 DB-ready 之后——loading 态天然不弹向导。）
           pgMigratedPoolProvider
               .overrideWith((ref) => Completer<Pool<void>>().future),
+          // 本测试关注 boot 渲染，非首启路径：显式跳过 ON-1 向导（意图密封）。
+          preferencesServiceProvider.overrideWithValue(
+            InMemoryPreferencesService(
+              const AppPreferences(onboardingCompleted: true),
+            ),
+          ),
           // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
           workspaceProjectsProvider
               .overrideWith((_) async => const <ProjectWithCanvases>[]),

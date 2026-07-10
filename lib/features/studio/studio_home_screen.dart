@@ -17,6 +17,7 @@ import '../../theme/primitives/ink_compact_text_field.dart';
 import '../../theme/primitives/ink_ghost_button.dart';
 import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
+import '../canvas/providers/canvas_bootstrap_controller.dart';
 import '../gallery/providers/current_gallery_project.dart';
 import 'controllers/studio_projects_controller.dart';
 import 'controllers/studio_state.dart';
@@ -111,6 +112,8 @@ class _StudioMainArea extends ConsumerWidget {
                         ? _StudioEmptyState(
                             onCreate: () =>
                                 _showNewProjectDialog(context, ref, const []),
+                            onCreateSample: () =>
+                                _createSampleProject(context, ref),
                           )
                         : _ProjectGrid(projects: projects),
                   ),
@@ -138,6 +141,30 @@ class _StudioMainArea extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// ON-2：示例项目入口。createSample 内部会切 currentCanvasId 直达画布。
+  Future<void> _createSampleProject(BuildContext context, WidgetRef ref) async {
+    final l10n = context.l10n;
+    final failedMsg = l10n.studioCreateSampleFailed;
+    final bootstrap = ref.read(canvasBootstrapControllerProvider);
+    try {
+      await bootstrap.createSample(
+        projectName: l10n.canvasSampleProjectName,
+        canvasName: l10n.canvasSampleCanvasName,
+      );
+    } on InkError catch (e, st) {
+      // 捕获集 = createSample 真实抛出集：仓储链路只抛 InkError（铁律）。
+      ref.read(loggerProvider).error(
+            _logModule,
+            'create sample project failed',
+            cause: e,
+            stackTrace: st,
+          );
+      if (context.mounted) {
+        ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
+      }
+    }
   }
 
   Future<void> _showNewProjectDialog(
@@ -219,9 +246,13 @@ class _StudioErrorState extends StatelessWidget {
 }
 
 class _StudioEmptyState extends StatelessWidget {
-  const _StudioEmptyState({required this.onCreate});
+  const _StudioEmptyState({
+    required this.onCreate,
+    required this.onCreateSample,
+  });
 
   final VoidCallback onCreate;
+  final VoidCallback onCreateSample;
 
   @override
   Widget build(BuildContext context) {
@@ -268,6 +299,12 @@ class _StudioEmptyState extends StatelessWidget {
                 label: context.l10n.studioNewProject,
                 icon: Icons.add,
                 onPressed: onCreate,
+              ),
+              const SizedBox(height: InkSpacing.sm),
+              InkGhostButton(
+                label: context.l10n.studioCreateSampleProject,
+                icon: Icons.auto_awesome_outlined,
+                onPressed: onCreateSample,
               ),
             ],
           ),

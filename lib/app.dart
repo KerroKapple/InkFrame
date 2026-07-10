@@ -8,6 +8,9 @@
 //   否则按 currentScreenProvider 在 Studio / Settings 切换
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
 //   时以 StartupErrorView 替代白屏；loading/data 均照常进 _UnlockedShell
+// - 首帧闸门（ON-1，挂 DB-ready 之后）：onboardingCompleted=false → 弹首启向导并
+//   跳过该次会话恢复；=true → 照常触发 restoreLastSession（在 _UnlockedShell，
+//   Navigator 之下）；PG 失败/未就绪不弹向导也不恢复
 // - 新增节点 FAB 已下沉到 CanvasScreen 内部，本文件不再托管
 // - ⌘K/Ctrl+K 命令面板（PL-1）：CommandPaletteShortcuts 包住 shell 全路由生效
 
@@ -18,6 +21,7 @@ import 'core/di/current_screen.dart';
 import 'core/di/database.dart';
 import 'core/di/locale.dart';
 import 'core/di/orphan_reaper.dart';
+import 'core/di/preferences.dart';
 import 'core/di/theme.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
@@ -29,6 +33,7 @@ import 'features/settings/settings_screen.dart';
 import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
 import 'features/studio/studio_home_screen.dart';
+import 'features/studio/widgets/onboarding_dialog.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
@@ -46,10 +51,10 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // 首帧后触发上次会话恢复（best-effort，内部自会校验/清理，见 provider 注释）。
+    // 首帧启动决策（onboarding / 会话恢复）在 _UnlockedShell——需要 Navigator 之下
+    // 的 context 才能 showDialog。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(restoreLastSessionProvider);
       // LB-13：首帧后触发磁盘孤儿文件回收（DRY-RUN + ≥7d 节流）。fire-and-forget，
       // housekeeping，内部吞错只 warn，绝不阻断启动或抢占其它流程。
       ref.read(orphanReapStartupProvider);
@@ -104,11 +109,41 @@ class _StartupGate extends ConsumerWidget {
   }
 }
 
-class _UnlockedShell extends ConsumerWidget {
+class _UnlockedShell extends ConsumerStatefulWidget {
   const _UnlockedShell();
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_UnlockedShell> createState() => _UnlockedShellState();
+}
+
+class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
+  bool _startupDecisionDone = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 首帧启动决策（ON-1）挂在 DB-ready 成功之后才做：向导第三步（建示例项目）与
+    // 会话恢复都依赖 DB；PG 失败由 _StartupGate 全屏接管——不弹向导也不恢复，
+    // 避免向导悬浮在 StartupErrorView 之上。
+    // 决策本身：首启向导优先，该次跳过会话恢复（避免向导底下偷偷切画布）；
+    // 非首启照常 best-effort 恢复上次会话。
+    ref.listenManual(pgMigratedPoolProvider, fireImmediately: true, (_, next) {
+      if (_startupDecisionDone || next is! AsyncData) return;
+      _startupDecisionDone = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final prefs = ref.read(preferencesServiceProvider);
+        if (prefs.current.onboardingCompleted) {
+          ref.read(restoreLastSessionProvider);
+        } else {
+          showOnboardingDialog(context);
+        }
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final canvasId = ref.watch(currentCanvasIdProvider);
     final gallery = ref.watch(currentGalleryProjectProvider);
     final Widget body;

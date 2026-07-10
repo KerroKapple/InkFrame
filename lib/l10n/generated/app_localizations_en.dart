@@ -681,6 +681,40 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioNoKeyBannerAction => 'Configure in Settings';
 
   @override
+  String get studioCreateSampleProject => 'Create sample project';
+
+  @override
+  String get studioCreateSampleFailed => 'Couldn\'t create sample project';
+
+  @override
+  String get onboardingTitle => 'Welcome to InkFrame';
+
+  @override
+  String onboardingStepIndicator(int current, int total) {
+    return 'Step $current of $total';
+  }
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingStartEmpty => 'Start empty';
+
+  @override
+  String get onboardingKeysConsoleHint =>
+      'Get an API key from your provider\'s console and paste it above — you can also add or change keys later in Settings.';
+
+  @override
+  String get onboardingStepSampleTitle => 'Start creating';
+
+  @override
+  String get onboardingStepSampleBody =>
+      'Create a sample project to explore the canvas, or start from an empty studio.';
+
+  @override
   String get canvasRenderQueue => 'Render Queue';
 
   @override
