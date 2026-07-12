@@ -18,6 +18,18 @@
 
 > Modules not yet implemented (e.g. script parsing / sequence preview) are tracked in `docs/BOARD.md` (status) and the repo-root `ROADMAP.md` (community roadmap). This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
 
+## Commands
+
+Local verification — the same gate as `scripts/hooks/pre-push`:
+
+```bash
+flutter analyze lib test            # full static analysis (catches compile errors + stale generated files)
+flutter test --exclude-tags golden  # full test suite, golden excluded locally
+```
+
+- **Golden tests run only in CI (ubuntu).** Baselines are rasterized on the CI ubuntu font stack; running golden tests on macOS/Windows always produces false failures. Never "fix" a golden locally — exclude with `--exclude-tags golden` and let CI be the gate (see `dart_test.yaml` tags.golden).
+- **After changing any ARB file**: run `flutter gen-l10n` and commit the regenerated `lib/l10n/generated/` in the same commit. Stale generated files slip past `flutter test` (it only compiles what tests import) but are caught by `flutter analyze lib test`.
+
 ## Architecture Principles
 
 ### SOLID — No Exceptions
@@ -62,10 +74,7 @@ final projectProvider = Provider((ref) {
 
 ### Zero Backward Compatibility
 
-- NO legacy support code
-- NO deprecated APIs kept "just in case"
-- NO parallel old-data-format parsing paths
-- NO downgrade — an older app opening a newer DB is rejected (`SchemaDowngradeError`), never silently reinterpreted
+Follows the global no-backward-compatibility rule — no legacy code, no deprecated APIs kept around, no parallel old-format parsing paths; this includes downgrade: an older app opening a newer DB is rejected (`SchemaDowngradeError`), never silently reinterpreted.
 
 **Carve-out — user data durability (ADR-0012):** the user's persisted PostgreSQL workspace is the one exception. A schema change MUST NOT wipe or reset the user's data; the database is advanced through the single forward-migration chain (`lib/storage/migrations/`, `schema_version` table). Every schema change ADDS one contiguously-numbered forward migration; shipped migrations are immutable (never edit a released migration — add `v_next`). Single-line forward migration is the *only* supported upgrade path. See `docs/adr/0012-forward-migration-as-sole-data-upgrade-path.md`.
 
@@ -81,7 +90,9 @@ final projectProvider = Provider((ref) {
    - SQL, JSON keys, network protocol literals
 3. **Development language is English** — all ARB keys and default values in English
 4. **Every commit** must have 100% zh-CN and en-US coverage of the keys that DO exist in ARB
-5. **CI check**: `app_en.arb` and `app_zh.arb` must have identical key sets (build fails otherwise). Adding more locales later only adds new ARB files; the parity rule generalizes to "all locales share identical key sets."
+5. **Key-set parity is enforced by `test/l10n/arb_hygiene_test.dart`** (runs with the full test suite in CI and pre-push): `app_en.arb` and `app_zh.arb` must have identical key sets. Adding more locales later only adds new ARB files; the parity rule generalizes to "all locales share identical key sets."
+
+> Note: code comments follow the global rule (Chinese); the English-only requirement applies to ARB keys/default values, logs, error codes, prompts and other internal strings — not to comments.
 
 ### File Structure
 
@@ -89,7 +100,9 @@ final projectProvider = Provider((ref) {
 l10n.yaml               # Flutter gen-l10n config (repo root)
 lib/l10n/
 ├── app_en.arb          # English (source of truth)
-└── app_zh.arb          # Chinese (must match all keys)
+├── app_zh.arb          # Chinese (must match all keys)
+├── generated/          # gen-l10n output — checked in, regenerate + commit with every ARB change
+└── l10n_x.dart         # context.l10n extension + InkError → localized string
 ```
 
 ### Usage
@@ -198,7 +211,7 @@ Container(
 lib/
 ├── main.dart                          # Entry point, ProviderScope
 ├── app.dart                           # MaterialApp, router, theme wiring
-├── l10n/                              # ARB files (app_en.arb, app_zh.arb) + gen
+├── l10n/                              # ARB files (app_en.arb, app_zh.arb) + generated/ + l10n_x.dart (context.l10n extension, InkError → localized string)
 ├── theme/                             # Design tokens, theme, components
 │   ├── tokens.dart                    # Color / spacing / radius / shadow tokens
 │   ├── typography.dart                # Text styles
@@ -212,6 +225,7 @@ lib/
 │   ├── di/                            # Riverpod provider definitions (the only wiring folder)
 │   ├── errors/                        # InkError sealed hierarchy + InkErrorCode
 │   ├── interfaces/                    # Abstract service / repository contracts
+│   ├── licenses.dart                  # LicenseRegistry entries for bundled non-pub artifacts (libmpv+FFmpeg, PostgreSQL, OFL fonts)
 │   ├── logging/                       # InkLogger interface
 │   ├── models/                        # Domain models (freezed, immutable)
 │   └── paths/                         # app_paths.dart — well-known app directories
@@ -244,7 +258,7 @@ lib/
 │   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
 │   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
-│   └── studio/                        # Project / workspace shell (home + open-canvas)
+│   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
 │       ├── studio_home_screen.dart
 │       ├── open_canvas.dart           # Open/create a canvas from Studio
 │       ├── controllers/
@@ -270,6 +284,7 @@ lib/
 ├── storage/                           # Embedded PostgreSQL layer
 │   ├── pg_controller.dart             # Embedded PG lifecycle
 │   ├── pg_binary_locator.dart         # PG binary discovery
+│   ├── database_bootstrap.dart        # One-shot DB bootstrap once pool is ready (pgcrypto + forward migrations; wraps ServerException as DatabaseBootstrapError; LB-08)
 │   ├── base_repository.dart           # Shared SQL helpers
 │   ├── postgres_unit_of_work.dart     # Multi-step write transactions (UnitOfWork)
 │   ├── migrations/                    # Migration runner
@@ -330,6 +345,7 @@ lib/
 
 ### Git
 
+- `main` is protected (GitHub Flow) — all changes land via feature branch + PR, never commit/push directly
 - Every commit must: compile clean, pass all tests, have full i18n coverage
 - Commit messages: conventional commits (feat/fix/refactor/test/docs)
 - No `--no-verify`, no skipping hooks
