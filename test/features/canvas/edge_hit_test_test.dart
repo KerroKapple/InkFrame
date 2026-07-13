@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/util/edge_hit_test.dart';
+import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 
 void main() {
   // 两个节点：A 在 (0,0) 尺寸 100x100 中心 (50,50)；B 在 (200,200) 尺寸 100x100 中心 (250,250)。
@@ -140,5 +141,40 @@ void main() {
     final mid = edgeMidpoint(source: nodeA, target: nodeB);
     expect(mid.dx, closeTo(150, 1));
     expect(mid.dy, closeTo(150, 1));
+  });
+
+  group('竖向泳道命中（direction: vertical）', () {
+    test('竖向锚点（源下边中点）→ 命中；同点在横向语义下未命中', () {
+      // a 下边中点 (50,100)。
+      const p = Offset(50, 100);
+      expect(
+        hitTestEdge(
+          point: p,
+          edges: const [edgeAB],
+          nodes: const [nodeA, nodeB],
+          direction: LaneDirection.vertical,
+        ),
+        'ab',
+      );
+      expect(
+        hitTestEdge(
+          point: p,
+          edges: const [edgeAB],
+          nodes: const [nodeA, nodeB],
+        ),
+        isNull,
+      );
+    });
+
+    test('edgeMidpoint 竖向：对称手柄下 ≈ 锚点几何中点', () {
+      // a-out (50,100) → b-in (250,200) → 中点 (150,150)。
+      final mid = edgeMidpoint(
+        source: nodeA,
+        target: nodeB,
+        direction: LaneDirection.vertical,
+      );
+      expect(mid.dx, closeTo(150, 1));
+      expect(mid.dy, closeTo(150, 1));
+    });
   });
 }

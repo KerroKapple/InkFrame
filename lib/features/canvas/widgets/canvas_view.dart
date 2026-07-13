@@ -428,6 +428,7 @@ class _CanvasStage extends ConsumerWidget {
         point: d.localPosition,
         edges: edges,
         nodes: nodes,
+        direction: direction,
       );
       if (hitId != null) {
         ref.read(selectedEdgeControllerProvider.notifier).select(hitId);
@@ -508,6 +509,7 @@ class _CanvasStage extends ConsumerWidget {
                                 narrativeColor: colors.fg3,
                                 generationSourceColor: colors.fg3,
                                 selectedColor: colors.brand,
+                                direction: direction,
                                 selectedEdgeId: selectedEdgeId,
                                 dragNodeId: drag?.nodeId,
                                 dragDelta: drag?.delta ?? Offset.zero,
@@ -562,12 +564,14 @@ class _CanvasStage extends ConsumerWidget {
                           edgeMidpoint(
                             source: selectedGeometry.source,
                             target: selectedGeometry.target,
+                            direction: direction,
                           ).dx -
                           14,
                       top:
                           edgeMidpoint(
                             source: selectedGeometry.source,
                             target: selectedGeometry.target,
+                            direction: direction,
                           ).dy -
                           14,
                       child: _EdgeDeleteButton(

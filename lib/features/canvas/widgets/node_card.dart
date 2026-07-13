@@ -114,20 +114,21 @@ class _NodeCardState extends ConsumerState<NodeCard> {
     // 节点级实时进度：该节点当前活跃 job（无则 null），驱动卡片底部进度条。
     final activeJob = ref.watch(nodeActiveJobProvider(node.id));
 
-    final Color borderColor;
-    final double borderWidth;
+    // 有全出血媒体的卡片默认态免边框——画面自身即轮廓（CineFlow 式）；
+    // 选中/连线高亮态仍描边。
+    final hasMedia = node.role == NodeRole.result &&
+        (node.imageUrl != null || node.thumbnailUrl != null);
+    final Border? border;
     if (widget.isLinkSource) {
-      borderColor = colors.brand;
-      borderWidth = 2.5;
+      border = Border.all(color: colors.brand, width: 2.5);
     } else if (widget.isLinkCandidate) {
-      borderColor = colors.brand;
-      borderWidth = 2.0;
+      border = Border.all(color: colors.brand, width: 2.0);
     } else if (widget.selected) {
-      borderColor = colors.accent;
-      borderWidth = 2.0;
+      border = Border.all(color: colors.accent, width: 2.0);
+    } else if (hasMedia) {
+      border = null;
     } else {
-      borderColor = colors.border;
-      borderWidth = 1.0;
+      border = Border.all(color: colors.border);
     }
 
     final elevated = _dragging || widget.selected || widget.isLinkSource;
@@ -168,7 +169,7 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                   color: ref.watch(canvasStyleControllerProvider).cardColor ??
                       colors.surface2,
                   borderRadius: BorderRadius.circular(InkRadius.lg),
-                  border: Border.all(color: borderColor, width: borderWidth),
+                  border: border,
                   boxShadow: elevated ? InkShadow.elevated : InkShadow.card,
                 ),
                 // 简约化（CineFlow/Krea 式）：预览即主体、全出血，

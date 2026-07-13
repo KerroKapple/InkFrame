@@ -5,6 +5,7 @@ import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/util/edge_geometry.dart';
+import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 
 void main() {
   const node = CanvasNode(
@@ -58,6 +59,67 @@ void main() {
     expect(edgeBoundsMayHit(const Offset(-99999, -99999), a, b, 10), isFalse);
     // y 向只按锚点扩 threshold：越过阈值即拒。
     expect(edgeBoundsMayHit(const Offset(100, 130), a, b, 10), isFalse);
+  });
+
+  group('竖向泳道（vertical）', () {
+    const v = LaneDirection.vertical;
+
+    test('源出点 = 下边中点，靶入点 = 上边中点', () {
+      expect(edgeSourceAnchor(node, direction: v), const Offset(200, 300));
+      expect(edgeTargetAnchor(node, direction: v), const Offset(200, 200));
+    });
+
+    test('末端切线为 +y 方向（箭头恒竖直入端口），回连亦然', () {
+      final m = edgePath(const Offset(0, 200), const Offset(100, 0),
+              direction: v)
+          .computeMetrics()
+          .single;
+      final tangent = m.getTangentForOffset(m.length)!.vector;
+      expect(tangent.dy, greaterThan(0));
+    });
+
+    test('edgePath 起止于两锚点', () {
+      const a = Offset(0, 0);
+      const b = Offset(100, 200);
+      final m =
+          edgePath(a, b, direction: v).computeMetrics().single;
+      expect(m.getTangentForOffset(0)!.position, a);
+      final end = m.getTangentForOffset(m.length)!.position;
+      expect(end.dx, closeTo(b.dx, 0.5));
+      expect(end.dy, closeTo(b.dy, 0.5));
+    });
+
+    test('edgeBoundsMayHit：手柄外扩在 y 轴，x 向只扩 threshold', () {
+      const a = Offset(0, 0);
+      const b = Offset(100, 200);
+      // x 向越过阈值即拒（横向语义下这个点会因手柄外扩被放进来）。
+      expect(
+        edgeBoundsMayHit(const Offset(130, 100), a, b, 10, direction: v),
+        isFalse,
+      );
+      // y 向锚点外仍在手柄扩展带内 → 保留。
+      expect(
+        edgeBoundsMayHit(const Offset(0, -30), a, b, 10, direction: v),
+        isTrue,
+      );
+      // 曲线中点必在包围盒内。
+      expect(
+        edgeBoundsMayHit(
+          edgePathMidpoint(a, b, direction: v),
+          a,
+          b,
+          10,
+          direction: v,
+        ),
+        isTrue,
+      );
+    });
+
+    test('distanceToEdgePath：锚点上为 0', () {
+      const a = Offset(0, 0);
+      const b = Offset(100, 200);
+      expect(distanceToEdgePath(a, a, b, direction: v), 0);
+    });
   });
 
   test('edgePathMidpoint：对称手柄下等于锚点几何中点', () {

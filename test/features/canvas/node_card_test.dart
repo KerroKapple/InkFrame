@@ -175,6 +175,71 @@ void main() {
     });
   }
 
+  // 有全出血媒体的卡片默认态免边框（画面即轮廓）；无媒体保留 1px 边框；
+  // 选中态无论有无媒体都描边（可视选中反馈优先）。
+  group('卡片边框', () {
+    BoxDecoration cardDecoration(WidgetTester tester) {
+      final container = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: find.byType(NodeCard),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      return container.decoration! as BoxDecoration;
+    }
+
+    Future<void> pump(
+      WidgetTester tester,
+      CanvasNode n, {
+      bool selected = false,
+    }) async {
+      await pumpInkApp(
+        tester,
+        Scaffold(
+          body: Center(
+            child: NodeCard(
+              node: n,
+              selected: selected,
+              onTap: () {},
+              onDragEnd: (_) {},
+            ),
+          ),
+        ),
+        overrides: [
+          fileResolverServiceProvider
+              .overrideWithValue(_FakeResolver(Directory.systemTemp)),
+        ],
+      );
+      await tester.pumpAndSettle();
+    }
+
+    const mediaNode = CanvasNode(
+      id: 'm1',
+      label: '',
+      type: CanvasNodeType.image,
+      role: NodeRole.result,
+      projectId: 'p',
+      canvasId: 'c',
+      typeConfig: <String, Object?>{'image_url': 'a.png'},
+    );
+
+    testWidgets('有媒体 → 默认态无边框', (tester) async {
+      await pump(tester, mediaNode);
+      expect(cardDecoration(tester).border, isNull);
+    });
+
+    testWidgets('无媒体 → 默认态保留边框', (tester) async {
+      const n = CanvasNode(id: 'c1', label: '', type: CanvasNodeType.image);
+      await pump(tester, n);
+      expect(cardDecoration(tester).border, isNotNull);
+    });
+
+    testWidgets('有媒体但选中 → 仍描边', (tester) async {
+      await pump(tester, mediaNode, selected: true);
+      expect(cardDecoration(tester).border, isNotNull);
+    });
+  });
+
   testWidgets('标题条：有 label 显示 label，类型名不再出现', (tester) async {
     const n = CanvasNode(id: 'c2', label: 'My Shot', type: CanvasNodeType.shot);
     await pumpInkApp(

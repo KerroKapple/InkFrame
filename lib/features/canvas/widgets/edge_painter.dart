@@ -1,7 +1,8 @@
 // EdgePainter：在画布垫底层绘制连线（CineFlow 式端口曲线）。
 //
-// 几何与 hitTestEdge 同源（util/edge_geometry.dart）：源节点右边中点出、
-// 靶节点左边中点入，三次贝塞尔；两端画端口圆点，靶端沿切线画箭头。
+// 几何与 hitTestEdge 同源（util/edge_geometry.dart）：沿泳道主轴出入
+// （横向右出左入 / 竖向下出上入），三次贝塞尔；两端画端口圆点，
+// 靶端沿切线画箭头。
 // 交互（点击选中 / 悬停高亮）留给后续 PR——当前 IgnorePointer 挂在父层。
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../util/edge_geometry.dart';
+import '../util/lane_geometry.dart';
 
 class EdgePainter extends CustomPainter {
   EdgePainter({
@@ -18,6 +20,7 @@ class EdgePainter extends CustomPainter {
     required this.narrativeColor,
     required this.generationSourceColor,
     required this.selectedColor,
+    this.direction = LaneDirection.horizontal,
     this.selectedEdgeId,
     this.dragNodeId,
     this.dragDelta = Offset.zero,
@@ -29,6 +32,9 @@ class EdgePainter extends CustomPainter {
   final Color narrativeColor;
   final Color generationSourceColor;
   final Color selectedColor;
+
+  /// 泳道主轴——决定出/入锚点方位与曲线走向。
+  final LaneDirection direction;
   final String? selectedEdgeId;
 
   /// 拖拽中节点及其实时位移——连线跟手（拖拽位移未提交 controller 前先补到锚点上）。
@@ -46,8 +52,8 @@ class EdgePainter extends CustomPainter {
       final src = nodeById[edge.sourceNodeId];
       final dst = nodeById[edge.targetNodeId];
       if (src == null || dst == null) continue;
-      var p1 = edgeSourceAnchor(src);
-      var p2 = edgeTargetAnchor(dst);
+      var p1 = edgeSourceAnchor(src, direction: direction);
+      var p2 = edgeTargetAnchor(dst, direction: direction);
       if (src.id == dragNodeId) p1 += dragDelta;
       if (dst.id == dragNodeId) p2 += dragDelta;
       final isSelected = edge.id == selectedEdgeId;
@@ -61,7 +67,7 @@ class EdgePainter extends CustomPainter {
                 : 1.0
         ..style = PaintingStyle.stroke;
 
-      final path = edgePath(p1, p2);
+      final path = edgePath(p1, p2, direction: direction);
       if (edge.edgeType == EdgeType.narrative) {
         _drawDashedPath(canvas, path, paint);
       } else {
@@ -98,15 +104,25 @@ class EdgePainter extends CustomPainter {
     canvas.drawCircle(center, kEdgePortRadius, Paint()..color = color);
   }
 
-  /// 靶端箭头：曲线入左端口，末端切线恒为 +x 方向——箭头水平指向端口。
+  /// 靶端箭头：末端切线恒沿主轴正向（横向 +x / 竖向 +y），箭头指向入端口。
   void _drawArrowHead(Canvas canvas, Offset tip, Paint paint) {
     const arrowSize = 8.0;
-    final base = tip - const Offset(arrowSize + kEdgePortRadius, 0);
-    final path = Path()
-      ..moveTo(tip.dx - kEdgePortRadius, tip.dy)
-      ..lineTo(base.dx, base.dy + arrowSize * 0.5)
-      ..lineTo(base.dx, base.dy - arrowSize * 0.5)
-      ..close();
+    final Path path;
+    if (direction == LaneDirection.horizontal) {
+      final base = tip - const Offset(arrowSize + kEdgePortRadius, 0);
+      path = Path()
+        ..moveTo(tip.dx - kEdgePortRadius, tip.dy)
+        ..lineTo(base.dx, base.dy + arrowSize * 0.5)
+        ..lineTo(base.dx, base.dy - arrowSize * 0.5)
+        ..close();
+    } else {
+      final base = tip - const Offset(0, arrowSize + kEdgePortRadius);
+      path = Path()
+        ..moveTo(tip.dx, tip.dy - kEdgePortRadius)
+        ..lineTo(base.dx + arrowSize * 0.5, base.dy)
+        ..lineTo(base.dx - arrowSize * 0.5, base.dy)
+        ..close();
+    }
     canvas.drawPath(path, Paint()..color = paint.color);
   }
 
@@ -118,6 +134,7 @@ class EdgePainter extends CustomPainter {
         oldDelegate.narrativeColor != narrativeColor ||
         oldDelegate.generationSourceColor != generationSourceColor ||
         oldDelegate.selectedColor != selectedColor ||
+        oldDelegate.direction != direction ||
         oldDelegate.selectedEdgeId != selectedEdgeId ||
         oldDelegate.dragNodeId != dragNodeId ||
         oldDelegate.dragDelta != dragDelta;
