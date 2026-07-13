@@ -205,6 +205,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeSection => 'Theme';
 
   @override
+  String get settingsCanvasSection => 'Canvas';
+
+  @override
+  String get settingsCanvasEdgeColor => 'Connection line color';
+
+  @override
+  String get settingsCanvasCardColor => 'Card color';
+
+  @override
+  String get settingsCanvasColorDefault => 'Theme default';
+
+  @override
   String get settingsThemeDark => 'Dark';
 
   @override

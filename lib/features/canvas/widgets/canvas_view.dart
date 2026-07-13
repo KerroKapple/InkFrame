@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/canvas_style.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -24,6 +25,7 @@ import '../providers/canvas_transform_controller.dart';
 import '../providers/current_canvas_id.dart';
 import '../providers/link_action_controller.dart';
 import '../providers/link_mode_controller.dart';
+import '../providers/node_drag_delta.dart';
 import '../providers/playable_video_path.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/canvas_node_delete.dart';
@@ -485,17 +487,27 @@ class _CanvasStage extends ConsumerWidget {
                       behavior: HitTestBehavior.translucent,
                       onTapDown: onEdgeLayerTap,
                       // HI-15：连线层独立 layer，节点局部动画不连带边层重绘。
+                      // 拖拽位移/自定义连线色在此窄域 watch——每帧只重绘本层。
                       child: RepaintBoundary(
-                        child: CustomPaint(
-                          painter: EdgePainter(
-                            edges: edges,
-                            nodes: nodes,
-                            dataColor: colors.accent,
-                            narrativeColor: colors.fg3,
-                            generationSourceColor: colors.fg3,
-                            selectedColor: colors.brand,
-                            selectedEdgeId: selectedEdgeId,
-                          ),
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final drag = ref.watch(nodeDragDeltaProvider);
+                            final style =
+                                ref.watch(canvasStyleControllerProvider);
+                            return CustomPaint(
+                              painter: EdgePainter(
+                                edges: edges,
+                                nodes: nodes,
+                                dataColor: style.edgeColor ?? colors.accent,
+                                narrativeColor: colors.fg3,
+                                generationSourceColor: colors.fg3,
+                                selectedColor: colors.brand,
+                                selectedEdgeId: selectedEdgeId,
+                                dragNodeId: drag?.nodeId,
+                                dragDelta: drag?.delta ?? Offset.zero,
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),

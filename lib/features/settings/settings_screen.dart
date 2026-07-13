@@ -1,6 +1,6 @@
 // SettingsScreen — 设置页。
 //
-// 组合：ApiKeys / Theme / Language / Storage / About 五个 section。
+// 组合：ApiKeys / Theme / Canvas / Language / Storage / About 六个 section。
 // 路由展示由 inkframe-dev 在 core/di/currentScreenProvider 落地后接管；当前
 // 仍可由其他 slice push 进入。
 
@@ -11,6 +11,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
+import 'widgets/canvas_appearance_section.dart';
 import 'widgets/language_section.dart';
 import 'widgets/storage_path_section.dart';
 import 'widgets/theme_section.dart';
@@ -28,21 +29,26 @@ class SettingsScreen extends StatelessWidget {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(InkSpacing.lg),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 720),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              ApiKeysSection(),
-              SizedBox(height: InkSpacing.xl),
-              ThemeSection(),
-              SizedBox(height: InkSpacing.xl),
-              LanguageSection(),
-              SizedBox(height: InkSpacing.xl),
-              StoragePathSection(),
-              SizedBox(height: InkSpacing.xl),
-              AboutSection(),
-            ],
+        // 内容列水平居中（宽屏下贴左不美观）；列内文本仍左对齐。
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 720),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                ApiKeysSection(),
+                SizedBox(height: InkSpacing.xl),
+                ThemeSection(),
+                SizedBox(height: InkSpacing.xl),
+                CanvasAppearanceSection(),
+                SizedBox(height: InkSpacing.xl),
+                LanguageSection(),
+                SizedBox(height: InkSpacing.xl),
+                StoragePathSection(),
+                SizedBox(height: InkSpacing.xl),
+                AboutSection(),
+              ],
+            ),
           ),
         ),
       ),

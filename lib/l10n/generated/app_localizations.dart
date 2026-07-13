@@ -458,6 +458,30 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get settingsThemeSection;
 
+  /// No description provided for @settingsCanvasSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get settingsCanvasSection;
+
+  /// No description provided for @settingsCanvasEdgeColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection line color'**
+  String get settingsCanvasEdgeColor;
+
+  /// No description provided for @settingsCanvasCardColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Card color'**
+  String get settingsCanvasCardColor;
+
+  /// No description provided for @settingsCanvasColorDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme default'**
+  String get settingsCanvasColorDefault;
+
   /// No description provided for @settingsThemeDark.
   ///
   /// In en, this message translates to:

@@ -5,10 +5,12 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/node_drag_delta.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
 
 import '../../../_harness/test_app.dart';
@@ -145,5 +147,35 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(commits, isEmpty);
+  });
+
+  testWidgets('拖拽中广播 nodeDragDeltaProvider（连线跟手信号），结束清空',
+      (tester) async {
+    const n = CanvasNode(
+      id: 'n4',
+      label: 'Drag me',
+      type: CanvasNodeType.image,
+    );
+    await pumpCard(tester, node: n, onDragEnd: (_) {});
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(NodeCard)),
+      listen: false,
+    );
+    expect(container.read(nodeDragDeltaProvider), isNull);
+
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.text('Drag me')));
+    await gesture.moveBy(const Offset(30, 40));
+    await gesture.moveBy(const Offset(10, -5));
+    await tester.pump();
+
+    final d = container.read(nodeDragDeltaProvider);
+    expect(d, isNotNull);
+    expect(d!.nodeId, 'n4');
+    expect(d.delta, isNot(Offset.zero));
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(container.read(nodeDragDeltaProvider), isNull);
   });
 }

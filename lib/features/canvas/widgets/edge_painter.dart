@@ -19,6 +19,8 @@ class EdgePainter extends CustomPainter {
     required this.generationSourceColor,
     required this.selectedColor,
     this.selectedEdgeId,
+    this.dragNodeId,
+    this.dragDelta = Offset.zero,
   });
 
   final List<CanvasEdge> edges;
@@ -28,6 +30,10 @@ class EdgePainter extends CustomPainter {
   final Color generationSourceColor;
   final Color selectedColor;
   final String? selectedEdgeId;
+
+  /// 拖拽中节点及其实时位移——连线跟手（拖拽位移未提交 controller 前先补到锚点上）。
+  final String? dragNodeId;
+  final Offset dragDelta;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -40,8 +46,10 @@ class EdgePainter extends CustomPainter {
       final src = nodeById[edge.sourceNodeId];
       final dst = nodeById[edge.targetNodeId];
       if (src == null || dst == null) continue;
-      final p1 = edgeSourceAnchor(src);
-      final p2 = edgeTargetAnchor(dst);
+      var p1 = edgeSourceAnchor(src);
+      var p2 = edgeTargetAnchor(dst);
+      if (src.id == dragNodeId) p1 += dragDelta;
+      if (dst.id == dragNodeId) p2 += dragDelta;
       final isSelected = edge.id == selectedEdgeId;
 
       final paint = Paint()
@@ -110,6 +118,8 @@ class EdgePainter extends CustomPainter {
         oldDelegate.narrativeColor != narrativeColor ||
         oldDelegate.generationSourceColor != generationSourceColor ||
         oldDelegate.selectedColor != selectedColor ||
-        oldDelegate.selectedEdgeId != selectedEdgeId;
+        oldDelegate.selectedEdgeId != selectedEdgeId ||
+        oldDelegate.dragNodeId != dragNodeId ||
+        oldDelegate.dragDelta != dragDelta;
   }
 }

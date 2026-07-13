@@ -22,6 +22,8 @@ class AppPreferences {
     this.updateCheckEnabled = true,
     this.lastUpdateCheckAtIso,
     this.onboardingCompleted = false,
+    this.canvasEdgeColor,
+    this.canvasCardColor,
   });
 
   /// 'dark' | 'light' | 'system'
@@ -56,6 +58,10 @@ class AppPreferences {
   /// 首启向导是否已完成/跳过（ON-1）。false → 冷启弹向导且该次跳过会话恢复。
   final bool onboardingCompleted;
 
+  /// 画布连线 / 卡片自定义颜色（ARGB int）；null = 跟随主题默认。
+  final int? canvasEdgeColor;
+  final int? canvasCardColor;
+
   AppPreferences copyWith({
     String? themePreference,
     bool? highContrast,
@@ -72,6 +78,10 @@ class AppPreferences {
     bool? updateCheckEnabled,
     String? lastUpdateCheckAtIso,
     bool? onboardingCompleted,
+    int? canvasEdgeColor,
+    bool clearCanvasEdgeColor = false,
+    int? canvasCardColor,
+    bool clearCanvasCardColor = false,
   }) {
     return AppPreferences(
       themePreference: themePreference ?? this.themePreference,
@@ -89,6 +99,12 @@ class AppPreferences {
       updateCheckEnabled: updateCheckEnabled ?? this.updateCheckEnabled,
       lastUpdateCheckAtIso: lastUpdateCheckAtIso ?? this.lastUpdateCheckAtIso,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      canvasEdgeColor: clearCanvasEdgeColor
+          ? null
+          : (canvasEdgeColor ?? this.canvasEdgeColor),
+      canvasCardColor: clearCanvasCardColor
+          ? null
+          : (canvasCardColor ?? this.canvasCardColor),
     );
   }
 
@@ -106,6 +122,8 @@ class AppPreferences {
         'update_check_enabled': updateCheckEnabled,
         'last_update_check_at': lastUpdateCheckAtIso,
         'onboarding_completed': onboardingCompleted,
+        'canvas_edge_color': canvasEdgeColor,
+        'canvas_card_color': canvasCardColor,
       };
 
   /// 容错解析：缺失/类型不符/非法值一律退默认，绝不抛——损坏的偏好文件不该炸启动。
@@ -123,6 +141,8 @@ class AppPreferences {
     final uce = m['update_check_enabled'];
     final luc = m['last_update_check_at'];
     final ob = m['onboarding_completed'];
+    final cec = m['canvas_edge_color'];
+    final ccc = m['canvas_card_color'];
     return AppPreferences(
       themePreference:
           pref is String && allowedTheme.contains(pref) ? pref : 'dark',
@@ -138,6 +158,8 @@ class AppPreferences {
       updateCheckEnabled: uce is bool ? uce : true,
       lastUpdateCheckAtIso: luc is String ? luc : null,
       onboardingCompleted: ob is bool ? ob : false,
+      canvasEdgeColor: cec is int ? cec : null,
+      canvasCardColor: ccc is int ? ccc : null,
     );
   }
 
@@ -157,7 +179,9 @@ class AppPreferences {
           other.windowMaximized == windowMaximized &&
           other.updateCheckEnabled == updateCheckEnabled &&
           other.lastUpdateCheckAtIso == lastUpdateCheckAtIso &&
-          other.onboardingCompleted == onboardingCompleted;
+          other.onboardingCompleted == onboardingCompleted &&
+          other.canvasEdgeColor == canvasEdgeColor &&
+          other.canvasCardColor == canvasCardColor;
 
   @override
   int get hashCode => Object.hash(
@@ -174,5 +198,7 @@ class AppPreferences {
         updateCheckEnabled,
         lastUpdateCheckAtIso,
         onboardingCompleted,
+        canvasEdgeColor,
+        canvasCardColor,
       );
 }

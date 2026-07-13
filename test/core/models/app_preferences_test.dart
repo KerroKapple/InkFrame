@@ -162,4 +162,35 @@ void main() {
     // 不传时保留原值。
     expect(q.copyWith().lastUpdateCheckAtIso, '2026-07-09T08:00:00.000Z');
   });
+
+  test('画布颜色字段默认 null（跟随主题），toMap/fromMap 往返', () {
+    const p = AppPreferences();
+    expect(p.canvasEdgeColor, isNull);
+    expect(p.canvasCardColor, isNull);
+
+    const q = AppPreferences(
+      canvasEdgeColor: 0xFFE8A87C,
+      canvasCardColor: 0xFF20262E,
+    );
+    expect(AppPreferences.fromMap(q.toMap()), q);
+  });
+
+  test('画布颜色 fromMap 容错：类型错 → null', () {
+    final p = AppPreferences.fromMap(<String, Object?>{
+      'canvas_edge_color': '#fff',
+      'canvas_card_color': true,
+    });
+    expect(p.canvasEdgeColor, isNull);
+    expect(p.canvasCardColor, isNull);
+  });
+
+  test('copyWith 画布颜色：设值 / clear 标志清空 / 不传保留', () {
+    const p = AppPreferences(canvasEdgeColor: 1, canvasCardColor: 2);
+    expect(p.copyWith().canvasEdgeColor, 1);
+    expect(p.copyWith(canvasEdgeColor: 3).canvasEdgeColor, 3);
+    expect(p.copyWith(clearCanvasEdgeColor: true).canvasEdgeColor, isNull);
+    expect(p.copyWith(clearCanvasCardColor: true).canvasCardColor, isNull);
+    // clear 只影响对应字段。
+    expect(p.copyWith(clearCanvasEdgeColor: true).canvasCardColor, 2);
+  });
 }

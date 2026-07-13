@@ -12,6 +12,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/canvas_style.dart';
 import '../../../core/di/file_resolver.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
@@ -20,6 +21,7 @@ import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../models/canvas_node.dart';
 import '../providers/node_active_job.dart';
+import '../providers/node_drag_delta.dart';
 import 'video_node_body.dart';
 
 class NodeCard extends ConsumerStatefulWidget {
@@ -70,9 +72,16 @@ class _NodeCardState extends ConsumerState<NodeCard> {
       _dragging = false;
       _dragOffset = Offset.zero;
     });
+    // 先清广播再提交落点：连线层切回 controller 座标，避免一帧双重位移。
+    ref.read(nodeDragDeltaProvider.notifier).state = null;
     if (commit && total != Offset.zero) {
       widget.onDragEnd(total);
     }
+  }
+
+  void _broadcastDrag() {
+    ref.read(nodeDragDeltaProvider.notifier).state =
+        (nodeId: widget.node.id, delta: _dragOffset);
   }
 
   @override
@@ -110,11 +119,17 @@ class _NodeCardState extends ConsumerState<NodeCard> {
       cursor: cursor,
       child: GestureDetector(
         onTap: widget.onTap,
-        onPanStart: (_) => setState(() {
-          _dragging = true;
-          _dragOffset = Offset.zero;
-        }),
-        onPanUpdate: (d) => setState(() => _dragOffset += d.delta),
+        onPanStart: (_) {
+          setState(() {
+            _dragging = true;
+            _dragOffset = Offset.zero;
+          });
+          _broadcastDrag();
+        },
+        onPanUpdate: (d) {
+          setState(() => _dragOffset += d.delta);
+          _broadcastDrag();
+        },
         onPanEnd: (_) => _endDrag(commit: true),
         onPanCancel: () => _endDrag(commit: false),
         child: Stack(
@@ -128,7 +143,8 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                 width: node.size.width,
                 height: node.size.height,
                 decoration: BoxDecoration(
-                  color: colors.surface2,
+                  color: ref.watch(canvasStyleControllerProvider).cardColor ??
+                      colors.surface2,
                   borderRadius: BorderRadius.circular(InkRadius.lg),
                   border: Border.all(color: borderColor, width: borderWidth),
                   boxShadow: elevated ? InkShadow.elevated : InkShadow.card,

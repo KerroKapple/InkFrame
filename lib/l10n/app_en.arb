@@ -80,6 +80,10 @@
   "settingsApiKeyCleared": "Cleared",
 
   "settingsThemeSection": "Theme",
+  "settingsCanvasSection": "Canvas",
+  "settingsCanvasEdgeColor": "Connection line color",
+  "settingsCanvasCardColor": "Card color",
+  "settingsCanvasColorDefault": "Theme default",
   "settingsThemeDark": "Dark",
   "settingsThemeLight": "Light",
   "settingsThemeHighContrast": "High contrast",
