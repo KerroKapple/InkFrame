@@ -582,6 +582,25 @@ void main() {
       await expectLater(pending, throwsA(isA<LocalIOError>()));
     });
 
+    test('moveNode 落点 clamp 到第一象限（负坐标是点击死区）', () async {
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl =
+          container.read(canvasNodesControllerProvider(canvasId).notifier);
+      final n = await ctrl.addNode(
+        label: 'C',
+        type: CanvasNodeType.image,
+        position: const Offset(50, 80),
+      );
+
+      await ctrl.moveNode(n.id, const Offset(-500, -30), laneId: null);
+
+      final moved = container
+          .read(canvasNodesControllerProvider(canvasId))
+          .valueOrNull!
+          .single;
+      expect(moved.position, const Offset(0, 50));
+    });
+
     test('moveNode 更新内存位置', () async {
       await container
           .read(canvasNodesControllerProvider(canvasId).future);

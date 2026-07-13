@@ -203,7 +203,13 @@ class CanvasNodesController
         if (n.id == id) target = n;
       }
       if (target == null) return;
-      final newPos = target.position + delta;
+      // 落点 clamp 到第一象限：舞台原点固定 (0,0)（负坐标区是 Stack 点击死区），
+      // 右/下由舞台内容驱动生长不设限（见 util/canvas_extent.dart）。
+      final raw = target.position + delta;
+      final newPos = Offset(
+        raw.dx < 0 ? 0 : raw.dx,
+        raw.dy < 0 ? 0 : raw.dy,
+      );
       if (_alive) {
         state = AsyncData([
           for (final n in previous)
