@@ -462,7 +462,26 @@ class _CanvasStage extends ConsumerWidget {
               ref.read(canvasViewportSizeProvider.notifier).setSize(size);
             }
           });
-          return InteractiveViewer(
+          // 泳道钉在视口层（NLE 轨道式）：底色带/标题栏/拖拽条不参与缩放平移，
+          // 缩放/平移只作用于泳道内的卡片、连线等世界内容。
+          return Stack(
+            children: [
+              if (lanes.isNotEmpty)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: LaneBackground(
+                      lanes: lanes,
+                      direction: direction,
+                      canvasExtent: direction == LaneDirection.horizontal
+                          ? size.width
+                          : size.height,
+                      dividerColor: colors.borderSubtle,
+                      collapsedIds: collapsedIds,
+                    ),
+                  ),
+                ),
+              Positioned.fill(
+                child: InteractiveViewer(
             transformationController: transformController,
             constrained: false,
             boundaryMargin: const EdgeInsets.all(kCanvasBoundaryMargin),
@@ -473,26 +492,6 @@ class _CanvasStage extends ConsumerWidget {
               height: stage.height,
               child: Stack(
                 children: [
-                  // 泳道背景层：最底部，不拦截事件。分界线随缩放反向补偿
-                  // ——泳道皮恒定屏幕粗细，缩放只作用于泳道内的内容。
-                  if (lanes.isNotEmpty)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: ValueListenableBuilder<Matrix4>(
-                          valueListenable: transformController,
-                          builder: (context, m, _) => LaneBackground(
-                            lanes: lanes,
-                            direction: direction,
-                            canvasExtent: direction == LaneDirection.horizontal
-                                ? stage.width
-                                : stage.height,
-                            dividerColor: colors.borderSubtle,
-                            collapsedIds: collapsedIds,
-                            pixelScale: scaleOf(m),
-                          ),
-                        ),
-                      ),
-                    ),
                   // 连线层（含点击命中）。translucent 让空白处也冒泡。
                   Positioned.fill(
                     child: GestureDetector(
@@ -525,13 +524,6 @@ class _CanvasStage extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  // 泳道分界线拖拽条：置于节点层之下——节点手势优先；strip 用
-                  // translucent，空白分界线处可拖、点击穿透到连线层（HI-1 fix）。
-                  if (lanes.length >= 2)
-                    ..._buildResizeDividers(
-                      context, ref, lanes, direction, stage,
-                      transformController,
-                    ),
                   for (final node in nodes)
                     Positioned(
                       key: ValueKey('node-card-${node.id}'),
@@ -545,6 +537,7 @@ class _CanvasStage extends ConsumerWidget {
                         canvasId: canvasId,
                         laneSlices: laneSlices,
                         direction: direction,
+                        transform: transformController,
                         onTap: () => onNodeTap(node),
                         onDelete: () => deleteNodeWithUndo(
                           context,
@@ -553,17 +546,6 @@ class _CanvasStage extends ConsumerWidget {
                           nodeId: node.id,
                         ),
                       ),
-                    ),
-                  // 泳道标题栏：节点层之上，边删除按钮之下。
-                  if (lanes.isNotEmpty)
-                    ..._buildLaneTitleBars(
-                      context,
-                      ref,
-                      lanes,
-                      direction,
-                      collapsedIds,
-                      stage,
-                      transformController,
                     ),
                   if (selectedGeometry != null)
                     Positioned(
@@ -592,6 +574,21 @@ class _CanvasStage extends ConsumerWidget {
                 ],
               ),
             ),
+                ),
+              ),
+              // 泳道分界线拖拽条 + 标题栏：视口层，世界内容之上，钉死不动。
+              if (lanes.length >= 2)
+                ..._buildResizeDividers(context, ref, lanes, direction, size),
+              if (lanes.isNotEmpty)
+                ..._buildLaneTitleBars(
+                  context,
+                  ref,
+                  lanes,
+                  direction,
+                  collapsedIds,
+                  size,
+                ),
+            ],
           );
         },
       ),
@@ -600,16 +597,15 @@ class _CanvasStage extends ConsumerWidget {
 
   /// 为每条泳道生成标题栏 Positioned widget 列表（含拖拽重排 + 折叠）。
   ///
-  /// 泳道皮不随缩放：标题栏以 1/scale 反向缩放，任意 zoom 下屏幕尺寸恒定
-  /// （FigJam section / Miro frame 同款行为）；仅泳道内的卡片/连线随缩放。
+  /// 视口层（NLE 轨道式）：泳道钉死在屏幕上，坐标/尺寸全为屏幕像素，
+  /// 不随画布缩放平移。
   List<Widget> _buildLaneTitleBars(
     BuildContext context,
     WidgetRef ref,
     List<StyleLane> lanes,
     LaneDirection direction,
     Set<String> collapsedIds,
-    Size stage,
-    TransformationController transform,
+    Size viewport,
   ) {
     const double kTitleBarHeight = 32.0;
     const double kTitleBarWidth = 200.0;
@@ -618,78 +614,65 @@ class _CanvasStage extends ConsumerWidget {
       lanes: laneSlices,
       direction: direction,
       canvasExtent: direction == LaneDirection.horizontal
-          ? stage.width
-          : stage.height,
+          ? viewport.width
+          : viewport.height,
     );
     final result = <Widget>[];
     for (var i = 0; i < lanes.length; i++) {
       final lane = lanes[i];
       final rect = rects[i];
-      final horizontal = direction == LaneDirection.horizontal;
-      // 拖拽重排：记录拖拽偏移（屏幕像素），pan end 时换算回世界坐标定目标 lane。
+      final double left;
+      final double top;
+      final double? width;
+      if (direction == LaneDirection.horizontal) {
+        left = 0;
+        top = rect.top;
+        width = viewport.width;
+      } else {
+        left = rect.left;
+        top = 0;
+        width = kTitleBarWidth;
+      }
+      // 拖拽重排：记录拖拽偏移，pan end 时计算目标 lane 并 reorderLanes。
       var dragOffset = Offset.zero;
       result.add(
         Positioned(
-          left: horizontal ? 0 : rect.left,
-          top: horizontal ? rect.top : 0,
-          child: ValueListenableBuilder<Matrix4>(
-            valueListenable: transform,
-            builder: (context, m, _) {
-              final scale = scaleOf(m);
-              return Transform.scale(
-                scale: 1 / scale,
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  // 反向缩放后子树以屏幕像素布局：横向条铺满整条泳道需要
-                  // 世界宽 × scale 的布局宽；竖向条固定屏幕宽。
-                  width: horizontal ? stage.width * scale : kTitleBarWidth,
-                  height: kTitleBarHeight,
-                  child: GestureDetector(
-                    // 反向缩放子树内 d.delta 恰为屏幕像素。
-                    onPanUpdate: (d) => dragOffset += d.delta,
-                    onPanEnd: (_) {
-                      final moved = dragOffset;
-                      dragOffset = Offset.zero;
-                      if (moved.distance < 12) return; // 阈值：避免误触重排
-                      // 屏幕位移 → 世界位移（/scale）后再定落点泳道。
-                      final dropPoint = horizontal
-                          ? Offset(
-                              0,
-                              rect.top +
-                                  (kTitleBarHeight / 2 + moved.dy) / scale,
-                            )
-                          : Offset(
-                              rect.left +
-                                  (kTitleBarWidth / 2 + moved.dx) / scale,
-                              0,
-                            );
-                      final targetId = laneIdAtPoint(
-                        point: dropPoint,
-                        lanes: laneSlices,
-                        direction: direction,
-                      );
-                      final ids = reorderedLaneIds(
-                        [for (final l in lanes) l.id],
-                        lane.id,
-                        targetId,
-                      );
-                      ref
-                          .read(canvasLanesControllerProvider(canvasId).notifier)
-                          .reorderLanes(ids);
-                    },
-                    child: LaneTitleBar(
-                      lane: lane,
-                      collapsed: collapsedIds.contains(lane.id),
-                      onToggleCollapse: () => ref
-                          .read(laneCollapseProvider(canvasId).notifier)
-                          .toggle(lane.id),
-                      onEdit: () => _onEditLane(context, ref, lane),
-                      onDelete: () => _onDeleteLane(context, ref, lane),
-                    ),
-                  ),
-                ),
+          left: left,
+          top: top,
+          width: width,
+          height: kTitleBarHeight,
+          child: GestureDetector(
+            onPanUpdate: (d) => dragOffset += d.delta,
+            onPanEnd: (_) {
+              final moved = dragOffset;
+              dragOffset = Offset.zero;
+              if (moved.distance < 12) return; // 阈值：避免误触重排
+              final dropPoint = direction == LaneDirection.horizontal
+                  ? Offset(0, rect.top + kTitleBarHeight / 2 + moved.dy)
+                  : Offset(rect.left + kTitleBarWidth / 2 + moved.dx, 0);
+              final targetId = laneIdAtPoint(
+                point: dropPoint,
+                lanes: laneSlices,
+                direction: direction,
               );
+              final ids = reorderedLaneIds(
+                [for (final l in lanes) l.id],
+                lane.id,
+                targetId,
+              );
+              ref
+                  .read(canvasLanesControllerProvider(canvasId).notifier)
+                  .reorderLanes(ids);
             },
+            child: LaneTitleBar(
+              lane: lane,
+              collapsed: collapsedIds.contains(lane.id),
+              onToggleCollapse: () => ref
+                  .read(laneCollapseProvider(canvasId).notifier)
+                  .toggle(lane.id),
+              onEdit: () => _onEditLane(context, ref, lane),
+              onDelete: () => _onDeleteLane(context, ref, lane),
+            ),
           ),
         ),
       );
@@ -697,15 +680,14 @@ class _CanvasStage extends ConsumerWidget {
     return result;
   }
 
-  // 拖拽分界线调整相邻泳道大小（~10 屏幕像素透明感应条，仅命中不绘制）。
-  // 感应条厚度按 1/scale 补偿——缩得再小也保持 10 屏幕像素可抓。
+  // 拖拽分界线调整相邻泳道大小（~10px 透明感应条，仅命中不绘制）。
+  // 视口层：位置/厚度全为屏幕像素，不随缩放变化。
   List<Widget> _buildResizeDividers(
     BuildContext context,
     WidgetRef ref,
     List<StyleLane> lanes,
     LaneDirection direction,
-    Size stage,
-    TransformationController transform,
+    Size viewport,
   ) {
     const double kStripThick = 10.0;
     final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
@@ -713,8 +695,8 @@ class _CanvasStage extends ConsumerWidget {
       lanes: laneSlices,
       direction: direction,
       canvasExtent: direction == LaneDirection.horizontal
-          ? stage.width
-          : stage.height,
+          ? viewport.width
+          : viewport.height,
     );
     final horizontal = direction == LaneDirection.horizontal;
     final result = <Widget>[];
@@ -743,35 +725,20 @@ class _CanvasStage extends ConsumerWidget {
 
       result.add(
         Positioned(
-          left: horizontal ? 0 : dividerPos,
-          top: horizontal ? dividerPos : 0,
-          child: ValueListenableBuilder<Matrix4>(
-            valueListenable: transform,
-            builder: (context, m, _) {
-              // 世界厚度 = 屏幕 10px / scale：任意缩放下感应条屏幕厚度恒定。
-              final thick = kStripThick / scaleOf(m);
-              return Transform.translate(
-                offset: horizontal
-                    ? Offset(0, -thick / 2)
-                    : Offset(-thick / 2, 0),
-                child: SizedBox(
-                  width: horizontal ? stage.width : thick,
-                  height: horizontal ? thick : stage.height,
-                  child: MouseRegion(
-                    cursor: horizontal
-                        ? SystemMouseCursors.resizeRow
-                        : SystemMouseCursors.resizeColumn,
-                    // translucent：strip 接收拖拽，但 tap 等穿透到下方连线层。
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.translucent,
-                      onPanUpdate: (d) =>
-                          delta += horizontal ? d.delta.dy : d.delta.dx,
-                      onPanEnd: (_) => commit(),
-                    ),
-                  ),
-                ),
-              );
-            },
+          left: horizontal ? 0 : dividerPos - kStripThick / 2,
+          top: horizontal ? dividerPos - kStripThick / 2 : 0,
+          width: horizontal ? viewport.width : kStripThick,
+          height: horizontal ? kStripThick : viewport.height,
+          child: MouseRegion(
+            cursor: horizontal
+                ? SystemMouseCursors.resizeRow
+                : SystemMouseCursors.resizeColumn,
+            // translucent：strip 接收拖拽，但 tap 等穿透到下方连线层。
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onPanUpdate: (d) => delta += horizontal ? d.delta.dy : d.delta.dx,
+              onPanEnd: (_) => commit(),
+            ),
           ),
         ),
       );
@@ -877,6 +844,7 @@ class _NodeCardSlot extends ConsumerWidget {
     required this.canvasId,
     required this.laneSlices,
     required this.direction,
+    required this.transform,
     required this.onTap,
     required this.onDelete,
   });
@@ -885,6 +853,9 @@ class _NodeCardSlot extends ConsumerWidget {
   final String canvasId;
   final List<({String id, double size})> laneSlices;
   final LaneDirection direction;
+
+  /// 画布世界→屏幕变换：泳道钉在视口层（屏幕坐标），落点归属须换算后判定。
+  final TransformationController transform;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
@@ -901,13 +872,14 @@ class _NodeCardSlot extends ConsumerWidget {
         selected: selected,
         onTap: onTap,
         onDragEnd: (totalDelta) {
-          // 拖拽落点中心 → 计算归属泳道，一并传给 moveNode。
+          // 拖拽落点中心（世界坐标）→ 换算屏幕坐标后判定归属泳道
+          // （泳道钉在视口层，带位/带宽均为屏幕像素），一并传给 moveNode。
           final center =
               node.position +
               totalDelta +
               Offset(node.size.width / 2, node.size.height / 2);
           final laneId = laneIdAtPoint(
-            point: center,
+            point: MatrixUtils.transformPoint(transform.value, center),
             lanes: laneSlices,
             direction: direction,
           );

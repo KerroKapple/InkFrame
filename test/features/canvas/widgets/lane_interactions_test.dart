@@ -16,7 +16,6 @@ import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart';
-import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_background.dart';
 import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
@@ -311,31 +310,36 @@ void main() {
     expect(bg.collapsedIds, isNot(contains('lane-1')));
   });
 
-  // ── 泳道皮不随缩放（屏幕恒定大小；只缩放泳道内的内容）──────────────────
+  // ── 泳道钉在视口层：缩放/平移只动泳道内的内容，泳道本身不动 ─────────────
 
-  testWidgets('缩放 2x 时标题栏反向缩放 0.5、分界线 pixelScale=2', (tester) async {
+  testWidgets('泳道背景/标题栏在 InteractiveViewer 之外（视口层，不随缩放）',
+      (tester) async {
     await tester.pumpWidget(_buildTestApp(container));
     await tester.pumpAndSettle();
 
-    // 把画布变换调到 2x。
+    // 泳道三件套不在世界变换内——缩放/平移不影响它们。
+    expect(
+      find.ancestor(
+        of: find.byType(LaneBackground),
+        matching: find.byType(InteractiveViewer),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.ancestor(
+        of: find.byType(LaneTitleBar).first,
+        matching: find.byType(InteractiveViewer),
+      ),
+      findsNothing,
+    );
+
+    // 缩放到 2x：标题栏屏幕位置不变（钉死）。
+    final beforeTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     container.read(canvasTransformControllerProvider('cv1')).value =
         Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
     await tester.pump();
-
-    // 标题栏外层 Transform 的缩放应为 1/2——屏幕尺寸恒定。
-    final t = tester.widget<Transform>(
-      find
-          .ancestor(
-            of: find.byType(LaneTitleBar).first,
-            matching: find.byType(Transform),
-          )
-          .first,
-    );
-    expect(scaleOf(t.transform), closeTo(0.5, 1e-9));
-
-    // 泳道背景分界线拿到 pixelScale=2（世界粗细 1/2 → 屏幕恒 1px）。
-    final bg = tester.widget<LaneBackground>(find.byType(LaneBackground));
-    expect(bg.pixelScale, closeTo(2.0, 1e-9));
+    final afterTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
+    expect(afterTop, beforeTop);
   });
 
   // ── (c) resize：updateLane → repo 收到 size 更新 ──────────────────────────
