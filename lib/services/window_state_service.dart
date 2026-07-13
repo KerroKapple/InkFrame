@@ -50,6 +50,24 @@ double _intersectionArea(WindowBounds a, WindowBounds b) {
   return w * h;
 }
 
+/// 距坐标原点最近的工作区 ≈ 主显示器（getAllDisplays 顺序无主屏保证；
+/// macOS/Windows 主屏原点均为 (0,0)，工作区因菜单栏/任务栏内缩，故用
+/// 点到矩形距离而非包含判定）。调用方保证 [frames] 非空。
+WindowBounds _nearestToOrigin(List<WindowBounds> frames) {
+  WindowBounds best = frames.first;
+  double bestDist = double.infinity;
+  for (final f in frames) {
+    final dx = math.max(math.max(f.left - 0, 0 - f.right), 0.0);
+    final dy = math.max(math.max(f.top - 0, 0 - f.bottom), 0.0);
+    final d = dx * dx + dy * dy;
+    if (d < bestDist) {
+      bestDist = d;
+      best = f;
+    }
+  }
+  return best;
+}
+
 /// [r] 的尺寸是否完全放得进 [frame] 工作区（只比尺寸，不管位置）。
 bool _fitsWithin(WindowBounds r, WindowBounds frame) =>
     r.width <= frame.width && r.height <= frame.height;
@@ -103,7 +121,7 @@ class DefaultWindowStateService implements WindowStateService {
       try {
         final frames = await _displays.visibleFrames();
         if (frames.isEmpty) return;
-        final primary = frames.first;
+        final primary = _nearestToOrigin(frames);
         if (_fitsWithin(_defaultBounds, primary)) return;
         await _controller.setBounds(_centeredIn(primary, _defaultBounds));
       } on Object catch (e) {

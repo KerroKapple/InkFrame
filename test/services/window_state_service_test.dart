@@ -69,6 +69,29 @@ void main() {
           applied.y, closeTo(small.y + (small.height - applied.height) / 2, 1));
     });
 
+    test('首启多显示器：主屏判定取距原点最近工作区，与枚举顺序无关', () async {
+      // 副屏在前（大而远），主屏工作区 (0,25) 小于默认窗口。
+      const secondary =
+          WindowBounds(x: 1920, y: 0, width: 2560, height: 1415);
+      const primarySmall = WindowBounds(x: 0, y: 25, width: 1440, height: 875);
+      final controller = _FakeWindowController();
+      final prefs = InMemoryPreferencesService();
+      final svc = build(
+        initial: const AppPreferences(),
+        controller: controller,
+        displays: _FakeDisplayQuery(<WindowBounds>[secondary, primarySmall]),
+        prefs: prefs,
+      );
+
+      await svc.restore();
+
+      expect(controller.setBoundsCalls.length, 1);
+      final applied = controller.setBoundsCalls.single;
+      // 落在主屏（近原点）而非列表首位的副屏。
+      expect(applied.right <= primarySmall.right, isTrue);
+      expect(applied.top >= primarySmall.top, isTrue);
+    });
+
     test('记忆完整落在可见显示器 → 原样 setBounds', () async {
       const saved = WindowBounds(x: 200, y: 150, width: 1000, height: 700);
       final controller = _FakeWindowController();

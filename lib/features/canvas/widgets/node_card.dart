@@ -7,6 +7,7 @@
 // 拖拽（HI-13）：位移累积在本卡片局部状态（Transform.translate），每帧只重建
 // 自身；onPanEnd 把累计位移一次性回调 onDragEnd，由上层提交 controller。
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -66,6 +67,27 @@ class _NodeCardState extends ConsumerState<NodeCard> {
   /// 拖拽中的累计位移——只重建本卡片，不推全画布 state。
   Offset _dragOffset = Offset.zero;
 
+  /// 拖拽期捕获的广播口——dispose 兜底清残留用（dispose 后 ref 不可用）。
+  StateController<NodeDragDelta?>? _dragBroadcast;
+
+  @override
+  void dispose() {
+    // 拖拽中被删（如 Delete 快捷键）不会走 onPanEnd，广播会残留脏值；
+    // 微任务延后清理避开 widget 树锁，容器已销毁时静默放弃。
+    final broadcast = _dragBroadcast;
+    final nodeId = widget.node.id;
+    if (_dragging && broadcast != null) {
+      scheduleMicrotask(() {
+        try {
+          if (broadcast.state?.nodeId == nodeId) broadcast.state = null;
+        } on StateError {
+          // ProviderContainer 已 dispose（应用退出/测试收尾）——无需清理。
+        }
+      });
+    }
+    super.dispose();
+  }
+
   void _endDrag({required bool commit}) {
     final total = _dragOffset;
     setState(() {
@@ -80,8 +102,9 @@ class _NodeCardState extends ConsumerState<NodeCard> {
   }
 
   void _broadcastDrag() {
-    ref.read(nodeDragDeltaProvider.notifier).state =
-        (nodeId: widget.node.id, delta: _dragOffset);
+    final broadcast = ref.read(nodeDragDeltaProvider.notifier);
+    _dragBroadcast = broadcast;
+    broadcast.state = (nodeId: widget.node.id, delta: _dragOffset);
   }
 
   @override

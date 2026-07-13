@@ -45,10 +45,15 @@ Offset edgePathMidpoint(Offset a, Offset b) {
       Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
 }
 
-/// 点 [p] 到连线路径的最短距离（均匀采样近似；[samples] 段足够命中判定精度）。
-double distanceToEdgePath(Offset p, Offset a, Offset b, {int samples = 32}) {
+/// 点 [p] 到连线路径的最短距离（弧长均匀采样近似）。
+///
+/// 采样段数随弧长自适应（步长 ≤8px，上限 512 段）：固定段数在长连线上会让
+/// 采样间距超过命中阈值，点在线上也判不中。8px 步长下最近采样点距真实
+/// 最近点 ≤4px（弧向），对 10px 命中阈值足够。
+double distanceToEdgePath(Offset p, Offset a, Offset b) {
   var best = (p - a).distance;
   for (final m in edgePath(a, b).computeMetrics()) {
+    final samples = (m.length / 8).ceil().clamp(16, 512);
     for (var i = 0; i <= samples; i++) {
       final pos = m.getTangentForOffset(m.length * i / samples)?.position;
       if (pos == null) continue;

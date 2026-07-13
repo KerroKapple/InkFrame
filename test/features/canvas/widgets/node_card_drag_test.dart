@@ -178,4 +178,39 @@ void main() {
     await tester.pumpAndSettle();
     expect(container.read(nodeDragDeltaProvider), isNull);
   });
+
+  testWidgets('拖拽中卡片被卸载（如删除）→ 广播兜底清空，不留脏值',
+      (tester) async {
+    const n = CanvasNode(
+      id: 'n5',
+      label: 'Drag me',
+      type: CanvasNodeType.image,
+    );
+    await pumpCard(tester, node: n, onDragEnd: (_) {});
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(NodeCard)),
+      listen: false,
+    );
+
+    final gesture =
+        await tester.startGesture(tester.getCenter(find.text('Drag me')));
+    await gesture.moveBy(const Offset(30, 40));
+    await gesture.moveBy(const Offset(10, -5));
+    await tester.pump();
+    expect(container.read(nodeDragDeltaProvider), isNotNull);
+
+    // 拖拽中把卡片换掉（模拟删除路径），pan 不会走 onPanEnd。
+    // 同构重 pump：ProviderScope 元素原位更新，容器存活，仅 NodeCard 卸载。
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: Center(child: SizedBox())),
+      overrides: [
+        fileResolverServiceProvider
+            .overrideWithValue(_FakeResolver(Directory.systemTemp)),
+      ],
+    );
+    await tester.pump(); // 冲刷 dispose 里的微任务
+    expect(container.read(nodeDragDeltaProvider), isNull);
+    await gesture.up();
+  });
 }

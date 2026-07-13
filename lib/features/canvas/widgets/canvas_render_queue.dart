@@ -100,6 +100,13 @@ class _CollapsedRail extends ConsumerWidget {
           iconSize: InkSpacing.lg,
           color: colors.fg3,
           hoverColor: colors.surface3,
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          // 细栏净宽 = _kRailWidth - 1px 左边框，默认 48 最小点击域会溢出。
+          constraints: const BoxConstraints(
+            minWidth: InkSpacing.xl,
+            minHeight: InkSpacing.xxl,
+          ),
         ),
         if (activeCount > 0)
           Text(
@@ -130,7 +137,8 @@ class _ExpandedPanel extends ConsumerWidget {
     final l = context.l10n;
     final displayNames = ref.watch(providerDisplayNamesProvider);
 
-    return Padding(
+    // 活跃任务数不设上限，面板高度可能超出视口 → 面板内自滚。
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
         InkSpacing.md,
         InkSpacing.xs,

@@ -102,6 +102,30 @@ void main() {
       expect(id, isNull);
     });
 
+    test('长连线：点在曲线中点仍命中（采样步长自适应，不受弧长稀释）', () {
+      const far = CanvasNode(
+        id: 'far',
+        label: '',
+        type: CanvasNodeType.image,
+        position: Offset(3000, 300),
+        size: Size(100, 100),
+      );
+      const edgeAFar = CanvasEdge(
+        id: 'af',
+        canvasId: 'c',
+        sourceNodeId: 'a',
+        targetNodeId: 'far',
+        edgeType: EdgeType.data,
+      );
+      final mid = edgeMidpoint(source: nodeA, target: far);
+      final id = hitTestEdge(
+        point: mid,
+        edges: const [edgeAFar],
+        nodes: const [nodeA, far],
+      );
+      expect(id, 'af');
+    });
+
     test('空列表 → null', () {
       expect(
         hitTestEdge(
