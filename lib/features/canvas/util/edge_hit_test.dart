@@ -28,11 +28,11 @@ String? hitTestEdge({
     final src = nodeById[edge.sourceNodeId];
     final dst = nodeById[edge.targetNodeId];
     if (src == null || dst == null) continue;
-    final d = distanceToEdgePath(
-      point,
-      edgeSourceAnchor(src),
-      edgeTargetAnchor(dst),
-    );
+    final a = edgeSourceAnchor(src);
+    final b = edgeTargetAnchor(dst);
+    // O(1) 包围盒预筛——远离的边不进采样，保住 O(n+m) 最坏路径。
+    if (!edgeBoundsMayHit(point, a, b, hitThreshold)) continue;
+    final d = distanceToEdgePath(point, a, b);
     if (d <= hitThreshold && d < bestDist) {
       best = edge.id;
       bestDist = d;

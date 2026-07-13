@@ -3,6 +3,7 @@
 //   路径 = 水平控制柄三次贝塞尔（node-editor 经典 S 曲线）；
 //   距离 = PathMetrics 均匀采样近似。
 // EdgePainter（绘制）与 hitTestEdge（命中）共同消费，防几何漂移。
+import 'dart:math' as math;
 import 'dart:ui';
 
 import '../models/canvas_node.dart';
@@ -43,6 +44,17 @@ Offset edgePathMidpoint(Offset a, Offset b) {
   final m = metrics.first;
   return m.getTangentForOffset(m.length / 2)?.position ??
       Offset((a.dx + b.dx) / 2, (a.dy + b.dy) / 2);
+}
+
+/// O(1) 包围盒预筛：贝塞尔曲线含于控制点凸包，控制柄只在 x 方向外扩
+/// （≤ 手柄上限）。点距外扩 [threshold] 后的包围盒之外 → 不可能命中，
+/// 调用方可跳过昂贵的采样距离（大画布最坏路径守卫依赖此筛）。
+bool edgeBoundsMayHit(Offset p, Offset a, Offset b, double threshold) {
+  final h = _handleLength(a, b);
+  return p.dx >= math.min(a.dx, b.dx) - h - threshold &&
+      p.dx <= math.max(a.dx, b.dx) + h + threshold &&
+      p.dy >= math.min(a.dy, b.dy) - threshold &&
+      p.dy <= math.max(a.dy, b.dy) + threshold;
 }
 
 /// 点 [p] 到连线路径的最短距离（弧长均匀采样近似）。

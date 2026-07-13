@@ -47,6 +47,19 @@ void main() {
         greaterThan(100));
   });
 
+  test('edgeBoundsMayHit：曲线附近为真，远点为假（O(1) 预筛语义）', () {
+    const a = Offset(0, 0);
+    const b = Offset(200, 100);
+    // 曲线中点必在包围盒内。
+    expect(edgeBoundsMayHit(edgePathMidpoint(a, b), a, b, 10), isTrue);
+    // 锚点本身命中。
+    expect(edgeBoundsMayHit(a, a, b, 10), isTrue);
+    // 远点被拒。
+    expect(edgeBoundsMayHit(const Offset(-99999, -99999), a, b, 10), isFalse);
+    // y 向只按锚点扩 threshold：越过阈值即拒。
+    expect(edgeBoundsMayHit(const Offset(100, 130), a, b, 10), isFalse);
+  });
+
   test('edgePathMidpoint：对称手柄下等于锚点几何中点', () {
     const a = Offset(0, 0);
     const b = Offset(200, 200);
