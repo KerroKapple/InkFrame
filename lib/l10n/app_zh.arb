@@ -72,6 +72,10 @@
   "settingsApiKeyCleared": "已清除",
 
   "settingsThemeSection": "主题",
+  "settingsCanvasSection": "画布外观",
+  "settingsCanvasEdgeColor": "连线颜色",
+  "settingsCanvasCardColor": "卡片颜色",
+  "settingsCanvasColorDefault": "主题默认",
   "settingsThemeDark": "深色",
   "settingsThemeLight": "浅色",
   "settingsThemeHighContrast": "高对比度",
@@ -273,6 +277,8 @@
   },
 
   "canvasRenderQueue": "渲染队列",
+  "canvasRenderQueueExpand": "展开渲染队列",
+  "canvasRenderQueueCollapse": "收起渲染队列",
   "canvasNodeTypeCharacter": "角色",
   "canvasNodeTypeScene": "场景",
   "canvasNodeTypeCamera": "镜头",

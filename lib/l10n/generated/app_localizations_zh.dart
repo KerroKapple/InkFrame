@@ -193,6 +193,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsThemeSection => '主题';
 
   @override
+  String get settingsCanvasSection => '画布外观';
+
+  @override
+  String get settingsCanvasEdgeColor => '连线颜色';
+
+  @override
+  String get settingsCanvasCardColor => '卡片颜色';
+
+  @override
+  String get settingsCanvasColorDefault => '主题默认';
+
+  @override
   String get settingsThemeDark => '深色';
 
   @override
@@ -688,6 +700,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasRenderQueue => '渲染队列';
+
+  @override
+  String get canvasRenderQueueExpand => '展开渲染队列';
+
+  @override
+  String get canvasRenderQueueCollapse => '收起渲染队列';
 
   @override
   String get canvasNodeTypeCharacter => '角色';

@@ -19,6 +19,26 @@ class InkPalette {
 
   /// 启动时 window_manager 背景色；必须等于 `InkColors.dark().surfaceCanvas`。
   static const Color surfaceCanvasDark = Color(0xFF0B0908);
+
+  /// 画布连线自定义色候选（设置页色板；「主题默认」档另行呈现，不在列）。
+  static const List<Color> canvasEdgeColorChoices = <Color>[
+    Color(0xFFE8A87C), // 琥珀
+    Color(0xFF7CB8E8), // 天蓝
+    Color(0xFF8FD694), // 青绿
+    Color(0xFFE87C9E), // 桃粉
+    Color(0xFFB89CE8), // 藤紫
+    Color(0xFFE8D57C), // 芥黄
+  ];
+
+  /// 画布卡片背景自定义色候选（暗色系中性偏色面，保证前景可读）。
+  static const List<Color> canvasCardColorChoices = <Color>[
+    Color(0xFF2A2320), // 暖炭
+    Color(0xFF20262E), // 蓝灰
+    Color(0xFF212A22), // 墨绿
+    Color(0xFF2C2129), // 暗紫
+    Color(0xFF3A3330), // 浅暖
+    Color(0xFF262626), // 纯中性
+  ];
 }
 
 /// 语义化色板：widget 永远读这个接口，token 工厂决定具体值。

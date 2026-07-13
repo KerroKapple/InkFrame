@@ -47,10 +47,8 @@ class CanvasScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Expanded(child: CanvasView()),
-                    SizedBox(
-                      width: 320,
-                      child: CanvasRenderQueue(),
-                    ),
+                    // 渲染队列自持宽度（展开 320 / 收起细栏，可折叠）。
+                    CanvasRenderQueue(),
                   ],
                 ),
               ),

@@ -1,5 +1,7 @@
-// CanvasRenderQueue：Inspector 下方折叠面板 —
+// CanvasRenderQueue：画布右侧可折叠面板 —
 // 标题 + 当前画布活跃任务进度行（带取消） + 最近失败区（本地化错误文案）。
+// 折叠：无活跃任务且无最近失败 → 自动收起为细栏；点标题/细栏图标手动覆盖
+// （会话级记忆，见 renderQueueExpandedOverrideProvider）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,6 +15,7 @@ import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
 import '../providers/current_canvas_id.dart';
+import '../providers/render_queue_expanded.dart';
 
 class CanvasRenderQueue extends ConsumerWidget {
   const CanvasRenderQueue({super.key});
@@ -20,11 +23,12 @@ class CanvasRenderQueue extends ConsumerWidget {
   // 最近失败区展示条数上限——取插入序最新 N 条，防止长会话堆积。
   static const int _kMaxRecentFailures = 3;
 
+  static const double _kExpandedWidth = 320;
+  static const double _kRailWidth = InkSpacing.xxl;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    final typo = context.inkTypography;
-    final l = context.l10n;
 
     final canvasId = ref.watch(currentCanvasIdProvider);
     final scoped = canvasId == null
@@ -39,9 +43,14 @@ class CanvasRenderQueue extends ConsumerWidget {
         ? failures
         : failures.sublist(failures.length - _kMaxRecentFailures);
     final running = active.whereType<JobRunning>().length;
-    final displayNames = ref.watch(providerDisplayNamesProvider);
 
-    return Container(
+    final override = ref.watch(renderQueueExpandedOverrideProvider);
+    final expanded =
+        override ?? (active.isNotEmpty || recentFailures.isNotEmpty);
+
+    return AnimatedContainer(
+      duration: InkMotion.fast,
+      width: expanded ? _kExpandedWidth : _kRailWidth,
       decoration: BoxDecoration(
         color: colors.surface1,
         border: Border(
@@ -49,9 +58,90 @@ class CanvasRenderQueue extends ConsumerWidget {
           top: BorderSide(color: colors.borderSubtle),
         ),
       ),
+      // 动画过程宽度连续变化——面板内容恒按展开宽排版，超出部分裁掉，
+      // 避免中间帧 Row 溢出。
+      child: ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.topLeft,
+          minWidth: expanded ? _kExpandedWidth : _kRailWidth,
+          maxWidth: expanded ? _kExpandedWidth : _kRailWidth,
+          child: expanded
+              ? _ExpandedPanel(
+                  active: active,
+                  recentFailures: recentFailures,
+                  running: running,
+                )
+              : _CollapsedRail(activeCount: active.length),
+        ),
+      ),
+    );
+  }
+}
+
+/// 收起态细栏：展开按钮 + 活跃任务数角标。
+class _CollapsedRail extends ConsumerWidget {
+  const _CollapsedRail({required this.activeCount});
+
+  final int activeCount;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Column(
+      children: <Widget>[
+        const SizedBox(height: InkSpacing.xs),
+        IconButton(
+          tooltip: context.l10n.canvasRenderQueueExpand,
+          onPressed: () => ref
+              .read(renderQueueExpandedOverrideProvider.notifier)
+              .state = true,
+          icon: const Icon(Icons.pending_actions_outlined),
+          iconSize: InkSpacing.lg,
+          color: colors.fg3,
+          hoverColor: colors.surface3,
+          padding: EdgeInsets.zero,
+          visualDensity: VisualDensity.compact,
+          // 细栏净宽 = _kRailWidth - 1px 左边框，默认 48 最小点击域会溢出。
+          constraints: const BoxConstraints(
+            minWidth: InkSpacing.xl,
+            minHeight: InkSpacing.xxl,
+          ),
+        ),
+        if (activeCount > 0)
+          Text(
+            '$activeCount',
+            style: typo.caption.copyWith(color: colors.fg3),
+          ),
+      ],
+    );
+  }
+}
+
+/// 展开态面板：标题行（点击收起）+ 活跃任务 + 最近失败。
+class _ExpandedPanel extends ConsumerWidget {
+  const _ExpandedPanel({
+    required this.active,
+    required this.recentFailures,
+    required this.running,
+  });
+
+  final List<JobState> active;
+  final List<JobFailed> recentFailures;
+  final int running;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final l = context.l10n;
+    final displayNames = ref.watch(providerDisplayNamesProvider);
+
+    // 活跃任务数不设上限，面板高度可能超出视口 → 面板内自滚。
+    return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(
         InkSpacing.md,
-        InkSpacing.s12,
+        InkSpacing.xs,
         InkSpacing.md,
         InkSpacing.md,
       ),
@@ -68,8 +158,21 @@ class CanvasRenderQueue extends ConsumerWidget {
                 ),
               ),
               Text(
-                '$running · ${active.length} ▾',
+                '$running · ${active.length}',
                 style: typo.caption.copyWith(color: colors.fg3),
+              ),
+              const SizedBox(width: InkSpacing.xs),
+              IconButton(
+                tooltip: l.canvasRenderQueueCollapse,
+                onPressed: () => ref
+                    .read(renderQueueExpandedOverrideProvider.notifier)
+                    .state = false,
+                icon: const Icon(Icons.chevron_right),
+                iconSize: InkSpacing.md,
+                color: colors.fg3,
+                hoverColor: colors.surface3,
+                padding: EdgeInsets.zero,
+                visualDensity: VisualDensity.compact,
               ),
             ],
           ),

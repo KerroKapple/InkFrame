@@ -50,6 +50,40 @@ double _intersectionArea(WindowBounds a, WindowBounds b) {
   return w * h;
 }
 
+/// 距坐标原点最近的工作区 ≈ 主显示器（getAllDisplays 顺序无主屏保证；
+/// macOS/Windows 主屏原点均为 (0,0)，工作区因菜单栏/任务栏内缩，故用
+/// 点到矩形距离而非包含判定）。调用方保证 [frames] 非空。
+WindowBounds _nearestToOrigin(List<WindowBounds> frames) {
+  WindowBounds best = frames.first;
+  double bestDist = double.infinity;
+  for (final f in frames) {
+    final dx = math.max(math.max(f.left - 0, 0 - f.right), 0.0);
+    final dy = math.max(math.max(f.top - 0, 0 - f.bottom), 0.0);
+    final d = dx * dx + dy * dy;
+    if (d < bestDist) {
+      bestDist = d;
+      best = f;
+    }
+  }
+  return best;
+}
+
+/// [r] 的尺寸是否完全放得进 [frame] 工作区（只比尺寸，不管位置）。
+bool _fitsWithin(WindowBounds r, WindowBounds frame) =>
+    r.width <= frame.width && r.height <= frame.height;
+
+/// 把 [desired] 尺寸 clamp 进 [frame] 后在其中居中。
+WindowBounds _centeredIn(WindowBounds frame, WindowBounds desired) {
+  final w = math.min(desired.width, frame.width);
+  final h = math.min(desired.height, frame.height);
+  return WindowBounds(
+    x: frame.left + (frame.width - w) / 2,
+    y: frame.top + (frame.height - h) / 2,
+    width: w,
+    height: h,
+  );
+}
+
 WindowBounds _clampInto(WindowBounds r, WindowBounds frame) {
   final w = math.min(r.width, frame.width);
   final h = math.min(r.height, frame.height);
@@ -81,8 +115,21 @@ class DefaultWindowStateService implements WindowStateService {
   Future<void> restore() async {
     final saved = _prefs.current.windowBounds;
     final maximized = _prefs.current.windowMaximized;
-    // 首次启动（无任何记忆）→ 保持 WindowOptions 默认窗口，不碰边界。
-    if (saved == null && !maximized) return;
+    // 首次启动（无任何记忆）：默认窗口可能大于当前屏幕（WindowOptions 尺寸是死值），
+    // 超出工作区时 clamp 并居中；放得下则保持 OS 默认摆放，不碰边界。
+    if (saved == null && !maximized) {
+      try {
+        final frames = await _displays.visibleFrames();
+        if (frames.isEmpty) return;
+        final primary = _nearestToOrigin(frames);
+        if (_fitsWithin(_defaultBounds, primary)) return;
+        await _controller.setBounds(_centeredIn(primary, _defaultBounds));
+      } on Object catch (e) {
+        _logger.warn(_kModule, 'first-launch clamp failed',
+            extra: <String, Object?>{'error': e.toString()});
+      }
+      return;
+    }
     try {
       if (saved != null) {
         final frames = await _displays.visibleFrames();

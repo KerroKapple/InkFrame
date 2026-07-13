@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/canvas_style.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -24,8 +25,10 @@ import '../providers/canvas_transform_controller.dart';
 import '../providers/current_canvas_id.dart';
 import '../providers/link_action_controller.dart';
 import '../providers/link_mode_controller.dart';
+import '../providers/node_drag_delta.dart';
 import '../providers/playable_video_path.dart';
 import '../providers/selected_edge_controller.dart';
+import '../util/canvas_extent.dart';
 import '../util/canvas_node_delete.dart';
 import '../util/canvas_snackbars.dart';
 import '../util/canvas_zoom.dart';
@@ -444,6 +447,9 @@ class _CanvasStage extends ConsumerWidget {
       canvasTransformControllerProvider(canvasId),
     );
 
+    // 无限画布：舞台尺寸由内容驱动生长（右/下无上限，左/上原点固定）。
+    final stage = canvasStageSize(nodes);
+
     return Container(
       color: colors.surface1,
       // 视口尺寸上报给缩放层（围绕视口中心缩放需要）。
@@ -462,8 +468,8 @@ class _CanvasStage extends ConsumerWidget {
             minScale: kCanvasMinScale,
             maxScale: kCanvasMaxScale,
             child: SizedBox(
-              width: 4000,
-              height: 4000,
+              width: stage.width,
+              height: stage.height,
               child: Stack(
                 children: [
                   // 泳道背景层：最底部，不拦截事件。
@@ -473,7 +479,9 @@ class _CanvasStage extends ConsumerWidget {
                         child: LaneBackground(
                           lanes: lanes,
                           direction: direction,
-                          canvasExtent: 4000,
+                          canvasExtent: direction == LaneDirection.horizontal
+                              ? stage.width
+                              : stage.height,
                           dividerColor: colors.borderSubtle,
                           collapsedIds: collapsedIds,
                         ),
@@ -485,17 +493,27 @@ class _CanvasStage extends ConsumerWidget {
                       behavior: HitTestBehavior.translucent,
                       onTapDown: onEdgeLayerTap,
                       // HI-15：连线层独立 layer，节点局部动画不连带边层重绘。
+                      // 拖拽位移/自定义连线色在此窄域 watch——每帧只重绘本层。
                       child: RepaintBoundary(
-                        child: CustomPaint(
-                          painter: EdgePainter(
-                            edges: edges,
-                            nodes: nodes,
-                            dataColor: colors.accent,
-                            narrativeColor: colors.fg3,
-                            generationSourceColor: colors.fg3,
-                            selectedColor: colors.brand,
-                            selectedEdgeId: selectedEdgeId,
-                          ),
+                        child: Consumer(
+                          builder: (context, ref, _) {
+                            final drag = ref.watch(nodeDragDeltaProvider);
+                            final style =
+                                ref.watch(canvasStyleControllerProvider);
+                            return CustomPaint(
+                              painter: EdgePainter(
+                                edges: edges,
+                                nodes: nodes,
+                                dataColor: style.edgeColor ?? colors.accent,
+                                narrativeColor: colors.fg3,
+                                generationSourceColor: colors.fg3,
+                                selectedColor: colors.brand,
+                                selectedEdgeId: selectedEdgeId,
+                                dragNodeId: drag?.nodeId,
+                                dragDelta: drag?.delta ?? Offset.zero,
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -503,7 +521,9 @@ class _CanvasStage extends ConsumerWidget {
                   // 泳道分界线拖拽条：置于节点层之下——节点手势优先；strip 用
                   // translucent，空白分界线处可拖、点击穿透到连线层（HI-1 fix）。
                   if (lanes.length >= 2)
-                    ..._buildResizeDividers(context, ref, lanes, direction),
+                    ..._buildResizeDividers(
+                      context, ref, lanes, direction, stage,
+                    ),
                   for (final node in nodes)
                     Positioned(
                       key: ValueKey('node-card-${node.id}'),
@@ -534,6 +554,7 @@ class _CanvasStage extends ConsumerWidget {
                       lanes,
                       direction,
                       collapsedIds,
+                      stage,
                     ),
                   if (selectedGeometry != null)
                     Positioned(
@@ -573,6 +594,7 @@ class _CanvasStage extends ConsumerWidget {
     List<StyleLane> lanes,
     LaneDirection direction,
     Set<String> collapsedIds,
+    Size stage,
   ) {
     const double kTitleBarHeight = 32.0;
     const double kTitleBarWidth = 200.0;
@@ -580,7 +602,9 @@ class _CanvasStage extends ConsumerWidget {
     final rects = laneRects(
       lanes: laneSlices,
       direction: direction,
-      canvasExtent: 4000,
+      canvasExtent: direction == LaneDirection.horizontal
+          ? stage.width
+          : stage.height,
     );
     final result = <Widget>[];
     for (var i = 0; i < lanes.length; i++) {
@@ -592,7 +616,7 @@ class _CanvasStage extends ConsumerWidget {
       if (direction == LaneDirection.horizontal) {
         left = 0;
         top = rect.top;
-        width = 4000;
+        width = stage.width;
       } else {
         left = rect.left;
         top = 0;
@@ -651,13 +675,16 @@ class _CanvasStage extends ConsumerWidget {
     WidgetRef ref,
     List<StyleLane> lanes,
     LaneDirection direction,
+    Size stage,
   ) {
     const double kStripThick = 10.0;
     final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
     final rects = laneRects(
       lanes: laneSlices,
       direction: direction,
-      canvasExtent: 4000,
+      canvasExtent: direction == LaneDirection.horizontal
+          ? stage.width
+          : stage.height,
     );
     final horizontal = direction == LaneDirection.horizontal;
     final result = <Widget>[];
@@ -688,8 +715,8 @@ class _CanvasStage extends ConsumerWidget {
         Positioned(
           left: horizontal ? 0 : dividerPos - kStripThick / 2,
           top: horizontal ? dividerPos - kStripThick / 2 : 0,
-          width: horizontal ? 4000 : kStripThick,
-          height: horizontal ? kStripThick : 4000,
+          width: horizontal ? stage.width : kStripThick,
+          height: horizontal ? kStripThick : stage.height,
           child: MouseRegion(
             cursor: horizontal
                 ? SystemMouseCursors.resizeRow

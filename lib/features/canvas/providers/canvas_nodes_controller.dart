@@ -64,9 +64,11 @@ class CanvasNodesController
     NodeRole role = NodeRole.config,
     String? sourceNodeId,
     Offset position = Offset.zero,
-    Size size = const Size(200, 160),
+    Size? size,
     Map<String, Object?> typeConfig = const <String, Object?>{},
   }) async {
+    // 未显式传 size → 按类型取默认（media 类更大）。
+    final Size nodeSize = size ?? defaultNodeSize(type);
     assert(
       role != NodeRole.result || sourceNodeId != null,
       'result node requires sourceNodeId (PRD 4.5.1)',
@@ -86,8 +88,8 @@ class CanvasNodesController
           sourceNodeId: sourceNodeId,
           positionX: position.dx,
           positionY: position.dy,
-          width: size.width,
-          height: size.height,
+          width: nodeSize.width,
+          height: nodeSize.height,
           typeConfig: typeConfig,
         );
         final inserted = CanvasNode(
@@ -99,7 +101,7 @@ class CanvasNodesController
           sourceNodeId: sourceNodeId,
           typeConfig: typeConfig,
           position: position,
-          size: size,
+          size: nodeSize,
         );
         if (_alive) state = AsyncData([...previous, inserted]);
         return inserted;
@@ -201,7 +203,13 @@ class CanvasNodesController
         if (n.id == id) target = n;
       }
       if (target == null) return;
-      final newPos = target.position + delta;
+      // 落点 clamp 到第一象限：舞台原点固定 (0,0)（负坐标区是 Stack 点击死区），
+      // 右/下由舞台内容驱动生长不设限（见 util/canvas_extent.dart）。
+      final raw = target.position + delta;
+      final newPos = Offset(
+        raw.dx < 0 ? 0 : raw.dx,
+        raw.dy < 0 ? 0 : raw.dy,
+      );
       if (_alive) {
         state = AsyncData([
           for (final n in previous)

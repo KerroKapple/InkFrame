@@ -1,4 +1,5 @@
-// 泳道几何：纯函数。画布固定 4000×4000，泳道按传入顺序（调用方已按 sort_order 排）累计偏移。
+// 泳道几何：纯函数。canvasExtent = 舞台沿泳道轴的长度（内容驱动动态生长，
+// 见 canvas_extent.dart），泳道按传入顺序（调用方已按 sort_order 排）累计偏移。
 import 'dart:ui';
 
 enum LaneDirection { horizontal, vertical }

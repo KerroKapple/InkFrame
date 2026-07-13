@@ -1,12 +1,14 @@
-// EdgePainter：在画布垫底层绘制连线。
+// EdgePainter：在画布垫底层绘制连线（CineFlow 式端口曲线）。
 //
-// 简化策略：直线段 + 箭头（source 节点中心 → target 节点中心），不走贝塞尔。
+// 几何与 hitTestEdge 同源（util/edge_geometry.dart）：源节点右边中点出、
+// 靶节点左边中点入，三次贝塞尔；两端画端口圆点，靶端沿切线画箭头。
 // 交互（点击选中 / 悬停高亮）留给后续 PR——当前 IgnorePointer 挂在父层。
 
 import 'package:flutter/material.dart';
 
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
+import '../util/edge_geometry.dart';
 
 class EdgePainter extends CustomPainter {
   EdgePainter({
@@ -17,6 +19,8 @@ class EdgePainter extends CustomPainter {
     required this.generationSourceColor,
     required this.selectedColor,
     this.selectedEdgeId,
+    this.dragNodeId,
+    this.dragDelta = Offset.zero,
   });
 
   final List<CanvasEdge> edges;
@@ -26,6 +30,10 @@ class EdgePainter extends CustomPainter {
   final Color generationSourceColor;
   final Color selectedColor;
   final String? selectedEdgeId;
+
+  /// 拖拽中节点及其实时位移——连线跟手（拖拽位移未提交 controller 前先补到锚点上）。
+  final String? dragNodeId;
+  final Offset dragDelta;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -38,8 +46,10 @@ class EdgePainter extends CustomPainter {
       final src = nodeById[edge.sourceNodeId];
       final dst = nodeById[edge.targetNodeId];
       if (src == null || dst == null) continue;
-      final p1 = _centerOf(src);
-      final p2 = _centerOf(dst);
+      var p1 = edgeSourceAnchor(src);
+      var p2 = edgeTargetAnchor(dst);
+      if (src.id == dragNodeId) p1 += dragDelta;
+      if (dst.id == dragNodeId) p2 += dragDelta;
       final isSelected = edge.id == selectedEdgeId;
 
       final paint = Paint()
@@ -51,13 +61,16 @@ class EdgePainter extends CustomPainter {
                 : 1.0
         ..style = PaintingStyle.stroke;
 
+      final path = edgePath(p1, p2);
       if (edge.edgeType == EdgeType.narrative) {
-        _drawDashedLine(canvas, p1, p2, paint);
+        _drawDashedPath(canvas, path, paint);
       } else {
-        canvas.drawLine(p1, p2, paint);
+        canvas.drawPath(path, paint);
       }
 
-      _drawArrowHead(canvas, p1, p2, paint);
+      _drawArrowHead(canvas, p2, paint);
+      _drawPort(canvas, p1, paint.color);
+      _drawPort(canvas, p2, paint.color);
     }
   }
 
@@ -67,42 +80,34 @@ class EdgePainter extends CustomPainter {
         EdgeType.generationSource => generationSourceColor,
       };
 
-  Offset _centerOf(CanvasNode n) => Offset(
-        n.position.dx + n.size.width / 2,
-        n.position.dy + n.size.height / 2,
-      );
-
-  void _drawDashedLine(Canvas canvas, Offset a, Offset b, Paint paint) {
+  void _drawDashedPath(Canvas canvas, Path path, Paint paint) {
     const dashLen = 6.0;
     const gapLen = 4.0;
-    final total = (b - a).distance;
-    if (total <= 0) return;
-    final dir = (b - a) / total;
-    var drawn = 0.0;
-    while (drawn < total) {
-      final segEnd = (drawn + dashLen).clamp(0.0, total).toDouble();
-      canvas.drawLine(a + dir * drawn, a + dir * segEnd, paint);
-      drawn = segEnd + gapLen;
+    for (final metric in path.computeMetrics()) {
+      var drawn = 0.0;
+      while (drawn < metric.length) {
+        final segEnd = (drawn + dashLen).clamp(0.0, metric.length).toDouble();
+        canvas.drawPath(metric.extractPath(drawn, segEnd), paint);
+        drawn = segEnd + gapLen;
+      }
     }
   }
 
-  void _drawArrowHead(Canvas canvas, Offset a, Offset b, Paint paint) {
-    final dir = b - a;
-    final length = dir.distance;
-    if (length < 1) return;
-    final unit = dir / length;
+  /// 端口圆点：进/出锚点上的实心圆（半覆盖在卡片边缘上，读作端口凸点）。
+  void _drawPort(Canvas canvas, Offset center, Color color) {
+    canvas.drawCircle(center, kEdgePortRadius, Paint()..color = color);
+  }
+
+  /// 靶端箭头：曲线入左端口，末端切线恒为 +x 方向——箭头水平指向端口。
+  void _drawArrowHead(Canvas canvas, Offset tip, Paint paint) {
     const arrowSize = 8.0;
-    final perp = Offset(-unit.dy, unit.dx);
-    final tip = b;
-    final base1 = tip - unit * arrowSize + perp * (arrowSize * 0.5);
-    final base2 = tip - unit * arrowSize - perp * (arrowSize * 0.5);
+    final base = tip - const Offset(arrowSize + kEdgePortRadius, 0);
     final path = Path()
-      ..moveTo(tip.dx, tip.dy)
-      ..lineTo(base1.dx, base1.dy)
-      ..lineTo(base2.dx, base2.dy)
+      ..moveTo(tip.dx - kEdgePortRadius, tip.dy)
+      ..lineTo(base.dx, base.dy + arrowSize * 0.5)
+      ..lineTo(base.dx, base.dy - arrowSize * 0.5)
       ..close();
-    final fill = Paint()..color = paint.color;
-    canvas.drawPath(path, fill);
+    canvas.drawPath(path, Paint()..color = paint.color);
   }
 
   @override
@@ -113,6 +118,8 @@ class EdgePainter extends CustomPainter {
         oldDelegate.narrativeColor != narrativeColor ||
         oldDelegate.generationSourceColor != generationSourceColor ||
         oldDelegate.selectedColor != selectedColor ||
-        oldDelegate.selectedEdgeId != selectedEdgeId;
+        oldDelegate.selectedEdgeId != selectedEdgeId ||
+        oldDelegate.dragNodeId != dragNodeId ||
+        oldDelegate.dragDelta != dragDelta;
   }
 }

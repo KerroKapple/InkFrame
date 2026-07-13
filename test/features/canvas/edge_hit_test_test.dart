@@ -1,4 +1,4 @@
-// edge_hit_test 纯函数单测——点到线段距离命中判定。
+// edge_hit_test 纯函数单测——点到连线曲线（源右出/靶左入贝塞尔）距离命中判定。
 
 import 'dart:ui';
 
@@ -49,9 +49,9 @@ void main() {
       expect(id, isNull);
     });
 
-    test('点在节点端点 → 命中（距离为 0）', () {
+    test('点在源节点出点（右边中点）→ 命中（距离为 0）', () {
       final id = hitTestEdge(
-        point: const Offset(50, 50),
+        point: const Offset(100, 50),
         edges: const [edgeAB],
         nodes: const [nodeA, nodeB],
       );
@@ -102,6 +102,30 @@ void main() {
       expect(id, isNull);
     });
 
+    test('长连线：点在曲线中点仍命中（采样步长自适应，不受弧长稀释）', () {
+      const far = CanvasNode(
+        id: 'far',
+        label: '',
+        type: CanvasNodeType.image,
+        position: Offset(3000, 300),
+        size: Size(100, 100),
+      );
+      const edgeAFar = CanvasEdge(
+        id: 'af',
+        canvasId: 'c',
+        sourceNodeId: 'a',
+        targetNodeId: 'far',
+        edgeType: EdgeType.data,
+      );
+      final mid = edgeMidpoint(source: nodeA, target: far);
+      final id = hitTestEdge(
+        point: mid,
+        edges: const [edgeAFar],
+        nodes: const [nodeA, far],
+      );
+      expect(id, 'af');
+    });
+
     test('空列表 → null', () {
       expect(
         hitTestEdge(
@@ -111,8 +135,10 @@ void main() {
     });
   });
 
-  test('edgeMidpoint 返回端点中心的中点', () {
+  test('edgeMidpoint 返回连线曲线弧长中点（对称手柄下 ≈ 锚点几何中点）', () {
+    // a-out (100,50) → b-in (200,250)，水平对称手柄 → 中点 (150,150)。
     final mid = edgeMidpoint(source: nodeA, target: nodeB);
-    expect(mid, const Offset(150, 150));
+    expect(mid.dx, closeTo(150, 1));
+    expect(mid.dy, closeTo(150, 1));
   });
 }

@@ -458,6 +458,30 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get settingsThemeSection;
 
+  /// No description provided for @settingsCanvasSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get settingsCanvasSection;
+
+  /// No description provided for @settingsCanvasEdgeColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection line color'**
+  String get settingsCanvasEdgeColor;
+
+  /// No description provided for @settingsCanvasCardColor.
+  ///
+  /// In en, this message translates to:
+  /// **'Card color'**
+  String get settingsCanvasCardColor;
+
+  /// No description provided for @settingsCanvasColorDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme default'**
+  String get settingsCanvasColorDefault;
+
   /// No description provided for @settingsThemeDark.
   ///
   /// In en, this message translates to:
@@ -1381,6 +1405,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Render Queue'**
   String get canvasRenderQueue;
+
+  /// No description provided for @canvasRenderQueueExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand render queue'**
+  String get canvasRenderQueueExpand;
+
+  /// No description provided for @canvasRenderQueueCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse render queue'**
+  String get canvasRenderQueueCollapse;
 
   /// No description provided for @canvasNodeTypeCharacter.
   ///
