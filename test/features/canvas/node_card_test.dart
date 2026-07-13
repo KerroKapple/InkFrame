@@ -138,15 +138,16 @@ void main() {
     expect(find.text('Image file missing'), findsOneWidget);
   });
 
-  // 节点头类型标签必须走 l10n，不得泄漏裸 enum 名（i18n-1）。
+  // 标题条：空 label 回退本地化类型名（不得泄漏裸 enum 名，i18n-1）；
+  // 有 label 则显示 label、不再显示类型名（简约化：默认态一条文字）。
   for (final (CanvasNodeType type, String en, String zh) in const [
     (CanvasNodeType.text, 'Text', '文本'),
     (CanvasNodeType.video, 'Video', '视频'),
     (CanvasNodeType.shot, 'Shot', '分镜'),
   ]) {
-    testWidgets('${type.name} config 节点头渲染本地化类型标签 (en/zh)',
+    testWidgets('${type.name} 标题条：空 label 回退本地化类型名 (en/zh)',
         (tester) async {
-      final n = CanvasNode(id: 'c1', label: 'L', type: type);
+      final n = CanvasNode(id: 'c1', label: '', type: type);
       Widget card() => Scaffold(
             body: Center(
               child: NodeCard(
@@ -173,4 +174,28 @@ void main() {
       expect(find.text(zh), findsOneWidget);
     });
   }
+
+  testWidgets('标题条：有 label 显示 label，类型名不再出现', (tester) async {
+    const n = CanvasNode(id: 'c2', label: 'My Shot', type: CanvasNodeType.shot);
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: Center(
+          child: NodeCard(
+            node: n,
+            selected: false,
+            onTap: () {},
+            onDragEnd: (_) {},
+          ),
+        ),
+      ),
+      overrides: [
+        fileResolverServiceProvider
+            .overrideWithValue(_FakeResolver(Directory.systemTemp)),
+      ],
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('My Shot'), findsOneWidget);
+    expect(find.text('Shot'), findsNothing);
+  });
 }

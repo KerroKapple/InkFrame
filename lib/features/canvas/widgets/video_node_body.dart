@@ -128,8 +128,8 @@ class _ThumbnailOrBrokenState extends State<_ThumbnailOrBroken> {
     }
 
     final colors = context.inkColors;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(InkRadius.md),
+    // 全出血：外层 NodeCard 统一裁卡片圆角，这里不再自带内圆角。
+    return ClipRect(
       child: Stack(
         fit: StackFit.expand,
         children: [

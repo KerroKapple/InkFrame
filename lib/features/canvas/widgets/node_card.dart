@@ -111,7 +111,6 @@ class _NodeCardState extends ConsumerState<NodeCard> {
   Widget build(BuildContext context) {
     final node = widget.node;
     final colors = context.inkColors;
-    final typo = context.inkTypography;
     // 节点级实时进度：该节点当前活跃 job（无则 null），驱动卡片底部进度条。
     final activeJob = ref.watch(nodeActiveJobProvider(node.id));
 
@@ -172,33 +171,23 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                   border: Border.all(color: borderColor, width: borderWidth),
                   boxShadow: elevated ? InkShadow.elevated : InkShadow.card,
                 ),
-                padding: const EdgeInsets.all(InkSpacing.md),
-                child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      _iconFor(node.type),
-                      size: 16,
-                      color: colors.fg3,
-                    ),
-                    const SizedBox(width: InkSpacing.xs),
-                    Text(
-                      _typeLabel(context, node.type),
-                      style: typo.caption.copyWith(color: colors.fg3),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: InkSpacing.sm),
-                Expanded(
-                  child: _NodeBody(
-                    node: node,
-                    resolver: ref.watch(fileResolverServiceProvider),
+                // 简约化（Krea/ComfyUI 2.0 共识）：预览即主体、全出血，
+                // 类型/标题收进底部细条；参数留给选中态 Inspector。
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(InkRadius.lg),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: _NodeBody(
+                          node: node,
+                          resolver: ref.watch(fileResolverServiceProvider),
+                        ),
+                      ),
+                      _TitleStrip(node: node),
+                    ],
                   ),
                 ),
-              ],
-            ),
               ),
             ),
             if (widget.selected &&
@@ -217,17 +206,52 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                 top: -8,
                 child: _DeleteAnchor(onPressed: widget.onDelete!),
               ),
-            // 生成进行中：卡片底部一条实时进度条（有进度则确定，否则不确定动画）。
+            // 生成进行中：预览区与标题条交界处一条实时进度条。
             if (activeJob != null)
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: 0,
+                bottom: InkSpacing.s28,
                 child: _NodeProgressBar(job: activeJob),
               ),
           ],
         ),
       ),
+      ),
+    );
+  }
+
+}
+
+/// 底部细标题条：类型图标 + 标题（空标题回退类型名）。卡片唯一的默认态文字。
+class _TitleStrip extends StatelessWidget {
+  const _TitleStrip({required this.node});
+  final CanvasNode node;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Container(
+      height: InkSpacing.s28,
+      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
+      decoration: BoxDecoration(
+        color: colors.surface1,
+        border: Border(top: BorderSide(color: colors.borderSubtle)),
+      ),
+      child: Row(
+        children: [
+          Icon(_iconFor(node.type), size: 14, color: colors.fg3),
+          const SizedBox(width: InkSpacing.xs),
+          Expanded(
+            child: Text(
+              node.label.isEmpty ? _typeLabel(context, node.type) : node.label,
+              style: typo.caption.copyWith(color: colors.fg3),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -257,16 +281,11 @@ class _NodeProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final progress = job.progressValue > 0 ? job.progressValue : null;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(InkRadius.lg),
-      ),
-      child: LinearProgressIndicator(
-        value: progress,
-        minHeight: 3,
-        backgroundColor: colors.surface3,
-        color: colors.accent,
-      ),
+    return LinearProgressIndicator(
+      value: progress,
+      minHeight: 3,
+      backgroundColor: colors.surface3,
+      color: colors.accent,
     );
   }
 }
@@ -351,13 +370,19 @@ class _ConfigBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    return Align(
-      alignment: Alignment.topLeft,
-      child: Text(
-        node.label.isEmpty ? (node.promptText ?? '') : node.label,
-        style: typo.body.copyWith(color: colors.fg1),
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
+    // 正文只放 prompt；标识（label/类型）归底部标题条，避免重复文字。
+    final prompt = node.promptText;
+    if (prompt == null || prompt.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.all(InkSpacing.sm),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Text(
+          prompt,
+          style: typo.body.copyWith(color: colors.fg1),
+          maxLines: 4,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
@@ -400,20 +425,17 @@ class _ResultBody extends StatelessWidget {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(InkRadius.md),
-      child: Image.file(
-        file,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        // ME-26：按卡片宽度解码，避免原图全尺寸进 image cache。
-        cacheWidth: (node.size.width * MediaQuery.devicePixelRatioOf(context))
-            .round(),
-        errorBuilder: (_, _, _) => _Placeholder(
-          icon: Icons.broken_image_outlined,
-          text: context.l10n.resultNodeImageMissing,
-        ),
+    return Image.file(
+      file,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      // ME-26：按卡片宽度解码，避免原图全尺寸进 image cache。
+      cacheWidth: (node.size.width * MediaQuery.devicePixelRatioOf(context))
+          .round(),
+      errorBuilder: (_, _, _) => _Placeholder(
+        icon: Icons.broken_image_outlined,
+        text: context.l10n.resultNodeImageMissing,
       ),
     );
   }
@@ -430,10 +452,7 @@ class _Placeholder extends StatelessWidget {
     final typo = context.inkTypography;
     return Container(
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: colors.surface3,
-        borderRadius: BorderRadius.circular(InkRadius.md),
-      ),
+      color: colors.surface3,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
