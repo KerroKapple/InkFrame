@@ -13,8 +13,10 @@ import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_background.dart';
 import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
@@ -307,6 +309,33 @@ void main() {
 
     final bg = tester.widget<LaneBackground>(find.byType(LaneBackground));
     expect(bg.collapsedIds, isNot(contains('lane-1')));
+  });
+
+  // ── 泳道皮不随缩放（屏幕恒定大小；只缩放泳道内的内容）──────────────────
+
+  testWidgets('缩放 2x 时标题栏反向缩放 0.5、分界线 pixelScale=2', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+
+    // 把画布变换调到 2x。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+    await tester.pump();
+
+    // 标题栏外层 Transform 的缩放应为 1/2——屏幕尺寸恒定。
+    final t = tester.widget<Transform>(
+      find
+          .ancestor(
+            of: find.byType(LaneTitleBar).first,
+            matching: find.byType(Transform),
+          )
+          .first,
+    );
+    expect(scaleOf(t.transform), closeTo(0.5, 1e-9));
+
+    // 泳道背景分界线拿到 pixelScale=2（世界粗细 1/2 → 屏幕恒 1px）。
+    final bg = tester.widget<LaneBackground>(find.byType(LaneBackground));
+    expect(bg.pixelScale, closeTo(2.0, 1e-9));
   });
 
   // ── (c) resize：updateLane → repo 收到 size 更新 ──────────────────────────

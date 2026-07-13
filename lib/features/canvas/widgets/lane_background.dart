@@ -1,5 +1,6 @@
 // 泳道背景层：CustomPaint。底色由数据驱动（effectiveLaneTint），分界线色由调用方传入 token。
 // collapsedIds 中的泳道不绘色填充，但仍绘分界线。
+// 分界线粗细按 1/pixelScale 补偿——泳道皮不随缩放变粗变细，恒 1 屏幕像素。
 import 'package:flutter/material.dart';
 
 import '../models/style_lane.dart';
@@ -14,6 +15,7 @@ class LaneBackground extends StatelessWidget {
     required this.canvasExtent,
     required this.dividerColor,
     this.collapsedIds = const <String>{},
+    this.pixelScale = 1.0,
   });
 
   final List<StyleLane> lanes;
@@ -22,6 +24,8 @@ class LaneBackground extends StatelessWidget {
   final Color dividerColor;
   /// 折叠态泳道 id 集：不绘色填充，仍绘分界线。
   final Set<String> collapsedIds;
+  /// 当前画布缩放（世界→屏幕）；分界线世界粗细 = 1 / pixelScale。
+  final double pixelScale;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +37,7 @@ class LaneBackground extends StatelessWidget {
         canvasExtent: canvasExtent,
         dividerColor: dividerColor,
         collapsedIds: collapsedIds,
+        pixelScale: pixelScale,
       ),
     );
   }
@@ -45,6 +50,7 @@ class _LanePainter extends CustomPainter {
     required this.canvasExtent,
     required this.dividerColor,
     required this.collapsedIds,
+    required this.pixelScale,
   });
 
   final List<StyleLane> lanes;
@@ -52,6 +58,7 @@ class _LanePainter extends CustomPainter {
   final double canvasExtent;
   final Color dividerColor;
   final Set<String> collapsedIds;
+  final double pixelScale;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -62,7 +69,7 @@ class _LanePainter extends CustomPainter {
     );
     final line = Paint()
       ..color = dividerColor
-      ..strokeWidth = 1;
+      ..strokeWidth = 1 / pixelScale;
     for (var i = 0; i < lanes.length; i++) {
       final rect = rects[i];
       // 折叠泳道不绘色填充。
@@ -91,6 +98,7 @@ class _LanePainter extends CustomPainter {
       old.direction != direction ||
       old.dividerColor != dividerColor ||
       old.collapsedIds != collapsedIds ||
+      old.pixelScale != pixelScale ||
       !_sameLanes(old.lanes, lanes);
 
   bool _sameLanes(List<StyleLane> a, List<StyleLane> b) {
