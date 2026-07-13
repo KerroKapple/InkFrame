@@ -171,20 +171,24 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                   border: Border.all(color: borderColor, width: borderWidth),
                   boxShadow: elevated ? InkShadow.elevated : InkShadow.card,
                 ),
-                // 简约化（Krea/ComfyUI 2.0 共识）：预览即主体、全出血，
-                // 类型/标题收进底部细条；参数留给选中态 Inspector。
+                // 简约化（CineFlow/Krea 式）：预览即主体、全出血，
+                // 标题悬浮在预览底部（渐变 scrim 垫底），不占独立空间；
+                // 参数留给选中态 Inspector。
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(InkRadius.lg),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: [
-                      Expanded(
-                        child: _NodeBody(
-                          node: node,
-                          resolver: ref.watch(fileResolverServiceProvider),
-                        ),
+                      _NodeBody(
+                        node: node,
+                        resolver: ref.watch(fileResolverServiceProvider),
                       ),
-                      _TitleStrip(node: node),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _FloatingTitle(node: node),
+                      ),
                     ],
                   ),
                 ),
@@ -206,12 +210,12 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                 top: -8,
                 child: _DeleteAnchor(onPressed: widget.onDelete!),
               ),
-            // 生成进行中：预览区与标题条交界处一条实时进度条。
+            // 生成进行中：卡片底缘一条实时进度条（悬浮标题之上）。
             if (activeJob != null)
               Positioned(
                 left: 0,
                 right: 0,
-                bottom: InkSpacing.s28,
+                bottom: 0,
                 child: _NodeProgressBar(job: activeJob),
               ),
           ],
@@ -223,9 +227,10 @@ class _NodeCardState extends ConsumerState<NodeCard> {
 
 }
 
-/// 底部细标题条：类型图标 + 标题（空标题回退类型名）。卡片唯一的默认态文字。
-class _TitleStrip extends StatelessWidget {
-  const _TitleStrip({required this.node});
+/// 悬浮标题：类型图标 + 标题（空标题回退类型名）悬浮在预览底缘，
+/// 下垫 overlay 渐变 scrim 保证任意画面上可读。卡片唯一的默认态文字。
+class _FloatingTitle extends StatelessWidget {
+  const _FloatingTitle({required this.node});
   final CanvasNode node;
 
   @override
@@ -233,20 +238,27 @@ class _TitleStrip extends StatelessWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return Container(
-      height: InkSpacing.s28,
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(
+        InkSpacing.sm,
+        InkSpacing.lg,
+        InkSpacing.sm,
+        InkSpacing.xs,
+      ),
       decoration: BoxDecoration(
-        color: colors.surface1,
-        border: Border(top: BorderSide(color: colors.borderSubtle)),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [colors.overlay.withValues(alpha: 0), colors.overlay],
+        ),
       ),
       child: Row(
         children: [
-          Icon(_iconFor(node.type), size: 14, color: colors.fg3),
+          Icon(_iconFor(node.type), size: 14, color: colors.fg2),
           const SizedBox(width: InkSpacing.xs),
           Expanded(
             child: Text(
               node.label.isEmpty ? _typeLabel(context, node.type) : node.label,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.caption.copyWith(color: colors.fg1),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
