@@ -718,6 +718,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasRenderQueue => 'Render Queue';
 
   @override
+  String get canvasRenderQueueExpand => 'Expand render queue';
+
+  @override
+  String get canvasRenderQueueCollapse => 'Collapse render queue';
+
+  @override
   String get canvasNodeTypeCharacter => 'Character';
 
   @override

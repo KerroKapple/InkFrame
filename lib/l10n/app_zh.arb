@@ -273,6 +273,8 @@
   },
 
   "canvasRenderQueue": "渲染队列",
+  "canvasRenderQueueExpand": "展开渲染队列",
+  "canvasRenderQueueCollapse": "收起渲染队列",
   "canvasNodeTypeCharacter": "角色",
   "canvasNodeTypeScene": "场景",
   "canvasNodeTypeCamera": "镜头",

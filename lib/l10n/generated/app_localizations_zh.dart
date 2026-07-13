@@ -690,6 +690,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasRenderQueue => '渲染队列';
 
   @override
+  String get canvasRenderQueueExpand => '展开渲染队列';
+
+  @override
+  String get canvasRenderQueueCollapse => '收起渲染队列';
+
+  @override
   String get canvasNodeTypeCharacter => '角色';
 
   @override

@@ -4,6 +4,7 @@
 // DB 失败回滚、moveNode 持久化位置 + 泳道 + InkError 回滚。
 
 import 'dart:async';
+import 'dart:ui' show Size;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -254,6 +255,42 @@ void main() {
 
       final state = container.read(canvasNodesControllerProvider(canvasId));
       expect(state.valueOrNull, hasLength(1));
+    });
+
+    test('addNode 不传 size → 按类型取默认尺寸（media 类更大）', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+
+      final image = await ctrl.addNode(label: 'I', type: CanvasNodeType.image);
+      final video = await ctrl.addNode(label: 'V', type: CanvasNodeType.video);
+      final shot = await ctrl.addNode(label: 'S', type: CanvasNodeType.shot);
+      final text = await ctrl.addNode(label: 'T', type: CanvasNodeType.text);
+
+      expect(image.size, defaultNodeSize(CanvasNodeType.image));
+      expect(video.size, defaultNodeSize(CanvasNodeType.video));
+      expect(shot.size, defaultNodeSize(CanvasNodeType.shot));
+      expect(text.size, defaultNodeSize(CanvasNodeType.text));
+      // media 类默认尺寸大于紧凑类
+      expect(image.size.width, greaterThan(text.size.width));
+      // 透传到 Repository.create
+      expect(repo.createCalls.first['width'],
+          defaultNodeSize(CanvasNodeType.image).width);
+    });
+
+    test('addNode 显式传 size → 覆盖类型默认', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+
+      final n = await ctrl.addNode(
+        label: 'X',
+        type: CanvasNodeType.image,
+        size: const Size(111, 99),
+      );
+      expect(n.size, const Size(111, 99));
     });
 
     test('addNode 透传 typeConfig：乐观对象 + Repository.create 都带上', () async {

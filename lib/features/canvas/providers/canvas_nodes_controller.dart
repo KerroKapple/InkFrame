@@ -64,9 +64,11 @@ class CanvasNodesController
     NodeRole role = NodeRole.config,
     String? sourceNodeId,
     Offset position = Offset.zero,
-    Size size = const Size(200, 160),
+    Size? size,
     Map<String, Object?> typeConfig = const <String, Object?>{},
   }) async {
+    // 未显式传 size → 按类型取默认（media 类更大）。
+    final Size nodeSize = size ?? defaultNodeSize(type);
     assert(
       role != NodeRole.result || sourceNodeId != null,
       'result node requires sourceNodeId (PRD 4.5.1)',
@@ -86,8 +88,8 @@ class CanvasNodesController
           sourceNodeId: sourceNodeId,
           positionX: position.dx,
           positionY: position.dy,
-          width: size.width,
-          height: size.height,
+          width: nodeSize.width,
+          height: nodeSize.height,
           typeConfig: typeConfig,
         );
         final inserted = CanvasNode(
@@ -99,7 +101,7 @@ class CanvasNodesController
           sourceNodeId: sourceNodeId,
           typeConfig: typeConfig,
           position: position,
-          size: size,
+          size: nodeSize,
         );
         if (_alive) state = AsyncData([...previous, inserted]);
         return inserted;

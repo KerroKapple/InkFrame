@@ -1382,6 +1382,18 @@ abstract class AppLocalizations {
   /// **'Render Queue'**
   String get canvasRenderQueue;
 
+  /// No description provided for @canvasRenderQueueExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand render queue'**
+  String get canvasRenderQueueExpand;
+
+  /// No description provided for @canvasRenderQueueCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse render queue'**
+  String get canvasRenderQueueCollapse;
+
   /// No description provided for @canvasNodeTypeCharacter.
   ///
   /// In en, this message translates to:

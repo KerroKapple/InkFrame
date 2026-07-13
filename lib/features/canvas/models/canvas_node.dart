@@ -171,6 +171,15 @@ class CanvasNode {
 
 enum CanvasNodeType { image, text, video, shot }
 
+/// 各类型新建节点的默认尺寸——media 类放大容纳预览，text/shot 保持紧凑。
+/// 仅作用于新建（addNode 未显式传 size）；已存节点尺寸以 DB 行为准。
+Size defaultNodeSize(CanvasNodeType type) => switch (type) {
+      CanvasNodeType.image => const Size(260, 220),
+      CanvasNodeType.video => const Size(280, 220),
+      CanvasNodeType.shot => const Size(240, 200),
+      CanvasNodeType.text => const Size(220, 160),
+    };
+
 extension CanvasNodeMapping on CanvasNode {
   /// 从 NodeRepository.listByCanvas 返回的单行 Map 构造 UI 模型。
   ///

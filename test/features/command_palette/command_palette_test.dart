@@ -52,7 +52,7 @@ class _RecordingNodesController extends CanvasNodesController {
     NodeRole role = NodeRole.config,
     String? sourceNodeId,
     Offset position = Offset.zero,
-    Size size = const Size(200, 160),
+    Size? size,
     Map<String, Object?> typeConfig = const <String, Object?>{},
   }) async {
     added.add(type);

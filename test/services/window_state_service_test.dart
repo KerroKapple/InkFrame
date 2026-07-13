@@ -41,6 +41,34 @@ void main() {
       expect(controller.maximizeCount, 0);
     });
 
+    test('首次启动 + 屏幕小于默认窗口 → clamp 进工作区并居中', () async {
+      const small = WindowBounds(x: 0, y: 25, width: 1280, height: 775);
+      final controller = _FakeWindowController();
+      final prefs = InMemoryPreferencesService();
+      final svc = build(
+        initial: const AppPreferences(),
+        controller: controller,
+        displays: _FakeDisplayQuery(<WindowBounds>[small]),
+        prefs: prefs,
+      );
+
+      await svc.restore();
+
+      expect(controller.setBoundsCalls.length, 1);
+      final applied = controller.setBoundsCalls.single;
+      // 不超工作区
+      expect(applied.width, lessThanOrEqualTo(small.width));
+      expect(applied.height, lessThanOrEqualTo(small.height));
+      expect(applied.left >= small.left, isTrue);
+      expect(applied.top >= small.top, isTrue);
+      expect(applied.right <= small.right, isTrue);
+      expect(applied.bottom <= small.bottom, isTrue);
+      // 工作区内居中
+      expect(applied.x, closeTo(small.x + (small.width - applied.width) / 2, 1));
+      expect(
+          applied.y, closeTo(small.y + (small.height - applied.height) / 2, 1));
+    });
+
     test('记忆完整落在可见显示器 → 原样 setBounds', () async {
       const saved = WindowBounds(x: 200, y: 150, width: 1000, height: 700);
       final controller = _FakeWindowController();

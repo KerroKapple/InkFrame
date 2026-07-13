@@ -320,6 +320,8 @@
   "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty studio.",
 
   "canvasRenderQueue": "Render Queue",
+  "canvasRenderQueueExpand": "Expand render queue",
+  "canvasRenderQueueCollapse": "Collapse render queue",
   "canvasNodeTypeCharacter": "Character",
   "canvasNodeTypeScene": "Scene",
   "canvasNodeTypeCamera": "Camera",

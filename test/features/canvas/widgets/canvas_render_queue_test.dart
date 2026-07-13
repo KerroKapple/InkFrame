@@ -85,10 +85,35 @@ void main() {
     expect(find.text('a1b2c3d4-uuid'), findsNothing);
   });
 
-  testWidgets('当前画布无活跃任务 → 空态', (tester) async {
+  testWidgets('当前画布无任务无失败 → 自动收起为细栏', (tester) async {
     await tester.pumpWidget(_host(const [], 'c1'));
     await tester.pump();
+    // 收起态：不渲染面板内容，只留展开入口。
+    expect(find.text('No active renders'), findsNothing);
+    expect(find.byTooltip('Expand render queue'), findsOneWidget);
+  });
+
+  testWidgets('收起态点展开 → 面板出现；点收起 → 回细栏（手动覆盖）', (tester) async {
+    await tester.pumpWidget(_host(const [], 'c1'));
+    await tester.pump();
+
+    await tester.tap(find.byTooltip('Expand render queue'));
+    await tester.pumpAndSettle();
     expect(find.text('No active renders'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Collapse render queue'));
+    await tester.pumpAndSettle();
+    expect(find.text('No active renders'), findsNothing);
+    expect(find.byTooltip('Expand render queue'), findsOneWidget);
+  });
+
+  testWidgets('有活跃任务 → 自动展开', (tester) async {
+    await tester.pumpWidget(_host(const [
+      JobState.running(jobId: 'a', providerId: 'p', canvasId: 'c1', progress: 0.45),
+    ], 'c1'));
+    await tester.pump();
+    expect(find.textContaining('45'), findsOneWidget);
+    expect(find.byTooltip('Collapse render queue'), findsOneWidget);
   });
 
   testWidgets('点击取消控件调用 jobQueueService.cancel(jobId)', (tester) async {
@@ -166,9 +191,9 @@ void main() {
       'c1',
     ));
     await tester.pump();
-    // cancelled 是终态但非 JobFailed → 不渲染最近失败区。
+    // cancelled 是终态但非 JobFailed → 无失败区、无活跃 → 自动收起。
     expect(find.text('RECENT FAILURES'), findsNothing);
-    expect(find.text('No active renders'), findsOneWidget);
+    expect(find.byTooltip('Expand render queue'), findsOneWidget);
   });
 
   testWidgets('跨画布失败隔离：c2 的失败不出现在 c1 的最近失败区', (tester) async {
@@ -184,10 +209,10 @@ void main() {
       'c1',
     ));
     await tester.pump();
-    // 当前画布 c1 无任何任务 → 空态，无最近失败区。
+    // 当前画布 c1 无任何任务 → 无最近失败区，自动收起。
     expect(find.text('RECENT FAILURES'), findsNothing);
     expect(find.text('Network timed out. Please retry.'), findsNothing);
-    expect(find.text('No active renders'), findsOneWidget);
+    expect(find.byTooltip('Expand render queue'), findsOneWidget);
   });
 
   testWidgets('最近失败区最多展示最近 3 条（sublist(len-3) 边界）', (tester) async {
