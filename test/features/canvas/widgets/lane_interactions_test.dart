@@ -44,6 +44,21 @@ class _FakeNodeRepository implements NodeRepository {
                 'z_index': 0,
                 'type_config': <String, Object?>{},
               },
+              // 在 lane-2（起始边 400）内的节点——泳道钉死锚定测试用。
+              {
+                'id': 'n2',
+                'canvas_id': 'cv1',
+                'type': 'image',
+                'node_role': 'config',
+                'label': 'laned',
+                'lane_id': 'lane-2',
+                'position_x': 0.0,
+                'position_y': 500.0,
+                'width': 200.0,
+                'height': 160.0,
+                'z_index': 0,
+                'type_config': <String, Object?>{},
+              },
             ]
           : const [];
 
@@ -340,6 +355,33 @@ void main() {
     await tester.pump();
     final afterTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     expect(afterTop, beforeTop);
+  });
+
+  testWidgets('泳道内卡片缩放锚定本道起始边，不穿出泳道带', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+
+    // n2 在 lane-2（起始边 400）内，世界 y=500；恒等变换下屏幕 y=500。
+    final card = find.byKey(const ValueKey('node-card-n2'));
+    expect(tester.getTopLeft(card).dy, 500);
+
+    // 2x：锚定本道 → y = 400 + 2*(500-400) = 600（未锚定会飞到 1000）。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+    await tester.pump();
+    expect(tester.getTopLeft(card).dy, closeTo(600, 0.5));
+
+    // 0.5x：y = 400 + 0.5*(500-400) = 450，仍在 lane-2 带 [400, 800) 内。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        Matrix4.identity()..scaleByDouble(0.5, 0.5, 1.0, 1.0);
+    await tester.pump();
+    expect(tester.getTopLeft(card).dy, closeTo(450, 0.5));
+
+    // 纵向平移不动泳道内卡片（泳道钉死，内容锚道）。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        Matrix4.identity()..setTranslationRaw(0, -300, 0);
+    await tester.pump();
+    expect(tester.getTopLeft(card).dy, closeTo(500, 0.5));
   });
 
   // ── (c) resize：updateLane → repo 收到 size 更新 ──────────────────────────
