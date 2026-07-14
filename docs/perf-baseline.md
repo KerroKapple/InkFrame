@@ -41,10 +41,11 @@
 
 ### 采集方法
 
-日志落 `~/InkFrame/logs/inkframe.log`（单行 JSON）。抽取：
+日志落 `<数据根>/logs/inkframe.log`（单行 JSON；数据根=Win `%LOCALAPPDATA%\InkFrame`、
+macOS `~/Library/Application Support/InkFrame`，DIR-1）。抽取（macOS 例）：
 
 ```bash
-grep '"module":"app.lifecycle"' ~/InkFrame/logs/inkframe.log
+grep '"module":"app.lifecycle"' ~/Library/Application\ Support/InkFrame/logs/inkframe.log
 ```
 
 ## 预算验收线（阈值）

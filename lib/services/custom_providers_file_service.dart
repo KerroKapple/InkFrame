@@ -23,7 +23,7 @@ class EmptyCustomProviderSource implements CustomProviderSource {
   List<CustomProviderConfig> get configs => const [];
 }
 
-/// 文件实现：~/InkFrame/config/custom_providers.json。
+/// 文件实现：`<root>/config/custom_providers.json`。
 class CustomProvidersFileService implements CustomProviderSource {
   CustomProvidersFileService({
     required AppPaths paths,

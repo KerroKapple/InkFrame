@@ -618,7 +618,8 @@ final fileResolverServiceProvider = Provider<FileResolverService>(
   (ref) => DefaultFileResolverService(ref.watch(appPathsProvider)),
 );
 
-// 默认根：~/InkFrame（AppPaths 展开为绝对路径）
+// 默认根：平台惯例路径（Win %LOCALAPPDATA%\InkFrame / macOS ~/Library/Application Support/InkFrame，
+// DIR-1；存量 ~/InkFrame 由 LegacyRootMigrator 启动时一次性搬迁，失败回退旧址）
 ```
 
 > **Planned**：用户在"设置 → 存储"自定义 dataDir 尚未实现，当前固定走 `AppPaths` 默认根。

@@ -11,7 +11,7 @@
 // 错误：路径非法（穿越 / 绝对 / 空 / 控制字符 / 越界）→ 抛 [PathSecurityError]。
 //
 // 根目录布局（与 AppPaths.projects 一致）：
-//   ~/InkFrame/projects/{project-id}/canvases/{canvas-id}/
+//   <root>/projects/{project-id}/canvases/{canvas-id}/（root 见 AppPaths）
 
 import 'dart:io';
 

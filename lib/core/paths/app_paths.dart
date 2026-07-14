@@ -8,47 +8,72 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
 abstract class AppPaths {
-  /// `~/InkFrame/` 根目录。
+  /// 数据根目录（Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`）。
   Directory get root;
 
-  /// `~/InkFrame/logs/`
+  /// `<root>/logs/`
   Directory get logs;
 
-  /// `~/InkFrame/crashes/`（未捕获错误崩溃落盘，与 logs 平级）
+  /// `<root>/crashes/`（未捕获错误崩溃落盘，与 logs 平级）
   Directory get crashes;
 
-  /// `~/InkFrame/config/`
+  /// `<root>/config/`
   Directory get config;
 
-  /// `~/InkFrame/database/`（PG 数据目录）
+  /// `<root>/database/`（PG 数据目录）
   Directory get database;
 
-  /// `~/InkFrame/projects/`（项目画布产物）
+  /// `<root>/projects/`（项目画布产物）
   Directory get projects;
 
   /// 确保所有子目录存在（首次启动调用）。
   Future<void> ensureInitialized();
 }
 
-/// 默认实现：`~/InkFrame`；若平台未提供 Home，退回 `applicationSupportDirectory`。
+/// 默认实现：平台惯例路径（DIR-1）；缺对应环境变量时退回 `applicationSupportDirectory`。
 class DefaultAppPaths implements AppPaths {
   DefaultAppPaths._(this._root);
 
   static Future<DefaultAppPaths> create() async {
-    final String? home =
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'];
-    final Directory root;
-    if (home != null) {
-      root = Directory(p.join(home, 'InkFrame'));
-    } else {
-      final support = await getApplicationSupportDirectory();
-      root = Directory(p.join(support.path, 'InkFrame'));
+    final String? conventional = conventionalRootPath(
+      isWindows: Platform.isWindows,
+      isMacOS: Platform.isMacOS,
+      env: Platform.environment,
+    );
+    if (conventional != null) {
+      return DefaultAppPaths._(Directory(conventional));
     }
-    return DefaultAppPaths._(root);
+    final support = await getApplicationSupportDirectory();
+    return DefaultAppPaths._(Directory(p.join(support.path, 'InkFrame')));
   }
 
   /// 测试注入入口：显式指定根目录。
   factory DefaultAppPaths.forRoot(Directory root) => DefaultAppPaths._(root);
+
+  /// 纯函数：平台惯例根路径（D-10/DIR-1）。不满足条件返回 null。
+  static String? conventionalRootPath({
+    required bool isWindows,
+    required bool isMacOS,
+    required Map<String, String> env,
+  }) {
+    if (isWindows) {
+      final String? local = env['LOCALAPPDATA'];
+      return local == null ? null : p.join(local, 'InkFrame');
+    }
+    if (isMacOS) {
+      final String? home = env['HOME'];
+      return home == null
+          ? null
+          : p.join(home, 'Library', 'Application Support', 'InkFrame');
+    }
+    return null;
+  }
+
+  /// 纯函数：旧版根路径 `~/InkFrame`（迁移检测用）。无 Home 返回 null。
+  static String? legacyRootPath(Map<String, String> env) {
+    final String? home = env['HOME'] ?? env['USERPROFILE'];
+    return home == null ? null : p.join(home, 'InkFrame');
+  }
 
   final Directory _root;
 

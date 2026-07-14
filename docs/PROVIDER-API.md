@@ -544,7 +544,8 @@ test/fixtures/providers/
 
 ### 13.1 配置文件
 
-- 位置：`~/InkFrame/config/custom_providers.json`（`AppPaths.config`，与 `preferences.json` 同目录）
+- 位置：`<数据根>/config/custom_providers.json`（`AppPaths.config`，与 `preferences.json` 同目录；
+  数据根=Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`，DIR-1）
 - 可手编 / 可分享（**Key 永不入此文件**，见 §13.4）
 - 顶层是 JSON 数组；每条 5 个字段，全部必填非空字符串：
 

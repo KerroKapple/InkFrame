@@ -1,6 +1,6 @@
 // AppPreferences：应用级 UI 偏好（主题/对比度/缩放/语言/上次会话）。
 //
-// 持久化到 ~/InkFrame/config/preferences.json——属应用配置、非项目数据，刻意不入 PG。
+// 持久化到 <root>/config/preferences.json——属应用配置、非项目数据，刻意不入 PG。
 // 用手写不可变类（与 canvas 模型同例外）：避免为一个配置 DTO 引 freezed/json 代码生成。
 import 'package:flutter/foundation.dart';
 
