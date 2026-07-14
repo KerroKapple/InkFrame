@@ -138,15 +138,16 @@ void main() {
     expect(find.text('Image file missing'), findsOneWidget);
   });
 
-  // 节点头类型标签必须走 l10n，不得泄漏裸 enum 名（i18n-1）。
+  // 标题条：空 label 回退本地化类型名（不得泄漏裸 enum 名，i18n-1）；
+  // 有 label 则显示 label、不再显示类型名（简约化：默认态一条文字）。
   for (final (CanvasNodeType type, String en, String zh) in const [
     (CanvasNodeType.text, 'Text', '文本'),
     (CanvasNodeType.video, 'Video', '视频'),
     (CanvasNodeType.shot, 'Shot', '分镜'),
   ]) {
-    testWidgets('${type.name} config 节点头渲染本地化类型标签 (en/zh)',
+    testWidgets('${type.name} 标题条：空 label 回退本地化类型名 (en/zh)',
         (tester) async {
-      final n = CanvasNode(id: 'c1', label: 'L', type: type);
+      final n = CanvasNode(id: 'c1', label: '', type: type);
       Widget card() => Scaffold(
             body: Center(
               child: NodeCard(
@@ -173,4 +174,93 @@ void main() {
       expect(find.text(zh), findsOneWidget);
     });
   }
+
+  // 有全出血媒体的卡片默认态免边框（画面即轮廓）；无媒体保留 1px 边框；
+  // 选中态无论有无媒体都描边（可视选中反馈优先）。
+  group('卡片边框', () {
+    BoxDecoration cardDecoration(WidgetTester tester) {
+      final container = tester.widget<AnimatedContainer>(
+        find.descendant(
+          of: find.byType(NodeCard),
+          matching: find.byType(AnimatedContainer),
+        ),
+      );
+      return container.decoration! as BoxDecoration;
+    }
+
+    Future<void> pump(
+      WidgetTester tester,
+      CanvasNode n, {
+      bool selected = false,
+    }) async {
+      await pumpInkApp(
+        tester,
+        Scaffold(
+          body: Center(
+            child: NodeCard(
+              node: n,
+              selected: selected,
+              onTap: () {},
+              onDragEnd: (_) {},
+            ),
+          ),
+        ),
+        overrides: [
+          fileResolverServiceProvider
+              .overrideWithValue(_FakeResolver(Directory.systemTemp)),
+        ],
+      );
+      await tester.pumpAndSettle();
+    }
+
+    const mediaNode = CanvasNode(
+      id: 'm1',
+      label: '',
+      type: CanvasNodeType.image,
+      role: NodeRole.result,
+      projectId: 'p',
+      canvasId: 'c',
+      typeConfig: <String, Object?>{'image_url': 'a.png'},
+    );
+
+    testWidgets('有媒体 → 默认态无边框', (tester) async {
+      await pump(tester, mediaNode);
+      expect(cardDecoration(tester).border, isNull);
+    });
+
+    testWidgets('无媒体 → 默认态保留边框', (tester) async {
+      const n = CanvasNode(id: 'c1', label: '', type: CanvasNodeType.image);
+      await pump(tester, n);
+      expect(cardDecoration(tester).border, isNotNull);
+    });
+
+    testWidgets('有媒体但选中 → 仍描边', (tester) async {
+      await pump(tester, mediaNode, selected: true);
+      expect(cardDecoration(tester).border, isNotNull);
+    });
+  });
+
+  testWidgets('标题条：有 label 显示 label，类型名不再出现', (tester) async {
+    const n = CanvasNode(id: 'c2', label: 'My Shot', type: CanvasNodeType.shot);
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: Center(
+          child: NodeCard(
+            node: n,
+            selected: false,
+            onTap: () {},
+            onDragEnd: (_) {},
+          ),
+        ),
+      ),
+      overrides: [
+        fileResolverServiceProvider
+            .overrideWithValue(_FakeResolver(Directory.systemTemp)),
+      ],
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('My Shot'), findsOneWidget);
+    expect(find.text('Shot'), findsNothing);
+  });
 }

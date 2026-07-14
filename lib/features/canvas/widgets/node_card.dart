@@ -111,24 +111,24 @@ class _NodeCardState extends ConsumerState<NodeCard> {
   Widget build(BuildContext context) {
     final node = widget.node;
     final colors = context.inkColors;
-    final typo = context.inkTypography;
     // 节点级实时进度：该节点当前活跃 job（无则 null），驱动卡片底部进度条。
     final activeJob = ref.watch(nodeActiveJobProvider(node.id));
 
-    final Color borderColor;
-    final double borderWidth;
+    // 有全出血媒体的卡片默认态免边框——画面自身即轮廓（CineFlow 式）；
+    // 选中/连线高亮态仍描边。
+    final hasMedia = node.role == NodeRole.result &&
+        (node.imageUrl != null || node.thumbnailUrl != null);
+    final Border? border;
     if (widget.isLinkSource) {
-      borderColor = colors.brand;
-      borderWidth = 2.5;
+      border = Border.all(color: colors.brand, width: 2.5);
     } else if (widget.isLinkCandidate) {
-      borderColor = colors.brand;
-      borderWidth = 2.0;
+      border = Border.all(color: colors.brand, width: 2.0);
     } else if (widget.selected) {
-      borderColor = colors.accent;
-      borderWidth = 2.0;
+      border = Border.all(color: colors.accent, width: 2.0);
+    } else if (hasMedia) {
+      border = null;
     } else {
-      borderColor = colors.border;
-      borderWidth = 1.0;
+      border = Border.all(color: colors.border);
     }
 
     final elevated = _dragging || widget.selected || widget.isLinkSource;
@@ -169,36 +169,30 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                   color: ref.watch(canvasStyleControllerProvider).cardColor ??
                       colors.surface2,
                   borderRadius: BorderRadius.circular(InkRadius.lg),
-                  border: Border.all(color: borderColor, width: borderWidth),
+                  border: border,
                   boxShadow: elevated ? InkShadow.elevated : InkShadow.card,
                 ),
-                padding: const EdgeInsets.all(InkSpacing.md),
-                child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(
-                      _iconFor(node.type),
-                      size: 16,
-                      color: colors.fg3,
-                    ),
-                    const SizedBox(width: InkSpacing.xs),
-                    Text(
-                      _typeLabel(context, node.type),
-                      style: typo.caption.copyWith(color: colors.fg3),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: InkSpacing.sm),
-                Expanded(
-                  child: _NodeBody(
-                    node: node,
-                    resolver: ref.watch(fileResolverServiceProvider),
+                // 简约化（CineFlow/Krea 式）：预览即主体、全出血，
+                // 标题悬浮在预览底部（渐变 scrim 垫底），不占独立空间；
+                // 参数留给选中态 Inspector。
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(InkRadius.lg),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _NodeBody(
+                        node: node,
+                        resolver: ref.watch(fileResolverServiceProvider),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _FloatingTitle(node: node),
+                      ),
+                    ],
                   ),
                 ),
-              ],
-            ),
               ),
             ),
             if (widget.selected &&
@@ -217,7 +211,7 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                 top: -8,
                 child: _DeleteAnchor(onPressed: widget.onDelete!),
               ),
-            // 生成进行中：卡片底部一条实时进度条（有进度则确定，否则不确定动画）。
+            // 生成进行中：卡片底缘一条实时进度条（悬浮标题之上）。
             if (activeJob != null)
               Positioned(
                 left: 0,
@@ -228,6 +222,49 @@ class _NodeCardState extends ConsumerState<NodeCard> {
           ],
         ),
       ),
+      ),
+    );
+  }
+
+}
+
+/// 悬浮标题：类型图标 + 标题（空标题回退类型名）悬浮在预览底缘，
+/// 下垫 overlay 渐变 scrim 保证任意画面上可读。卡片唯一的默认态文字。
+class _FloatingTitle extends StatelessWidget {
+  const _FloatingTitle({required this.node});
+  final CanvasNode node;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(
+        InkSpacing.sm,
+        InkSpacing.lg,
+        InkSpacing.sm,
+        InkSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [colors.overlay.withValues(alpha: 0), colors.overlay],
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(_iconFor(node.type), size: 14, color: colors.fg2),
+          const SizedBox(width: InkSpacing.xs),
+          Expanded(
+            child: Text(
+              node.label.isEmpty ? _typeLabel(context, node.type) : node.label,
+              style: typo.caption.copyWith(color: colors.fg1),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -257,16 +294,11 @@ class _NodeProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final progress = job.progressValue > 0 ? job.progressValue : null;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(
-        bottom: Radius.circular(InkRadius.lg),
-      ),
-      child: LinearProgressIndicator(
-        value: progress,
-        minHeight: 3,
-        backgroundColor: colors.surface3,
-        color: colors.accent,
-      ),
+    return LinearProgressIndicator(
+      value: progress,
+      minHeight: 3,
+      backgroundColor: colors.surface3,
+      color: colors.accent,
     );
   }
 }
@@ -351,13 +383,19 @@ class _ConfigBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    return Align(
-      alignment: Alignment.topLeft,
-      child: Text(
-        node.label.isEmpty ? (node.promptText ?? '') : node.label,
-        style: typo.body.copyWith(color: colors.fg1),
-        maxLines: 3,
-        overflow: TextOverflow.ellipsis,
+    // 正文只放 prompt；标识（label/类型）归底部标题条，避免重复文字。
+    final prompt = node.promptText;
+    if (prompt == null || prompt.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.all(InkSpacing.sm),
+      child: Align(
+        alignment: Alignment.topLeft,
+        child: Text(
+          prompt,
+          style: typo.body.copyWith(color: colors.fg1),
+          maxLines: 4,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
@@ -400,20 +438,17 @@ class _ResultBody extends StatelessWidget {
       );
     }
 
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(InkRadius.md),
-      child: Image.file(
-        file,
-        fit: BoxFit.cover,
-        width: double.infinity,
-        height: double.infinity,
-        // ME-26：按卡片宽度解码，避免原图全尺寸进 image cache。
-        cacheWidth: (node.size.width * MediaQuery.devicePixelRatioOf(context))
-            .round(),
-        errorBuilder: (_, _, _) => _Placeholder(
-          icon: Icons.broken_image_outlined,
-          text: context.l10n.resultNodeImageMissing,
-        ),
+    return Image.file(
+      file,
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      // ME-26：按卡片宽度解码，避免原图全尺寸进 image cache。
+      cacheWidth: (node.size.width * MediaQuery.devicePixelRatioOf(context))
+          .round(),
+      errorBuilder: (_, _, _) => _Placeholder(
+        icon: Icons.broken_image_outlined,
+        text: context.l10n.resultNodeImageMissing,
       ),
     );
   }
@@ -430,10 +465,7 @@ class _Placeholder extends StatelessWidget {
     final typo = context.inkTypography;
     return Container(
       alignment: Alignment.center,
-      decoration: BoxDecoration(
-        color: colors.surface3,
-        borderRadius: BorderRadius.circular(InkRadius.md),
-      ),
+      color: colors.surface3,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
