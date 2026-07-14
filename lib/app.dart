@@ -23,6 +23,7 @@ import 'core/di/locale.dart';
 import 'core/di/orphan_reaper.dart';
 import 'core/di/preferences.dart';
 import 'core/di/theme.dart';
+import 'core/di/video_backfill.dart';
 import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
 import 'features/command_palette/widgets/command_palette_shortcuts.dart';
@@ -58,6 +59,8 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       // LB-13：首帧后触发磁盘孤儿文件回收（DRY-RUN + ≥7d 节流）。fire-and-forget，
       // housekeeping，内部吞错只 warn，绝不阻断启动或抢占其它流程。
       ref.read(orphanReapStartupProvider);
+      // XM-1b：存量视频元数据回填（同级 housekeeping，稳态只花一条 SQL）。
+      ref.read(videoBackfillStartupProvider);
     });
   }
 
