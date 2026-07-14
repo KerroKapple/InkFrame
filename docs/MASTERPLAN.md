@@ -13,7 +13,7 @@
 ## 0. 总览:里程碑与主线
 
 ```
-现状(2026-07-09):M1 ✅ M2 ✅ M3 🔵(四方向首切片+导出 UI 入口 #143) alpha.10 已发布(release.yml 首跑,双平台 unsigned 产物;欠 PG 分发源/checksums/Latest 卫生);M5 backend 线飞推(LB-01~04/08/13a/14/16/17/19 已合)+**UI 线破零**(GAP-8/#164);D-7/D-8/D-BE-2/D-10 已拍(见 §9)
+现状(2026-07-14):M1 ✅ M2 ✅ M3 🔵(四方向首切片+导出 UI 入口 #143) alpha.10 已发布(release.yml 首跑,双平台 unsigned 产物;欠 PG 分发源/checksums/Latest 卫生);M5 backend 线飞推(LB-01~04/06/07/08/09/13a/13b/14/16/17/19 已合)+**UI 线连发**(GAP-8/#164、GAP-4/#167、PL-4a/#168、PL-6/#170、CV-1+PL-1/#174、PL-2/#176、画布体验大改 #179/#180)+M4 破冰(XM-1/#177+XM-1b/#181)+发布线 UPD-1/#173、LEG-1/#147;D-7/D-8/D-BE-2/D-10 已拍(见 §9)
    │
 M4 「能力完整」……… M3 各方向二/三切片:storyboard 流水线成型、聚合器可视化配置、
    │                画廊可复用、导出可用可靠 + 角色进阶
@@ -114,8 +114,8 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、
 上线后 9、永久接受 3(buildUpdate 白名单/InkWindowChrome/displayName 英文)。
 
-**上线前硬门槛(数据安全)** — 进度 2026-07-08:LB-13a/14/17 ✅ 已合入,余下待做:
-- **LB-07 PG trust→SCRAM**(随机密码入 Keychain,存量库零迁移;D-4 已拍 ADR-0012 解锁,代码待落)
+**上线前硬门槛(数据安全)** — 进度 2026-07-14:LB-07/09/13a/13b/14/17 ✅ 已合入,余下待做:
+- **LB-07 PG trust→SCRAM**:✅ #172(SCRAM-SHA-256 + 随机密码入 SecureStorage,存量 trust 零迁移)
 - **LB-10 每日 pg_dump 冷备**(保留 7 份,失败绝不阻断)
 - **LB-11/12 项目导出/导入**(zip=manifest+data+files;导入=全表 ID 重映射,**全计划最大风险卡**,
   roundtrip 测试先行;同时产出项目复制的全部机器)
@@ -125,9 +125,9 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
   **LB-09 启动失败 surface**:✅ #169(PG 引导失败全屏错误替代白屏);
   **LB-17 全局错误钩子**:✅ #160(runZonedGuarded + crash 落盘)+ **LB-18 诊断包**(待做)
 
-**正确性簇**(LB-01/03/04 ✅ 已合入,余 LB-05/06):LB-01 状态常量化 ✅#156 → LB-03 JobQueue 拆分 ✅#159
+**正确性簇**(LB-01/03/04/06 ✅ 已合入,LB-05 已消解——簇内清零):LB-01 状态常量化 ✅#156 → LB-03 JobQueue 拆分 ✅#159
 (1168→504 行,竞态裁决留编排器 + `job_queue/` 四协作者)→ LB-04 乐观竞态 ✅#158(FIFO 串行队列,五控制器)
-→ LB-05 已**消解**(#164 退役 JobQueuePanel,卡面自动消解条款触发)/LB-06 在途(#166)。
+→ LB-05 已**消解**(#164 退役 JobQueuePanel,卡面自动消解条款触发)/LB-06 ✅#166(5 站点 error 横幅收口)。
 
 **波次**:W0(S 簇:LB-01/02/05/08/19 + 第 0 天启动 LB-20 资源置备与 LB-21 盯 freezed)→
 W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 压轴)。
@@ -144,17 +144,17 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
 >(含逐屏现状核实 19 条结论)。此处只列索引与排序。
 
 **上线前必做**(按序):
-1. **CV-1 死件清理**(S)——左工具栏 8 空图标/⌘K chip/顶栏 ▶/avatar/sidebar footer 等一切死 UI
-   裁撤或做真(联动决策 D-7);死按钮=坏承诺,先做腾出界面真相。
+1. **CV-1 死件清理**(S)✅ **#174 已合**(D-7 裁撤案:左工具栏/顶栏 ▶/avatar/footer 死件裁撤,
+   footer settings 接真跳设置页)——原发现:死按钮=坏承诺,先做腾出界面真相。
 2. **ON-1 首启向导**(L)+ **ON-2 示例项目入口**(S)——语言→Key→示例项目三步;
    `createSample` 能力已在只差入口。
 3. **GAP-8 渲染队列取消入口**(M)✅ **已随 #164 合入**(取消入口+最近失败区,顺带退役 JobQueuePanel 清 P1-x2 债)——原发现:后端 cancel 链路+测试全齐但 UI 不可达,
    用户烧真钱的任务无法取消;顺带处置未挂载的 JobQueuePanel(挂或删,删则 P1-x2 债自动清)。
 4. **PL-4a 删除防误伤垫层**(S)✅ **#168 已合**(节点/连线删除 Deleted·Undo)。
    **PL-4b 通用 undo/redo(XL)明确排上线后**,前置=BOARD 行 87 并发债。
-5. **PL-2 快捷键第一批**(M:Delete/Esc/⌘A/⌘±0)+ **PL-1 ⌘K 做真或摘牌**(二选一,D-8)。
+5. **PL-2 快捷键第一批**(M)✅ **#176 已合**(Delete/Esc/⌘A/⌘±0)+ **PL-1 ⌘K 做真**(D-8 拍 A)✅ **#174 已合**(≤6 上下文动作)。
 6. **GAP-3 AsyncValue error 态统一**(M,新共享件 InkAsyncSlot;清单含复审补充的
-   library_sidebar:45 与 canvas_view 裸 toString 站点;LB-06/#166 在途)+ **GAP-4 slot error 文案**(S)
+   library_sidebar:45 与 canvas_view 裸 toString 站点;LB-06/#166 已合,余量归本卡)+ **GAP-4 slot error 文案**(S)
    ✅ **#167 已合**(Tooltip + danger 文案)。
 7. **GAP-1 设置页 Custom Provider 编辑 UI**(L,守住"重启生效"边界)。
 8. **GAP-2 软删项目回收站 UI**(M,顺带激活 ARCHIVE 死行)。
@@ -190,7 +190,7 @@ notes 双重生成致重复+基线错(#66 起)、无 checksums;good-first-issue 
 notes 双重生成问题随 PKG-6 收口)、PKG-2A PG 上游直拉(M)、
 PKG-5 安装文档(S,复审补充:Defender/EDR 排除段、卸载与数据、迁移新机 SOP、零遥测承诺句)、
 PKG-6 Release 卫生(XS)、QG-1 回归清单 v2(S)、QG-6 checksums+清单落地(S)、
-UPD-1 应用内检查更新(M,新增依赖 url_launcher 需评审)、WEB-1 Pages 官网(M,FAQ 补
+UPD-1 应用内检查更新 ✅ #173(零新增依赖,ProcessRunner 开系统浏览器)、WEB-1 Pages 官网(M,FAQ 补
 「为什么没有 Linux」)、WEB-2 示例模板(M)、COM-1 gfi 池重建(S,候选与 backend W0/W1 卡
 双占用需协调)、COM-2 Issue 模板+SECURITY.md scope 对账(XS)、COM-3 CONTRIBUTING 英文摘要(S)。
 (QG-4 升级演练从本清单**移除**——依赖 D-4/U7 拍板,非零用户依赖。)
@@ -211,7 +211,7 @@ beta 准入追加第 9 条:**第三方许可 NOTICE 上线**。用户必办追�
   unsigned+安装文档说明 SmartScreen 绕行,1.0 前补。**beta.1 准入的签名两条(第 2/3 条)执行顺延至补购后**
 - **U7** 数据升级政策拍板(→ D-4,牵动铁律文本与 SCRAM 覆盖面)
 - alpha.10 已按"不等 U1/U2"路线发出(release.yml 产 unsigned 双平台产物);
-  **beta.1 被 U1+U2+PG 分发源+UPD-1+QG-4 升级演练硬阻塞**(D-4 已拍 ADR-0012,从阻塞名单移除)。
+  **beta.1 被 U1+U2+PG 分发源+QG-4 升级演练硬阻塞**(D-4 已拍 ADR-0012、UPD-1 已随 #173 交付,均从阻塞名单移除)。
 
 ## 6. 模型接入路线(2026-07 调研,全表与来源见 [`research/2026-07-07-model-landscape.md`](research/2026-07-07-model-landscape.md))
 
@@ -302,9 +302,9 @@ beta 全周期零数据事故;官网稳定;SLA 演练过一次。
   (€69 首年,限个人+开源)/ C. Azure Artifact Signing(**中国个人不可用**,需组织实体)。
 - **D-7 画布 V1 spec 保真度收口** ✅ **d4/d5/d6 已拍(2026-07-09):裁撤优先**——d4=B(左工具栏裁到
   只留有功能的)/ d5=▶与 avatar 裁、⌘K 保留做真(联动 D-8)/ d6=footer settings 接真跳设置页、
-  archive/people/trash 裁(ARCHIVE 随 GAP-2 激活再回)。**CV-1 已解锁**(feat/cv1-pl1 分支在途)。
+  archive/people/trash 裁(ARCHIVE 随 GAP-2 激活再回)。**CV-1 已交付**(#174 合入 main)。
   d1(Inspector 形态)/d2(色条)/d3(camera)/d7(text 节点)不卡 CV-1,后拍。
-- **D-8 ⌘K 命令面板** ✅ **已拍(2026-07-09):A 做真**(首版 ≤6 动作,随 CV-1 同分支交付 PL-1)。
+- **D-8 ⌘K 命令面板** ✅ **已拍(2026-07-09):A 做真**(首版 ≤6 动作;已随 #174 交付 PL-1)。
 
 **功能模块系(D-M4-1~8,详见 features 明细文档;开 M4 Wave 前拍)**:
 - **D-M4-1 脚本拆分**:A 规则拆分(推荐)/ B LLM / C A 先行后加 AI 按钮。

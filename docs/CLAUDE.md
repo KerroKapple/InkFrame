@@ -246,12 +246,11 @@ lib/
 │   │   ├── models/
 │   │   ├── providers/
 │   │   └── widgets/
-│   ├── generation/                    # Generation flow UI + state
+│   ├── generation/                    # Generation flow UI + state (no widgets/ — panel retired in #164)
 │   │   ├── generation_controller.dart
 │   │   ├── models/
 │   │   ├── providers/
-│   │   ├── services/
-│   │   └── widgets/
+│   │   └── services/
 │   ├── settings/                      # Settings surfaces
 │   │   ├── settings_screen.dart
 │   │   ├── providers/

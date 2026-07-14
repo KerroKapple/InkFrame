@@ -31,7 +31,7 @@ util/       无副作用的几何/命中/预设工具
 - `canvas_base_style` / `lane_collapse_controller` / `characters_controller` / `playable_video_path` / `current_canvas_id` / `current_canvas_name` / `canvas_bootstrap_controller`
 
 ## widgets（关键）
-- `canvas_screen` — 整屏骨架：`canvas_top_chrome` + `canvas_left_toolbar` + `canvas_view` + `canvas_render_queue`
+- `canvas_screen` — 整屏骨架：`canvas_top_chrome` + `canvas_view` + `canvas_render_queue`，外层包 `canvas_shortcuts`（删除/Esc/全选/缩放快捷键，PL-2）
 - `canvas_view` / `edge_painter` — 画布视口与连线绘制
 - `node_card` / `video_node_body` — 节点卡片各形态
 - `node_inspector_router` — 按 (role, type) 分发：config → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`（前二者共用 `inspector_status_panel`）；result+image → `image_result_inspector`
@@ -41,7 +41,7 @@ util/       无副作用的几何/命中/预设工具
 - `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_add_node_fab` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`
 
 ## util
-`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects`
+`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars`
 
 ## 数据流（生成一次图/视频）
 1. 选中 config 节点 → `node_inspector_router` 渲染对应 inspector
