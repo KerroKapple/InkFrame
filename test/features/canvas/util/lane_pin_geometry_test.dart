@@ -3,6 +3,8 @@
 import 'package:flutter/widgets.dart' show Matrix4;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/util/canvas_extent.dart';
+import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 import 'package:inkframe/features/canvas/util/lane_pin_geometry.dart';
 
@@ -122,47 +124,66 @@ void main() {
       position: Offset(100, 500),
     );
 
-    test('横向泳道：在道节点仅 y 位移，无道节点原样', () {
-      final m = Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+    // displacedNodes 输出舞台坐标；不变量：施加矩阵后——
+    //   在道节点横截轴 == 锚定公式 laneStart + s*(world - laneStart)；
+    //   无道节点 == 全局映射 s*world + worldT。
+    void expectPinInvariant(Matrix4 m, LaneDirection direction) {
+      final horizontal = direction == LaneDirection.horizontal;
+      final s = scaleOf(m);
+      final worldT = worldCrossTranslation(m, direction);
+      final laned = horizontal
+          ? inLane
+          : inLane.copyWith(position: Offset(inLane.position.dy, 100));
+      final out = displacedNodes(
+        nodes: [laned, free],
+        lanes: lanes,
+        direction: direction,
+        transform: m,
+      );
+      final crossOf = horizontal
+          ? (CanvasNode n) => n.position.dy
+          : (CanvasNode n) => n.position.dx;
+      final tRaw = horizontal ? m.storage[13] : m.storage[12];
+      // 在道：锚定本道起始边。
+      expect(
+        s * crossOf(out[0]) + tRaw,
+        closeTo(400 + s * (crossOf(laned) - 400), 1e-6),
+      );
+      // 无道：全局映射。
+      expect(
+        s * crossOf(out[1]) + tRaw,
+        closeTo(s * crossOf(free) + worldT, 1e-6),
+      );
+    }
+
+    test('横向泳道：在道节点锚定本道，无道节点全局映射（2x）', () {
+      expectPinInvariant(
+        Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0),
+        LaneDirection.horizontal,
+      );
+    });
+
+    test('竖向泳道：同一不变量（0.5x + 平移）', () {
+      expectPinInvariant(
+        Matrix4.identity()
+          ..translateByDouble(-300.0, 120.0, 0.0, 1.0)
+          ..scaleByDouble(0.5, 0.5, 1.0, 1.0),
+        LaneDirection.vertical,
+      );
+    });
+
+    test('初始相机（-kStageHalf 平移）下渲染坐标 == 世界坐标', () {
+      final m = Matrix4.identity()
+        ..translateByDouble(-kStageHalf, -kStageHalf, 0.0, 1.0);
       final out = displacedNodes(
         nodes: const [inLane, free],
         lanes: lanes,
         direction: LaneDirection.horizontal,
         transform: m,
       );
-      // d = (400*(1-2) - 0)/2 = -200 → y=300；渲染 y = 2*300 = 600 = 400+2*(500-400) ✓
-      expect(out[0].position, const Offset(100, 300));
-      expect(out[1].position, const Offset(100, 500));
-    });
-
-    test('竖向泳道：在道节点仅 x 位移', () {
-      final m = Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
-      final out = displacedNodes(
-        nodes: const [
-          CanvasNode(
-            id: 'n3',
-            label: '',
-            type: CanvasNodeType.image,
-            position: Offset(500, 100),
-            laneId: 'b',
-          ),
-        ],
-        lanes: lanes,
-        direction: LaneDirection.vertical,
-        transform: m,
-      );
-      expect(out[0].position, const Offset(300, 100));
-    });
-
-    test('恒等变换下全部原样', () {
-      final out = displacedNodes(
-        nodes: const [inLane, free],
-        lanes: lanes,
-        direction: LaneDirection.horizontal,
-        transform: Matrix4.identity(),
-      );
-      expect(out[0].position, inLane.position);
-      expect(out[1].position, free.position);
+      // 舞台坐标 - kStageHalf == 世界坐标（初始相机的"屏幕即世界"性质）。
+      expect(out[0].position - kStageOrigin, inLane.position);
+      expect(out[1].position - kStageOrigin, free.position);
     });
   });
 }

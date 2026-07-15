@@ -14,8 +14,19 @@ import 'dart:ui';
 import 'package:flutter/widgets.dart' show Matrix4;
 
 import '../models/canvas_node.dart';
+import 'canvas_extent.dart';
 import 'canvas_zoom.dart';
 import 'lane_geometry.dart';
+
+/// 世界横截轴平移分量：变换矩阵映射的是舞台坐标（screen = s·stage + t），
+/// 世界与舞台差一个 kStageHalf（居中定舞台），故 worldT = t + s·kStageHalf。
+/// 泳道锚定/落道换算全部以世界坐标表述，统一经此取平移。
+double worldCrossTranslation(Matrix4 m, LaneDirection direction) {
+  final t = direction == LaneDirection.horizontal
+      ? m.storage[13]
+      : m.storage[12];
+  return t + scaleOf(m) * kStageHalf;
+}
 
 /// 泳道起始边（屏幕坐标 = 各道 size 顺序累计）；laneId 不存在返回 null。
 double? laneStartOf(
@@ -61,8 +72,8 @@ double crossToWorld({
         ? (screen - crossTranslation) / scale
         : laneStart + (screen - laneStart) / scale;
 
-/// 节点的分道位移向量（世界坐标系）：横截轴上按所属泳道补偿，主轴恒 0；
-/// 无道 / 道不存在 → Offset.zero（全局变换）。
+/// 节点的分道位移向量（**世界坐标系**的补偿量）：横截轴上按所属泳道补偿，
+/// 主轴恒 0；无道 / 道不存在 → Offset.zero（全局变换）。
 Offset nodeLaneDisplacement({
   required CanvasNode node,
   required List<({String id, double size})> lanes,
@@ -71,18 +82,17 @@ Offset nodeLaneDisplacement({
 }) {
   final laneStart = laneStartOf(node.laneId, lanes);
   if (laneStart == null) return Offset.zero;
-  final s = scaleOf(transform);
   final horizontal = direction == LaneDirection.horizontal;
-  final t = horizontal ? transform.storage[13] : transform.storage[12];
   final d = lanePinDisplacement(
     laneStart: laneStart,
-    scale: s,
-    crossTranslation: t,
+    scale: scaleOf(transform),
+    crossTranslation: worldCrossTranslation(transform, direction),
   );
   return horizontal ? Offset(0, d) : Offset(d, 0);
 }
 
-/// 连线/命中用：把节点列表映射为"渲染位置"（世界坐标 + 分道位移）副本。
+/// 连线/命中用：把节点列表映射为"渲染位置"（**舞台坐标** + 分道位移）副本，
+/// 与卡片 Positioned 的坐标系一致（世界 + kStageOrigin + 分道位移）。
 List<CanvasNode> displacedNodes({
   required List<CanvasNode> nodes,
   required List<({String id, double size})> lanes,
@@ -92,7 +102,7 @@ List<CanvasNode> displacedNodes({
     [
       for (final n in nodes)
         n.copyWith(
-          position: n.position +
+          position: worldToStage(n.position) +
               nodeLaneDisplacement(
                 node: n,
                 lanes: lanes,

@@ -19,6 +19,7 @@ import 'package:inkframe/features/canvas/providers/canvas_transform_controller.d
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/providers/selected_edge_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
@@ -230,7 +231,7 @@ void main() {
 
   testWidgets('⌘±（Ctrl+= / Ctrl+-）改变缩放变换', (tester) async {
     await _pump(tester, nodes: twoNodes);
-    expect(_ivTransform(tester), Matrix4.identity());
+    expect(_ivTransform(tester), initialCanvasTransform());
 
     await _sendCtrl(tester, LogicalKeyboardKey.equal);
     expect(scaleOf(_ivTransform(tester)), greaterThan(1.0));
@@ -240,14 +241,14 @@ void main() {
     expect(scaleOf(_ivTransform(tester)), lessThan(zoomedIn));
   });
 
-  testWidgets('⌘0（Ctrl+0）缩放复位到单位矩阵', (tester) async {
+  testWidgets('⌘0（Ctrl+0）缩放复位到初始相机', (tester) async {
     await _pump(tester, nodes: twoNodes);
 
     await _sendCtrl(tester, LogicalKeyboardKey.equal);
-    expect(_ivTransform(tester), isNot(Matrix4.identity()));
+    expect(_ivTransform(tester), isNot(initialCanvasTransform()));
 
     await _sendCtrl(tester, LogicalKeyboardKey.digit0);
-    expect(_ivTransform(tester), Matrix4.identity());
+    expect(_ivTransform(tester), initialCanvasTransform());
   });
 
   // ===== D2：缩放围绕视口中心（viewport size 存活，不自毁复位 Size.zero）=====
@@ -265,14 +266,19 @@ void main() {
     await _sendCtrl(tester, LogicalKeyboardKey.equal); // ⌘+
     final m = _ivTransform(tester);
     final scale = scaleOf(m);
-    // 围绕视口中心 → 平移 tx = (1-scale)*centerX，非 0；若支点落 (0,0) 则 tx==0。
-    final expectedTx = (1 - scale) * (size.width / 2);
+    // 围绕视口中心：初始相机 t=-kStageHalf、s=1 → 中心场景点 = cx + kStageHalf，
+    // 新平移 tx = cx(1-scale) - kStageHalf*scale；若支点落 (0,0) 则 tx==-kStageHalf*scale。
+    final cx = size.width / 2;
+    final expectedTx = cx * (1 - scale) - kStageHalf * scale;
     expect(m.storage[12], closeTo(expectedTx, 1e-3));
-    expect(m.storage[12].abs(), greaterThan(1.0)); // 不是 (0,0) 支点
+    expect(
+      (m.storage[12] + kStageHalf * scale).abs(),
+      greaterThan(1.0), // 不是 (0,0) 支点
+    );
   });
 
   // ===== D3：切换画布不继承旧画布的 pan/zoom（transform 按 canvasId 隔离）=====
-  testWidgets('切换画布 → InteractiveViewer 变换复位为单位矩阵', (tester) async {
+  testWidgets('切换画布 → InteractiveViewer 变换复位为初始相机', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
     // 预热并保活 c2 的节点：否则切换瞬间出现 loading 空档，InteractiveViewer 短暂卸载，
     // autoDispose 顺带把（非 family 的）共享 transform 复位，反而掩盖了串味 bug。
@@ -287,7 +293,7 @@ void main() {
 
     // 缩放当前画布 c1。
     await _sendCtrl(tester, LogicalKeyboardKey.equal);
-    expect(_ivTransform(tester), isNot(Matrix4.identity()));
+    expect(_ivTransform(tester), isNot(initialCanvasTransform()));
 
     // 切到 c2（同一 CanvasScreen 常驻，仅换 canvasId；c2 已 AsyncData，无 loading 空档）。
     container.read(currentCanvasIdProvider.notifier).state = 'c2';
@@ -295,7 +301,7 @@ void main() {
 
     expect(
       _ivTransform(tester),
-      Matrix4.identity(),
+      initialCanvasTransform(),
       reason: '新画布不得继承旧画布的 pan/zoom',
     );
   });

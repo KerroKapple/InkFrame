@@ -455,8 +455,9 @@ class _CanvasStage extends ConsumerWidget {
       nodes: nodes,
     );
 
-    // 无限画布：舞台尺寸由内容驱动生长（右/下无上限，左/上原点固定）。
-    final stage = canvasStageSize(nodes);
+    // 全向无限画布：居中定舞台（100k×100k，世界原点在正中央）。
+    // Positioned/painter 使用舞台坐标 = 世界坐标 + kStageOrigin。
+    const stage = kStageSize;
 
     // 各泳道起始边（屏幕坐标 = 尺寸顺序累计），分道位移组用。
     final laneStarts = <String, double>{};
@@ -565,8 +566,8 @@ class _CanvasStage extends ConsumerWidget {
                   for (final node in freeNodes)
                     Positioned(
                       key: ValueKey('node-card-${node.id}'),
-                      left: node.position.dx,
-                      top: node.position.dy,
+                      left: node.position.dx + kStageOrigin.dx,
+                      top: node.position.dy + kStageOrigin.dy,
                       child: _NodeCardSlot(
                         node: node,
                         canvasId: canvasId,
@@ -591,15 +592,13 @@ class _CanvasStage extends ConsumerWidget {
                       child: ValueListenableBuilder<Matrix4>(
                         valueListenable: transformController,
                         builder: (context, m, child) {
-                          final s = scaleOf(m);
                           final horizontal =
                               direction == LaneDirection.horizontal;
                           final d = lanePinDisplacement(
                             laneStart: laneStarts[lane.id]!,
-                            scale: s,
-                            crossTranslation: horizontal
-                                ? m.storage[13]
-                                : m.storage[12],
+                            scale: scaleOf(m),
+                            crossTranslation:
+                                worldCrossTranslation(m, direction),
                           );
                           return Transform.translate(
                             offset:
@@ -614,8 +613,8 @@ class _CanvasStage extends ConsumerWidget {
                               if (node.laneId == lane.id)
                                 Positioned(
                                   key: ValueKey('node-card-${node.id}'),
-                                  left: node.position.dx,
-                                  top: node.position.dy,
+                                  left: node.position.dx + kStageOrigin.dx,
+                                  top: node.position.dy + kStageOrigin.dy,
                                   child: _NodeCardSlot(
                                     node: node,
                                     canvasId: canvasId,
@@ -985,7 +984,8 @@ class _NodeCardSlot extends ConsumerWidget {
           final m = transform.value;
           final s = scaleOf(m);
           final horizontal = direction == LaneDirection.horizontal;
-          final tCross = horizontal ? m.storage[13] : m.storage[12];
+          // 世界坐标系的横截平移（居中定舞台：t + s·kStageHalf）。
+          final tCross = worldCrossTranslation(m, direction);
           final center =
               node.position +
               totalDelta +

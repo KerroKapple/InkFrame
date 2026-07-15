@@ -13,9 +13,11 @@ import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_background.dart';
 import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
@@ -54,6 +56,20 @@ class _FakeNodeRepository implements NodeRepository {
                 'lane_id': 'lane-2',
                 'position_x': 0.0,
                 'position_y': 500.0,
+                'width': 200.0,
+                'height': 160.0,
+                'z_index': 0,
+                'type_config': <String, Object?>{},
+              },
+              // 负世界坐标节点——全向无限画布命中测试用。
+              {
+                'id': 'n3',
+                'canvas_id': 'cv1',
+                'type': 'image',
+                'node_role': 'config',
+                'label': 'negative',
+                'position_x': -500.0,
+                'position_y': -300.0,
                 'width': 200.0,
                 'height': 160.0,
                 'z_index': 0,
@@ -355,6 +371,29 @@ void main() {
     await tester.pump();
     final afterTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     expect(afterTop, beforeTop);
+  });
+
+  // ── 全向无限画布：负世界坐标节点可见、可点选 ────────────────────────────
+
+  testWidgets('负坐标节点：平移相机后可见且可点选', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+
+    // 相机向左上平移 600/400：世界 (-500,-300) 应落到屏幕 (100,100)。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        initialCanvasTransform()..translateByDouble(600.0, 400.0, 0.0, 1.0);
+    await tester.pump();
+
+    final card = find.byKey(const ValueKey('node-card-n3'));
+    expect(tester.getTopLeft(card), const Offset(100, 100));
+
+    // 负坐标区不再是点击死区：tap 命中并进入选中集。
+    await tester.tap(card);
+    await tester.pump();
+    expect(
+      container.read(canvasSelectionControllerProvider),
+      contains('n3'),
+    );
   });
 
   testWidgets('泳道内卡片缩放锚定本道起始边，不穿出泳道带', (tester) async {

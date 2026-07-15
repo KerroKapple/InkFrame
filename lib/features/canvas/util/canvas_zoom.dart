@@ -7,6 +7,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import 'canvas_extent.dart';
+
 /// 缩放下限（与 InteractiveViewer.minScale 共用）。
 const double kCanvasMinScale = 0.1;
 
@@ -55,5 +57,10 @@ Matrix4 zoomedTransform({
     ..scaleByDouble(target, target, 1.0, 1.0);
 }
 
-/// 缩放复位到单位矩阵（scale=1、无平移）。
-Matrix4 resetTransform() => Matrix4.identity();
+/// 初始相机：scale=1、平移 -kStageHalf——世界原点（舞台中央）对准视口左上。
+/// 居中定舞台（canvas_extent.dart）下，默认视角"屏幕坐标 == 世界坐标"。
+Matrix4 initialCanvasTransform() => Matrix4.identity()
+  ..translateByDouble(-kStageHalf, -kStageHalf, 0.0, 1.0);
+
+/// 缩放复位：回到初始相机（scale=1、对准世界原点）。
+Matrix4 resetTransform() => initialCanvasTransform();
