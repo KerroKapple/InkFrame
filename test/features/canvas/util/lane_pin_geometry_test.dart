@@ -124,13 +124,14 @@ void main() {
       position: Offset(100, 500),
     );
 
-    // displacedNodes 输出舞台坐标；不变量：施加矩阵后——
-    //   在道节点横截轴 == 锚定公式 laneStart + s*(world - laneStart)；
-    //   无道节点 == 全局映射 s*world + worldT。
+    // displacedNodes 输出舞台坐标；不变量（终版泳道语义：泳道栈随平移
+    // 整体走、锚在世界原点）：施加矩阵后——
+    //   在道节点横截轴 == laneStackOffset + laneStart + s*(world - laneStart)；
+    //   无道节点     == laneStackOffset + s*world（全局映射的等价形式）。
     void expectPinInvariant(Matrix4 m, LaneDirection direction) {
       final horizontal = direction == LaneDirection.horizontal;
       final s = scaleOf(m);
-      final worldT = worldCrossTranslation(m, direction);
+      final off = laneStackOffset(m, direction);
       final laned = horizontal
           ? inLane
           : inLane.copyWith(position: Offset(inLane.position.dy, 100));
@@ -144,15 +145,15 @@ void main() {
           ? (CanvasNode n) => n.position.dy
           : (CanvasNode n) => n.position.dx;
       final tRaw = horizontal ? m.storage[13] : m.storage[12];
-      // 在道：锚定本道起始边。
+      // 在道：泳道栈偏移 + 本道锚定缩放。
       expect(
         s * crossOf(out[0]) + tRaw,
-        closeTo(400 + s * (crossOf(laned) - 400), 1e-6),
+        closeTo(off + 400 + s * (crossOf(laned) - 400), 1e-6),
       );
-      // 无道：全局映射。
+      // 无道：泳道栈偏移 + s·world（== 全局映射 s·(world+H) + t）。
       expect(
         s * crossOf(out[1]) + tRaw,
-        closeTo(s * crossOf(free) + worldT, 1e-6),
+        closeTo(off + s * crossOf(free), 1e-6),
       );
     }
 

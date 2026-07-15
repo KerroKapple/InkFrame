@@ -18,10 +18,14 @@ import 'canvas_extent.dart';
 import 'canvas_zoom.dart';
 import 'lane_geometry.dart';
 
-/// 世界横截轴平移分量：变换矩阵映射的是舞台坐标（screen = s·stage + t），
-/// 世界与舞台差一个 kStageHalf（居中定舞台），故 worldT = t + s·kStageHalf。
-/// 泳道锚定/落道换算全部以世界坐标表述，统一经此取平移。
-double worldCrossTranslation(Matrix4 m, LaneDirection direction) {
+/// 泳道栈在屏幕上的横截偏移 = 世界横截原点的屏幕位置（t + s·kStageHalf）。
+///
+/// 泳道模型（终版语义）：泳道栈锚在世界原点、随画布**平移**一起动，
+/// 但**缩放**不改变道厚——道内内容以本道起始边为锚缩放。
+/// 泳道皮（底色带/标题栏/拖拽条）在视口层整体按此偏移平移；
+/// "泳道栈坐标系"（下称 lane-stack 空间）= 屏幕坐标 − 此偏移，
+/// 道 i 起始边在 lane-stack 空间恒为 laneStart_i，与缩放/平移无关。
+double laneStackOffset(Matrix4 m, LaneDirection direction) {
   final t = direction == LaneDirection.horizontal
       ? m.storage[13]
       : m.storage[12];
@@ -83,10 +87,12 @@ Offset nodeLaneDisplacement({
   final laneStart = laneStartOf(node.laneId, lanes);
   if (laneStart == null) return Offset.zero;
   final horizontal = direction == LaneDirection.horizontal;
+  // lane-stack 空间的锚定无平移项（crossTranslation=0）：泳道栈随平移
+  // 整体走，道内内容只需相对本道起始边锚定缩放。
   final d = lanePinDisplacement(
     laneStart: laneStart,
     scale: scaleOf(transform),
-    crossTranslation: worldCrossTranslation(transform, direction),
+    crossTranslation: 0,
   );
   return horizontal ? Offset(0, d) : Offset(d, 0);
 }

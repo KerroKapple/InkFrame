@@ -17,6 +17,7 @@ import 'package:inkframe/features/canvas/providers/canvas_selection_controller.d
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_background.dart';
@@ -364,13 +365,22 @@ void main() {
       findsNothing,
     );
 
-    // 缩放到 2x：标题栏屏幕位置不变（钉死）。
+    // 围绕世界原点缩放到 2x（worldT 不变）：标题栏屏幕位置不变、厚度不缩放。
     final beforeTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+        Matrix4.identity()
+          ..translateByDouble(-2 * kStageHalf, -2 * kStageHalf, 0.0, 1.0)
+          ..scaleByDouble(2.0, 2.0, 1.0, 1.0);
     await tester.pump();
     final afterTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     expect(afterTop, beforeTop);
+
+    // 平移画布（终版语义）：泳道栈随世界一起动。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
+    await tester.pump();
+    final panned = tester.getTopLeft(find.byType(LaneTitleBar).first);
+    expect(panned.dy, beforeTop.dy - 300);
   });
 
   // ── 全向无限画布：负世界坐标节点可见、可点选 ────────────────────────────
@@ -400,27 +410,31 @@ void main() {
     await tester.pumpWidget(_buildTestApp(container));
     await tester.pumpAndSettle();
 
-    // n2 在 lane-2（起始边 400）内，世界 y=500；恒等变换下屏幕 y=500。
+    // n2 在 lane-2（起始边 400）内，世界 y=500；初始相机下屏幕 y=500。
     final card = find.byKey(const ValueKey('node-card-n2'));
     expect(tester.getTopLeft(card).dy, 500);
 
-    // 2x：锚定本道 → y = 400 + 2*(500-400) = 600（未锚定会飞到 1000）。
+    // 围绕世界原点 2x：锚定本道 → y = 400 + 2*(500-400) = 600（未锚定会飞到 1000）。
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+        Matrix4.identity()
+          ..translateByDouble(-2 * kStageHalf, -2 * kStageHalf, 0.0, 1.0)
+          ..scaleByDouble(2.0, 2.0, 1.0, 1.0);
     await tester.pump();
     expect(tester.getTopLeft(card).dy, closeTo(600, 0.5));
 
-    // 0.5x：y = 400 + 0.5*(500-400) = 450，仍在 lane-2 带 [400, 800) 内。
+    // 围绕世界原点 0.5x：y = 400 + 0.5*(500-400) = 450，仍在道带 [400, 800) 内。
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..scaleByDouble(0.5, 0.5, 1.0, 1.0);
+        Matrix4.identity()
+          ..translateByDouble(-0.5 * kStageHalf, -0.5 * kStageHalf, 0.0, 1.0)
+          ..scaleByDouble(0.5, 0.5, 1.0, 1.0);
     await tester.pump();
     expect(tester.getTopLeft(card).dy, closeTo(450, 0.5));
 
-    // 纵向平移不动泳道内卡片（泳道钉死，内容锚道）。
+    // 纵向平移（终版语义）：泳道栈带着道内卡片一起动。
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..setTranslationRaw(0, -300, 0);
+        initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
     await tester.pump();
-    expect(tester.getTopLeft(card).dy, closeTo(500, 0.5));
+    expect(tester.getTopLeft(card).dy, closeTo(200, 0.5));
   });
 
   // ── (c) resize：updateLane → repo 收到 size 更新 ──────────────────────────

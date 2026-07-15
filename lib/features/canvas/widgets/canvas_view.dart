@@ -485,21 +485,40 @@ class _CanvasStage extends ConsumerWidget {
               ref.read(canvasViewportSizeProvider.notifier).setSize(size);
             }
           });
-          // 泳道钉在视口层（NLE 轨道式）：底色带/标题栏/拖拽条不参与缩放平移，
-          // 缩放/平移只作用于泳道内的卡片、连线等世界内容。
+          // 泳道模型（终版）：泳道栈锚在世界原点——拖画布时整体跟着世界走，
+          // 缩放时道厚不变、只有道内内容以本道起始边为锚缩放。
+          // 皮分两组同偏移平移：底色带在世界内容之下，标题栏/拖拽条之上。
+          final horizontal = direction == LaneDirection.horizontal;
+          final lanesTotal = lanes.fold(0.0, (sum, l) => sum + l.size);
+          Widget laneShifted(Widget child) => ValueListenableBuilder<Matrix4>(
+                valueListenable: transformController,
+                builder: (context, m, c) {
+                  final off = laneStackOffset(m, direction);
+                  return Transform.translate(
+                    offset: horizontal ? Offset(0, off) : Offset(off, 0),
+                    child: c,
+                  );
+                },
+                child: child,
+              );
           return Stack(
             children: [
               if (lanes.isNotEmpty)
-                Positioned.fill(
-                  child: IgnorePointer(
-                    child: LaneBackground(
-                      lanes: lanes,
-                      direction: direction,
-                      canvasExtent: direction == LaneDirection.horizontal
-                          ? size.width
-                          : size.height,
-                      dividerColor: colors.borderSubtle,
-                      collapsedIds: collapsedIds,
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: horizontal ? size.width : lanesTotal,
+                  height: horizontal ? lanesTotal : size.height,
+                  child: laneShifted(
+                    IgnorePointer(
+                      child: LaneBackground(
+                        lanes: lanes,
+                        direction: direction,
+                        canvasExtent:
+                            horizontal ? size.width : size.height,
+                        dividerColor: colors.borderSubtle,
+                        collapsedIds: collapsedIds,
+                      ),
                     ),
                   ),
                 ),
@@ -594,11 +613,11 @@ class _CanvasStage extends ConsumerWidget {
                         builder: (context, m, child) {
                           final horizontal =
                               direction == LaneDirection.horizontal;
+                          // lane-stack 空间锚定：无平移项（泳道栈随平移整体走）。
                           final d = lanePinDisplacement(
                             laneStart: laneStarts[lane.id]!,
                             scale: scaleOf(m),
-                            crossTranslation:
-                                worldCrossTranslation(m, direction),
+                            crossTranslation: 0,
                           );
                           return Transform.translate(
                             offset:
@@ -679,20 +698,35 @@ class _CanvasStage extends ConsumerWidget {
             ),
                 ),
               ),
-              // 泳道标题栏 + 分界线拖拽条：视口层，世界内容之上，钉死不动。
+              // 泳道标题栏 + 分界线拖拽条：视口层、随泳道栈同偏移平移。
               // 感应条必须压在标题栏之上——标题栏横跨整条泳道顶部，若反过来
               // 会盖住感应条下半段，边界拖拽十有八九落在标题栏上（宽度调不动）。
               if (lanes.isNotEmpty)
-                ..._buildLaneTitleBars(
-                  context,
-                  ref,
-                  lanes,
-                  direction,
-                  collapsedIds,
-                  size,
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  width: horizontal ? size.width : lanesTotal,
+                  height: horizontal ? lanesTotal : size.height,
+                  child: laneShifted(
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ..._buildLaneTitleBars(
+                          context,
+                          ref,
+                          lanes,
+                          direction,
+                          collapsedIds,
+                          size,
+                        ),
+                        if (lanes.length >= 2)
+                          ..._buildResizeDividers(
+                            context, ref, lanes, direction, size,
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              if (lanes.length >= 2)
-                ..._buildResizeDividers(context, ref, lanes, direction, size),
             ],
           );
         },
@@ -702,8 +736,8 @@ class _CanvasStage extends ConsumerWidget {
 
   /// 为每条泳道生成标题栏 Positioned widget 列表（含拖拽重排 + 折叠）。
   ///
-  /// 视口层（NLE 轨道式）：泳道钉死在屏幕上，坐标/尺寸全为屏幕像素，
-  /// 不随画布缩放平移。
+  /// lane-stack 空间（外层已随泳道栈偏移平移）：坐标/尺寸为屏幕像素，
+  /// 道 i 起始边恒为 laneStart_i，不随缩放变化。
   List<Widget> _buildLaneTitleBars(
     BuildContext context,
     WidgetRef ref,
@@ -984,8 +1018,8 @@ class _NodeCardSlot extends ConsumerWidget {
           final m = transform.value;
           final s = scaleOf(m);
           final horizontal = direction == LaneDirection.horizontal;
-          // 世界坐标系的横截平移（居中定舞台：t + s·kStageHalf）。
-          final tCross = worldCrossTranslation(m, direction);
+          // lane-stack 空间（泳道栈随平移整体走）内锚定/落道均无平移项。
+          const tCross = 0.0;
           final center =
               node.position +
               totalDelta +
