@@ -205,6 +205,9 @@ lib/storage/schema/005_jobs_canvas_created_idx.sql           # v=5 增量镜像�
 - 崩溃恢复：`postmaster.pid` 存在但进程死 → 删 pid 文件后重启
 - 强制绑定 `127.0.0.1`，`unix_socket_directories=` 空（规避 socket 目录权限）
 - 数据目录搬迁：见 PRD §12.6 八步流程（暂停 → stop → 原子 rename → 重启）
+- 每日冷备（LB-10）：启动 post-frame 触发 `pg_dump -Fc` 落 `<数据根>/backups/inkframe-YYYY-MM-DD.dump`，
+  当日已有则跳过、保留最新 7 份；PGPASSWORD 经 env 传 SCRAM 口令；任何失败仅 warn 不阻断。
+  恢复手册见 [SETUP.md](SETUP.md)「数据库备份与恢复」（app 内一键还原=LB-22）
 
 ## 技术债
 

@@ -17,7 +17,11 @@ class _RecordingRunner implements ProcessRunner {
   final List<(String, List<String>)> calls = <(String, List<String>)>[];
 
   @override
-  Future<ProcessResult> run(String executable, List<String> arguments) async {
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
     calls.add((executable, arguments));
     if (throws) {
       throw ProcessException(executable, arguments, 'not found');

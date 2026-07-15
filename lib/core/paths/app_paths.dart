@@ -26,6 +26,9 @@ abstract class AppPaths {
   /// `<root>/projects/`（项目画布产物）
   Directory get projects;
 
+  /// `<root>/backups/`（每日 pg_dump 冷备，LB-10）
+  Directory get backups;
+
   /// 确保所有子目录存在（首次启动调用）。
   Future<void> ensureInitialized();
 }
@@ -96,6 +99,9 @@ class DefaultAppPaths implements AppPaths {
   Directory get projects => Directory(p.join(_root.path, 'projects'));
 
   @override
+  Directory get backups => Directory(p.join(_root.path, 'backups'));
+
+  @override
   Future<void> ensureInitialized() async {
     for (final Directory d in <Directory>[
       root,
@@ -104,6 +110,7 @@ class DefaultAppPaths implements AppPaths {
       config,
       database,
       projects,
+      backups,
     ]) {
       if (!await d.exists()) {
         await d.create(recursive: true);

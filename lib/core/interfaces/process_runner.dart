@@ -6,8 +6,15 @@
 //
 // 失败语义：可执行文件不存在/不可启动时抛 [ProcessException]（dart:io 原生），
 // 由调用方映射为 InkError。
+//
+// [environment]：附加环境变量（并入父进程环境，不替换）。LB-10 pg_dump 经 PGPASSWORD
+// 注入 SCRAM 口令即走此参数；ffmpeg/URL 打开等既有消费方不传。
 import 'dart:io';
 
 abstract class ProcessRunner {
-  Future<ProcessResult> run(String executable, List<String> arguments);
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  });
 }

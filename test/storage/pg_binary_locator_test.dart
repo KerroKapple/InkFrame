@@ -50,6 +50,8 @@ void main() {
       final loc = locator.locate();
       expect(loc.binDir.path, repoBin.path);
       expect(loc.postgres.existsSync(), isTrue);
+      // LB-10：pg_dump 与其它二进制同目录（备份链依赖）。
+      expect(loc.pgDump.path, p.join(repoBin.path, _exe('pg_dump')));
     });
 
     test('Windows 平台走 windows/runner/resources 路径', () {
