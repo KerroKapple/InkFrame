@@ -114,9 +114,10 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、
 上线后 9、永久接受 3(buildUpdate 白名单/InkWindowChrome/displayName 英文)。
 
-**上线前硬门槛(数据安全)** — 进度 2026-07-14:LB-07/09/13a/13b/14/17 ✅ 已合入,余下待做:
+**上线前硬门槛(数据安全)** — 进度 2026-07-15:LB-07/09/10/13a/13b/14/17 ✅ 已合入,余下待做:
 - **LB-07 PG trust→SCRAM**:✅ #172(SCRAM-SHA-256 + 随机密码入 SecureStorage,存量 trust 零迁移)
-- **LB-10 每日 pg_dump 冷备**(保留 7 份,失败绝不阻断)
+- **LB-10 每日 pg_dump 冷备**:✅ #185(启动 post-frame 触发,-Fc tmp→rename 原子写,当日跳过,
+  保留 7 份,PGPASSWORD 经 env,开发机无打包 PG 跳过;失败仅 warn 绝不阻断;恢复手册进 SETUP.md)
 - **LB-11/12 项目导出/导入**(zip=manifest+data+files;导入=全表 ID 重映射,**全计划最大风险卡**,
   roundtrip 测试先行;同时产出项目复制的全部机器)
 - **LB-13 purge 语义修正+孤儿文件回收**:✅ 切片 A(#163,purge 加 success-slot 守卫保画廊);
@@ -131,7 +132,7 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 
 **波次**:W0(S 簇:LB-01/02/05/08/19 + 第 0 天启动 LB-20 资源置备与 LB-21 盯 freezed)→
 W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 压轴)。
-体量 ≈ 22-28 人日。关键路径:LB-08→07→10(备份链)、LB-11→12(导入链)、LB-20(日历时间)。
+体量 ≈ 22-28 人日。关键路径:LB-08→07→10(备份链✅收尾)、LB-11→12(导入链)、LB-20(日历时间)。
 
 **新增卡(D-10 拍板后,2026-07-09)**:**DIR-1 数据目录迁移**(M)✅ **#183 已合**——AppPaths 从 `~/InkFrame` 迁平台
 惯例路径(Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`);存量目录
