@@ -680,9 +680,9 @@ class _CanvasStage extends ConsumerWidget {
             ),
                 ),
               ),
-              // 泳道分界线拖拽条 + 标题栏：视口层，世界内容之上，钉死不动。
-              if (lanes.length >= 2)
-                ..._buildResizeDividers(context, ref, lanes, direction, size),
+              // 泳道标题栏 + 分界线拖拽条：视口层，世界内容之上，钉死不动。
+              // 感应条必须压在标题栏之上——标题栏横跨整条泳道顶部，若反过来
+              // 会盖住感应条下半段，边界拖拽十有八九落在标题栏上（宽度调不动）。
               if (lanes.isNotEmpty)
                 ..._buildLaneTitleBars(
                   context,
@@ -692,6 +692,8 @@ class _CanvasStage extends ConsumerWidget {
                   collapsedIds,
                   size,
                 ),
+              if (lanes.length >= 2)
+                ..._buildResizeDividers(context, ref, lanes, direction, size),
             ],
           );
         },
@@ -837,7 +839,9 @@ class _CanvasStage extends ConsumerWidget {
             cursor: horizontal
                 ? SystemMouseCursors.resizeRow
                 : SystemMouseCursors.resizeColumn,
-            // translucent：strip 接收拖拽，但 tap 等穿透到下方连线层。
+            // opaque：感应条在视口层与 InteractiveViewer 是兄弟节点，translucent
+            // 会让 IV 的 scale 手势进竞技场抢走拖拽（泳道宽度调不动）；opaque
+            // 直接截断下层命中。代价：这 10px 带上无法点选下方连线，可接受。
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanUpdate: (d) => delta += horizontal ? d.delta.dy : d.delta.dx,

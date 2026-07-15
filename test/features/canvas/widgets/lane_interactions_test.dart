@@ -404,6 +404,33 @@ void main() {
     expect(sizeUpdates.last.patch['size'], 250.0);
   });
 
+  // ── (c2) resize：真实拖拽分界线手势 → repo 收到 size 更新（回归守卫：
+  //        泳道钉到视口层后感应条不得被 InteractiveViewer 手势吃掉）──────────
+
+  testWidgets('拖拽泳道分界线 → 泳道宽度更新', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+    await container.read(canvasLanesControllerProvider('cv1').future);
+
+    // lane-1 尺寸 400 → 分界线在屏幕 y=400，感应条 395..405 需整段可抓
+    // （含与 lane-2 标题栏 400..432 重叠的下半段——感应条须压在标题栏之上）。
+    // 从边界线正中 y=403 往下拖 50。
+    final gesture = await tester.startGesture(const Offset(300, 403));
+    await gesture.moveBy(const Offset(0, 25));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 25));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final sizeUpdates = fakeLaneRepo.updates
+        .where((u) => u.id == 'lane-1' && u.patch.containsKey('size'))
+        .toList();
+    expect(sizeUpdates, isNotEmpty, reason: '分界线拖拽应触发 size 落库');
+    expect((sizeUpdates.last.patch['size']! as num).toDouble(),
+        closeTo(450, 5));
+  });
+
   // ── (d) resize clamp：clampLaneSize 下限语义由 lane_geometry_test 覆盖 ───────
 
   // ── (e) 重排：reorderLanes → repo sort_order 更新 ──────────────────────────
