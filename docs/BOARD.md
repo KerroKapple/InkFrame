@@ -8,7 +8,7 @@
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-07-09 · 最新发布：**v0.1.0-alpha.10**（release.yml 首跑,双平台 unsigned 产物;
+> 最近更新：2026-07-14 · 最新发布：**v0.1.0-alpha.10**（release.yml 首跑,双平台 unsigned 产物;
 > 待 PG 分发源 PKG-2 + 签名 U1/U2 方为干净机可装）
 
 ## M1 —「能用起来」✅ 完成（已随 PR #133 合入 main）
@@ -70,6 +70,16 @@
 | LB-09 启动失败 surface（PG 引导失败全屏错误替代白屏） | #169 |
 | PL-6 窗口状态记忆（退出捕获+启动恢复+多显示器 clamp） | #170 |
 | LB-13b OrphanFileReaper 磁盘孤儿 GC DRY-RUN v1 | #165 |
+| LB-06 AsyncValue error 态收口（加载失败不再静默吞成空白，5 站点 error 横幅） | #166 |
+| LB-07 嵌入式 PG trust→SCRAM-SHA-256（新集群随机密码入 SecureStorage，存量 trust 零迁移） | #172 |
+| UPD-1 应用内检查更新（releases 列表自比 SemVer 最大版，设置页入口；零新增依赖） | #173 |
+| CV-1 死件清理（D-7 裁撤案）+ PL-1 ⌘K 命令面板做真（D-8，≤6 上下文动作） | #174 |
+| PL-2 画布快捷键基建 + 第一批（删除/Esc/全选/缩放） | #176 |
+| XM-1 视频元数据写侧（duration_ms/width/height 随缩略图同块落库） | #177 |
+| docs/CLAUDE.md 维护（Commands 段 + 保护分支规则 + 结构快照同步） | #178 |
+| 画布体验收口（首启适配/队列折叠/CineFlow 曲线/拖拽跟手/自定义配色/无限画布） | #179 |
+| 画布卡片简约化 + 泳道钉死锚定 + 竖向泳道连线 | #180 |
+| XM-1b 存量视频元数据启动回填（补齐 #177 写侧之前的历史视频） | #181 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -100,12 +110,12 @@
 | provider displayName 英文常量（AUDIT P1-7） | 🅿️ | 品牌名不译是有意为之；若要本地化需过 l10n 例外评审 |
 | canvas_nodes_controller 乐观新增基于 previous 快照重建（丢更新竞态，VERIFICATION §5.3） | ✅ | LB-04/#158：`serial_mutation_queue.dart` FIFO 串行（nodes/edges/lanes/characters/presets 五处） |
 | 未消费依赖卫生（riverpod_annotation/json_annotation/logging/uuid，VERIFICATION §5.4） | 🅿️ | 待 build_runner 卡点解除后一并清（codegen 链相关） |
-| 嵌入式 PG `-A trust` 认证（AUDIT 安全附录） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §3）：单用户桌面现状与 Postgres.app/Supabase local 同水位,可接受;多用户共享机器是真实边际风险。推荐 SCRAM+随机密码进 Keychain（约 1–2 人日,实施路径已给）;多用户/局域网功能立项即升必须 |
+| 嵌入式 PG `-A trust` 认证（AUDIT 安全附录） | ✅ | LB-07/#172：新集群 initdb 即 SCRAM-SHA-256 + 随机密码入 SecureStorage;存量 trust 集群零迁移继续可用（调研档见 [BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §3） |
 | 补两档设计令牌（图标尺寸/控件高度） | 🅿️ | P2 一致性 |
 | **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §2）：唯一瓶颈 freezed 3.2.5 与 riverpod_generator 4.0.4 的 analyzer 约束相斥,freezed 3.2.6 stable 一出即与 Riverpod 3 迁移合并立项（同时解掉 custom_lint 卡点,见 §1）;盯 freezed#1353 |
 | M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,仍欠预设点选应用与成本文案断言 | 🅿️ | 2026-07-02 审计发现;剩余随 UI 稳定补 |
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
-| Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | 🅿️ | 原捆绑的 3 处 `on Exception` 吞错与 `batch_results_grid` 裸 catch 已修（PR #138 B3）,仅剩 error 态展示 |
+| Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | ✅ | LB-06/#166：batch 网格/结果 Inspector/入边区/预设/角色区/画布边泳道 error 横幅收口;GAP-3 余量（InkAsyncSlot 共享件、library_sidebar 等残站点）仍归 GAP-3 卡 |
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | 🅿️ | 产品面缺口,M3 排期 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | ✅ | LB-01/#156：`core/constants/job_statuses.dart` 单一真相源 |
 | canvas→generation 跨 feature import 违例（18 处 / 11 文件：job_state / jobs_registry / batch_results_controller / cost_estimator 等,违反 ARCHITECTURE §1.3 互 import 禁令） | 🅿️ | 待 import 边界 lint（custom_lint 卡点解除后）收口:上提共享模型到 core/ 或建白名单逐步清零 |

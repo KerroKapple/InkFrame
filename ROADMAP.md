@@ -33,7 +33,7 @@
 > 开发规程见 [`docs/EXECUTION-PLAYBOOK.md`](docs/EXECUTION-PLAYBOOK.md)。以下为当前焦点摘要。
 
 - **M4 能力完整** — 分镜流水线(脚本解析/序列预览) · 导出转码归一 · 画廊复用(存角色/发送画布) · 自定义 Provider 设置页 UI · 角色一致性进阶(见 MASTERPLAN §2)
-- **M5 能上生产** — 数据安全(备份/导出导入/崩溃钩子,现全为零) · 签名公证打包 · 应用内更新 · onboarding
+- **M5 能上生产** — 数据安全(备份/导出导入仍为零;崩溃钩子 #160、PG SCRAM #172、应用内检查更新 #173 已落地) · 签名公证打包 · onboarding
 - **发布工程** — release.yml 已首跑出双平台产物;待补:PG 分发源(干净机可装)、签名凭据(U1/U2)
 
 ## 🙋 Help Wanted
