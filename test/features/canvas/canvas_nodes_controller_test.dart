@@ -236,6 +236,38 @@ void main() {
       expect(nodes.first.position, const Offset(10, 20));
     });
 
+    test('build 收敛存量越界坐标进 ±kWorldReach（#186 评审 P2-1）', () async {
+      // 旧模型（内容驱动生长）允许 >50k 的合法坐标；新定舞台下这些节点
+      // 会越出 100k Stack 命中区，永久不可达。加载期一次性收敛（不回写 DB）。
+      repo.rows.add(<String, Object?>{
+        'id': 'far',
+        'canvas_id': canvasId,
+        'type': 'image',
+        'node_role': 'config',
+        'label': 'Far',
+        'position_x': 55000.0,
+        'position_y': -60000.0,
+      });
+      repo.rows.add(<String, Object?>{
+        'id': 'near',
+        'canvas_id': canvasId,
+        'type': 'image',
+        'node_role': 'config',
+        'label': 'Near',
+        'position_x': 10.0,
+        'position_y': 20.0,
+      });
+      final nodes = await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final far = nodes.firstWhere((n) => n.id == 'far');
+      expect(far.position, const Offset(kWorldReach, -kWorldReach));
+      // 界内节点原样保留。
+      final near = nodes.firstWhere((n) => n.id == 'near');
+      expect(near.position, const Offset(10, 20));
+      // 收敛只在内存层，不产生 DB 写。
+      expect(repo.updateCalls, isEmpty);
+    });
+
     test('addNode 乐观更新 + 透传 Repository.create 参数', () async {
       await container
           .read(canvasNodesControllerProvider(canvasId).future);
