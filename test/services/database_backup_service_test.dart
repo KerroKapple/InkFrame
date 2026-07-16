@@ -1,11 +1,14 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
 import 'package:inkframe/core/interfaces/process_runner.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/database_backup_service.dart';
+import 'package:inkframe/storage/migrations/app_migrations.dart';
 import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:path/path.dart' as p;
 
@@ -240,6 +243,192 @@ void main() {
       expect(remaining.contains('inkframe-2026-07-06.dump'), isFalse);
       expect(remaining.contains('inkframe-2026-07-07.dump'), isFalse);
       expect(remaining.contains('inkframe-2026-07-15.dump'), isTrue);
+    });
+  });
+
+  group('备份族 rev2（LB-22）', () {
+    late Directory tmp;
+    late Directory binDir;
+    late AppPaths paths;
+
+    setUp(() {
+      tmp = Directory.systemTemp.createTempSync('ink_backup22_');
+      binDir = Directory(p.join(tmp.path, 'pgbin'))..createSync(recursive: true);
+      final exe = Platform.isWindows ? 'pg_dump.exe' : 'pg_dump';
+      File(p.join(binDir.path, exe)).writeAsStringSync('x');
+      paths = DefaultAppPaths.forRoot(Directory(p.join(tmp.path, 'data')));
+    });
+
+    tearDown(() => tmp.deleteSync(recursive: true));
+
+    PgDumpBackupService service({
+      _FakeRunner? runner,
+      _FakeLocator? locator,
+      DateTime? now,
+    }) =>
+        PgDumpBackupService(
+          paths: paths,
+          locator: locator ?? _FakeLocator(binDir),
+          runner: runner ?? _FakeRunner(),
+          clock: _FixedClock(now ?? DateTime.utc(2026, 7, 15, 9, 30, 0)),
+        );
+
+    test('backupKindOf：三族识别、穿越与杂名拒绝', () {
+      expect(backupKindOf('inkframe-2026-07-15.dump'), BackupKind.daily);
+      expect(backupKindOf('inkframe-manual-2026-07-15-093000.dump'),
+          BackupKind.manual);
+      expect(backupKindOf('inkframe-prerestore-2026-07-15-093000.dump'),
+          BackupKind.preRestore);
+      expect(backupKindOf('../evil.dump'), isNull);
+      expect(backupKindOf('inkframe-broken.dump'), isNull);
+      expect(backupKindOf('inkframe-2026-07-15.dump.meta.json'), isNull);
+    });
+
+    test('backupSortKey：每日视为当天最早，时间戳按时刻排', () {
+      expect(
+        backupSortKey('inkframe-2026-07-15.dump')
+            .compareTo(backupSortKey('inkframe-manual-2026-07-15-000001.dump')),
+        lessThan(0),
+      );
+      expect(
+        backupSortKey('inkframe-manual-2026-07-15-093000.dump')
+            .compareTo(backupSortKey('inkframe-2026-07-16.dump')),
+        lessThan(0),
+      );
+    });
+
+    test('backupNow(manual)：当日 daily 已存在照做；命名+sidecar（sha256/schemaVersion）',
+        () async {
+      paths.backups.createSync(recursive: true);
+      File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump'))
+          .writeAsStringSync('daily');
+      final runner = _FakeRunner();
+
+      final result = await service(runner: runner).backupNow(
+        conn,
+        kind: BackupKind.manual,
+      );
+
+      expect(result.outcome, BackupOutcome.created);
+      expect(result.fileName, 'inkframe-manual-2026-07-15-093000.dump');
+      expect(runner.calls, 1);
+      final f = File(p.join(paths.backups.path, result.fileName!));
+      expect(f.existsSync(), isTrue);
+
+      final meta = File('${f.path}.meta.json');
+      expect(meta.existsSync(), isTrue);
+      final parsed =
+          jsonDecode(meta.readAsStringSync()) as Map<String, dynamic>;
+      expect(parsed['sha256'],
+          sha256.convert(f.readAsBytesSync()).toString());
+      expect(parsed['schemaVersion'], kAppMigrations.last.version);
+      expect(parsed['createdAtUtc'], isA<String>());
+    });
+
+    test('backupNow(preRestore)：prerestore 族命名', () async {
+      final result = await service().backupNow(
+        conn,
+        kind: BackupKind.preRestore,
+      );
+      expect(result.outcome, BackupOutcome.created);
+      expect(result.fileName, 'inkframe-prerestore-2026-07-15-093000.dump');
+    });
+
+    test('backupNow 失败 → failed、fileName null、半成品清理', () async {
+      final runner = _FakeRunner(exitCode: 1, writesOutput: true);
+      final result = await service(runner: runner).backupNow(
+        conn,
+        kind: BackupKind.manual,
+      );
+      expect(result.outcome, BackupOutcome.failed);
+      expect(result.fileName, isNull);
+      expect(
+        paths.backups
+            .listSync()
+            .whereType<File>()
+            .where((f) => f.path.endsWith('.partial')),
+        isEmpty,
+      );
+    });
+
+    test('backupNow 无二进制 → skippedNoBinaries', () async {
+      final result = await service(
+        locator: _FakeLocator(binDir, binExists: false),
+      ).backupNow(conn, kind: BackupKind.manual);
+      expect(result.outcome, BackupOutcome.skippedNoBinaries);
+    });
+
+    test('分池剪枝：manual 触发发布后各族按各自 cap 剪，sidecar 连带删', () async {
+      paths.backups.createSync(recursive: true);
+      // 7 daily（满额不该动）+ 4 manual + 4 prerestore。
+      for (var d = 8; d <= 14; d++) {
+        File(p.join(paths.backups.path,
+                'inkframe-2026-07-${d.toString().padLeft(2, '0')}.dump'))
+            .writeAsStringSync('daily');
+      }
+      for (var i = 1; i <= 4; i++) {
+        final m = File(p.join(paths.backups.path,
+            'inkframe-manual-2026-07-1$i-090000.dump'))
+          ..writeAsStringSync('m');
+        File('${m.path}.meta.json').writeAsStringSync('{}');
+        File(p.join(paths.backups.path,
+                'inkframe-prerestore-2026-07-1$i-090000.dump'))
+            .writeAsStringSync('r');
+      }
+
+      final result =
+          await service().backupNow(conn, kind: BackupKind.manual);
+      expect(result.outcome, BackupOutcome.created);
+
+      final names = paths.backups
+          .listSync()
+          .whereType<File>()
+          .map((f) => p.basename(f.path))
+          .toSet();
+      // daily 满额 7，一份不少。
+      expect(names.where((n) => backupKindOf(n) == BackupKind.daily),
+          hasLength(7));
+      // manual 4+1 → 3（最旧的 11/12 两份被剪，sidecar 连带删）。
+      expect(names.where((n) => backupKindOf(n) == BackupKind.manual),
+          hasLength(3));
+      expect(names, isNot(contains('inkframe-manual-2026-07-11-090000.dump')));
+      expect(names,
+          isNot(contains('inkframe-manual-2026-07-11-090000.dump.meta.json')));
+      // prerestore 4 → 3。
+      expect(names.where((n) => backupKindOf(n) == BackupKind.preRestore),
+          hasLength(3));
+    });
+
+    test('listBackups：仅识别名、新→旧、kind 正确', () async {
+      paths.backups.createSync(recursive: true);
+      File(p.join(paths.backups.path, 'inkframe-2026-07-14.dump'))
+          .writeAsStringSync('d');
+      File(p.join(paths.backups.path,
+              'inkframe-manual-2026-07-14-090000.dump'))
+          .writeAsStringSync('mm');
+      File(p.join(paths.backups.path, 'notes.txt')).writeAsStringSync('x');
+      File(p.join(paths.backups.path, 'inkframe-2026-07-14.dump.meta.json'))
+          .writeAsStringSync('{}');
+
+      final list = service().listBackups();
+      expect(list.map((b) => b.name).toList(), <String>[
+        'inkframe-manual-2026-07-14-090000.dump',
+        'inkframe-2026-07-14.dump',
+      ]);
+      expect(list.first.kind, BackupKind.manual);
+      expect(list.last.kind, BackupKind.daily);
+      expect(list.first.sizeBytes, 2);
+    });
+
+    test('daily backup() 也写 sidecar（还原校验对每份备份成立）', () async {
+      final outcome = await service().backup(conn);
+      expect(outcome, BackupOutcome.created);
+      expect(
+        File(p.join(
+                paths.backups.path, 'inkframe-2026-07-15.dump.meta.json'))
+            .existsSync(),
+        isTrue,
+      );
     });
   });
 }
