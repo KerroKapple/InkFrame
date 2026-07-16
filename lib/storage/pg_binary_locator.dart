@@ -63,6 +63,9 @@ class PgBinaryLocation {
   /// pg_dump——每日冷备（LB-10）；与其它二进制同 bin 目录。
   File get pgDump => File(p.join(binDir.path, _exe('pg_dump')));
 
+  /// pg_restore——备份还原（LB-22）；与其它二进制同 bin 目录。
+  File get pgRestore => File(p.join(binDir.path, _exe('pg_restore')));
+
   static String _exe(String name) =>
       Platform.isWindows ? '$name.exe' : name;
 }
