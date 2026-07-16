@@ -5,16 +5,19 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/db/columns.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/file_resolver_service.dart';
 import 'package:inkframe/services/job_queue/job_media_persister.dart';
 import 'package:inkframe/services/job_queue/job_state_persister.dart';
 import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_character_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_prompt_preset_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_style_lane_repository.dart';
 
 import '../schema/pg_test_harness.dart';
@@ -745,6 +748,75 @@ void main() {
       final urls = (await batch.listAllOutputUrls()).toSet();
       expect(urls, contains('images/s0.png'));
       expect(urls, hasLength(1));
+    } on _Skip {
+      return;
+    }
+  });
+
+  test('CharacterRepository 全链路 CRUD + 软删 / 恢复 / 硬删（债#20）', () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final repo = PostgresCharacterRepository(h.conn);
+
+      final id = await repo.create(
+        projectId: pid,
+        name: 'hero',
+        referenceImagePaths: ['images/a.png', 'images/b.png'],
+        description: 'lead',
+        sortOrder: 1,
+      );
+      final loaded = await repo.findById(id);
+      expect(loaded?[CharacterCol.name], 'hero');
+      expect(loaded?[CharacterCol.description], 'lead');
+      expect(await repo.listByProject(pid), hasLength(1));
+
+      expect(await repo.update(id, {CharacterCol.name: 'hero2'}), 1);
+      expect((await repo.findById(id))?[CharacterCol.name], 'hero2');
+
+      expect(await repo.softDelete(id), 1);
+      expect(await repo.listByProject(pid), isEmpty);
+      expect(await repo.restore(id), 1);
+      expect(await repo.listByProject(pid), hasLength(1));
+
+      expect(await repo.hardDelete(id), 1);
+      expect(await repo.findById(id), isNull);
+    } on _Skip {
+      return;
+    }
+  });
+
+  test('PromptPresetRepository 全链路 CRUD + 软删 / 恢复 / 硬删（债#20）', () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final repo = PostgresPromptPresetRepository(h.conn);
+
+      final id = await repo.create(
+        projectId: pid,
+        name: 'cinematic',
+        prompt: 'wide shot',
+        prefix: 'pre',
+        suffix: 'suf',
+        negative: 'blurry',
+        sortOrder: 2,
+      );
+      final loaded = await repo.findById(id);
+      expect(loaded?[PromptPresetCol.name], 'cinematic');
+      expect(loaded?[PromptPresetCol.prompt], 'wide shot');
+      expect(loaded?[PromptPresetCol.negative], 'blurry');
+      expect(await repo.listByProject(pid), hasLength(1));
+
+      expect(await repo.update(id, {PromptPresetCol.prompt: 'close-up'}), 1);
+      expect((await repo.findById(id))?[PromptPresetCol.prompt], 'close-up');
+
+      expect(await repo.softDelete(id), 1);
+      expect(await repo.listByProject(pid), isEmpty);
+      expect(await repo.restore(id), 1);
+      expect(await repo.listByProject(pid), hasLength(1));
+
+      expect(await repo.hardDelete(id), 1);
+      expect(await repo.findById(id), isNull);
     } on _Skip {
       return;
     }

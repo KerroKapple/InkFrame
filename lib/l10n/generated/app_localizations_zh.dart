@@ -614,6 +614,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioManageCanvases => '管理画布';
 
   @override
+  String get studioExportProject => '导出项目…';
+
+  @override
+  String get studioExportProjectDone => '项目已导出';
+
+  @override
+  String get studioExportProjectFailed => '导出项目失败';
+
+  @override
   String get studioRenameCanvas => '重命名画布';
 
   @override

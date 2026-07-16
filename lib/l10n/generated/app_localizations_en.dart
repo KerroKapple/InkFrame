@@ -638,6 +638,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioManageCanvases => 'Manage canvases';
 
   @override
+  String get studioExportProject => 'Export project…';
+
+  @override
+  String get studioExportProjectDone => 'Project exported';
+
+  @override
+  String get studioExportProjectFailed => 'Failed to export project';
+
+  @override
   String get studioRenameCanvas => 'Rename canvas';
 
   @override

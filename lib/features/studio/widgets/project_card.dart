@@ -16,6 +16,7 @@ class StudioProjectCard extends StatelessWidget {
     this.onRename,
     this.onDelete,
     this.onManageCanvases,
+    this.onExport,
   });
 
   final String name;
@@ -25,6 +26,7 @@ class StudioProjectCard extends StatelessWidget {
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
   final VoidCallback? onManageCanvases;
+  final VoidCallback? onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -60,7 +62,8 @@ class StudioProjectCard extends StatelessWidget {
               if (onOpenGallery != null ||
                   onRename != null ||
                   onDelete != null ||
-                  onManageCanvases != null)
+                  onManageCanvases != null ||
+                  onExport != null)
                 Positioned(
                   top: InkSpacing.xs,
                   right: InkSpacing.xs,
@@ -69,6 +72,7 @@ class StudioProjectCard extends StatelessWidget {
                     onRename: onRename,
                     onDelete: onDelete,
                     onManageCanvases: onManageCanvases,
+                    onExport: onExport,
                   ),
                 ),
             ],
@@ -106,21 +110,23 @@ class StudioProjectCard extends StatelessWidget {
   }
 }
 
-enum _ProjectAction { gallery, rename, canvases, delete }
+enum _ProjectAction { gallery, rename, canvases, export, delete }
 
-/// 项目卡右上角操作菜单（画廊 / 重命名 / 管理画布 / 删除）；菜单点击不冒泡到卡片 onTap。
+/// 项目卡右上角操作菜单（画廊 / 重命名 / 管理画布 / 导出 / 删除）；菜单点击不冒泡到卡片 onTap。
 class _ProjectMenu extends StatelessWidget {
   const _ProjectMenu({
     this.onOpenGallery,
     this.onRename,
     this.onDelete,
     this.onManageCanvases,
+    this.onExport,
   });
 
   final VoidCallback? onOpenGallery;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
   final VoidCallback? onManageCanvases;
+  final VoidCallback? onExport;
 
   @override
   Widget build(BuildContext context) {
@@ -137,6 +143,8 @@ class _ProjectMenu extends StatelessWidget {
             onRename?.call();
           case _ProjectAction.canvases:
             onManageCanvases?.call();
+          case _ProjectAction.export:
+            onExport?.call();
           case _ProjectAction.delete:
             onDelete?.call();
         }
@@ -156,6 +164,11 @@ class _ProjectMenu extends StatelessWidget {
           PopupMenuItem<_ProjectAction>(
             value: _ProjectAction.canvases,
             child: Text(context.l10n.studioManageCanvases),
+          ),
+        if (onExport != null)
+          PopupMenuItem<_ProjectAction>(
+            value: _ProjectAction.export,
+            child: Text(context.l10n.studioExportProject),
           ),
         if (onDelete != null)
           PopupMenuItem<_ProjectAction>(

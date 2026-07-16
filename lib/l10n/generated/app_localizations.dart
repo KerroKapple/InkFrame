@@ -1256,6 +1256,24 @@ abstract class AppLocalizations {
   /// **'Manage canvases'**
   String get studioManageCanvases;
 
+  /// No description provided for @studioExportProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Export project…'**
+  String get studioExportProject;
+
+  /// No description provided for @studioExportProjectDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Project exported'**
+  String get studioExportProjectDone;
+
+  /// No description provided for @studioExportProjectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to export project'**
+  String get studioExportProjectFailed;
+
   /// No description provided for @studioRenameCanvas.
   ///
   /// In en, this message translates to:

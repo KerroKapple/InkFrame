@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/current_screen.dart';
 import '../../core/di/logger.dart';
+import '../../core/di/project_archive.dart';
 import '../../core/di/repositories.dart';
 import '../../core/errors/ink_error.dart';
 import '../../l10n/l10n_x.dart';
@@ -17,9 +18,11 @@ import '../../theme/primitives/ink_compact_text_field.dart';
 import '../../theme/primitives/ink_ghost_button.dart';
 import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
+import '../../services/project_archive_service.dart';
 import '../canvas/providers/canvas_bootstrap_controller.dart';
 import '../gallery/providers/current_gallery_project.dart';
 import 'controllers/studio_projects_controller.dart';
+import 'providers/project_export_busy.dart';
 import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
 import 'open_canvas.dart';
@@ -516,6 +519,7 @@ class _ProjectGrid extends ConsumerWidget {
                   .read(currentGalleryProjectProvider.notifier)
                   .state = (id: p.id, name: p.name),
               onRename: () => _renameProject(context, ref, p),
+              onExport: () => _exportProject(context, ref, p),
               onManageCanvases: () => showDialog<void>(
                 context: context,
                 barrierColor: context.inkColors.scrim,
@@ -527,6 +531,47 @@ class _ProjectGrid extends ConsumerWidget {
         );
       },
     );
+  }
+
+  /// 导出整项目 zip（LB-11）：选保存位置 → ProjectArchiveService → 成败 toast。
+  /// busy 期间重复触发直接忽略（防两个导出写同一 .partial）。
+  Future<void> _exportProject(
+    BuildContext context,
+    WidgetRef ref,
+    ProjectWithCanvases p,
+  ) async {
+    // 全部依赖在首个 await 前一次性 read 持有（#188 评审 P1-1）：导出耗时段内
+    // 用户切进画布会 unmount 本 widget，之后再触 ref 抛 StateError——连 finally
+    // 的 busy 复位一起炸，导出功能本会话内永久假死。持有的都是容器级对象，
+    // unmount 后依然有效。
+    final busy = ref.read(projectExportBusyProvider.notifier);
+    if (busy.state) return;
+    final toast = ref.read(toastServiceProvider);
+    final logger = ref.read(loggerProvider);
+    final picker = ref.read(saveLocationPickerProvider);
+    final serviceFuture = ref.read(projectArchiveServiceProvider.future);
+    final doneMsg = context.l10n.studioExportProjectDone;
+    final failedMsg = context.l10n.studioExportProjectFailed;
+    // busy 在 picker 之前置位：对话框开着时的二次触发也要挡（#188 评审 P3-6）。
+    busy.state = true;
+    try {
+      final path = await picker(suggestedArchiveName(p.name));
+      if (path == null) return; // 用户取消保存对话框。
+      final service = await serviceFuture;
+      await service.exportProject(projectId: p.id, targetPath: path);
+      toast.show(doneMsg);
+    } on InkError catch (e, st) {
+      logger.error(
+        _logModule,
+        'export project failed',
+        extra: {'project_id': p.id},
+        cause: e,
+        stackTrace: st,
+      );
+      toast.show(failedMsg, kind: ToastKind.error);
+    } finally {
+      busy.state = false;
+    }
   }
 
   Future<void> _renameProject(
