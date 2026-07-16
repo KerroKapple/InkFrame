@@ -1,7 +1,7 @@
 // ZipProjectArchiveService：ProjectArchiveService 的 zip 落地（LB-11）。
 //
-// 流程：读全保真行 → manifest/data.json → 递归打包 projects/{id} 全量 →
-// .partial 原子 rename（镜像 LB-10 落盘纪律）。失败清 partial 抛 LocalIOError。
+// 流程：单事务快照读全保真行 → manifest/data.json → 递归打包 projects/{id} 全量 →
+// .partial 原子 rename（镜像 LB-10 落盘纪律）。任何失败清 partial 抛 LocalIOError。
 import 'dart:convert';
 import 'dart:io';
 
@@ -21,17 +21,29 @@ const String kArchiveModule = 'project.archive';
 /// zip 格式版本——LB-12 导入端按此显式拒绝不认识的包（Zero-BC）。
 const int kArchiveFormatVersion = 1;
 
-/// 纯函数：项目名 → 建议保存文件名（剥非法字符，空兜底 project）。
+/// Windows 保留设备名（做文件名兜底用；大小写不敏感）。
+const Set<String> _kReservedNames = <String>{
+  'CON', 'PRN', 'AUX', 'NUL', //
+  'COM1', 'COM2', 'COM3', 'COM4', 'COM5', 'COM6', 'COM7', 'COM8', 'COM9',
+  'LPT1', 'LPT2', 'LPT3', 'LPT4', 'LPT5', 'LPT6', 'LPT7', 'LPT8', 'LPT9',
+};
+
+/// 纯函数：项目名 → 建议保存文件名（剥非法字符/尾点尾空格，保留名与空名兜底 project）。
 String suggestedArchiveName(String projectName) {
-  final safe = projectName
+  var safe = projectName
       .replaceAll(RegExp(r'[<>:"/\\|?*\x00-\x1F]'), '')
       .trim();
-  return '${safe.isEmpty ? 'project' : safe}.zip';
+  safe = safe.replaceAll(RegExp(r'[. ]+$'), '');
+  if (safe.isEmpty || _kReservedNames.contains(safe.toUpperCase())) {
+    safe = 'project';
+  }
+  return '$safe.zip';
 }
 
-/// 纯函数：行值 JSON 安全化（DateTime → ISO8601 UTC，容器递归）。
+/// 纯函数：行值 JSON 安全化（DateTime → ISO8601 UTC，非有限 double → null，容器递归）。
 Object? jsonSafe(Object? v) {
   if (v is DateTime) return v.toUtc().toIso8601String();
+  if (v is double && !v.isFinite) return null;
   if (v is Map) {
     return <String, Object?>{
       for (final e in v.entries) e.key.toString(): jsonSafe(e.value),
@@ -83,7 +95,8 @@ class ZipProjectArchiveService implements ProjectArchiveService {
     }
 
     try {
-      final project = await _reader.projectRow(projectId);
+      final snap = await _reader.snapshot(projectId);
+      final project = snap.project;
       if (project == null) {
         throw const LocalIOError(
           extra: <String, Object?>{'reason': 'project_not_found'},
@@ -92,14 +105,14 @@ class ZipProjectArchiveService implements ProjectArchiveService {
 
       final Map<String, Object?> data = <String, Object?>{
         'project': jsonSafe(project),
-        'canvases': jsonSafe(await _reader.canvasRows(projectId)),
-        'nodes': jsonSafe(await _reader.nodeRows(projectId)),
-        'edges': jsonSafe(await _reader.edgeRows(projectId)),
-        'lanes': jsonSafe(await _reader.laneRows(projectId)),
-        'characters': jsonSafe(await _reader.characterRows(projectId)),
-        'prompt_presets': jsonSafe(await _reader.presetRows(projectId)),
-        'jobs': jsonSafe(await _reader.successJobRows(projectId)),
-        'batch_results': jsonSafe(await _reader.batchResultRows(projectId)),
+        'canvases': jsonSafe(snap.canvases),
+        'nodes': jsonSafe(snap.nodes),
+        'edges': jsonSafe(snap.edges),
+        'lanes': jsonSafe(snap.lanes),
+        'characters': jsonSafe(snap.characters),
+        'prompt_presets': jsonSafe(snap.presets),
+        'jobs': jsonSafe(snap.jobs),
+        'batch_results': jsonSafe(snap.batchResults),
       };
       final Map<String, Object?> manifest = <String, Object?>{
         'formatVersion': kArchiveFormatVersion,
@@ -120,9 +133,17 @@ class ZipProjectArchiveService implements ProjectArchiveService {
       final Directory projectDir =
           Directory(p.join(_paths.projects.path, projectId));
       if (projectDir.existsSync()) {
+        // 排除导出目标自身与在写的 .partial：用户把保存位置选进项目目录内
+        // （如 exports/）时，zip 不得把「正在写的自己」镜像进去（#188 评审 P2-5）。
+        final String targetAbs = p.canonicalize(targetPath);
+        final String partialAbs = p.canonicalize(partial.path);
         final List<File> entries = projectDir
             .listSync(recursive: true, followLinks: false)
             .whereType<File>()
+            .where((f) {
+              final String abs = p.canonicalize(f.path);
+              return abs != targetAbs && abs != partialAbs;
+            })
             .toList()
           ..sort((a, b) => a.path.compareTo(b.path)); // 确定序，可复现。
         for (final File f in entries) {
@@ -150,6 +171,16 @@ class ZipProjectArchiveService implements ProjectArchiveService {
       cleanup();
       throw LocalIOError(
         extra: <String, Object?>{'reason': 'export_io', 'detail': e.message},
+        cause: e,
+        stackTrace: st,
+      );
+    } catch (e, st) {
+      // 兜底豁免（#188 评审 P2-2）：这是资源清理边界，不是业务捕获——
+      // jsonEncode / archive 包可抛 Error 系（JsonUnsupportedObjectError /
+      // ArchiveException），不清理会泄漏 partial 句柄；统一翻 LocalIOError 上抛。
+      cleanup();
+      throw LocalIOError(
+        extra: <String, Object?>{'reason': 'export_unexpected'},
         cause: e,
         stackTrace: st,
       );

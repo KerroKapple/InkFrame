@@ -16,7 +16,12 @@ typedef SaveLocationPicker = Future<String?> Function(String suggestedName);
 
 final saveLocationPickerProvider = Provider<SaveLocationPicker>(
   (ref) => (String suggestedName) async {
-    final location = await getSaveLocation(suggestedName: suggestedName);
+    final location = await getSaveLocation(
+      suggestedName: suggestedName,
+      acceptedTypeGroups: const <XTypeGroup>[
+        XTypeGroup(label: 'zip', extensions: <String>['zip']),
+      ],
+    );
     return location?.path;
   },
   name: 'saveLocationPickerProvider',

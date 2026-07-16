@@ -540,28 +540,37 @@ class _ProjectGrid extends ConsumerWidget {
     WidgetRef ref,
     ProjectWithCanvases p,
   ) async {
-    if (ref.read(projectExportBusyProvider)) return;
+    // 全部依赖在首个 await 前一次性 read 持有（#188 评审 P1-1）：导出耗时段内
+    // 用户切进画布会 unmount 本 widget，之后再触 ref 抛 StateError——连 finally
+    // 的 busy 复位一起炸，导出功能本会话内永久假死。持有的都是容器级对象，
+    // unmount 后依然有效。
+    final busy = ref.read(projectExportBusyProvider.notifier);
+    if (busy.state) return;
+    final toast = ref.read(toastServiceProvider);
+    final logger = ref.read(loggerProvider);
+    final picker = ref.read(saveLocationPickerProvider);
+    final serviceFuture = ref.read(projectArchiveServiceProvider.future);
     final doneMsg = context.l10n.studioExportProjectDone;
     final failedMsg = context.l10n.studioExportProjectFailed;
-    final path =
-        await ref.read(saveLocationPickerProvider)(suggestedArchiveName(p.name));
-    if (path == null) return; // 用户取消保存对话框。
-    ref.read(projectExportBusyProvider.notifier).state = true;
+    // busy 在 picker 之前置位：对话框开着时的二次触发也要挡（#188 评审 P3-6）。
+    busy.state = true;
     try {
-      final service = await ref.read(projectArchiveServiceProvider.future);
+      final path = await picker(suggestedArchiveName(p.name));
+      if (path == null) return; // 用户取消保存对话框。
+      final service = await serviceFuture;
       await service.exportProject(projectId: p.id, targetPath: path);
-      ref.read(toastServiceProvider).show(doneMsg);
+      toast.show(doneMsg);
     } on InkError catch (e, st) {
-      ref.read(loggerProvider).error(
-            _logModule,
-            'export project failed',
-            extra: {'project_id': p.id},
-            cause: e,
-            stackTrace: st,
-          );
-      ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
+      logger.error(
+        _logModule,
+        'export project failed',
+        extra: {'project_id': p.id},
+        cause: e,
+        stackTrace: st,
+      );
+      toast.show(failedMsg, kind: ToastKind.error);
     } finally {
-      ref.read(projectExportBusyProvider.notifier).state = false;
+      busy.state = false;
     }
   }
 

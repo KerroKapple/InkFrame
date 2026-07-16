@@ -13,25 +13,17 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 class _FakeReader implements ProjectArchiveReader {
   @override
-  Future<Map<String, Object?>?> projectRow(String projectId) async => null;
-  @override
-  Future<List<Map<String, Object?>>> canvasRows(String p) async => const [];
-  @override
-  Future<List<Map<String, Object?>>> nodeRows(String p) async => const [];
-  @override
-  Future<List<Map<String, Object?>>> edgeRows(String p) async => const [];
-  @override
-  Future<List<Map<String, Object?>>> laneRows(String p) async => const [];
-  @override
-  Future<List<Map<String, Object?>>> characterRows(String p) async => const [];
-  @override
-  Future<List<Map<String, Object?>>> presetRows(String p) async => const [];
-  @override
-  Future<List<Map<String, Object?>>> successJobRows(String p) async =>
-      const [];
-  @override
-  Future<List<Map<String, Object?>>> batchResultRows(String p) async =>
-      const [];
+  Future<ProjectArchiveSnapshot> snapshot(String projectId) async => (
+        project: null,
+        canvases: const <Map<String, Object?>>[],
+        nodes: const <Map<String, Object?>>[],
+        edges: const <Map<String, Object?>>[],
+        lanes: const <Map<String, Object?>>[],
+        characters: const <Map<String, Object?>>[],
+        presets: const <Map<String, Object?>>[],
+        jobs: const <Map<String, Object?>>[],
+        batchResults: const <Map<String, Object?>>[],
+      );
 }
 
 void main() {
