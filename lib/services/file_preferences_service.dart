@@ -27,7 +27,7 @@ class InMemoryPreferencesService implements PreferencesService {
   }
 }
 
-/// 文件实现：~/InkFrame/config/preferences.json。读/解析/写失败一律降级（不抛）。
+/// 文件实现：`<root>/config/preferences.json`。读/解析/写失败一律降级（不抛）。
 class FilePreferencesService implements PreferencesService {
   FilePreferencesService(this._paths);
 

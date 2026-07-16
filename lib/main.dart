@@ -5,7 +5,7 @@
 //      配合 FlutterError.onError / PlatformDispatcher.onError（installErrorHooks）与
 //      CrashReporter 落盘，三条路径统一汇入 reportUncaught，任何未处理错误都不丢失。
 //   1) 绑定 Flutter binding
-//   2) 解析 AppPaths 并 ensureInitialized（首次启动创建 ~/InkFrame 目录，含 crashes/）
+//   2) 解析 AppPaths（平台惯例路径）→ DIR-1 存量 ~/InkFrame 一次性搬迁 → ensureInitialized
 //   3) 尽早装配 Logger + CrashReporter 并安装全局错误钩子——覆盖其后整段 bootstrap
 //   4) MediaKit + 许可补册 + window_manager
 //   5) bootstrap 期预加载：偏好 + 自定义 Provider 配置（custom_providers.json，
@@ -40,6 +40,7 @@ import 'core/interfaces/crash_reporter.dart';
 import 'core/licenses.dart';
 import 'core/logging/logger_service.dart';
 import 'core/paths/app_paths.dart';
+import 'core/paths/legacy_root_migrator.dart';
 import 'services/app_teardown.dart';
 import 'services/crash_reporter.dart';
 import 'services/custom_providers_file_service.dart';
@@ -71,7 +72,29 @@ void main() {
 
       // 崩溃钩子所需最小依赖尽早就绪，最大化未捕获错误覆盖面（覆盖其后整段 bootstrap）。
       final Duration pathsStart = elapsed.elapsed;
-      final AppPaths paths = await DefaultAppPaths.create();
+      final DefaultAppPaths resolved = await DefaultAppPaths.create();
+      // DIR-1：存量 ~/InkFrame 一次性搬迁到平台惯例路径；失败回退旧址（数据永不丢）。
+      // 必须先于一切目录使用者（logger/PG/config）完成。惯例根解析失败（环境变量
+      // 缺失落 path_provider 兜底）时绝不迁移——防环境抖动把数据搬进错误目录。
+      LegacyMigrationResult? migration;
+      AppPaths paths = resolved;
+      final String? conventionalPath = DefaultAppPaths.conventionalRootPath(
+        isWindows: Platform.isWindows,
+        isMacOS: Platform.isMacOS,
+        env: Platform.environment,
+      );
+      final String? legacyPath =
+          DefaultAppPaths.legacyRootPath(Platform.environment);
+      if (LegacyRootMigrator.shouldRun(
+        conventionalRoot: conventionalPath,
+        legacyRoot: legacyPath,
+      )) {
+        migration = await LegacyRootMigrator(
+          legacyRoot: Directory(legacyPath!),
+          targetRoot: resolved.root,
+        ).migrate();
+        paths = DefaultAppPaths.forRoot(migration.effectiveRoot);
+      }
       await paths.ensureInitialized();
 
       // Logger 在容器前构造（bootstrap 期加载即可写 WARN），随后 overrideWithValue
@@ -85,6 +108,34 @@ void main() {
       final LifecycleTimer lifecycle =
           LifecycleTimer(logger: fileLogger, elapsed: elapsed);
       lifecycle.record('paths', pathsStart);
+
+      // DIR-1 迁移结果此刻才有 logger 可写：搬迁成功记 INFO,失败回退/旧址被忽略记 WARN。
+      if (migration != null) {
+        if (migration.outcome == LegacyMigrationOutcome.migrated) {
+          fileLogger.info('app.paths', 'legacy data dir migrated',
+              extra: <String, Object?>{
+                'from': legacyPath,
+                'to': paths.root.path,
+              });
+        } else if (migration.outcome == LegacyMigrationOutcome.keptLegacy) {
+          fileLogger.warn(
+              'app.paths', 'legacy data dir migration failed, using legacy root',
+              extra: <String, Object?>{
+                'from': legacyPath,
+                'to': resolved.root.path,
+                'reason': migration.failureReason,
+              });
+        } else if (migration.legacyDataIgnored) {
+          fileLogger.warn(
+              'app.paths',
+              'legacy data dir still has content but target already exists; '
+              'legacy content is ignored',
+              extra: <String, Object?>{
+                'legacy': legacyPath,
+                'root': paths.root.path,
+              });
+        }
+      }
 
       // app 版本从平台读一次，注入 CrashReporter（崩溃文件含版本，便于事后归因）。
       final PackageInfo pkg =

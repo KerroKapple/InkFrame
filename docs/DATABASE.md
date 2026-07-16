@@ -199,8 +199,9 @@ lib/storage/schema/005_jobs_canvas_created_idx.sql           # v=5 增量镜像�
 ## 嵌入式 PG 运维（PRD §22.1）
 
 - 版本锁：`scripts/pg/pg-version.txt` = 17.2
-- 启动目录：`~/InkFrame/database/`（PGDATA）
-- 端口：`ServerSocket.bind(0)` 派随机端口，写入 `~/InkFrame/config/pg.port`
+- 启动目录：`<数据根>/database/`（PGDATA；数据根=Win `%LOCALAPPDATA%\InkFrame`、macOS
+  `~/Library/Application Support/InkFrame`，DIR-1；存量 `~/InkFrame` 启动时一次性搬迁）
+- 端口：`ServerSocket.bind(0)` 派随机端口，写入 `<数据根>/config/pg.port`
 - 崩溃恢复：`postmaster.pid` 存在但进程死 → 删 pid 文件后重启
 - 强制绑定 `127.0.0.1`，`unix_socket_directories=` 空（规避 socket 目录权限）
 - 数据目录搬迁：见 PRD §12.6 八步流程（暂停 → stop → 原子 rename → 重启）

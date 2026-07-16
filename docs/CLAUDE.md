@@ -228,7 +228,7 @@ lib/
 │   ├── licenses.dart                  # LicenseRegistry entries for bundled non-pub artifacts (libmpv+FFmpeg, PostgreSQL, OFL fonts)
 │   ├── logging/                       # InkLogger interface
 │   ├── models/                        # Domain models (freezed, immutable)
-│   └── paths/                         # app_paths.dart — well-known app directories
+│   └── paths/                         # app_paths.dart (well-known dirs, platform-conventional root) + legacy_root_migrator.dart (DIR-1 one-shot move)
 ├── features/                          # Feature modules (vertical slices)
 │   ├── canvas/                        # Node canvas
 │   │   ├── models/

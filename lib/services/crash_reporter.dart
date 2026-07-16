@@ -1,6 +1,6 @@
 // FileCrashReporter：未捕获错误落盘。
 //
-// 位置：`~/InkFrame/crashes/inkframe.crash.{ts}.log`（与 logs 平级，见 AppPaths.crashes）。
+// 位置：`<root>/crashes/inkframe.crash.{ts}.log`（与 logs 平级，见 AppPaths.crashes）。
 // 内容：仅 应用版本 + 时间戳 + 错误 + 栈；无 extra、无任意键值上下文——
 //       结构性杜绝敏感数据（prompt / key / token 等）混入崩溃文件。
 // 轮转：只保留最近 [maxFiles] 个；写第 N+1 个时删最旧（按文件名=时间戳定序）。

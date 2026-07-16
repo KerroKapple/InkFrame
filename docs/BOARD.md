@@ -80,6 +80,7 @@
 | 画布体验收口（首启适配/队列折叠/CineFlow 曲线/拖拽跟手/自定义配色/无限画布） | #179 |
 | 画布卡片简约化 + 泳道钉死锚定 + 竖向泳道连线 | #180 |
 | XM-1b 存量视频元数据启动回填（补齐 #177 写侧之前的历史视频） | #181 |
+| DIR-1 数据目录迁平台惯例路径（存量 ~/InkFrame 一次性搬迁、失败回退、旧址标记；解锁 LB-10） | #183 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -123,3 +124,4 @@
 | export 打磨两件（2026-07-08 深审）:失败 SnackBar 弹在模态 barrier 之下易漏看（export_video_dialog.dart:256）;同名输出 `-y` 静默覆盖无存在性提示（ffmpeg_video_export_service.dart:135） | 🅿️ | 小 PR:失败提示改对话框内嵌 banner;导出前 exists 检查 |
 | restore_last_session 抢占守卫过窄（2026-07-08 深审:只查 currentCanvasId,PG 就绪窗口内用户进 Settings/Gallery 会被恢复流程硬拉进画布;restore_last_session.dart:38） | 🅿️ | 守卫扩为「用户已发生任何导航」即放弃恢复 |
 | link 智能默认 role 竞态残留（2026-07-08 深审:_defaultRole 读内存 edges 快照,首条 first_frame 边写在途时连第二条可产双 first_frame,uq_edges_live 不拦不同 source 同 role;link_action_controller.dart:83） | 🅿️ | 毫秒级低频;随上表「乐观新增竞态」并发模型债同窗处理 |
+| 无单实例守卫：升级窗口旧实例并存时（macOS）目录 rename 仍成功,旧实例沿绝对路径重建旧址旁写媒体（DIR-1/#183 评审 P2;Windows 句柄锁天然拦截） | 🅿️ | 单实例锁/启动互斥另卡;既有 out-of-contract 场景被迁移放大,非 DIR-1 范围 |

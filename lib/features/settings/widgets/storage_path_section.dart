@@ -1,6 +1,6 @@
 // StoragePathSection — 显示嵌入 Postgres 数据目录。
 //
-// 该路径由 DefaultAppPaths 在启动时锁定（~/InkFrame/database）。当前 sprint
+// 该路径由 DefaultAppPaths 在启动时锁定（<root>/database，root=平台惯例路径 DIR-1）。当前 sprint
 // 仅展示 + 复制；切换需要重启迁移流程，留给后续 sprint。
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';

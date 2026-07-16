@@ -2,7 +2,7 @@
 //
 // PRD §22.1 职责：
 //   - ensureInitialized: 首次启动调用 initdb 初始化 PGDATA
-//   - start: 选随机端口 → pg_ctl start → 写 ~/InkFrame/config/pg.port
+//   - start: 选随机端口 → pg_ctl start → 写 <root>/config/pg.port
 //   - stop: pg_ctl stop -m fast，等待 ≤ 5s
 //   - 崩溃恢复: 检查 postmaster.pid → 存活则复用，否则清理后重启
 //   - isAlive: 轻量探测（端口 + postmaster 进程）
@@ -213,13 +213,13 @@ class PgController {
   PgRuntime? _runtime;
   PgRuntime? get runtime => _runtime;
 
-  /// `~/InkFrame/database/`
+  /// `<root>/database/`
   Directory get dataDir => _paths.database;
 
-  /// `~/InkFrame/config/pg.port`
+  /// `<root>/config/pg.port`
   File get portFile => File(p.join(_paths.config.path, 'pg.port'));
 
-  /// `~/InkFrame/logs/pg.log`
+  /// `<root>/logs/pg.log`
   File get logFile => File(p.join(_paths.logs.path, 'pg.log'));
 
   File get _postmasterPid => File(p.join(dataDir.path, 'postmaster.pid'));
