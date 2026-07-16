@@ -14,6 +14,7 @@ import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 
 import '../../_harness/fake_unit_of_work.dart';
 
@@ -582,7 +583,7 @@ void main() {
       await expectLater(pending, throwsA(isA<LocalIOError>()));
     });
 
-    test('moveNode 落点 clamp 到第一象限（负坐标是点击死区）', () async {
+    test('moveNode 允许负坐标（全向），落点 clamp 到 ±kWorldReach', () async {
       await container.read(canvasNodesControllerProvider(canvasId).future);
       final ctrl =
           container.read(canvasNodesControllerProvider(canvasId).notifier);
@@ -592,13 +593,25 @@ void main() {
         position: const Offset(50, 80),
       );
 
+      // 负方向拖拽合法（全向无限画布）。
       await ctrl.moveNode(n.id, const Offset(-500, -30), laneId: null);
-
-      final moved = container
+      var moved = container
           .read(canvasNodesControllerProvider(canvasId))
           .valueOrNull!
           .single;
-      expect(moved.position, const Offset(0, 50));
+      expect(moved.position, const Offset(-450, 50));
+
+      // 超出可漫游范围被夹到 ±kWorldReach。
+      await ctrl.moveNode(
+        n.id,
+        const Offset(-kWorldReach * 3, kWorldReach * 3),
+        laneId: null,
+      );
+      moved = container
+          .read(canvasNodesControllerProvider(canvasId))
+          .valueOrNull!
+          .single;
+      expect(moved.position, const Offset(-kWorldReach, kWorldReach));
     });
 
     test('moveNode 更新内存位置', () async {

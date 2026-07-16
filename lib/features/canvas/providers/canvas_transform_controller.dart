@@ -7,15 +7,18 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../util/canvas_zoom.dart';
+
 /// 画布 InteractiveViewer 的变换控制器，按 canvasId 分族——切换画布时旧族
-/// autoDispose、新画布拿到全新单位矩阵，避免 A 的 pan/zoom 串到 B（D3）。
+/// autoDispose、新画布拿到全新初始相机，避免 A 的 pan/zoom 串到 B（D3）。
 /// InteractiveViewer 与快捷键缩放层必须用「当前 canvasId」读同一实例。
 final canvasTransformControllerProvider =
     AutoDisposeProviderFamily<TransformationController, String>((
       ref,
       canvasId,
     ) {
-      final controller = TransformationController();
+      // 初始相机对准世界原点（居中定舞台，见 canvas_zoom.initialCanvasTransform）。
+      final controller = TransformationController(initialCanvasTransform());
       ref.onDispose(controller.dispose);
       return controller;
     }, name: 'canvasTransformControllerProvider');

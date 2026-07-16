@@ -1,6 +1,7 @@
 // canvas_zoom 纯函数单测（PL-2）：钳制上下限、复位、步进方向、围绕视口中心。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 
 Matrix4 _scaled(double s) => Matrix4.identity()..scaleByDouble(s, s, 1.0, 1.0);
@@ -46,8 +47,12 @@ void main() {
     expect(scaleOf(result), closeTo(kCanvasMinScale, 1e-9));
   });
 
-  test('复位 → 单位矩阵', () {
-    expect(resetTransform(), Matrix4.identity());
+  test('复位 → 初始相机（scale=1、世界原点对准视口左上）', () {
+    final m = resetTransform();
+    expect(m, initialCanvasTransform());
+    expect(scaleOf(m), 1.0);
+    // 舞台中央的世界原点（kStageOrigin）映射到屏幕 (0,0)。
+    expect(MatrixUtils.transformPoint(m, kStageOrigin), Offset.zero);
   });
 
   test('围绕视口中心：中心处的场景点缩放后仍落在视口中心', () {

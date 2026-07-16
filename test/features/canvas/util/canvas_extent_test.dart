@@ -1,41 +1,33 @@
-// canvasStageSize 纯函数单测——内容驱动生长语义。
+// 居中定舞台几何单测——全向无限画布的坐标换算与常量约束。
 import 'dart:ui';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 
-CanvasNode _node(String id, Offset pos, {Size size = const Size(200, 160)}) =>
-    CanvasNode(id: id, label: '', type: CanvasNodeType.image,
-        position: pos, size: size);
-
 void main() {
-  test('空画布 → 最小舞台', () {
-    expect(canvasStageSize(const []),
-        const Size(kCanvasMinExtent, kCanvasMinExtent));
+  test('世界原点位于舞台正中央', () {
+    expect(kStageOrigin, const Offset(kStageHalf, kStageHalf));
+    expect(kStageSize, const Size(kStageHalf * 2, kStageHalf * 2));
   });
 
-  test('内容在最小舞台内 → 仍为最小舞台', () {
-    expect(
-      canvasStageSize([_node('a', const Offset(100, 100))]),
-      const Size(kCanvasMinExtent, kCanvasMinExtent),
-    );
+  test('worldToStage / stageToWorld 互逆，负坐标合法', () {
+    for (final w in const [
+      Offset.zero,
+      Offset(100, 200),
+      Offset(-3000, -4500),
+      Offset(-kWorldReach, kWorldReach),
+    ]) {
+      expect(stageToWorld(worldToStage(w)), w);
+    }
   });
 
-  test('内容越界 → 舞台按内容右/下边界 + 余量生长（轴向独立）', () {
-    final s = canvasStageSize([
-      _node('a', const Offset(5000, 100)), // 右越界
-      _node('b', const Offset(100, 6000)), // 下越界
-    ]);
-    expect(s.width, 5000 + 200 + kCanvasGrowMargin);
-    expect(s.height, 6000 + 160 + kCanvasGrowMargin);
-  });
-
-  test('多节点取最远者', () {
-    final s = canvasStageSize([
-      _node('a', const Offset(4500, 0)),
-      _node('b', const Offset(9000, 0)),
-    ]);
-    expect(s.width, 9000 + 200 + kCanvasGrowMargin);
+  test('可漫游范围映射后不越出舞台（含节点自身尺寸余量）', () {
+    // 极限世界坐标 ±kWorldReach 映射进舞台后距边缘 ≥2000，够放一张卡片。
+    final min = worldToStage(const Offset(-kWorldReach, -kWorldReach));
+    final max = worldToStage(const Offset(kWorldReach, kWorldReach));
+    expect(min.dx, greaterThanOrEqualTo(2000));
+    expect(min.dy, greaterThanOrEqualTo(2000));
+    expect(max.dx, lessThanOrEqualTo(kStageSize.width - 2000));
+    expect(max.dy, lessThanOrEqualTo(kStageSize.height - 2000));
   });
 }
