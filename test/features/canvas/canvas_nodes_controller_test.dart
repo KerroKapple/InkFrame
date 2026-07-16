@@ -14,6 +14,7 @@ import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 
 import '../../_harness/fake_unit_of_work.dart';
 
@@ -233,6 +234,38 @@ void main() {
       expect(nodes.first.id, 'seed');
       expect(nodes.first.role, NodeRole.config);
       expect(nodes.first.position, const Offset(10, 20));
+    });
+
+    test('build 收敛存量越界坐标进 ±kWorldReach（#186 评审 P2-1）', () async {
+      // 旧模型（内容驱动生长）允许 >50k 的合法坐标；新定舞台下这些节点
+      // 会越出 100k Stack 命中区，永久不可达。加载期一次性收敛（不回写 DB）。
+      repo.rows.add(<String, Object?>{
+        'id': 'far',
+        'canvas_id': canvasId,
+        'type': 'image',
+        'node_role': 'config',
+        'label': 'Far',
+        'position_x': 55000.0,
+        'position_y': -60000.0,
+      });
+      repo.rows.add(<String, Object?>{
+        'id': 'near',
+        'canvas_id': canvasId,
+        'type': 'image',
+        'node_role': 'config',
+        'label': 'Near',
+        'position_x': 10.0,
+        'position_y': 20.0,
+      });
+      final nodes = await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final far = nodes.firstWhere((n) => n.id == 'far');
+      expect(far.position, const Offset(kWorldReach, -kWorldReach));
+      // 界内节点原样保留。
+      final near = nodes.firstWhere((n) => n.id == 'near');
+      expect(near.position, const Offset(10, 20));
+      // 收敛只在内存层，不产生 DB 写。
+      expect(repo.updateCalls, isEmpty);
     });
 
     test('addNode 乐观更新 + 透传 Repository.create 参数', () async {
@@ -582,7 +615,7 @@ void main() {
       await expectLater(pending, throwsA(isA<LocalIOError>()));
     });
 
-    test('moveNode 落点 clamp 到第一象限（负坐标是点击死区）', () async {
+    test('moveNode 允许负坐标（全向），落点 clamp 到 ±kWorldReach', () async {
       await container.read(canvasNodesControllerProvider(canvasId).future);
       final ctrl =
           container.read(canvasNodesControllerProvider(canvasId).notifier);
@@ -592,13 +625,25 @@ void main() {
         position: const Offset(50, 80),
       );
 
+      // 负方向拖拽合法（全向无限画布）。
       await ctrl.moveNode(n.id, const Offset(-500, -30), laneId: null);
-
-      final moved = container
+      var moved = container
           .read(canvasNodesControllerProvider(canvasId))
           .valueOrNull!
           .single;
-      expect(moved.position, const Offset(0, 50));
+      expect(moved.position, const Offset(-450, 50));
+
+      // 超出可漫游范围被夹到 ±kWorldReach。
+      await ctrl.moveNode(
+        n.id,
+        const Offset(-kWorldReach * 3, kWorldReach * 3),
+        laneId: null,
+      );
+      moved = container
+          .read(canvasNodesControllerProvider(canvasId))
+          .valueOrNull!
+          .single;
+      expect(moved.position, const Offset(-kWorldReach, kWorldReach));
     });
 
     test('moveNode 更新内存位置', () async {

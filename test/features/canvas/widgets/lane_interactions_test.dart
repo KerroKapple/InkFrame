@@ -13,9 +13,12 @@ import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_extent.dart';
+import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_background.dart';
 import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
@@ -54,6 +57,20 @@ class _FakeNodeRepository implements NodeRepository {
                 'lane_id': 'lane-2',
                 'position_x': 0.0,
                 'position_y': 500.0,
+                'width': 200.0,
+                'height': 160.0,
+                'z_index': 0,
+                'type_config': <String, Object?>{},
+              },
+              // 负世界坐标节点——全向无限画布命中测试用。
+              {
+                'id': 'n3',
+                'canvas_id': 'cv1',
+                'type': 'image',
+                'node_role': 'config',
+                'label': 'negative',
+                'position_x': -500.0,
+                'position_y': -300.0,
                 'width': 200.0,
                 'height': 160.0,
                 'z_index': 0,
@@ -348,40 +365,76 @@ void main() {
       findsNothing,
     );
 
-    // 缩放到 2x：标题栏屏幕位置不变（钉死）。
+    // 围绕世界原点缩放到 2x（worldT 不变）：标题栏屏幕位置不变、厚度不缩放。
     final beforeTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+        Matrix4.identity()
+          ..translateByDouble(-2 * kStageHalf, -2 * kStageHalf, 0.0, 1.0)
+          ..scaleByDouble(2.0, 2.0, 1.0, 1.0);
     await tester.pump();
     final afterTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     expect(afterTop, beforeTop);
+
+    // 平移画布（终版语义）：泳道栈随世界一起动。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
+    await tester.pump();
+    final panned = tester.getTopLeft(find.byType(LaneTitleBar).first);
+    expect(panned.dy, beforeTop.dy - 300);
+  });
+
+  // ── 全向无限画布：负世界坐标节点可见、可点选 ────────────────────────────
+
+  testWidgets('负坐标节点：平移相机后可见且可点选', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+
+    // 相机向左上平移 600/400：世界 (-500,-300) 应落到屏幕 (100,100)。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        initialCanvasTransform()..translateByDouble(600.0, 400.0, 0.0, 1.0);
+    await tester.pump();
+
+    final card = find.byKey(const ValueKey('node-card-n3'));
+    expect(tester.getTopLeft(card), const Offset(100, 100));
+
+    // 负坐标区不再是点击死区：tap 命中并进入选中集。
+    await tester.tap(card);
+    await tester.pump();
+    expect(
+      container.read(canvasSelectionControllerProvider),
+      contains('n3'),
+    );
   });
 
   testWidgets('泳道内卡片缩放锚定本道起始边，不穿出泳道带', (tester) async {
     await tester.pumpWidget(_buildTestApp(container));
     await tester.pumpAndSettle();
 
-    // n2 在 lane-2（起始边 400）内，世界 y=500；恒等变换下屏幕 y=500。
+    // n2 在 lane-2（起始边 400）内，世界 y=500；初始相机下屏幕 y=500。
     final card = find.byKey(const ValueKey('node-card-n2'));
     expect(tester.getTopLeft(card).dy, 500);
 
-    // 2x：锚定本道 → y = 400 + 2*(500-400) = 600（未锚定会飞到 1000）。
+    // 围绕世界原点 2x：锚定本道 → y = 400 + 2*(500-400) = 600（未锚定会飞到 1000）。
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..scaleByDouble(2.0, 2.0, 1.0, 1.0);
+        Matrix4.identity()
+          ..translateByDouble(-2 * kStageHalf, -2 * kStageHalf, 0.0, 1.0)
+          ..scaleByDouble(2.0, 2.0, 1.0, 1.0);
     await tester.pump();
     expect(tester.getTopLeft(card).dy, closeTo(600, 0.5));
 
-    // 0.5x：y = 400 + 0.5*(500-400) = 450，仍在 lane-2 带 [400, 800) 内。
+    // 围绕世界原点 0.5x：y = 400 + 0.5*(500-400) = 450，仍在道带 [400, 800) 内。
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..scaleByDouble(0.5, 0.5, 1.0, 1.0);
+        Matrix4.identity()
+          ..translateByDouble(-0.5 * kStageHalf, -0.5 * kStageHalf, 0.0, 1.0)
+          ..scaleByDouble(0.5, 0.5, 1.0, 1.0);
     await tester.pump();
     expect(tester.getTopLeft(card).dy, closeTo(450, 0.5));
 
-    // 纵向平移不动泳道内卡片（泳道钉死，内容锚道）。
+    // 纵向平移（终版语义）：泳道栈带着道内卡片一起动。
     container.read(canvasTransformControllerProvider('cv1')).value =
-        Matrix4.identity()..setTranslationRaw(0, -300, 0);
+        initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
     await tester.pump();
-    expect(tester.getTopLeft(card).dy, closeTo(500, 0.5));
+    expect(tester.getTopLeft(card).dy, closeTo(200, 0.5));
   });
 
   // ── (c) resize：updateLane → repo 收到 size 更新 ──────────────────────────
@@ -427,6 +480,36 @@ void main() {
         .where((u) => u.id == 'lane-1' && u.patch.containsKey('size'))
         .toList();
     expect(sizeUpdates, isNotEmpty, reason: '分界线拖拽应触发 size 落库');
+    expect((sizeUpdates.last.patch['size']! as num).toDouble(),
+        closeTo(450, 5));
+  });
+
+  // ── (c3) 平移画布后分界线仍可拖（回归守卫：Transform.translate 只移画面
+  //        不移命中区，平移后泳道边界曾"看得见摸不着"）──────────────────────
+
+  testWidgets('平移画布后拖拽分界线仍可调宽度', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+    await container.read(canvasLanesControllerProvider('cv1').future);
+
+    // 相机上移 300：泳道栈随平移整体走，lane-1/lane-2 分界线从 400 移到 100。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
+    await tester.pump();
+
+    final gesture = await tester.startGesture(const Offset(300, 103));
+    await gesture.moveBy(const Offset(0, 25));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 25));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final sizeUpdates = fakeLaneRepo.updates
+        .where((u) => u.id == 'lane-1' && u.patch.containsKey('size'))
+        .toList();
+    expect(sizeUpdates, isNotEmpty,
+        reason: '平移后分界线命中区必须跟随泳道栈');
     expect((sizeUpdates.last.patch['size']! as num).toDouble(),
         closeTo(450, 5));
   });

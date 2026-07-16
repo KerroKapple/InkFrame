@@ -18,6 +18,7 @@ import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/node_repository.dart';
 import '../models/canvas_node.dart';
+import '../util/canvas_extent.dart';
 import 'canvas_edges_controller.dart';
 import 'serial_mutation_queue.dart';
 
@@ -45,7 +46,15 @@ class CanvasNodesController
     ref.onDispose(() => _alive = false);
     final repo = await ref.watch(nodeRepositoryProvider.future);
     final rows = await repo.listByCanvas(canvasId);
-    return rows.map(CanvasNodeMapping.fromRow).toList(growable: false);
+    // 存量越界坐标（旧生长模型 >50k）加载期收敛进可达范围——只改内存不回写，
+    // 幂等；用户后续拖动经 moveNode 才落库（#186 评审 P2-1）。
+    return rows
+        .map(CanvasNodeMapping.fromRow)
+        .map((n) {
+          final clamped = clampIntoWorldReach(n.position);
+          return identical(clamped, n.position) ? n : n.copyWith(position: clamped);
+        })
+        .toList(growable: false);
   }
 
   NodeRepository get _repo {
@@ -203,12 +212,12 @@ class CanvasNodesController
         if (n.id == id) target = n;
       }
       if (target == null) return;
-      // 落点 clamp 到第一象限：舞台原点固定 (0,0)（负坐标区是 Stack 点击死区），
-      // 右/下由舞台内容驱动生长不设限（见 util/canvas_extent.dart）。
+      // 全向无限画布：负坐标合法，落点 clamp 到可漫游范围 ±kWorldReach
+      // （距 100k 居中定舞台边缘留余量，见 util/canvas_extent.dart）。
       final raw = target.position + delta;
       final newPos = Offset(
-        raw.dx < 0 ? 0 : raw.dx,
-        raw.dy < 0 ? 0 : raw.dy,
+        raw.dx.clamp(-kWorldReach, kWorldReach),
+        raw.dy.clamp(-kWorldReach, kWorldReach),
       );
       if (_alive) {
         state = AsyncData([

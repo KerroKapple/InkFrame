@@ -455,8 +455,9 @@ class _CanvasStage extends ConsumerWidget {
       nodes: nodes,
     );
 
-    // 无限画布：舞台尺寸由内容驱动生长（右/下无上限，左/上原点固定）。
-    final stage = canvasStageSize(nodes);
+    // 全向无限画布：居中定舞台（100k×100k，世界原点在正中央）。
+    // Positioned/painter 使用舞台坐标 = 世界坐标 + kStageOrigin。
+    const stage = kStageSize;
 
     // 各泳道起始边（屏幕坐标 = 尺寸顺序累计），分道位移组用。
     final laneStarts = <String, double>{};
@@ -484,21 +485,47 @@ class _CanvasStage extends ConsumerWidget {
               ref.read(canvasViewportSizeProvider.notifier).setSize(size);
             }
           });
-          // 泳道钉在视口层（NLE 轨道式）：底色带/标题栏/拖拽条不参与缩放平移，
-          // 缩放/平移只作用于泳道内的卡片、连线等世界内容。
+          // 泳道模型（终版）：泳道栈锚在世界原点——拖画布时整体跟着世界走，
+          // 缩放时道厚不变、只有道内内容以本道起始边为锚缩放。
+          // 皮分两组同偏移平移：底色带在世界内容之下，标题栏/拖拽条之上。
+          //
+          // 偏移必须用 Positioned（每帧重建）而非 Transform.translate：
+          // RenderBox.hitTest 先按未变换的盒子边界筛，Transform 只移画面
+          // 不移命中区——平移后泳道边界"看得见摸不着"（宽度拖拽锁死）。
+          final horizontal = direction == LaneDirection.horizontal;
+          final lanesTotal = lanes.fold(0.0, (sum, l) => sum + l.size);
+          Widget laneShifted(Widget child) => ValueListenableBuilder<Matrix4>(
+                valueListenable: transformController,
+                builder: (context, m, c) {
+                  final off = laneStackOffset(m, direction);
+                  return Stack(
+                    children: [
+                      Positioned(
+                        left: horizontal ? 0 : off,
+                        top: horizontal ? off : 0,
+                        width: horizontal ? size.width : lanesTotal,
+                        height: horizontal ? lanesTotal : size.height,
+                        child: c!,
+                      ),
+                    ],
+                  );
+                },
+                child: child,
+              );
           return Stack(
             children: [
               if (lanes.isNotEmpty)
                 Positioned.fill(
-                  child: IgnorePointer(
-                    child: LaneBackground(
-                      lanes: lanes,
-                      direction: direction,
-                      canvasExtent: direction == LaneDirection.horizontal
-                          ? size.width
-                          : size.height,
-                      dividerColor: colors.borderSubtle,
-                      collapsedIds: collapsedIds,
+                  child: laneShifted(
+                    IgnorePointer(
+                      child: LaneBackground(
+                        lanes: lanes,
+                        direction: direction,
+                        canvasExtent:
+                            horizontal ? size.width : size.height,
+                        dividerColor: colors.borderSubtle,
+                        collapsedIds: collapsedIds,
+                      ),
                     ),
                   ),
                 ),
@@ -565,8 +592,8 @@ class _CanvasStage extends ConsumerWidget {
                   for (final node in freeNodes)
                     Positioned(
                       key: ValueKey('node-card-${node.id}'),
-                      left: node.position.dx,
-                      top: node.position.dy,
+                      left: node.position.dx + kStageOrigin.dx,
+                      top: node.position.dy + kStageOrigin.dy,
                       child: _NodeCardSlot(
                         node: node,
                         canvasId: canvasId,
@@ -591,15 +618,13 @@ class _CanvasStage extends ConsumerWidget {
                       child: ValueListenableBuilder<Matrix4>(
                         valueListenable: transformController,
                         builder: (context, m, child) {
-                          final s = scaleOf(m);
                           final horizontal =
                               direction == LaneDirection.horizontal;
+                          // lane-stack 空间锚定：无平移项（泳道栈随平移整体走）。
                           final d = lanePinDisplacement(
                             laneStart: laneStarts[lane.id]!,
-                            scale: s,
-                            crossTranslation: horizontal
-                                ? m.storage[13]
-                                : m.storage[12],
+                            scale: scaleOf(m),
+                            crossTranslation: 0,
                           );
                           return Transform.translate(
                             offset:
@@ -614,8 +639,8 @@ class _CanvasStage extends ConsumerWidget {
                               if (node.laneId == lane.id)
                                 Positioned(
                                   key: ValueKey('node-card-${node.id}'),
-                                  left: node.position.dx,
-                                  top: node.position.dy,
+                                  left: node.position.dx + kStageOrigin.dx,
+                                  top: node.position.dy + kStageOrigin.dy,
                                   child: _NodeCardSlot(
                                     node: node,
                                     canvasId: canvasId,
@@ -680,20 +705,31 @@ class _CanvasStage extends ConsumerWidget {
             ),
                 ),
               ),
-              // 泳道标题栏 + 分界线拖拽条：视口层，世界内容之上，钉死不动。
+              // 泳道标题栏 + 分界线拖拽条：视口层、随泳道栈同偏移平移。
               // 感应条必须压在标题栏之上——标题栏横跨整条泳道顶部，若反过来
               // 会盖住感应条下半段，边界拖拽十有八九落在标题栏上（宽度调不动）。
               if (lanes.isNotEmpty)
-                ..._buildLaneTitleBars(
-                  context,
-                  ref,
-                  lanes,
-                  direction,
-                  collapsedIds,
-                  size,
+                Positioned.fill(
+                  child: laneShifted(
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ..._buildLaneTitleBars(
+                          context,
+                          ref,
+                          lanes,
+                          direction,
+                          collapsedIds,
+                          size,
+                        ),
+                        if (lanes.length >= 2)
+                          ..._buildResizeDividers(
+                            context, ref, lanes, direction, size,
+                          ),
+                      ],
+                    ),
+                  ),
                 ),
-              if (lanes.length >= 2)
-                ..._buildResizeDividers(context, ref, lanes, direction, size),
             ],
           );
         },
@@ -703,8 +739,8 @@ class _CanvasStage extends ConsumerWidget {
 
   /// 为每条泳道生成标题栏 Positioned widget 列表（含拖拽重排 + 折叠）。
   ///
-  /// 视口层（NLE 轨道式）：泳道钉死在屏幕上，坐标/尺寸全为屏幕像素，
-  /// 不随画布缩放平移。
+  /// lane-stack 空间（外层已随泳道栈偏移平移）：坐标/尺寸为屏幕像素，
+  /// 道 i 起始边恒为 laneStart_i，不随缩放变化。
   List<Widget> _buildLaneTitleBars(
     BuildContext context,
     WidgetRef ref,
@@ -787,7 +823,7 @@ class _CanvasStage extends ConsumerWidget {
   }
 
   // 拖拽分界线调整相邻泳道大小（~10px 透明感应条，仅命中不绘制）。
-  // 视口层：位置/厚度全为屏幕像素，不随缩放变化。
+  // 视口层：厚度恒为屏幕像素；位置随泳道栈平移（laneStackOffset），缩放不改道厚。
   List<Widget> _buildResizeDividers(
     BuildContext context,
     WidgetRef ref,
@@ -839,9 +875,8 @@ class _CanvasStage extends ConsumerWidget {
             cursor: horizontal
                 ? SystemMouseCursors.resizeRow
                 : SystemMouseCursors.resizeColumn,
-            // opaque：感应条在视口层与 InteractiveViewer 是兄弟节点，translucent
-            // 会让 IV 的 scale 手势进竞技场抢走拖拽（泳道宽度调不动）；opaque
-            // 直接截断下层命中。代价：这 10px 带上无法点选下方连线，可接受。
+            // translucent：感应条自身收 pan（层序在标题栏之上，#184），
+            // 同时不吞掉带下内容的命中——10px 带内连线/卡片仍可点选。
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanUpdate: (d) => delta += horizontal ? d.delta.dy : d.delta.dx,
@@ -985,7 +1020,8 @@ class _NodeCardSlot extends ConsumerWidget {
           final m = transform.value;
           final s = scaleOf(m);
           final horizontal = direction == LaneDirection.horizontal;
-          final tCross = horizontal ? m.storage[13] : m.storage[12];
+          // lane-stack 空间（泳道栈随平移整体走）内锚定/落道均无平移项。
+          const tCross = 0.0;
           final center =
               node.position +
               totalDelta +
