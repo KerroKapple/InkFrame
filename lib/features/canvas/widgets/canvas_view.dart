@@ -488,15 +488,26 @@ class _CanvasStage extends ConsumerWidget {
           // 泳道模型（终版）：泳道栈锚在世界原点——拖画布时整体跟着世界走，
           // 缩放时道厚不变、只有道内内容以本道起始边为锚缩放。
           // 皮分两组同偏移平移：底色带在世界内容之下，标题栏/拖拽条之上。
+          //
+          // 偏移必须用 Positioned（每帧重建）而非 Transform.translate：
+          // RenderBox.hitTest 先按未变换的盒子边界筛，Transform 只移画面
+          // 不移命中区——平移后泳道边界"看得见摸不着"（宽度拖拽锁死）。
           final horizontal = direction == LaneDirection.horizontal;
           final lanesTotal = lanes.fold(0.0, (sum, l) => sum + l.size);
           Widget laneShifted(Widget child) => ValueListenableBuilder<Matrix4>(
                 valueListenable: transformController,
                 builder: (context, m, c) {
                   final off = laneStackOffset(m, direction);
-                  return Transform.translate(
-                    offset: horizontal ? Offset(0, off) : Offset(off, 0),
-                    child: c,
+                  return Stack(
+                    children: [
+                      Positioned(
+                        left: horizontal ? 0 : off,
+                        top: horizontal ? off : 0,
+                        width: horizontal ? size.width : lanesTotal,
+                        height: horizontal ? lanesTotal : size.height,
+                        child: c!,
+                      ),
+                    ],
                   );
                 },
                 child: child,
@@ -504,11 +515,7 @@ class _CanvasStage extends ConsumerWidget {
           return Stack(
             children: [
               if (lanes.isNotEmpty)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  width: horizontal ? size.width : lanesTotal,
-                  height: horizontal ? lanesTotal : size.height,
+                Positioned.fill(
                   child: laneShifted(
                     IgnorePointer(
                       child: LaneBackground(
@@ -702,11 +709,7 @@ class _CanvasStage extends ConsumerWidget {
               // 感应条必须压在标题栏之上——标题栏横跨整条泳道顶部，若反过来
               // 会盖住感应条下半段，边界拖拽十有八九落在标题栏上（宽度调不动）。
               if (lanes.isNotEmpty)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  width: horizontal ? size.width : lanesTotal,
-                  height: horizontal ? lanesTotal : size.height,
+                Positioned.fill(
                   child: laneShifted(
                     Stack(
                       clipBehavior: Clip.none,

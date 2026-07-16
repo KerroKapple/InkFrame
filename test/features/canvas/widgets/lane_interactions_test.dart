@@ -484,6 +484,36 @@ void main() {
         closeTo(450, 5));
   });
 
+  // ── (c3) 平移画布后分界线仍可拖（回归守卫：Transform.translate 只移画面
+  //        不移命中区，平移后泳道边界曾"看得见摸不着"）──────────────────────
+
+  testWidgets('平移画布后拖拽分界线仍可调宽度', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+    await container.read(canvasLanesControllerProvider('cv1').future);
+
+    // 相机上移 300：泳道栈随平移整体走，lane-1/lane-2 分界线从 400 移到 100。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
+    await tester.pump();
+
+    final gesture = await tester.startGesture(const Offset(300, 103));
+    await gesture.moveBy(const Offset(0, 25));
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 25));
+    await tester.pump();
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final sizeUpdates = fakeLaneRepo.updates
+        .where((u) => u.id == 'lane-1' && u.patch.containsKey('size'))
+        .toList();
+    expect(sizeUpdates, isNotEmpty,
+        reason: '平移后分界线命中区必须跟随泳道栈');
+    expect((sizeUpdates.last.patch['size']! as num).toDouble(),
+        closeTo(450, 5));
+  });
+
   // ── (d) resize clamp：clampLaneSize 下限语义由 lane_geometry_test 覆盖 ───────
 
   // ── (e) 重排：reorderLanes → repo sort_order 更新 ──────────────────────────
