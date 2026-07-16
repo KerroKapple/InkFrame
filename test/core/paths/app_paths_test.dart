@@ -92,6 +92,7 @@ void main() {
       expect(paths.config.path, p.join(tmp.path, 'config'));
       expect(paths.database.path, p.join(tmp.path, 'database'));
       expect(paths.projects.path, p.join(tmp.path, 'projects'));
+      expect(paths.backups.path, p.join(tmp.path, 'backups'));
     });
 
     test('ensureInitialized creates all subdirs', () async {
@@ -105,6 +106,7 @@ void main() {
       expect(await paths.config.exists(), isTrue);
       expect(await paths.database.exists(), isTrue);
       expect(await paths.projects.exists(), isTrue);
+      expect(await paths.backups.exists(), isTrue);
     });
   });
 }

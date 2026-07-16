@@ -326,7 +326,11 @@ class _FakeRunner implements ProcessRunner {
   bool throwOnRun = false;
 
   @override
-  Future<ProcessResult> run(String exe, List<String> args) async {
+  Future<ProcessResult> run(
+    String exe,
+    List<String> args, {
+    Map<String, String>? environment,
+  }) async {
     executable = exe;
     arguments = List<String>.of(args);
     if (throwOnRun) throw ProcessException(exe, args, 'gone', 2);

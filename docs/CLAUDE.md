@@ -301,6 +301,7 @@ lib/
     ├── custom_providers_file_service.dart  # config/custom_providers.json parse + fallback
     ├── character_asset_service.dart
     ├── orphan_file_reaper.dart        # DiskOrphanFileReaper (disk orphan media GC; DRY-RUN v1 — logs only, never deletes; LB-13)
+    ├── database_backup_service.dart   # PgDumpBackupService (daily pg_dump -Fc cold backup, keep 7, never blocks startup; LB-10)
     ├── video_metadata_backfill_service.dart  # XM-1b startup housekeeping: probe legacy videos missing duration_ms, patch type_config (+thumbnail if absent)
     ├── app_teardown.dart              # Ordered shutdown (capture window state → JobQueue → Pool → PG)
     ├── window_state_service.dart      # DefaultWindowStateService + clampBoundsToVisible pure fn (window size/pos/maximized memory; multi-monitor clamp; PL-6)

@@ -7,6 +7,10 @@ class SystemProcessRunner implements ProcessRunner {
   const SystemProcessRunner();
 
   @override
-  Future<ProcessResult> run(String executable, List<String> arguments) =>
-      Process.run(executable, arguments);
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) =>
+      Process.run(executable, arguments, environment: environment);
 }

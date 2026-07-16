@@ -60,6 +60,9 @@ class PgBinaryLocation {
   File get pgCtl => File(p.join(binDir.path, _exe('pg_ctl')));
   File get postgres => File(p.join(binDir.path, _exe('postgres')));
 
+  /// pg_dump——每日冷备（LB-10）；与其它二进制同 bin 目录。
+  File get pgDump => File(p.join(binDir.path, _exe('pg_dump')));
+
   static String _exe(String name) =>
       Platform.isWindows ? '$name.exe' : name;
 }

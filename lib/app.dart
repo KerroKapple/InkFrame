@@ -19,6 +19,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/di/current_screen.dart';
 import 'core/di/database.dart';
+import 'core/di/database_backup.dart';
 import 'core/di/locale.dart';
 import 'core/di/orphan_reaper.dart';
 import 'core/di/preferences.dart';
@@ -61,6 +62,9 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       ref.read(orphanReapStartupProvider);
       // XM-1b：存量视频元数据回填（同级 housekeeping，稳态只花一条 SQL）。
       ref.read(videoBackfillStartupProvider);
+      // LB-10：每日 pg_dump 冷备（当日已有则跳过，保留 7 份）。同级 housekeeping，
+      // 内部吞错只 warn，绝不阻断启动。
+      ref.read(databaseBackupStartupProvider);
     });
   }
 

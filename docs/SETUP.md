@@ -192,6 +192,33 @@ For real generation, drop `INKFRAME_FAKE_PROVIDERS` and add keys in
 接真实生成时去掉 `INKFRAME_FAKE_PROVIDERS`，进 **Settings → Providers** 填 Key ——
 Windows 上 Key 落到 **凭据管理器（Credential Manager）**。
 
+## Database backups & recovery / 数据库备份与恢复
+
+On every launch InkFrame writes one daily cold backup of the embedded PostgreSQL to
+`<data-root>/backups/inkframe-YYYY-MM-DD.dump` (pg_dump custom format `-Fc`), keeping the
+7 most recent and skipping if today's file already exists. Backups never block startup —
+any failure is only logged (`db.backup` module). The data root is the
+platform-conventional path (Windows `%LOCALAPPDATA%\InkFrame`, macOS
+`~/Library/Application Support/InkFrame`; DIR-1).
+
+InkFrame 每次启动写一份嵌入式 PostgreSQL 的每日冷备到
+`<数据根>/backups/inkframe-YYYY-MM-DD.dump`（pg_dump 自定义格式 `-Fc`），保留最新 7 份、
+当日已有则跳过。备份绝不阻断启动 —— 任何失败只记日志（`db.backup` module）。数据根为平台
+惯例路径（Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`；DIR-1）。
+
+**Manual restore (advanced).** SCRAM auth means the DB password lives in the OS keystore,
+so restoring by hand needs that password (an in-app restore flow is tracked as LB-22). With
+the app closed, using the bundled `pg_restore` and the running cluster's port/password:
+
+**手工恢复（进阶）。** SCRAM 认证下库口令在系统密钥库里，手工还原需要该口令（app 内一键还原
+入口见 LB-22）。关闭 app 后，用打包的 `pg_restore` + 集群端口/口令：
+
+```bash
+# PGPASSWORD from OS keystore key `database.pg.password`; port from <data-root>/config/pg.port
+PGPASSWORD=<pw> pg_restore -h 127.0.0.1 -p <port> -U inkframe -d postgres \
+  --clean --if-exists "<data-root>/backups/inkframe-2026-07-15.dump"
+```
+
 ---
 
 See also: [docs/ARCHITECTURE.md](ARCHITECTURE.md) (env vars, key storage, data dirs),

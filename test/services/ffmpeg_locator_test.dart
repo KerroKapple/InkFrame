@@ -115,7 +115,11 @@ class _FakeRunner implements ProcessRunner {
   final List<(String, List<String>)> calls = <(String, List<String>)>[];
 
   @override
-  Future<ProcessResult> run(String executable, List<String> arguments) async {
+  Future<ProcessResult> run(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  }) async {
     calls.add((executable, List<String>.of(arguments)));
     final exitCode = exitCodes[executable];
     if (exitCode != null) return ProcessResult(1, exitCode, '', '');
