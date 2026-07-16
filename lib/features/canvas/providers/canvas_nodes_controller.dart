@@ -46,7 +46,15 @@ class CanvasNodesController
     ref.onDispose(() => _alive = false);
     final repo = await ref.watch(nodeRepositoryProvider.future);
     final rows = await repo.listByCanvas(canvasId);
-    return rows.map(CanvasNodeMapping.fromRow).toList(growable: false);
+    // 存量越界坐标（旧生长模型 >50k）加载期收敛进可达范围——只改内存不回写，
+    // 幂等；用户后续拖动经 moveNode 才落库（#186 评审 P2-1）。
+    return rows
+        .map(CanvasNodeMapping.fromRow)
+        .map((n) {
+          final clamped = clampIntoWorldReach(n.position);
+          return identical(clamped, n.position) ? n : n.copyWith(position: clamped);
+        })
+        .toList(growable: false);
   }
 
   NodeRepository get _repo {

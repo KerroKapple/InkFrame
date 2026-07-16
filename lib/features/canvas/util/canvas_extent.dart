@@ -23,6 +23,15 @@ const Offset kStageOrigin = Offset(kStageHalf, kStageHalf);
 /// 防止节点贴死边缘后无法再拖拽。
 const double kWorldReach = kStageHalf - 2000;
 
+/// 世界坐标收敛进可达范围（±kWorldReach）。
+/// 旧模型（内容驱动生长）允许 >50k 坐标，定舞台下越界节点会落在
+/// 100k Stack 命中区之外永久不可达——加载期用本函数一次性收敛（#186 评审 P2-1）。
+Offset clampIntoWorldReach(Offset world) {
+  final double x = world.dx.clamp(-kWorldReach, kWorldReach);
+  final double y = world.dy.clamp(-kWorldReach, kWorldReach);
+  return (x == world.dx && y == world.dy) ? world : Offset(x, y);
+}
+
 /// 世界坐标 → 舞台坐标（Stack/Positioned/CustomPaint 使用的坐标系）。
 Offset worldToStage(Offset world) => world + kStageOrigin;
 

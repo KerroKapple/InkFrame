@@ -823,7 +823,7 @@ class _CanvasStage extends ConsumerWidget {
   }
 
   // 拖拽分界线调整相邻泳道大小（~10px 透明感应条，仅命中不绘制）。
-  // 视口层：位置/厚度全为屏幕像素，不随缩放变化。
+  // 视口层：厚度恒为屏幕像素；位置随泳道栈平移（laneStackOffset），缩放不改道厚。
   List<Widget> _buildResizeDividers(
     BuildContext context,
     WidgetRef ref,
@@ -875,9 +875,8 @@ class _CanvasStage extends ConsumerWidget {
             cursor: horizontal
                 ? SystemMouseCursors.resizeRow
                 : SystemMouseCursors.resizeColumn,
-            // opaque：感应条在视口层与 InteractiveViewer 是兄弟节点，translucent
-            // 会让 IV 的 scale 手势进竞技场抢走拖拽（泳道宽度调不动）；opaque
-            // 直接截断下层命中。代价：这 10px 带上无法点选下方连线，可接受。
+            // translucent：感应条自身收 pan（层序在标题栏之上，#184），
+            // 同时不吞掉带下内容的命中——10px 带内连线/卡片仍可点选。
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onPanUpdate: (d) => delta += horizontal ? d.delta.dy : d.delta.dx,
