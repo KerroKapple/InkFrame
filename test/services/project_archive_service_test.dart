@@ -194,16 +194,27 @@ void main() {
       _snap(project: <String, Object?>{'id': 'p1'}),
     );
     final svc = build(reader);
-    // 种子一个被独占锁住的文件：addFile 读它时抛 FileSystemException——
+    // 种子一个不可读的文件：addFile 读它时抛 FileSystemException——
     // 此时 encoder 已 create（partial 在盘、句柄被持有），走真正的清理路径。
+    // 平台分叉：Windows 用强制独占锁；Linux/macOS 的 FileLock 是建议锁
+    //（advisory，别的句柄照读），改用 chmod 000（CI runner 非 root，读必炸）。
     final dir = Directory('${temp.path}/root/projects/p1')
       ..createSync(recursive: true);
     final locked = File('${dir.path}/locked.bin')..writeAsBytesSync(<int>[7]);
-    final raf = locked.openSync(mode: FileMode.append);
-    raf.lockSync(FileLock.exclusive);
+    RandomAccessFile? raf;
+    if (Platform.isWindows) {
+      raf = locked.openSync(mode: FileMode.append);
+      raf.lockSync(FileLock.exclusive);
+    } else {
+      Process.runSync('chmod', <String>['000', locked.path]);
+    }
     addTearDown(() {
-      raf.unlockSync();
-      raf.closeSync();
+      if (raf != null) {
+        raf.unlockSync();
+        raf.closeSync();
+      } else {
+        Process.runSync('chmod', <String>['644', locked.path]);
+      }
     });
 
     final target = '${temp.path}/locked.zip';
