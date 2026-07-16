@@ -114,12 +114,15 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、
 上线后 9、永久接受 3(buildUpdate 白名单/InkWindowChrome/displayName 英文)。
 
-**上线前硬门槛(数据安全)** — 进度 2026-07-15:LB-07/09/10/13a/13b/14/17 ✅ 已合入,余下待做:
+**上线前硬门槛(数据安全)** — 进度 2026-07-16:LB-07/09/10/11/13a/13b/14/17 ✅ 已合入,余下待做:
 - **LB-07 PG trust→SCRAM**:✅ #172(SCRAM-SHA-256 + 随机密码入 SecureStorage,存量 trust 零迁移)
 - **LB-10 每日 pg_dump 冷备**:✅ #185(启动 post-frame 触发,-Fc tmp→rename 原子写,当日跳过,
   保留 7 份,PGPASSWORD 经 env,开发机无打包 PG 跳过;失败仅 warn 绝不阻断;恢复手册进 SETUP.md)
-- **LB-11/12 项目导出/导入**(zip=manifest+data+files;导入=全表 ID 重映射,**全计划最大风险卡**,
-  roundtrip 测试先行;同时产出项目复制的全部机器)
+- **LB-11 项目导出**:✅ #188(zip=manifest+data.json+files/ 全保真——软删行含 deleted_at 一起带走
+  保 FK 闭包,jobs 只带有 success slot 者+其全部 slot;`.partial`→rename 原子落盘;入口=项目卡菜单+
+  getSaveLocation;顺带清债#20 characters/presets 真库 CRUD 集成测)
+- **LB-12 项目导入**(全表 ID 重映射,**全计划最大风险卡**,roundtrip 测试先行;
+  与 LB-11 合并产出项目复制的全部机器;manifest formatVersion=1 已就位)
 - **LB-13 purge 语义修正+孤儿文件回收**:✅ 切片 A(#163,purge 加 success-slot 守卫保画廊);
   ✅ 切片 B = **LB-13b**(#165,OrphanFileReaper DRY-RUN v1 只记不删;真删除待 dry-run 灰度后)
 - **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);

@@ -85,7 +85,7 @@ class ZipProjectArchiveService implements ProjectArchiveService {
     try {
       final project = await _reader.projectRow(projectId);
       if (project == null) {
-        throw LocalIOError(
+        throw const LocalIOError(
           extra: <String, Object?>{'reason': 'project_not_found'},
         );
       }
