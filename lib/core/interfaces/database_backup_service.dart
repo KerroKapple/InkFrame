@@ -71,10 +71,12 @@ abstract class DatabaseBackupService {
 
   /// 立即备份（manual / preRestore 族）：时间戳命名，不受当日跳过约束。
   /// 失败以返回值表达（housekeeping 同源实现，**不抛**——调用方必须查返回值，
-  /// 设计评审 P1-4）。
+  /// 设计评审 P1-4）。[preserve] 为剪枝排除名——还原流程的兜底备份触发剪枝时
+  /// 绝不能删掉用户正要还原的目标（#189 评审 P1-2）。
   Future<BackupNowResult> backupNow(
     BackupConnection connection, {
     required BackupKind kind,
+    String? preserve,
   });
 
   /// 备份目录清单：仅识别命名，新→旧。纯文件系统读，无需 PG 二进制。

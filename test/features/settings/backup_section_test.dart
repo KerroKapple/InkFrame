@@ -1,4 +1,5 @@
 // BackupSection widget 测试：列表/立即备份/还原确认→flow/成败 toast/会话重置/busy 禁钮。
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -58,6 +59,7 @@ class _FakeBackup implements DatabaseBackupService {
   Future<BackupNowResult> backupNow(
     BackupConnection connection, {
     required BackupKind kind,
+    String? preserve,
   }) async {
     lastConn = connection;
     lastKind = kind;
@@ -81,6 +83,9 @@ class _FakeFlow implements DatabaseRestoreFlow {
   bool? lastRequire;
   int calls = 0;
 
+  /// 置入后 run 卡在 gate 上——观测 barrier 模态在途行为。
+  Completer<void>? gate;
+
   @override
   Future<RestoreFlowResult> run(
     String backupFileName, {
@@ -89,6 +94,8 @@ class _FakeFlow implements DatabaseRestoreFlow {
     calls++;
     lastFile = backupFileName;
     lastRequire = requirePreBackup;
+    final g = gate;
+    if (g != null) await g.future;
     return RestoreFlowResult(outcome: outcome);
   }
 }
@@ -258,6 +265,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(toast.shown.single.message, contains('newer version'));
     expect(toast.shown.single.kind, ToastKind.error);
+  });
+
+  testWidgets('还原全程 barrier 模态罩住（restoreInProgress），点外部不消失，完成后收起',
+      (tester) async {
+    backup.backups = [_info('inkframe-2026-07-15.dump', BackupKind.daily)];
+    flow.gate = Completer<void>();
+    await pump(tester);
+
+    await tester.tap(find.text('Restore'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restore').last);
+    await tester.pump(); // flow 在途——barrier 模态应已罩上。
+
+    expect(find.text('Restoring…'), findsOneWidget);
+    // barrierDismissible=false：点外部不消失。
+    await tester.tapAt(const Offset(5, 5));
+    await tester.pump();
+    expect(find.text('Restoring…'), findsOneWidget);
+
+    flow.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(find.text('Restoring…'), findsNothing);
+    expect(toast.shown.single.message, 'Restore complete');
   });
 
   testWidgets('databaseRestoreBusyProvider=true → 备份/还原钮均不可用', (tester) async {

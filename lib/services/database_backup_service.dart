@@ -148,12 +148,14 @@ class PgDumpBackupService implements DatabaseBackupService {
   Future<BackupNowResult> backupNow(
     BackupConnection connection, {
     required BackupKind kind,
+    String? preserve,
   }) async {
     final File target = File(p.join(
       _paths.backups.path,
       timestampedBackupFileName(_clock.nowUtc(), kind),
     ));
-    final BackupOutcome outcome = await _publish(target, connection);
+    final BackupOutcome outcome =
+        await _publish(target, connection, preserve: preserve);
     return BackupNowResult(
       outcome: outcome,
       fileName:
@@ -188,10 +190,12 @@ class PgDumpBackupService implements DatabaseBackupService {
   }
 
   /// 共享发布主体：定位 → .partial → pg_dump → rename → sidecar → 分族保留。
+  /// [preserve] 不参与剪枝（还原目标保护，#189 评审 P1-2）。
   Future<BackupOutcome> _publish(
     File target,
-    BackupConnection connection,
-  ) async {
+    BackupConnection connection, {
+    String? preserve,
+  }) async {
     // 1) 定位 pg_dump——开发机无打包 PG 视为跳过，非失败。
     final File pgDump;
     try {
@@ -279,7 +283,7 @@ class PgDumpBackupService implements DatabaseBackupService {
     }
 
     // 5) 分族保留：各族按各自 cap 剪最旧（顺带清跨日崩溃遗留的 .partial 碎片）。
-    final int pruned = _applyRetention(dir);
+    final int pruned = _applyRetention(dir, exclude: preserve);
     _logger?.info(kBackupModule, 'backup.done', extra: <String, Object?>{
       'file': p.basename(target.path),
       'pruned': pruned,
@@ -287,7 +291,7 @@ class PgDumpBackupService implements DatabaseBackupService {
     return BackupOutcome.created;
   }
 
-  int _applyRetention(Directory dir) {
+  int _applyRetention(Directory dir, {String? exclude}) {
     final List<String> names;
     try {
       names = dir
@@ -298,6 +302,8 @@ class PgDumpBackupService implements DatabaseBackupService {
     } on FileSystemException {
       return 0;
     }
+    // 在途还原目标不进候选：兜底备份绝不删掉用户正要还原的文件（评审 P1-2）。
+    if (exclude != null) names.remove(exclude);
     int pruned = 0;
     for (final BackupKind kind in BackupKind.values) {
       for (final String name in backupsToPrune(names, kind: kind)) {

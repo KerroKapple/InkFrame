@@ -222,31 +222,47 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
     if (confirmed != true || !mounted) return;
 
     // barrier 模态罩住全程：关池窗口内其它站点写库必炸（评审生命周期 P2-1）。
+    BuildContext? barrierCtx;
     unawaited(showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => PopScope(
-        canPop: false,
-        child: AlertDialog(
-          content: Row(
-            children: [
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              const SizedBox(width: InkSpacing.md),
-              Text(progressMsg),
-            ],
+      barrierColor: context.inkColors.scrim,
+      builder: (ctx) {
+        barrierCtx = ctx;
+        return PopScope(
+          canPop: false,
+          child: AlertDialog(
+            content: Row(
+              children: [
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                const SizedBox(width: InkSpacing.md),
+                Text(progressMsg),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     ));
-    final RestoreFlowResult result;
+    RestoreFlowResult result;
     try {
       result = await flow.run(b.name, requirePreBackup: true);
+    } catch (_) {
+      // 放行点：flow 已 catch-all，走到这里只剩 override/装配错误——
+      // 失败必须可见（本卡不变量），按 failed 收口。
+      result = const RestoreFlowResult(outcome: RestoreOutcome.failed);
     } finally {
-      navigator.pop(); // 收 barrier 模态（navigator 在首个 await 前捕获）。
+      // 收 barrier：优先按 dialog 自身 route 收；builder 未及构建时兜底
+      // 弹根导航栈顶（showDialog 的 route 推入是同步的）。
+      final ctx = barrierCtx;
+      if (ctx != null && ctx.mounted) {
+        Navigator.of(ctx).pop();
+      } else {
+        navigator.pop();
+      }
     }
 
     if (result.outcome == RestoreOutcome.restored) {

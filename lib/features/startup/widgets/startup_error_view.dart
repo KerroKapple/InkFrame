@@ -40,19 +40,36 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
   /// 重启/还原进行中：禁用按钮防重复触发（stop→invalidate→重建的异步窗口内）。
   bool _working = false;
 
+  /// 还原目标：最新（按 modified，非文件名排序键——daily 记 000000 会把当天
+  /// 更晚的每日备份排到手动之前，#189 评审 P2-2）的 daily/manual；
+  /// 排除 prerestore（可能是坏库的 dump，盲还原会死循环）。
+  /// initState 读一次缓存（listSync 不进 build），失败重试后刷新。
+  BackupFileInfo? _latestRestorable;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshLatest();
+  }
+
+  void _refreshLatest() {
+    final restorable = ref
+        .read(databaseBackupServiceProvider)
+        .listBackups()
+        .where((b) => b.kind != BackupKind.preRestore);
+    BackupFileInfo? latest;
+    for (final b in restorable) {
+      if (latest == null || b.modified.isAfter(latest.modified)) latest = b;
+    }
+    _latestRestorable = latest;
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final String logsPath = ref.watch(appPathsProvider).logs.path;
-    // 还原目标 = 最新的 daily/manual（排除 prerestore：可能是坏库的 dump）。
-    final List<BackupFileInfo> restorable = ref
-        .watch(databaseBackupServiceProvider)
-        .listBackups()
-        .where((b) => b.kind != BackupKind.preRestore)
-        .toList(growable: false);
-    final BackupFileInfo? latest =
-        restorable.isEmpty ? null : restorable.first;
+    final BackupFileInfo? latest = _latestRestorable;
     final bool busy = _working || ref.watch(databaseRestoreBusyProvider);
 
     return Scaffold(
@@ -186,12 +203,23 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
 
     setState(() => _working = true);
     // flow 内部 await 链重建：run 返回时成败已定——成功 gate 自行换页。
-    final result = await flow.run(target.name, requirePreBackup: false);
+    RestoreFlowResult result;
+    try {
+      result = await flow.run(target.name, requirePreBackup: false);
+    } catch (_) {
+      // 放行点：flow 已 catch-all，兜住 override/装配错误——_working 绝不卡死。
+      result = const RestoreFlowResult(outcome: RestoreOutcome.failed);
+    }
     if (result.outcome != RestoreOutcome.restored) {
       toast.show(l10nRestoreFailure(l10n, result.outcome),
           kind: ToastKind.error);
     }
-    if (mounted) setState(() => _working = false);
+    if (mounted) {
+      setState(() {
+        _working = false;
+        _refreshLatest(); // 预备份/剪枝可能改变了清单。
+      });
+    }
   }
 
   /// best-effort 打开日志目录；打不开（如缺可执行文件）静默吞错，不崩 UI。

@@ -50,6 +50,7 @@ class _FakeBackup implements DatabaseBackupService {
   BackupOutcome nowOutcome = BackupOutcome.created;
   BackupConnection? lastConn;
   BackupKind? lastKind;
+  String? lastPreserve;
 
   @override
   Future<BackupOutcome> backup(BackupConnection connection) async =>
@@ -59,10 +60,12 @@ class _FakeBackup implements DatabaseBackupService {
   Future<BackupNowResult> backupNow(
     BackupConnection connection, {
     required BackupKind kind,
+    String? preserve,
   }) async {
     order.add('backupNow');
     lastConn = connection;
     lastKind = kind;
+    lastPreserve = preserve;
     return BackupNowResult(
       outcome: nowOutcome,
       fileName: nowOutcome == BackupOutcome.created
@@ -201,6 +204,8 @@ void main() {
       'migrated.build',
     ]);
     expect(backup.lastKind, BackupKind.preRestore);
+    expect(backup.lastPreserve, 'inkframe-2026-07-15.dump',
+        reason: '兜底备份剪枝必须排除正要还原的目标（#189 评审 P1-2）');
     expect(restore.lastFileName, 'inkframe-2026-07-15.dump');
     // invalidate 后重建：pool 共 2 次 build。
     expect(poolBuilds, 2);

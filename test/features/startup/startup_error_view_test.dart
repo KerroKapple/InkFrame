@@ -57,6 +57,7 @@ class _FakeBackupService implements DatabaseBackupService {
   Future<BackupNowResult> backupNow(
     BackupConnection connection, {
     required BackupKind kind,
+    String? preserve,
   }) async =>
       const BackupNowResult(outcome: BackupOutcome.created, fileName: 'x');
 
@@ -91,11 +92,13 @@ class _RecordingToast implements ToastService {
   }
 }
 
-BackupFileInfo _backupInfo(String name, BackupKind kind) => BackupFileInfo(
+BackupFileInfo _backupInfo(String name, BackupKind kind,
+        {DateTime? modified}) =>
+    BackupFileInfo(
       name: name,
       kind: kind,
       sizeBytes: 1,
-      modified: DateTime.utc(2026, 7, 15, 9, 30),
+      modified: modified ?? DateTime.utc(2026, 7, 15, 9, 30),
     );
 
 /// 记录调用顺序的 PgController 假体：不起真进程，start/stop 只记账；
@@ -395,5 +398,39 @@ void main() {
       find.widgetWithText(InkButton, l10n.startupErrorRestoreLatest),
     );
     expect(restoreBtn.onPressed, isNotNull);
+  });
+
+  testWidgets('LB-22：latest 按 modified 选，而非文件名排序键（#189 评审 P2-2）',
+      (tester) async {
+    final AppPaths paths = _tempPaths();
+    final flow = _FakeRestoreFlow();
+    // 同日：manual 09:00 手动备份、daily 20:00 落盘——文件名排序键把 daily
+    // 记 000000 会误选 manual；必须按 modified 选 daily。
+    final backupSvc = _FakeBackupService([
+      _backupInfo('inkframe-manual-2026-07-15-090000.dump', BackupKind.manual,
+          modified: DateTime.utc(2026, 7, 15, 9)),
+      _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily,
+          modified: DateTime.utc(2026, 7, 15, 20)),
+    ]);
+    await pumpInkApp(
+      tester,
+      StartupErrorView(error: LocalIOError(cause: StateError('x'))),
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+        databaseBackupServiceProvider.overrideWithValue(backupSvc),
+        databaseRestoreFlowProvider.overrideWithValue(flow),
+        toastServiceProvider.overrideWithValue(_RecordingToast()),
+      ],
+      surfaceSize: const Size(1200, 900),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text(l10n.startupErrorRestoreLatest));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.settingsRestore));
+    await tester.pumpAndSettle();
+
+    expect(flow.lastFile, 'inkframe-2026-07-15.dump');
   });
 }

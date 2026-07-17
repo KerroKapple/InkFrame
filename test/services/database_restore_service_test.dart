@@ -289,6 +289,25 @@ void main() {
     expect(order.where((s) => s.contains('RENAME TO "postgres"')), isEmpty);
   });
 
+  test('rename-in 失败 → 补偿回滚 rename-away、drop tmp、failed（#189 评审 P2-1）',
+      () async {
+    maint.failOnPrefix = 'ALTER DATABASE "inkframe_restore_tmp"';
+    final name = seedBackup(autoMeta: true);
+
+    final outcome = await build().restore(conn, name);
+
+    expect(outcome, RestoreOutcome.failed);
+    // 补偿：retired 改回原名（原库归位，「数据未被改动」保真）。
+    expect(
+      order,
+      contains(
+          'ALTER DATABASE "inkframe_retired_20260716102030" RENAME TO "postgres"'),
+    );
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"');
+    expect(order.where((s) => s.startsWith('DROP DATABASE "inkframe_retired')),
+        isEmpty);
+  });
+
   test('drop retired 失败 → 仍 restored（仅 warn）', () async {
     maint.failOnPrefix = 'DROP DATABASE "inkframe_retired';
     final name = seedBackup(autoMeta: true);

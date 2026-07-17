@@ -107,11 +107,13 @@ class DatabaseRestoreFlow {
         pool = null;
       }
 
-      // 1) 预备份——查返回值（backup 服务失败不抛，评审 P1-4）。
+      // 1) 预备份——查返回值（backup 服务失败不抛，评审 P1-4）；
+      // preserve=还原目标：兜底备份触发的剪枝绝不能删掉它（#189 评审 P1-2）。
       String? preName;
       final BackupNowResult pre = await _ref
           .read(databaseBackupServiceProvider)
-          .backupNow(conn, kind: BackupKind.preRestore);
+          .backupNow(conn,
+              kind: BackupKind.preRestore, preserve: backupFileName);
       preName = pre.fileName;
       if (pre.outcome != BackupOutcome.created) {
         logger.warn(kRestoreModule, 'restore.pre_backup_failed',
@@ -126,13 +128,28 @@ class DatabaseRestoreFlow {
 
       // 2) 终结 JobQueue（内存 handle 必达；行状态由重建后孤儿回收兜底）。
       _ref.read(jobQueueServiceProvider).valueOrNull?.dispose();
-      // 3) 关池（等在途语句收尾）。
-      if (pool != null) await pool.close();
+      // 3) 关池（等在途语句收尾）。close 失败也继续——重建链会换新池。
+      try {
+        if (pool != null) await pool.close();
+      } catch (e) {
+        logger.warn(kRestoreModule, 'restore.pool_close_failed',
+            extra: <String, Object?>{'error': e.toString()});
+      }
 
-      // 4) scratch 对换还原。
-      final RestoreOutcome outcome = await _ref
-          .read(databaseRestoreServiceProvider)
-          .restore(conn, backupFileName);
+      // 4) scratch 对换还原。catch-all：池已关，任何逃逸都不得阻断链重建——
+      // 否则全 app 写库 StateError 到重启，且失败不可见（#189 评审 P1-1）。
+      RestoreOutcome outcome;
+      try {
+        outcome = await _ref
+            .read(databaseRestoreServiceProvider)
+            .restore(conn, backupFileName);
+      } catch (e, st) {
+        // 放行点（sanctioned swallow）：service 已把已知失败收成返回值，
+        // 走到这里的是未预期逃逸——记 ERROR 后按 failed 收口。
+        logger.error(kRestoreModule, 'restore.unexpected',
+            cause: e, stackTrace: st);
+        outcome = RestoreOutcome.failed;
+      }
 
       // 5) 无条件重建链（池已关，不重建 app 就死）+ await 出确定态——
       // restored 从此意味着「新库可用、前向迁移已过」（评审 UX P2-1）。

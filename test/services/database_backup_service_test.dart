@@ -399,6 +399,34 @@ void main() {
           hasLength(3));
     });
 
+    test('preserve：兜底备份的剪枝排除正要还原的目标（#189 评审 P1-2）', () async {
+      paths.backups.createSync(recursive: true);
+      // prerestore 满额 3 份，目标=最旧那份（用户最常想回到的点）。
+      for (var i = 1; i <= 3; i++) {
+        File(p.join(paths.backups.path,
+                'inkframe-prerestore-2026-07-1$i-090000.dump'))
+            .writeAsStringSync('r');
+      }
+      const target = 'inkframe-prerestore-2026-07-11-090000.dump';
+
+      final result = await service().backupNow(
+        conn,
+        kind: BackupKind.preRestore,
+        preserve: target,
+      );
+
+      expect(result.outcome, BackupOutcome.created);
+      final names = paths.backups
+          .listSync()
+          .whereType<File>()
+          .map((f) => p.basename(f.path))
+          .toSet();
+      // 目标必须活着；被保护的那份不计入候选 → 本轮容忍超额（下轮自然回落）。
+      expect(names, contains(target));
+      expect(names.where((n) => backupKindOf(n) == BackupKind.preRestore),
+          hasLength(4));
+    });
+
     test('listBackups：仅识别名、新→旧、kind 正确', () async {
       paths.backups.createSync(recursive: true);
       File(p.join(paths.backups.path, 'inkframe-2026-07-14.dump'))

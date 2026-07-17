@@ -80,11 +80,21 @@ class _PgMaintenanceSession implements MaintenanceSession {
       return <List<Object?>>[for (final row in r) row.toList()];
     } on PgException catch (e) {
       throw MaintenanceSqlError(e.message);
+    } on Exception catch (e) {
+      // 连接中途断（SocketException 等）不属 PgException——同样收口成
+      // MaintenanceSqlError，杜绝逃逸出 flow（#189 评审 P1-1 次级口）。
+      throw MaintenanceSqlError(e.toString());
     }
   }
 
   @override
-  Future<void> close() => _conn.close();
+  Future<void> close() async {
+    try {
+      await _conn.close();
+    } on Exception {
+      // 关闭失败不得顶掉主流程返回值（finally 内被调）。
+    }
+  }
 }
 
 class PgSwapRestoreService implements DatabaseRestoreService {
@@ -197,8 +207,30 @@ class PgSwapRestoreService implements DatabaseRestoreService {
       if (targetExists) {
         await session.execute('ALTER DATABASE "$db" RENAME TO "$retired"');
       }
-      await session
-          .execute('ALTER DATABASE "$kRestoreTmpDb" RENAME TO "$db"');
+      try {
+        await session
+            .execute('ALTER DATABASE "$kRestoreTmpDb" RENAME TO "$db"');
+      } on MaintenanceSqlError catch (e) {
+        // rename-in 失败：补偿回滚 rename-away，原库归位（#189 评审 P2-1——
+        // 否则原库滞留 retired 名下，「数据未被改动」变谎言）。
+        _logger?.warn(kRestoreModule, 'restore.swap_failed',
+            extra: <String, Object?>{'error': e.message});
+        if (targetExists) {
+          try {
+            await session
+                .execute('ALTER DATABASE "$retired" RENAME TO "$db"');
+          } on MaintenanceSqlError catch (e2) {
+            // 补偿也失败：原库滞留 retired——大声记日志（含库名）供手工救援。
+            _logger?.error(kRestoreModule, 'restore.swap_stranded',
+                extra: <String, Object?>{
+                  'retired': retired,
+                  'error': e2.message,
+                });
+          }
+        }
+        await _dropTmpQuietly(session);
+        return RestoreOutcome.failed;
+      }
       if (targetExists) {
         try {
           await session.execute('DROP DATABASE "$retired"');
@@ -237,8 +269,15 @@ class PgSwapRestoreService implements DatabaseRestoreService {
     }
     final Object? expected = parsed['sha256'];
     if (expected is String) {
-      final String actual =
-          sha256.convert(dump.readAsBytesSync()).toString();
+      final String actual;
+      try {
+        actual = sha256.convert(dump.readAsBytesSync()).toString();
+      } on FileSystemException {
+        // dump 被占锁/中途被删（AV/云盘同步）——读不了就不还原，
+        // 绝不能让异常逃逸出 flow（#189 评审 P1-1）。
+        _logger?.warn(kRestoreModule, 'restore.dump_unreadable');
+        return RestoreOutcome.failed;
+      }
       if (actual != expected) {
         _logger?.warn(kRestoreModule, 'restore.sha_mismatch');
         return RestoreOutcome.failedCorrupt;
