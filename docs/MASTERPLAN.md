@@ -162,7 +162,8 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
    library_sidebar:45 与 canvas_view 裸 toString 站点;LB-06/#166 已合,余量归本卡)+ **GAP-4 slot error 文案**(S)
    ✅ **#167 已合**(Tooltip + danger 文案)。
 7. **GAP-1 设置页 Custom Provider 编辑 UI**(L,守住"重启生效"边界)。
-8. **GAP-2 软删项目回收站 UI**(M,顺带激活 ARCHIVE 死行)。
+8. **GAP-2 软删项目回收站 UI**(M)✅ **#190 已合**(≡LB-15：sidebar 真回收站入口取代 ARCHIVE 死行、
+   管理画布已删区;首版无永久删除)。
 9. **PL-6 窗口状态记忆**(S–M)✅ **#170 已合**(退出捕获+启动恢复+多显示器 clamp)。
 10. **ON-3 ffmpeg 引导**(S–M,排导出 UI 合入后)+ **ON-4/i18n pass**(S)+
     **GAP-7 Inspector 测试欠账 + ON-5 空态 golden**(质量闸随窗)。

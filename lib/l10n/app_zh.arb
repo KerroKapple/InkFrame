@@ -296,6 +296,16 @@
   "studioExportProject": "导出项目…",
   "studioExportProjectDone": "项目已导出",
   "studioExportProjectFailed": "导出项目失败",
+  "studioTrash": "回收站",
+  "studioTrashEmpty": "回收站是空的",
+  "studioRestore": "恢复",
+  "studioTrashDeletedAt": "删除于 {date}",
+  "@studioTrashDeletedAt": {
+    "placeholders": {
+      "date": { "type": "DateTime", "format": "yyyy-MM-dd HH:mm", "isCustomDateFormat": "true" }
+    }
+  },
+  "studioRestoreFailed": "恢复失败",
   "studioRenameCanvas": "重命名画布",
   "studioRenameCanvasFailed": "重命名画布失败",
   "studioCanvasDeleteConfirmTitle": "删除画布？",

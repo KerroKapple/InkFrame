@@ -34,11 +34,12 @@ void main() {
     // CV-1（D-7 d6）：ARCHIVE 死行随裁（GAP-2 激活时再回）。
     expect(find.text('ARCHIVE'), findsNothing);
     expect(find.text('Archived Projects'), findsNothing);
-    // footer 只留接真的 settings；archive/people/trash stub 已裁。
+    // footer：接真的 settings + 回收站（LB-15/GAP-2 激活后 trash 以真入口回归）；
+    // archive/people 死 stub 仍不得出现。
     expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
     expect(find.byIcon(Icons.inventory_2_outlined), findsNothing);
     expect(find.byIcon(Icons.person_outline), findsNothing);
-    expect(find.byIcon(Icons.delete_outline), findsNothing);
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
     // SectionLabel 的装饰性 '+'（无功能）已裁。
     expect(find.byIcon(Icons.add), findsNothing);
   });

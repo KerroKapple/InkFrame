@@ -167,6 +167,19 @@ class InMemoryCanvasRepository implements CanvasRepository {
   }
 
   @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(
+      String projectId) async {
+    final List<Map<String, Object?>> trashed = _rows.values
+        .where(
+            (r) => r['project_id'] == projectId && r['deleted_at'] != null)
+        .map(Map<String, Object?>.of)
+        .toList();
+    trashed.sort((a, b) =>
+        (b['deleted_at'] as DateTime).compareTo(a['deleted_at'] as DateTime));
+    return trashed;
+  }
+
+  @override
   Future<int> update(String id, Map<String, Object?> patch) async {
     final Map<String, Object?>? row = _rows[id];
     if (row == null) return 0;

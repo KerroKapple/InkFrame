@@ -9,6 +9,10 @@ import 'package:inkframe/features/canvas/providers/canvas_base_style.dart';
 // ── fake ─────────────────────────────────────────────────────────────────────
 
 class _FakeCanvasRepo implements CanvasRepository {
+  @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
   final Map<String, Map<String, Object?>> _rows = {};
   // 最后一次 update 收到的 patch，断言用。
   Map<String, Object?>? lastPatch;

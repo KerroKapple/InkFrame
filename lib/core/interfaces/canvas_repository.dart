@@ -18,6 +18,9 @@ abstract class CanvasRepository {
 
   Future<int> update(String id, Map<String, Object?> patch);
   Future<int> softDelete(String id);
+  /// 项目下回收站画布（deleted_at IS NOT NULL），deleted_at DESC（LB-15 读侧）。
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId);
+
   Future<int> restore(String id);
   Future<int> hardDelete(String id);
 }

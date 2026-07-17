@@ -65,4 +65,18 @@ class StudioProjectsController {
     await repo.softDelete(id);
     _ref.invalidate(workspaceProjectsProvider);
   }
+
+  /// 从回收站恢复项目（清 deleted_at）；成功后刷新工作库列表（LB-15）。
+  Future<void> restoreProject(String id) async {
+    final repo = await _ref.read(projectRepositoryProvider.future);
+    await repo.restore(id);
+    _ref.invalidate(workspaceProjectsProvider);
+  }
+
+  /// 从回收站恢复画布；成功后刷新工作库列表（LB-15）。
+  Future<void> restoreCanvas(String id) async {
+    final repo = await _ref.read(canvasRepositoryProvider.future);
+    await repo.restore(id);
+    _ref.invalidate(workspaceProjectsProvider);
+  }
 }

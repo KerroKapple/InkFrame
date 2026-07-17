@@ -730,6 +730,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioExportProjectFailed => 'Failed to export project';
 
   @override
+  String get studioTrash => 'Trash';
+
+  @override
+  String get studioTrashEmpty => 'Trash is empty';
+
+  @override
+  String get studioRestore => 'Restore';
+
+  @override
+  String studioTrashDeletedAt(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat(
+      'yyyy-MM-dd HH:mm',
+      localeName,
+    );
+    final String dateString = dateDateFormat.format(date);
+
+    return 'Deleted $dateString';
+  }
+
+  @override
+  String get studioRestoreFailed => 'Couldn\'t restore';
+
+  @override
   String get studioRenameCanvas => 'Rename canvas';
 
   @override

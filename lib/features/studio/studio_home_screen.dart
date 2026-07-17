@@ -23,6 +23,7 @@ import '../canvas/providers/canvas_bootstrap_controller.dart';
 import '../gallery/providers/current_gallery_project.dart';
 import 'controllers/studio_projects_controller.dart';
 import 'providers/project_export_busy.dart';
+import 'providers/trashed_items_providers.dart';
 import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
 import 'open_canvas.dart';
@@ -715,6 +716,28 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
     }
   }
 
+  /// 恢复软删画布（LB-15）：repo 清 deleted_at → 刷新已删区 → 行迁回活列表。
+  Future<void> _restoreTrashed(TrashedItem t) async {
+    final failedMsg = context.l10n.studioRestoreFailed;
+    try {
+      await ref.read(studioProjectsControllerProvider).restoreCanvas(t.id);
+      if (!mounted) return;
+      ref.invalidate(trashedCanvasesProvider(widget.project.id));
+      setState(() {
+        // 按 id 查重：refetch 窗口内 stale 已删行仍可双击，二次 restore
+        // 返 0 不抛——不得追加第二条同 id（#190 评审 P2-2）。
+        if (!_canvases.any((o) => o.id == t.id)) {
+          _canvases = <CanvasRef>[
+            ..._canvases,
+            CanvasRef(id: t.id, name: t.name),
+          ];
+        }
+      });
+    } on InkError {
+      if (mounted) _showError(failedMsg);
+    }
+  }
+
   Future<void> _delete(CanvasRef c) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -740,6 +763,9 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
     try {
       await ref.read(studioProjectsControllerProvider).deleteCanvas(c.id);
       if (!mounted) return;
+      // 删除迁入已删区：同对话框正 watch 着 trashed family，不失效会显示
+      // 「刚删的画布不在回收站」（#190 评审 P2-1）。
+      ref.invalidate(trashedCanvasesProvider(widget.project.id));
       setState(() {
         _canvases =
             _canvases.where((o) => o.id != c.id).toList(growable: false);
@@ -758,17 +784,19 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
       title: Text(context.l10n.studioManageCanvases),
       content: SizedBox(
         width: double.maxFinite,
-        child: _canvases.isEmpty
-            ? Text(
-                context.l10n.studioNoCanvases,
-                style: typo.body.copyWith(color: colors.fg3),
-              )
-            : ListView.builder(
-                shrinkWrap: true,
-                itemCount: _canvases.length,
-                itemBuilder: (_, i) {
-                  final c = _canvases[i];
-                  return Row(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              if (_canvases.isEmpty)
+                Text(
+                  context.l10n.studioNoCanvases,
+                  style: typo.body.copyWith(color: colors.fg3),
+                )
+              else
+                for (final c in _canvases)
+                  Row(
                     children: <Widget>[
                       Expanded(
                         child: Text(
@@ -795,9 +823,65 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
                         onPressed: () => _delete(c),
                       ),
                     ],
-                  );
-                },
-              ),
+                  ),
+              // 已删区（LB-15）：项目下软删画布，可逐个恢复。空则不渲染。
+              ref.watch(trashedCanvasesProvider(widget.project.id)).when(
+                    loading: () => const SizedBox.shrink(),
+                    error: (e, _) => Padding(
+                      padding: const EdgeInsets.only(top: InkSpacing.sm),
+                      child: InkErrorBanner(
+                        message: l10nAsyncError(context, e),
+                      ),
+                    ),
+                    data: (items) => items.isEmpty
+                        ? const SizedBox.shrink()
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: <Widget>[
+                              const SizedBox(height: InkSpacing.md),
+                              Text(
+                                context.l10n.studioTrash,
+                                style: typo.overline
+                                    .copyWith(color: colors.fg3),
+                              ),
+                              const SizedBox(height: InkSpacing.xs),
+                              for (final t in items)
+                                Row(
+                                  children: <Widget>[
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: <Widget>[
+                                          Text(
+                                            t.name,
+                                            style: typo.body.copyWith(
+                                                color: colors.fg2),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            context.l10n.studioTrashDeletedAt(
+                                                t.deletedAt.toLocal()),
+                                            style: typo.caption.copyWith(
+                                                color: colors.fg3),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => _restoreTrashed(t),
+                                      child: Text(
+                                          context.l10n.studioRestore),
+                                    ),
+                                  ],
+                                ),
+                            ],
+                          ),
+                  ),
+            ],
+          ),
+        ),
       ),
       actions: <Widget>[
         TextButton(

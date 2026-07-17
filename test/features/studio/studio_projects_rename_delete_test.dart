@@ -10,6 +10,7 @@ import 'package:inkframe/features/studio/controllers/studio_projects_controller.
 class _FakeProjectRepo implements ProjectRepository {
   final List<Map<String, Object?>> updates = <Map<String, Object?>>[];
   final List<String> softDeleted = <String>[];
+  final List<String> restored = <String>[];
 
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
@@ -34,14 +35,23 @@ class _FakeProjectRepo implements ProjectRepository {
   @override
   Future<List<Map<String, Object?>>> listTrashed() async => const [];
   @override
-  Future<int> restore(String id) async => 0;
+  Future<int> restore(String id) async {
+    restored.add(id);
+    return 1;
+  }
+
   @override
   Future<int> hardDelete(String id) async => 0;
 }
 
 class _FakeCanvasRepo implements CanvasRepository {
+  @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
   final List<Map<String, Object?>> updates = <Map<String, Object?>>[];
   final List<String> softDeleted = <String>[];
+  final List<String> restored = <String>[];
 
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
@@ -52,6 +62,12 @@ class _FakeCanvasRepo implements CanvasRepository {
   @override
   Future<int> softDelete(String id) async {
     softDeleted.add(id);
+    return 1;
+  }
+
+  @override
+  Future<int> restore(String id) async {
+    restored.add(id);
     return 1;
   }
 
@@ -74,8 +90,6 @@ class _FakeCanvasRepo implements CanvasRepository {
     List<String> projectIds,
   ) async =>
       const [];
-  @override
-  Future<int> restore(String id) async => 0;
   @override
   Future<int> hardDelete(String id) async => 0;
 }
@@ -126,5 +140,17 @@ void main() {
     final (:c, repo: _, :canvases) = build();
     await c.read(studioProjectsControllerProvider).deleteCanvas('cv2');
     expect(canvases.softDeleted, <String>['cv2']);
+  });
+
+  test('restoreProject → repo.restore（LB-15）', () async {
+    final (:c, :repo, canvases: _) = build();
+    await c.read(studioProjectsControllerProvider).restoreProject('p9');
+    expect(repo.restored, <String>['p9']);
+  });
+
+  test('restoreCanvas → canvasRepo.restore（LB-15）', () async {
+    final (:c, repo: _, :canvases) = build();
+    await c.read(studioProjectsControllerProvider).restoreCanvas('cv9');
+    expect(canvases.restored, <String>['cv9']);
   });
 }

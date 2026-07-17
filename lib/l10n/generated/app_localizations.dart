@@ -1400,6 +1400,36 @@ abstract class AppLocalizations {
   /// **'Failed to export project'**
   String get studioExportProjectFailed;
 
+  /// No description provided for @studioTrash.
+  ///
+  /// In en, this message translates to:
+  /// **'Trash'**
+  String get studioTrash;
+
+  /// No description provided for @studioTrashEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Trash is empty'**
+  String get studioTrashEmpty;
+
+  /// No description provided for @studioRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get studioRestore;
+
+  /// No description provided for @studioTrashDeletedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted {date}'**
+  String studioTrashDeletedAt(DateTime date);
+
+  /// No description provided for @studioRestoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t restore'**
+  String get studioRestoreFailed;
+
   /// No description provided for @studioRenameCanvas.
   ///
   /// In en, this message translates to:
