@@ -162,6 +162,16 @@
       "reason": { "type": "String" }
     }
   },
+  "settingsAboutFfmpegLabel": "Video export (ffmpeg)",
+  "settingsAboutFfmpegProbing": "Checking…",
+  "settingsAboutFfmpegAvailable": "Available ({path})",
+  "@settingsAboutFfmpegAvailable": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "settingsAboutFfmpegMissingWindows": "Not found — video export is disabled. Install via winget (winget install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location",
+  "settingsAboutFfmpegMissingMac": "Not found — video export is disabled. Install via Homebrew (brew install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location",
   "settingsAboutLicensesButton": "Open-source licenses",
   "settingsAboutLegalese": "InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the Cormorant Garamond and JetBrains Mono fonts (SIL OFL 1.1).",
 

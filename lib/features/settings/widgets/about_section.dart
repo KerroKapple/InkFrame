@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/package_info.dart';
 import '../../../core/di/secure_storage.dart';
 import '../../../core/di/url_opener.dart';
+import '../../../core/di/video_export.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/secure_storage_service.dart';
 import '../../../core/models/update_check_result.dart';
@@ -31,6 +32,13 @@ final secureStorageProbeProvider = FutureProvider.autoDispose<SecureStorageProbe
     return _probeSecureStorage(storage);
   },
   name: 'secureStorageProbeProvider',
+);
+
+/// ON-3：ffmpeg 探测行。locator 对 miss 不缓存 + 本 provider autoDispose——
+/// 用户装好 ffmpeg 后重进设置页即重探，无需重启。null=未找到。
+final ffmpegProbeProvider = FutureProvider.autoDispose<String?>(
+  (ref) => ref.watch(ffmpegLocatorProvider).locate(),
+  name: 'ffmpegProbeProvider',
 );
 
 @immutable
@@ -59,6 +67,14 @@ Future<SecureStorageProbe> _probeSecureStorage(
   }
 }
 
+/// ffmpeg 未找到的平台化指引；mac/win 之外复用导出对话框文案防双源。
+String _ffmpegMissingText(BuildContext context) =>
+    switch (defaultTargetPlatform) {
+      TargetPlatform.windows => context.l10n.settingsAboutFfmpegMissingWindows,
+      TargetPlatform.macOS => context.l10n.settingsAboutFfmpegMissingMac,
+      _ => context.l10n.exportVideoFfmpegMissing,
+    };
+
 String _backendLabel() {
   if (kIsWeb) return 'Web';
   switch (defaultTargetPlatform) {
@@ -85,6 +101,7 @@ class AboutSection extends ConsumerWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final probeAsync = ref.watch(secureStorageProbeProvider);
+    final ffmpegAsync = ref.watch(ffmpegProbeProvider);
     final packageAsync = ref.watch(packageInfoProvider);
 
     return Column(
@@ -132,6 +149,26 @@ class AboutSection extends ConsumerWidget {
                 valueColor: probeAsync.maybeWhen(
                   data: (p) => p.available ? colors.success : colors.danger,
                   orElse: () => colors.fg2,
+                ),
+              ),
+              const SizedBox(height: InkSpacing.xs),
+              _Row(
+                label: context.l10n.settingsAboutFfmpegLabel,
+                value: ffmpegAsync.when(
+                  data: (path) => path != null
+                      ? context.l10n.settingsAboutFfmpegAvailable(path)
+                      : _ffmpegMissingText(context),
+                  loading: () => context.l10n.settingsAboutFfmpegProbing,
+                  // locator 已吞 ProcessException;兜底按未找到呈现
+                  error: (_, _) => _ffmpegMissingText(context),
+                ),
+                // 缺 ffmpeg 是降级（导出不可用）非故障——warning 而非 danger；
+                // error 分支显示 missing 文案,颜色须同步 warning
+                valueColor: ffmpegAsync.when(
+                  data: (path) =>
+                      path != null ? colors.success : colors.warning,
+                  loading: () => colors.fg2,
+                  error: (_, _) => colors.warning,
                 ),
               ),
             ],

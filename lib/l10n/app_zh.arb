@@ -153,6 +153,16 @@
       "reason": { "type": "String" }
     }
   },
+  "settingsAboutFfmpegLabel": "视频导出（ffmpeg）",
+  "settingsAboutFfmpegProbing": "检测中…",
+  "settingsAboutFfmpegAvailable": "可用（{path}）",
+  "@settingsAboutFfmpegAvailable": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "settingsAboutFfmpegMissingWindows": "未检测到——视频导出不可用。可经 winget 安装（winget install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径",
+  "settingsAboutFfmpegMissingMac": "未检测到——视频导出不可用。可经 Homebrew 安装（brew install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径",
   "settingsAboutLicensesButton": "开源许可",
   "settingsAboutLegalese": "InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 Cormorant Garamond 与 JetBrains Mono 字体（SIL OFL 1.1）。",
 

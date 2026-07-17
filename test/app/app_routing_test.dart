@@ -20,6 +20,8 @@ import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/di/video_export.dart';
+import 'package:inkframe/services/ffmpeg_locator.dart';
 import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -48,6 +50,14 @@ Override _onboardingDone() => preferencesServiceProvider.overrideWithValue(
         const AppPreferences(onboardingCompleted: true),
       ),
     );
+
+/// 固定命中的 ffmpeg 探测（ON-3 行在 SettingsScreen 内,禁真 spawn）。
+class _FakeFfmpegLocator implements FfmpegLocator {
+  @override
+  Future<String?> locate() async => 'ffmpeg';
+  @override
+  void invalidate() {}
+}
 
 void main() {
   testWidgets('unlocked + studio screen → 渲染 StudioHomeScreen', (tester) async {
@@ -93,6 +103,8 @@ void main() {
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           currentScreenProvider.overrideWith((_) => AppScreen.settings),
           currentCanvasIdProvider.overrideWith((_) => null),
+          // 密封 ON-3 ffmpeg 探测：不真 spawn `ffmpeg -version`。
+          ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
           // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
           orphanReapStartupProvider.overrideWith((_) async {}),
           _sealDbReady(),

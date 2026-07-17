@@ -395,6 +395,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingsAboutFfmpegLabel => 'Video export (ffmpeg)';
+
+  @override
+  String get settingsAboutFfmpegProbing => 'Checking…';
+
+  @override
+  String settingsAboutFfmpegAvailable(String path) {
+    return 'Available ($path)';
+  }
+
+  @override
+  String get settingsAboutFfmpegMissingWindows =>
+      'Not found — video export is disabled. Install via winget (winget install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location';
+
+  @override
+  String get settingsAboutFfmpegMissingMac =>
+      'Not found — video export is disabled. Install via Homebrew (brew install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location';
+
+  @override
   String get settingsAboutLicensesButton => 'Open-source licenses';
 
   @override
