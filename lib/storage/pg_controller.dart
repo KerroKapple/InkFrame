@@ -307,8 +307,19 @@ class PgController {
     return password;
   }
 
+  /// start 单飞 memo（LB-22 评审 P1-1）：还原流程与池重建可能并发调 start——
+  /// 双 pg_ctl start 会竞速 postmaster 锁。在飞的调用共享同一 future；
+  /// 完成即清（含失败），失败后可重试。
+  Future<PgRuntime>? _startInflight;
+
   /// 启动：存活复用 / 崩溃恢复 + pg_ctl start；写端口文件；返回 runtime（携密码）。
-  Future<PgRuntime> start() async {
+  /// 并发调用单飞——同一时刻只放行一个真实启动流程。
+  Future<PgRuntime> start() {
+    return _startInflight ??=
+        _doStart().whenComplete(() => _startInflight = null);
+  }
+
+  Future<PgRuntime> _doStart() async {
     await ensureInitialized();
     final password = await _readStoredPassword();
 

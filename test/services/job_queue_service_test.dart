@@ -447,7 +447,62 @@ Future<List<String>> _seedPending(InMemoryJobQueueService svc, int n) async {
   return ids;
 }
 
+/// 模拟关池窗口（LB-22 还原期间）：任何写库都抛 postgres Pool 关闭时的 StateError。
+class _ClosedPoolJobRepository extends FakeJobRepository {
+  @override
+  Future<int> transitionStatus({
+    required String id,
+    required List<String> fromStatuses,
+    required String toStatus,
+    Map<String, Object?> extra = const <String, Object?>{},
+  }) async {
+    throw StateError('request() may not be called on a closed Pool.');
+  }
+
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async {
+    throw StateError('request() may not be called on a closed Pool.');
+  }
+}
+
 void main() {
+  group('LB-22 关池窗口（还原期间写库必炸）', () {
+    test('persistFailure 抛 StateError → handle 仍必达 failure（HI-01 盲区）',
+        () async {
+      final fake = FakeProvider(providerId: 'fake');
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        repo: _ClosedPoolJobRepository(),
+      );
+      final h = await svc.submit(_task('j1', 'fake'));
+
+      // 修复前：首个 persistTransition 抛 → 兜底 persistFailure 再抛 →
+      // _emitFailure 永不执行 → 这里超时挂死。
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+
+      expect(terminal, isA<JobFailure>());
+      svc.dispose();
+    });
+
+    test('dispose 时 pending 的 persistCancel 抛错不逃逸 zone', () async {
+      final fake = FakeProvider(providerId: 'fake');
+      final svc = _build(
+        _registryOf({'fake': fake}),
+        repo: _ClosedPoolJobRepository(),
+        globalConcurrency: 0, // 任务停在 pending，走 dispose 的 persistCancel 路径。
+      );
+      final h = await svc.submit(_task('j1', 'fake'));
+
+      svc.dispose();
+
+      final terminal = await h.done.timeout(const Duration(seconds: 5));
+      expect(terminal, isA<JobFailure>());
+      // 让 fire-and-forget 的 persistCancel 错误有机会爆——修复前这里
+      // 以 unhandled async error 判死本测试。
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+  });
+
   group('InMemoryJobQueueService.submit', () {
     test('单任务 submit→poll→success 路径', () async {
       final fake = FakeProvider(

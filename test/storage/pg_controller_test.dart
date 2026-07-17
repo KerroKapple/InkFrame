@@ -97,6 +97,38 @@ void main() {
       expect(ctl.portFile.readAsStringSync().trim(), '54321');
     });
 
+    test('start 单飞：并发两次只跑一次 pg_ctl，拿同一 runtime（LB-22）', () async {
+      File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
+      final ctl = buildController(portPicker: () async => 54321);
+      runner.onPgCtlStart = () {
+        File(p.join(paths.database.path, 'postmaster.pid'))
+            .writeAsStringSync('9999\n');
+      };
+
+      final results = await Future.wait([ctl.start(), ctl.start()]);
+
+      expect(runner.pgCtlStartCalls, 1,
+          reason: '并发 start 必须单飞——双 pg_ctl start 会竞速 postmaster 锁');
+      expect(identical(results[0], results[1]), isTrue);
+    });
+
+    test('start 单飞：失败后 memo 清空，可重试成功', () async {
+      File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
+      final ctl = buildController(portPicker: () async => 54321);
+      runner.failPgCtlStart = true;
+
+      await expectLater(ctl.start(), throwsA(isA<PgLifecycleError>()));
+
+      runner.failPgCtlStart = false;
+      runner.onPgCtlStart = () {
+        File(p.join(paths.database.path, 'postmaster.pid'))
+            .writeAsStringSync('9999\n');
+      };
+      final rt = await ctl.start();
+      expect(rt.port, 54321);
+      expect(runner.pgCtlStartCalls, 2);
+    });
+
     test('崩溃恢复：postmaster.pid 存在但进程已死 → 删 pid 文件后成功启动', () async {
       File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
       File(p.join(paths.database.path, 'postmaster.pid'))
@@ -355,6 +387,7 @@ class _FakeRunner implements PgProcessRunner {
   int pgCtlStopCalls = 0;
   Set<int> aliveForPid = <int>{};
   void Function()? onPgCtlStart;
+  bool failPgCtlStart = false;
 
   /// LB-07 捕获：pwfile 生命周期断言用。
   File? lastPwFile;
@@ -390,6 +423,9 @@ class _FakeRunner implements PgProcessRunner {
   }) async {
     pgCtlStartCalls += 1;
     onPgCtlStart?.call();
+    if (failPgCtlStart) {
+      return ProcessResult(0, 1, '', 'pg_ctl exploded');
+    }
     return ProcessResult(0, 0, '', '');
   }
 
