@@ -45,6 +45,8 @@ class LibrarySidebar extends ConsumerWidget {
                   _SectionLabel(label: context.l10n.studioLibrary),
                   projectsAsync.when(
                     loading: () => const _SidebarLoading(),
+                    // 良性降级（GAP-3 审计 B 类）：同 provider 的错误由主区
+                    // _StudioErrorState 呈现（横幅+重试，重试同时救活本树）。
                     error: (_, _) => const SizedBox.shrink(),
                     data: (projects) => _LibraryTree(
                       studioName: studioName,

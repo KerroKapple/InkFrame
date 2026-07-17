@@ -5,14 +5,14 @@ import '../app_theme.dart';
 import '../tokens.dart';
 
 class InkErrorBanner extends StatelessWidget {
+  // onRetry 死参数已删（GAP-3 审计:从未渲染、零调用方传参）——重试按钮
+  // 由各站点按需自置（gallery/_StudioErrorState 等），骨架只管呈现错误。
   const InkErrorBanner({
     super.key,
     required this.message,
-    this.onRetry,
   });
 
   final String message;
-  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {

@@ -964,7 +964,8 @@ class _PromptPreview extends ConsumerWidget {
               .cast<StyleLane?>()
               .firstWhere((_) => true, orElse: () => null);
 
-    // 画布 base 前缀 / 后缀（失败降级为空字符串）
+    // 良性降级（GAP-3 审计 B 类）：base 前后缀读失败降级为空——与提交链路
+    // generation_controller._assembleFullPrompt 的一致性降级同步（预览=实发）。
     final baseStyle =
         ref.watch(canvasBaseStyleProvider(canvasId)).valueOrNull ??
         (prefix: '', suffix: '');

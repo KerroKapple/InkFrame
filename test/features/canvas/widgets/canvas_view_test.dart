@@ -14,6 +14,7 @@ import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/models/style_lane.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
+import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
@@ -183,6 +184,14 @@ class _FakeEdgesController extends CanvasEdgesController {
 class _ErrorEdgesController extends CanvasEdgesController {
   @override
   Future<List<CanvasEdge>> build(String canvasId) async {
+    throw const LocalIOError();
+  }
+}
+
+/// 节点加载失败 → 画布整屏 _LoadError（GAP-3:文案须走 l10n）。
+class _ErrorNodesController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async {
     throw const LocalIOError();
   }
 }
@@ -378,6 +387,57 @@ void main() {
     expect(find.text('Failed to move node'), findsOneWidget);
   });
 
+  testWidgets('泳道方向加载失败 → 非阻塞错误横幅（GAP-3 余量:此前静默回落 horizontal）',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: CanvasView()),
+      overrides: <Override>[
+        currentCanvasIdProvider.overrideWith((ref) => 'c1'),
+        canvasNodesControllerProvider
+            .overrideWith(() => _FakeNodesController(twoNodes)),
+        canvasEdgesControllerProvider
+            .overrideWith(() => _FakeEdgesController()),
+        canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
+        canvasLaneDirectionProvider('c1').overrideWith(
+          (_) async => throw const LocalIOError(),
+        ),
+        fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    // 非阻塞：节点照常渲染；方向失败有横幅提示。
+    expect(find.byType(NodeCard), findsNWidgets(2));
+    expect(find.byType(InkErrorBanner), findsOneWidget);
+    expect(
+      find.text('Local disk I/O error. Check space and permissions.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('节点加载失败 → _LoadError 走 l10n 文案而非 raw toString（GAP-3）',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: CanvasView()),
+      overrides: <Override>[
+        currentCanvasIdProvider.overrideWith((ref) => 'c1'),
+        canvasNodesControllerProvider
+            .overrideWith(() => _ErrorNodesController()),
+        fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Local disk I/O error. Check space and permissions.'),
+      findsOneWidget,
+    );
+    // raw toString（"LocalIOError(...)" 之类）绝不上屏
+    expect(find.textContaining('LocalIOError'), findsNothing);
+  });
+
   testWidgets('边加载失败 → 非阻塞错误横幅，节点照常渲染；可关闭', (tester) async {
     await pumpInkApp(
       tester,
@@ -447,6 +507,10 @@ void main() {
           canvasEdgesControllerProvider.overrideWith(() => edges),
           // 泳道恒空且不触 PG，避免加载失败横幅混入额外 close 图标。
           canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
+          // 方向同理密封（GAP-3 后 _EdgeLaneErrorSlot 也 watch 它）。
+          canvasLaneDirectionProvider('c1').overrideWith(
+            (_) async => LaneDirection.horizontal,
+          ),
           fileResolverServiceProvider.overrideWithValue(_StubResolver()),
         ],
       );
