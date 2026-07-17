@@ -285,8 +285,14 @@ class _BaseStyleButton extends ConsumerWidget {
     ({String prefix, String suffix}) cur;
     try {
       cur = await ref.read(canvasBaseStyleProvider(canvasId).future);
-    } on InkError catch (_) {
-      cur = (prefix: '', suffix: '');
+    } on InkError catch (e) {
+      // 读失败必须中止（#199 评审 P2-3）:空预填打开编辑器,用户一保存就把
+      // 已存前后缀覆盖为空——自由文本域无护栏,提示后不开门。
+      if (!context.mounted) return;
+      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+        SnackBar(content: Text(l10nAsyncError(context, e))),
+      );
+      return;
     }
     if (!context.mounted) return;
     final r = await showBaseStyleEditorDialog(
