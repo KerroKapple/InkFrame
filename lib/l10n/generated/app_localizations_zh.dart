@@ -15,22 +15,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commonCancel => '取消';
 
   @override
-  String get errorInvalidKey => 'API Key 无效，请检查 Provider 设置。';
+  String get errorInvalidKey => 'API Key 无效，请到「设置 → API Keys」更新。';
 
   @override
   String get errorInsufficientBalance => 'Provider 账户余额不足。';
 
   @override
-  String get errorContentPolicy => '内容审核拒绝了该请求。';
+  String get errorContentPolicy => '提示词未通过服务商内容审核，请调整提示词后重试。';
 
   @override
-  String get errorInvalidParameter => '请求参数不合法。';
+  String get errorInvalidParameter => '服务商拒绝了部分生成设置，请调整分辨率、宽高比或时长后重试。';
 
   @override
   String get errorNetworkTimeout => '网络超时，请稍后重试。';
 
   @override
-  String get errorNetworkOffline => '网络不可用，请检查连接。';
+  String get errorNetworkOffline => '无法连接到服务，请检查网络或代理设置后重试。';
 
   @override
   String get errorProviderServer => 'Provider 服务暂不可用，请稍后重试。';
@@ -45,13 +45,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorPollTimeout => '生成任务超时未完成。';
 
   @override
-  String get errorDownloadFailed => '下载生成产物失败。';
+  String get errorDownloadFailed => '生成结果下载失败，请检查网络后重试。';
 
   @override
   String get errorLocalIO => '本地磁盘 I/O 错误，请检查空间与权限。';
 
   @override
-  String get errorCancelled => '已被用户取消。';
+  String get errorCancelled => '已取消。';
 
   @override
   String get errorCancelledOnExit => '应用退出，已取消任务。';
@@ -108,7 +108,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorPromptLabel => '提示词';
 
   @override
-  String get inspectorPromptHint => '描述你想生成的画面……';
+  String get inspectorPromptHint => '描述你想生成的画面…';
 
   @override
   String get inspectorProviderLabel => '服务商';
@@ -149,14 +149,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorGenerateDisabledNoKey => '请在设置中配置 API Key';
 
   @override
-  String get inspectorStatusSubmitting => '提交中...';
+  String get inspectorStatusSubmitting => '提交中…';
 
   @override
-  String get inspectorStatusRunning => '生成中...';
+  String get inspectorStatusRunning => '生成中…';
 
   @override
   String inspectorStatusRunningWithProgress(int percent) {
-    return '生成中... $percent%';
+    return '生成中… $percent%';
   }
 
   @override
@@ -193,10 +193,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsApiKeySaved => '已保存';
 
   @override
-  String get settingsApiKeySavedUnverified => '已保存，但网络问题导致 Key 暂时无法验证。';
+  String get settingsApiKeySavedUnverified =>
+      '已保存。暂时无法验证 Key（网络或服务暂不可用），首次生成时会实际校验。';
 
   @override
-  String get settingsApiKeyRejected => 'Provider 拒绝了该 Key，未保存。';
+  String get settingsApiKeyRejected => '服务商拒绝了该 Key，未保存。';
 
   @override
   String get settingsApiKeyCleared => '已清除';
@@ -241,7 +242,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsStorageSection => '存储';
 
   @override
-  String get settingsStorageReadOnlyHint => '本版本数据库目录固定，后续版本会提供迁移流程。';
+  String get settingsStorageReadOnlyHint => '本版本数据库目录固定，暂不支持迁移。';
 
   @override
   String get settingsStorageDatabasePathLabel => '数据库目录';
@@ -268,7 +269,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsBackupNoBinaries => '未找到内置 PostgreSQL 工具——请重新安装 InkFrame';
 
   @override
-  String get settingsBackupFailed => '备份失败';
+  String get settingsBackupFailed => '备份失败——详情见日志目录';
 
   @override
   String get settingsBackupsEmpty => '暂无备份';
@@ -307,7 +308,7 @@ class AppLocalizationsZh extends AppLocalizations {
     );
     final String dateString = dateDateFormat.format(date);
 
-    return '用「$file」（$dateString）替换当前数据？还原前会尽量先备份一次；进行中的生成任务会被取消，完成后将回到主页。磁盘上的媒体文件不回滚。';
+    return '用「$file」（$dateString）替换当前数据？还原前会尽量先备份一次；进行中的生成任务会被取消，完成后将回到工作室。磁盘上的媒体文件不回滚。';
   }
 
   @override
@@ -320,7 +321,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get restoreFailedCorrupt => '备份文件校验未通过';
 
   @override
-  String get restoreFailedVersionNewer => '该备份来自更新版本的 InkFrame';
+  String get restoreFailedVersionNewer => '该备份来自更高版本的 InkFrame';
 
   @override
   String get restoreAbortedPreBackup => '安全备份失败——已取消还原';
@@ -347,7 +348,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsDiagnosticsExported => '诊断包已导出';
 
   @override
-  String get settingsDiagnosticsExportFailed => '导出失败';
+  String get settingsDiagnosticsExportFailed => '导出失败——详情见日志目录';
 
   @override
   String get settingsAboutSection => '关于';
@@ -387,11 +388,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAboutFfmpegMissingWindows =>
-      '未检测到——视频导出不可用。可经 winget 安装（winget install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径';
+      '未检测到——视频导出不可用。可通过 winget 安装（winget install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径';
 
   @override
   String get settingsAboutFfmpegMissingMac =>
-      '未检测到——视频导出不可用。可经 Homebrew 安装（brew install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径';
+      '未检测到——视频导出不可用。可通过 Homebrew 安装（brew install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径';
 
   @override
   String get settingsAboutLicensesButton => '开源许可';
@@ -435,13 +436,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get generationProviderNotRegistered => 'Provider 未注册';
+  String get generationProviderNotRegistered => '服务商未注册';
 
   @override
   String get resultNodePending => '等待生成';
 
   @override
-  String get resultNodeImageMissing => '图像文件缺失';
+  String get resultNodeImageMissing => '图片文件缺失';
 
   @override
   String get linkModeStart => '连线';
@@ -514,7 +515,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String inspectorInputsOverLimit(int max) {
-    return '超出 Provider 上限（$max），多余参考图将被忽略';
+    return '超出服务商上限（$max），多余参考图将被忽略';
   }
 
   @override
@@ -554,7 +555,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorPresetsEmpty => '还没有预设';
 
   @override
-  String get inspectorPresetsSaveCurrent => '把当前提示词存为预设';
+  String get inspectorPresetsSaveCurrent => '存为预设';
 
   @override
   String get inspectorPresetsDialogTitle => '新建预设';
@@ -575,13 +576,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorShotNotesLabel => '分镜备注';
 
   @override
-  String get inspectorShotNotesHint => '描述这个分镜（机位、动作、氛围）……';
+  String get inspectorShotNotesHint => '描述这个分镜（机位、动作、氛围）…';
 
   @override
-  String get inspectorShotGenerateImage => '用本镜备注生成图像';
+  String get inspectorShotGenerateImage => '用备注生成图片';
 
   @override
-  String get inspectorShotLinkFailed => '图像节点已创建，连线失败';
+  String get inspectorShotLinkFailed => '图片节点已创建，连线失败';
 
   @override
   String get canvasAddImageNode => '添加图片节点';
@@ -667,7 +668,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioNewProject => '新建项目';
 
   @override
-  String get studioLibrary => '工作库';
+  String get studioLibrary => '项目库';
 
   @override
   String get studioLibraryProjects => '项目';
@@ -679,7 +680,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioEmptyTitle => '还没有项目';
 
   @override
-  String get studioEmptySubtitle => '新建一个项目开始你的分镜创作。';
+  String get studioEmptySubtitle => '新建一个项目，开始你的分镜创作。';
 
   @override
   String get studioErrorTitle => '项目列表加载失败';
@@ -697,7 +698,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioNewProjectNameLabel => '项目名';
 
   @override
-  String get studioNewProjectNameHint => '例如：日落劫案';
+  String get studioNewProjectNameHint => '如：日落劫案';
 
   @override
   String get studioNewProjectErrorEmpty => '请填写项目名';
@@ -763,7 +764,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get importFailedFormat => '不是 InkFrame 项目包';
 
   @override
-  String get importFailedVersionNewer => '该项目包来自更新版本的 InkFrame';
+  String get importFailedVersionNewer => '该项目包来自更高版本的 InkFrame';
 
   @override
   String get importFailedCorrupt => '项目包校验未通过';
@@ -841,7 +842,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioOpenCanvasFailed => '打开画布失败';
 
   @override
-  String get studioNoKeyBannerText => '尚未配置任何 Provider API Key——生成需要先配置。';
+  String get studioNoKeyBannerText => '尚未配置任何服务商 API Key——配置后才能生成。';
 
   @override
   String get studioNoKeyBannerAction => '前往设置配置';
@@ -871,13 +872,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get onboardingKeysConsoleHint =>
-      '先到对应服务商控制台获取 API Key 粘贴到上方；也可以之后在设置中随时添加或修改。';
+      '先到对应服务商控制台获取 API Key，粘贴到上方；也可以之后在设置中随时添加或修改。';
 
   @override
   String get onboardingStepSampleTitle => '开始创作';
 
   @override
-  String get onboardingStepSampleBody => '创建一个示例项目快速了解画布，也可以从空白工作台开始。';
+  String get onboardingStepSampleBody => '创建一个示例项目快速了解画布，也可以从空白工作室开始。';
 
   @override
   String get canvasRenderQueue => '渲染队列';
@@ -889,31 +890,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasRenderQueueCollapse => '收起渲染队列';
 
   @override
-  String get canvasNodeTypeCharacter => '角色';
-
-  @override
-  String get canvasNodeTypeScene => '场景';
-
-  @override
-  String get canvasNodeTypeCamera => '镜头';
-
-  @override
-  String get canvasNodeTypeProp => '道具';
-
-  @override
-  String get canvasNodeTypeShot => '分镜';
-
-  @override
-  String get canvasNodeTypeImageGen => '图像生成';
-
-  @override
   String get canvasBreadcrumbProject => '项目';
 
   @override
   String get canvasBreadcrumbCanvas => '画布';
 
   @override
-  String get canvasBackToStudio => 'Studio';
+  String get canvasBackToStudio => '工作室';
 
   @override
   String get canvasEmptyTitle => '当前画布为空';
@@ -987,7 +970,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneDelete => '删除泳道';
 
   @override
-  String get laneDeleteConfirmTitle => '确认删除该泳道？';
+  String get laneDeleteConfirmTitle => '删除该泳道？';
 
   @override
   String get laneDeleteConfirmBody => '泳道内节点位置保留，但会失去该泳道风格。';
@@ -1020,10 +1003,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneExpand => '展开泳道';
 
   @override
-  String get inspectorPromptPreviewLabel => '最终 prompt 预览';
+  String get inspectorPromptPreviewLabel => '最终提示词预览';
 
   @override
-  String get inspectorIgnoreLaneStyle => '忽略区域风格';
+  String get inspectorIgnoreLaneStyle => '忽略泳道风格';
 
   @override
   String get baseStyleEditTooltip => '基底风格';
@@ -1032,13 +1015,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get baseStyleEditTitle => '项目基底风格';
 
   @override
-  String get baseStylePrefixLabel => '前缀（加在所有 prompt 最前）';
+  String get baseStylePrefixLabel => '前缀（加在每条提示词最前）';
 
   @override
   String get baseStylePrefixHint => '如：电影感画面';
 
   @override
-  String get baseStyleSuffixLabel => '后缀（加在所有 prompt 最后）';
+  String get baseStyleSuffixLabel => '后缀（加在每条提示词最后）';
 
   @override
   String get baseStyleSuffixHint => '如：8k，高细节';
@@ -1065,7 +1048,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get baseStylePresetPhoto => '写实摄影';
 
   @override
-  String get baseStylePreset3d => '3D动画';
+  String get baseStylePreset3d => '3D 动画';
 
   @override
   String get baseStyleUpdateFailed => '更新基底风格失败';
@@ -1085,7 +1068,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryBackTooltip => '返回工作室';
 
   @override
-  String get galleryEmptyTitle => '还没有生成的产物';
+  String get galleryEmptyTitle => '还没有生成内容';
 
   @override
   String get galleryEmptySubtitle => '该项目画布上生成的图片和视频会显示在这里。';
@@ -1119,7 +1102,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get exportVideoInvalidName =>
-      '文件名不能包含 \\ / : * ? \" < > | 字符、..、控制字符或系统保留名';
+      '文件名不能包含 \\ / : * ? \" < > | 字符、「..」、控制字符或系统保留名';
 
   @override
   String get exportVideoMoveUp => '上移';
@@ -1167,5 +1150,5 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commandPaletteNoResults => '没有匹配的命令';
 
   @override
-  String get commandBackToStudio => '返回 Studio';
+  String get commandBackToStudio => '返回工作室';
 }

@@ -10,7 +10,7 @@ import 'package:inkframe/features/canvas/widgets/batch_results_grid.dart';
 
 import '../../../_harness/test_app.dart';
 
-const _kContentPolicyText = 'The content policy rejected this request.';
+const _kContentPolicyText = "The provider's content policy rejected this prompt. Adjust the prompt and try again.";
 const _kUnknownText = 'An unknown error occurred.';
 
 /// 仅实现 listByNode 的假仓储；其余方法非本用例路径，交由 noSuchMethod 抛错。

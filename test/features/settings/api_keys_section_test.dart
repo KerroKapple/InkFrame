@@ -138,7 +138,7 @@ void main() {
     expect(find.text('Set'), findsOneWidget);
     expect(
       find.text(
-        'Saved, but the key could not be verified due to a network issue.',
+        "Saved. The key couldn't be verified right now (network or service issue) — it will be checked on first use.",
       ),
       findsOneWidget,
     );

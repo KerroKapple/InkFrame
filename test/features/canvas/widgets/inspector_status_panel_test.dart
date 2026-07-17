@@ -59,7 +59,7 @@ void main() {
     expect(pressed, 1);
   });
 
-  testWidgets('submitting: 展示 spinner + "提交中..."', (tester) async {
+  testWidgets('submitting: 展示 spinner + "提交中…"', (tester) async {
     await pumpInkApp(
       tester,
       InspectorStatusPanel(
@@ -71,11 +71,11 @@ void main() {
       locale: const Locale('zh'),
     );
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(find.text('提交中...'), findsOneWidget);
+    expect(find.text('提交中…'), findsOneWidget);
     expect(find.byType(FilledButton), findsNothing);
   });
 
-  testWidgets('running 无 progress: indeterminate 进度条 + "生成中..."',
+  testWidgets('running 无 progress: indeterminate 进度条 + "生成中…"',
       (tester) async {
     await pumpInkApp(
       tester,
@@ -91,7 +91,7 @@ void main() {
       find.byType(LinearProgressIndicator),
     );
     expect(bar.value, isNull);
-    expect(find.text('生成中...'), findsOneWidget);
+    expect(find.text('生成中…'), findsOneWidget);
   });
 
   testWidgets('running 带 progress: 进度条带值 + 百分号 label', (tester) async {
@@ -109,7 +109,7 @@ void main() {
       find.byType(LinearProgressIndicator),
     );
     expect(bar.value, closeTo(0.42, 1e-6));
-    expect(find.text('生成中... 42%'), findsOneWidget);
+    expect(find.text('生成中… 42%'), findsOneWidget);
   });
 
   testWidgets('error: missingApiKey → 本地化文案 + Retry 按钮可点', (tester) async {
@@ -144,7 +144,7 @@ void main() {
       ),
     );
     expect(
-      find.text('API key is invalid. Check your provider settings.'),
+      find.text('API key was rejected by the provider. Update it in Settings → API Keys.'),
       findsOneWidget,
     );
     expect(find.textContaining('InkError'), findsNothing);
@@ -202,7 +202,7 @@ void main() {
       find.byType(LinearProgressIndicator),
     );
     expect(bar.value, closeTo(0.5, 1e-6));
-    expect(find.text('生成中... 50%'), findsOneWidget);
+    expect(find.text('生成中… 50%'), findsOneWidget);
     // 活跃 job 覆盖 idle → 不该再显示 Generate 按钮
     expect(find.byType(FilledButton), findsNothing);
   });
