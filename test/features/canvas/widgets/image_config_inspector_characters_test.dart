@@ -253,6 +253,45 @@ void main() {
     expect(find.text('Failed to save preset'), findsOneWidget);
   });
 
+  testWidgets('预设点选 → prompt/negative 填入字段并落库（GAP-7）', (tester) async {
+    presetRepo.rows['preset-9'] = <String, Object?>{
+      'id': 'preset-9',
+      'project_id': _kProjectId,
+      'name': 'Moody',
+      'prompt': 'dark alley in rain',
+      'prefix': '',
+      'suffix': '',
+      'negative': 'blurry',
+      'sort_order': 0,
+    };
+    final node = await seedConfigNode();
+    await pump(tester, node);
+
+    await tester.ensureVisible(find.text('Moody'));
+    await tester.tap(find.text('Moody'));
+    await tester.pumpAndSettle();
+
+    // prompt 字段已填入（negative 字段因 caps 不支持不渲染，但仍须落库）
+    expect(
+      find.widgetWithText(TextField, 'dark alley in rain'),
+      findsOneWidget,
+    );
+    final row = await nodeRepo.findById(node.id);
+    final tc = row!['type_config']! as Map<String, Object?>;
+    expect(tc['prompt'], 'dark alley in rain');
+    expect(tc['negative_prompt'], 'blurry');
+  });
+
+  testWidgets('成本预估行：perCall 模型 → Est. cost 文案精确渲染（GAP-7）',
+      (tester) async {
+    final node = await seedConfigNode();
+    await pump(tester, node);
+
+    // _refCapableCaps.costModel = perCall(0.01)，batch=1 → \$0.01
+    await tester.ensureVisible(find.textContaining('Est. cost'));
+    expect(find.text(r'Est. cost $0.01'), findsOneWidget);
+  });
+
   testWidgets('存为角色落库失败 → SnackBar 提示（不静默吞错）', (tester) async {
     charRepo.failCreate = true;
     final node = await seedConfigNode();
