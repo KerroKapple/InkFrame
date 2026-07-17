@@ -13,6 +13,7 @@ import '../../../theme/tokens.dart';
 import '../controllers/studio_state.dart';
 import '../models/project_with_canvases.dart';
 import '../providers/workspace_projects_provider.dart';
+import 'trash_dialog.dart';
 
 class LibrarySidebar extends ConsumerWidget {
   const LibrarySidebar({super.key});
@@ -256,32 +257,53 @@ class _SidebarFooter extends ConsumerWidget {
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: colors.borderSubtle)),
       ),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: _FooterSettingsButton(
-          onTap: () => ref.read(currentScreenProvider.notifier).state =
-              AppScreen.settings,
-        ),
+      child: Row(
+        children: [
+          _FooterIconButton(
+            icon: Icons.settings_outlined,
+            label: context.l10n.studioOpenSettings,
+            onTap: () => ref.read(currentScreenProvider.notifier).state =
+                AppScreen.settings,
+          ),
+          const SizedBox(width: InkSpacing.md),
+          // 回收站（LB-15/GAP-2）：CV-1 裁撤 ARCHIVE 死 stub 时预告的真入口。
+          _FooterIconButton(
+            icon: Icons.delete_outline,
+            label: context.l10n.studioTrash,
+            onTap: () => showDialog<void>(
+              context: context,
+              barrierColor: context.inkColors.scrim,
+              builder: (_) => const TrashDialog(),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _FooterSettingsButton extends StatefulWidget {
-  const _FooterSettingsButton({required this.onTap});
+class _FooterIconButton extends StatefulWidget {
+  const _FooterIconButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
   final VoidCallback onTap;
 
   @override
-  State<_FooterSettingsButton> createState() => _FooterSettingsButtonState();
+  State<_FooterIconButton> createState() => _FooterIconButtonState();
 }
 
-class _FooterSettingsButtonState extends State<_FooterSettingsButton> {
+class _FooterIconButtonState extends State<_FooterIconButton> {
   bool _hover = false;
 
   @override
   Widget build(BuildContext context) {
     final colors = context.inkColors;
-    final label = context.l10n.studioOpenSettings;
+    final label = widget.label;
     return Semantics(
       button: true,
       label: label,
@@ -295,7 +317,7 @@ class _FooterSettingsButtonState extends State<_FooterSettingsButton> {
             behavior: HitTestBehavior.opaque,
             onTap: widget.onTap,
             child: Icon(
-              Icons.settings_outlined,
+              widget.icon,
               size: 16,
               color: _hover ? colors.accent : colors.fg3,
             ),

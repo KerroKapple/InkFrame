@@ -321,6 +321,16 @@
   "studioExportProject": "Export project…",
   "studioExportProjectDone": "Project exported",
   "studioExportProjectFailed": "Failed to export project",
+  "studioTrash": "Trash",
+  "studioTrashEmpty": "Trash is empty",
+  "studioRestore": "Restore",
+  "studioTrashDeletedAt": "Deleted {date}",
+  "@studioTrashDeletedAt": {
+    "placeholders": {
+      "date": { "type": "DateTime", "format": "yyyy-MM-dd HH:mm", "isCustomDateFormat": "true" }
+    }
+  },
+  "studioRestoreFailed": "Couldn't restore",
   "studioRenameCanvas": "Rename canvas",
   "studioRenameCanvasFailed": "Failed to rename canvas",
   "studioCanvasDeleteConfirmTitle": "Delete canvas?",

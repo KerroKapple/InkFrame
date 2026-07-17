@@ -702,6 +702,29 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioExportProjectFailed => '导出项目失败';
 
   @override
+  String get studioTrash => '回收站';
+
+  @override
+  String get studioTrashEmpty => '回收站是空的';
+
+  @override
+  String get studioRestore => '恢复';
+
+  @override
+  String studioTrashDeletedAt(DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat(
+      'yyyy-MM-dd HH:mm',
+      localeName,
+    );
+    final String dateString = dateDateFormat.format(date);
+
+    return '删除于 $dateString';
+  }
+
+  @override
+  String get studioRestoreFailed => '恢复失败';
+
+  @override
   String get studioRenameCanvas => '重命名画布';
 
   @override
