@@ -10,6 +10,7 @@ import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/project_repository.dart';
+import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 
 int _idSeq = 0;
 String _newId(String prefix) {
@@ -365,6 +366,84 @@ class InMemoryNodeRepository implements NodeRepository {
     }
     return out;
   }
+}
+
+// ─── StyleLane ───────────────────────────────────────────────────────
+
+class InMemoryStyleLaneRepository implements StyleLaneRepository {
+  final Map<String, Map<String, Object?>> _rows =
+      <String, Map<String, Object?>>{};
+
+  Map<String, Map<String, Object?>> get rows =>
+      Map<String, Map<String, Object?>>.unmodifiable(_rows);
+
+  @override
+  Future<String> create({
+    required String canvasId,
+    String label = '',
+    String stylePrompt = '',
+    int sortOrder = 0,
+    String? tintColor,
+    double size = 400.0,
+  }) async {
+    final String id = _newId('lane');
+    _rows[id] = <String, Object?>{
+      'id': id,
+      'canvas_id': canvasId,
+      'label': label,
+      'style_prompt': stylePrompt,
+      'sort_order': sortOrder,
+      'tint_color': tintColor,
+      'size': size,
+      'created_at': _utcNow(),
+      'updated_at': _utcNow(),
+      'deleted_at': null,
+    };
+    return id;
+  }
+
+  @override
+  Future<Map<String, Object?>?> findById(String id) async {
+    final Map<String, Object?>? row = _rows[id];
+    if (row == null || row['deleted_at'] != null) return null;
+    return Map<String, Object?>.of(row);
+  }
+
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async {
+    return _rows.values
+        .where((r) => r['canvas_id'] == canvasId && r['deleted_at'] == null)
+        .map(Map<String, Object?>.of)
+        .toList();
+  }
+
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async {
+    final Map<String, Object?>? row = _rows[id];
+    if (row == null) return 0;
+    row.addAll(patch);
+    row['updated_at'] = _utcNow();
+    return 1;
+  }
+
+  @override
+  Future<int> softDelete(String id) async {
+    final Map<String, Object?>? row = _rows[id];
+    if (row == null || row['deleted_at'] != null) return 0;
+    row['deleted_at'] = _utcNow();
+    return 1;
+  }
+
+  @override
+  Future<int> restore(String id) async {
+    final Map<String, Object?>? row = _rows[id];
+    if (row == null || row['deleted_at'] == null) return 0;
+    row['deleted_at'] = null;
+    return 1;
+  }
+
+  @override
+  Future<int> hardDelete(String id) async => _rows.remove(id) == null ? 0 : 1;
 }
 
 // ─── Edge ────────────────────────────────────────────────────────────
