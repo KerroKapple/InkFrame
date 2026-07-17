@@ -90,6 +90,7 @@
 | LB-15 回收站 UI（≡GAP-2：sidebar 入口+项目回收站对话框、管理画布已删区；listTrashedByProject 三处补齐；债#11 以真入口收口；永久删除显式排除） | #190 |
 | LB-18 诊断包（设置页打开日志目录+导出诊断 zip=info+logs/*+crashes/*+config 白名单两文件；红测钉死包内无 api_key，secrets.dev.json 结构性排除；W3 收官） | #191 |
 | **LB-12 项目导入（W4 压轴/最大风险卡收官）**：全表 UUID 重映射+FK/JSONB 重写（含 type_config.character_ids）；zip 安全门（实测字节防 bomb/重名拒/保留名/UUID 段）；files 先行 staging+rename 收崩溃窗口；单事务+补偿零残留；roundtrip 大红测过；三大重操作互斥 | #192 |
+| **Windows pg_ctl start 管道继承挂死（真机验收逮到的潜在 P0）**：postmaster 继承 Process.run 管道句柄致冷启动挂死至库进程落幕；Windows 分支改 inheritStdio；新增 realpg 门控真栈 E2E（真 initdb SCRAM→pg_ctl→迁移 v7→pg_dump→pg_restore 对换→teardown，5s 全链） | #194 |
 
 ## M1 补遗（审计发现的悬空项）
 
