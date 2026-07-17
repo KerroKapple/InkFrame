@@ -123,15 +123,28 @@ ImportPlanData remapArchiveData(
   final jobsRaw = _tableOf(dataJson, 'jobs');
   final batchRaw = _tableOf(dataJson, 'batch_results');
 
-  // 1) 全表 id 映射。
+  // 1) 全表 id 映射——**只映射会被保留的行**（#192 评审 P2-2：行被丢弃后
+  // 其映射若还在，引用它的下游行会拿到「永不插入」的新 id，写库层 23503
+  // 整包回滚；kept 语义让宽容策略真正逐行生效）。保留判据自上而下：
+  // canvas=有 id；lane/node=有 id 且 canvas 被保留。
   final String newProjectId = newId();
   Map<String, String> mapOf(List<Map<String, Object?>> rows) => {
         for (final r in rows)
           if (r['id'] != null) r['id'].toString(): newId(),
       };
   final canvasMap = mapOf(canvasesRaw);
-  final laneMap = mapOf(lanesRaw);
-  final nodeMap = mapOf(nodesRaw);
+  final laneMap = <String, String>{
+    for (final r in lanesRaw)
+      if (r['id'] != null &&
+          canvasMap.containsKey(r[StyleLaneCol.canvasId]?.toString()))
+        r['id'].toString(): newId(),
+  };
+  final nodeMap = <String, String>{
+    for (final r in nodesRaw)
+      if (r['id'] != null &&
+          canvasMap.containsKey(r[NodeCol.canvasId]?.toString()))
+        r['id'].toString(): newId(),
+  };
   final edgeMap = mapOf(edgesRaw);
   final characterMap = mapOf(charactersRaw);
   final presetMap = mapOf(presetsRaw);

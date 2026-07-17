@@ -171,6 +171,44 @@ void main() {
     expect(plan.nulledRefCount, greaterThanOrEqualTo(2)); // ghost + n9.source。
   });
 
+  test('级联丢弃彻底性（#192 评审 P2-2）：画布悬空→节点丢→引用它的全链跟着收敛', () {
+    final data = _fullData();
+    // n_ghost 挂在不存在的画布上→整行丢；下游一切对它的引用必须收敛，
+    // 绝不能拿到「已映射但永不插入」的新 id（写库层会 23503 整包回滚）。
+    (data['nodes'] as List).add({
+      'id': 'n_ghost', 'canvas_id': 'ghost-canvas',
+      'type': 'image', 'node_role': 'config',
+    });
+    (data['edges'] as List).add({
+      'id': 'e_g', 'canvas_id': 'c1', 'source_node_id': 'n1',
+      'target_node_id': 'n_ghost', 'edge_type': 'data',
+    });
+    (data['jobs'] as List).add({
+      'id': 'j_g', 'canvas_id': 'c1', 'source_node_id': 'n_ghost',
+      'provider_id': 'p', 'job_type': 'image', 'status': 'success',
+      'full_prompt': 'f', 'user_prompt': 'u',
+    });
+    ((data['project'] as Map))['cover_node_id'] = 'n_ghost';
+    ((data['nodes'] as List).first as Map)['source_node_id'] = 'n_ghost';
+
+    final plan = remapArchiveData(data, newId: _seq());
+
+    expect(plan.nodes.map((r) => r['id']), isNot(contains(null)));
+    expect(plan.nodes, hasLength(3)); // n_ghost 丢。
+    expect(plan.edges, hasLength(1)); // e_g 丢（目标悬空）。
+    expect(plan.jobs, hasLength(1)); // j_g 丢（source 悬空）。
+    expect(plan.project['cover_node_id'], isNull); // cover 置空。
+    // n1 的 source 引用收敛为 NULL 而非幽灵新 id。
+    final n1 = plan.nodes.firstWhere((r) => (r['type_config'] as Map?)?['prompt'] == 'x');
+    expect(n1['source_node_id'], isNull);
+    // 全部引用仍闭合于实际保留行。
+    final keptIds = plan.nodes.map((r) => r['id']).toSet();
+    for (final e in plan.edges) {
+      expect(keptIds, contains(e['source_node_id']));
+      expect(keptIds, contains(e['target_node_id']));
+    }
+  });
+
   test('未知列丢弃+计数（老包 next_poll / 派生列 project_id on nodes）', () {
     final data = _fullData();
     ((data['jobs'] as List).first as Map)['next_poll'] = '2026-01-01';

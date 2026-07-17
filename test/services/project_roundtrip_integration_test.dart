@@ -177,6 +177,15 @@ void main() {
               r['node_role'] == 'config' && r['deleted_at'] == null)['type_config'] as Map;
       expect((dstConfigCfg['character_ids'] as List).single.toString(),
           dst.characters.single['id'].toString());
+      // 拍板 7 单独断言（#192 评审 P3-1）：在途 job 导入后终态化。
+      expect(dst.jobs.single['status'], JobStatuses.cancelled);
+      expect(dst.jobs.single['completed_at'], isNotNull);
+      // 两趟 patch 断言：自引用与 lane 引用闭合。
+      expect(dstResult['source_node_id'], isNotNull);
+      expect(dstResult['lane_id'].toString(),
+          dst.lanes.single['id'].toString());
+      // created_at 保真。
+      expect(dst.project?['created_at'], src.project?['created_at']);
       // 画廊相等（成功 slot 数与路径集）。
       final gallerySrc = await slots.listSuccessByProject(pid);
       final galleryDst = await slots.listSuccessByProject(newId);
@@ -192,6 +201,12 @@ void main() {
                 'main.png'))
             .readAsBytesSync(),
         [1, 2, 3],
+      );
+      expect(
+        File(p.join(paths.projects.path, newId, 'canvases', newC1, 'images',
+                's0.png'))
+            .readAsBytesSync(),
+        [4, 5],
       );
       expect(
         File(p.join(paths.projects.path, newId, 'characters', 'hero.png'))

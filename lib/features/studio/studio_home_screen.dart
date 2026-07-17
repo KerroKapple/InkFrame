@@ -2,10 +2,10 @@
 //
 // 布局：Column(chrome, Expanded(Row(LibrarySidebar 280, Expanded(Stack(main, fab)))))
 // 状态：workspaceProjectsProvider 的 loading / error / empty / data 四态。
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'dart:async';
 
 import '../../core/di/current_screen.dart';
 import '../../core/di/database_restore.dart';
@@ -188,7 +188,16 @@ class _StudioMainArea extends ConsumerWidget {
     final doneMsg = l10n.importDone;
     importBusy.state = true;
     try {
-      final path = await picker();
+      final String? path;
+      try {
+        path = await picker();
+      } catch (e, st) {
+        // 放行点：平台 picker 异常不得静默（#192 评审 P3-5）。
+        logger.error(_logModule, 'import picker failed',
+            cause: e, stackTrace: st);
+        toast.show(l10n.importFailed, kind: ToastKind.error);
+        return;
+      }
       if (path == null || !context.mounted) return;
 
       // barrier 模态罩全程（导入分钟级；LB-22 同款）。

@@ -144,3 +144,5 @@
 | zip `.partial` 落盘骨架三份逐字复制（LB-10/11/18；#191 评审 P3-3 复发实证:自吞守卫没跟着骨架走） | 🅿️ | 抽 `atomicZipWrite(target, build)` 共享件并内置 #188 P2-5 自吞排除;LB-12 动 zip 面时同窗 |
 | pg.log 无轮转（pg_ctl -l 追加写;logger 的 10MB 预算只认 inkframe.* 前缀）——诊断包/磁盘体积长期无界（#191 评审 P3-5） | 🅿️ | pg.log 轮转（启动期截断/按大小滚动）或诊断包按 mtime 截取最近 N 份 |
 | 三大重操作互斥只在导入侧单向查（LB-12 拍板 9）:还原/导出入口不查 projectImportBusyProvider——导入进行中仍可点还原 | 🅿️ | 反向补查三行;或统一 heavyOperationBusyProvider 归一三个 busy 位 |
+| 导入补偿删除失败→projects/{uuid} 孤儿目录无回收路径（#192 评审 P3-2:无 .import- 前缀 sweep 不认,reaper 又 DRY-RUN）;另记拍板 4 三处字面偏差（U+FFFD 奇名可过/最终路径长未预检/isWithin 代 resolveInProject）均安全失败 | 🅿️ | 随 LB-13 reaper 转真删同窗:无行背书目录纳入回收;字面偏差随安全面复审顺修 |
+| **迁移纪律备忘（#192 评审 P3-6）**:导入的列白名单过滤依赖「迁移只加可空/有默认列」——将来任何「新增 NOT NULL 无默认」迁移会让旧项目包导入必炸 | 🅿️ | ADR-0012 补一句:新增列必须可空或带默认,否则同时给导入侧加填充逻辑 |

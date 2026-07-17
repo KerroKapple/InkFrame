@@ -55,8 +55,18 @@ class ZipProjectImportService implements ProjectImportService {
   final int _totalLimit;
   final int _dataJsonLimit;
 
+  /// service 级单飞（#192 评审 P2-1）：并发第二次调用共享在途 future——
+  /// 否则进门 sweep 会删掉对方在途 staging，产出「静默缺媒体的成功导入」。
+  /// UI busy 只是展示；单飞是契约（BP-11 复用同样受保护）。
+  Future<ImportResult>? _inflight;
+
   @override
-  Future<ImportResult> importArchive({required String zipPath}) async {
+  Future<ImportResult> importArchive({required String zipPath}) {
+    return _inflight ??=
+        _importArchive(zipPath: zipPath).whenComplete(() => _inflight = null);
+  }
+
+  Future<ImportResult> _importArchive({required String zipPath}) async {
     _sweepStaleStaging();
     Directory? staging;
     Directory? placed;
