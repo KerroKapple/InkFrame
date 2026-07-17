@@ -87,6 +87,7 @@
 | LB-11 项目导出（zip=manifest+data+files 全保真含软删保 FK 闭包；.partial 原子写；项目卡菜单入口；清债#20） | #188 |
 | LB-22 备份还原（scratch 库对换失败不动原库；三族备份分池+sidecar 校验；设置页数据区+启动失败面入口；顺带 start 单飞+JobQueue 关池 handle 必达） | #189 |
 | LB-15 回收站 UI（≡GAP-2：sidebar 入口+项目回收站对话框、管理画布已删区；listTrashedByProject 三处补齐；债#11 以真入口收口；永久删除显式排除） | #190 |
+| LB-18 诊断包（设置页打开日志目录+导出诊断 zip=info+logs/*+crashes/*+config 白名单两文件；红测钉死包内无 api_key，secrets.dev.json 结构性排除；W3 收官） | #191 |
 
 ## M1 补遗（审计发现的悬空项）
 
