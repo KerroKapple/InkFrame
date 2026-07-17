@@ -96,6 +96,7 @@
 | ON-4 网络错误文案走查 + i18n pass：三轴并行审读（错误/一致性/僵尸）；45 键修订（错误归因与下一步动作、术语统一工作室/提示词/服务商/图片、省略号统一）；删 canvasNodeType* 6 僵尸键 | #197 |
 | GAP-7 Inspector 测试欠账收口（预设点选应用+成本文案精确断言）+ ON-5 五屏空态 golden（Studio empty/error、Canvas empty、Gallery empty、Settings；ubuntu 铸线）——第 10 条（ON-3/4/GAP-7/ON-5）收官；**余 GAP-1 整卡、GAP-3 余量未清**（评审 P1 纠偏：勿宣「全部收官」） | #198 |
 | GAP-3 余量收口（24 站点审计:方向读错并入横幅链;raw toString 上屏收敛——设置页探测诊断行为有意例外;base style 编辑器读错中止防空覆盖（评审 P2-3）;InkErrorBanner.onRetry 死参数删除;**InkAsyncSlot 判 YAGNI**——列表槽位 LB-06 已全收口） | #199 |
+| **GAP-1 设置页 Custom Provider 编辑 UI（上线前必做最后一卡）**：CustomProviderStore 写侧（raw 保真+损坏拒写+原子写）;校验抽 core 纯函数双端共用;列表+表单+删除确认+重启生效常驻条;API Keys custom:* 行 displayName 顺带修——**随本卡合入,上线前必做 1-10 全部落地** | #200 |
 
 ## M1 补遗（审计发现的悬空项）
 

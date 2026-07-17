@@ -172,7 +172,9 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
 6. **GAP-3 AsyncValue error 态统一**(M,新共享件 InkAsyncSlot;清单含复审补充的
    library_sidebar:45 与 canvas_view 裸 toString 站点;LB-06/#166 已合,余量归本卡)+ **GAP-4 slot error 文案**(S)
    ✅ **#167 已合**(Tooltip + danger 文案)。
-7. **GAP-1 设置页 Custom Provider 编辑 UI**(L,守住"重启生效"边界)。
+7. **GAP-1 设置页 Custom Provider 编辑 UI**(L)✅ **#200 已合**(Store 写侧 raw
+   保真+损坏拒写+原子写;校验纯函数双端共用;列表+表单+删除确认+重启生效常驻条;
+   API Keys custom:* displayName 顺带修——"重启生效"边界守住,不碰 registry 变异)。
 8. **GAP-2 软删项目回收站 UI**(M)✅ **#190 已合**(≡LB-15：sidebar 真回收站入口取代 ARCHIVE 死行、
    管理画布已删区;首版无永久删除)。
 9. **PL-6 窗口状态记忆**(S–M)✅ **#170 已合**(退出捕获+启动恢复+多显示器 clamp)。
@@ -185,7 +187,10 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
     **GAP-3 余量**✅ **#199 已合**(24 站点审计:泳道方向读错并入横幅链;raw toString
     上屏收敛,探测诊断行有意例外;base style 读错中止防空覆盖;InkAsyncSlot 判
     YAGNI——第 6 条关闭)。
-    **清单余量(未收官)**:仅第 7 条 GAP-1 设置页 Custom Provider 编辑 UI(L,整卡未做)。
+    **第 7 条 GAP-1**✅ #200——**上线前必做 1-10 全部落地**(2026-07-18 逐条核对:
+    1 CV-1/#174,2 ON-1+2/#175+#195,3 GAP-8/#164,4 PL-4a/#168,5 PL-2+PL-1/#176+#174,
+    6 GAP-3/#166+#199,7 GAP-1/#200,8 GAP-4/#167,9 PL-6/#170,10 ON-3/4/GAP-7/ON-5
+    /#196+#197+#198)。
 
 **上线后首迭代起**:PL-4b undo 栈、CV-4 左工具栏实装/CV-5 视口 chrome(zoom 指示+fit,minimap 后置)、
 CV-2/CV-3(节点色条/Inspector 浮动,拍板后随时)、PL-3 右键菜单(建议尽早)、PL-5 框选群拖、
