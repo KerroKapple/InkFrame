@@ -125,6 +125,13 @@
   "restoreInProgress": "正在还原…",
   "startupErrorRestoreLatest": "从最近备份还原",
 
+  "settingsDiagnosticsSection": "诊断",
+  "settingsDiagnosticsHint": "日志与配置用于问题反馈——不含任何 API Key。",
+  "settingsOpenLogDir": "打开日志目录",
+  "settingsExportDiagnostics": "导出诊断包…",
+  "settingsDiagnosticsExported": "诊断包已导出",
+  "settingsDiagnosticsExportFailed": "导出失败",
+
   "settingsAboutSection": "关于",
   "settingsAboutAppNameLabel": "应用",
   "settingsAboutVersionLabel": "版本",

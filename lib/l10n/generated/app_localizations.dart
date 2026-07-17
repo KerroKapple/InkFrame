@@ -680,6 +680,42 @@ abstract class AppLocalizations {
   /// **'Restore latest backup'**
   String get startupErrorRestoreLatest;
 
+  /// No description provided for @settingsDiagnosticsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics'**
+  String get settingsDiagnosticsSection;
+
+  /// No description provided for @settingsDiagnosticsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Logs and configuration for bug reports — API keys are never included.'**
+  String get settingsDiagnosticsHint;
+
+  /// No description provided for @settingsOpenLogDir.
+  ///
+  /// In en, this message translates to:
+  /// **'Open log folder'**
+  String get settingsOpenLogDir;
+
+  /// No description provided for @settingsExportDiagnostics.
+  ///
+  /// In en, this message translates to:
+  /// **'Export diagnostics…'**
+  String get settingsExportDiagnostics;
+
+  /// No description provided for @settingsDiagnosticsExported.
+  ///
+  /// In en, this message translates to:
+  /// **'Diagnostics exported'**
+  String get settingsDiagnosticsExported;
+
+  /// No description provided for @settingsDiagnosticsExportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Export failed'**
+  String get settingsDiagnosticsExportFailed;
+
   /// No description provided for @settingsAboutSection.
   ///
   /// In en, this message translates to:

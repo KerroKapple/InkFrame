@@ -337,6 +337,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startupErrorRestoreLatest => 'Restore latest backup';
 
   @override
+  String get settingsDiagnosticsSection => 'Diagnostics';
+
+  @override
+  String get settingsDiagnosticsHint =>
+      'Logs and configuration for bug reports — API keys are never included.';
+
+  @override
+  String get settingsOpenLogDir => 'Open log folder';
+
+  @override
+  String get settingsExportDiagnostics => 'Export diagnostics…';
+
+  @override
+  String get settingsDiagnosticsExported => 'Diagnostics exported';
+
+  @override
+  String get settingsDiagnosticsExportFailed => 'Export failed';
+
+  @override
   String get settingsAboutSection => 'About';
 
   @override
