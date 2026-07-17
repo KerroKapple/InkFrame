@@ -68,7 +68,8 @@ class CanvasView extends ConsumerWidget {
         color: colors.surface1,
         child: const Center(child: CircularProgressIndicator()),
       ),
-      // 全库唯一 raw toString 上屏点（GAP-3 审计发现）——走 l10n 映射。
+      // raw toString 上屏收敛（GAP-3 审计;设置页安全存储探测行的诊断详情
+      // 为有意例外）——走 l10n 映射。
       error: (err, _) => _LoadError(message: l10nAsyncError(context, err)),
       data: (nodes) => _CanvasBody(canvasId: canvasId, nodes: nodes),
     );
@@ -333,7 +334,7 @@ class _CanvasBody extends ConsumerWidget {
     final Widget leftArea = Stack(
       children: [
         Positioned.fill(child: canvasArea),
-        // 边/泳道加载失败 → 非阻塞横幅（节点照常渲染），可忽略。
+        // 边/泳道/泳道方向加载失败 → 非阻塞横幅（节点照常渲染），可忽略。
         Positioned(
           top: InkSpacing.md,
           left: InkSpacing.md,
@@ -1093,8 +1094,9 @@ class _NodeCardSlot extends ConsumerWidget {
 
 /// 画布元数据（边/泳道/泳道方向）加载失败横幅插槽：非阻塞——节点已在
 /// _CanvasStage 用 valueOrNull 降级照常渲染，这里仅补一条可忽略的错误横幅
-/// 解释失败原因（此前静默吞错）。GAP-3 余量：方向读失败此前完全无提示，
-/// 且 lane_toolbar 会基于错误基线写库反向覆盖用户已存方向。
+/// 解释失败原因（此前静默吞错）。GAP-3 余量：方向读失败此前完全无提示；
+/// lane_toolbar 会基于错误基线 horizontal 翻转写库（二元域下写入值仍在
+/// 存量/意图之内,无损毁,但错误期 toggle 永远到不了 horizontal——置灰记债）。
 class _EdgeLaneErrorSlot extends ConsumerStatefulWidget {
   const _EdgeLaneErrorSlot({required this.canvasId});
 

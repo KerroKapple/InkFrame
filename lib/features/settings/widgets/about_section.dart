@@ -133,6 +133,8 @@ class AboutSection extends ConsumerWidget {
               const SizedBox(height: InkSpacing.xs),
               _Row(
                 label: context.l10n.settingsAboutSecureStorageLabel,
+                // 有意例外（#199 评审 P2-1 拍板）:探测行的 raw 异常文本是
+                // 诊断详情（同路径展示类），不走 l10n 映射——用户报障需要原文。
                 value: probeAsync.when(
                   data: (probe) => probe.available
                       ? context.l10n

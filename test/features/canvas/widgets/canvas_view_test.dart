@@ -434,8 +434,9 @@ void main() {
       find.text('Local disk I/O error. Check space and permissions.'),
       findsOneWidget,
     );
-    // raw toString（"LocalIOError(...)" 之类）绝不上屏
-    expect(find.textContaining('LocalIOError'), findsNothing);
+    // raw toString 绝不上屏——InkError.toString() = 'InkError(local_io_error, …)'
+    expect(find.textContaining('InkError('), findsNothing);
+    expect(find.textContaining('local_io_error'), findsNothing);
   });
 
   testWidgets('边加载失败 → 非阻塞错误横幅，节点照常渲染；可关闭', (tester) async {
