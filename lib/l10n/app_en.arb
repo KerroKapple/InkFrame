@@ -134,6 +134,13 @@
   "restoreInProgress": "Restoring…",
   "startupErrorRestoreLatest": "Restore latest backup",
 
+  "settingsDiagnosticsSection": "Diagnostics",
+  "settingsDiagnosticsHint": "Logs and configuration for bug reports — API keys are never included.",
+  "settingsOpenLogDir": "Open log folder",
+  "settingsExportDiagnostics": "Export diagnostics…",
+  "settingsDiagnosticsExported": "Diagnostics exported",
+  "settingsDiagnosticsExportFailed": "Export failed",
+
   "settingsAboutSection": "About",
   "settingsAboutAppNameLabel": "Application",
   "settingsAboutVersionLabel": "Version",

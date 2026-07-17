@@ -127,7 +127,8 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
   ✅ 切片 B = **LB-13b**(#165,OrphanFileReaper DRY-RUN v1 只记不删;真删除待 dry-run 灰度后)
 - **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);
   **LB-09 启动失败 surface**:✅ #169(PG 引导失败全屏错误替代白屏);
-  **LB-17 全局错误钩子**:✅ #160(runZonedGuarded + crash 落盘)+ **LB-18 诊断包**(待做)
+  **LB-17 全局错误钩子**:✅ #160(runZonedGuarded + crash 落盘)+ **LB-18 诊断包**:✅ #191
+  (设置页两按钮;zip=info+logs/*含 pg.log+crashes/*+config 白名单;无 api_key 红测钉死)
 
 **正确性簇**(LB-01/03/04/06 ✅ 已合入,LB-05 已消解——簇内清零):LB-01 状态常量化 ✅#156 → LB-03 JobQueue 拆分 ✅#159
 (1168→504 行,竞态裁决留编排器 + `job_queue/` 四协作者)→ LB-04 乐观竞态 ✅#158(FIFO 串行队列,五控制器)

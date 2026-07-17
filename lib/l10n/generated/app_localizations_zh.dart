@@ -320,6 +320,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get startupErrorRestoreLatest => '从最近备份还原';
 
   @override
+  String get settingsDiagnosticsSection => '诊断';
+
+  @override
+  String get settingsDiagnosticsHint => '日志与配置用于问题反馈——不含任何 API Key。';
+
+  @override
+  String get settingsOpenLogDir => '打开日志目录';
+
+  @override
+  String get settingsExportDiagnostics => '导出诊断包…';
+
+  @override
+  String get settingsDiagnosticsExported => '诊断包已导出';
+
+  @override
+  String get settingsDiagnosticsExportFailed => '导出失败';
+
+  @override
   String get settingsAboutSection => '关于';
 
   @override
