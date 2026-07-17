@@ -301,7 +301,8 @@ lib/
     ├── custom_providers_file_service.dart  # config/custom_providers.json parse + fallback
     ├── character_asset_service.dart
     ├── orphan_file_reaper.dart        # DiskOrphanFileReaper (disk orphan media GC; DRY-RUN v1 — logs only, never deletes; LB-13)
-    ├── database_backup_service.dart   # PgDumpBackupService (daily pg_dump -Fc cold backup, keep 7, never blocks startup; LB-10)
+    ├── database_backup_service.dart   # PgDumpBackupService (daily/manual/prerestore pg_dump -Fc, per-family retention 7/3/3, meta.json sidecar; LB-10/LB-22)
+    ├── database_restore_service.dart  # PgSwapRestoreService (restore into scratch DB then rename-swap — failed restore leaves data untouched; LB-22)
     ├── project_archive_service.dart   # ZipProjectArchiveService (whole-project zip export: manifest+data.json+files/, full-fidelity incl. soft-deleted rows; LB-11)
     ├── video_metadata_backfill_service.dart  # XM-1b startup housekeeping: probe legacy videos missing duration_ms, patch type_config (+thumbnail if absent)
     ├── app_teardown.dart              # Ordered shutdown (capture window state → JobQueue → Pool → PG)
