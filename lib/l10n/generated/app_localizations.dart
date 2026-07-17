@@ -113,7 +113,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorInvalidKey.
   ///
   /// In en, this message translates to:
-  /// **'API key is invalid. Check your provider settings.'**
+  /// **'API key was rejected by the provider. Update it in Settings → API Keys.'**
   String get errorInvalidKey;
 
   /// No description provided for @errorInsufficientBalance.
@@ -125,13 +125,13 @@ abstract class AppLocalizations {
   /// No description provided for @errorContentPolicy.
   ///
   /// In en, this message translates to:
-  /// **'The content policy rejected this request.'**
+  /// **'The provider\'s content policy rejected this prompt. Adjust the prompt and try again.'**
   String get errorContentPolicy;
 
   /// No description provided for @errorInvalidParameter.
   ///
   /// In en, this message translates to:
-  /// **'One or more request parameters are invalid.'**
+  /// **'The provider rejected some generation settings. Adjust resolution, aspect ratio or duration and retry.'**
   String get errorInvalidParameter;
 
   /// No description provided for @errorNetworkTimeout.
@@ -143,7 +143,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorNetworkOffline.
   ///
   /// In en, this message translates to:
-  /// **'Network is offline. Check your connection.'**
+  /// **'Couldn\'t reach the provider. Check your network connection, then retry.'**
   String get errorNetworkOffline;
 
   /// No description provided for @errorProviderServer.
@@ -173,7 +173,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorDownloadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Failed to download the generated asset.'**
+  /// **'The generated file couldn\'t be downloaded. Check your connection and retry.'**
   String get errorDownloadFailed;
 
   /// No description provided for @errorLocalIO.
@@ -185,7 +185,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorCancelled.
   ///
   /// In en, this message translates to:
-  /// **'Cancelled by user.'**
+  /// **'Cancelled.'**
   String get errorCancelled;
 
   /// No description provided for @errorCancelledOnExit.
@@ -299,7 +299,7 @@ abstract class AppLocalizations {
   /// No description provided for @inspectorPromptHint.
   ///
   /// In en, this message translates to:
-  /// **'Describe the image you want...'**
+  /// **'Describe the image you want…'**
   String get inspectorPromptHint;
 
   /// No description provided for @inspectorProviderLabel.
@@ -377,19 +377,19 @@ abstract class AppLocalizations {
   /// No description provided for @inspectorStatusSubmitting.
   ///
   /// In en, this message translates to:
-  /// **'Submitting...'**
+  /// **'Submitting…'**
   String get inspectorStatusSubmitting;
 
   /// No description provided for @inspectorStatusRunning.
   ///
   /// In en, this message translates to:
-  /// **'Generating...'**
+  /// **'Generating…'**
   String get inspectorStatusRunning;
 
   /// No description provided for @inspectorStatusRunningWithProgress.
   ///
   /// In en, this message translates to:
-  /// **'Generating... {percent}%'**
+  /// **'Generating… {percent}%'**
   String inspectorStatusRunningWithProgress(int percent);
 
   /// No description provided for @inspectorStatusErrorTitle.
@@ -461,7 +461,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsApiKeySavedUnverified.
   ///
   /// In en, this message translates to:
-  /// **'Saved, but the key could not be verified due to a network issue.'**
+  /// **'Saved. The key couldn\'t be verified right now (network or service issue) — it will be checked on first use.'**
   String get settingsApiKeySavedUnverified;
 
   /// No description provided for @settingsApiKeyRejected.
@@ -587,7 +587,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBackupHint.
   ///
   /// In en, this message translates to:
-  /// **'Daily cold backups of your local database, kept 7. Restore replaces the database only — media files on disk stay as-is.'**
+  /// **'Daily cold backups of your local database — the last 7 are kept. Restore replaces the database only — media files on disk stay as-is.'**
   String get settingsBackupHint;
 
   /// No description provided for @settingsBackupNow.
@@ -611,7 +611,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsBackupFailed.
   ///
   /// In en, this message translates to:
-  /// **'Backup failed'**
+  /// **'Backup failed — see the log folder for details'**
   String get settingsBackupFailed;
 
   /// No description provided for @settingsBackupsEmpty.
@@ -737,7 +737,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsDiagnosticsExportFailed.
   ///
   /// In en, this message translates to:
-  /// **'Export failed'**
+  /// **'Export failed — see the log folder for details'**
   String get settingsDiagnosticsExportFailed;
 
   /// No description provided for @settingsAboutSection.
@@ -857,13 +857,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutUpdateCheckFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not check for updates'**
+  /// **'Couldn\'t check for updates'**
   String get settingsAboutUpdateCheckFailed;
 
   /// No description provided for @settingsAboutUpdateOpenFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not open the release page'**
+  /// **'Couldn\'t open the release page'**
   String get settingsAboutUpdateOpenFailed;
 
   /// No description provided for @settingsAboutUpdateAutoCheckLabel.
@@ -1145,7 +1145,7 @@ abstract class AppLocalizations {
   /// No description provided for @inspectorShotNotesHint.
   ///
   /// In en, this message translates to:
-  /// **'Describe this shot (camera, action, mood)...'**
+  /// **'Describe this shot (camera, action, mood)…'**
   String get inspectorShotNotesHint;
 
   /// No description provided for @inspectorShotGenerateImage.
@@ -1277,13 +1277,13 @@ abstract class AppLocalizations {
   /// No description provided for @inspectorVideoGenerateDisabledEmptyPrompt.
   ///
   /// In en, this message translates to:
-  /// **'Prompt required'**
+  /// **'Write a prompt first'**
   String get inspectorVideoGenerateDisabledEmptyPrompt;
 
   /// No description provided for @inspectorVideoGenerateDisabledNoKey.
   ///
   /// In en, this message translates to:
-  /// **'API key required in Settings'**
+  /// **'Configure API key in Settings'**
   String get inspectorVideoGenerateDisabledNoKey;
 
   /// No description provided for @inspectorVideoGenerate.
@@ -1703,7 +1703,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingStepSampleBody.
   ///
   /// In en, this message translates to:
-  /// **'Create a sample project to explore the canvas, or start from an empty studio.'**
+  /// **'Create a sample project to explore the canvas, or start from an empty Studio.'**
   String get onboardingStepSampleBody;
 
   /// No description provided for @canvasRenderQueue.
@@ -1723,42 +1723,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Collapse render queue'**
   String get canvasRenderQueueCollapse;
-
-  /// No description provided for @canvasNodeTypeCharacter.
-  ///
-  /// In en, this message translates to:
-  /// **'Character'**
-  String get canvasNodeTypeCharacter;
-
-  /// No description provided for @canvasNodeTypeScene.
-  ///
-  /// In en, this message translates to:
-  /// **'Scene'**
-  String get canvasNodeTypeScene;
-
-  /// No description provided for @canvasNodeTypeCamera.
-  ///
-  /// In en, this message translates to:
-  /// **'Camera'**
-  String get canvasNodeTypeCamera;
-
-  /// No description provided for @canvasNodeTypeProp.
-  ///
-  /// In en, this message translates to:
-  /// **'Prop'**
-  String get canvasNodeTypeProp;
-
-  /// No description provided for @canvasNodeTypeShot.
-  ///
-  /// In en, this message translates to:
-  /// **'Shot'**
-  String get canvasNodeTypeShot;
-
-  /// No description provided for @canvasNodeTypeImageGen.
-  ///
-  /// In en, this message translates to:
-  /// **'Image Gen'**
-  String get canvasNodeTypeImageGen;
 
   /// No description provided for @canvasBreadcrumbProject.
   ///
@@ -2105,7 +2069,7 @@ abstract class AppLocalizations {
   /// No description provided for @galleryBackTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Back to studio'**
+  /// **'Back to Studio'**
   String get galleryBackTooltip;
 
   /// No description provided for @galleryEmptyTitle.

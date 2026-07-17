@@ -230,8 +230,8 @@ void main() {
     expect(find.text('RECENT FAILURES'), findsOneWidget);
     // 4 条失败按插入序取最新 3 条（f2/f3/f4）；最旧的 f1 被截掉。
     expect(find.text('Network timed out. Please retry.'), findsNothing); // f1 (最旧) 被截
-    expect(find.text('Network is offline. Check your connection.'), findsOneWidget); // f2
-    expect(find.text('API key is invalid. Check your provider settings.'), findsOneWidget); // f3
-    expect(find.text('Failed to download the generated asset.'), findsOneWidget); // f4
+    expect(find.text("Couldn't reach the provider. Check your network connection, then retry."), findsOneWidget); // f2
+    expect(find.text('API key was rejected by the provider. Update it in Settings → API Keys.'), findsOneWidget); // f3
+    expect(find.text("The generated file couldn't be downloaded. Check your connection and retry."), findsOneWidget); // f4
   });
 }

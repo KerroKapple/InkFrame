@@ -4,19 +4,19 @@
 
   "commonCancel": "取消",
 
-  "errorInvalidKey": "API Key 无效，请检查 Provider 设置。",
-  "errorInsufficientBalance": "Provider 账户余额不足。",
-  "errorContentPolicy": "内容审核拒绝了该请求。",
-  "errorInvalidParameter": "请求参数不合法。",
+  "errorInvalidKey": "API Key 无效，请到「设置 → API Keys」更新。",
+  "errorInsufficientBalance": "服务商账户余额不足。",
+  "errorContentPolicy": "提示词未通过服务商内容审核，请调整提示词后重试。",
+  "errorInvalidParameter": "服务商拒绝了部分生成设置，请调整分辨率、宽高比或时长后重试。",
   "errorNetworkTimeout": "网络超时，请稍后重试。",
-  "errorNetworkOffline": "网络不可用，请检查连接。",
-  "errorProviderServer": "Provider 服务暂不可用，请稍后重试。",
-  "errorProviderBusy": "Provider 繁忙，请稍后重试。",
-  "errorProviderInvalidResponse": "Provider 返回了无效或空的结果。",
+  "errorNetworkOffline": "无法连接到服务商，请检查网络后重试。",
+  "errorProviderServer": "服务商服务暂不可用，请稍后重试。",
+  "errorProviderBusy": "服务商繁忙，请稍后重试。",
+  "errorProviderInvalidResponse": "服务商返回了无效或空的结果。",
   "errorPollTimeout": "生成任务超时未完成。",
-  "errorDownloadFailed": "下载生成产物失败。",
+  "errorDownloadFailed": "生成结果下载失败，请检查网络后重试。",
   "errorLocalIO": "本地磁盘 I/O 错误，请检查空间与权限。",
-  "errorCancelled": "已被用户取消。",
+  "errorCancelled": "已取消。",
   "errorCancelledOnExit": "应用退出，已取消任务。",
   "errorUnknown": "未知错误。",
 
@@ -38,7 +38,7 @@
 
   "inspectorTitle": "配置",
   "inspectorPromptLabel": "提示词",
-  "inspectorPromptHint": "描述你想生成的画面……",
+  "inspectorPromptHint": "描述你想生成的画面…",
   "inspectorProviderLabel": "服务商",
   "inspectorResolutionLabel": "分辨率",
   "inspectorAspectRatioLabel": "宽高比",
@@ -51,9 +51,9 @@
   "inspectorGenerate": "生成",
   "inspectorGenerateDisabledEmptyPrompt": "请先填写提示词",
   "inspectorGenerateDisabledNoKey": "请在设置中配置 API Key",
-  "inspectorStatusSubmitting": "提交中...",
-  "inspectorStatusRunning": "生成中...",
-  "inspectorStatusRunningWithProgress": "生成中... {percent}%",
+  "inspectorStatusSubmitting": "提交中…",
+  "inspectorStatusRunning": "生成中…",
+  "inspectorStatusRunningWithProgress": "生成中… {percent}%",
   "@inspectorStatusRunningWithProgress": {
     "placeholders": {
       "percent": { "type": "int" }
@@ -71,8 +71,8 @@
   "settingsApiKeySet": "已配置",
   "settingsApiKeyNotSet": "未配置",
   "settingsApiKeySaved": "已保存",
-  "settingsApiKeySavedUnverified": "已保存，但网络问题导致 Key 暂时无法验证。",
-  "settingsApiKeyRejected": "Provider 拒绝了该 Key，未保存。",
+  "settingsApiKeySavedUnverified": "已保存。暂时无法验证 Key（网络或服务暂不可用），首次生成时会实际校验。",
+  "settingsApiKeyRejected": "服务商拒绝了该 Key，未保存。",
   "settingsApiKeyCleared": "已清除",
 
   "settingsThemeSection": "主题",
@@ -90,7 +90,7 @@
   "settingsLanguageZh": "中文",
 
   "settingsStorageSection": "存储",
-  "settingsStorageReadOnlyHint": "本版本数据库目录固定，后续版本会提供迁移流程。",
+  "settingsStorageReadOnlyHint": "本版本数据库目录固定，暂不支持迁移。",
   "settingsStorageDatabasePathLabel": "数据库目录",
   "settingsStorageCopyPath": "复制路径",
   "settingsStoragePathCopied": "路径已复制到剪贴板",
@@ -100,7 +100,7 @@
   "settingsBackupNow": "立即备份",
   "settingsBackupDone": "已创建备份",
   "settingsBackupNoBinaries": "未找到内置 PostgreSQL 工具——请重新安装 InkFrame",
-  "settingsBackupFailed": "备份失败",
+  "settingsBackupFailed": "备份失败——详情见日志目录",
   "settingsBackupsEmpty": "暂无备份",
   "settingsBackupMetaLine": "{size} · {date}",
   "@settingsBackupMetaLine": {
@@ -114,7 +114,7 @@
   "settingsBackupKindPreRestore": "还原前",
   "settingsRestore": "还原",
   "restoreConfirmTitle": "从备份还原？",
-  "restoreConfirmBody": "用「{file}」（{date}）替换当前数据？还原前会尽量先备份一次；进行中的生成任务会被取消，完成后将回到主页。磁盘上的媒体文件不回滚。",
+  "restoreConfirmBody": "用「{file}」（{date}）替换当前数据？还原前会尽量先备份一次；进行中的生成任务会被取消，完成后将回到工作室。磁盘上的媒体文件不回滚。",
   "@restoreConfirmBody": {
     "placeholders": {
       "file": { "type": "String" },
@@ -124,7 +124,7 @@
   "restoreDone": "还原完成",
   "restoreFailed": "还原失败——你的数据未被改动",
   "restoreFailedCorrupt": "备份文件校验未通过",
-  "restoreFailedVersionNewer": "该备份来自更新版本的 InkFrame",
+  "restoreFailedVersionNewer": "该备份来自更高版本的 InkFrame",
   "restoreAbortedPreBackup": "安全备份失败——已取消还原",
   "restoreInProgress": "正在还原…",
   "startupErrorRestoreLatest": "从最近备份还原",
@@ -134,7 +134,7 @@
   "settingsOpenLogDir": "打开日志目录",
   "settingsExportDiagnostics": "导出诊断包…",
   "settingsDiagnosticsExported": "诊断包已导出",
-  "settingsDiagnosticsExportFailed": "导出失败",
+  "settingsDiagnosticsExportFailed": "导出失败——详情见日志目录",
 
   "settingsAboutSection": "关于",
   "settingsAboutAppNameLabel": "应用",
@@ -161,8 +161,8 @@
       "path": { "type": "String" }
     }
   },
-  "settingsAboutFfmpegMissingWindows": "未检测到——视频导出不可用。可经 winget 安装（winget install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径",
-  "settingsAboutFfmpegMissingMac": "未检测到——视频导出不可用。可经 Homebrew 安装（brew install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径",
+  "settingsAboutFfmpegMissingWindows": "未检测到——视频导出不可用。可通过 winget 安装（winget install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径",
+  "settingsAboutFfmpegMissingMac": "未检测到——视频导出不可用。可通过 Homebrew 安装（brew install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径",
   "settingsAboutLicensesButton": "开源许可",
   "settingsAboutLegalese": "InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 Cormorant Garamond 与 JetBrains Mono 字体（SIL OFL 1.1）。",
 
@@ -187,10 +187,10 @@
       "reason": { "type": "String" }
     }
   },
-  "generationProviderNotRegistered": "Provider 未注册",
+  "generationProviderNotRegistered": "服务商未注册",
 
   "resultNodePending": "等待生成",
-  "resultNodeImageMissing": "图像文件缺失",
+  "resultNodeImageMissing": "图片文件缺失",
 
   "linkModeStart": "连线",
   "linkModeHint": "点击目标节点建立连线，点空白取消",
@@ -225,7 +225,7 @@
       "max": { "type": "int" }
     }
   },
-  "inspectorInputsOverLimit": "超出 Provider 上限（{max}），多余参考图将被忽略",
+  "inspectorInputsOverLimit": "超出服务商上限（{max}），多余参考图将被忽略",
   "@inspectorInputsOverLimit": {
     "placeholders": {
       "max": { "type": "int" }
@@ -245,7 +245,7 @@
 
   "inspectorPresetsLabel": "提示词预设",
   "inspectorPresetsEmpty": "还没有预设",
-  "inspectorPresetsSaveCurrent": "把当前提示词存为预设",
+  "inspectorPresetsSaveCurrent": "存为预设",
   "inspectorPresetsDialogTitle": "新建预设",
   "inspectorPresetsNameHint": "预设名称",
 
@@ -254,9 +254,9 @@
 
   "inspectorShotTitle": "分镜",
   "inspectorShotNotesLabel": "分镜备注",
-  "inspectorShotNotesHint": "描述这个分镜（机位、动作、氛围）……",
-  "inspectorShotGenerateImage": "用本镜备注生成图像",
-  "inspectorShotLinkFailed": "图像节点已创建，连线失败",
+  "inspectorShotNotesHint": "描述这个分镜（机位、动作、氛围）…",
+  "inspectorShotGenerateImage": "用备注生成图片",
+  "inspectorShotLinkFailed": "图片节点已创建，连线失败",
 
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
@@ -289,17 +289,17 @@
   "studioDefaultName": "我的工作室",
   "studioRecentProjects": "最近项目",
   "studioNewProject": "新建项目",
-  "studioLibrary": "工作库",
+  "studioLibrary": "项目库",
   "studioLibraryProjects": "项目",
   "studioBreadcrumbAll": "全部项目",
   "studioEmptyTitle": "还没有项目",
-  "studioEmptySubtitle": "新建一个项目开始你的分镜创作。",
+  "studioEmptySubtitle": "新建一个项目，开始你的分镜创作。",
   "studioErrorTitle": "项目列表加载失败",
   "studioErrorRetry": "重试",
   "studioOpenSettings": "打开设置",
   "studioNewProjectDialogTitle": "新建项目",
   "studioNewProjectNameLabel": "项目名",
-  "studioNewProjectNameHint": "例如：日落劫案",
+  "studioNewProjectNameHint": "如：日落劫案",
   "studioNewProjectErrorEmpty": "请填写项目名",
   "studioNewProjectErrorTooLong": "项目名不超过 60 个字符",
   "studioNewProjectErrorDuplicate": "已存在同名项目",
@@ -321,7 +321,7 @@
   "importInProgress": "正在导入…",
   "importDone": "项目已导入",
   "importFailedFormat": "不是 InkFrame 项目包",
-  "importFailedVersionNewer": "该项目包来自更新版本的 InkFrame",
+  "importFailedVersionNewer": "该项目包来自更高版本的 InkFrame",
   "importFailedCorrupt": "项目包校验未通过",
   "importFailed": "导入失败",
   "studioTrash": "回收站",
@@ -354,15 +354,9 @@
   "canvasRenderQueue": "渲染队列",
   "canvasRenderQueueExpand": "展开渲染队列",
   "canvasRenderQueueCollapse": "收起渲染队列",
-  "canvasNodeTypeCharacter": "角色",
-  "canvasNodeTypeScene": "场景",
-  "canvasNodeTypeCamera": "镜头",
-  "canvasNodeTypeProp": "道具",
-  "canvasNodeTypeShot": "分镜",
-  "canvasNodeTypeImageGen": "图像生成",
   "canvasBreadcrumbProject": "项目",
   "canvasBreadcrumbCanvas": "画布",
-  "canvasBackToStudio": "Studio",
+  "canvasBackToStudio": "工作室",
   "canvasEmptyTitle": "当前画布为空",
   "canvasEmptySubtitle": "添加第一个节点，开始分镜。",
   "canvasEmptyAddImage": "添加图片节点",
@@ -387,7 +381,7 @@
 
   "canvasDefaultName": "未命名画布",
   "studioOpenCanvasFailed": "打开画布失败",
-  "studioNoKeyBannerText": "尚未配置任何 Provider API Key——生成需要先配置。",
+  "studioNoKeyBannerText": "尚未配置任何服务商 API Key——配置后才能生成。",
   "studioNoKeyBannerAction": "前往设置配置",
   "studioCreateSampleProject": "创建示例项目",
   "studioCreateSampleFailed": "创建示例项目失败",
@@ -404,9 +398,9 @@
   "onboardingSkip": "跳过",
   "onboardingNext": "下一步",
   "onboardingStartEmpty": "从空白开始",
-  "onboardingKeysConsoleHint": "先到对应服务商控制台获取 API Key 粘贴到上方；也可以之后在设置中随时添加或修改。",
+  "onboardingKeysConsoleHint": "先到对应服务商控制台获取 API Key，粘贴到上方；也可以之后在设置中随时添加或修改。",
   "onboardingStepSampleTitle": "开始创作",
-  "onboardingStepSampleBody": "创建一个示例项目快速了解画布，也可以从空白工作台开始。",
+  "onboardingStepSampleBody": "创建一个示例项目快速了解画布，也可以从空白工作室开始。",
 
   "windowMinimize": "最小化",
   "windowMaximize": "最大化",
@@ -422,7 +416,7 @@
   "laneTintLabel": "背景色",
   "laneTintAuto": "自动",
   "laneDelete": "删除泳道",
-  "laneDeleteConfirmTitle": "确认删除该泳道？",
+  "laneDeleteConfirmTitle": "删除该泳道？",
   "laneDeleteConfirmBody": "泳道内节点位置保留，但会失去该泳道风格。",
   "laneDialogSave": "保存",
   "laneDialogCancel": "取消",
@@ -433,14 +427,14 @@
   "laneDeleteFailed": "删除泳道失败",
   "laneCollapse": "折叠泳道",
   "laneExpand": "展开泳道",
-  "inspectorPromptPreviewLabel": "最终 prompt 预览",
-  "inspectorIgnoreLaneStyle": "忽略区域风格",
+  "inspectorPromptPreviewLabel": "最终提示词预览",
+  "inspectorIgnoreLaneStyle": "忽略泳道风格",
 
   "baseStyleEditTooltip": "基底风格",
   "baseStyleEditTitle": "项目基底风格",
-  "baseStylePrefixLabel": "前缀（加在所有 prompt 最前）",
+  "baseStylePrefixLabel": "前缀（加在每条提示词最前）",
   "baseStylePrefixHint": "如：电影感画面",
-  "baseStyleSuffixLabel": "后缀（加在所有 prompt 最后）",
+  "baseStyleSuffixLabel": "后缀（加在每条提示词最后）",
   "baseStyleSuffixHint": "如：8k，高细节",
   "baseStylePresetsLabel": "快速预设",
   "baseStylePresetCinematic": "真人电影",
@@ -449,7 +443,7 @@
   "baseStylePresetCyberpunk": "赛博朋克",
   "baseStylePresetInkwash": "水墨",
   "baseStylePresetPhoto": "写实摄影",
-  "baseStylePreset3d": "3D动画",
+  "baseStylePreset3d": "3D 动画",
   "baseStyleUpdateFailed": "更新基底风格失败",
 
   "commonRetry": "重试",
@@ -461,7 +455,7 @@
     }
   },
   "galleryBackTooltip": "返回工作室",
-  "galleryEmptyTitle": "还没有生成的产物",
+  "galleryEmptyTitle": "还没有生成内容",
   "galleryEmptySubtitle": "该项目画布上生成的图片和视频会显示在这里。",
   "galleryLoadFailed": "画廊加载失败",
   "galleryKindImage": "图片",
@@ -473,7 +467,7 @@
   "exportVideoDialogHint": "选中的视频将按列表顺序拼接。",
   "exportVideoOutputNameLabel": "输出文件名（可选）",
   "exportVideoOutputNameHint": "留空使用时间戳默认名",
-  "exportVideoInvalidName": "文件名不能包含 \\ / : * ? \" < > | 字符、..、控制字符或系统保留名",
+  "exportVideoInvalidName": "文件名不能包含 \\ / : * ? \" < > | 字符、「..」、控制字符或系统保留名",
   "exportVideoMoveUp": "上移",
   "exportVideoMoveDown": "下移",
   "exportVideoStart": "导出",
@@ -490,5 +484,5 @@
   "commandPaletteTooltip": "命令面板",
   "commandPaletteSearchHint": "输入命令…",
   "commandPaletteNoResults": "没有匹配的命令",
-  "commandBackToStudio": "返回 Studio"
+  "commandBackToStudio": "返回工作室"
 }

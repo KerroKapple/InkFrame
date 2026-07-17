@@ -142,7 +142,7 @@ void main() {
     await pump(tester, pickedPath: 'C:/tmp/diag.zip');
     await tester.tap(find.text('Export diagnostics…'));
     await tester.pumpAndSettle();
-    expect(toast.shown.single.message, 'Export failed');
+    expect(toast.shown.single.message, 'Export failed — see the log folder for details');
     expect(toast.shown.single.kind, ToastKind.error);
   });
 }

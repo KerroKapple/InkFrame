@@ -93,6 +93,7 @@
 | **Windows pg_ctl start 管道继承挂死（真机验收逮到的潜在 P0）**：postmaster 继承 Process.run 管道句柄致冷启动挂死至库进程落幕；Windows 分支改 inheritStdio；新增 realpg 门控真栈 E2E（真 initdb SCRAM→pg_ctl→迁移 v7→pg_dump→pg_restore 对换→teardown，5s 全链） | #194 |
 | ON-2b 示例项目演示内容：createSample 单事务种子化（示例泳道+预填 prompt 的 image config 节点，纯本地零生成）；SampleSeed 经 ARB 由三入口传入 | #195 |
 | ON-3 设置页 ffmpeg 状态行：仿安全存储探测模式；未找到=平台化指引（winget/brew+INKFRAME_FFMPEG），mac/win 外复用 exportVideoFfmpegMissing 防双源；重进设置页即重探 | #196 |
+| ON-4 网络错误文案走查 + i18n pass：三轴并行审读（错误/一致性/僵尸）；45 键修订（错误归因与下一步动作、术语统一工作室/提示词/服务商/图片、省略号统一）；删 canvasNodeType* 6 僵尸键 | #197 |
 
 ## M1 补遗（审计发现的悬空项）
 

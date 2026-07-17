@@ -16,25 +16,26 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorInvalidKey =>
-      'API key is invalid. Check your provider settings.';
+      'API key was rejected by the provider. Update it in Settings → API Keys.';
 
   @override
   String get errorInsufficientBalance =>
       'Provider account has insufficient balance.';
 
   @override
-  String get errorContentPolicy => 'The content policy rejected this request.';
+  String get errorContentPolicy =>
+      'The provider\'s content policy rejected this prompt. Adjust the prompt and try again.';
 
   @override
   String get errorInvalidParameter =>
-      'One or more request parameters are invalid.';
+      'The provider rejected some generation settings. Adjust resolution, aspect ratio or duration and retry.';
 
   @override
   String get errorNetworkTimeout => 'Network timed out. Please retry.';
 
   @override
   String get errorNetworkOffline =>
-      'Network is offline. Check your connection.';
+      'Couldn\'t reach the provider. Check your network connection, then retry.';
 
   @override
   String get errorProviderServer =>
@@ -52,14 +53,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Generation did not complete within the time limit.';
 
   @override
-  String get errorDownloadFailed => 'Failed to download the generated asset.';
+  String get errorDownloadFailed =>
+      'The generated file couldn\'t be downloaded. Check your connection and retry.';
 
   @override
   String get errorLocalIO =>
       'Local disk I/O error. Check space and permissions.';
 
   @override
-  String get errorCancelled => 'Cancelled by user.';
+  String get errorCancelled => 'Cancelled.';
 
   @override
   String get errorCancelledOnExit =>
@@ -119,7 +121,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorPromptLabel => 'Prompt';
 
   @override
-  String get inspectorPromptHint => 'Describe the image you want...';
+  String get inspectorPromptHint => 'Describe the image you want…';
 
   @override
   String get inspectorProviderLabel => 'Provider';
@@ -160,14 +162,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorGenerateDisabledNoKey => 'Configure API key in Settings';
 
   @override
-  String get inspectorStatusSubmitting => 'Submitting...';
+  String get inspectorStatusSubmitting => 'Submitting…';
 
   @override
-  String get inspectorStatusRunning => 'Generating...';
+  String get inspectorStatusRunning => 'Generating…';
 
   @override
   String inspectorStatusRunningWithProgress(int percent) {
-    return 'Generating... $percent%';
+    return 'Generating… $percent%';
   }
 
   @override
@@ -206,7 +208,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsApiKeySavedUnverified =>
-      'Saved, but the key could not be verified due to a network issue.';
+      'Saved. The key couldn\'t be verified right now (network or service issue) — it will be checked on first use.';
 
   @override
   String get settingsApiKeyRejected =>
@@ -272,7 +274,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsBackupHint =>
-      'Daily cold backups of your local database, kept 7. Restore replaces the database only — media files on disk stay as-is.';
+      'Daily cold backups of your local database — the last 7 are kept. Restore replaces the database only — media files on disk stay as-is.';
 
   @override
   String get settingsBackupNow => 'Back up now';
@@ -285,7 +287,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Bundled PostgreSQL tools not found — reinstall InkFrame to restore them';
 
   @override
-  String get settingsBackupFailed => 'Backup failed';
+  String get settingsBackupFailed =>
+      'Backup failed — see the log folder for details';
 
   @override
   String get settingsBackupsEmpty => 'No backups yet';
@@ -367,7 +370,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsDiagnosticsExported => 'Diagnostics exported';
 
   @override
-  String get settingsDiagnosticsExportFailed => 'Export failed';
+  String get settingsDiagnosticsExportFailed =>
+      'Export failed — see the log folder for details';
 
   @override
   String get settingsAboutSection => 'About';
@@ -438,10 +442,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAboutUpdateViewRelease => 'View release';
 
   @override
-  String get settingsAboutUpdateCheckFailed => 'Could not check for updates';
+  String get settingsAboutUpdateCheckFailed => 'Couldn\'t check for updates';
 
   @override
-  String get settingsAboutUpdateOpenFailed => 'Could not open the release page';
+  String get settingsAboutUpdateOpenFailed => 'Couldn\'t open the release page';
 
   @override
   String get settingsAboutUpdateAutoCheckLabel =>
@@ -601,7 +605,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get inspectorShotNotesHint =>
-      'Describe this shot (camera, action, mood)...';
+      'Describe this shot (camera, action, mood)…';
 
   @override
   String get inspectorShotGenerateImage => 'Generate image from notes';
@@ -669,11 +673,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorVideoModeAuto => 'Mode: auto-detected from inputs';
 
   @override
-  String get inspectorVideoGenerateDisabledEmptyPrompt => 'Prompt required';
+  String get inspectorVideoGenerateDisabledEmptyPrompt =>
+      'Write a prompt first';
 
   @override
   String get inspectorVideoGenerateDisabledNoKey =>
-      'API key required in Settings';
+      'Configure API key in Settings';
 
   @override
   String get inspectorVideoGenerate => 'Generate video';
@@ -913,7 +918,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingStepSampleBody =>
-      'Create a sample project to explore the canvas, or start from an empty studio.';
+      'Create a sample project to explore the canvas, or start from an empty Studio.';
 
   @override
   String get canvasRenderQueue => 'Render Queue';
@@ -923,24 +928,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get canvasRenderQueueCollapse => 'Collapse render queue';
-
-  @override
-  String get canvasNodeTypeCharacter => 'Character';
-
-  @override
-  String get canvasNodeTypeScene => 'Scene';
-
-  @override
-  String get canvasNodeTypeCamera => 'Camera';
-
-  @override
-  String get canvasNodeTypeProp => 'Prop';
-
-  @override
-  String get canvasNodeTypeShot => 'Shot';
-
-  @override
-  String get canvasNodeTypeImageGen => 'Image Gen';
 
   @override
   String get canvasBreadcrumbProject => 'Project';
@@ -1120,7 +1107,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get galleryBackTooltip => 'Back to studio';
+  String get galleryBackTooltip => 'Back to Studio';
 
   @override
   String get galleryEmptyTitle => 'No generated assets yet';

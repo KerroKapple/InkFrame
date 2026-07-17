@@ -7,19 +7,19 @@
 
   "commonCancel": "Cancel",
 
-  "errorInvalidKey": "API key is invalid. Check your provider settings.",
+  "errorInvalidKey": "API key was rejected by the provider. Update it in Settings → API Keys.",
   "errorInsufficientBalance": "Provider account has insufficient balance.",
-  "errorContentPolicy": "The content policy rejected this request.",
-  "errorInvalidParameter": "One or more request parameters are invalid.",
+  "errorContentPolicy": "The provider's content policy rejected this prompt. Adjust the prompt and try again.",
+  "errorInvalidParameter": "The provider rejected some generation settings. Adjust resolution, aspect ratio or duration and retry.",
   "errorNetworkTimeout": "Network timed out. Please retry.",
-  "errorNetworkOffline": "Network is offline. Check your connection.",
+  "errorNetworkOffline": "Couldn't reach the provider. Check your network connection, then retry.",
   "errorProviderServer": "The provider service is unavailable. Please retry.",
   "errorProviderBusy": "The provider is busy. Please retry shortly.",
   "errorProviderInvalidResponse": "The provider returned an invalid or empty result.",
   "errorPollTimeout": "Generation did not complete within the time limit.",
-  "errorDownloadFailed": "Failed to download the generated asset.",
+  "errorDownloadFailed": "The generated file couldn't be downloaded. Check your connection and retry.",
   "errorLocalIO": "Local disk I/O error. Check space and permissions.",
-  "errorCancelled": "Cancelled by user.",
+  "errorCancelled": "Cancelled.",
   "errorCancelledOnExit": "Cancelled because the application is exiting.",
   "errorUnknown": "An unknown error occurred.",
 
@@ -41,7 +41,7 @@
 
   "inspectorTitle": "Config",
   "inspectorPromptLabel": "Prompt",
-  "inspectorPromptHint": "Describe the image you want...",
+  "inspectorPromptHint": "Describe the image you want…",
   "inspectorProviderLabel": "Provider",
   "inspectorResolutionLabel": "Resolution",
   "inspectorAspectRatioLabel": "Aspect ratio",
@@ -59,9 +59,9 @@
   "inspectorGenerate": "Generate",
   "inspectorGenerateDisabledEmptyPrompt": "Write a prompt first",
   "inspectorGenerateDisabledNoKey": "Configure API key in Settings",
-  "inspectorStatusSubmitting": "Submitting...",
-  "inspectorStatusRunning": "Generating...",
-  "inspectorStatusRunningWithProgress": "Generating... {percent}%",
+  "inspectorStatusSubmitting": "Submitting…",
+  "inspectorStatusRunning": "Generating…",
+  "inspectorStatusRunningWithProgress": "Generating… {percent}%",
   "@inspectorStatusRunningWithProgress": {
     "placeholders": {
       "percent": { "type": "int" }
@@ -79,7 +79,7 @@
   "settingsApiKeySet": "Set",
   "settingsApiKeyNotSet": "Not set",
   "settingsApiKeySaved": "Saved",
-  "settingsApiKeySavedUnverified": "Saved, but the key could not be verified due to a network issue.",
+  "settingsApiKeySavedUnverified": "Saved. The key couldn't be verified right now (network or service issue) — it will be checked on first use.",
   "settingsApiKeyRejected": "The provider rejected this key. It was not saved.",
   "settingsApiKeyCleared": "Cleared",
 
@@ -104,11 +104,11 @@
   "settingsStoragePathCopied": "Path copied to clipboard",
 
   "settingsBackupSection": "Backups & restore",
-  "settingsBackupHint": "Daily cold backups of your local database, kept 7. Restore replaces the database only — media files on disk stay as-is.",
+  "settingsBackupHint": "Daily cold backups of your local database — the last 7 are kept. Restore replaces the database only — media files on disk stay as-is.",
   "settingsBackupNow": "Back up now",
   "settingsBackupDone": "Backup created",
   "settingsBackupNoBinaries": "Bundled PostgreSQL tools not found — reinstall InkFrame to restore them",
-  "settingsBackupFailed": "Backup failed",
+  "settingsBackupFailed": "Backup failed — see the log folder for details",
   "settingsBackupsEmpty": "No backups yet",
   "settingsBackupMetaLine": "{size} · {date}",
   "@settingsBackupMetaLine": {
@@ -143,7 +143,7 @@
   "settingsOpenLogDir": "Open log folder",
   "settingsExportDiagnostics": "Export diagnostics…",
   "settingsDiagnosticsExported": "Diagnostics exported",
-  "settingsDiagnosticsExportFailed": "Export failed",
+  "settingsDiagnosticsExportFailed": "Export failed — see the log folder for details",
 
   "settingsAboutSection": "About",
   "settingsAboutAppNameLabel": "Application",
@@ -185,8 +185,8 @@
     }
   },
   "settingsAboutUpdateViewRelease": "View release",
-  "settingsAboutUpdateCheckFailed": "Could not check for updates",
-  "settingsAboutUpdateOpenFailed": "Could not open the release page",
+  "settingsAboutUpdateCheckFailed": "Couldn't check for updates",
+  "settingsAboutUpdateOpenFailed": "Couldn't open the release page",
   "settingsAboutUpdateAutoCheckLabel": "Check for updates at startup",
 
   "generationMissingKey": "API key is missing",
@@ -263,7 +263,7 @@
 
   "inspectorShotTitle": "Shot",
   "inspectorShotNotesLabel": "Shot notes",
-  "inspectorShotNotesHint": "Describe this shot (camera, action, mood)...",
+  "inspectorShotNotesHint": "Describe this shot (camera, action, mood)…",
   "inspectorShotGenerateImage": "Generate image from notes",
   "inspectorShotLinkFailed": "Image node added, but linking failed",
 
@@ -294,8 +294,8 @@
   "cameraOrbit": "Orbit",
   "cameraHandheld": "Handheld",
   "inspectorVideoModeAuto": "Mode: auto-detected from inputs",
-  "inspectorVideoGenerateDisabledEmptyPrompt": "Prompt required",
-  "inspectorVideoGenerateDisabledNoKey": "API key required in Settings",
+  "inspectorVideoGenerateDisabledEmptyPrompt": "Write a prompt first",
+  "inspectorVideoGenerateDisabledNoKey": "Configure API key in Settings",
   "inspectorVideoGenerate": "Generate video",
 
   "lightboxClose": "Close",
@@ -397,17 +397,11 @@
   "onboardingStartEmpty": "Start empty",
   "onboardingKeysConsoleHint": "Get an API key from your provider's console and paste it above — you can also add or change keys later in Settings.",
   "onboardingStepSampleTitle": "Start creating",
-  "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty studio.",
+  "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty Studio.",
 
   "canvasRenderQueue": "Render Queue",
   "canvasRenderQueueExpand": "Expand render queue",
   "canvasRenderQueueCollapse": "Collapse render queue",
-  "canvasNodeTypeCharacter": "Character",
-  "canvasNodeTypeScene": "Scene",
-  "canvasNodeTypeCamera": "Camera",
-  "canvasNodeTypeProp": "Prop",
-  "canvasNodeTypeShot": "Shot",
-  "canvasNodeTypeImageGen": "Image Gen",
   "canvasBreadcrumbProject": "Project",
   "canvasBreadcrumbCanvas": "Canvas",
   "canvasBackToStudio": "Studio",
@@ -498,7 +492,7 @@
       "projectName": { "type": "String" }
     }
   },
-  "galleryBackTooltip": "Back to studio",
+  "galleryBackTooltip": "Back to Studio",
   "galleryEmptyTitle": "No generated assets yet",
   "galleryEmptySubtitle": "Images and videos generated on this project's canvases will appear here.",
   "galleryLoadFailed": "Failed to load gallery",

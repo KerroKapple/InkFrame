@@ -52,7 +52,7 @@ void main() {
     expect(find.text('Trash is empty'), findsOneWidget);
   });
 
-  testWidgets('软删项目渲染（名+删除时间）→ 恢复后行消失、工作库可见', (tester) async {
+  testWidgets('软删项目渲染（名+删除时间）→ 恢复后行消失、项目库可见', (tester) async {
     final repo = InMemoryProjectRepository();
     final p1 = await repo.create(name: 'Doomed');
     await repo.create(name: 'Alive');

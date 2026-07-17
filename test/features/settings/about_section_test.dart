@@ -256,7 +256,7 @@ void main() {
     await tester.tap(find.text('Check for updates'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Could not check for updates'), findsOneWidget);
+    expect(find.text("Couldn't check for updates"), findsOneWidget);
   });
 
   testWidgets('启动检查开关：默认开,点击后持久化为关', (tester) async {

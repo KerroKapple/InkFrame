@@ -212,7 +212,7 @@ void main() {
     await pump(tester);
     await tester.tap(find.text('Back up now'));
     await tester.pumpAndSettle();
-    expect(toast.shown.single.message, 'Backup failed');
+    expect(toast.shown.single.message, 'Backup failed — see the log folder for details');
     expect(toast.shown.single.kind, ToastKind.error);
   });
 

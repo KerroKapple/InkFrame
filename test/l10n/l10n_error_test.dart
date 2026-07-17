@@ -35,7 +35,7 @@ void main() {
         tester,
         const ProviderError(code: InkErrorCode.invalidKey),
       );
-      expect(s, 'API key is invalid. Check your provider settings.');
+      expect(s, 'API key was rejected by the provider. Update it in Settings → API Keys.');
     });
 
     testWidgets('network_timeout → 超时文案', (tester) async {
@@ -49,7 +49,7 @@ void main() {
     testWidgets('cancelled_by_user vs cancelled_on_exit 文案不同', (tester) async {
       final byUser = await _resolve(tester, const CancelledError.byUser());
       final onExit = await _resolve(tester, const CancelledError.onExit());
-      expect(byUser, 'Cancelled by user.');
+      expect(byUser, 'Cancelled.');
       expect(onExit, 'Cancelled because the application is exiting.');
       expect(byUser, isNot(onExit));
     });
@@ -57,7 +57,7 @@ void main() {
     testWidgets('download_failed / local_io 各自文案', (tester) async {
       expect(
         await _resolve(tester, const DownloadError()),
-        'Failed to download the generated asset.',
+        "The generated file couldn't be downloaded. Check your connection and retry.",
       );
       expect(
         await _resolve(tester, const LocalIOError()),
@@ -80,7 +80,7 @@ void main() {
       const err = ProviderError(code: InkErrorCode.invalidKey);
       final zh = await _resolve(tester, err, locale: const Locale('zh'));
       final en = await _resolve(tester, err);
-      expect(zh, 'API Key 无效，请检查 Provider 设置。');
+      expect(zh, 'API Key 无效，请到「设置 → API Keys」更新。');
       expect(zh, isNot(en));
     });
 
@@ -90,7 +90,7 @@ void main() {
         const CancelledError.byUser(),
         locale: const Locale('zh'),
       );
-      expect(zh, '已被用户取消。');
+      expect(zh, '已取消。');
     });
   });
 
