@@ -411,10 +411,17 @@ class InMemoryStyleLaneRepository implements StyleLaneRepository {
 
   @override
   Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async {
+    // 与 PG 实现同构排序：sort_order ASC, created_at ASC。
     return _rows.values
         .where((r) => r['canvas_id'] == canvasId && r['deleted_at'] == null)
         .map(Map<String, Object?>.of)
-        .toList();
+        .toList()
+      ..sort((a, b) {
+        final so = (a['sort_order']! as int).compareTo(b['sort_order']! as int);
+        if (so != 0) return so;
+        return (a['created_at']! as DateTime)
+            .compareTo(b['created_at']! as DateTime);
+      });
   }
 
   @override

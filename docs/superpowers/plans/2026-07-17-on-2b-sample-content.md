@@ -31,7 +31,7 @@
 
 - [ ] **Step 1: 红测** — 重写控制器测试为 FakeUnitOfWork + InMemory 仓储：断言 lane 落库（label/stylePrompt 来自 seed）、node 落库（type=image, node_role=config, lane_id=新 lane, type_config.prompt=seed.nodePrompt, positionY+height ≤ 400）、currentCanvasId 切换、二次调用累加。跑 `flutter test test/features/canvas/providers/canvas_bootstrap_controller_test.dart` 看它编译失败/断言失败。
 - [ ] **Step 2: InMemoryStyleLaneRepository** — 仿 InMemoryNodeRepository 加进 `_harness/fake_repositories.dart`（create/findById/listByCanvas/update/softDelete/restore/hardDelete，内存 Map）。
-- [ ] **Step 3: 实现** — 控制器加 `SampleSeed` typedef + 常量 `kSampleNodePos = Offset(120, 90)`（画布模型已有 `defaultNodeSize`）；createSample 改 uow.run 单事务四步落库；ME-27 读序保持。
+- [ ] **Step 3: 实现** — 控制器加 `SampleSeed` typedef + 常量 `kSampleNodePosition = Offset(120, 90)`（画布模型已有 `defaultNodeSize`）；createSample 改 uow.run 单事务四步落库；ME-27 读序保持。
 - [ ] **Step 4: 绿** — 上述测试过。
 - [ ] **Step 5: commit** — `feat(canvas): ON-2b createSample 种子化——单事务 lane+预填节点`
 

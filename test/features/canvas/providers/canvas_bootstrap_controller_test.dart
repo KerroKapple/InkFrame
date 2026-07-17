@@ -5,6 +5,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/providers/canvas_bootstrap_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 
@@ -17,6 +18,27 @@ const _seed = (
   nodeLabel: 'First Shot',
   nodePrompt: 'A lone boat on a misty river',
 );
+
+/// create 必抛 LocalIOError 的节点仓储——驱动种子事务失败路径。
+class _FailingNodeRepository extends InMemoryNodeRepository {
+  @override
+  Future<String> create({
+    required String canvasId,
+    required String type,
+    required String nodeRole,
+    String label = '',
+    String? sourceNodeId,
+    String? laneId,
+    double positionX = 0,
+    double positionY = 0,
+    double width = 240,
+    double height = 240,
+    int zIndex = 0,
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) async {
+    throw const LocalIOError(extra: {'op': 'node.create'});
+  }
+}
 
 void main() {
   late InMemoryProjectRepository projects;
@@ -84,11 +106,45 @@ void main() {
     expect(node['label'], _seed.nodeLabel);
     final typeConfig = node['type_config'] as Map<String, Object?>;
     expect(typeConfig['prompt'], _seed.nodePrompt);
-    // 默认泳道厚 400（horizontal 带 = 世界 Y ∈ [0,400)）：节点整体落带内
+    // 默认泳道厚 400（horizontal 带 = 世界 Y ∈ [0,400)）：节点整体落带内；
+    // X 轴同断（direction 切 vertical 时带变 X ∈ [0,400)，节点仍整体落带）。
     final y = node['position_y'] as double;
     final h = node['height'] as double;
     expect(y, greaterThanOrEqualTo(0));
     expect(y + h, lessThanOrEqualTo(400));
+    final x = node['position_x'] as double;
+    final w = node['width'] as double;
+    expect(x, greaterThanOrEqualTo(0));
+    expect(x + w, lessThanOrEqualTo(400));
+  });
+
+  test('种子事务任一步失败：rethrow 且 currentCanvasId 不切换、prefs 不写', () async {
+    // FakeUnitOfWork 不回滚（真回滚语义由真 PG transaction_integration_test 背书）；
+    // 本例锁的是控制器自己的不变量：state/prefs 写在 uow.run 之后，失败即全不动。
+    final failing = ProviderContainer(
+      overrides: <Override>[
+        unitOfWorkProvider.overrideWith(
+          (_) async => FakeUnitOfWork(FakeRepositoryScope(
+            projects: projects,
+            canvas: canvases,
+            styleLanes: lanes,
+            nodes: _FailingNodeRepository(),
+          )),
+        ),
+      ],
+    );
+    addTearDown(failing.dispose);
+
+    final controller = failing.read(canvasBootstrapControllerProvider);
+    await expectLater(
+      controller.createSample(
+        projectName: 'P',
+        canvasName: 'C',
+        seed: _seed,
+      ),
+      throwsA(isA<LocalIOError>()),
+    );
+    expect(failing.read(currentCanvasIdProvider), isNull);
   });
 
   test('再次 createSample 累加而不覆盖，currentCanvasId 指向最后一个', () async {
