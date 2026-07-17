@@ -92,6 +92,7 @@
 | **LB-12 项目导入（W4 压轴/最大风险卡收官）**：全表 UUID 重映射+FK/JSONB 重写（含 type_config.character_ids）；zip 安全门（实测字节防 bomb/重名拒/保留名/UUID 段）；files 先行 staging+rename 收崩溃窗口；单事务+补偿零残留；roundtrip 大红测过；三大重操作互斥 | #192 |
 | **Windows pg_ctl start 管道继承挂死（真机验收逮到的潜在 P0）**：postmaster 继承 Process.run 管道句柄致冷启动挂死至库进程落幕；Windows 分支改 inheritStdio；新增 realpg 门控真栈 E2E（真 initdb SCRAM→pg_ctl→迁移 v7→pg_dump→pg_restore 对换→teardown，5s 全链） | #194 |
 | ON-2b 示例项目演示内容：createSample 单事务种子化（示例泳道+预填 prompt 的 image config 节点，纯本地零生成）；SampleSeed 经 ARB 由三入口传入 | #195 |
+| ON-3 设置页 ffmpeg 状态行：仿安全存储探测模式；未找到=平台化指引（winget/brew+INKFRAME_FFMPEG），mac/win 外复用 exportVideoFfmpegMissing 防双源；重进设置页即重探 | #196 |
 
 ## M1 补遗（审计发现的悬空项）
 

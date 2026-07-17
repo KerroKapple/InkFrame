@@ -176,8 +176,9 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
 8. **GAP-2 软删项目回收站 UI**(M)✅ **#190 已合**(≡LB-15：sidebar 真回收站入口取代 ARCHIVE 死行、
    管理画布已删区;首版无永久删除)。
 9. **PL-6 窗口状态记忆**(S–M)✅ **#170 已合**(退出捕获+启动恢复+多显示器 clamp)。
-10. **ON-3 ffmpeg 引导**(S–M,排导出 UI 合入后)+ **ON-4/i18n pass**(S)+
-    **GAP-7 Inspector 测试欠账 + ON-5 空态 golden**(质量闸随窗)。
+10. **ON-3 ffmpeg 引导**(S–M)✅ **#196 已合**(设置页 About 区探测行:找到=路径/
+    未找到=平台化指引 winget/brew+INKFRAME_FFMPEG,复用 exportVideoFfmpegMissing 防双源)。
+    余:**ON-4/i18n pass**(S)+ **GAP-7 Inspector 测试欠账 + ON-5 空态 golden**(质量闸随窗)。
 
 **上线后首迭代起**:PL-4b undo 栈、CV-4 左工具栏实装/CV-5 视口 chrome(zoom 指示+fit,minimap 后置)、
 CV-2/CV-3(节点色条/Inspector 浮动,拍板后随时)、PL-3 右键菜单(建议尽早)、PL-5 框选群拖、
