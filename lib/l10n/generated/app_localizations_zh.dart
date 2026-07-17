@@ -375,6 +375,25 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get settingsAboutFfmpegLabel => '视频导出（ffmpeg）';
+
+  @override
+  String get settingsAboutFfmpegProbing => '检测中…';
+
+  @override
+  String settingsAboutFfmpegAvailable(String path) {
+    return '可用（$path）';
+  }
+
+  @override
+  String get settingsAboutFfmpegMissingWindows =>
+      '未检测到——视频导出不可用。可经 winget 安装（winget install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径';
+
+  @override
+  String get settingsAboutFfmpegMissingMac =>
+      '未检测到——视频导出不可用。可经 Homebrew 安装（brew install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径';
+
+  @override
   String get settingsAboutLicensesButton => '开源许可';
 
   @override

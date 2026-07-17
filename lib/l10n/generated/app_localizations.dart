@@ -782,6 +782,36 @@ abstract class AppLocalizations {
   /// **'Unavailable: {reason}'**
   String settingsAboutSecureStorageUnavailable(String reason);
 
+  /// No description provided for @settingsAboutFfmpegLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Video export (ffmpeg)'**
+  String get settingsAboutFfmpegLabel;
+
+  /// No description provided for @settingsAboutFfmpegProbing.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking…'**
+  String get settingsAboutFfmpegProbing;
+
+  /// No description provided for @settingsAboutFfmpegAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available ({path})'**
+  String settingsAboutFfmpegAvailable(String path);
+
+  /// No description provided for @settingsAboutFfmpegMissingWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found — video export is disabled. Install via winget (winget install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location'**
+  String get settingsAboutFfmpegMissingWindows;
+
+  /// No description provided for @settingsAboutFfmpegMissingMac.
+  ///
+  /// In en, this message translates to:
+  /// **'Not found — video export is disabled. Install via Homebrew (brew install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location'**
+  String get settingsAboutFfmpegMissingMac;
+
   /// No description provided for @settingsAboutLicensesButton.
   ///
   /// In en, this message translates to:
