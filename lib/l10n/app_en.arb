@@ -83,6 +83,34 @@
   "settingsApiKeyRejected": "The provider rejected this key. It was not saved.",
   "settingsApiKeyCleared": "Cleared",
 
+  "settingsCustomProvidersSection": "Custom Providers",
+  "settingsCustomProvidersHint": "OpenAI-compatible endpoints, stored in custom_providers.json. API keys stay in secure storage. Changes take effect after restart.",
+  "settingsCustomProvidersEmpty": "No custom providers yet",
+  "settingsCustomProvidersAdd": "Add provider",
+  "settingsCustomProvidersRestartNotice": "Changes saved — restart InkFrame to apply",
+  "settingsCustomProviderAddTitle": "Add custom provider",
+  "settingsCustomProviderEditTitle": "Edit custom provider",
+  "settingsCustomProviderFieldId": "ID",
+  "settingsCustomProviderFieldDisplayName": "Display name",
+  "settingsCustomProviderFieldTemplate": "Template",
+  "settingsCustomProviderFieldBaseUrl": "Base URL",
+  "settingsCustomProviderFieldModelId": "Model ID",
+  "settingsCustomProviderSave": "Save",
+  "settingsCustomProviderErrorRequired": "Required",
+  "settingsCustomProviderErrorInvalidId": "Letters, digits, - and _ only; must start with a letter or digit",
+  "settingsCustomProviderErrorDuplicateId": "This ID is already in use",
+  "settingsCustomProviderErrorReservedId": "Conflicts with a built-in provider",
+  "settingsCustomProviderErrorInvalidBaseUrl": "Absolute http(s) URL without query, fragment or credentials",
+  "settingsCustomProviderDeleteTitle": "Delete provider?",
+  "settingsCustomProviderDeleteBody": "\"{name}\" will be removed from the config file. Its API key in secure storage is not deleted.",
+  "@settingsCustomProviderDeleteBody": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "settingsCustomProviderDeleteConfirm": "Delete",
+  "settingsCustomProviderSaveFailed": "Couldn't save. If custom_providers.json is corrupted, fix or remove it and retry.",
+
   "settingsThemeSection": "Theme",
   "settingsCanvasSection": "Canvas",
   "settingsCanvasEdgeColor": "Connection line color",

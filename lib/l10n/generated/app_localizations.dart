@@ -476,6 +476,138 @@ abstract class AppLocalizations {
   /// **'Cleared'**
   String get settingsApiKeyCleared;
 
+  /// No description provided for @settingsCustomProvidersSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom Providers'**
+  String get settingsCustomProvidersSection;
+
+  /// No description provided for @settingsCustomProvidersHint.
+  ///
+  /// In en, this message translates to:
+  /// **'OpenAI-compatible endpoints, stored in custom_providers.json. API keys stay in secure storage. Changes take effect after restart.'**
+  String get settingsCustomProvidersHint;
+
+  /// No description provided for @settingsCustomProvidersEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom providers yet'**
+  String get settingsCustomProvidersEmpty;
+
+  /// No description provided for @settingsCustomProvidersAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add provider'**
+  String get settingsCustomProvidersAdd;
+
+  /// No description provided for @settingsCustomProvidersRestartNotice.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes saved — restart InkFrame to apply'**
+  String get settingsCustomProvidersRestartNotice;
+
+  /// No description provided for @settingsCustomProviderAddTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add custom provider'**
+  String get settingsCustomProviderAddTitle;
+
+  /// No description provided for @settingsCustomProviderEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit custom provider'**
+  String get settingsCustomProviderEditTitle;
+
+  /// No description provided for @settingsCustomProviderFieldId.
+  ///
+  /// In en, this message translates to:
+  /// **'ID'**
+  String get settingsCustomProviderFieldId;
+
+  /// No description provided for @settingsCustomProviderFieldDisplayName.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get settingsCustomProviderFieldDisplayName;
+
+  /// No description provided for @settingsCustomProviderFieldTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Template'**
+  String get settingsCustomProviderFieldTemplate;
+
+  /// No description provided for @settingsCustomProviderFieldBaseUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Base URL'**
+  String get settingsCustomProviderFieldBaseUrl;
+
+  /// No description provided for @settingsCustomProviderFieldModelId.
+  ///
+  /// In en, this message translates to:
+  /// **'Model ID'**
+  String get settingsCustomProviderFieldModelId;
+
+  /// No description provided for @settingsCustomProviderSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get settingsCustomProviderSave;
+
+  /// No description provided for @settingsCustomProviderErrorRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get settingsCustomProviderErrorRequired;
+
+  /// No description provided for @settingsCustomProviderErrorInvalidId.
+  ///
+  /// In en, this message translates to:
+  /// **'Letters, digits, - and _ only; must start with a letter or digit'**
+  String get settingsCustomProviderErrorInvalidId;
+
+  /// No description provided for @settingsCustomProviderErrorDuplicateId.
+  ///
+  /// In en, this message translates to:
+  /// **'This ID is already in use'**
+  String get settingsCustomProviderErrorDuplicateId;
+
+  /// No description provided for @settingsCustomProviderErrorReservedId.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflicts with a built-in provider'**
+  String get settingsCustomProviderErrorReservedId;
+
+  /// No description provided for @settingsCustomProviderErrorInvalidBaseUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'Absolute http(s) URL without query, fragment or credentials'**
+  String get settingsCustomProviderErrorInvalidBaseUrl;
+
+  /// No description provided for @settingsCustomProviderDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete provider?'**
+  String get settingsCustomProviderDeleteTitle;
+
+  /// No description provided for @settingsCustomProviderDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'\"{name}\" will be removed from the config file. Its API key in secure storage is not deleted.'**
+  String settingsCustomProviderDeleteBody(String name);
+
+  /// No description provided for @settingsCustomProviderDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get settingsCustomProviderDeleteConfirm;
+
+  /// No description provided for @settingsCustomProviderSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save. If custom_providers.json is corrupted, fix or remove it and retry.'**
+  String get settingsCustomProviderSaveFailed;
+
   /// No description provided for @settingsThemeSection.
   ///
   /// In en, this message translates to:

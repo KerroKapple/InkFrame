@@ -218,6 +218,81 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsApiKeyCleared => 'Cleared';
 
   @override
+  String get settingsCustomProvidersSection => 'Custom Providers';
+
+  @override
+  String get settingsCustomProvidersHint =>
+      'OpenAI-compatible endpoints, stored in custom_providers.json. API keys stay in secure storage. Changes take effect after restart.';
+
+  @override
+  String get settingsCustomProvidersEmpty => 'No custom providers yet';
+
+  @override
+  String get settingsCustomProvidersAdd => 'Add provider';
+
+  @override
+  String get settingsCustomProvidersRestartNotice =>
+      'Changes saved — restart InkFrame to apply';
+
+  @override
+  String get settingsCustomProviderAddTitle => 'Add custom provider';
+
+  @override
+  String get settingsCustomProviderEditTitle => 'Edit custom provider';
+
+  @override
+  String get settingsCustomProviderFieldId => 'ID';
+
+  @override
+  String get settingsCustomProviderFieldDisplayName => 'Display name';
+
+  @override
+  String get settingsCustomProviderFieldTemplate => 'Template';
+
+  @override
+  String get settingsCustomProviderFieldBaseUrl => 'Base URL';
+
+  @override
+  String get settingsCustomProviderFieldModelId => 'Model ID';
+
+  @override
+  String get settingsCustomProviderSave => 'Save';
+
+  @override
+  String get settingsCustomProviderErrorRequired => 'Required';
+
+  @override
+  String get settingsCustomProviderErrorInvalidId =>
+      'Letters, digits, - and _ only; must start with a letter or digit';
+
+  @override
+  String get settingsCustomProviderErrorDuplicateId =>
+      'This ID is already in use';
+
+  @override
+  String get settingsCustomProviderErrorReservedId =>
+      'Conflicts with a built-in provider';
+
+  @override
+  String get settingsCustomProviderErrorInvalidBaseUrl =>
+      'Absolute http(s) URL without query, fragment or credentials';
+
+  @override
+  String get settingsCustomProviderDeleteTitle => 'Delete provider?';
+
+  @override
+  String settingsCustomProviderDeleteBody(String name) {
+    return '\"$name\" will be removed from the config file. Its API key in secure storage is not deleted.';
+  }
+
+  @override
+  String get settingsCustomProviderDeleteConfirm => 'Delete';
+
+  @override
+  String get settingsCustomProviderSaveFailed =>
+      'Couldn\'t save. If custom_providers.json is corrupted, fix or remove it and retry.';
+
+  @override
   String get settingsThemeSection => 'Theme';
 
   @override

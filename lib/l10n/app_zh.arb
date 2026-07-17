@@ -75,6 +75,34 @@
   "settingsApiKeyRejected": "服务商拒绝了该 Key，未保存。",
   "settingsApiKeyCleared": "已清除",
 
+  "settingsCustomProvidersSection": "自定义服务商",
+  "settingsCustomProvidersHint": "OpenAI 兼容端点，存于 custom_providers.json；API Key 仍在安全存储。更改重启后生效。",
+  "settingsCustomProvidersEmpty": "暂无自定义服务商",
+  "settingsCustomProvidersAdd": "添加服务商",
+  "settingsCustomProvidersRestartNotice": "更改已保存——重启 InkFrame 后生效",
+  "settingsCustomProviderAddTitle": "添加自定义服务商",
+  "settingsCustomProviderEditTitle": "编辑自定义服务商",
+  "settingsCustomProviderFieldId": "ID",
+  "settingsCustomProviderFieldDisplayName": "显示名",
+  "settingsCustomProviderFieldTemplate": "协议模板",
+  "settingsCustomProviderFieldBaseUrl": "Base URL",
+  "settingsCustomProviderFieldModelId": "模型 ID",
+  "settingsCustomProviderSave": "保存",
+  "settingsCustomProviderErrorRequired": "必填",
+  "settingsCustomProviderErrorInvalidId": "仅限字母、数字、- 与 _，且以字母或数字开头",
+  "settingsCustomProviderErrorDuplicateId": "该 ID 已被占用",
+  "settingsCustomProviderErrorReservedId": "与内置服务商冲突",
+  "settingsCustomProviderErrorInvalidBaseUrl": "须为绝对 http(s) 地址，不含 query、fragment 或账号信息",
+  "settingsCustomProviderDeleteTitle": "删除服务商？",
+  "settingsCustomProviderDeleteBody": "「{name}」将从配置文件移除；安全存储中的 API Key 不会删除。",
+  "@settingsCustomProviderDeleteBody": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "settingsCustomProviderDeleteConfirm": "删除",
+  "settingsCustomProviderSaveFailed": "保存失败。若 custom_providers.json 已损坏，请修复或删除后重试。",
+
   "settingsThemeSection": "主题",
   "settingsCanvasSection": "画布外观",
   "settingsCanvasEdgeColor": "连线颜色",
