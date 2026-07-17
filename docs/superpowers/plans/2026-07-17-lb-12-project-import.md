@@ -35,7 +35,15 @@
    失败补偿：③ 失败→删 `projects/{newProjectId}` 目录（无行无引用，删净即零残留）；①/② 失败→删 staging。崩溃窗口（②后③前/③中断电）残留=**一个无行背书的孤儿目录**——不可见、无害（对比 rev1 的「行在图裂的可见残缺项目」）；启动清扫 `.import-*` 残留目录（service init 顺手，一行 listSync）。补偿自身失败→ ERROR 日志（含路径）不扩散。
 6. **命名与时间戳**：导入行保真（created_at/updated_at/deleted_at 原样——回收站随包恢复，与 LB-11 全保真对偶）；项目名原样（同名容忍，BOARD 既有债口径）；导入的项目获得全新 id，绝不与既有行冲突。
 7. **jobs 终态化（rev2 补全）**：批量部分成功期间 job 仍 polling——导入时非终态 status 改写 `cancelled` **并补写 completed_at（=该行 created_at；#149 孤儿回收教训：终态行必须有 completed_at）**；slot generating → `cancelled` 同补 completed_at。这些行全有 success slot，purge 的 success-slot 守卫（#163）本就永久保护。roundtrip DoD 表述修正：行数相等 + 字段抽查相等，**除拍板 7 的显式改写字段**（单独断言：在途种子 job 导入后 status=cancelled 且 completed_at 非空）。
-8. **type_config 内 id 形引用核查（数据轴强制项）**：Task 2 实现前 grep 全部 type_config 写点（inspector/controller/persister），确认是否存在 character_ids/节点引用类键——有则入重映射面，无则在 PR body 记录论证与 grep 证据。
+8. **type_config 内 id 形引用核查（数据轴强制项）——已核，命中 1 处**：
+   `nodes.type_config['character_ids']`（generation_controller.dart:656/717，角色注入读它）
+   **必须重映射**（经 characterMap；悬空条目丢弃+计数）。全仓 `_id(s)` 形键扫描其余命中
+   均为日志 extra 或表列名，无第二处（grep 证据入 PR body）。
+   补充裁决（NOT NULL FK 悬空的宽容策略细化）：可空引用（source_node_id/lane_id/
+   cover_node_id/result_node_id/promoted_node_id）悬空→置 NULL+计数；**NOT NULL 引用**
+   （nodes.canvas_id/edges 双端/jobs.canvas_id+source_node_id/batch.node_id+job_id）
+   悬空→**整行丢弃**+计数（job 被丢连带其 slots）；canvases/characters/presets 的
+   project_id 一律强写 newProjectId（单项目包）。
 9. **重操作互斥**：新增 `projectImportBusyProvider`（app 级）；导入入口在 `databaseRestoreBusyProvider || projectExportBusyProvider || importBusy` 任一为真时禁用（三大重操作互不并发；反向禁用记 BOARD 小债——还原/导出侧本卡不回改）。导入成功后 `selectedProjectIdProvider` 自动选中新项目 + workspace invalidate + toast。
 
 ## Tasks（每个含红测先行 + commit）
