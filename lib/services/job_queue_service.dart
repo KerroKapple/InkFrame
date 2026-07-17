@@ -171,8 +171,12 @@ class InMemoryJobQueueService implements JobQueueService {
     for (final p in _pending) {
       if (p.cancelled) continue; // 已 cancel 的事件已发过
       // dispose 是同步接口，持久化只能 fire-and-forget；init() 的 pending 回收兜底。
-      unawaited(
-          _state.persistCancel(p.task.jobId, fromStatuses: const [JobStatuses.pending]));
+      // catchError：关池窗口（LB-22 还原）写库抛 StateError，裸 unawaited 会把
+      // 未处理错误捅进 zone 刷崩溃文件。
+      unawaited(_state
+          .persistCancel(p.task.jobId,
+              fromStatuses: const [JobStatuses.pending])
+          .catchError((Object _) => null));
       _emitFailure(p.handle, _cancelledError(p.task.jobId));
     }
     _pending.clear();
@@ -277,7 +281,13 @@ class InMemoryJobQueueService implements JobQueueService {
         pollInitial: caps.pollInterval ?? _pollInitial,
       );
     } on InkError catch (e) {
-      final rows = await _state.persistFailure(task, e, running);
+      int? rows;
+      try {
+        rows = await _state.persistFailure(task, e, running);
+      } catch (_) {
+        // 放行点（LB-22 评审 P1-3）：关池窗口（还原期间）写库必抛 StateError——
+        // 内存路径必达优先，行状态由链重建后 init() 的孤儿回收兜底。
+      }
       _emitFailure(handle, _arbitrate(rows, running, e, task.jobId));
     } catch (e, st) {
       // HI-01 兜底：非 InkError（provider bug / 库异常）逃逸会让 handle 永挂。
@@ -287,7 +297,11 @@ class InMemoryJobQueueService implements JobQueueService {
         stackTrace: st,
         extra: {'job_id': task.jobId},
       );
-      await _state.persistFailure(task, err, running);
+      try {
+        await _state.persistFailure(task, err, running);
+      } catch (_) {
+        // 放行点：同上——persistFailure 再炸也不得挡 _emitFailure。
+      }
       _emitFailure(handle, err);
     } finally {
       _running.remove(task.jobId);

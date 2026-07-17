@@ -91,6 +91,40 @@
   "settingsStorageCopyPath": "复制路径",
   "settingsStoragePathCopied": "路径已复制到剪贴板",
 
+  "settingsBackupSection": "备份与还原",
+  "settingsBackupHint": "本地数据库每日自动冷备，保留 7 份。还原只替换数据库——磁盘上的媒体文件不回滚。",
+  "settingsBackupNow": "立即备份",
+  "settingsBackupDone": "已创建备份",
+  "settingsBackupNoBinaries": "未找到内置 PostgreSQL 工具——请重新安装 InkFrame",
+  "settingsBackupFailed": "备份失败",
+  "settingsBackupsEmpty": "暂无备份",
+  "settingsBackupMetaLine": "{size} · {date}",
+  "@settingsBackupMetaLine": {
+    "placeholders": {
+      "size": { "type": "String" },
+      "date": { "type": "DateTime", "format": "yyyy-MM-dd HH:mm", "isCustomDateFormat": "true" }
+    }
+  },
+  "settingsBackupKindDaily": "每日",
+  "settingsBackupKindManual": "手动",
+  "settingsBackupKindPreRestore": "还原前",
+  "settingsRestore": "还原",
+  "restoreConfirmTitle": "从备份还原？",
+  "restoreConfirmBody": "用「{file}」（{date}）替换当前数据？还原前会尽量先备份一次；进行中的生成任务会被取消，完成后将回到主页。磁盘上的媒体文件不回滚。",
+  "@restoreConfirmBody": {
+    "placeholders": {
+      "file": { "type": "String" },
+      "date": { "type": "DateTime", "format": "yyyy-MM-dd HH:mm", "isCustomDateFormat": "true" }
+    }
+  },
+  "restoreDone": "还原完成",
+  "restoreFailed": "还原失败——你的数据未被改动",
+  "restoreFailedCorrupt": "备份文件校验未通过",
+  "restoreFailedVersionNewer": "该备份来自更新版本的 InkFrame",
+  "restoreAbortedPreBackup": "安全备份失败——已取消还原",
+  "restoreInProgress": "正在还原…",
+  "startupErrorRestoreLatest": "从最近备份还原",
+
   "settingsAboutSection": "关于",
   "settingsAboutAppNameLabel": "应用",
   "settingsAboutVersionLabel": "版本",

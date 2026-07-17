@@ -107,14 +107,14 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 > ⚠️ 前缀说明:backend 上线后卡已改用 **BP-xx** 前缀(原 PL-xx),与 UI 打磨卡 PL-1~8 区分。
 > 与 UI 卡去重:LB-06≡GAP-3、LB-15≡GAP-2、LB-05 联动 GAP-8——同一工作只排一张;
 > Inspector 测试欠账裁决为**上线前**(UI GAP-7 为准,backend 债 #19 让渡)。
-> 严格复审新增三卡:**LB-22 备份还原路径**(SCRAM 后用户无法手工 pg_restore——app 内还原入口,
+> 严格复审新增三卡:**LB-22 备份还原路径 ✅ #189**(SCRAM 后用户无法手工 pg_restore——app 内还原入口,
 > beta 前 M)、**LB-23 内存基线**(ImageCache 上限/长会话水位,S-M)、**LB-24 网络代理支持**
 > (dio 不读系统代理,中文用户连不上海外模型商——`HTTPS_PROXY` env 先行 + 设置页代理区,上线前 M)。
 
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、
 上线后 9、永久接受 3(buildUpdate 白名单/InkWindowChrome/displayName 英文)。
 
-**上线前硬门槛(数据安全)** — 进度 2026-07-16:LB-07/09/10/11/13a/13b/14/17 ✅ 已合入,余下待做:
+**上线前硬门槛(数据安全)** — 进度 2026-07-17:LB-07/09/10/11/13a/13b/14/17/22 ✅ 已合入,余下待做:
 - **LB-07 PG trust→SCRAM**:✅ #172(SCRAM-SHA-256 + 随机密码入 SecureStorage,存量 trust 零迁移)
 - **LB-10 每日 pg_dump 冷备**:✅ #185(启动 post-frame 触发,-Fc tmp→rename 原子写,当日跳过,
   保留 7 份,PGPASSWORD 经 env,开发机无打包 PG 跳过;失败仅 warn 绝不阻断;恢复手册进 SETUP.md)

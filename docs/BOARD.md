@@ -85,6 +85,7 @@
 | 全向无限画布（100k 居中定舞台、负坐标合法）+ 泳道终版语义（拖画布跟手、缩放不改道厚） | #186 |
 | #186 对抗评审 P2-1 补：存量 >50k 越界节点加载期收敛进 ±kWorldReach（内存收敛不回写）+ 注释腐化 ×3 | #187 |
 | LB-11 项目导出（zip=manifest+data+files 全保真含软删保 FK 闭包；.partial 原子写；项目卡菜单入口；清债#20） | #188 |
+| LB-22 备份还原（scratch 库对换失败不动原库；三族备份分池+sidecar 校验；设置页数据区+启动失败面入口；顺带 start 单飞+JobQueue 关池 handle 必达） | #189 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -133,3 +134,6 @@
 | 竖向末道 <200px 时标题栏按钮点不动（#186 评审 P2-3:皮 Positioned 盒宽=lanesTotal,溢出部分可见不可命中;标签区可拖是唯一逃生口） | 🅿️ | 同上根因族;修法=标题栏盒宽脱离道宽或按钮区折叠 |
 | 建点位置固定世界 (200..600),全向漫游后建点必在屏幕外（#186 评审 P3-3:旧模型只右下漫游概率低,全向后被放大;命令面板/FAB/空态三入口同病） | 🅿️ | 改视口中心落点,S 级;非 #186 引入 |
 | 项目导出大文件路径（#188 评审 P2-4）:archive 包 deflate 把单文件压缩输出整段驻内存（GB 视频=GB 峰值）且同步压缩冻结 UI;附带 addFile 异常路径泄漏源文件句柄（Windows 进程退出才释放） | 🅿️ | 媒体改 store 不压缩 + Isolate.run 整体导出;与 LB-12 进度组件同窗做,v1 有 busy 防重入垫底 |
+| OrphanFileReaper 转真删前必须 restore-aware（LB-22 评审 P3-1）:还原旧备份后新生成文件成 DB 孤儿——reaper 真删会吃掉「还原更新备份时还需要的文件」;当前 DRY-RUN 无害 | 🅿️ | LB-13b 真删灰度的前置不变量;修法=还原动作后重置 mtime 护栏或记还原水位 |
+| pg_dump/pg_restore 无超时（LB-22 评审 P3-2）:挂死子进程让备份/还原 busy 永久锁 UI;与 EX-3 ffmpeg 同根因（ProcessRunner 无 kill/timeout 通道） | 🅿️ | 随 EX-3「进度取消」同窗:ProcessRunner 加 timeout/kill,还原配 --single-transaction 超时 kill 事务自动回滚无半状态 |
+| 还原对换的 retired 库残留（DROP 失败仅 warn）与 swap_stranded 极端夹缝无启动期清扫/救援 | 🅿️ | 空间代价可接受;随 LB-12 同窗盘点:启动 housekeeping 扫 inkframe_retired_*/inkframe_restore_tmp 报告或回收 |

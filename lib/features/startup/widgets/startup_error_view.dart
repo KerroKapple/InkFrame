@@ -1,24 +1,30 @@
-// StartupErrorView：启动失败全屏 surface（LB-09）。
+// StartupErrorView：启动失败全屏 surface（LB-09 / LB-22）。
 //
 // 当 DB-ready future（pgMigratedPoolProvider）处于 AsyncError 时，顶层 gate
 // （app.dart 的 _StartupGate）用它替代白屏：解释数据库启动失败、亮出日志目录、
-// 给出「重试」与「打开日志目录」。DI 边界已把底层启动失败翻成 InkError，故错误
-// 详情走共享 l10nAsyncError 本地化呈现。
+// 给出「重试」「打开日志目录」，以及有备份时的「从最近备份还原」（LB-22——
+// 目标排除 prerestore 族：那可能是坏库的 dump，盲还原会死循环，评审 UX P1-2）。
 //
 // 「重试」是 stateful 的：先 await 停掉当前 PG 实例，再失效整条链重建——避免旧
-// stop() 与新 start() 的 postmaster.pid 探测竞态；重建期间禁用按钮防重复点击。
+// stop() 与新 start() 的 postmaster.pid 探测竞态；busy 到链出确定态才复位
+// （评审生命周期 P1-1：invalidate 即复位会在重建在途期放进第二次操作）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/database.dart';
+import '../../../core/di/database_backup.dart';
+import '../../../core/di/database_restore.dart';
 import '../../../core/di/folder_opener.dart';
 import '../../../core/di/paths.dart';
+import '../../../core/interfaces/database_backup_service.dart';
+import '../../../core/interfaces/database_restore_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../storage/pg_controller.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/services/toast_service.dart';
 
 class StartupErrorView extends ConsumerStatefulWidget {
   const StartupErrorView({super.key, required this.error});
@@ -31,14 +37,40 @@ class StartupErrorView extends ConsumerStatefulWidget {
 }
 
 class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
-  /// 重启进行中：禁用「重试」防重复点击（stop→invalidate 的异步窗口内）。
-  bool _rebooting = false;
+  /// 重启/还原进行中：禁用按钮防重复触发（stop→invalidate→重建的异步窗口内）。
+  bool _working = false;
+
+  /// 还原目标：最新（按 modified，非文件名排序键——daily 记 000000 会把当天
+  /// 更晚的每日备份排到手动之前，#189 评审 P2-2）的 daily/manual；
+  /// 排除 prerestore（可能是坏库的 dump，盲还原会死循环）。
+  /// initState 读一次缓存（listSync 不进 build），失败重试后刷新。
+  BackupFileInfo? _latestRestorable;
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshLatest();
+  }
+
+  void _refreshLatest() {
+    final restorable = ref
+        .read(databaseBackupServiceProvider)
+        .listBackups()
+        .where((b) => b.kind != BackupKind.preRestore);
+    BackupFileInfo? latest;
+    for (final b in restorable) {
+      if (latest == null || b.modified.isAfter(latest.modified)) latest = b;
+    }
+    _latestRestorable = latest;
+  }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final String logsPath = ref.watch(appPathsProvider).logs.path;
+    final BackupFileInfo? latest = _latestRestorable;
+    final bool busy = _working || ref.watch(databaseRestoreBusyProvider);
 
     return Scaffold(
       body: Center(
@@ -87,9 +119,16 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                     InkButton(
                       label: context.l10n.commonRetry,
                       icon: Icons.refresh,
-                      // 重启进行中禁用，防重复点击触发并发 stop/start。
-                      onPressed: _rebooting ? null : _reboot,
+                      // 重启/还原进行中禁用，防重复触发并发 stop/start。
+                      onPressed: busy ? null : _reboot,
                     ),
+                    if (latest != null)
+                      InkButton(
+                        label: context.l10n.startupErrorRestoreLatest,
+                        variant: InkButtonVariant.secondary,
+                        icon: Icons.settings_backup_restore,
+                        onPressed: busy ? null : () => _restoreLatest(latest),
+                      ),
                     InkButton(
                       label: context.l10n.startupErrorOpenLogDir,
                       variant: InkButtonVariant.secondary,
@@ -107,11 +146,11 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
   }
 
   /// 重试：先 await 停掉当前 PG 实例，再失效整条链（控制器 → 池 → 迁移池）重建。
-  /// 先 stop 后 invalidate 保证旧实例完全落幕，杜绝与新 start() 的 pid 探测竞态；
-  /// gate 随 pgMigratedPool 回 loading 卸载本 view，成功则 AsyncData → 正常 shell。
+  /// busy 到链出确定态才复位——invalidate 即复位会在「重建在途」窗口放进第二次
+  /// stop/start/还原，与在途 start() 竞速（评审生命周期 P1-1）。
   Future<void> _reboot() async {
-    if (_rebooting) return;
-    setState(() => _rebooting = true);
+    if (_working) return;
+    setState(() => _working = true);
     try {
       await ref.read(pgControllerProvider).stop();
     } on PgLifecycleError {
@@ -121,8 +160,66 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
     ref.invalidate(pgControllerProvider);
     ref.invalidate(pgPoolProvider);
     ref.invalidate(pgMigratedPoolProvider);
-    // 若立即再失败，gate 同位复用本 State——复位 _rebooting 让按钮重新可用。
-    if (mounted) setState(() => _rebooting = false);
+    // 等链出确定态（成功 → gate 换页卸载本 view；失败 → 同位复用本 State）。
+    try {
+      await ref.read(pgMigratedPoolProvider.future);
+    } catch (_) {
+      // 仍失败：错误横幅由 gate 以新 error 重建呈现。
+    }
+    if (mounted) setState(() => _working = false);
+  }
+
+  /// 从最近备份还原（LB-22）：确认框亮出目标名+时间 → flow（启动面语义：
+  /// 预备份 best-effort——库已坏 dump 不出来不拦路）。失败经 app 级 toast 呈现
+  /// （gate 可能已换页，本 State 的横幅不可依赖）。
+  Future<void> _restoreLatest(BackupFileInfo target) async {
+    if (_working) return;
+    // 跨 await 依赖首个 await 前 read 持有（#188 P1-1）。
+    final toast = ref.read(toastServiceProvider);
+    final flow = ref.read(databaseRestoreFlowProvider);
+    final l10n = context.l10n;
+
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      barrierColor: context.inkColors.scrim,
+      builder: (ctx) => AlertDialog(
+        title: Text(ctx.l10n.restoreConfirmTitle),
+        content: Text(
+          ctx.l10n.restoreConfirmBody(target.name, target.modified.toLocal()),
+        ),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(ctx.l10n.commonCancel),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(ctx.l10n.settingsRestore),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _working = true);
+    // flow 内部 await 链重建：run 返回时成败已定——成功 gate 自行换页。
+    RestoreFlowResult result;
+    try {
+      result = await flow.run(target.name, requirePreBackup: false);
+    } catch (_) {
+      // 放行点：flow 已 catch-all，兜住 override/装配错误——_working 绝不卡死。
+      result = const RestoreFlowResult(outcome: RestoreOutcome.failed);
+    }
+    if (result.outcome != RestoreOutcome.restored) {
+      toast.show(l10nRestoreFailure(l10n, result.outcome),
+          kind: ToastKind.error);
+    }
+    if (mounted) {
+      setState(() {
+        _working = false;
+        _refreshLatest(); // 预备份/剪枝可能改变了清单。
+      });
+    }
   }
 
   /// best-effort 打开日志目录；打不开（如缺可执行文件）静默吞错，不崩 UI。

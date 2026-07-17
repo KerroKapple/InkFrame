@@ -254,6 +254,89 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsStoragePathCopied => 'Path copied to clipboard';
 
   @override
+  String get settingsBackupSection => 'Backups & restore';
+
+  @override
+  String get settingsBackupHint =>
+      'Daily cold backups of your local database, kept 7. Restore replaces the database only — media files on disk stay as-is.';
+
+  @override
+  String get settingsBackupNow => 'Back up now';
+
+  @override
+  String get settingsBackupDone => 'Backup created';
+
+  @override
+  String get settingsBackupNoBinaries =>
+      'Bundled PostgreSQL tools not found — reinstall InkFrame to restore them';
+
+  @override
+  String get settingsBackupFailed => 'Backup failed';
+
+  @override
+  String get settingsBackupsEmpty => 'No backups yet';
+
+  @override
+  String settingsBackupMetaLine(String size, DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat(
+      'yyyy-MM-dd HH:mm',
+      localeName,
+    );
+    final String dateString = dateDateFormat.format(date);
+
+    return '$size · $dateString';
+  }
+
+  @override
+  String get settingsBackupKindDaily => 'Daily';
+
+  @override
+  String get settingsBackupKindManual => 'Manual';
+
+  @override
+  String get settingsBackupKindPreRestore => 'Pre-restore';
+
+  @override
+  String get settingsRestore => 'Restore';
+
+  @override
+  String get restoreConfirmTitle => 'Restore from backup?';
+
+  @override
+  String restoreConfirmBody(String file, DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat(
+      'yyyy-MM-dd HH:mm',
+      localeName,
+    );
+    final String dateString = dateDateFormat.format(date);
+
+    return 'Replace current data with \"$file\" ($dateString)? We\'ll try to create a safety backup first. Running generations will be cancelled, and you\'ll be returned to the home screen. Media files on disk are not rolled back.';
+  }
+
+  @override
+  String get restoreDone => 'Restore complete';
+
+  @override
+  String get restoreFailed => 'Restore failed — your data was not changed';
+
+  @override
+  String get restoreFailedCorrupt => 'Backup file failed verification';
+
+  @override
+  String get restoreFailedVersionNewer =>
+      'This backup was made by a newer version of InkFrame';
+
+  @override
+  String get restoreAbortedPreBackup =>
+      'Safety backup failed — restore cancelled';
+
+  @override
+  String get restoreInProgress => 'Restoring…';
+
+  @override
+  String get startupErrorRestoreLatest => 'Restore latest backup';
+
+  @override
   String get settingsAboutSection => 'About';
 
   @override

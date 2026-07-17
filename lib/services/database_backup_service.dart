@@ -1,16 +1,27 @@
-// PgDumpBackupService：DatabaseBackupService 的 pg_dump 落地（LB-10）。
+// PgDumpBackupService：DatabaseBackupService 的 pg_dump 落地（LB-10 / LB-22）。
 //
-// 流程：定位 pg_dump → 当日已有则跳过 → 建 backups 目录 → pg_dump -Fc 落盘
-// （PGPASSWORD 经 env 传 SCRAM 口令；trust 集群不设）→ 成功后按日期序保留 7 份。
-// 失败仅 warn：非零退出 / 无法启动 / 无二进制均不抛，交启动触发器决定后续。
+// 三族命名分池（LB-22 设计评审 P1-3）：
+//   daily      inkframe-YYYY-MM-DD.dump                （每日一份，keep 7）
+//   manual     inkframe-manual-YYYY-MM-DD-HHMMSS.dump  （立即备份，keep 3）
+//   preRestore inkframe-prerestore-YYYY-MM-DD-HHMMSS.dump（还原前兜底，keep 3）
+// 剪枝按族独立——预备份/手动永不挤占每日历史，也永不剪掉还原目标。
+// 每份成功发布的备份带 `<name>.meta.json` sidecar：{sha256, schemaVersion,
+// createdAtUtc}，还原前校验完整性与版本（拒绝降级循环）。
+//
+// 流程：定位 pg_dump → （daily 当日已有跳过）→ pg_dump -Fc 写 .partial →
+// 原子 rename → 写 sidecar → 分族保留。失败仅以返回值表达（housekeeping），
+// **不抛**——调用方必须查返回值（评审 P1-4）。
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
 import 'package:path/path.dart' as p;
 
 import '../core/interfaces/database_backup_service.dart';
 import '../core/interfaces/process_runner.dart';
 import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
+import '../storage/migrations/app_migrations.dart';
 import '../storage/pg_binary_locator.dart';
 
 /// 日志 module 名（内部标识，English-only）。
@@ -20,8 +31,42 @@ const String kBackupModule = 'db.backup';
 const String kBackupFilePrefix = 'inkframe-';
 const String kBackupFileSuffix = '.dump';
 
-/// 保留份数（按日期序）。
+/// sidecar 后缀。
+const String kBackupMetaSuffix = '.meta.json';
+
+/// 各族保留份数。
 const int kBackupRetainCount = 7;
+const int kManualRetainCount = 3;
+const int kPreRestoreRetainCount = 3;
+
+final RegExp _dailyName = RegExp(
+  '^${RegExp.escape(kBackupFilePrefix)}\\d{4}-\\d{2}-\\d{2}'
+  '${RegExp.escape(kBackupFileSuffix)}\$',
+);
+final RegExp _manualName = RegExp(
+  '^${RegExp.escape(kBackupFilePrefix)}manual-\\d{4}-\\d{2}-\\d{2}-\\d{6}'
+  '${RegExp.escape(kBackupFileSuffix)}\$',
+);
+final RegExp _preRestoreName = RegExp(
+  '^${RegExp.escape(kBackupFilePrefix)}prerestore-\\d{4}-\\d{2}-\\d{2}-\\d{6}'
+  '${RegExp.escape(kBackupFileSuffix)}\$',
+);
+
+/// 纯函数：识别名 → 备份族；非法（穿越/杂名/sidecar）→ null。
+BackupKind? backupKindOf(String name) {
+  if (_dailyName.hasMatch(name)) return BackupKind.daily;
+  if (_manualName.hasMatch(name)) return BackupKind.manual;
+  if (_preRestoreName.hasMatch(name)) return BackupKind.preRestore;
+  return null;
+}
+
+/// 纯函数：排序键（date + time，daily 视为当天最早 000000）。
+/// 仅对识别名有意义；调用方先经 [backupKindOf] 过滤。
+String backupSortKey(String name) {
+  final m = RegExp(r'(\d{4}-\d{2}-\d{2})(?:-(\d{6}))?').firstMatch(name);
+  if (m == null) return name;
+  return '${m.group(1)}-${m.group(2) ?? '000000'}';
+}
 
 class PgDumpBackupService implements DatabaseBackupService {
   PgDumpBackupService({
@@ -42,36 +87,116 @@ class PgDumpBackupService implements DatabaseBackupService {
   final Clock _clock;
   final LoggerService? _logger;
 
-  /// 纯函数：当日备份文件名（UTC 日期，与仓库其它启动 housekeeping 同口径）。
+  /// 纯函数：当日每日备份文件名（UTC 日期，与仓库其它启动 housekeeping 同口径）。
   static String backupFileName(DateTime utc) {
+    return '$kBackupFilePrefix${_datePart(utc)}$kBackupFileSuffix';
+  }
+
+  /// 纯函数：时间戳备份文件名（manual / preRestore 族）。
+  static String timestampedBackupFileName(DateTime utc, BackupKind kind) {
+    final String infix = switch (kind) {
+      BackupKind.manual => 'manual-',
+      BackupKind.preRestore => 'prerestore-',
+      BackupKind.daily =>
+        throw ArgumentError('daily uses backupFileName'), // 契约防误用
+    };
+    final String h = utc.hour.toString().padLeft(2, '0');
+    final String m = utc.minute.toString().padLeft(2, '0');
+    final String s = utc.second.toString().padLeft(2, '0');
+    return '$kBackupFilePrefix$infix${_datePart(utc)}-$h$m$s$kBackupFileSuffix';
+  }
+
+  static String _datePart(DateTime utc) {
     final String y = utc.year.toString().padLeft(4, '0');
     final String m = utc.month.toString().padLeft(2, '0');
     final String d = utc.day.toString().padLeft(2, '0');
-    return '$kBackupFilePrefix$y-$m-$d$kBackupFileSuffix';
+    return '$y-$m-$d';
   }
 
-  /// 纯函数：给定 backups 目录现有文件名，返回超出保留份数应删除的（最旧优先）。
-  /// 仅识别 `inkframe-YYYY-MM-DD.dump`；文件名 ISO 日期段字典序即时间序。
+  /// 纯函数：给定目录现有文件名，返回 [kind] 族超出保留份数应删除的（最旧优先）。
   static List<String> backupsToPrune(
     List<String> names, {
-    int keep = kBackupRetainCount,
+    BackupKind kind = BackupKind.daily,
+    int? keep,
   }) {
-    final List<String> matches = names.where(_isDatedBackupName).toList()
-      ..sort(); // 升序=旧→新。
-    if (matches.length <= keep) return const <String>[];
-    return matches.sublist(0, matches.length - keep);
+    final int cap = keep ??
+        switch (kind) {
+          BackupKind.daily => kBackupRetainCount,
+          BackupKind.manual => kManualRetainCount,
+          BackupKind.preRestore => kPreRestoreRetainCount,
+        };
+    final List<String> matches =
+        names.where((n) => backupKindOf(n) == kind).toList()
+          ..sort((a, b) => backupSortKey(a).compareTo(backupSortKey(b)));
+    if (matches.length <= cap) return const <String>[];
+    return matches.sublist(0, matches.length - cap);
   }
-
-  static final RegExp _datedName = RegExp(
-    '^${RegExp.escape(kBackupFilePrefix)}\\d{4}-\\d{2}-\\d{2}'
-    '${RegExp.escape(kBackupFileSuffix)}\$',
-  );
-
-  static bool _isDatedBackupName(String name) => _datedName.hasMatch(name);
 
   @override
   Future<BackupOutcome> backup(BackupConnection connection) async {
-    // 1) 定位 pg_dump——开发机无打包 PG（PgBinaryNotFoundError）视为跳过，非失败。
+    final DateTime now = _clock.nowUtc();
+    final File target =
+        File(p.join(_paths.backups.path, backupFileName(now)));
+    // 当日已有 → 跳过（每日一份）。
+    if (target.existsSync()) {
+      return BackupOutcome.skippedAlreadyToday;
+    }
+    return _publish(target, connection);
+  }
+
+  @override
+  Future<BackupNowResult> backupNow(
+    BackupConnection connection, {
+    required BackupKind kind,
+    String? preserve,
+  }) async {
+    final File target = File(p.join(
+      _paths.backups.path,
+      timestampedBackupFileName(_clock.nowUtc(), kind),
+    ));
+    final BackupOutcome outcome =
+        await _publish(target, connection, preserve: preserve);
+    return BackupNowResult(
+      outcome: outcome,
+      fileName:
+          outcome == BackupOutcome.created ? p.basename(target.path) : null,
+    );
+  }
+
+  @override
+  List<BackupFileInfo> listBackups() {
+    final List<BackupFileInfo> out = <BackupFileInfo>[];
+    try {
+      for (final FileSystemEntity e
+          in _paths.backups.listSync(followLinks: false)) {
+        if (e is! File) continue;
+        final String name = p.basename(e.path);
+        final BackupKind? kind = backupKindOf(name);
+        if (kind == null) continue;
+        final FileStat stat = e.statSync();
+        out.add(BackupFileInfo(
+          name: name,
+          kind: kind,
+          sizeBytes: stat.size,
+          modified: stat.modified.toUtc(),
+        ));
+      }
+    } on FileSystemException {
+      // 目录不存在/不可读 → 空清单（UI 空态兜底）。
+      return const <BackupFileInfo>[];
+    }
+    out.sort((a, b) => backupSortKey(b.name).compareTo(backupSortKey(a.name)));
+    return out;
+  }
+
+  /// 共享发布主体：定位 → .partial → pg_dump → rename → sidecar → 分族保留。
+  /// [preserve] 不参与剪枝（还原目标保护，#189 评审 P1-2）。
+  Future<BackupOutcome> _publish(
+    File target,
+    BackupConnection connection, {
+    String? preserve,
+  }) async {
+    // 1) 定位 pg_dump——开发机无打包 PG 视为跳过，非失败。
     final File pgDump;
     try {
       pgDump = _locator.locate().pgDump;
@@ -84,15 +209,8 @@ class PgDumpBackupService implements DatabaseBackupService {
       return BackupOutcome.skippedNoBinaries;
     }
 
-    // 2) 当日已有 → 跳过（每日一份）。
-    final DateTime now = _clock.nowUtc();
-    final Directory dir = _paths.backups;
-    final File target = File(p.join(dir.path, backupFileName(now)));
-    if (target.existsSync()) {
-      return BackupOutcome.skippedAlreadyToday;
-    }
-
-    // 3) 建目录（首启 ensureInitialized 已建，此处防御）。
+    // 2) 建目录（首启 ensureInitialized 已建，此处防御）。
+    final Directory dir = target.parent;
     try {
       dir.createSync(recursive: true);
     } on FileSystemException catch (e) {
@@ -101,10 +219,9 @@ class PgDumpBackupService implements DatabaseBackupService {
       return BackupOutcome.failed;
     }
 
-    // 4) pg_dump -Fc 先写 `.partial` 临时文件，成功后原子 rename 到最终名——
-    // 这样进程被 SIGKILL/断电中途夭折只会留下 .partial（不匹配备份命名、不占保留位、
-    // 不会被「当日已有」误判为完整备份），下次启动照常重试。PGPASSWORD 经 env
-    // （trust 集群 password=null 不设）。先清同名残留 .partial（上次同日崩溃遗留）。
+    // 3) pg_dump -Fc 先写 `.partial` 临时文件，成功后原子 rename 到最终名——
+    // 中途夭折只会留下 .partial（不匹配识别命名、不占保留位、不被「当日已有」
+    // 误判），下次照常重试。PGPASSWORD 经 env（trust 集群 password=null 不设）。
     final File partial = File('${target.path}.partial');
     _deleteQuietly(partial);
     final List<String> args = <String>[
@@ -148,8 +265,25 @@ class PgDumpBackupService implements DatabaseBackupService {
       return BackupOutcome.failed;
     }
 
-    // 5) 保留策略：删最旧、留 7 份（顺带清跨日崩溃遗留的 .partial 碎片）。
-    final int pruned = _applyRetention(dir);
+    // 4) sidecar：sha256 + schemaVersion + 创建时刻（还原前校验用；LB-22）。
+    // sidecar 写失败不推翻已发布的备份（还原侧按「无 sidecar 存量备份」跳过校验）。
+    try {
+      final String digest =
+          sha256.convert(target.readAsBytesSync()).toString();
+      File('${target.path}$kBackupMetaSuffix').writeAsStringSync(jsonEncode(
+        <String, Object?>{
+          'sha256': digest,
+          'schemaVersion': kAppMigrations.last.version,
+          'createdAtUtc': _clock.nowUtc().toIso8601String(),
+        },
+      ));
+    } on FileSystemException catch (e) {
+      _logger?.warn(kBackupModule, 'backup.meta_failed',
+          extra: <String, Object?>{'reason': e.message});
+    }
+
+    // 5) 分族保留：各族按各自 cap 剪最旧（顺带清跨日崩溃遗留的 .partial 碎片）。
+    final int pruned = _applyRetention(dir, exclude: preserve);
     _logger?.info(kBackupModule, 'backup.done', extra: <String, Object?>{
       'file': p.basename(target.path),
       'pruned': pruned,
@@ -157,7 +291,7 @@ class PgDumpBackupService implements DatabaseBackupService {
     return BackupOutcome.created;
   }
 
-  int _applyRetention(Directory dir) {
+  int _applyRetention(Directory dir, {String? exclude}) {
     final List<String> names;
     try {
       names = dir
@@ -168,9 +302,15 @@ class PgDumpBackupService implements DatabaseBackupService {
     } on FileSystemException {
       return 0;
     }
+    // 在途还原目标不进候选：兜底备份绝不删掉用户正要还原的文件（评审 P1-2）。
+    if (exclude != null) names.remove(exclude);
     int pruned = 0;
-    for (final String name in backupsToPrune(names)) {
-      if (_deleteQuietly(File(p.join(dir.path, name)))) pruned++;
+    for (final BackupKind kind in BackupKind.values) {
+      for (final String name in backupsToPrune(names, kind: kind)) {
+        if (_deleteQuietly(File(p.join(dir.path, name)))) pruned++;
+        // sidecar 连带删（孤儿 sidecar 不占保留位但属垃圾）。
+        _deleteQuietly(File(p.join(dir.path, '$name$kBackupMetaSuffix')));
+      }
     }
     // 清跨日崩溃遗留的 .partial 碎片（当前 run 已 rename 走，剩下的都是残骸）。
     for (final String name in names.where((n) => n.endsWith('.partial'))) {

@@ -196,22 +196,40 @@ Windows 上 Key 落到 **凭据管理器（Credential Manager）**。
 
 On every launch InkFrame writes one daily cold backup of the embedded PostgreSQL to
 `<data-root>/backups/inkframe-YYYY-MM-DD.dump` (pg_dump custom format `-Fc`), keeping the
-7 most recent and skipping if today's file already exists. Backups never block startup —
-any failure is only logged (`db.backup` module). The data root is the
-platform-conventional path (Windows `%LOCALAPPDATA%\InkFrame`, macOS
-`~/Library/Application Support/InkFrame`; DIR-1).
+7 most recent and skipping if today's file already exists. Manual backups
+(`inkframe-manual-…`, Settings → Backups & restore → *Back up now*) and pre-restore safety
+backups (`inkframe-prerestore-…`) live in the same folder with their own retention (3 each);
+every backup ships a `<name>.meta.json` sidecar (SHA-256 + schema version) used to verify
+integrity before restore. Backups never block startup — any failure is only logged
+(`db.backup` module). The data root is the platform-conventional path (Windows
+`%LOCALAPPDATA%\InkFrame`, macOS `~/Library/Application Support/InkFrame`; DIR-1).
 
 InkFrame 每次启动写一份嵌入式 PostgreSQL 的每日冷备到
 `<数据根>/backups/inkframe-YYYY-MM-DD.dump`（pg_dump 自定义格式 `-Fc`），保留最新 7 份、
-当日已有则跳过。备份绝不阻断启动 —— 任何失败只记日志（`db.backup` module）。数据根为平台
-惯例路径（Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`；DIR-1）。
+当日已有则跳过。手动备份（`inkframe-manual-…`，设置 → 备份与还原 → 立即备份）与还原前
+安全备份（`inkframe-prerestore-…`）在同一目录、各自保留 3 份；每份备份带
+`<name>.meta.json` sidecar（SHA-256 + schema 版本），还原前校验完整性。备份绝不阻断
+启动 —— 任何失败只记日志（`db.backup` module）。数据根为平台惯例路径
+（Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`；DIR-1）。
 
-**Manual restore (advanced).** SCRAM auth means the DB password lives in the OS keystore,
-so restoring by hand needs that password (an in-app restore flow is tracked as LB-22). With
-the app closed, using the bundled `pg_restore` and the running cluster's port/password:
+**Restore (in-app, preferred).** Settings → *Backups & restore* lists every backup with a
+per-item *Restore*; the startup-failure screen offers *Restore latest backup* when the
+database won't boot. Restore loads the dump into a scratch database first
+(`--single-transaction`) and only swaps it in on success — **a failed restore leaves your
+current data untouched**. A safety backup is attempted first; running generations are
+cancelled and the app returns to the home screen. Media files on disk are not rolled back.
 
-**手工恢复（进阶）。** SCRAM 认证下库口令在系统密钥库里，手工还原需要该口令（app 内一键还原
-入口见 LB-22）。关闭 app 后，用打包的 `pg_restore` + 集群端口/口令：
+**还原（app 内，首选）。** 设置 → 备份与还原 逐份「还原」；数据库起不来时启动失败页提供
+「从最近备份还原」。还原先把备份灌进临时库（`--single-transaction`），成功才对换——
+**还原失败不会动你当前的数据**。还原前会尽量先做一次安全备份；进行中的生成任务会被取消，
+完成后回到主页。磁盘上的媒体文件不回滚。
+
+**Manual restore (advanced, app closed).** SCRAM auth means the DB password lives in the
+OS keystore. Prefer restoring into a scratch DB and swapping, mirroring the in-app flow;
+the plain `--clean` shown below does not remove tables that are absent from an older dump:
+
+**手工恢复（进阶，先关 app）。** SCRAM 认证下库口令在系统密钥库里。建议仿 app 内流程
+「临时库+对换」；下面的裸 `--clean` 不会清掉旧 dump 里不存在的表：
 
 ```bash
 # PGPASSWORD from OS keystore key `database.pg.password`; port from <data-root>/config/pg.port

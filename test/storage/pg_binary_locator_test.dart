@@ -52,6 +52,8 @@ void main() {
       expect(loc.postgres.existsSync(), isTrue);
       // LB-10：pg_dump 与其它二进制同目录（备份链依赖）。
       expect(loc.pgDump.path, p.join(repoBin.path, _exe('pg_dump')));
+      // LB-22：pg_restore 同目录（还原链依赖）。
+      expect(loc.pgRestore.path, p.join(repoBin.path, _exe('pg_restore')));
     });
 
     test('Windows 平台走 windows/runner/resources 路径', () {

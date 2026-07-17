@@ -38,6 +38,47 @@ enum BackupOutcome {
   failed,
 }
 
+/// 备份族（LB-22）：三族命名分池、各自保留配额——预备份/手动备份永不挤占
+/// 每日历史，也永不剪掉用户正要还原的目标（设计评审 P1-3）。
+enum BackupKind { daily, manual, preRestore }
+
+/// 备份目录里的一份备份（listBackups 行）。
+class BackupFileInfo {
+  const BackupFileInfo({
+    required this.name,
+    required this.kind,
+    required this.sizeBytes,
+    required this.modified,
+  });
+
+  final String name;
+  final BackupKind kind;
+  final int sizeBytes;
+  final DateTime modified;
+}
+
+/// backupNow 的结果：created 时携带落盘文件名（UI 提示 / 还原兜底引用）。
+class BackupNowResult {
+  const BackupNowResult({required this.outcome, this.fileName});
+
+  final BackupOutcome outcome;
+  final String? fileName;
+}
+
 abstract class DatabaseBackupService {
+  /// 每日冷备：当日已有跳过，保留策略见实现（daily 族 cap）。
   Future<BackupOutcome> backup(BackupConnection connection);
+
+  /// 立即备份（manual / preRestore 族）：时间戳命名，不受当日跳过约束。
+  /// 失败以返回值表达（housekeeping 同源实现，**不抛**——调用方必须查返回值，
+  /// 设计评审 P1-4）。[preserve] 为剪枝排除名——还原流程的兜底备份触发剪枝时
+  /// 绝不能删掉用户正要还原的目标（#189 评审 P1-2）。
+  Future<BackupNowResult> backupNow(
+    BackupConnection connection, {
+    required BackupKind kind,
+    String? preserve,
+  });
+
+  /// 备份目录清单：仅识别命名，新→旧。纯文件系统读，无需 PG 二进制。
+  List<BackupFileInfo> listBackups();
 }

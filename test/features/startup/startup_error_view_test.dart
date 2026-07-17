@@ -11,12 +11,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/app.dart';
 import 'package:inkframe/core/di/database.dart';
+import 'package:inkframe/core/di/database_backup.dart';
+import 'package:inkframe/core/di/database_restore.dart';
 import 'package:inkframe/core/di/folder_opener.dart';
 import 'package:inkframe/core/di/orphan_reaper.dart';
 import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/database_backup_service.dart';
+import 'package:inkframe/core/interfaces/database_restore_service.dart';
 import 'package:inkframe/core/interfaces/folder_opener.dart';
+import 'package:inkframe/features/generation/services/toast_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/startup/widgets/startup_error_view.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
@@ -38,6 +43,63 @@ class _SpyFolderOpener implements FolderOpener {
   @override
   Future<void> open(String path) async => opened.add(path);
 }
+
+/// 备份清单 fake（LB-22 还原入口测试用）。
+class _FakeBackupService implements DatabaseBackupService {
+  _FakeBackupService(this.backups);
+  final List<BackupFileInfo> backups;
+
+  @override
+  Future<BackupOutcome> backup(BackupConnection connection) async =>
+      BackupOutcome.created;
+
+  @override
+  Future<BackupNowResult> backupNow(
+    BackupConnection connection, {
+    required BackupKind kind,
+    String? preserve,
+  }) async =>
+      const BackupNowResult(outcome: BackupOutcome.created, fileName: 'x');
+
+  @override
+  List<BackupFileInfo> listBackups() => backups;
+}
+
+class _FakeRestoreFlow implements DatabaseRestoreFlow {
+  RestoreOutcome outcome = RestoreOutcome.restored;
+  String? lastFile;
+  bool? lastRequire;
+  int calls = 0;
+
+  @override
+  Future<RestoreFlowResult> run(
+    String backupFileName, {
+    required bool requirePreBackup,
+  }) async {
+    calls++;
+    lastFile = backupFileName;
+    lastRequire = requirePreBackup;
+    return RestoreFlowResult(outcome: outcome);
+  }
+}
+
+class _RecordingToast implements ToastService {
+  final List<String> shown = <String>[];
+
+  @override
+  void show(String message, {ToastKind kind = ToastKind.info}) {
+    shown.add(message);
+  }
+}
+
+BackupFileInfo _backupInfo(String name, BackupKind kind,
+        {DateTime? modified}) =>
+    BackupFileInfo(
+      name: name,
+      kind: kind,
+      sizeBytes: 1,
+      modified: modified ?? DateTime.utc(2026, 7, 15, 9, 30),
+    );
 
 /// 记录调用顺序的 PgController 假体：不起真进程，start/stop 只记账；
 /// stop 可经 [stopGate] 卡住以观测「重启进行中」窗口（禁用重复点击 + 顺序）。
@@ -241,4 +303,134 @@ void main() {
     expect(fake.calls, <String>['start', 'stop', 'start']);
     expect(find.byType(StartupErrorView), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('LB-22：有备份 → 「从最近备份还原」出现；确认框亮目标名+时间 → flow(best-effort)',
+      (tester) async {
+    final AppPaths paths = _tempPaths();
+    final flow = _FakeRestoreFlow();
+    // 最新在前（服务契约新→旧）；prerestore 排在最前也不得被选中。
+    final backupSvc = _FakeBackupService([
+      _backupInfo('inkframe-prerestore-2026-07-16-090000.dump',
+          BackupKind.preRestore),
+      _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily),
+      _backupInfo('inkframe-2026-07-14.dump', BackupKind.daily),
+    ]);
+    await pumpInkApp(
+      tester,
+      StartupErrorView(error: LocalIOError(cause: StateError('x'))),
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+        databaseBackupServiceProvider.overrideWithValue(backupSvc),
+        databaseRestoreFlowProvider.overrideWithValue(flow),
+        toastServiceProvider.overrideWithValue(_RecordingToast()),
+      ],
+      surfaceSize: const Size(1200, 900),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text(l10n.startupErrorRestoreLatest));
+    await tester.pumpAndSettle();
+    // 确认框：亮出目标（排除 prerestore 后的最新=07-15）与时间。
+    expect(find.textContaining('inkframe-2026-07-15.dump'), findsWidgets);
+    expect(find.textContaining('2026-07-15'), findsWidgets);
+
+    await tester.tap(find.text(l10n.settingsRestore));
+    await tester.pumpAndSettle();
+
+    expect(flow.calls, 1);
+    expect(flow.lastFile, 'inkframe-2026-07-15.dump');
+    expect(flow.lastRequire, isFalse, reason: '启动面=best-effort 预备份');
+  });
+
+  testWidgets('LB-22：只有 prerestore 备份 → 按钮不渲染；flow 失败 → toast + 按钮复位',
+      (tester) async {
+    final AppPaths paths = _tempPaths();
+    final toast = _RecordingToast();
+    final flow = _FakeRestoreFlow()..outcome = RestoreOutcome.failed;
+
+    // 场景 1：仅 prerestore → 无按钮。
+    await pumpInkApp(
+      tester,
+      StartupErrorView(error: LocalIOError(cause: StateError('x'))),
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+        databaseBackupServiceProvider.overrideWithValue(_FakeBackupService([
+          _backupInfo('inkframe-prerestore-2026-07-16-090000.dump',
+              BackupKind.preRestore),
+        ])),
+        databaseRestoreFlowProvider.overrideWithValue(flow),
+        toastServiceProvider.overrideWithValue(toast),
+      ],
+      surfaceSize: const Size(1200, 900),
+    );
+    await tester.pump();
+    expect(find.text(l10n.startupErrorRestoreLatest), findsNothing);
+
+    // 场景 2：还原失败 → 失败 toast、按钮复位可再点。
+    await tester.pumpWidget(Container());
+    await pumpInkApp(
+      tester,
+      StartupErrorView(error: LocalIOError(cause: StateError('x'))),
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+        databaseBackupServiceProvider.overrideWithValue(_FakeBackupService([
+          _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily),
+        ])),
+        databaseRestoreFlowProvider.overrideWithValue(flow),
+        toastServiceProvider.overrideWithValue(toast),
+      ],
+      surfaceSize: const Size(1200, 900),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text(l10n.startupErrorRestoreLatest));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.settingsRestore));
+    await tester.pumpAndSettle();
+
+    expect(flow.calls, 1);
+    expect(toast.shown.single, l10n.restoreFailed);
+    // 按钮复位（onPressed 非 null）。
+    final InkButton restoreBtn = tester.widget<InkButton>(
+      find.widgetWithText(InkButton, l10n.startupErrorRestoreLatest),
+    );
+    expect(restoreBtn.onPressed, isNotNull);
+  });
+
+  testWidgets('LB-22：latest 按 modified 选，而非文件名排序键（#189 评审 P2-2）',
+      (tester) async {
+    final AppPaths paths = _tempPaths();
+    final flow = _FakeRestoreFlow();
+    // 同日：manual 09:00 手动备份、daily 20:00 落盘——文件名排序键把 daily
+    // 记 000000 会误选 manual；必须按 modified 选 daily。
+    final backupSvc = _FakeBackupService([
+      _backupInfo('inkframe-manual-2026-07-15-090000.dump', BackupKind.manual,
+          modified: DateTime.utc(2026, 7, 15, 9)),
+      _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily,
+          modified: DateTime.utc(2026, 7, 15, 20)),
+    ]);
+    await pumpInkApp(
+      tester,
+      StartupErrorView(error: LocalIOError(cause: StateError('x'))),
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+        databaseBackupServiceProvider.overrideWithValue(backupSvc),
+        databaseRestoreFlowProvider.overrideWithValue(flow),
+        toastServiceProvider.overrideWithValue(_RecordingToast()),
+      ],
+      surfaceSize: const Size(1200, 900),
+    );
+    await tester.pump();
+
+    await tester.tap(find.text(l10n.startupErrorRestoreLatest));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l10n.settingsRestore));
+    await tester.pumpAndSettle();
+
+    expect(flow.lastFile, 'inkframe-2026-07-15.dump');
+  });
 }

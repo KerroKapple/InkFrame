@@ -2,6 +2,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../core/errors/ink_error.dart';
+import '../core/interfaces/database_restore_service.dart';
 import 'generated/app_localizations.dart';
 
 extension AppL10nX on BuildContext {
@@ -16,6 +17,17 @@ String l10nError(BuildContext context, InkError e) =>
 /// 与 l10nError 共用同一 messageKey→ARB 映射，保持单一真相源。
 String l10nErrorCode(BuildContext context, InkErrorCode code) =>
     _l10nByMessageKey(context, kInkErrorMessageKeys[code]!);
+
+/// RestoreOutcome（非 restored）→ 失败文案（设置页 / 启动失败面共用，LB-22）。
+String l10nRestoreFailure(AppLocalizations l10n, RestoreOutcome outcome) {
+  return switch (outcome) {
+    RestoreOutcome.failedNoBinaries => l10n.settingsBackupNoBinaries,
+    RestoreOutcome.failedCorrupt => l10n.restoreFailedCorrupt,
+    RestoreOutcome.failedVersionNewer => l10n.restoreFailedVersionNewer,
+    RestoreOutcome.abortedPreBackup => l10n.restoreAbortedPreBackup,
+    RestoreOutcome.failed || RestoreOutcome.restored => l10n.restoreFailed,
+  };
+}
 
 /// messageKey → ARB 字符串的唯一 switch（l10nError / l10nErrorCode 共用）。
 String _l10nByMessageKey(BuildContext context, String messageKey) {
