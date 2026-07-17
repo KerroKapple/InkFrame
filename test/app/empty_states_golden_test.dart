@@ -18,7 +18,10 @@ import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/core/di/custom_providers.dart';
 import 'package:inkframe/core/di/database_backup.dart';
+import 'package:inkframe/core/interfaces/custom_provider_store.dart';
+import 'package:inkframe/core/models/custom_provider_config.dart';
 import 'package:inkframe/core/di/video_export.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
@@ -50,6 +53,16 @@ class _FakeFfmpegLocator implements FfmpegLocator {
   Future<String?> locate() async => 'ffmpeg';
   @override
   void invalidate() {}
+}
+
+class _EmptyStore implements CustomProviderStore {
+  const _EmptyStore();
+  @override
+  Future<List<CustomProviderConfig>> list() async => const [];
+  @override
+  Future<void> upsert(CustomProviderConfig config) async {}
+  @override
+  Future<void> remove(String id) async {}
 }
 
 class _EmptyBackupService implements DatabaseBackupService {
@@ -157,6 +170,8 @@ void main() {
         ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
         databaseBackupServiceProvider
             .overrideWithValue(_EmptyBackupService()),
+        // GAP-1 自定义服务商区:空 store 密封（空态入基线）。
+        customProviderStoreProvider.overrideWithValue(const _EmptyStore()),
         // 版本行在折叠线下不进像素,仍显式钉死——消掉「靠插件缺失出 '—'」的
         // 隐式依赖,防未来折叠线移动引入漂移。
         packageInfoProvider.overrideWith(

@@ -19,8 +19,11 @@ import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
+import 'package:inkframe/core/di/custom_providers.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/video_export.dart';
+import 'package:inkframe/core/interfaces/custom_provider_store.dart';
+import 'package:inkframe/core/models/custom_provider_config.dart';
 import 'package:inkframe/services/ffmpeg_locator.dart';
 import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
@@ -57,6 +60,17 @@ class _FakeFfmpegLocator implements FfmpegLocator {
   Future<String?> locate() async => 'ffmpeg';
   @override
   void invalidate() {}
+}
+
+/// 恒空的自定义服务商 store（GAP-1 区在 SettingsScreen 内）。
+class _EmptyStore implements CustomProviderStore {
+  const _EmptyStore();
+  @override
+  Future<List<CustomProviderConfig>> list() async => const [];
+  @override
+  Future<void> upsert(CustomProviderConfig config) async {}
+  @override
+  Future<void> remove(String id) async {}
 }
 
 void main() {
@@ -105,6 +119,9 @@ void main() {
           currentCanvasIdProvider.overrideWith((_) => null),
           // 密封 ON-3 ffmpeg 探测：不真 spawn `ffmpeg -version`。
           ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
+          // 密封 GAP-1 自定义服务商编辑区：默认 store 抛 UnimplementedError。
+          customProviderStoreProvider
+              .overrideWithValue(const _EmptyStore()),
           // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
           orphanReapStartupProvider.overrideWith((_) async {}),
           _sealDbReady(),

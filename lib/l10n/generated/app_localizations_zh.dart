@@ -203,6 +203,77 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsApiKeyCleared => '已清除';
 
   @override
+  String get settingsCustomProvidersSection => '自定义服务商';
+
+  @override
+  String get settingsCustomProvidersHint =>
+      'OpenAI 兼容端点，存于 custom_providers.json；API Key 仍在安全存储。更改重启后生效。';
+
+  @override
+  String get settingsCustomProvidersEmpty => '暂无自定义服务商';
+
+  @override
+  String get settingsCustomProvidersAdd => '添加服务商';
+
+  @override
+  String get settingsCustomProvidersRestartNotice => '更改已保存——重启 InkFrame 后生效';
+
+  @override
+  String get settingsCustomProviderAddTitle => '添加自定义服务商';
+
+  @override
+  String get settingsCustomProviderEditTitle => '编辑自定义服务商';
+
+  @override
+  String get settingsCustomProviderFieldId => 'ID';
+
+  @override
+  String get settingsCustomProviderFieldDisplayName => '显示名';
+
+  @override
+  String get settingsCustomProviderFieldTemplate => '协议模板';
+
+  @override
+  String get settingsCustomProviderFieldBaseUrl => 'Base URL';
+
+  @override
+  String get settingsCustomProviderFieldModelId => '模型 ID';
+
+  @override
+  String get settingsCustomProviderSave => '保存';
+
+  @override
+  String get settingsCustomProviderErrorRequired => '必填';
+
+  @override
+  String get settingsCustomProviderErrorInvalidId => '仅限字母、数字、- 与 _，且以字母或数字开头';
+
+  @override
+  String get settingsCustomProviderErrorDuplicateId => '该 ID 已被占用';
+
+  @override
+  String get settingsCustomProviderErrorReservedId => '与内置服务商冲突';
+
+  @override
+  String get settingsCustomProviderErrorInvalidBaseUrl =>
+      '须为绝对 http(s) 地址，不含 query、fragment 或账号信息';
+
+  @override
+  String get settingsCustomProviderDeleteTitle => '删除服务商？';
+
+  @override
+  String settingsCustomProviderDeleteBody(String name) {
+    return '「$name」将从配置文件移除；安全存储中的 API Key 不会删除。';
+  }
+
+  @override
+  String get settingsCustomProviderDeleteConfirm => '删除';
+
+  @override
+  String get settingsCustomProviderSaveFailed =>
+      '保存失败。若 custom_providers.json 已损坏，请修复或删除后重试。';
+
+  @override
   String get settingsThemeSection => '主题';
 
   @override

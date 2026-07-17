@@ -96,6 +96,7 @@
 | ON-4 网络错误文案走查 + i18n pass：三轴并行审读（错误/一致性/僵尸）；45 键修订（错误归因与下一步动作、术语统一工作室/提示词/服务商/图片、省略号统一）；删 canvasNodeType* 6 僵尸键 | #197 |
 | GAP-7 Inspector 测试欠账收口（预设点选应用+成本文案精确断言）+ ON-5 五屏空态 golden（Studio empty/error、Canvas empty、Gallery empty、Settings；ubuntu 铸线）——第 10 条（ON-3/4/GAP-7/ON-5）收官；**余 GAP-1 整卡、GAP-3 余量未清**（评审 P1 纠偏：勿宣「全部收官」） | #198 |
 | GAP-3 余量收口（24 站点审计:方向读错并入横幅链;raw toString 上屏收敛——设置页探测诊断行为有意例外;base style 编辑器读错中止防空覆盖（评审 P2-3）;InkErrorBanner.onRetry 死参数删除;**InkAsyncSlot 判 YAGNI**——列表槽位 LB-06 已全收口） | #199 |
+| **GAP-1 设置页 Custom Provider 编辑 UI（上线前必做最后一卡）**：CustomProviderStore 写侧（raw 保真+损坏拒写+原子写）;校验抽 core 纯函数双端共用;列表+表单+删除确认+重启生效常驻条;API Keys custom:* 行 displayName 顺带修——**随本卡合入,上线前必做 1-10 全部落地** | #200 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -153,6 +154,7 @@
 | 三大重操作互斥只在导入侧单向查（LB-12 拍板 9）:还原/导出入口不查 projectImportBusyProvider——导入进行中仍可点还原 | 🅿️ | 反向补查三行;或统一 heavyOperationBusyProvider 归一三个 busy 位 |
 | 导入补偿删除失败→projects/{uuid} 孤儿目录无回收路径（#192 评审 P3-2:无 .import- 前缀 sweep 不认,reaper 又 DRY-RUN）;另记拍板 4 三处字面偏差（U+FFFD 奇名可过/最终路径长未预检/isWithin 代 resolveInProject）均安全失败 | 🅿️ | 随 LB-13 reaper 转真删同窗:无行背书目录纳入回收;字面偏差随安全面复审顺修 |
 | **迁移纪律备忘（#192 评审 P3-6）**:导入的列白名单过滤依赖「迁移只加可空/有默认列」——将来任何「新增 NOT NULL 无默认」迁移会让旧项目包导入必炸 | 🅿️ | ADR-0012 补一句:新增列必须可空或带默认,否则同时给导入侧加填充逻辑 |
+| GAP-1 评审 P3 残留（#200）:①unknownTemplate 在 UI 错误文案映射到 InvalidId 键（当前不可达——模板恒下拉;改自由输入即活雷,补专用键或注释）;②_openEditor 读失败报「保存失败」文案微错位;③写无顺序化（模态门控下重合概率趋零,硬化=_queue.then 串行链）;④_parseEntry seenIds 在 template/url 校验前占坑,被拒条目致后续同 id 合法条目误判 duplicate（既有债非本卡引入）;⑤section 内 provider 定义应迁 features/settings/providers/（风格） | 🅿️ | 均低害;①随模板扩展窗强制处理 |
 | GAP-3 评审 P3 残留（#199）:①方向读错期 lane_toolbar 置灰未做（二元域无损毁,但 toggle 到不了 horizontal 的怪异 UX）;②横幅三源 `??` 链+单 `_dismissed` 遮蔽——关掉 edges 错后并发 lanes/direction 错不上屏（改集合）;③非 InkError→errorUnknown 后无任何日志线索（此前 raw toString 至少可报障）,建议 error 分支补 log 或 ProviderObserver.providerDidFail | 🅿️ | ①②低害 UX;③可观测性,随日志面收口 |
 | ON-5 评审 P3 残留（#198）:①golden sentinel 单点——删 studio_empty.png 五测静默 skip 而 node_card 仍 ran>0 骗过整 job 守卫;评审提的 `skipped>0&&baselines>0→fail` 会误伤增量铸线 bootstrap（本 PR 自身流程即反例）,需更细粒度方案;②成本断言 0.01×1 测不出漏乘 batch,补 maxBatchSize>1→\$0.02 用例;③ci.yml 与 update-goldens.yml 双 pin FLUTTER_VERSION 升级必须同步+重铸 | 🅿️ | ①设计再议 ②一测的事 ③升级 checklist 项 |
 | ON-3 评审 P3 残留（#196）:卸载 ffmpeg 后设置页旧 Available 滞留（hit 缓存 app 级,设置页不调 invalidate;导出失败路径会自愈）;PATH 命中显示裸 `ffmpeg` 当路径 | 🅿️ | 低害:重启/导出失败自愈;若做刷新按钮同窗顺修 |

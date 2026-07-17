@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/secure_storage_keys.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/models/custom_provider_config.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -133,7 +134,13 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
     final keyState = ref.watch(apiKeyScopeControllerProvider(_providerId));
     final loading = keyState.isLoading;
     final isSet = keyState.valueOrNull ?? false;
-    final label = SecureStorageKeys.displayNameOf(widget.scope);
+    // custom:* 行显示配置里的 displayName（GAP-1 顺带修——此前裸 custom:<id>）。
+    final String? customDisplayName = widget.members.first.displayName;
+    final label = widget.scope.startsWith(kCustomProviderIdPrefix) &&
+            customDisplayName != null &&
+            customDisplayName.isNotEmpty
+        ? customDisplayName
+        : SecureStorageKeys.displayNameOf(widget.scope);
     final memberIds =
         widget.members.map((c) => c.providerId).join(' / ');
     final showMembers =

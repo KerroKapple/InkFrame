@@ -9,10 +9,12 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../core/errors/ink_error.dart';
 import '../core/interfaces/custom_provider_source.dart';
+import '../core/interfaces/custom_provider_store.dart';
 import '../core/logging/logger_service.dart';
 import '../core/models/custom_provider_config.dart';
-import '../core/models/provider_protocol_template.dart';
+import '../core/models/custom_provider_validation.dart';
 import '../core/paths/app_paths.dart';
 
 /// 空实现：默认 DI 与单测用，不碰磁盘。
@@ -24,7 +26,12 @@ class EmptyCustomProviderSource implements CustomProviderSource {
 }
 
 /// 文件实现：`<root>/config/custom_providers.json`。
-class CustomProvidersFileService implements CustomProviderSource {
+///
+/// 写侧（GAP-1,CustomProviderStore）：按 raw 条目操作保真——读侧剔除的
+/// 非法/未知条目原位保留;损坏文件拒写（LocalIOError）绝不覆盖;
+/// `.partial`→rename 原子落盘,2 空格缩进保持可手编。写不触会话内快照。
+class CustomProvidersFileService
+    implements CustomProviderSource, CustomProviderStore {
   CustomProvidersFileService({
     required AppPaths paths,
     required LoggerService logger,
@@ -35,9 +42,6 @@ class CustomProvidersFileService implements CustomProviderSource {
 
   static const String _module = 'custom_providers';
   static const String fileName = 'custom_providers.json';
-
-  /// `id` 白名单模式——进 SecureStorage key / jobs.provider_id / 日志，收紧字符集。
-  static final RegExp _idPattern = RegExp(r'^[A-Za-z0-9][A-Za-z0-9_-]*$');
 
   final AppPaths _paths;
   final LoggerService _logger;
@@ -112,8 +116,10 @@ class CustomProvidersFileService implements CustomProviderSource {
       }
     }
 
+    // 各字段规则统一走 custom_provider_validation 纯函数（与设置页内联
+    // 校验同一事实源）；告警顺序与 seenIds 语义保持原样。
     final id = field('id')!;
-    if (!_idPattern.hasMatch(id)) {
+    if (kCustomProviderIdPattern.hasMatch(id) == false) {
       _warnEntry(index, 'invalid_id', id: id);
       return null;
     }
@@ -123,26 +129,19 @@ class CustomProvidersFileService implements CustomProviderSource {
     }
 
     final template = field('template')!;
-    if (!kProviderProtocolTemplates.containsKey(template)) {
+    if (validateTemplate(template) != null) {
       _warnEntry(index, 'unknown_template', id: id, extra: {
         'template': template,
       });
       return null;
     }
 
-    final baseUri = Uri.tryParse(field('base_url')!);
-    // 拒 query/fragment/userinfo：Dio baseUrl 与 path 是字符串拼接，
-    // 带 query 的 base_url 会把请求路径吞进 query 值，端点必然 404。
-    if (baseUri == null ||
-        !baseUri.isAbsolute ||
-        (baseUri.scheme != 'http' && baseUri.scheme != 'https') ||
-        baseUri.host.isEmpty ||
-        baseUri.hasQuery ||
-        baseUri.hasFragment ||
-        baseUri.userInfo.isNotEmpty) {
+    final rawUrl = field('base_url')!;
+    if (validateBaseUrl(rawUrl) != null) {
       _warnEntry(index, 'invalid_base_url', id: id);
       return null;
     }
+    final baseUri = Uri.parse(rawUrl);
 
     final config = CustomProviderConfig(
       id: id,
@@ -160,12 +159,113 @@ class CustomProvidersFileService implements CustomProviderSource {
     return config;
   }
 
-  static String _stripTrailingSlash(String url) {
-    var out = url;
-    while (out.endsWith('/')) {
-      out = out.substring(0, out.length - 1);
+  static String _stripTrailingSlash(String url) => normalizeBaseUrl(url);
+
+  // ── 写侧（CustomProviderStore）────────────────────────────────────────
+
+  @override
+  Future<List<CustomProviderConfig>> list() async {
+    final raw = await _readRawForEdit(missingOk: true);
+    final seenIds = <String>{};
+    final parsed = <CustomProviderConfig>[];
+    for (var i = 0; i < raw.length; i++) {
+      final config = _parseEntry(raw[i], i, seenIds);
+      if (config != null) parsed.add(config);
     }
-    return out;
+    return List.unmodifiable(parsed);
+  }
+
+  @override
+  Future<void> upsert(CustomProviderConfig config) async {
+    final raw = await _readRawForEdit(missingOk: true);
+    final entry = <String, Object?>{
+      'id': config.id,
+      'display_name': config.displayName,
+      'template': config.template,
+      'base_url': config.baseUrl,
+      'model_id': config.modelId,
+    };
+    final idx = _indexOfId(raw, config.id);
+    if (idx >= 0) {
+      // 被编辑条目自身也保真（#200 评审 P2-1）：以旧 raw map 为基底合并,
+      // 用户手编的未知字段（如 "_note"）不随 UI 编辑丢失。
+      final old = raw[idx];
+      raw[idx] = <String, Object?>{
+        if (old is Map) ...old.cast<String, Object?>(),
+        ...entry,
+      };
+    } else {
+      raw.add(entry);
+    }
+    await _writeAtomic(raw);
+  }
+
+  @override
+  Future<void> remove(String id) async {
+    final raw = await _readRawForEdit(missingOk: true);
+    final idx = _indexOfId(raw, id);
+    if (idx < 0) return;
+    raw.removeAt(idx);
+    await _writeAtomic(raw);
+  }
+
+  static int _indexOfId(List<Object?> raw, String id) {
+    for (var i = 0; i < raw.length; i++) {
+      final e = raw[i];
+      if (e is Map && e['id'] == id) return i;
+    }
+    return -1;
+  }
+
+  /// 编辑用 raw 读取：文件缺失=空数组;损坏/顶层非数组=拒写抛 LocalIOError
+  /// （读侧兜底是「app 能启动」,写侧兜底是「不销毁用户数据」——语义相反）。
+  Future<List<Object?>> _readRawForEdit({required bool missingOk}) async {
+    final f = _file;
+    final String raw;
+    try {
+      if (!await f.exists()) {
+        if (missingOk) return <Object?>[];
+        throw const LocalIOError(extra: {'op': 'custom_providers.read'});
+      }
+      raw = await f.readAsString();
+    } on FileSystemException {
+      throw const LocalIOError(extra: {'op': 'custom_providers.read'});
+    }
+    final Object? decoded;
+    try {
+      decoded = jsonDecode(raw);
+    } on FormatException {
+      throw const LocalIOError(
+        extra: {'op': 'custom_providers.read', 'reason': 'corrupted'},
+      );
+    }
+    if (decoded is! List) {
+      throw const LocalIOError(
+        extra: {'op': 'custom_providers.read', 'reason': 'not_an_array'},
+      );
+    }
+    return List<Object?>.of(decoded);
+  }
+
+  Future<void> _writeAtomic(List<Object?> raw) async {
+    final f = _file;
+    final tmp = File('${f.path}.partial');
+    try {
+      await f.parent.create(recursive: true);
+      await tmp.writeAsString(
+        const JsonEncoder.withIndent('  ').convert(raw),
+        flush: true,
+      );
+      await tmp.rename(f.path);
+    } on FileSystemException {
+      // 放行点：清理残留 .partial 后以 InkError 语义上抛。
+      try {
+        if (tmp.existsSync()) tmp.deleteSync();
+      } on FileSystemException {
+        // 清理失败不掩盖主错误。
+      }
+      throw const LocalIOError(extra: {'op': 'custom_providers.write'});
+    }
   }
 
   void _warnFile(String msg, String detail) {

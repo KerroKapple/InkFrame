@@ -163,4 +163,27 @@ void main() {
     expect(await secure.retrieve(storedKey), isNull);
     expect(find.text('Not set'), findsOneWidget);
   });
+
+  testWidgets('custom:* 行显示 displayName 而非裸 id（GAP-1 顺带修）', (tester) async {
+    const customId = 'custom:my-relay';
+    final caps = fakeImageCapabilities(id: customId)
+        .copyWith(displayName: 'My Relay');
+    final fake = FakeProvider(capabilities: caps);
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: [
+        providerRegistryProvider.overrideWithValue(
+          CachingProviderRegistry({customId: () => fake}),
+        ),
+        providerCapabilitiesListProvider.overrideWithValue([caps]),
+        secureStorageServiceProvider.overrideWithValue(_FakeSecure()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('My Relay'), findsOneWidget);
+    // 裸 id 只允许出现在成员副标题（多成员/名不同时显示）,不做主标签
+    expect(find.text(customId), findsOneWidget); // 副标题行
+  });
 }

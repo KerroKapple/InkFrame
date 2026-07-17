@@ -15,6 +15,7 @@ import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
 import 'widgets/backup_section.dart';
 import 'widgets/canvas_appearance_section.dart';
+import 'widgets/custom_providers_section.dart';
 import 'widgets/diagnostics_section.dart';
 import 'widgets/language_section.dart';
 import 'widgets/storage_path_section.dart';
@@ -43,6 +44,8 @@ class SettingsScreen extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 ApiKeysSection(),
+                SizedBox(height: InkSpacing.xl),
+                CustomProvidersSection(),
                 SizedBox(height: InkSpacing.xl),
                 ThemeSection(),
                 SizedBox(height: InkSpacing.xl),
