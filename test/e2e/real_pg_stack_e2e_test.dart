@@ -12,6 +12,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:inkframe/core/constants/secure_storage_keys.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
 import 'package:inkframe/core/interfaces/database_restore_service.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
@@ -37,6 +38,12 @@ class _FixedClock implements Clock {
 
 void main() {
   test('真栈冷启→备份→还原→teardown 全链', () async {
+    // 双门控：TEST_REAL_PG 显式开关——避免开发机常驻导出 INKFRAME_PG_BIN
+    // （生产查找路径）时 pre-push 全量测被动跑 5 分钟真栈（同 ffmpeg tag 先例）。
+    if (Platform.environment['TEST_REAL_PG'] != '1') {
+      markTestSkipped('TEST_REAL_PG!=1，跳过真二进制 E2E');
+      return;
+    }
     final binDir = Platform.environment['INKFRAME_PG_BIN'];
     if (binDir == null || binDir.isEmpty) {
       markTestSkipped('INKFRAME_PG_BIN 未设置，跳过真二进制 E2E');
@@ -60,7 +67,16 @@ void main() {
       try {
         await controller.stop();
       } on PgLifecycleError {
-        // teardown 兜底。
+        // stop 失败兜底：按 postmaster.pid 强杀，防泄漏活体库进程。
+        final pidFile = File(p.join(paths.database.path, 'postmaster.pid'));
+        if (pidFile.existsSync()) {
+          final pid = int.tryParse(pidFile.readAsLinesSync().first.trim());
+          if (pid != null) {
+            Platform.isWindows
+                ? Process.runSync('taskkill', ['/PID', '$pid', '/F'])
+                : Process.runSync('kill', ['-9', '$pid']);
+          }
+        }
       }
       try {
         tmp.deleteSync(recursive: true);
@@ -88,7 +104,7 @@ void main() {
       reason: 'pg_hba 残留 trust 行',
     );
     // 密码已入（fake）SecureStorage 且 pwfile 不残留。
-    final pw = await secure.retrieve('database.pg.password');
+    final pw = await secure.retrieve(SecureStorageKeys.databasePassword);
     expect(pw, isNotNull);
     expect(
       paths.database.parent
@@ -118,6 +134,7 @@ void main() {
         maxConnectionCount: 2,
       ),
     );
+    addTearDown(pool.close);
     stage('bootstrap');
     await DatabaseBootstrap(pool).run();
     final ver = await pool
@@ -189,8 +206,9 @@ void main() {
     expect(await projects2.findById(pid2), isNull,
         reason: '备份后新增的数据应随对换消失');
     // retired 库已被 drop（对换收尾）。
+    // `\_` 转义 LIKE 通配符：只匹配字面下划线前缀（tmp/retired 族）。
     final leftovers = await pool2.execute(
-        "SELECT datname FROM pg_database WHERE datname LIKE 'inkframe_%'");
+        r"SELECT datname FROM pg_database WHERE datname LIKE 'inkframe\_%'");
     expect(leftovers, isEmpty, reason: 'retired/tmp 库残留: $leftovers');
 
     // ── 5) 真 teardown ──

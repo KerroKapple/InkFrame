@@ -76,7 +76,7 @@ abstract class PgProcessRunner {
     required File pwFile,
   });
 
-  /// 启动 postgres，返回 true 代表 pg_ctl 退出码 0。
+  /// 启动 postgres；调用方以 ProcessResult.exitCode==0 判成败。
   Future<ProcessResult> pgCtlStart({
     required File pgCtlBin,
     required Directory dataDir,
@@ -146,17 +146,27 @@ class SystemPgProcessRunner implements PgProcessRunner {
     if (!Platform.isWindows) {
       return Process.run(pgCtlBin.path, args);
     }
-    // Windows：pg_ctl 派生的 postmaster 会继承 Process.run 创建的管道句柄——
-    // pg_ctl 正常退出后管道不 EOF，Process.run 挂到 postmaster 落幕为止
-    // （真机验收发现：冷启动挂死 5 分钟直至 teardown 杀库）。改 inheritStdio
-    // 不建管道；pg_ctl/postmaster 输出本就经 -l 落 pg.log，失败诊断看日志。
-    final proc = await Process.start(
-      pgCtlBin.path,
-      args,
-      mode: ProcessStartMode.inheritStdio,
-    );
+    // Windows：pg_ctl 经 cmd 拉起 postmaster 时 bInheritHandles=TRUE，
+    // Process.run 建的管道写句柄泄进 postmaster——pg_ctl 退出后管道不 EOF，
+    // Process.run 等流收尾会挂到库进程落幕（真机验收：冷启动挂死 5 分钟）。
+    // 不可用 inheritStdio：GUI 进程无控制台时会丢 CREATE_NO_WINDOW，
+    // pg_ctl 弹可见黑窗且 postmaster 附着之，用户关窗即杀库。
+    // 解法：普通模式 Process.start 主动收流，exitCode 由进程句柄驱动不受管道
+    // 影响；退出后短暂宽限即断订阅。代价是每次 start 留一对管道句柄到 app
+    // 生命周期结束（每会话一次，可忽略）。
+    final proc = await Process.start(pgCtlBin.path, args);
+    final out = StringBuffer();
+    final err = StringBuffer();
+    final outSub =
+        proc.stdout.transform(systemEncoding.decoder).listen(out.write);
+    final errSub =
+        proc.stderr.transform(systemEncoding.decoder).listen(err.write);
     final int code = await proc.exitCode;
-    return ProcessResult(proc.pid, code, '', '');
+    // 给已入管道的尾部输出一个收尾窗
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    await outSub.cancel();
+    await errSub.cancel();
+    return ProcessResult(proc.pid, code, out.toString(), err.toString());
   }
 
   @override
@@ -366,7 +376,7 @@ class PgController {
       _logger?.error(_logModule, 'pg_ctl start failed',
           extra: {'exit_code': result.exitCode, 'port': port});
       final String detail = result.stderr.toString().trim().isEmpty
-          // Windows 路径 inheritStdio 无捕获输出——指路 pg.log。
+          // 罕见空 stderr（pg_ctl 静默失败）时指路 pg.log 兜底。
           ? 'see ${logFile.path}'
           : result.stderr.toString();
       throw PgLifecycleError(
