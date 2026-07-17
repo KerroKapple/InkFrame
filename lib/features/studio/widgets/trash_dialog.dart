@@ -60,7 +60,8 @@ class TrashDialog extends ConsumerWidget {
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: Text(context.l10n.commonCancel),
+          // Close 而非 Cancel：恢复即时生效不可撤（#190 评审 P3-3）。
+          child: Text(context.l10n.commonClose),
         ),
       ],
     );

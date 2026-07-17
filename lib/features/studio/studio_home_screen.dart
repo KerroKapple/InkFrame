@@ -724,10 +724,14 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
       if (!mounted) return;
       ref.invalidate(trashedCanvasesProvider(widget.project.id));
       setState(() {
-        _canvases = <CanvasRef>[
-          ..._canvases,
-          CanvasRef(id: t.id, name: t.name),
-        ];
+        // 按 id 查重：refetch 窗口内 stale 已删行仍可双击，二次 restore
+        // 返 0 不抛——不得追加第二条同 id（#190 评审 P2-2）。
+        if (!_canvases.any((o) => o.id == t.id)) {
+          _canvases = <CanvasRef>[
+            ..._canvases,
+            CanvasRef(id: t.id, name: t.name),
+          ];
+        }
       });
     } on InkError {
       if (mounted) _showError(failedMsg);
@@ -759,6 +763,9 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
     try {
       await ref.read(studioProjectsControllerProvider).deleteCanvas(c.id);
       if (!mounted) return;
+      // 删除迁入已删区：同对话框正 watch 着 trashed family，不失效会显示
+      // 「刚删的画布不在回收站」（#190 评审 P2-1）。
+      ref.invalidate(trashedCanvasesProvider(widget.project.id));
       setState(() {
         _canvases =
             _canvases.where((o) => o.id != c.id).toList(growable: false);

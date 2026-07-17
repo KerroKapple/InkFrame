@@ -65,9 +65,11 @@ void main() {
         projectRepositoryProvider.overrideWith((ref) async => repo),
         canvasRepositoryProvider
             .overrideWith((ref) async => InMemoryCanvasRepository()),
-        // riverpod 2.6.1 怪癖：invalidate 从未被读过的 autoDispose provider，
-        // 树收尾时元素双重 complete（Bad state）。真实 app 中 sidebar 常驻监听
-        // 本 provider 不会踩到；测试给个良性 stub 绕开。
+        // riverpod 2.6.1 debug 断言（_debugAssertCanDependOn）会把「invalidate
+        // 从未读过的 provider」强制初始化——无监听的 autoDispose 元素带着
+        // in-flight future 即刻 dispose，树收尾双重 complete（Bad state）。
+        // release 下该路径是判空 no-op，生产安全（#190 评审 P3-4 地面核实）；
+        // 测试给个良性 stub 绕开 debug 断言。
         workspaceProjectsProvider
             .overrideWith((ref) async => const <ProjectWithCanvases>[]),
       ],

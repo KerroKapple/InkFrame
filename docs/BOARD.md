@@ -138,3 +138,4 @@
 | OrphanFileReaper 转真删前必须 restore-aware（LB-22 评审 P3-1）:还原旧备份后新生成文件成 DB 孤儿——reaper 真删会吃掉「还原更新备份时还需要的文件」;当前 DRY-RUN 无害 | 🅿️ | LB-13b 真删灰度的前置不变量;修法=还原动作后重置 mtime 护栏或记还原水位 |
 | pg_dump/pg_restore 无超时（LB-22 评审 P3-2）:挂死子进程让备份/还原 busy 永久锁 UI;与 EX-3 ffmpeg 同根因（ProcessRunner 无 kill/timeout 通道） | 🅿️ | 随 EX-3「进度取消」同窗:ProcessRunner 加 timeout/kill,还原配 --single-transaction 超时 kill 事务自动回滚无半状态 |
 | 还原对换的 retired 库残留（DROP 失败仅 warn）与 swap_stranded 极端夹缝无启动期清扫/救援 | 🅿️ | 空间代价可接受;随 LB-12 同窗盘点:启动 housekeeping 扫 inkframe_retired_*/inkframe_restore_tmp 报告或回收 |
+| 回收站恢复绕过名字唯一性（#190 评审 P3-2）:建 Alpha→删→再建 Alpha→恢复旧 Alpha=工作库两个 Alpha;schema 无唯一约束,create/rename 的 UI 校验管不到 restore | 🅿️ | 不炸纯 UX 漂移;修法=restore 前查同名给改名/后缀,或列表 UI 容忍同名靠时间区分 |
