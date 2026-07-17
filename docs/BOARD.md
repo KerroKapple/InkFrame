@@ -95,6 +95,7 @@
 | ON-3 设置页 ffmpeg 状态行：仿安全存储探测模式；未找到=平台化指引（winget/brew+INKFRAME_FFMPEG），mac/win 外复用 exportVideoFfmpegMissing 防双源；重进设置页即重探 | #196 |
 | ON-4 网络错误文案走查 + i18n pass：三轴并行审读（错误/一致性/僵尸）；45 键修订（错误归因与下一步动作、术语统一工作室/提示词/服务商/图片、省略号统一）；删 canvasNodeType* 6 僵尸键 | #197 |
 | GAP-7 Inspector 测试欠账收口（预设点选应用+成本文案精确断言）+ ON-5 五屏空态 golden（Studio empty/error、Canvas empty、Gallery empty、Settings；ubuntu 铸线）——第 10 条（ON-3/4/GAP-7/ON-5）收官；**余 GAP-1 整卡、GAP-3 余量未清**（评审 P1 纠偏：勿宣「全部收官」） | #198 |
+| GAP-3 余量收口（24 站点审计:A 类仅 1 因=方向读错并入横幅链;raw toString 上屏绝迹;InkErrorBanner.onRetry 死参数删除;**InkAsyncSlot 判 YAGNI**——列表槽位 LB-06 已全收口） | #199 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -130,7 +131,7 @@
 | **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §2）：唯一瓶颈 freezed 3.2.5 与 riverpod_generator 4.0.4 的 analyzer 约束相斥,freezed 3.2.6 stable 一出即与 Riverpod 3 迁移合并立项（同时解掉 custom_lint 卡点,见 §1）;盯 freezed#1353 |
 | M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,预设点选应用与成本文案断言随 GAP-7 收口 | ✅ | #198：点选→字段+落库双断言;perCall 成本精确文案 |
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
-| Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | ✅ | LB-06/#166：batch 网格/结果 Inspector/入边区/预设/角色区/画布边泳道 error 横幅收口;GAP-3 余量（InkAsyncSlot 共享件、library_sidebar 等残站点）仍归 GAP-3 卡 |
+| Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | ✅ | LB-06/#166 主体 + #199 余量收口（24 站点审计:唯一真吞错=方向读错已修;library_sidebar 判良性降级加注释;InkAsyncSlot 判 YAGNI 不建）——**GAP-3 卡关闭** |
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | ✅ | LB-15/#190：sidebar 回收站对话框（项目级）+ 管理画布已删区（画布级）;永久删除仍显式排除 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | ✅ | LB-01/#156：`core/constants/job_statuses.dart` 单一真相源 |
 | canvas→generation 跨 feature import 违例（18 处 / 11 文件：job_state / jobs_registry / batch_results_controller / cost_estimator 等,违反 ARCHITECTURE §1.3 互 import 禁令） | 🅿️ | 待 import 边界 lint（custom_lint 卡点解除后）收口:上提共享模型到 core/ 或建白名单逐步清零 |
