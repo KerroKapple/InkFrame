@@ -1436,6 +1436,48 @@ abstract class AppLocalizations {
   /// **'Failed to export project'**
   String get studioExportProjectFailed;
 
+  /// No description provided for @studioImportProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Import project…'**
+  String get studioImportProject;
+
+  /// No description provided for @importInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Importing…'**
+  String get importInProgress;
+
+  /// No description provided for @importDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Project imported'**
+  String get importDone;
+
+  /// No description provided for @importFailedFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Not an InkFrame project archive'**
+  String get importFailedFormat;
+
+  /// No description provided for @importFailedVersionNewer.
+  ///
+  /// In en, this message translates to:
+  /// **'This archive was made by a newer version of InkFrame'**
+  String get importFailedVersionNewer;
+
+  /// No description provided for @importFailedCorrupt.
+  ///
+  /// In en, this message translates to:
+  /// **'Archive failed verification'**
+  String get importFailedCorrupt;
+
+  /// No description provided for @importFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Import failed'**
+  String get importFailed;
+
   /// No description provided for @studioTrash.
   ///
   /// In en, this message translates to:

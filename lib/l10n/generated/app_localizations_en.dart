@@ -749,6 +749,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioExportProjectFailed => 'Failed to export project';
 
   @override
+  String get studioImportProject => 'Import project…';
+
+  @override
+  String get importInProgress => 'Importing…';
+
+  @override
+  String get importDone => 'Project imported';
+
+  @override
+  String get importFailedFormat => 'Not an InkFrame project archive';
+
+  @override
+  String get importFailedVersionNewer =>
+      'This archive was made by a newer version of InkFrame';
+
+  @override
+  String get importFailedCorrupt => 'Archive failed verification';
+
+  @override
+  String get importFailed => 'Import failed';
+
+  @override
   String get studioTrash => 'Trash';
 
   @override

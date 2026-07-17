@@ -5,11 +5,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:async';
+
 import '../../core/di/current_screen.dart';
+import '../../core/di/database_restore.dart';
 import '../../core/di/logger.dart';
 import '../../core/di/project_archive.dart';
 import '../../core/di/repositories.dart';
 import '../../core/errors/ink_error.dart';
+import '../../core/interfaces/project_import_service.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/components/ink_error_banner.dart';
@@ -129,22 +133,123 @@ class _StudioMainArea extends ConsumerWidget {
             Positioned(
               right: InkSpacing.xl,
               bottom: InkSpacing.xl,
-              child: InkAmberButton(
-                label: context.l10n.studioNewProject,
-                icon: Icons.add,
-                onPressed: () => _showNewProjectDialog(
-                  context,
-                  ref,
-                  projectsAsync.maybeWhen(
-                    data: (p) => p,
-                    orElse: () => const <ProjectWithCanvases>[],
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // LB-12：项目包导入（导入中/还原中/导出中互斥禁用，拍板 9）。
+                  InkGhostButton(
+                    label: context.l10n.studioImportProject,
+                    icon: Icons.unarchive_outlined,
+                    onPressed: ref.watch(projectImportBusyProvider) ||
+                            ref.watch(databaseRestoreBusyProvider) ||
+                            ref.watch(projectExportBusyProvider)
+                        ? null
+                        : () => _importProject(context, ref),
                   ),
-                ),
+                  const SizedBox(width: InkSpacing.sm),
+                  InkAmberButton(
+                    label: context.l10n.studioNewProject,
+                    icon: Icons.add,
+                    onPressed: () => _showNewProjectDialog(
+                      context,
+                      ref,
+                      projectsAsync.maybeWhen(
+                        data: (p) => p,
+                        orElse: () => const <ProjectWithCanvases>[],
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
         ],
       ),
     );
+  }
+
+  /// LB-12：项目包导入——picker → barrier 模态 → service → 成功选中新项目。
+  /// 三大重操作（导入/还原/导出）互斥；依赖首 await 前 read 持有（#188 P1-1）。
+  Future<void> _importProject(BuildContext context, WidgetRef ref) async {
+    final importBusy = ref.read(projectImportBusyProvider.notifier);
+    if (importBusy.state ||
+        ref.read(databaseRestoreBusyProvider) ||
+        ref.read(projectExportBusyProvider)) {
+      return;
+    }
+    final toast = ref.read(toastServiceProvider);
+    final logger = ref.read(loggerProvider);
+    final picker = ref.read(openFilePickerProvider);
+    final serviceFuture = ref.read(projectImportServiceProvider.future);
+    final selected = ref.read(selectedProjectIdProvider.notifier);
+    final container = ProviderScope.containerOf(context, listen: false);
+    final navigator = Navigator.of(context, rootNavigator: true);
+    final l10n = context.l10n;
+    final progressMsg = l10n.importInProgress;
+    final doneMsg = l10n.importDone;
+    importBusy.state = true;
+    try {
+      final path = await picker();
+      if (path == null || !context.mounted) return;
+
+      // barrier 模态罩全程（导入分钟级；LB-22 同款）。
+      BuildContext? barrierCtx;
+      unawaited(showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        barrierColor: context.inkColors.scrim,
+        builder: (ctx) {
+          barrierCtx = ctx;
+          return PopScope(
+            canPop: false,
+            child: AlertDialog(
+              content: Row(
+                children: [
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  const SizedBox(width: InkSpacing.md),
+                  Text(progressMsg),
+                ],
+              ),
+            ),
+          );
+        },
+      ));
+      ImportResult result;
+      try {
+        final service = await serviceFuture;
+        result = await service.importArchive(zipPath: path);
+      } catch (e, st) {
+        // 放行点：service 已收敛所有已知失败——这里兜装配错误，失败必须可见。
+        logger.error(_logModule, 'import unexpected', cause: e, stackTrace: st);
+        result = const ImportResult(outcome: ImportOutcome.failed);
+      } finally {
+        final ctx = barrierCtx;
+        if (ctx != null && ctx.mounted) {
+          Navigator.of(ctx).pop();
+        } else {
+          navigator.pop();
+        }
+      }
+
+      if (result.outcome == ImportOutcome.imported) {
+        container.invalidate(workspaceProjectsProvider);
+        selected.state = result.newProjectId;
+        toast.show(doneMsg, kind: ToastKind.success);
+      } else {
+        final String msg = switch (result.outcome) {
+          ImportOutcome.failedFormat => l10n.importFailedFormat,
+          ImportOutcome.failedVersionNewer => l10n.importFailedVersionNewer,
+          ImportOutcome.failedCorrupt => l10n.importFailedCorrupt,
+          ImportOutcome.failed || ImportOutcome.imported => l10n.importFailed,
+        };
+        toast.show(msg, kind: ToastKind.error);
+      }
+    } finally {
+      importBusy.state = false;
+    }
   }
 
   /// ON-2：示例项目入口。createSample 内部会切 currentCanvasId 直达画布。
