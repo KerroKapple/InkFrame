@@ -15,6 +15,7 @@ import 'package:inkframe/theme/app_theme.dart';
 
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_secure_storage.dart';
+import '../../../_harness/fake_unit_of_work.dart';
 
 /// 宿主：真实 Navigator 下经 showOnboardingDialog 打开向导。
 Future<ProviderContainer> _pumpAndOpen(
@@ -113,10 +114,18 @@ void main() {
     final prefs = InMemoryPreferencesService();
     final projects = InMemoryProjectRepository();
     final canvases = InMemoryCanvasRepository();
+    final lanes = InMemoryStyleLaneRepository();
+    final nodes = InMemoryNodeRepository();
     final container = await _pumpAndOpen(tester, overrides: <Override>[
       ..._baseOverrides(prefs),
-      projectRepositoryProvider.overrideWith((_) async => projects),
-      canvasRepositoryProvider.overrideWith((_) async => canvases),
+      unitOfWorkProvider.overrideWith(
+        (_) async => FakeUnitOfWork(FakeRepositoryScope(
+          projects: projects,
+          canvas: canvases,
+          styleLanes: lanes,
+          nodes: nodes,
+        )),
+      ),
     ]);
 
     await tester.tap(find.text('Next'));
@@ -131,5 +140,8 @@ void main() {
     expect(container.read(currentCanvasIdProvider), isNotNull);
     expect(prefs.current.onboardingCompleted, isTrue);
     expect(find.text('Welcome to InkFrame'), findsNothing);
+    // ON-2b：演示内容一并种入
+    expect(lanes.rows, hasLength(1));
+    expect(nodes.rows.values.single['lane_id'], lanes.rows.keys.single);
   });
 }

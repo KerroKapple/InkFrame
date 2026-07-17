@@ -270,6 +270,12 @@ class _StudioMainArea extends ConsumerWidget {
       await bootstrap.createSample(
         projectName: l10n.canvasSampleProjectName,
         canvasName: l10n.canvasSampleCanvasName,
+        seed: (
+          laneLabel: l10n.canvasSampleLaneLabel,
+          laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
+          nodeLabel: l10n.canvasSampleNodeLabel,
+          nodePrompt: l10n.canvasSampleNodePrompt,
+        ),
       );
     } on InkError catch (e, st) {
       // 捕获集 = createSample 真实抛出集：仓储链路只抛 InkError（铁律）。

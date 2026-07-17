@@ -184,9 +184,16 @@ class _NoCanvasOpen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final bootstrap = ref.read(canvasBootstrapControllerProvider);
+                final l10n = context.l10n;
                 await bootstrap.createSample(
-                  projectName: context.l10n.canvasSampleProjectName,
-                  canvasName: context.l10n.canvasSampleCanvasName,
+                  projectName: l10n.canvasSampleProjectName,
+                  canvasName: l10n.canvasSampleCanvasName,
+                  seed: (
+                    laneLabel: l10n.canvasSampleLaneLabel,
+                    laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
+                    nodeLabel: l10n.canvasSampleNodeLabel,
+                    nodePrompt: l10n.canvasSampleNodePrompt,
+                  ),
                 );
               },
               child: Text(context.l10n.canvasCreateSampleCanvas),

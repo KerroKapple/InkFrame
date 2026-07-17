@@ -99,6 +99,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasSampleCanvasName => 'Canvas 1';
 
   @override
+  String get canvasSampleLaneLabel => 'Ink Style';
+
+  @override
+  String get canvasSampleLaneStylePrompt =>
+      'traditional Chinese ink painting, soft brush strokes, misty atmosphere';
+
+  @override
+  String get canvasSampleNodeLabel => 'First Shot';
+
+  @override
+  String get canvasSampleNodePrompt =>
+      'A lone boat drifting on a misty river at dawn, distant mountains fading into the fog';
+
+  @override
   String get inspectorTitle => 'Config';
 
   @override
