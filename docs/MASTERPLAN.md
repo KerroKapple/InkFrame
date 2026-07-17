@@ -126,6 +126,10 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
   实测字节防 bomb+重名拒+保留名+UUID 段;全表重映射含 type_config.character_ids;
   files 先行 staging+rename 收崩溃窗口;单事务+补偿零残留;roundtrip 大红测=DoD;
   **BP-11 项目复制的全部机器就绪**)
+- **真机验收补钉(2026-07-17)**:✅ #194——Windows `pg_ctl start` 管道继承挂死
+  (postmaster 继承 Process.run 管道句柄,冷启动挂死至库进程落幕;打包版 Windows 首启即触发,
+  Windows CI 排 pg 标签+控制器测试全 fake 故此前不可见);Windows 分支改 inheritStdio;
+  随附 realpg 门控真栈 E2E(真 initdb SCRAM→pg_ctl→迁移→pg_dump→pg_restore 对换→teardown)
 - **LB-13 purge 语义修正+孤儿文件回收**:✅ 切片 A(#163,purge 加 success-slot 守卫保画廊);
   ✅ 切片 B = **LB-13b**(#165,OrphanFileReaper DRY-RUN v1 只记不删;真删除待 dry-run 灰度后)
 - **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);
