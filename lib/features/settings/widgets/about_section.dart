@@ -162,11 +162,13 @@ class AboutSection extends ConsumerWidget {
                   // locator 已吞 ProcessException;兜底按未找到呈现
                   error: (_, _) => _ffmpegMissingText(context),
                 ),
-                // 缺 ffmpeg 是降级（导出不可用）非故障——warning 而非 danger
-                valueColor: ffmpegAsync.maybeWhen(
+                // 缺 ffmpeg 是降级（导出不可用）非故障——warning 而非 danger；
+                // error 分支显示 missing 文案,颜色须同步 warning
+                valueColor: ffmpegAsync.when(
                   data: (path) =>
                       path != null ? colors.success : colors.warning,
-                  orElse: () => colors.fg2,
+                  loading: () => colors.fg2,
+                  error: (_, _) => colors.warning,
                 ),
               ),
             ],

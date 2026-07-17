@@ -107,7 +107,8 @@ void main() {
       overrides: _baseOverrides(),
     );
     await tester.pumpAndSettle();
-    expect(find.textContaining('Available'), findsWidgets);
+    // 恰 2 行：secure storage + ffmpeg——任一退化 Unavailable 即红
+    expect(find.textContaining('Available'), findsNWidgets(2));
   });
 
   testWidgets('探测抛错显示 Unavailable + 原因', (tester) async {
@@ -137,29 +138,36 @@ void main() {
 
   testWidgets('ffmpeg 未找到（Windows）：winget 指引 + INKFRAME_FFMPEG 兜底',
       (tester) async {
-    // 必须在测试体内复位——框架的 foundation 变量 invariant 检查先于 addTearDown
+    // 必须在测试体内复位——框架的 foundation 变量 invariant 检查先于 addTearDown；
+    // try/finally 保证断言失败也复位，不留次生噪音
     debugDefaultTargetPlatformOverride = TargetPlatform.windows;
-    await pumpInkApp(
-      tester,
-      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
-      overrides: _baseOverrides(ffmpegPath: null),
-    );
-    await tester.pumpAndSettle();
-    expect(find.textContaining('winget'), findsOneWidget);
-    expect(find.textContaining('INKFRAME_FFMPEG'), findsOneWidget);
-    debugDefaultTargetPlatformOverride = null;
+    try {
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+        overrides: _baseOverrides(ffmpegPath: null),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('winget'), findsOneWidget);
+      expect(find.textContaining('INKFRAME_FFMPEG'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('ffmpeg 未找到（macOS）：brew 指引', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
-    await pumpInkApp(
-      tester,
-      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
-      overrides: _baseOverrides(ffmpegPath: null),
-    );
-    await tester.pumpAndSettle();
-    expect(find.textContaining('brew'), findsOneWidget);
-    debugDefaultTargetPlatformOverride = null;
+    try {
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+        overrides: _baseOverrides(ffmpegPath: null),
+      );
+      await tester.pumpAndSettle();
+      expect(find.textContaining('brew'), findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('ffmpeg 未找到（其他平台）：复用导出对话框文案防双源', (tester) async {
