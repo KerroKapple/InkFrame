@@ -245,6 +245,10 @@ class _FakeEdgeRepo implements EdgeRepository {
 
 class _FakeCanvasRepo implements CanvasRepository {
   @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
+  @override
   Future<Map<String, Object?>?> findById(String id) async => null;
   @override
   Future<String> create({required String projectId, required String name, String baseStylePrefix = '', String baseStyleSuffix = ''}) async => '';

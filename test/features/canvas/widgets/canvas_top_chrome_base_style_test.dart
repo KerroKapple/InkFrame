@@ -20,6 +20,10 @@ class _EmptyNodesController extends CanvasNodesController {
 
 // 最小化 fake：仅实现 findById（返回 base_style 字段），update 记录调用。
 class _FakeCanvasRepository implements CanvasRepository {
+  @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
   _FakeCanvasRepository({
     String prefix = 'pre',
     String suffix = 'suf',

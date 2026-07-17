@@ -12,6 +12,10 @@ import 'package:inkframe/theme/app_theme.dart';
 
 class _FakeCanvasRepo implements CanvasRepository {
   @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
+  @override
   Future<String> create({
     required String projectId,
     required String name,

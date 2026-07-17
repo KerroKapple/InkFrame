@@ -92,6 +92,34 @@ void main() {
     }
   });
 
+  test('CanvasRepository.listTrashedByProject：只回软删、deleted_at 非空、隔离（LB-15）',
+      () async {
+    try {
+      final h = req();
+      final projRepo = PostgresProjectRepository(h.conn);
+      final repo = PostgresCanvasRepository(h.conn);
+      final p1 = await projRepo.create(name: 'P1');
+      final p2 = await projRepo.create(name: 'P2');
+      final c1 = await repo.create(projectId: p1, name: 'alive');
+      final c2 = await repo.create(projectId: p1, name: 'trashed');
+      await repo.create(projectId: p2, name: 'other');
+      await repo.softDelete(c2);
+
+      final trashed = await repo.listTrashedByProject(p1);
+      expect(trashed, hasLength(1));
+      expect(trashed.single['id'].toString(), c2);
+      expect(trashed.single['deleted_at'], isNotNull);
+
+      // 恢复后回空；活画布从未出现在回收站。
+      await repo.restore(c2);
+      expect(await repo.listTrashedByProject(p1), isEmpty);
+      expect((await repo.listByProject(p1)).map((r) => r['id'].toString()),
+          containsAll(<String>[c1, c2]));
+    } on _Skip {
+      return;
+    }
+  });
+
   test('CanvasRepository.listByProjects 一次取多项目画布 + 过滤软删', () async {
     try {
       final h = req();

@@ -245,6 +245,10 @@ class _FakeResolver implements FileResolverService {
 
 /// 支持配置 base前缀/后缀 的假 CanvasRepository。
 class _FakeCanvasRepo implements CanvasRepository {
+  @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
   String? prefix;
   String? suffix;
   @override

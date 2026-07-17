@@ -40,6 +40,10 @@ class _FakeProjectRepo implements ProjectRepository {
 }
 
 class _FakeCanvasRepo implements CanvasRepository {
+  @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
   final List<Map<String, Object?>> updates = <Map<String, Object?>>[];
   final List<String> softDeleted = <String>[];
 

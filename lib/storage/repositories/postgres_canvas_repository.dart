@@ -76,6 +76,20 @@ class PostgresCanvasRepository with BaseRepository implements CanvasRepository {
   }
 
   @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) {
+    return guard('listTrashedByProject', 'canvases', () async {
+      final r = await session.execute(
+        Sql.named(
+          'SELECT * FROM canvases WHERE project_id = @pid '
+          'AND deleted_at IS NOT NULL ORDER BY deleted_at DESC',
+        ),
+        parameters: <String, Object?>{'pid': projectId},
+      );
+      return allRows(r);
+    });
+  }
+
+  @override
   Future<int> update(String id, Map<String, Object?> patch) {
     return guard('update', 'canvases', () async {
       final q = buildUpdate('canvases', id, patch);

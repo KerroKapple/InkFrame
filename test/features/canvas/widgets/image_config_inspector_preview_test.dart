@@ -59,6 +59,10 @@ class _FakeStyleLaneRepo implements StyleLaneRepository {
 }
 
 class _FakeCanvasRepo implements CanvasRepository {
+  @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
   _FakeCanvasRepo({required this.prefix, required this.suffix});
   final String prefix;
   final String suffix;

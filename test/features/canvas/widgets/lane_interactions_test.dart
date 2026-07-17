@@ -231,6 +231,10 @@ class _FakeStyleLaneRepository implements StyleLaneRepository {
 
 class _FakeCanvasRepository implements CanvasRepository {
   @override
+  Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
+      const <Map<String, Object?>>[];
+
+  @override
   Future<Map<String, Object?>?> findById(String id) async => <String, Object?>{
         'id': id,
         'lane_direction': 'horizontal',
