@@ -13,6 +13,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
 import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
+import 'widgets/backup_section.dart';
 import 'widgets/canvas_appearance_section.dart';
 import 'widgets/language_section.dart';
 import 'widgets/storage_path_section.dart';
@@ -49,6 +50,8 @@ class SettingsScreen extends ConsumerWidget {
                 LanguageSection(),
                 SizedBox(height: InkSpacing.xl),
                 StoragePathSection(),
+                SizedBox(height: InkSpacing.xl),
+                BackupSection(),
                 SizedBox(height: InkSpacing.xl),
                 AboutSection(),
               ],

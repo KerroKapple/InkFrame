@@ -554,6 +554,132 @@ abstract class AppLocalizations {
   /// **'Path copied to clipboard'**
   String get settingsStoragePathCopied;
 
+  /// No description provided for @settingsBackupSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Backups & restore'**
+  String get settingsBackupSection;
+
+  /// No description provided for @settingsBackupHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily cold backups of your local database, kept 7. Restore replaces the database only — media files on disk stay as-is.'**
+  String get settingsBackupHint;
+
+  /// No description provided for @settingsBackupNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Back up now'**
+  String get settingsBackupNow;
+
+  /// No description provided for @settingsBackupDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup created'**
+  String get settingsBackupDone;
+
+  /// No description provided for @settingsBackupNoBinaries.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundled PostgreSQL tools not found — reinstall InkFrame to restore them'**
+  String get settingsBackupNoBinaries;
+
+  /// No description provided for @settingsBackupFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup failed'**
+  String get settingsBackupFailed;
+
+  /// No description provided for @settingsBackupsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No backups yet'**
+  String get settingsBackupsEmpty;
+
+  /// Backup list row meta: human size + localized timestamp
+  ///
+  /// In en, this message translates to:
+  /// **'{size} · {date}'**
+  String settingsBackupMetaLine(String size, DateTime date);
+
+  /// No description provided for @settingsBackupKindDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get settingsBackupKindDaily;
+
+  /// No description provided for @settingsBackupKindManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual'**
+  String get settingsBackupKindManual;
+
+  /// No description provided for @settingsBackupKindPreRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-restore'**
+  String get settingsBackupKindPreRestore;
+
+  /// No description provided for @settingsRestore.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore'**
+  String get settingsRestore;
+
+  /// No description provided for @restoreConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore from backup?'**
+  String get restoreConfirmTitle;
+
+  /// No description provided for @restoreConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace current data with \"{file}\" ({date})? We\'ll try to create a safety backup first. Running generations will be cancelled, and you\'ll be returned to the home screen. Media files on disk are not rolled back.'**
+  String restoreConfirmBody(String file, DateTime date);
+
+  /// No description provided for @restoreDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore complete'**
+  String get restoreDone;
+
+  /// No description provided for @restoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore failed — your data was not changed'**
+  String get restoreFailed;
+
+  /// No description provided for @restoreFailedCorrupt.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup file failed verification'**
+  String get restoreFailedCorrupt;
+
+  /// No description provided for @restoreFailedVersionNewer.
+  ///
+  /// In en, this message translates to:
+  /// **'This backup was made by a newer version of InkFrame'**
+  String get restoreFailedVersionNewer;
+
+  /// No description provided for @restoreAbortedPreBackup.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety backup failed — restore cancelled'**
+  String get restoreAbortedPreBackup;
+
+  /// No description provided for @restoreInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring…'**
+  String get restoreInProgress;
+
+  /// No description provided for @startupErrorRestoreLatest.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore latest backup'**
+  String get startupErrorRestoreLatest;
+
   /// No description provided for @settingsAboutSection.
   ///
   /// In en, this message translates to:

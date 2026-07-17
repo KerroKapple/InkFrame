@@ -99,6 +99,41 @@
   "settingsStorageCopyPath": "Copy path",
   "settingsStoragePathCopied": "Path copied to clipboard",
 
+  "settingsBackupSection": "Backups & restore",
+  "settingsBackupHint": "Daily cold backups of your local database, kept 7. Restore replaces the database only — media files on disk stay as-is.",
+  "settingsBackupNow": "Back up now",
+  "settingsBackupDone": "Backup created",
+  "settingsBackupNoBinaries": "Bundled PostgreSQL tools not found — reinstall InkFrame to restore them",
+  "settingsBackupFailed": "Backup failed",
+  "settingsBackupsEmpty": "No backups yet",
+  "settingsBackupMetaLine": "{size} · {date}",
+  "@settingsBackupMetaLine": {
+    "description": "Backup list row meta: human size + localized timestamp",
+    "placeholders": {
+      "size": { "type": "String" },
+      "date": { "type": "DateTime", "format": "yyyy-MM-dd HH:mm", "isCustomDateFormat": "true" }
+    }
+  },
+  "settingsBackupKindDaily": "Daily",
+  "settingsBackupKindManual": "Manual",
+  "settingsBackupKindPreRestore": "Pre-restore",
+  "settingsRestore": "Restore",
+  "restoreConfirmTitle": "Restore from backup?",
+  "restoreConfirmBody": "Replace current data with \"{file}\" ({date})? We'll try to create a safety backup first. Running generations will be cancelled, and you'll be returned to the home screen. Media files on disk are not rolled back.",
+  "@restoreConfirmBody": {
+    "placeholders": {
+      "file": { "type": "String" },
+      "date": { "type": "DateTime", "format": "yyyy-MM-dd HH:mm", "isCustomDateFormat": "true" }
+    }
+  },
+  "restoreDone": "Restore complete",
+  "restoreFailed": "Restore failed — your data was not changed",
+  "restoreFailedCorrupt": "Backup file failed verification",
+  "restoreFailedVersionNewer": "This backup was made by a newer version of InkFrame",
+  "restoreAbortedPreBackup": "Safety backup failed — restore cancelled",
+  "restoreInProgress": "Restoring…",
+  "startupErrorRestoreLatest": "Restore latest backup",
+
   "settingsAboutSection": "About",
   "settingsAboutAppNameLabel": "Application",
   "settingsAboutVersionLabel": "Version",

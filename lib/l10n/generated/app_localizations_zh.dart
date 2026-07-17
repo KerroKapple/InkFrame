@@ -241,6 +241,85 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsStoragePathCopied => '路径已复制到剪贴板';
 
   @override
+  String get settingsBackupSection => '备份与还原';
+
+  @override
+  String get settingsBackupHint => '本地数据库每日自动冷备，保留 7 份。还原只替换数据库——磁盘上的媒体文件不回滚。';
+
+  @override
+  String get settingsBackupNow => '立即备份';
+
+  @override
+  String get settingsBackupDone => '已创建备份';
+
+  @override
+  String get settingsBackupNoBinaries => '未找到内置 PostgreSQL 工具——请重新安装 InkFrame';
+
+  @override
+  String get settingsBackupFailed => '备份失败';
+
+  @override
+  String get settingsBackupsEmpty => '暂无备份';
+
+  @override
+  String settingsBackupMetaLine(String size, DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat(
+      'yyyy-MM-dd HH:mm',
+      localeName,
+    );
+    final String dateString = dateDateFormat.format(date);
+
+    return '$size · $dateString';
+  }
+
+  @override
+  String get settingsBackupKindDaily => '每日';
+
+  @override
+  String get settingsBackupKindManual => '手动';
+
+  @override
+  String get settingsBackupKindPreRestore => '还原前';
+
+  @override
+  String get settingsRestore => '还原';
+
+  @override
+  String get restoreConfirmTitle => '从备份还原？';
+
+  @override
+  String restoreConfirmBody(String file, DateTime date) {
+    final intl.DateFormat dateDateFormat = intl.DateFormat(
+      'yyyy-MM-dd HH:mm',
+      localeName,
+    );
+    final String dateString = dateDateFormat.format(date);
+
+    return '用「$file」（$dateString）替换当前数据？还原前会尽量先备份一次；进行中的生成任务会被取消，完成后将回到主页。磁盘上的媒体文件不回滚。';
+  }
+
+  @override
+  String get restoreDone => '还原完成';
+
+  @override
+  String get restoreFailed => '还原失败——你的数据未被改动';
+
+  @override
+  String get restoreFailedCorrupt => '备份文件校验未通过';
+
+  @override
+  String get restoreFailedVersionNewer => '该备份来自更新版本的 InkFrame';
+
+  @override
+  String get restoreAbortedPreBackup => '安全备份失败——已取消还原';
+
+  @override
+  String get restoreInProgress => '正在还原…';
+
+  @override
+  String get startupErrorRestoreLatest => '从最近备份还原';
+
+  @override
   String get settingsAboutSection => '关于';
 
   @override
