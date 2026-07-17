@@ -180,7 +180,8 @@ W1(LB-03/04/06/17)→ W2(LB-07/09/13/14/16)→ W3(LB-10/11/15/18)→ W4(LB-12 �
     未找到=平台化指引 winget/brew+INKFRAME_FFMPEG,复用 exportVideoFfmpegMissing 防双源)。
     **ON-4/i18n pass**(S)✅ **#197 已合**(三轴并行审读:错误文案归因+下一步动作、
     术语统一、省略号统一、canvasNodeType* 6 僵尸键清除)。
-    余:**GAP-7 Inspector 测试欠账 + ON-5 空态 golden**(质量闸随窗)。
+    **GAP-7 + ON-5**(质量闸)✅ **#198 已合**(Inspector 预设/成本断言收债;
+    五屏空态 golden 入 CI,ubuntu 铸线)——**上线前必做清单 1-10 全部收官**。
 
 **上线后首迭代起**:PL-4b undo 栈、CV-4 左工具栏实装/CV-5 视口 chrome(zoom 指示+fit,minimap 后置)、
 CV-2/CV-3(节点色条/Inspector 浮动,拍板后随时)、PL-3 右键菜单(建议尽早)、PL-5 框选群拖、

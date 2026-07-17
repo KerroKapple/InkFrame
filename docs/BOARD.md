@@ -94,6 +94,7 @@
 | ON-2b 示例项目演示内容：createSample 单事务种子化（示例泳道+预填 prompt 的 image config 节点，纯本地零生成）；SampleSeed 经 ARB 由三入口传入 | #195 |
 | ON-3 设置页 ffmpeg 状态行：仿安全存储探测模式；未找到=平台化指引（winget/brew+INKFRAME_FFMPEG），mac/win 外复用 exportVideoFfmpegMissing 防双源；重进设置页即重探 | #196 |
 | ON-4 网络错误文案走查 + i18n pass：三轴并行审读（错误/一致性/僵尸）；45 键修订（错误归因与下一步动作、术语统一工作室/提示词/服务商/图片、省略号统一）；删 canvasNodeType* 6 僵尸键 | #197 |
+| GAP-7 Inspector 测试欠账收口（预设点选应用+成本文案精确断言）+ ON-5 五屏空态 golden（Studio empty/error、Canvas empty、Gallery empty、Settings；ubuntu 铸线）——**上线前必做清单全部收官** | #198 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -127,7 +128,7 @@
 | 嵌入式 PG `-A trust` 认证（AUDIT 安全附录） | ✅ | LB-07/#172：新集群 initdb 即 SCRAM-SHA-256 + 随机密码入 SecureStorage;存量 trust 集群零迁移继续可用（调研档见 [BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §3） |
 | 补两档设计令牌（图标尺寸/控件高度） | 🅿️ | P2 一致性 |
 | **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §2）：唯一瓶颈 freezed 3.2.5 与 riverpod_generator 4.0.4 的 analyzer 约束相斥,freezed 3.2.6 stable 一出即与 Riverpod 3 迁移合并立项（同时解掉 custom_lint 卡点,见 §1）;盯 freezed#1353 |
-| M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,仍欠预设点选应用与成本文案断言 | 🅿️ | 2026-07-02 审计发现;剩余随 UI 稳定补 |
+| M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,预设点选应用与成本文案断言随 GAP-7 收口 | ✅ | #198：点选→字段+落库双断言;perCall 成本精确文案 |
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
 | Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | ✅ | LB-06/#166：batch 网格/结果 Inspector/入边区/预设/角色区/画布边泳道 error 横幅收口;GAP-3 余量（InkAsyncSlot 共享件、library_sidebar 等残站点）仍归 GAP-3 卡 |
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | ✅ | LB-15/#190：sidebar 回收站对话框（项目级）+ 管理画布已删区（画布级）;永久删除仍显式排除 |
