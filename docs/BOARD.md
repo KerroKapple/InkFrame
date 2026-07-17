@@ -86,6 +86,7 @@
 | #186 对抗评审 P2-1 补：存量 >50k 越界节点加载期收敛进 ±kWorldReach（内存收敛不回写）+ 注释腐化 ×3 | #187 |
 | LB-11 项目导出（zip=manifest+data+files 全保真含软删保 FK 闭包；.partial 原子写；项目卡菜单入口；清债#20） | #188 |
 | LB-22 备份还原（scratch 库对换失败不动原库；三族备份分池+sidecar 校验；设置页数据区+启动失败面入口；顺带 start 单飞+JobQueue 关池 handle 必达） | #189 |
+| LB-15 回收站 UI（≡GAP-2：sidebar 入口+项目回收站对话框、管理画布已删区；listTrashedByProject 三处补齐；债#11 以真入口收口；永久删除显式排除） | #190 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -111,7 +112,7 @@
 | _PromptPreview 双份拼装（AUDIT P1-17） | 🅿️ | 随 image_config_inspector 拆分处理 |
 | JobRepository 胖接口拆分（AUDIT P1-18） | 🅿️ | 与 findByIds 同窗处理 |
 | job_queue_panel 手写错误映射与 ink_error messageKey 双源（AUDIT P1-x2，缺 providerInvalidResponse 分支走 unknown 兜底） | ✅ | #164 退役 JobQueuePanel（-332 行），双源随组件删除即清 |
-| ARCHIVE/footer 死 stub（AUDIT P1-x3） | 🅿️ | 产品定义未决 |
+| ARCHIVE/footer 死 stub（AUDIT P1-x3） | ✅ | CV-1/#174 裁撤死件;LB-15/#190 以真回收站入口回归 footer（GAP-2 激活承诺兑现） |
 | capabilities.pollTimeout 全仓零消费（AUDIT P1-x4） | ✅ | LB-02/#157：接入 JobQueue `_runJob`（pollTimeout/pollInterval 双读） |
 | provider displayName 英文常量（AUDIT P1-7） | 🅿️ | 品牌名不译是有意为之；若要本地化需过 l10n 例外评审 |
 | canvas_nodes_controller 乐观新增基于 previous 快照重建（丢更新竞态，VERIFICATION §5.3） | ✅ | LB-04/#158：`serial_mutation_queue.dart` FIFO 串行（nodes/edges/lanes/characters/presets 五处） |
@@ -122,7 +123,7 @@
 | M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,仍欠预设点选应用与成本文案断言 | 🅿️ | 2026-07-02 审计发现;剩余随 UI 稳定补 |
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
 | Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | ✅ | LB-06/#166：batch 网格/结果 Inspector/入边区/预设/角色区/画布边泳道 error 横幅收口;GAP-3 余量（InkAsyncSlot 共享件、library_sidebar 等残站点）仍归 GAP-3 卡 |
-| 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | 🅿️ | 产品面缺口,M3 排期 |
+| 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | ✅ | LB-15/#190：sidebar 回收站对话框（项目级）+ 管理画布已删区（画布级）;永久删除仍显式排除 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | ✅ | LB-01/#156：`core/constants/job_statuses.dart` 单一真相源 |
 | canvas→generation 跨 feature import 违例（18 处 / 11 文件：job_state / jobs_registry / batch_results_controller / cost_estimator 等,违反 ARCHITECTURE §1.3 互 import 禁令） | 🅿️ | 待 import 边界 lint（custom_lint 卡点解除后）收口:上提共享模型到 core/ 或建白名单逐步清零 |
 | 导出 busy 模态无取消/无超时（2026-07-08 深审:`Process.run` 无 timeout/kill 通道,busy 期 PopScope+禁按钮+barrier 三重封死,ffmpeg 挂起唯一逃生口=退出应用;export_video_dialog.dart:95 + system_process_runner.dart:11） | 🅿️ | 与 MASTERPLAN EX-3「进度取消」同卡收口:ProcessRunner 加 kill/timeout 通道 + 对话框取消 |
