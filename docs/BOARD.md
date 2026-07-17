@@ -94,6 +94,7 @@
 | ON-2b 示例项目演示内容：createSample 单事务种子化（示例泳道+预填 prompt 的 image config 节点，纯本地零生成）；SampleSeed 经 ARB 由三入口传入 | #195 |
 | ON-3 设置页 ffmpeg 状态行：仿安全存储探测模式；未找到=平台化指引（winget/brew+INKFRAME_FFMPEG），mac/win 外复用 exportVideoFfmpegMissing 防双源；重进设置页即重探 | #196 |
 | ON-4 网络错误文案走查 + i18n pass：三轴并行审读（错误/一致性/僵尸）；45 键修订（错误归因与下一步动作、术语统一工作室/提示词/服务商/图片、省略号统一）；删 canvasNodeType* 6 僵尸键 | #197 |
+| GAP-7 Inspector 测试欠账收口（预设点选应用+成本文案精确断言）+ ON-5 五屏空态 golden（Studio empty/error、Canvas empty、Gallery empty、Settings；ubuntu 铸线）——第 10 条（ON-3/4/GAP-7/ON-5）收官；**余 GAP-1 整卡、GAP-3 余量未清**（评审 P1 纠偏：勿宣「全部收官」） | #198 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -127,7 +128,7 @@
 | 嵌入式 PG `-A trust` 认证（AUDIT 安全附录） | ✅ | LB-07/#172：新集群 initdb 即 SCRAM-SHA-256 + 随机密码入 SecureStorage;存量 trust 集群零迁移继续可用（调研档见 [BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §3） |
 | 补两档设计令牌（图标尺寸/控件高度） | 🅿️ | P2 一致性 |
 | **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §2）：唯一瓶颈 freezed 3.2.5 与 riverpod_generator 4.0.4 的 analyzer 约束相斥,freezed 3.2.6 stable 一出即与 Riverpod 3 迁移合并立项（同时解掉 custom_lint 卡点,见 §1）;盯 freezed#1353 |
-| M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,仍欠预设点选应用与成本文案断言 | 🅿️ | 2026-07-02 审计发现;剩余随 UI 稳定补 |
+| M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,预设点选应用与成本文案断言随 GAP-7 收口 | ✅ | #198：点选→字段+落库双断言;perCall 成本精确文案 |
 | characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
 | Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | ✅ | LB-06/#166：batch 网格/结果 Inspector/入边区/预设/角色区/画布边泳道 error 横幅收口;GAP-3 余量（InkAsyncSlot 共享件、library_sidebar 等残站点）仍归 GAP-3 卡 |
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | ✅ | LB-15/#190：sidebar 回收站对话框（项目级）+ 管理画布已删区（画布级）;永久删除仍显式排除 |
@@ -151,5 +152,6 @@
 | 三大重操作互斥只在导入侧单向查（LB-12 拍板 9）:还原/导出入口不查 projectImportBusyProvider——导入进行中仍可点还原 | 🅿️ | 反向补查三行;或统一 heavyOperationBusyProvider 归一三个 busy 位 |
 | 导入补偿删除失败→projects/{uuid} 孤儿目录无回收路径（#192 评审 P3-2:无 .import- 前缀 sweep 不认,reaper 又 DRY-RUN）;另记拍板 4 三处字面偏差（U+FFFD 奇名可过/最终路径长未预检/isWithin 代 resolveInProject）均安全失败 | 🅿️ | 随 LB-13 reaper 转真删同窗:无行背书目录纳入回收;字面偏差随安全面复审顺修 |
 | **迁移纪律备忘（#192 评审 P3-6）**:导入的列白名单过滤依赖「迁移只加可空/有默认列」——将来任何「新增 NOT NULL 无默认」迁移会让旧项目包导入必炸 | 🅿️ | ADR-0012 补一句:新增列必须可空或带默认,否则同时给导入侧加填充逻辑 |
+| ON-5 评审 P3 残留（#198）:①golden sentinel 单点——删 studio_empty.png 五测静默 skip 而 node_card 仍 ran>0 骗过整 job 守卫;评审提的 `skipped>0&&baselines>0→fail` 会误伤增量铸线 bootstrap（本 PR 自身流程即反例）,需更细粒度方案;②成本断言 0.01×1 测不出漏乘 batch,补 maxBatchSize>1→\$0.02 用例;③ci.yml 与 update-goldens.yml 双 pin FLUTTER_VERSION 升级必须同步+重铸 | 🅿️ | ①设计再议 ②一测的事 ③升级 checklist 项 |
 | ON-3 评审 P3 残留（#196）:卸载 ffmpeg 后设置页旧 Available 滞留（hit 缓存 app 级,设置页不调 invalidate;导出失败路径会自愈）;PATH 命中显示裸 `ffmpeg` 当路径 | 🅿️ | 低害:重启/导出失败自愈;若做刷新按钮同窗顺修 |
 | ON-2b 评审 P3 三条（#195）:①真 PG 回滚测只走 projects+canvas 两仓储,建议扩成与 createSample 同构四步;②泳道带厚 400 魔数散落三处（接口默认/注释/测试）,建议提 kDefaultLaneSize;③示例 laneStylePrompt 走 zh 本地化与 base_style_presets「模型合约保英文」惯例有张力（用户可见可编辑,判定可接受）——产品可拍板改为仅本地化 label | 🅿️ | ①②低成本顺窗;③产品取舍,英文语系 provider 出图质量考量 |
