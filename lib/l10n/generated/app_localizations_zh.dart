@@ -720,6 +720,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioExportProjectFailed => '导出项目失败';
 
   @override
+  String get studioImportProject => '导入项目…';
+
+  @override
+  String get importInProgress => '正在导入…';
+
+  @override
+  String get importDone => '项目已导入';
+
+  @override
+  String get importFailedFormat => '不是 InkFrame 项目包';
+
+  @override
+  String get importFailedVersionNewer => '该项目包来自更新版本的 InkFrame';
+
+  @override
+  String get importFailedCorrupt => '项目包校验未通过';
+
+  @override
+  String get importFailed => '导入失败';
+
+  @override
   String get studioTrash => '回收站';
 
   @override

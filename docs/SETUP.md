@@ -212,6 +212,12 @@ InkFrame 每次启动写一份嵌入式 PostgreSQL 的每日冷备到
 启动 —— 任何失败只记日志（`db.backup` module）。数据根为平台惯例路径
 （Win `%LOCALAPPDATA%\InkFrame`、macOS `~/Library/Application Support/InkFrame`；DIR-1）。
 
+**Project archives (export / import).** A project card's menu exports the whole project as a
+single zip (rows + media, full fidelity); Studio's *Import project…* button re-imports it as a
+brand-new project with fresh ids — archives from a newer InkFrame are refused.
+项目卡菜单可把整个项目导出为单个 zip（数据行+媒体，全保真）；Studio 的「导入项目…」把它
+作为**全新项目**（全新 id）导入；来自更新版本的项目包会被拒绝。
+
 **Restore (in-app, preferred).** Settings → *Backups & restore* lists every backup with a
 per-item *Restore*; the startup-failure screen offers *Restore latest backup* when the
 database won't boot. Restore loads the dump into a scratch database first

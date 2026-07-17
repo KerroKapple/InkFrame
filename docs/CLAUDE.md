@@ -304,6 +304,8 @@ lib/
     ├── database_backup_service.dart   # PgDumpBackupService (daily/manual/prerestore pg_dump -Fc, per-family retention 7/3/3, meta.json sidecar; LB-10/LB-22)
     ├── database_restore_service.dart  # PgSwapRestoreService (restore into scratch DB then rename-swap — failed restore leaves data untouched; LB-22)
     ├── diagnostics_bundle_service.dart # ZipDiagnosticsBundleService (support bundle: info+logs+crashes+config allowlist, never api keys; LB-18)
+    ├── project_import_service.dart    # ZipProjectImportService (archive import: staging-first + rename + single-tx, zero-residue compensation; LB-12)
+    ├── import/                        # LB-12 pure layers: archive_import_guard.dart (zip-slip/limits/manifest gates) + import_remapper.dart (UUID remap + FK/JSONB rewrite)
     ├── project_archive_service.dart   # ZipProjectArchiveService (whole-project zip export: manifest+data.json+files/, full-fidelity incl. soft-deleted rows; LB-11)
     ├── video_metadata_backfill_service.dart  # XM-1b startup housekeeping: probe legacy videos missing duration_ms, patch type_config (+thumbnail if absent)
     ├── app_teardown.dart              # Ordered shutdown (capture window state → JobQueue → Pool → PG)
