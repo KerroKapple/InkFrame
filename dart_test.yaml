@@ -11,3 +11,7 @@ tags:
   ffmpeg:
     # 真 ffmpeg 集成测：需环境变量 TEST_FFMPEG=1 且本机 PATH 有 ffmpeg。
     # 未设置时用例内 markTestSkipped，不阻塞默认测试运行。
+  realpg:
+    # 真 PG 二进制全栈 E2E（验收资产）：需 INKFRAME_PG_BIN 指向真 PG bin 目录。
+    # 自建临时集群走完 initdb(SCRAM)→pg_ctl→迁移→pg_dump→pg_restore 对换→stop。
+    # 未设置时用例内 markTestSkipped；CI 不跑（无打包二进制）。

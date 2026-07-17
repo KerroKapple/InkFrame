@@ -130,19 +130,33 @@ class SystemPgProcessRunner implements PgProcessRunner {
     required Directory dataDir,
     required int port,
     required File logFile,
-  }) {
+  }) async {
     // -o 传 postgres 参数：监听 127.0.0.1，避免 unix socket 目录依赖
     final opts = '-c listen_addresses=127.0.0.1 '
         '-c unix_socket_directories= '
         '-c port=$port';
-    return Process.run(pgCtlBin.path, <String>[
+    final args = <String>[
       '-D', dataDir.path,
       '-l', logFile.path,
       '-o', opts,
       '-w', // 等起起来
       '-t', '30', // 30s 超时
       'start',
-    ]);
+    ];
+    if (!Platform.isWindows) {
+      return Process.run(pgCtlBin.path, args);
+    }
+    // Windows：pg_ctl 派生的 postmaster 会继承 Process.run 创建的管道句柄——
+    // pg_ctl 正常退出后管道不 EOF，Process.run 挂到 postmaster 落幕为止
+    // （真机验收发现：冷启动挂死 5 分钟直至 teardown 杀库）。改 inheritStdio
+    // 不建管道；pg_ctl/postmaster 输出本就经 -l 落 pg.log，失败诊断看日志。
+    final proc = await Process.start(
+      pgCtlBin.path,
+      args,
+      mode: ProcessStartMode.inheritStdio,
+    );
+    final int code = await proc.exitCode;
+    return ProcessResult(proc.pid, code, '', '');
   }
 
   @override
@@ -351,8 +365,12 @@ class PgController {
     if (result.exitCode != 0) {
       _logger?.error(_logModule, 'pg_ctl start failed',
           extra: {'exit_code': result.exitCode, 'port': port});
+      final String detail = result.stderr.toString().trim().isEmpty
+          // Windows 路径 inheritStdio 无捕获输出——指路 pg.log。
+          ? 'see ${logFile.path}'
+          : result.stderr.toString();
       throw PgLifecycleError(
-        'pg_ctl start failed (exit ${result.exitCode}): ${result.stderr}',
+        'pg_ctl start failed (exit ${result.exitCode}): $detail',
       );
     }
 
