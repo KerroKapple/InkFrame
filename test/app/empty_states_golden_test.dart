@@ -13,6 +13,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/package_info.dart';
 import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -31,6 +32,7 @@ import 'package:inkframe/features/studio/providers/workspace_projects_provider.d
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 import 'package:inkframe/services/ffmpeg_locator.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../_harness/fake_batch_result.dart';
 import '../_harness/fake_repositories.dart';
@@ -75,6 +77,9 @@ void main() {
         workspaceProjectsProvider.overrideWith(
           (_) async => const <ProjectWithCanvases>[],
         ),
+        // 显式注入空 secure storage（拍板:空态含「未配 key」黄条,来源确定
+        // 而非依赖测试环境插件缺失的 MissingPluginException——像素相同）。
+        secureStorageServiceProvider.overrideWithValue(FakeSecureStorage()),
       ],
     );
     await expectLater(
@@ -92,6 +97,7 @@ void main() {
         workspaceProjectsProvider.overrideWith(
           (_) async => throw const LocalIOError(),
         ),
+        secureStorageServiceProvider.overrideWithValue(FakeSecureStorage()),
       ],
     );
     await expectLater(
@@ -151,6 +157,16 @@ void main() {
         ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
         databaseBackupServiceProvider
             .overrideWithValue(_EmptyBackupService()),
+        // 版本行在折叠线下不进像素,仍显式钉死——消掉「靠插件缺失出 '—'」的
+        // 隐式依赖,防未来折叠线移动引入漂移。
+        packageInfoProvider.overrideWith(
+          (_) async => PackageInfo(
+            appName: 'InkFrame',
+            packageName: 'inkframe',
+            version: '0.0.0',
+            buildNumber: '0',
+          ),
+        ),
       ],
     );
     await expectLater(
