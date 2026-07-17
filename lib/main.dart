@@ -188,6 +188,7 @@ void main() {
           loggerProvider.overrideWithValue(fileLogger),
           crashReporterProvider.overrideWithValue(crashReporter),
           customProviderSourceProvider.overrideWithValue(customProviders),
+          customProviderStoreProvider.overrideWithValue(customProviders),
         ],
       );
       final AppTeardown teardown = AppTeardown();
