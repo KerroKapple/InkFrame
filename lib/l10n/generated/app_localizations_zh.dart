@@ -90,6 +90,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasSampleCanvasName => '画布 1';
 
   @override
+  String get canvasSampleLaneLabel => '水墨风格';
+
+  @override
+  String get canvasSampleLaneStylePrompt => '传统水墨画风，柔和笔触，雾气氤氲';
+
+  @override
+  String get canvasSampleNodeLabel => '第一个镜头';
+
+  @override
+  String get canvasSampleNodePrompt => '拂晓的雾江上一叶孤舟，远山隐入雾霭';
+
+  @override
   String get inspectorTitle => '配置';
 
   @override

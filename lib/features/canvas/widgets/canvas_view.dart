@@ -184,10 +184,26 @@ class _NoCanvasOpen extends ConsumerWidget {
             FilledButton(
               onPressed: () async {
                 final bootstrap = ref.read(canvasBootstrapControllerProvider);
-                await bootstrap.createSample(
-                  projectName: context.l10n.canvasSampleProjectName,
-                  canvasName: context.l10n.canvasSampleCanvasName,
-                );
+                final l10n = context.l10n;
+                final failedMsg = l10n.studioCreateSampleFailed;
+                try {
+                  await bootstrap.createSample(
+                    projectName: l10n.canvasSampleProjectName,
+                    canvasName: l10n.canvasSampleCanvasName,
+                    seed: (
+                      laneLabel: l10n.canvasSampleLaneLabel,
+                      laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
+                      nodeLabel: l10n.canvasSampleNodeLabel,
+                      nodePrompt: l10n.canvasSampleNodePrompt,
+                    ),
+                  );
+                } on InkError {
+                  // 捕获集 = createSample 真实抛出集；与另两入口对齐给用户提示。
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    SnackBar(content: Text(failedMsg)),
+                  );
+                }
               },
               child: Text(context.l10n.canvasCreateSampleCanvas),
             ),

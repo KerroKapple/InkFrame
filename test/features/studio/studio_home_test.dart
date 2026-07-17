@@ -157,12 +157,20 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final projects = InMemoryProjectRepository();
     final canvases = InMemoryCanvasRepository();
+    final lanes = InMemoryStyleLaneRepository();
+    final nodes = InMemoryNodeRepository();
     final container = ProviderContainer(overrides: <Override>[
       workspaceProjectsProvider.overrideWith(
         (_) async => const <ProjectWithCanvases>[],
       ),
-      projectRepositoryProvider.overrideWith((_) async => projects),
-      canvasRepositoryProvider.overrideWith((_) async => canvases),
+      unitOfWorkProvider.overrideWith(
+        (_) async => FakeUnitOfWork(FakeRepositoryScope(
+          projects: projects,
+          canvas: canvases,
+          styleLanes: lanes,
+          nodes: nodes,
+        )),
+      ),
     ]);
     addTearDown(container.dispose);
 
@@ -184,6 +192,15 @@ void main() {
     expect(projects.rows.values.single['name'], 'Sample Project');
     expect(canvases.rows.values.single['name'], 'Canvas 1');
     expect(container.read(currentCanvasIdProvider), isNotNull);
+    // ON-2b：演示内容一并种入（1 泳道 + 1 预填 prompt 的 image config 节点）
+    expect(lanes.rows.values.single['label'], 'Ink Style');
+    final node = nodes.rows.values.single;
+    expect(node['type'], 'image');
+    expect(node['lane_id'], lanes.rows.keys.single);
+    expect(
+      (node['type_config'] as Map<String, Object?>)['prompt'],
+      isNotEmpty,
+    );
   });
 
   testWidgets('StudioHome loading 态：CircularProgressIndicator',

@@ -91,6 +91,7 @@
 | LB-18 诊断包（设置页打开日志目录+导出诊断 zip=info+logs/*+crashes/*+config 白名单两文件；红测钉死包内无 api_key，secrets.dev.json 结构性排除；W3 收官） | #191 |
 | **LB-12 项目导入（W4 压轴/最大风险卡收官）**：全表 UUID 重映射+FK/JSONB 重写（含 type_config.character_ids）；zip 安全门（实测字节防 bomb/重名拒/保留名/UUID 段）；files 先行 staging+rename 收崩溃窗口；单事务+补偿零残留；roundtrip 大红测过；三大重操作互斥 | #192 |
 | **Windows pg_ctl start 管道继承挂死（真机验收逮到的潜在 P0）**：postmaster 继承 Process.run 管道句柄致冷启动挂死至库进程落幕；Windows 分支改 inheritStdio；新增 realpg 门控真栈 E2E（真 initdb SCRAM→pg_ctl→迁移 v7→pg_dump→pg_restore 对换→teardown，5s 全链） | #194 |
+| ON-2b 示例项目演示内容：createSample 单事务种子化（示例泳道+预填 prompt 的 image config 节点，纯本地零生成）；SampleSeed 经 ARB 由三入口传入 | #195 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -148,3 +149,4 @@
 | 三大重操作互斥只在导入侧单向查（LB-12 拍板 9）:还原/导出入口不查 projectImportBusyProvider——导入进行中仍可点还原 | 🅿️ | 反向补查三行;或统一 heavyOperationBusyProvider 归一三个 busy 位 |
 | 导入补偿删除失败→projects/{uuid} 孤儿目录无回收路径（#192 评审 P3-2:无 .import- 前缀 sweep 不认,reaper 又 DRY-RUN）;另记拍板 4 三处字面偏差（U+FFFD 奇名可过/最终路径长未预检/isWithin 代 resolveInProject）均安全失败 | 🅿️ | 随 LB-13 reaper 转真删同窗:无行背书目录纳入回收;字面偏差随安全面复审顺修 |
 | **迁移纪律备忘（#192 评审 P3-6）**:导入的列白名单过滤依赖「迁移只加可空/有默认列」——将来任何「新增 NOT NULL 无默认」迁移会让旧项目包导入必炸 | 🅿️ | ADR-0012 补一句:新增列必须可空或带默认,否则同时给导入侧加填充逻辑 |
+| ON-2b 评审 P3 三条（#195）:①真 PG 回滚测只走 projects+canvas 两仓储,建议扩成与 createSample 同构四步;②泳道带厚 400 魔数散落三处（接口默认/注释/测试）,建议提 kDefaultLaneSize;③示例 laneStylePrompt 走 zh 本地化与 base_style_presets「模型合约保英文」惯例有张力（用户可见可编辑,判定可接受）——产品可拍板改为仅本地化 label | 🅿️ | ①②低成本顺窗;③产品取舍,英文语系 provider 出图质量考量 |

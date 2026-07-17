@@ -34,6 +34,10 @@
   "canvasLoadFailed": "Failed to load canvas",
   "canvasSampleProjectName": "Sample Project",
   "canvasSampleCanvasName": "Canvas 1",
+  "canvasSampleLaneLabel": "Ink Style",
+  "canvasSampleLaneStylePrompt": "traditional Chinese ink painting, soft brush strokes, misty atmosphere",
+  "canvasSampleNodeLabel": "First Shot",
+  "canvasSampleNodePrompt": "A lone boat drifting on a misty river at dawn, distant mountains fading into the fog",
 
   "inspectorTitle": "Config",
   "inspectorPromptLabel": "Prompt",

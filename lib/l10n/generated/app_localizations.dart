@@ -260,6 +260,30 @@ abstract class AppLocalizations {
   /// **'Canvas 1'**
   String get canvasSampleCanvasName;
 
+  /// No description provided for @canvasSampleLaneLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Ink Style'**
+  String get canvasSampleLaneLabel;
+
+  /// No description provided for @canvasSampleLaneStylePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'traditional Chinese ink painting, soft brush strokes, misty atmosphere'**
+  String get canvasSampleLaneStylePrompt;
+
+  /// No description provided for @canvasSampleNodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'First Shot'**
+  String get canvasSampleNodeLabel;
+
+  /// No description provided for @canvasSampleNodePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'A lone boat drifting on a misty river at dawn, distant mountains fading into the fog'**
+  String get canvasSampleNodePrompt;
+
   /// No description provided for @inspectorTitle.
   ///
   /// In en, this message translates to:
