@@ -18,7 +18,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorInvalidKey => 'API Key 无效，请到「设置 → API Keys」更新。';
 
   @override
-  String get errorInsufficientBalance => 'Provider 账户余额不足。';
+  String get errorInsufficientBalance => '服务商账户余额不足。';
 
   @override
   String get errorContentPolicy => '提示词未通过服务商内容审核，请调整提示词后重试。';
@@ -30,16 +30,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorNetworkTimeout => '网络超时，请稍后重试。';
 
   @override
-  String get errorNetworkOffline => '无法连接到服务，请检查网络或代理设置后重试。';
+  String get errorNetworkOffline => '无法连接到服务商，请检查网络后重试。';
 
   @override
-  String get errorProviderServer => 'Provider 服务暂不可用，请稍后重试。';
+  String get errorProviderServer => '服务商服务暂不可用，请稍后重试。';
 
   @override
-  String get errorProviderBusy => 'Provider 繁忙，请稍后重试。';
+  String get errorProviderBusy => '服务商繁忙，请稍后重试。';
 
   @override
-  String get errorProviderInvalidResponse => 'Provider 返回了无效或空的结果。';
+  String get errorProviderInvalidResponse => '服务商返回了无效或空的结果。';
 
   @override
   String get errorPollTimeout => '生成任务超时未完成。';

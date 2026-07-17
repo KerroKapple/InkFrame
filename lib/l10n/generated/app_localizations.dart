@@ -143,7 +143,7 @@ abstract class AppLocalizations {
   /// No description provided for @errorNetworkOffline.
   ///
   /// In en, this message translates to:
-  /// **'Couldn\'t reach the provider. Check your network or proxy settings, then retry.'**
+  /// **'Couldn\'t reach the provider. Check your network connection, then retry.'**
   String get errorNetworkOffline;
 
   /// No description provided for @errorProviderServer.
@@ -1703,7 +1703,7 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingStepSampleBody.
   ///
   /// In en, this message translates to:
-  /// **'Create a sample project to explore the canvas, or start from an empty studio.'**
+  /// **'Create a sample project to explore the canvas, or start from an empty Studio.'**
   String get onboardingStepSampleBody;
 
   /// No description provided for @canvasRenderQueue.

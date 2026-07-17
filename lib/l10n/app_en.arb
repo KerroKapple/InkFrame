@@ -12,7 +12,7 @@
   "errorContentPolicy": "The provider's content policy rejected this prompt. Adjust the prompt and try again.",
   "errorInvalidParameter": "The provider rejected some generation settings. Adjust resolution, aspect ratio or duration and retry.",
   "errorNetworkTimeout": "Network timed out. Please retry.",
-  "errorNetworkOffline": "Couldn't reach the provider. Check your network or proxy settings, then retry.",
+  "errorNetworkOffline": "Couldn't reach the provider. Check your network connection, then retry.",
   "errorProviderServer": "The provider service is unavailable. Please retry.",
   "errorProviderBusy": "The provider is busy. Please retry shortly.",
   "errorProviderInvalidResponse": "The provider returned an invalid or empty result.",
@@ -397,7 +397,7 @@
   "onboardingStartEmpty": "Start empty",
   "onboardingKeysConsoleHint": "Get an API key from your provider's console and paste it above — you can also add or change keys later in Settings.",
   "onboardingStepSampleTitle": "Start creating",
-  "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty studio.",
+  "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty Studio.",
 
   "canvasRenderQueue": "Render Queue",
   "canvasRenderQueueExpand": "Expand render queue",

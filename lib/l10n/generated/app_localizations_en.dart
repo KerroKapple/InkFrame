@@ -35,7 +35,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorNetworkOffline =>
-      'Couldn\'t reach the provider. Check your network or proxy settings, then retry.';
+      'Couldn\'t reach the provider. Check your network connection, then retry.';
 
   @override
   String get errorProviderServer =>
@@ -918,7 +918,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingStepSampleBody =>
-      'Create a sample project to explore the canvas, or start from an empty studio.';
+      'Create a sample project to explore the canvas, or start from an empty Studio.';
 
   @override
   String get canvasRenderQueue => 'Render Queue';
