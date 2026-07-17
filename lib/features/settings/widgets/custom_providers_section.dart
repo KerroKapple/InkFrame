@@ -205,7 +205,8 @@ Future<void> _confirmDelete(
     return;
   }
   dirty.state = true;
-  ref.invalidate(customProvidersListProvider);
+  // unmount 后 autoDispose 的 list provider 下次挂载天然重建,无需 invalidate。
+  if (context.mounted) ref.invalidate(customProvidersListProvider);
 }
 
 Future<void> _openEditor(
@@ -253,7 +254,7 @@ Future<void> _openEditor(
     return;
   }
   dirty.state = true;
-  ref.invalidate(customProvidersListProvider);
+  if (context.mounted) ref.invalidate(customProvidersListProvider);
 }
 
 /// 5 字段表单：Save 时全量校验,错误内联呈现,通过才 pop 结果。

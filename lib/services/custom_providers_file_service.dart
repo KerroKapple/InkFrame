@@ -187,7 +187,13 @@ class CustomProvidersFileService
     };
     final idx = _indexOfId(raw, config.id);
     if (idx >= 0) {
-      raw[idx] = entry;
+      // 被编辑条目自身也保真（#200 评审 P2-1）：以旧 raw map 为基底合并,
+      // 用户手编的未知字段（如 "_note"）不随 UI 编辑丢失。
+      final old = raw[idx];
+      raw[idx] = <String, Object?>{
+        if (old is Map) ...old.cast<String, Object?>(),
+        ...entry,
+      };
     } else {
       raw.add(entry);
     }

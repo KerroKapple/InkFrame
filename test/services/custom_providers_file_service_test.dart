@@ -220,6 +220,18 @@ void main() {
       expect((raw[2]! as Map)['id'], 'third');
     });
 
+    test('保真:被编辑条目自身的未知字段合并保留（评审 P2-1）', () async {
+      writeConfig([
+        {...entry(), '_note': '公司中转'},
+      ]);
+      final svc = build();
+      await svc.upsert(cfg(displayName: 'Edited'));
+      final raw = rawFile();
+      final map = raw.single! as Map;
+      expect(map['_note'], '公司中转', reason: '手编字段不随 UI 编辑丢失');
+      expect(map['display_name'], 'Edited');
+    });
+
     test('保真:非法 raw 条目在写后原位保留', () async {
       writeConfig([
         {'garbage': true},
