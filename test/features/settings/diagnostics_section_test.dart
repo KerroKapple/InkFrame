@@ -1,4 +1,5 @@
 // DiagnosticsSection widget 测试：打开日志目录 / 导出流程成败（LB-18）。
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -28,9 +29,14 @@ class _FakeBundleService implements DiagnosticsBundleService {
   final List<String> exports = <String>[];
   InkError? error;
 
+  /// 置入后 exportBundle 卡在 gate 上（busy 防重入观测）。
+  Completer<void>? gate;
+
   @override
   Future<void> exportBundle({required String targetPath}) async {
     exports.add(targetPath);
+    final g = gate;
+    if (g != null) await g.future;
     final e = error;
     if (e != null) throw e;
   }
@@ -50,11 +56,13 @@ void main() {
   late _FakeBundleService service;
   late _RecordingToast toast;
   late AppPaths paths;
+  String? lastSuggested;
 
   setUp(() {
     opener = _SpyFolderOpener();
     service = _FakeBundleService();
     toast = _RecordingToast();
+    lastSuggested = null;
     final tmp = Directory.systemTemp.createTempSync('ink_diag_ui_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     paths = DefaultAppPaths.forRoot(tmp);
@@ -67,8 +75,10 @@ void main() {
           appPathsProvider.overrideWithValue(paths),
           folderOpenerProvider.overrideWithValue(opener),
           diagnosticsBundleServiceProvider.overrideWith((ref) async => service),
-          saveLocationPickerProvider
-              .overrideWithValue((suggested) async => pickedPath),
+          saveLocationPickerProvider.overrideWithValue((suggested) async {
+            lastSuggested = suggested;
+            return pickedPath;
+          }),
           toastServiceProvider.overrideWithValue(toast),
         ],
         child: MaterialApp(
@@ -97,6 +107,26 @@ void main() {
     expect(service.exports, <String>['C:/tmp/diag.zip']);
     expect(toast.shown.single.message, 'Diagnostics exported');
     expect(toast.shown.single.kind, ToastKind.success);
+    // clock → diagnosticsBundleFileName → picker 接线（评审 P3-4）。
+    expect(
+      lastSuggested,
+      matches(RegExp(r'^inkframe-diagnostics-\d{4}-\d{2}-\d{2}-\d{6}\.zip$')),
+    );
+  });
+
+  testWidgets('busy 防重入：导出在途二次点击不产生第二次调用', (tester) async {
+    service.gate = Completer<void>();
+    await pump(tester, pickedPath: 'C:/tmp/diag.zip');
+
+    await tester.tap(find.text('Export diagnostics…'));
+    await tester.pump();
+    await tester.tap(find.text('Export diagnostics…'), warnIfMissed: false);
+    await tester.pump();
+
+    expect(service.exports, hasLength(1));
+    service.gate!.complete();
+    await tester.pumpAndSettle();
+    expect(toast.shown, hasLength(1));
   });
 
   testWidgets('picker 取消 → 零调用零 toast', (tester) async {

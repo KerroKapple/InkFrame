@@ -140,3 +140,5 @@
 | pg_dump/pg_restore 无超时（LB-22 评审 P3-2）:挂死子进程让备份/还原 busy 永久锁 UI;与 EX-3 ffmpeg 同根因（ProcessRunner 无 kill/timeout 通道） | 🅿️ | 随 EX-3「进度取消」同窗:ProcessRunner 加 timeout/kill,还原配 --single-transaction 超时 kill 事务自动回滚无半状态 |
 | 还原对换的 retired 库残留（DROP 失败仅 warn）与 swap_stranded 极端夹缝无启动期清扫/救援 | 🅿️ | 空间代价可接受;随 LB-12 同窗盘点:启动 housekeeping 扫 inkframe_retired_*/inkframe_restore_tmp 报告或回收 |
 | 回收站恢复绕过名字唯一性（#190 评审 P3-2）:建 Alpha→删→再建 Alpha→恢复旧 Alpha=工作库两个 Alpha;schema 无唯一约束,create/rename 的 UI 校验管不到 restore | 🅿️ | 不炸纯 UX 漂移;修法=restore 前查同名给改名/后缀,或列表 UI 容忍同名靠时间区分 |
+| zip `.partial` 落盘骨架三份逐字复制（LB-10/11/18；#191 评审 P3-3 复发实证:自吞守卫没跟着骨架走） | 🅿️ | 抽 `atomicZipWrite(target, build)` 共享件并内置 #188 P2-5 自吞排除;LB-12 动 zip 面时同窗 |
+| pg.log 无轮转（pg_ctl -l 追加写;logger 的 10MB 预算只认 inkframe.* 前缀）——诊断包/磁盘体积长期无界（#191 评审 P3-5） | 🅿️ | pg.log 轮转（启动期截断/按大小滚动）或诊断包按 mtime 截取最近 N 份 |

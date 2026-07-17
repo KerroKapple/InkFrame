@@ -52,11 +52,14 @@ void main() {
     paths.config.createSync(recursive: true);
     File(p.join(paths.config.path, 'preferences.json'))
         .writeAsStringSync('{"theme":"dark"}');
-    File(p.join(paths.config.path, 'custom_providers.json'))
-        .writeAsStringSync('{"providers":[]}');
-    // macOS Debug 明文密钥文件——绝不能进包（红测核心）。
-    File(p.join(paths.config.path, 'secrets.dev.json'))
-        .writeAsStringSync('{"provider.openai.api_key":"sk-LEAKED"}');
+    // 用户手编 JSON：误塞的 key 字段被解析器静默忽略——诊断包必须打码
+    // 而非原文入包（#191 评审 P2-2）。
+    File(p.join(paths.config.path, 'custom_providers.json')).writeAsStringSync(
+        '{"providers":[{"id":"x","api_key":"sk-CUSTOM-LEAK"}]}');
+    // macOS Debug 明文密钥文件——绝不能进包（红测核心）；含非 api_key 形态条目。
+    File(p.join(paths.config.path, 'secrets.dev.json')).writeAsStringSync(
+        '{"provider.openai.api_key":"sk-LEAKED",'
+        '"database.pg.password":"pg-pw-LEAKED"}');
   }
 
   test('内容清单：logs/crashes/config 白名单 + info.json；secrets.dev.json 不进包',
@@ -80,7 +83,7 @@ void main() {
     expect(File('$target.partial').existsSync(), isFalse);
   });
 
-  test('红测核心：包内任何条目不含 "api_key" 字节序列', () async {
+  test('红测核心：包内任何条目不含敏感词与金丝雀值', () async {
     seedAll();
     final target = p.join(tmp.path, 'diag2.zip');
 
@@ -88,11 +91,58 @@ void main() {
 
     final archive =
         ZipDecoder().decodeBytes(File(target).readAsBytesSync());
+    // 敏感词表（大小写不敏感）+ 金丝雀值（值比键名更强的断言——评审 P3-1）。
+    const words = <String>['api_key', 'apikey', 'password', 'token', 'secret'];
+    const canaries = <String>['sk-LEAKED', 'sk-CUSTOM-LEAK', 'pg-pw-LEAKED'];
     for (final f in archive.files) {
-      final text = utf8.decode(f.content as List<int>, allowMalformed: true);
-      expect(text.contains('api_key'), isFalse,
-          reason: '诊断包泄密：${f.name} 含 api_key 字段');
+      final text = utf8
+          .decode(f.content as List<int>, allowMalformed: true)
+          .toLowerCase();
+      for (final w in words) {
+        expect(text.contains(w), isFalse,
+            reason: '诊断包泄密：${f.name} 含敏感词 $w');
+      }
+      for (final c in canaries) {
+        expect(text.contains(c.toLowerCase()), isFalse,
+            reason: '诊断包泄密：${f.name} 含金丝雀值 $c');
+      }
     }
+  });
+
+  test('自吞守卫：保存位置选进 logs/ → 正在写的包与旧目标不进包（#191 P2-1）',
+      () async {
+    seedAll();
+    // 旧的同名产物与本次目标都落在被扫描的 logs/ 目录内。
+    final target = p.join(paths.logs.path, 'diag.zip');
+    File(target).writeAsBytesSync(<int>[9, 9]);
+
+    await build().exportBundle(targetPath: target);
+
+    final archive =
+        ZipDecoder().decodeBytes(File(target).readAsBytesSync());
+    final names = archive.files.map((f) => f.name).toSet();
+    expect(names.where((n) => n.contains('diag.zip')), isEmpty,
+        reason: '自吞：正在写的 zip / 旧目标被扫进包');
+    expect(names, contains('logs/app.log'));
+  });
+
+  test('config 白名单软链跳过（POSIX；Windows 建链需特权跳过本测）', () async {
+    if (Platform.isWindows) return;
+    seedAll();
+    // preferences.json 换成指向 secrets.dev.json 的软链——白名单名义绕排除。
+    final pref = File(p.join(paths.config.path, 'preferences.json'))
+      ..deleteSync();
+    Link(pref.path).createSync(p.join(paths.config.path, 'secrets.dev.json'));
+
+    final target = p.join(tmp.path, 'diag-link.zip');
+    await build().exportBundle(targetPath: target);
+
+    final archive =
+        ZipDecoder().decodeBytes(File(target).readAsBytesSync());
+    expect(
+      archive.files.map((f) => f.name),
+      isNot(contains('config/preferences.json')),
+    );
   });
 
   test('info.json：appVersion/schemaVersion/platform/createdAtUtc', () async {
