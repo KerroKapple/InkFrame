@@ -256,18 +256,9 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
       screen.state = AppScreen.studio;
       toast.show(doneMsg, kind: ToastKind.success);
     } else {
-      toast.show(_failureMessage(l10n, result.outcome), kind: ToastKind.error);
+      toast.show(l10nRestoreFailure(l10n, result.outcome),
+          kind: ToastKind.error);
     }
     _refresh();
-  }
-
-  static String _failureMessage(AppLocalizations l10n, RestoreOutcome o) {
-    return switch (o) {
-      RestoreOutcome.failedNoBinaries => l10n.settingsBackupNoBinaries,
-      RestoreOutcome.failedCorrupt => l10n.restoreFailedCorrupt,
-      RestoreOutcome.failedVersionNewer => l10n.restoreFailedVersionNewer,
-      RestoreOutcome.abortedPreBackup => l10n.restoreAbortedPreBackup,
-      RestoreOutcome.failed || RestoreOutcome.restored => l10n.restoreFailed,
-    };
   }
 }
