@@ -149,3 +149,6 @@ jobs:
           git config --global user.email "ci@inkframe.test"
           git config --global user.name "InkFrame CI"
           bash test/scripts/release_tag_test.sh
+      # fetch-binaries.sh 回归测试（PKG-2A：upstream/bucket 双模式，curl/brew 全 PATH-stub 零网络）。
+      - name: fetch-binaries.sh regression test
+        run: bash test/scripts/fetch_binaries_test.sh

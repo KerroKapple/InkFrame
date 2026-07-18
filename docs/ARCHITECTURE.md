@@ -1189,15 +1189,16 @@ PG 二进制**不进代码仓库**。当前现状：
 - **CI 测试**：`.github/workflows/ci.yml` 用 `postgres:17-alpine` service container（`TEST_PG_URL` 注入），不打包二进制。
 - **本地开发**：`PgBinaryLocator`（`lib/storage/pg_binary_locator.dart`）按约定目录发现本机 PG；找不到时 storage 集成测试 `markTestSkipped`。
 
-> **Planned**：Release 构建打包内嵌 PG 二进制的拉取脚本（`scripts/fetch-pg-binaries.sh` + `scripts/pg-version.txt`，从对象存储按平台拉取并校验版本）尚未编写——Release 流水线立项时一并实现。
+- **Release 构建**：`scripts/pg/fetch-binaries.sh`（版本锁 `scripts/pg/pg-version.txt`）置备嵌入式 PG——默认 upstream 直拉（Windows=EDB 官方 zip 按 `scripts/pg/upstream.lock` SHA256 锁定裁剪；macOS=Homebrew postgresql@17 + `make-relocatable-macos.sh`），设 `PG_ARTIFACT_BASE_URL` 时切对象存储。详见 `docs/BUILD-RELEASE.md` §3。
 
 ### 14.4 构建步骤
 
-> **Planned**：Release 流水线（含 `fetch-pg-binaries.sh` / `sign-and-notarize.sh`）尚未搭建；当前 CI 只跑 PR 检查（analyze + test + coverage）。以下为 Release 蓝图：
+> Release 流水线已落地（`.github/workflows/release.yml`，alpha.10 起真实跑通；签名步缺凭据自跳过）。
+> 完整流程与顺序约束见 `docs/BUILD-RELEASE.md` §4/§13，此处仅示意：
 
 ```bash
 # 完整 Release 构建流程
-scripts/fetch-pg-binaries.sh        # 1. 拉取 PG 二进制
+bash scripts/pg/fetch-binaries.sh   # 1. 置备 PG 二进制（默认 upstream 直拉）
 flutter pub get                      # 2. 依赖
 flutter gen-l10n                     # 3. 生成 i18n
 dart run build_runner build          # 4. 代码生成（freezed / riverpod）

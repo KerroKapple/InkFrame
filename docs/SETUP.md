@@ -157,22 +157,22 @@ The release build embeds bundled PG binaries under
 `scripts/pg/fetch-binaries.sh` 拉取（Windows 上从 Git Bash 运行）：
 
 ```bash
-# from Git Bash
-export PG_ARTIFACT_BASE_URL=https://<bucket>/inkframe/pg
+# from Git Bash — zero config: downloads the official EDB zip pinned by
+# scripts/pg/upstream.lock (URL + SHA256), trims it to bin/lib/share
 ./scripts/pg/fetch-binaries.sh
 ```
 
-**Expected output:** with `PG_ARTIFACT_BASE_URL` set, the script verifies the SHA256
-against `scripts/pg/pg-version.txt` (17.2) and prints `[fetch-binaries] OK`. With the
-URL **unset** it prints `[fetch-binaries] NOT_CONFIGURED` and exits non-zero — that is
-expected for normal dev, because day-to-day development uses your locally installed PG
-17 (step 3) rather than the embedded binaries. You only need this step before producing
-a release package.
+**Expected output:** the script downloads the EDB PostgreSQL zip, verifies the SHA256
+pinned in `scripts/pg/upstream.lock`, trims it, and prints `[fetch-binaries] OK
+postgres (PostgreSQL) 17.2 → windows/runner/resources/pg/windows-x64`. Day-to-day
+development still uses your locally installed PG 17 (step 3) rather than the embedded
+binaries — you only need this step before producing a release package. (Setting
+`PG_ARTIFACT_BASE_URL` switches the script to an object-storage source instead.)
 
-**预期输出：** 设了 `PG_ARTIFACT_BASE_URL` 时，脚本会按 `scripts/pg/pg-version.txt`（17.2）
-校验 SHA256 并打印 `[fetch-binaries] OK`。**没设** URL 时打印 `[fetch-binaries] NOT_CONFIGURED`
-并以非零退出 —— 这对日常开发是正常的，因为平时开发用的是你本地装的 PG 17（第 3 步），而不是嵌入
-二进制。只有要打发布包时才需要这一步。
+**预期输出：** 脚本会下载 EDB 官方 PostgreSQL zip，按 `scripts/pg/upstream.lock` 锁定的
+SHA256 校验并裁剪，打印 `[fetch-binaries] OK postgres (PostgreSQL) 17.2 → …`。日常开发
+仍用你本地装的 PG 17（第 3 步），只有要打发布包时才需要这一步。（设 `PG_ARTIFACT_BASE_URL`
+可切换到对象存储源。）
 
 ### Run it / 跑起来
 

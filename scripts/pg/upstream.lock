@@ -1,0 +1,6 @@
+# PKG-2A upstream 锁定（方案 A：官方上游直拉，零对象存储依赖）。
+# 改版本：先改 pg-version.txt，再同步本文件 URL 与 SHA256（下载后本地 sha256sum 实测）。
+# macOS 无锁定条目：源是 runner 上 Homebrew postgresql@<major>（补丁位随 brew 浮动，
+# 供应链信任交给 brew；fetch-binaries.sh 只做主版本匹配校验）。
+WINDOWS_X64_URL=https://get.enterprisedb.com/postgresql/postgresql-17.2-3-windows-x64-binaries.zip
+WINDOWS_X64_SHA256=3e55fcfd81a042b3cfac481a11ef5fb9741f61f25fa96fcd0e450fee120c3c38

@@ -110,7 +110,7 @@ install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
 # 嵌入式 PostgreSQL（Windows）：打进 <exe_dir>/resources/pg/windows-x64/，
 # 与 macOS Podfile 的 "Bundle Embedded PostgreSQL" 阶段对应；运行期由
 # pg_binary_locator 解析 <exe_dir>/resources/pg/windows-x64/bin。
-# 源目录由 scripts/pg（对象存储或现场构建）填充。
+# 源目录由 scripts/pg/fetch-binaries.sh 填充（默认 EDB 上游直拉，PG_ARTIFACT_BASE_URL 时对象存储）。
 set(INKFRAME_PG_DIR "${CMAKE_CURRENT_SOURCE_DIR}/runner/resources/pg/windows-x64")
 if(EXISTS "${INKFRAME_PG_DIR}/bin/postgres.exe")
   install(DIRECTORY "${INKFRAME_PG_DIR}/"

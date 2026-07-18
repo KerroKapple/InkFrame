@@ -8,8 +8,9 @@
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-07-14 · 最新发布：**v0.1.0-alpha.10**（release.yml 首跑,双平台 unsigned 产物;
-> 待 PG 分发源 PKG-2 + 签名 U1/U2 方为干净机可装）
+> 最近更新：2026-07-18 · 最新发布：**v0.1.0-alpha.10**（release.yml 首跑,双平台 unsigned 产物;
+> PG 分发源已随 PKG-2A 落地——下个 tag 起产物含嵌入式 PG（mac 侧待 release CI 首跑验证）;
+> 待签名 U1/U2 方为干净机免绕行可装）
 
 ## M1 —「能用起来」✅ 完成（已随 PR #133 合入 main）
 
@@ -97,6 +98,7 @@
 | GAP-7 Inspector 测试欠账收口（预设点选应用+成本文案精确断言）+ ON-5 五屏空态 golden（Studio empty/error、Canvas empty、Gallery empty、Settings；ubuntu 铸线）——第 10 条（ON-3/4/GAP-7/ON-5）收官；**余 GAP-1 整卡、GAP-3 余量未清**（评审 P1 纠偏：勿宣「全部收官」） | #198 |
 | GAP-3 余量收口（24 站点审计:方向读错并入横幅链;raw toString 上屏收敛——设置页探测诊断行为有意例外;base style 编辑器读错中止防空覆盖（评审 P2-3）;InkErrorBanner.onRetry 死参数删除;**InkAsyncSlot 判 YAGNI**——列表槽位 LB-06 已全收口） | #199 |
 | **GAP-1 设置页 Custom Provider 编辑 UI（上线前必做最后一卡）**：CustomProviderStore 写侧（raw 保真+损坏拒写+原子写）;校验抽 core 纯函数双端共用;列表+表单+删除确认+重启生效常驻条;API Keys custom:* 行 displayName 顺带修——**随本卡合入,上线前必做 1-10 全部落地** | #200 |
+| **PKG-2A PG 二进制分发源（方案 A 上游直拉,beta 硬阻塞里唯一零用户依赖项收官）**：fetch-binaries.sh 双模式重写——upstream 默认（Win=EDB 官方 zip `upstream.lock` 锁 URL+SHA256+裁剪 bin/lib/share;mac=runner brew postgresql@17+make-relocatable,主版本匹配）,`PG_ARTIFACT_BASE_URL` 保留为方案 B 覆盖;`.partial` 原子落位+必需工具校验（含 pg_dump/pg_restore）;release.yml 去门控无条件 fetch;回归测试入 ci release-scripts;**顺带 QG-6 的 checksums.txt**（publish job 全资产 sha256）;本机真栈验收=EDB 裁剪产物过 realpg E2E 全链 | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -158,4 +160,5 @@
 | GAP-3 评审 P3 残留（#199）:①方向读错期 lane_toolbar 置灰未做（二元域无损毁,但 toggle 到不了 horizontal 的怪异 UX）;②横幅三源 `??` 链+单 `_dismissed` 遮蔽——关掉 edges 错后并发 lanes/direction 错不上屏（改集合）;③非 InkError→errorUnknown 后无任何日志线索（此前 raw toString 至少可报障）,建议 error 分支补 log 或 ProviderObserver.providerDidFail | 🅿️ | ①②低害 UX;③可观测性,随日志面收口 |
 | ON-5 评审 P3 残留（#198）:①golden sentinel 单点——删 studio_empty.png 五测静默 skip 而 node_card 仍 ran>0 骗过整 job 守卫;评审提的 `skipped>0&&baselines>0→fail` 会误伤增量铸线 bootstrap（本 PR 自身流程即反例）,需更细粒度方案;②成本断言 0.01×1 测不出漏乘 batch,补 maxBatchSize>1→\$0.02 用例;③ci.yml 与 update-goldens.yml 双 pin FLUTTER_VERSION 升级必须同步+重铸 | 🅿️ | ①设计再议 ②一测的事 ③升级 checklist 项 |
 | ON-3 评审 P3 残留（#196）:卸载 ffmpeg 后设置页旧 Available 滞留（hit 缓存 app 级,设置页不调 invalidate;导出失败路径会自愈）;PATH 命中显示裸 `ffmpeg` 当路径 | 🅿️ | 低害:重启/导出失败自愈;若做刷新按钮同窗顺修 |
+| PKG-2A 评审 P3 残留:fetch-binaries macOS upstream 无架构核对——arm64 机上 INKFRAME_PG_PLATFORM=macos-x64 会把 arm64 二进制落进 x64 目录且本机 verify 照过（操作员失误场景;release.yml 现只建 arm64;make-relocatable 旧脚本同病） | 🅿️ | 随 macos-13 x64 matrix（PKG-7 真做）同窗加 uname 对 PLATFORM 的核对 |
 | ON-2b 评审 P3 三条（#195）:①真 PG 回滚测只走 projects+canvas 两仓储,建议扩成与 createSample 同构四步;②泳道带厚 400 魔数散落三处（接口默认/注释/测试）,建议提 kDefaultLaneSize;③示例 laneStylePrompt 走 zh 本地化与 base_style_presets「模型合约保英文」惯例有张力（用户可见可编辑,判定可接受）——产品可拍板改为仅本地化 label | 🅿️ | ①②低成本顺窗;③产品取舍,英文语系 provider 出图质量考量 |

@@ -41,8 +41,9 @@ post_install do |installer|
   end
 
   # 注入「拷贝嵌入式 PostgreSQL 进 .app」构建阶段（幂等）。
-  # 资源在 macos/Runner/Resources/pg/<platform>/，由 scripts/pg/make-relocatable-macos.sh 生成
-  # （或 CI 从对象存储拉取）。在签名前运行，把 PG 拷进 Contents/Resources/pg/。
+  # 资源在 macos/Runner/Resources/pg/<platform>/，由 scripts/pg/fetch-binaries.sh 置备
+  # （macOS upstream 分支即委托 make-relocatable-macos.sh；对象存储为覆盖模式）。
+  # 在签名前运行，把 PG 拷进 Contents/Resources/pg/。
   require 'xcodeproj'
   runner_project_path = File.join(__dir__, 'Runner.xcodeproj')
   if File.exist?(runner_project_path)

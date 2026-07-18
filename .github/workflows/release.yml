@@ -9,8 +9,10 @@
 #   release 已存在则更新并追加资产，不覆盖 release-tag.sh 生成的 notes。
 #
 # 「证书/存储就绪前」一切可跑：
-#   - PG 二进制 fetch：仅当 repo variable PG_ARTIFACT_BASE_URL 配置时执行；缺则 ::warning::
-#     并继续（产物不含嵌入式 PG，无法在干净机首启 PG，仅供构建/链接验证）。
+#   - PG 二进制 fetch：默认 upstream 直拉（PKG-2A 方案 A——Windows=EDB 官方 zip 按
+#     scripts/pg/upstream.lock SHA256 锁定；macOS=runner Homebrew postgresql@17 +
+#     make-relocatable），零配置即产出含嵌入式 PG 的安装物；repo variable
+#     PG_ARTIFACT_BASE_URL 配置时切对象存储（方案 B 覆盖）。
 #   - 签名/公证/MSIX 签名：脚本自检环境，缺凭据 → 打印 SKIPPED 退出 0，不阻断。
 #   - 原始构建产物（zip 的 .app / Release 目录）无条件上传，零密钥也有可下载工件。
 name: release
@@ -63,17 +65,17 @@ jobs:
           fi
           echo "BUILD_NUMBER=${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
       - name: cache PG binaries
-        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
         uses: actions/cache@v4
         with:
           path: macos/Runner/Resources/pg/
-          key: pg-${{ hashFiles('scripts/pg/pg-version.txt') }}-macos-arm64
-      - name: fetch embedded PG binaries
-        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
-        run: bash scripts/pg/fetch-binaries.sh
-      - name: warn — PG not bundled
+          key: pg-${{ hashFiles('scripts/pg/pg-version.txt', 'scripts/pg/upstream.lock') }}-${{ vars.PG_ARTIFACT_BASE_URL != '' && 'bucket' || 'upstream' }}-macos-arm64
+      # 不以 cache-hit 门控：缓存树若未过脚本校验会走重建路径，届时必须有 brew keg 兜底
+      #（否则坏缓存 = 每次 re-run 恢复同一份坏树的死循环）。主版本从 pg-version.txt 推导。
+      - name: install upstream PostgreSQL (Homebrew)
         if: ${{ vars.PG_ARTIFACT_BASE_URL == '' }}
-        run: echo "::warning title=PG not bundled::PG_ARTIFACT_BASE_URL 未配置，产物不含嵌入式 PostgreSQL，无法在干净机首启 PG（仅验证构建/链接）。配置 repo variable PG_ARTIFACT_BASE_URL 后重跑。"
+        run: brew install "postgresql@$(cut -d. -f1 scripts/pg/pg-version.txt)"
+      - name: fetch embedded PG binaries
+        run: bash scripts/pg/fetch-binaries.sh
       - name: flutter pub get
         run: flutter pub get
       - name: flutter analyze
@@ -125,18 +127,13 @@ jobs:
           "BUILD_NAME=$ver" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "BUILD_NUMBER=$env:GITHUB_RUN_NUMBER" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: cache PG binaries
-        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
         uses: actions/cache@v4
         with:
           path: windows/runner/resources/pg/
-          key: pg-${{ hashFiles('scripts/pg/pg-version.txt') }}-windows-x64
+          key: pg-${{ hashFiles('scripts/pg/pg-version.txt', 'scripts/pg/upstream.lock') }}-${{ vars.PG_ARTIFACT_BASE_URL != '' && 'bucket' || 'upstream' }}-windows-x64
       - name: fetch embedded PG binaries
-        if: ${{ vars.PG_ARTIFACT_BASE_URL != '' }}
         shell: bash
         run: bash scripts/pg/fetch-binaries.sh
-      - name: warn — PG not bundled
-        if: ${{ vars.PG_ARTIFACT_BASE_URL == '' }}
-        run: echo "::warning title=PG not bundled::PG_ARTIFACT_BASE_URL 未配置，产物不含嵌入式 PostgreSQL（仅验证构建/链接）。"
       - name: flutter pub get
         run: flutter pub get
       - name: flutter analyze
@@ -179,6 +176,13 @@ jobs:
           merge-multiple: true
       - name: list artifacts
         run: ls -R dist
+      - name: generate checksums (QG-6)
+        run: |
+          set -o pipefail
+          cd dist
+          find . -type f ! -name checksums.txt -print0 | sort -z \
+            | xargs -0 sha256sum | sed 's|\./||' > checksums.txt
+          cat checksums.txt
       - name: attach artifacts to release
         uses: softprops/action-gh-release@v2
         with:

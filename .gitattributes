@@ -4,3 +4,6 @@
 
 # PowerShell 脚本固定 CRLF（仅在 Windows runner 运行）。
 *.ps1 text eol=crlf
+
+# upstream.lock 被 bash 按行解析（fetch-binaries.sh lock_get），CRLF 会让 URL/SHA 带 \r 尾巴。
+scripts/pg/upstream.lock text eol=lf
