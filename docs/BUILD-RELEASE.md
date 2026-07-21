@@ -564,7 +564,9 @@ gh release create v0.1.0 \
 - **守卫模型**：
   - PG 二进制 fetch：**无条件执行**（PKG-2A）——默认 upstream 直拉（Windows=EDB zip 按
     `upstream.lock` SHA256 锁定；macOS=runner `brew install postgresql@17` + make-relocatable，
-    仅 cache miss 时装）；repo variable `PG_ARTIFACT_BASE_URL` 配置时切对象存储。产物恒含嵌入式 PG。
+    brew 步**不以 cache-hit 门控**——缓存树未过脚本校验会走重建路径，必须有 keg 兜底，
+    否则坏缓存 = 每次 re-run 恢复同一份坏树的死循环）；repo variable
+    `PG_ARTIFACT_BASE_URL` 配置时切对象存储。产物恒含嵌入式 PG。
   - publish job 生成 `checksums.txt`（全部资产的 sha256，QG-6）并随资产上传。
   - 签名/公证/MSIX 签名：脚本自检环境，缺凭据 → 打印 `SKIPPED` 退出 0，不阻断。
   - 原始构建产物（zip 的 `.app` / `Release` 目录）**无条件上传** —— 零密钥也有可下载工件。
