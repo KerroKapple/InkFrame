@@ -13,7 +13,7 @@
 ## 0. 总览:里程碑与主线
 
 ```
-现状(2026-07-14):M1 ✅ M2 ✅ M3 🔵(四方向首切片+导出 UI 入口 #143) alpha.10 已发布(release.yml 首跑,双平台 unsigned 产物;欠 PG 分发源/checksums/Latest 卫生);M5 backend 线飞推(LB-01~04/06/07/08/09/13a/13b/14/16/17/19 已合)+**UI 线连发**(GAP-8/#164、GAP-4/#167、PL-4a/#168、PL-6/#170、CV-1+PL-1/#174、PL-2/#176、画布体验大改 #179/#180)+M4 破冰(XM-1/#177+XM-1b/#181)+发布线 UPD-1/#173、LEG-1/#147;D-7/D-8/D-BE-2/D-10 已拍(见 §9)
+现状(2026-07-18):M1 ✅ M2 ✅ M3 🔵(四方向首切片+导出 UI 入口 #143) alpha.10 已发布(release.yml 首跑,双平台 unsigned 产物;PG 分发源+checksums 已随 PKG-2A 落,欠 Latest 卫生);M5 backend 线飞推(LB-01~04/06/07/08/09/13a/13b/14/16/17/19 已合)+**UI 线连发**(GAP-8/#164、GAP-4/#167、PL-4a/#168、PL-6/#170、CV-1+PL-1/#174、PL-2/#176、画布体验大改 #179/#180)+M4 破冰(XM-1/#177+XM-1b/#181)+发布线 UPD-1/#173、LEG-1/#147;D-7/D-8/D-BE-2/D-10 已拍(见 §9)
    │
 M4 「能力完整」……… M3 各方向二/三切片:storyboard 流水线成型、聚合器可视化配置、
    │                画廊可复用、导出可用可靠 + 角色进阶
@@ -211,15 +211,19 @@ UI 文档内 BOARD 行号引用一律以**文字锚**为准(本 PR 自己给 BOA
 > [`superpowers/plans/2026-07-07-launch-release-engineering.md`](superpowers/plans/2026-07-07-launch-release-engineering.md);
 > 调研支撑见 [`research/2026-07-07-release-engineering.md`](research/2026-07-07-release-engineering.md)。
 
-**现状要害**(2026-07-08 更新):release.yml 已随 alpha.10 首跑成功(双平台 build+publish 一次通过,
-macOS arm64 zip/dmg + Windows x64 zip,均 unsigned);仍欠:**PG 分发源未配**(gh variable 空,产物不含
-嵌入式 PG,干净机装不上)、alpha.6 仍错挂 "Latest"(alpha.2–.6 prerelease=false 未 PATCH)、release
-notes 双重生成致重复+基线错(#66 起)、无 checksums;good-first-issue 池为 0。
+**现状要害**(2026-07-18 更新):release.yml 已随 alpha.10 首跑成功(双平台 build+publish 一次通过,
+macOS arm64 zip/dmg + Windows x64 zip,均 unsigned);**PG 分发源已解**(PKG-2A 方案 A 上游直拉,
+零 variable 配置,下个 tag 起产物含嵌入式 PG——Windows 侧本机真栈已验,mac 侧待 release CI
+首跑验证;checksums.txt 亦随之落地);仍欠:alpha.6 仍错挂
+"Latest"(alpha.2–.6 prerelease=false 未 PATCH)、release notes 双重生成致重复+基线错(#66 起);
+good-first-issue 池为 0。
 
 **模型侧可立即并行、零用户依赖**:PKG-1 流水线首演练(✅ 已随 alpha.10 以真实 tag 实质完成,
-notes 双重生成问题随 PKG-6 收口)、PKG-2A PG 上游直拉(M)、
+notes 双重生成问题随 PKG-6 收口)、PKG-2A PG 上游直拉 ✅ 本 PR(EDB zip SHA 锁定裁剪+
+brew relocate,release.yml 无条件 fetch;mac 侧待 release CI 首跑验证)、
 PKG-5 安装文档(S,复审补充:Defender/EDR 排除段、卸载与数据、迁移新机 SOP、零遥测承诺句)、
-PKG-6 Release 卫生(XS)、QG-1 回归清单 v2(S)、QG-6 checksums+清单落地(S)、
+PKG-6 Release 卫生(XS)、QG-1 回归清单 v2(S)、QG-6 checksums+清单落地(S,checksums.txt
+已随 PKG-2A 落,余 BUILD-RELEASE §9 分层)、
 UPD-1 应用内检查更新 ✅ #173(零新增依赖,ProcessRunner 开系统浏览器)、WEB-1 Pages 官网(M,FAQ 补
 「为什么没有 Linux」)、WEB-2 示例模板(M)、COM-1 gfi 池重建(S,候选与 backend W0/W1 卡
 双占用需协调)、COM-2 Issue 模板+SECURITY.md scope 对账(XS)、COM-3 CONTRIBUTING 英文摘要(S)。
@@ -241,7 +245,8 @@ beta 准入追加第 9 条:**第三方许可 NOTICE 上线**。用户必办追�
   unsigned+安装文档说明 SmartScreen 绕行,1.0 前补。**beta.1 准入的签名两条(第 2/3 条)执行顺延至补购后**
 - **U7** 数据升级政策拍板(→ D-4,牵动铁律文本与 SCRAM 覆盖面)
 - alpha.10 已按"不等 U1/U2"路线发出(release.yml 产 unsigned 双平台产物);
-  **beta.1 被 U1+U2+PG 分发源+QG-4 升级演练硬阻塞**(D-4 已拍 ADR-0012、UPD-1 已随 #173 交付,均从阻塞名单移除)。
+  **beta.1 被 U1+U2+QG-4 升级演练硬阻塞**(D-4 已拍 ADR-0012、UPD-1 已随 #173、
+  PG 分发源已随 PKG-2A 交付,均从阻塞名单移除)。
 
 ## 6. 模型接入路线(2026-07 调研,全表与来源见 [`research/2026-07-07-model-landscape.md`](research/2026-07-07-model-landscape.md))
 

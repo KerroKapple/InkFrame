@@ -116,34 +116,56 @@ CI 由 git tag 推导：`v0.1.0-beta.1` → build-name = `0.1.0-beta.1`，build-
 ```
 macos/Runner/Resources/pg/
 ├── macos-arm64/
-│   ├── bin/              # initdb, pg_ctl, postgres
-│   └── lib/              # 共享库
+│   ├── bin/              # initdb, pg_ctl, postgres, pg_dump, pg_restore
+│   ├── lib/              # 依赖闭包（vendored dylib）+ lib/postgresql 模块
+│   └── share/postgresql/ # initdb 所需 bki/timezone/sql
 └── macos-x64/            # 同上
 
 windows/runner/resources/pg/
 └── windows-x64/
-    ├── bin/              # initdb.exe, pg_ctl.exe, postgres.exe
-    └── lib/
+    ├── bin/              # initdb.exe, pg_ctl.exe, postgres.exe, pg_dump.exe, pg_restore.exe
+    ├── lib/
+    └── share/            # initdb 所需（已裁 doc/man/locale）
 
 build/pg/linux-x64/       # 仅本地烟测，不进发布
 ```
 
-**大小预算**：每平台 ~60 MB，打包压缩后（DMG/MSIX）约 20 MB。
+**大小预算**：Windows 实测 82 MB（EDB 官方 zip 裁剪后；zip/安装包压缩后显著更小）；
+macOS 为 make-relocatable 产物（~60 MB 量级，以 release CI 实测为准）。
 
 ### 3.2 拉取脚本
 
-`scripts/pg/fetch-binaries.sh`：
+`scripts/pg/fetch-binaries.sh` 两种模式（PKG-2A）：
 
-- 从 `PG_ARTIFACT_BASE_URL` 指向的对象存储下载（未配置 → `NOT_CONFIGURED` 非零退出，日常开发用本地 PG 即可，见 `docs/SETUP.md`）
-- 版本锁 + SHA256 校验按 `scripts/pg/pg-version.txt`（17.2）
-- 幂等：`bin/postgres --version` 已匹配则跳过
-- 失败时明确报错，不静默降级
+- **upstream（默认，方案 A，零配置）**：
+  - `windows-x64`：EDB 官方 zip 直拉，URL + SHA256 锁定在 `scripts/pg/upstream.lock`；
+    只取 `pgsql/{bin,lib,share}` 并裁掉 `share/{doc,man,locale}`（pgAdmin/StackBuilder/include 不拷）
+  - `macos-*`：本机/runner 的 Homebrew `postgresql@17` → `make-relocatable-macos.sh`
+    生成自洽可分发目录（brew 补丁位浮动 → 校验只锁主版本 17）
+  - `linux-x64`：无 upstream 源（仅本地烟测平台，用系统 PG 或 bucket 模式）
+- **bucket（方案 B 覆盖）**：设 `PG_ARTIFACT_BASE_URL` 时从对象存储拉
+  `$BASE/$VERSION/$PLATFORM.tar.gz`（+ `.sha256`），SHA256 校验按远端 sidecar
+
+公共不变量：
+
+- 版本锁按 `scripts/pg/pg-version.txt`（17.2；Windows/bucket 精确匹配）
+- 落位原子：装配+校验全在 `<target>.partial`，通过才对换，失败零残留
+- 校验统一：必需工具 `postgres/initdb/pg_ctl/pg_dump/pg_restore`（`PgBinaryLocation`
+  契约，pg_dump/pg_restore 为 LB-10/LB-22 备份还原所需）+ 版本匹配
+- 幂等：现存目标过同一校验即短路，不重复下载
+- 回归测试：`test/scripts/fetch_binaries_test.sh`（ci.yml release-scripts job）
 
 ```bash
-# 本地首次 / 清理后执行
+# 本地首次 / 清理后执行（Windows 从 Git Bash；macOS 需先 brew install postgresql@17）
+bash scripts/pg/fetch-binaries.sh
+
+# 对象存储覆盖（方案 B）
 export PG_ARTIFACT_BASE_URL=https://<bucket>/inkframe/pg
 bash scripts/pg/fetch-binaries.sh
 ```
+
+风险与处置：EDB 撤下/变更旧版 zip → SHA256 锁死使脚本硬报错（绝不静默换包），
+届时下载新包实测 SHA 后更新 `upstream.lock`。
 
 ### 3.3 运行时定位
 
@@ -535,13 +557,17 @@ gh release create v0.1.0 \
 - **触发**：push tag `v*`（由 `scripts/release-tag.sh` 打 tag 后自动触发）+ `workflow_dispatch`（演练）。
 - **job**：
   - `build-macos`（macos-14，arm64）/ `build-windows`（windows-latest）：
-    `(fetch PG, if vars.PG_ARTIFACT_BASE_URL) → pub get → analyze → test --exclude-tags pg →`
+    `fetch PG（无条件：默认 upstream 直拉，vars.PG_ARTIFACT_BASE_URL 配置时切对象存储）→ pub get → analyze → test --exclude-tags pg →`
     `flutter build → zip unsigned 产物（无条件上传）→ 签名/公证（缺凭据自跳过）→ 打包（best-effort）→ upload-artifact`
   - `publish`（ubuntu，仅真实 tag）：download artifacts → `softprops/action-gh-release@v2` 幂等附加资产
     到该 tag 的 Release（`--generate-notes`，不依赖 CHANGELOG 文件）。
 - **守卫模型**：
-  - PG 二进制 fetch：repo variable `PG_ARTIFACT_BASE_URL` 配置时才跑；缺则 `::warning::` 并继续
-    （产物不含嵌入式 PG，仅验证构建/链接）。
+  - PG 二进制 fetch：**无条件执行**（PKG-2A）——默认 upstream 直拉（Windows=EDB zip 按
+    `upstream.lock` SHA256 锁定；macOS=runner `brew install postgresql@17` + make-relocatable，
+    brew 步**不以 cache-hit 门控**——缓存树未过脚本校验会走重建路径，必须有 keg 兜底，
+    否则坏缓存 = 每次 re-run 恢复同一份坏树的死循环）；repo variable
+    `PG_ARTIFACT_BASE_URL` 配置时切对象存储。产物恒含嵌入式 PG。
+  - publish job 生成 `checksums.txt`（全部资产的 sha256，QG-6）并随资产上传。
   - 签名/公证/MSIX 签名：脚本自检环境，缺凭据 → 打印 `SKIPPED` 退出 0，不阻断。
   - 原始构建产物（zip 的 `.app` / `Release` 目录）**无条件上传** —— 零密钥也有可下载工件。
 - **与 §13 早期愿景稿的差异（已就现实修正）**：
@@ -560,13 +586,13 @@ gh release create v0.1.0 \
 | `distribute_options.yaml` | flutter_distributor MSIX 配置骨架 | publisher 待 EV 证书 subject |
 | `scripts/smoke/{macos-smoke.sh,windows-smoke.ps1}` | 双平台 boot 烟测（本地可复现） | — |
 
-### 13.4 待提供的机密 / 变量（流水线就绪前的唯一缺口）
+### 13.4 待提供的机密 / 变量（剩余缺口=签名/公证凭据）
 
-配齐后 release.yml 的签名/公证/PG 打包自动生效，无需改代码：
+配齐后 release.yml 的签名/公证自动生效，无需改代码（PG 打包已零配置默认生效，PKG-2A）：
 
 | 名称 | 类型 | 用途 |
 |---|---|---|
-| `PG_ARTIFACT_BASE_URL` | repo **variable**（或改 secret） | 嵌入式 PG 二进制对象存储 base URL（`fetch-binaries.sh` 读） |
+| `PG_ARTIFACT_BASE_URL` | repo **variable**（可选） | **不再是缺口**：缺省走 upstream 直拉（PKG-2A）；仅当想切对象存储分发（方案 B）时配置 |
 | `MACOS_CERT_P12_BASE64` / `MACOS_CERT_PASSWORD` | secret | Developer ID Application 证书（.p12 base64）+ 密码 |
 | `MACOS_SIGN_IDENTITY` | secret | 签名身份串 `Developer ID Application: Name (TEAMID)` |
 | `APPLE_ID` / `APPLE_TEAM_ID` / `APPLE_APP_SPECIFIC_PASSWORD` | secret | notarytool 公证凭据 |

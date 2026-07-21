@@ -196,19 +196,24 @@ flutter test
 ### 方式 B：嵌入二进制（发布打包）
 
 ```bash
+# 默认 upstream 直拉（零配置）：Windows=EDB 官方 zip（scripts/pg/upstream.lock 锁 SHA256），
+# macOS=本机 Homebrew postgresql@17 + make-relocatable（即方式 C 的自动化封装）
+./scripts/pg/fetch-binaries.sh
+
+# 可选：对象存储覆盖（方案 B）
 export PG_ARTIFACT_BASE_URL=<对象存储 base URL>
 ./scripts/pg/fetch-binaries.sh
 ```
 
-拉取脚本会按 `scripts/pg/pg-version.txt`（当前 17.2）校验 SHA256，写入：
-- macOS: `macos/Runner/Resources/pg/<platform>/bin + /lib`
-- Windows: `windows/runner/resources/pg/<platform>/bin + /lib`
+拉取脚本按 `scripts/pg/pg-version.txt`（当前 17.2；macOS upstream 因 brew 补丁位浮动只锁主版本）校验，写入：
+- macOS: `macos/Runner/Resources/pg/<platform>/bin + /lib + /share`
+- Windows: `windows/runner/resources/pg/<platform>/bin + /lib + /share`
 
-未配置对象存储时脚本输出 `NOT_CONFIGURED`，不会误判成功。
+装配在 `<target>.partial` 完成并通过校验（必需工具 + 版本）后才对换，失败零残留。
 
-### 方式 C：本机 Homebrew → 可重定位嵌入 PG（macOS 开发/本地出包，无需对象存储）
+### 方式 C：本机 Homebrew → 可重定位嵌入 PG（macOS 手动路径，等价于方式 B 的 macOS 分支）
 
-当对象存储尚未配置时，开发机可直接从本机 Homebrew `postgresql@17` 生成「可重定位」的
+开发机可直接从本机 Homebrew `postgresql@17` 生成「可重定位」的
 嵌入式 PG（vendoring 全部依赖闭包 + 改写 install name 为 `@rpath` + ad-hoc 重签名），
 落地到 `macos/Runner/Resources/pg/macos-arm64/`，供 `flutter build macos` 打进 `.app`：
 
