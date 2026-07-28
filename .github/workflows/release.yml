@@ -89,7 +89,14 @@ jobs:
           mkdir -p dist
           APP="$(find build/macos/Build/Products/Release -maxdepth 1 -name '*.app' | head -1)"
           echo "app bundle: $APP"
-          ditto -c -k --keepParent "$APP" "dist/InkFrame-$BUILD_NAME-macos-arm64-unsigned.zip"
+          # zip 根 = .app + THIRD-PARTY.md（LEG-1 ④：许可 NOTICE 随安装物分发）
+          STAGE="$(mktemp -d)"
+          cp -R "$APP" "$STAGE/"
+          cp THIRD-PARTY.md "$STAGE/"
+          ZIP="dist/InkFrame-$BUILD_NAME-macos-arm64-unsigned.zip"
+          ditto -c -k "$STAGE" "$ZIP"
+          rm -rf "$STAGE"
+          unzip -l "$ZIP" | grep -q '\bTHIRD-PARTY\.md$' || { echo "::error::zip 缺 THIRD-PARTY.md" >&2; exit 1; }
       - name: sign + notarize (skips without credentials)
         run: bash scripts/release/sign-and-notarize-macos.sh
       - name: package DMG (best-effort skeleton)
@@ -147,7 +154,13 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath "dist/InkFrame-$env:BUILD_NAME-windows-x64-unsigned.zip" -Force
+          # zip 根含 THIRD-PARTY.md（LEG-1 ④：许可 NOTICE 随安装物分发）
+          Copy-Item THIRD-PARTY.md build/windows/x64/runner/Release/
+          $zip = "dist/InkFrame-$env:BUILD_NAME-windows-x64-unsigned.zip"
+          Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath $zip -Force
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          $entries = [IO.Compression.ZipFile]::OpenRead((Resolve-Path $zip)).Entries.FullName
+          if ($entries -notcontains 'THIRD-PARTY.md') { throw "zip 缺 THIRD-PARTY.md" }
       - name: package MSIX (best-effort skeleton)
         continue-on-error: true
         shell: pwsh
