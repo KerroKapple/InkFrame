@@ -19,6 +19,7 @@ fi
 
 STAGE="$(mktemp -d)"
 cp -R "$APP" "$STAGE/"
+cp THIRD-PARTY.md "$STAGE/"   # LEG-1 ④：DMG 根含许可 NOTICE
 # 最小布局（无自定义背景，避免缺资源导致失败）；品牌化布局见 BUILD-RELEASE §6。
 create-dmg \
   --volname "InkFrame $VERSION" \

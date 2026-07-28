@@ -230,6 +230,8 @@ COM-1、COM-2、COM-3、LEG-1(核实+NOTICE 部分零依赖)。
   主要 pub 依赖);③关于区加开源许可入口(showLicensePage 或自绘);④安装包内含 NOTICE。
 - 验收:双平台安装物含 NOTICE、关于区可见、字体目录含 OFL。
 - 依赖:核实+NOTICE 部分零依赖可立即做;安装物含 NOTICE 联动 PKG-3/4。
+- 状态:①②③ 已随 #147 落地;④ 安装物含 NOTICE 已随 #204 落地(mac zip/DMG + win zip 根含
+  THIRD-PARTY.md,zip 侧流水线内断言硬校验)——**LEG-1 全项收口,beta 准入第 9 条 ✅**。
 
 ## 9. 素材(AST,M6 公开上线)
 

@@ -98,6 +98,7 @@
 | GAP-7 Inspector 测试欠账收口（预设点选应用+成本文案精确断言）+ ON-5 五屏空态 golden（Studio empty/error、Canvas empty、Gallery empty、Settings；ubuntu 铸线）——第 10 条（ON-3/4/GAP-7/ON-5）收官；**余 GAP-1 整卡、GAP-3 余量未清**（评审 P1 纠偏：勿宣「全部收官」） | #198 |
 | GAP-3 余量收口（24 站点审计:方向读错并入横幅链;raw toString 上屏收敛——设置页探测诊断行为有意例外;base style 编辑器读错中止防空覆盖（评审 P2-3）;InkErrorBanner.onRetry 死参数删除;**InkAsyncSlot 判 YAGNI**——列表槽位 LB-06 已全收口） | #199 |
 | **GAP-1 设置页 Custom Provider 编辑 UI（上线前必做最后一卡）**：CustomProviderStore 写侧（raw 保真+损坏拒写+原子写）;校验抽 core 纯函数双端共用;列表+表单+删除确认+重启生效常驻条;API Keys custom:* 行 displayName 顺带修——**随本卡合入,上线前必做 1-10 全部落地** | #200 |
+| LEG-1 ④ 收口:双平台安装物根含 THIRD-PARTY.md(mac staging-ditto / win Copy-Item 进 Release,zip 侧流水线断言硬校验;DMG 随 staging 进卷)——beta 准入第 9 条全项 ✅ | #204 |
 | **PKG-2A PG 二进制分发源（方案 A 上游直拉,beta 硬阻塞里唯一零用户依赖项收官）**：fetch-binaries.sh 双模式重写——upstream 默认（Win=EDB 官方 zip `upstream.lock` 锁 URL+SHA256+裁剪 bin/lib/share;mac=runner brew postgresql@17+make-relocatable,主版本匹配）,`PG_ARTIFACT_BASE_URL` 保留为方案 B 覆盖;`.partial` 原子落位+必需工具校验（含 pg_dump/pg_restore）;release.yml 去门控无条件 fetch;回归测试入 ci release-scripts;**顺带 QG-6 的 checksums.txt**（publish job 全资产 sha256）;本机真栈验收=EDB 裁剪产物过 realpg E2E 全链 | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
