@@ -146,6 +146,9 @@
 ### QG-4 数据升级演练(M,依赖 QG-5 拍板)
 - CI 侧:populated-DB 迁移测试(harness 建到 vN-1+种子全表数据→migrate→断言完整性,@Tags(['pg']));
   人工侧:留 alpha.9 的 ~/InkFrame 快照作夹具,每次发版新安装物指向副本启动。
+- 状态:已随 #205 落地——CI 侧 `populated_migration_test.dart`(@pg,v1 起边迁边种+全表非空守卫+
+  降级拒绝,严于原口径的 vN-1 单点);真栈侧 `real_pg_upgrade_drill_e2e_test.dart`(@realpg,v6 数据
+  目录被全链冷启前向迁移);人工侧 SOP 见 BUILD-RELEASE §15。**QG-4 ✅,beta.1 阻塞只剩 U1/U2**。
 
 ### QG-5 ⚠️ 政策决策:Zero Backward Compatibility vs 用户数据(→ MASTERPLAN 决策区 D-4,必须拍板)
 - 冲突:铁律写 "NO migration scripts",代码实际维护 v1→v7 迁移链且 alpha.9 有真实用户;
