@@ -245,8 +245,8 @@ beta 准入追加第 9 条:**第三方许可 NOTICE 上线**。用户必办追�
   unsigned+安装文档说明 SmartScreen 绕行,1.0 前补。**beta.1 准入的签名两条(第 2/3 条)执行顺延至补购后**
 - **U7** 数据升级政策拍板(→ D-4,牵动铁律文本与 SCRAM 覆盖面)
 - alpha.10 已按"不等 U1/U2"路线发出(release.yml 产 unsigned 双平台产物);
-  **beta.1 被 U1+U2+QG-4 升级演练硬阻塞**(D-4 已拍 ADR-0012、UPD-1 已随 #173、
-  PG 分发源已随 PKG-2A 交付,均从阻塞名单移除)。
+  **beta.1 被 U1+U2 硬阻塞**(D-4 已拍 ADR-0012、UPD-1 已随 #173、
+  PG 分发源已随 PKG-2A 交付、QG-4 升级演练已随 #205 落地,均从阻塞名单移除)。
 
 ## 6. 模型接入路线(2026-07 调研,全表与来源见 [`research/2026-07-07-model-landscape.md`](research/2026-07-07-model-landscape.md))
 

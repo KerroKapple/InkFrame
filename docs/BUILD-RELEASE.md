@@ -622,8 +622,33 @@ gh release create v0.1.0 \
 
 ---
 
+## 15. 升级演练（QG-4）
+
+每次发版前跑两层，全绿才发：
+
+1. **自动层（必跑）**：
+   - CI 侧随 PR 自动跑（`test/storage/schema/populated_migration_test.dart`，@pg）；
+   - 真栈演练本机一键：
+     `TEST_REAL_PG=1 INKFRAME_PG_BIN="$PWD/macos/Runner/Resources/pg/macos-arm64/bin" flutter test --tags realpg`
+     （含全栈 E2E 与升级演练两条；Windows 机把 INKFRAME_PG_BIN 指向
+     `windows/runner/resources/pg/windows-x64/bin`）。
+2. **人工层（建议每个 minor 一次）**：真实安装物 + 真实旧工作区快照。
+   - 备夹具：从装过旧版的机器拷贝整个数据根
+     （mac `~/Library/Application Support/InkFrame`，win `%LOCALAPPDATA%\InkFrame`）
+     存为 `snapshot-<旧版本号>/`；
+   - 演练：复制快照到临时 HOME，再用**新版安装物**启动——
+     mac：`cp -R snapshot-vX ~/qg4-home/Library/Application\ Support/InkFrame && HOME=~/qg4-home open -W <新版>.app`；
+   - 通过标准：应用正常进入 Studio、旧项目可打开、无数据重置/报错；
+     结束后删临时 HOME。快照本身永不改动（只用副本）。
+
+新增 schema 版本时：`populated_migration_test.dart` 的全表非空守卫会强制你
+为新表补 seeder——这是有意设计，勿绕过（ADR-0012「每个 schema PR」纪律）。
+
+---
+
 ## 变更记录
 
 | 日期 | 版本 | 内容 | 作者 |
 |---|---|---|---|
 | 2026-04-15 | v0.1.0 | 初版，基于 ARCHITECTURE §14 展开；覆盖 macOS/Windows 全流程 | P9 |
+| 2026-07-30 | v0.1.0-alpha.11+ | §15 升级演练（QG-4）：自动两层 + 人工快照 SOP | Claude |
