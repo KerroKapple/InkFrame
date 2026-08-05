@@ -1,8 +1,12 @@
-// OpenAIImageProvider — OpenAI gpt-image-1 同步文生图。
+// OpenAIImageProvider — OpenAI gpt-image-2 同步文生图。
 //
-// 接入参数（计划 2026-06-10-provider-dalle，权威至 2026-06-10）：
+// 接入参数（MOD-1 升级 2026-08-05；gpt-image-1 于 2026-10-23 弃用，
+// gpt-image-1.5 亦于 2026-12-01 退役故不作过渡，直升 gpt-image-2）：
 //   Base URL : https://api.openai.com/v1
-//   Model ID : gpt-image-1（同步，固定返回 b64_json，不接受 response_format）
+//   Model ID : gpt-image-2（同步，固定返回 b64_json，不接受 response_format——
+//              GPT image 系列共性,契约与 gpt-image-1 兼容）
+//   Size     : 任意 WIDTHxHEIGHT（两边 16 整除,长短边比 ≤3:1,总像素
+//              655,360~8,294,400,最长边 ≤3840）——本档取三比例的真尺寸
 //   Auth     : Authorization: Bearer <key>（从 keySource 读取）
 //   Submit   : POST /images/generations
 //   Validate : GET /models（零生成配额）
@@ -22,7 +26,7 @@ import 'sync_provider_base.dart';
 
 // ---- 接入参数（计划锁定） -------------------------------------------------
 const String kOpenAIBaseUrl = 'https://api.openai.com/v1';
-const String kOpenAIModel = 'gpt-image-1';
+const String kOpenAIModel = 'gpt-image-2';
 const String kOpenAIImagePath = '/images/generations';
 const String kOpenAIValidatePath = '/models';
 
@@ -35,7 +39,7 @@ const ProviderCapabilities kOpenAIImageCapabilities = ProviderCapabilities(
   displayName: 'OpenAI Image',
   region: ProviderRegion.global,
   modes: [GenerationMode.textToImage],
-  // gpt-image-1 仅三种 size：1024x1024 / 1536x1024 / 1024x1536。
+  // gpt-image-2 支持任意尺寸;本档三比例走真尺寸（16:9 分镜第一刚需）。
   supportedRatios: [
     AspectRatio.r1x1,
     AspectRatio.r16x9,
@@ -50,14 +54,14 @@ const ProviderCapabilities kOpenAIImageCapabilities = ProviderCapabilities(
   supportsFirstFrame: false,
   supportsLastFrame: false,
   supportsNegativePrompt: false,
-  supportsSeed: false, // gpt-image-1 无 seed 参数
+  supportsSeed: false, // gpt-image-2 无 seed 参数
   supportsSound: false,
   supportsBatch: false,
   supportsCancellation: false,
   // 同步 Provider 仍走 Pollable 路径（poll 一调即返回 inlineBytes，详见 ADR-0004）。
   supportsPolling: true,
-  // medium 质量 1024×1024 的官方单图估价。
-  costModel: CostModel.perCall(usdPerCall: 0.042),
+  // gpt-image-2 medium 质量标准分辨率官方档 $0.041–0.053,取 1024² 档。
+  costModel: CostModel.perCall(usdPerCall: 0.041),
   maxConcurrentJobs: 1,
   qps: 2,
   burst: 5,
@@ -90,7 +94,7 @@ class OpenAIImageProvider extends SyncProviderBase {
       'n': 1,
       'size': _sizeFor(task.aspectRatio),
       'quality': 'medium',
-      // HI-06：gpt-image-1 不接受 response_format（带上即 400），固定返回 b64_json。
+      // HI-06：GPT image 系列不接受 response_format（带上即 400），固定返回 b64_json。
     };
     final resp = await dio.post<dynamic>(
       kOpenAIImagePath,
@@ -168,16 +172,18 @@ class OpenAIImageProvider extends SyncProviderBase {
     }
   }
 
-  /// AspectRatio → gpt-image-1 size 字符串。capabilities 已收窄到三种比例，
+  /// AspectRatio → gpt-image-2 size 字符串（真比例；约束=两边 16 整除、
+  /// 比 ≤3:1、总像素 655,360~8,294,400）。gpt-image-1 时代 16:9 只能凑
+  /// 3:2(1536x1024)，MOD-1 起走真 16:9。capabilities 已收窄到三种比例，
   /// 其余分支为防御性兜底（UI 遵守 supportedRatios 时不可达）。
   String _sizeFor(AspectRatio ratio) {
     switch (ratio) {
       case AspectRatio.r1x1:
         return '1024x1024';
       case AspectRatio.r16x9:
-        return '1536x1024';
+        return '1536x864';
       case AspectRatio.r9x16:
-        return '1024x1536';
+        return '864x1536';
       case AspectRatio.r4x3:
       case AspectRatio.r3x4:
       case AspectRatio.r21x9:

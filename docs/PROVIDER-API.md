@@ -381,7 +381,7 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 | providerId | 真实模型 ID | Base URL | 鉴权 | 提交端点 | 轮询端点 |
 |---|---|---|---|---|---|
 | `gemini-image` | `gemini-2.5-flash-image-preview` | `https://generativelanguage.googleapis.com/v1beta` | `?key=` query | `POST /models/{model}:generateContent` | 同步（poll 走 inlineBytes cache） |
-| `openai-image` | `gpt-image-1` | `https://api.openai.com/v1` | Bearer | `POST /images/generations` | 同步（同上） |
+| `openai-image` | `gpt-image-2` | `https://api.openai.com/v1` | Bearer | `POST /images/generations` | 同步（同上） |
 | `stability-image-core` | `stable-image-core`（v2beta） | `https://api.stability.ai` | Bearer | `POST /v2beta/stable-image/generate/core`（multipart） | 同步（同上）；Key 验证走 `GET /v1/user/balance` |
 | `wanx-image` | `wan2.7-image-pro` | `https://dashscope.aliyuncs.com/api/v1` | Bearer + `X-DashScope-Async: enable` | `POST /services/aigc/image-generation/generation` | `GET /tasks/{task_id}` |
 | `wanx-t2v` | `wan2.7-t2v` | 同上 | 同上 | `POST /services/aigc/video-generation/video-synthesis` | 同上 |
@@ -410,7 +410,7 @@ polling ─success─► downloading ──► local_ready (node.status = succes
 ### 9.3 已知陷阱
 
 - **同步三家（gemini / openai / stability）**：`submit()` 内完成生成，inline bytes 暂存 instance cache；`poll()` 一次性消费，重复 poll 同一 jobId 抛 `ProviderError(providerServer, extra.reason='cache_miss_or_consumed')`（§5.5）
-- **openai-image**：`gpt-image-1` 仅 1024×1024 / 1536×1024 / 1024×1536 三种 size——`r4x3` / `r3x4` / `r21x9` 无精确映射，capabilities 不声明
+- **openai-image**：`gpt-image-2`（MOD-1 2026-08-05 升级;gpt-image-1 2026-10-23 弃用）支持任意 WIDTHxHEIGHT（16 整除、比 ≤3:1、总像素 655,360~8,294,400）——本档三比例走真尺寸,`r4x3` / `r3x4` / `r21x9` 暂不声明（能力位编译期固定,扩比例另卡）
 - **stability-image-core**：提交是 multipart/form-data，不是 JSON；Key 验证用余额端点（最轻量、零配额消耗）
 - **DashScope 系 6 款**：共享基类 `DashScopeAsyncProviderBase` + 同一把 sk-xxx Key（SecureStorage 按 `provider.dashscope.api_key` 折叠存储，见 ARCHITECTURE.md §9.2）；提交必须带 `X-DashScope-Async: enable` 头；`task_status` 字面量见基类 `DashScopeTaskStatus`
 - **wanx-image / wanx-r2v / kling-v3-omni**：参考图超上限（1 / 3 / 4）客户端按 `capabilities.maxRefImages` 静默截断，最终裁决交给服务端；UI 侧输入区超限时显示「多余参考图将被忽略」警告
@@ -597,7 +597,7 @@ capabilities = 模板基线.copyWith(providerId: 'custom:<id>', displayName: dis
 | Key 验证 | `GET {base_url}/models`（零生成配额） |
 
 - 结果走同步 inlineBytes 通道（§5.5 / ADR-0004）：解析 `data[0].b64_json`，poll 一次性消费；**基类禁止在 Provider 内下载远端 URL**，故请求体显式要求 `b64_json`
-- `size` 由 AspectRatio 映射：1:1→`1024x1024`，16:9→`1536x1024`，9:16→`1024x1536`
+- `size` 由 AspectRatio 映射（gpt-image-2 真比例）：1:1→`1024x1024`，16:9→`1536x864`，9:16→`864x1536`
 - 错误映射与内置同步 Provider 完全一致（`mapDioError` + §6.1 全码表）
 
 ### 13.4 Key 存储
