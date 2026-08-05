@@ -99,7 +99,14 @@ class _GalleryGrid extends StatelessWidget {
         childAspectRatio: 0.85,
       ),
       itemCount: items.length,
-      itemBuilder: (_, i) => GalleryTile(projectId: projectId, item: items[i]),
+      // ValueKey：GridView 复用 Element 时防 tile 内部状态串位（评审 F2）。
+      itemBuilder: (_, i) => GalleryTile(
+        key: ValueKey<String>(
+          '${items[i].canvasId}|${items[i].relativePath}|${items[i].slotIndex}',
+        ),
+        projectId: projectId,
+        item: items[i],
+      ),
     );
   }
 }
