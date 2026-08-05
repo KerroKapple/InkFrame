@@ -2,7 +2,9 @@
 //
 // 图片经 fileResolverServiceProvider 解析后 Image.file 渲染（同 BatchResultsGrid），
 // 点击开图片 lightbox；视频有已落库缩略图（thumbnail_url）则渲染缩略图 +
-// 播放/时长角标，点击经 existsSync 守卫开 video_lightbox，文件缺失显 broken 态。
+// 播放/时长角标，点击经 existsSync 守卫开 video_lightbox，文件缺失显 broken 态
+//（可点重试）。播放 happy path（真开 lightbox）无自动化覆盖——media_kit 不进
+// 单测环境，由手工回归兜底；单测覆盖到 existsSync 守卫两侧分支为止。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -28,10 +30,17 @@ class GalleryTile extends ConsumerStatefulWidget {
 }
 
 class _GalleryTileState extends ConsumerState<GalleryTile> {
-  /// 点击时视频文件缺失 → broken 态（预览区替换为 broken 图标）。
+  /// 点击时视频文件缺失 → broken 态（预览区替换为 broken 图标，可点重试）。
   bool _videoBroken = false;
 
   GalleryItem get item => widget.item;
+
+  @override
+  void didUpdateWidget(covariant GalleryTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Element 复用换 item 即复位（评审 F2；对齐 video_node_body 的 ME-25 约定）。
+    if (oldWidget.item != widget.item) _videoBroken = false;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -117,7 +126,11 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
 
   Widget _videoPreview(BuildContext context, InkColors colors) {
     if (_videoBroken) {
-      return _iconPlaceholder(colors, Icons.broken_image_outlined);
+      // broken 态保留点击：文件恢复后一击回到正常播放（评审 F3）。
+      return GestureDetector(
+        onTap: _playVideo,
+        child: _iconPlaceholder(colors, Icons.broken_image_outlined),
+      );
     }
     final thumbRel = item.thumbnailRelativePath;
     final thumb = thumbRel == null ? null : _resolve(thumbRel);
@@ -125,30 +138,32 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
       onTap: _playVideo,
       child: thumb == null
           ? _videoPlaceholder(context, colors)
-          : Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                Image.file(
-                  thumb,
-                  fit: BoxFit.cover,
-                  // 缩略图缺失/损坏 → 回退首切片占位（仍可点击播放）。
-                  errorBuilder: (_, _, _) =>
-                      _videoPlaceholder(context, colors),
-                ),
-                Center(
-                  child: Icon(
-                    Icons.play_circle_outline,
-                    color: colors.fg1,
-                    size: 36,
+          : Image.file(
+              thumb,
+              fit: BoxFit.cover,
+              // 播放/时长角标经 frameBuilder 挂在图内：缩略图缺失/解码失败时
+              // errorBuilder 整体接管，不残留兄弟浮标叠影（评审 F1）。
+              frameBuilder: (context, child, frame, wasSync) => Stack(
+                fit: StackFit.expand,
+                children: <Widget>[
+                  child,
+                  Center(
+                    child: Icon(
+                      Icons.play_circle_outline,
+                      color: colors.fg1,
+                      size: 36,
+                    ),
                   ),
-                ),
-                if (item.durationMs != null)
-                  Positioned(
-                    right: InkSpacing.xs,
-                    bottom: InkSpacing.xs,
-                    child: _durationBadge(context, colors, item.durationMs!),
-                  ),
-              ],
+                  if (item.durationMs != null)
+                    Positioned(
+                      right: InkSpacing.xs,
+                      bottom: InkSpacing.xs,
+                      child:
+                          _durationBadge(context, colors, item.durationMs!),
+                    ),
+                ],
+              ),
+              errorBuilder: (_, _, _) => _videoPlaceholder(context, colors),
             ),
     );
   }
@@ -160,7 +175,7 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
       setState(() => _videoBroken = true);
       return;
     }
-    if (!mounted) return;
+    if (_videoBroken) setState(() => _videoBroken = false);
     await showVideoLightbox(context, videoPath: file.path);
   }
 

@@ -126,6 +126,44 @@ void main() {
     );
     await tester.pump();
     expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+    // 评审 F1/F5 钉死：errorBuilder 整体接管,播放角标不残留、时长只显一份。
+    expect(find.byIcon(Icons.play_circle_outline), findsNothing,
+        reason: '缩略图失败时播放角标不得叠在占位图上');
+    expect(find.text('01:05'), findsOneWidget,
+        reason: '时长只显占位图内一份,不得双份');
+  });
+
+  testWidgets('item 变更复位 broken 态（GridView Element 复用防串位,评审 F2）',
+      (tester) async {
+    final root = await _root(tester);
+    File('${root.path}/p1/canvases/c1/thumbnails/v.jpg')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(_kPngBytes);
+
+    await _pumpTile(
+      tester,
+      item: _video(thumb: 'thumbnails/v.jpg'),
+      root: root.path,
+    );
+    await tester.pump();
+    await tester.tap(find.byIcon(Icons.play_circle_outline));
+    await tester.pump();
+    expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
+
+    // 同位置换 item（无 key 的 Element 复用路径）→ didUpdateWidget 复位。
+    await _pumpTile(
+      tester,
+      item: _video(thumb: 'thumbnails/v.jpg').copyWith(
+        relativePath: 'videos/other.mp4',
+        nodeId: 'n2',
+      ),
+      root: root.path,
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.broken_image_outlined), findsNothing,
+        reason: '换 item 后 broken 态不得串位残留');
+    expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
   });
 
   testWidgets('无缩略图 → 原图标+时长占位（首切片回退不变）', (tester) async {
