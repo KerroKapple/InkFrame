@@ -1195,6 +1195,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get galleryLoadFailed => 'Failed to load gallery';
 
   @override
+  String get galleryFilterAll => 'All';
+
+  @override
+  String get galleryFilterCanvasAll => 'All canvases';
+
+  @override
+  String get gallerySearchHint => 'Search canvas name…';
+
+  @override
+  String get galleryFilterClear => 'Clear filters';
+
+  @override
+  String get galleryFilterNoMatches => 'No results match the current filters';
+
+  @override
+  String get gallerySaveAsCharacter => 'Save as character';
+
+  @override
+  String get gallerySavedAsCharacter => 'Character saved';
+
+  @override
   String get galleryKindImage => 'Image';
 
   @override

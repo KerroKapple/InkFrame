@@ -1148,6 +1148,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryLoadFailed => '画廊加载失败';
 
   @override
+  String get galleryFilterAll => '全部';
+
+  @override
+  String get galleryFilterCanvasAll => '全部画布';
+
+  @override
+  String get gallerySearchHint => '搜索画布名…';
+
+  @override
+  String get galleryFilterClear => '清除筛选';
+
+  @override
+  String get galleryFilterNoMatches => '没有符合当前筛选的产物';
+
+  @override
+  String get gallerySaveAsCharacter => '存为角色';
+
+  @override
+  String get gallerySavedAsCharacter => '已存为角色';
+
+  @override
   String get galleryKindImage => '图片';
 
   @override

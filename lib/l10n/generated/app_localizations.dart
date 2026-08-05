@@ -2222,6 +2222,48 @@ abstract class AppLocalizations {
   /// **'Failed to load gallery'**
   String get galleryLoadFailed;
 
+  /// No description provided for @galleryFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get galleryFilterAll;
+
+  /// No description provided for @galleryFilterCanvasAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All canvases'**
+  String get galleryFilterCanvasAll;
+
+  /// No description provided for @gallerySearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search canvas name…'**
+  String get gallerySearchHint;
+
+  /// No description provided for @galleryFilterClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get galleryFilterClear;
+
+  /// No description provided for @galleryFilterNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No results match the current filters'**
+  String get galleryFilterNoMatches;
+
+  /// No description provided for @gallerySaveAsCharacter.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as character'**
+  String get gallerySaveAsCharacter;
+
+  /// No description provided for @gallerySavedAsCharacter.
+  ///
+  /// In en, this message translates to:
+  /// **'Character saved'**
+  String get gallerySavedAsCharacter;
+
   /// No description provided for @galleryKindImage.
   ///
   /// In en, this message translates to:

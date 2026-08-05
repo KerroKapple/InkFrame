@@ -486,6 +486,13 @@
   "galleryEmptyTitle": "还没有生成内容",
   "galleryEmptySubtitle": "该项目画布上生成的图片和视频会显示在这里。",
   "galleryLoadFailed": "画廊加载失败",
+  "galleryFilterAll": "全部",
+  "galleryFilterCanvasAll": "全部画布",
+  "gallerySearchHint": "搜索画布名…",
+  "galleryFilterClear": "清除筛选",
+  "galleryFilterNoMatches": "没有符合当前筛选的产物",
+  "gallerySaveAsCharacter": "存为角色",
+  "gallerySavedAsCharacter": "已存为角色",
   "galleryKindImage": "图片",
   "galleryKindVideo": "视频",
 

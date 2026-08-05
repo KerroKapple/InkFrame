@@ -12,9 +12,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/file_resolver.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/character_asset_service.dart'
+    show CharacterAssetError;
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../../canvas/providers/characters_controller.dart';
 import '../../canvas/widgets/video_lightbox.dart';
 import '../models/gallery_item.dart';
 import 'gallery_image_lightbox.dart';
@@ -82,6 +87,31 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
                       textAlign: TextAlign.end,
                     ),
                   ),
+                  // GA-4：仅 image 项出「存为角色」菜单（复用点见 README）。
+                  // child: 形态（非 icon:）——否则 IconButton 默认 48×48 点击区
+                  // 把 caption 行撑高 2.4 倍且图/视频 tile 不齐（评审 nit）。
+                  if (item.kind == GalleryItemKind.image)
+                    PopupMenuButton<String>(
+                      tooltip: context.l10n.gallerySaveAsCharacter,
+                      padding: EdgeInsets.zero,
+                      itemBuilder: (menuCtx) => <PopupMenuEntry<String>>[
+                        PopupMenuItem<String>(
+                          value: 'saveCharacter',
+                          child: Text(menuCtx.l10n.gallerySaveAsCharacter),
+                        ),
+                      ],
+                      onSelected: (_) => _saveAsCharacter(),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: InkSpacing.xs,
+                        ),
+                        child: Icon(
+                          Icons.more_vert,
+                          size: 16,
+                          color: colors.fg3,
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -221,6 +251,117 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
 
   Widget _iconPlaceholder(InkColors colors, IconData icon) =>
       Center(child: Icon(icon, color: colors.fg3, size: 20));
+
+  /// GA-4 in-flight 防重（PLAYBOOK §5.2）：串行队列只保证不并发、不保证不重复。
+  bool _savingCharacter = false;
+
+  /// GA-4：命名 → charactersController.createFromImage（补偿逻辑在控制器内）。
+  ///
+  /// 抛出集与控制器注释对齐（评审 P1-2）：InkError / CharacterAssetError /
+  /// FileSystemException 三类全捕——漏一类=静默失败+假崩溃文件。
+  Future<void> _saveAsCharacter() async {
+    if (_savingCharacter) return;
+    final name = await showDialog<String>(
+      context: context,
+      builder: (_) => const _CharacterNameDialog(),
+    );
+    if (name == null || name.trim().isEmpty || !mounted) return;
+    if (_savingCharacter) return; // 对话框期二开菜单的窗口
+    _savingCharacter = true;
+    // await 前预取（PLAYBOOK §5.1：跨异步边界不再碰 context）。
+    final l = context.l10n;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final file = _resolve(item.relativePath);
+    try {
+      // existsSync 守卫：tile 显示 broken 占位时菜单照样可点（评审 P1-2）。
+      if (file == null || !file.existsSync()) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text(l.inspectorCharactersImportFailed)),
+        );
+        return;
+      }
+      // listenManual 保活 autoDispose family 至操作完成；先 await build
+      //（repo future 就绪）再调 createFromImage，避免冷读竞态。
+      final sub = ref.listenManual(
+        charactersControllerProvider(widget.projectId),
+        (_, _) {},
+      );
+      try {
+        await ref.read(charactersControllerProvider(widget.projectId).future);
+        // 冷建含真 DB 往返;期间 tile 可能被 GridView 回收——ref 已死,
+        // 操作尚未开写,放弃即无半状态（评审 P1-3）。
+        if (!mounted) return;
+        await ref
+            .read(charactersControllerProvider(widget.projectId).notifier)
+            .createFromImage(name: name.trim(), sourceAbsolutePath: file.path);
+        messenger?.showSnackBar(
+          SnackBar(content: Text(l.gallerySavedAsCharacter)),
+        );
+      } on InkError catch (_) {
+        // 控制器已补偿（清记录+清落盘图）；此处只负责提示，不吞成假成功。
+        messenger?.showSnackBar(
+          SnackBar(content: Text(l.inspectorCharactersImportFailed)),
+        );
+      } on CharacterAssetError catch (_) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text(l.inspectorCharactersImportFailed)),
+        );
+      } on FileSystemException catch (_) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text(l.inspectorCharactersImportFailed)),
+        );
+      } finally {
+        sub.close();
+      }
+    } finally {
+      _savingCharacter = false;
+    }
+  }
+}
+
+/// 角色命名对话框（复用 inspector 的 ARB 键；返回名字或 null=取消）。
+class _CharacterNameDialog extends StatefulWidget {
+  const _CharacterNameDialog();
+
+  @override
+  State<_CharacterNameDialog> createState() => _CharacterNameDialogState();
+}
+
+class _CharacterNameDialogState extends State<_CharacterNameDialog> {
+  final TextEditingController _ctrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final colors = context.inkColors;
+    return AlertDialog(
+      backgroundColor: colors.surface1,
+      title: Text(l.inspectorCharactersDialogTitle),
+      content: InkInput(
+        controller: _ctrl,
+        hintText: l.inspectorCharactersNameHint,
+        onChanged: (_) => setState(() {}),
+      ),
+      actions: <Widget>[
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text(l.commonCancel),
+        ),
+        FilledButton(
+          onPressed: _ctrl.text.trim().isEmpty
+              ? null
+              : () => Navigator.of(context).pop(_ctrl.text),
+          child: Text(l.inspectorCharactersSave),
+        ),
+      ],
+    );
+  }
 }
 
 String _fmtDuration(int ms) {

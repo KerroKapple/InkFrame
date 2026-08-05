@@ -524,6 +524,13 @@
   "galleryEmptyTitle": "No generated assets yet",
   "galleryEmptySubtitle": "Images and videos generated on this project's canvases will appear here.",
   "galleryLoadFailed": "Failed to load gallery",
+  "galleryFilterAll": "All",
+  "galleryFilterCanvasAll": "All canvases",
+  "gallerySearchHint": "Search canvas name…",
+  "galleryFilterClear": "Clear filters",
+  "galleryFilterNoMatches": "No results match the current filters",
+  "gallerySaveAsCharacter": "Save as character",
+  "gallerySavedAsCharacter": "Character saved",
   "galleryKindImage": "Image",
   "galleryKindVideo": "Video",
 
