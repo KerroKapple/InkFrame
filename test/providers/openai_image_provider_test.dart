@@ -88,7 +88,7 @@ void main() {
     test('supportsCancellation == false', () {
       expect(kOpenAIImageCapabilities.supportsCancellation, isFalse);
     });
-    test('supportsSeed == false（gpt-image-1 无 seed）', () {
+    test('supportsSeed == false（gpt-image-2 无 seed）', () {
       expect(kOpenAIImageCapabilities.supportsSeed, isFalse);
     });
     test('supportsNegativePrompt == false', () {
@@ -115,8 +115,11 @@ void main() {
     test('maxBatchSize == 1', () {
       expect(kOpenAIImageCapabilities.maxBatchSize, 1);
     });
-    test('costModel 是 PerCall 变体', () {
-      expect(kOpenAIImageCapabilities.costModel, isA<PerCall>());
+    test('costModel 精确钉死 perCall 0.041（gpt-image-2 medium 1024² 档）', () {
+      expect(
+        kOpenAIImageCapabilities.costModel,
+        const CostModel.perCall(usdPerCall: 0.041),
+      );
     });
     test('capabilities 字段经 instance 暴露与 const 一致', () {
       final p = _buildProvider(Dio(BaseOptions(baseUrl: kOpenAIBaseUrl)));
@@ -249,7 +252,7 @@ void main() {
     });
 
     // HI-06：gpt-image-1 不接受 response_format 参数（带上即 400）。
-    test('请求体不含 response_format（gpt-image-1 拒绝该参数）', () async {
+    test('请求体不含 response_format（GPT image 系列拒绝该参数）', () async {
       final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
       Object? sentBody;
       dio.interceptors.add(InterceptorsWrapper(

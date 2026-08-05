@@ -597,7 +597,7 @@ capabilities = 模板基线.copyWith(providerId: 'custom:<id>', displayName: dis
 | Key 验证 | `GET {base_url}/models`（零生成配额） |
 
 - 结果走同步 inlineBytes 通道（§5.5 / ADR-0004）：解析 `data[0].b64_json`，poll 一次性消费；**基类禁止在 Provider 内下载远端 URL**，故请求体显式要求 `b64_json`
-- `size` 由 AspectRatio 映射（gpt-image-2 真比例）：1:1→`1024x1024`，16:9→`1536x864`，9:16→`864x1536`
+- `size` 由 AspectRatio 映射：1:1→`1024x1024`，16:9→`1536x1024`，9:16→`1024x1536`——**保守经典三档有意为之**（第三方兼容端点真实能力未知,经典三档接受面最广;内置 openai-image 的 gpt-image-2 真比例不适用于此路径）
 - 错误映射与内置同步 Provider 完全一致（`mapDioError` + §6.1 全码表）
 
 ### 13.4 Key 存储

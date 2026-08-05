@@ -57,7 +57,7 @@ Adding a new AI provider does not require understanding the whole codebase — r
 |----------|-------------|---------------|--------|
 | Stable Diffusion (local ComfyUI) | image | 🟢 Open | High |
 | Midjourney (Discord API) | image | 🟢 Open | Medium |
-| OpenAI DALL-E 3（`gpt-image-1` 已内置，此条指 DALL-E 3 专用接入） | image | 🟢 Open | Medium |
+| OpenAI DALL-E 3（`gpt-image-2` 已内置，此条指 DALL-E 3 专用接入） | image | 🟢 Open | Medium |
 | Runway Gen-3 / Gen-4 | video | 🟢 Open | High |
 | Pika Labs | video | 🟢 Open | Medium |
 | Luma Dream Machine | video | 🟢 Open | Medium |
@@ -65,7 +65,7 @@ Adding a new AI provider does not require understanding the whole codebase — r
 | Hailuo (MiniMax 海螺) | video | 🟢 Open | Medium |
 | Kling 官方 API（非 DashScope 渠道） | image / video | 🟢 Open | Low |
 
-已实现 / Implemented: Gemini Image · OpenAI GPT-Image (`gpt-image-1`) · Stability Stable Image Core · Kling V3 / V3 Omni (DashScope) · Wanx (image / i2v / r2v / t2v)。共 9 款内置，另有 OpenAI 兼容自定义端点（`custom_providers.json`，PROVIDER-API §13）。差异矩阵见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) §9。
+已实现 / Implemented: Gemini Image · OpenAI GPT-Image (`gpt-image-2`) · Stability Stable Image Core · Kling V3 / V3 Omni (DashScope) · Wanx (image / i2v / r2v / t2v)。共 9 款内置，另有 OpenAI 兼容自定义端点（`custom_providers.json`，PROVIDER-API §13）。差异矩阵见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) §9。
 
 > 相关 Planned 基建（设计已写入文档、待实现）：配额展示（原 `QuotaAware` 接口，已删待重立项）· JobQueue **job 级**自动重试与下载续传（poll 级瞬时错误退避已有，ARCHITECTURE §5.3 / §8）· 性能降级控制器（ARCHITECTURE §10）。
 > 已从本清单毕业：成本预估 + UI 成本展示（M2 落地）· `custom_providers.json`（M3 首切片落地）。

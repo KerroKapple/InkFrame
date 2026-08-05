@@ -15,7 +15,7 @@ const String kOpenAIImageTemplateId = 'openai-image';
 const String kTemplatePlaceholderProviderId = 'custom:__template__';
 
 /// openai-image 模板能力基线：OpenAI 兼容端点的保守通用集。
-/// 端点真实能力未知——比例/分辨率取 gpt-image-1 同款交集，批量/参考图/seed 全关，
+/// 端点真实能力未知——比例/分辨率取经典 OpenAI 三档交集(第三方端点接受面最广;有意不随内置 gpt-image-2 真比例走)，批量/参考图/seed 全关，
 /// 计费未知按零估（perCall 0），限流取全仓最保守档（qps 1 / burst 2 / 并发 1）。
 const ProviderCapabilities kOpenAIImageTemplateCapabilities =
     ProviderCapabilities(
