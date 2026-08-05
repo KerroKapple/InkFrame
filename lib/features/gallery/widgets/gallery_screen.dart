@@ -12,9 +12,11 @@ import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
 import '../../../theme/tokens.dart';
+import '../../../theme/components/ink_input.dart';
 import '../models/gallery_item.dart';
 import '../providers/current_gallery_project.dart';
 import '../providers/gallery_controller.dart';
+import '../providers/gallery_filter.dart';
 import 'gallery_tile.dart';
 
 class GalleryScreen extends ConsumerWidget {
@@ -31,7 +33,8 @@ class GalleryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final itemsAsync = ref.watch(galleryControllerProvider(projectId));
-    return ColoredBox(
+    // Material 根：筛选条的 Dropdown/TextField 需要 Material 祖先（GA-3）。
+    return Material(
       color: colors.surfaceCanvas,
       child: Column(
         children: <Widget>[
@@ -45,7 +48,7 @@ class GalleryScreen extends ConsumerWidget {
               ),
               data: (items) => items.isEmpty
                   ? const _GalleryEmptyState()
-                  : _GalleryGrid(projectId: projectId, items: items),
+                  : _GalleryContent(projectId: projectId, items: items),
             ),
           ),
         ],
@@ -75,6 +78,144 @@ class _GalleryTopChrome extends ConsumerWidget {
         style: typo.headlineXs.copyWith(color: colors.fg1),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+}
+
+/// GA-3：筛选条（类型分段 + 画布下拉 + canvasName 搜索）+ 过滤后网格/无命中态。
+class _GalleryContent extends ConsumerStatefulWidget {
+  const _GalleryContent({required this.projectId, required this.items});
+
+  final String projectId;
+  final List<GalleryItem> items;
+
+  @override
+  ConsumerState<_GalleryContent> createState() => _GalleryContentState();
+}
+
+class _GalleryContentState extends ConsumerState<_GalleryContent> {
+  final TextEditingController _searchCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _clearFilters() {
+    _searchCtrl.clear();
+    ref.read(galleryFilterProvider.notifier).state = const GalleryFilter();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final filter = ref.watch(galleryFilterProvider);
+    final notifier = ref.read(galleryFilterProvider.notifier);
+    final filtered = filterGalleryItems(widget.items, filter);
+    // 画布下拉候选：保序去重（聚合序=createdAt 倒序内的首见序）。
+    final canvasNames = <String, String>{
+      for (final item in widget.items) item.canvasId: item.canvasName,
+    };
+
+    return Column(
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            InkSpacing.xl,
+            InkSpacing.md,
+            InkSpacing.xl,
+            0,
+          ),
+          child: Row(
+            children: <Widget>[
+              SegmentedButton<GalleryItemKind?>(
+                segments: <ButtonSegment<GalleryItemKind?>>[
+                  ButtonSegment<GalleryItemKind?>(
+                    value: null,
+                    label: Text(l.galleryFilterAll),
+                  ),
+                  ButtonSegment<GalleryItemKind?>(
+                    value: GalleryItemKind.image,
+                    label: Text(l.galleryKindImage),
+                  ),
+                  ButtonSegment<GalleryItemKind?>(
+                    value: GalleryItemKind.video,
+                    label: Text(l.galleryKindVideo),
+                  ),
+                ],
+                selected: <GalleryItemKind?>{filter.kind},
+                onSelectionChanged: (sel) => notifier.state =
+                    filter.copyWith(kind: () => sel.first),
+              ),
+              const SizedBox(width: InkSpacing.md),
+              DropdownButton<String?>(
+                value: filter.canvasId,
+                underline: const SizedBox.shrink(),
+                items: <DropdownMenuItem<String?>>[
+                  DropdownMenuItem<String?>(
+                    value: null,
+                    child: Text(l.galleryFilterCanvasAll),
+                  ),
+                  for (final entry in canvasNames.entries)
+                    DropdownMenuItem<String?>(
+                      value: entry.key,
+                      child: Text(entry.value),
+                    ),
+                ],
+                onChanged: (v) =>
+                    notifier.state = filter.copyWith(canvasId: () => v),
+              ),
+              const SizedBox(width: InkSpacing.md),
+              Expanded(
+                child: InkInput(
+                  controller: _searchCtrl,
+                  hintText: l.gallerySearchHint,
+                  onChanged: (v) =>
+                      notifier.state = filter.copyWith(query: v),
+                ),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: filtered.isEmpty
+              ? _GalleryNoMatchState(onClear: _clearFilters)
+              : _GalleryGrid(projectId: widget.projectId, items: filtered),
+        ),
+      ],
+    );
+  }
+}
+
+/// 筛选无命中：说明 + 清除筛选（复用空态视觉语汇）。
+class _GalleryNoMatchState extends StatelessWidget {
+  const _GalleryNoMatchState({required this.onClear});
+
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(Icons.filter_alt_off_outlined, size: 32, color: colors.fg3),
+          const SizedBox(height: InkSpacing.md),
+          Text(
+            context.l10n.galleryFilterNoMatches,
+            style: typo.body.copyWith(color: colors.fg3),
+          ),
+          const SizedBox(height: InkSpacing.md),
+          InkGhostButton(
+            label: context.l10n.galleryFilterClear,
+            icon: Icons.filter_alt_off_outlined,
+            onPressed: onClear,
+          ),
+        ],
       ),
     );
   }
