@@ -13,10 +13,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/database.dart';
 import '../../../core/di/database_backup.dart';
 import '../../../core/di/database_restore.dart';
+import '../../../core/di/project_archive.dart';
 import '../../../core/di/current_screen.dart';
 import '../../../core/interfaces/database_backup_service.dart';
 import '../../../core/interfaces/database_restore_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
+import '../../studio/providers/project_export_busy.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../storage/pg_controller.dart';
 import '../../../theme/app_theme.dart';
@@ -57,7 +59,12 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final bool busy = _backingUp || ref.watch(databaseRestoreBusyProvider);
+    // 债158：三大重操作互斥的反向补查——项目导入/导出进行中,备份/还原区
+    // 整体禁用（此前只有导入侧单向查,导入中仍可点还原）。
+    final bool busy = _backingUp ||
+        ref.watch(databaseRestoreBusyProvider) ||
+        ref.watch(projectImportBusyProvider) ||
+        ref.watch(projectExportBusyProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

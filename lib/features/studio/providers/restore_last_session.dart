@@ -5,10 +5,12 @@
 // 恢复完成前用户已手动打开画布时不抢占。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/current_screen.dart';
 import '../../../core/di/preferences.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../canvas/providers/current_canvas_id.dart';
+import '../../gallery/providers/current_gallery_project.dart';
 
 final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   final prefs = ref.read(preferencesServiceProvider);
@@ -35,7 +37,12 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
     await prefs.update((p) => p.copyWith(clearLastCanvas: true));
     return;
   }
-  if (ref.read(currentCanvasIdProvider) == null) {
+  // 债145：守卫从「只查画布」扩为「用户已发生任何导航即放弃恢复」——
+  // PG 就绪窗口内用户已进 Settings/Gallery 时,不再把人硬拉回画布。
+  final userNavigated = ref.read(currentCanvasIdProvider) != null ||
+      ref.read(currentGalleryProjectProvider) != null ||
+      ref.read(currentScreenProvider) != AppScreen.studio;
+  if (!userNavigated) {
     ref.read(currentCanvasIdProvider.notifier).state = canvasId;
   }
 }, name: 'restoreLastSessionProvider');

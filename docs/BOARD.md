@@ -107,7 +107,8 @@
 | **PR-5 CH-1 视频角色注入（Polish Wave 1;M4 E5 首卡）**：`_injectCharacterRefs` 门改双分支——image 保持现规则;video 仅要求 maxRefImages>0（卡面禁令:不检查 modes,r2v/omni 不校验 mode 不炸）;注入后 mode 推断沿现逻辑 → imageToVideo;测试钉死「modes 只含 t2v 也注入」+ i2v 零注入 + image 回归 | #209 |
 | **PR-4 画廊筛选/搜索 + 存为角色（Polish Wave 1;M4 GA-3/4）**：`GalleryFilter` 纯函数三轴过滤（kind/画布/canvasName 搜索,prompt 搜索 non-goal）+ 筛选条（分段/下拉/搜索框）+ no-match 态清除筛选;GA-4=image tile 菜单 → 命名对话框 → canvas charactersController.createFromImage（补偿在控制器,操作期 listenManual 保活防 autoDispose 竞态）;画廊根改 Material;ARB +7 键;评审 3×P1 全修（长画布名溢出/CharacterAssetError 逃逸/ref-after-dispose） | #210 |
 | **PR-6 MOD-1 OpenAI 直升 gpt-image-2（Polish Wave 1;死线卡:gpt-image-1 2026-10-23 弃用）**：模型 ID 换新（1.5 亦 2026-12-01 退役不过渡）;契约兼容零结构改动（同步 b64/quality/无 response_format）;16:9/9:16 改**真比例**尺寸 1536x864/864x1536（gpt-image-1 时代只能凑 3:2,分镜第一刚需）;CostModel 对齐官方 medium 档 $0.041;PROVIDER-API §9.2/§13 同步 | #211 |
-| **PR-7 LB-24 网络代理 P0（Polish Wave 1）**：`core/net/proxy_env.dart`——`proxyRuleFor` 纯函数（HTTPS_PROXY/HTTP_PROXY/ALL_PROXY/NO_PROXY 大小写双查,空串=显式禁用,凭据透传 `user:pass@`,loopback 恒直连,`*.glob`,解析不出目标才直连兜底——能解析但错误的值=连接错误同 curl）+ `applyEnvProxy` 挂 4 个 Dio 构造点（无代理变量时不动 adapter 保 dio 默认;注入 dio 零扰动）;接线层 e2e 双测（真 socket fake 代理/NO_PROXY 旁路）;SETUP.md 边界清单（SOCKS/端口段/CIDR 不支持,重启生效,TLS 拦截提示）;**P1 设置页代理区另卡** | 本 PR |
+| **PR-7 LB-24 网络代理 P0（Polish Wave 1）**：`core/net/proxy_env.dart`——`proxyRuleFor` 纯函数（HTTPS_PROXY/HTTP_PROXY/ALL_PROXY/NO_PROXY 大小写双查,空串=显式禁用,凭据透传 `user:pass@`,loopback 恒直连,`*.glob`,解析不出目标才直连兜底——能解析但错误的值=连接错误同 curl）+ `applyEnvProxy` 挂 4 个 Dio 构造点（无代理变量时不动 adapter 保 dio 默认;注入 dio 零扰动）;接线层 e2e 双测（真 socket fake 代理/NO_PROXY 旁路）;SETUP.md 边界清单（SOCKS/端口段/CIDR 不支持,重启生效,TLS 拦截提示）;**P1 设置页代理区另卡** | #212 |
+| **PR-8 框架债三小件（Polish Wave 1 收官）**：债150 建点视口中心（三入口,逆变换+散布,矩阵单测）;债145 restore 守卫扩三导航信号;债158 三大重操作互斥反向补查（导出查 import+restore,备份/还原区查 import+export）;债156 atomicZipWrite 裁定拆独立卡（M 级另窗） | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -152,20 +153,20 @@
 | 备份/还原超时在 UI 与普通失败不可区分（PR-2 复跑 P3-5,有意取舍保 ARB 零改动）:用户遇 30min 看门狗与秒级失败看到同一文案,盲目重试无提示 | 🅿️ | 低频;修法=RestoreOutcome/BackupOutcome 加 timedOut 位 + 专用文案键;随下一个动备份/还原 UI 的窗口顺带 |
 | 导出同名覆盖的删后改名窄窗口（EX-3 复跑附带发现,PLAUSIBLE）:旧同名导出被播放器占用句柄时,`_deleteIfExists(outputFile)` 删不掉仅 warn→`renameSync` 失败→catch 清 .partial——整轮渲染只得一条泛化 export_io_failed（ffmpeg_video_export_service.dart:167-168） | 🅿️ | 低概率(需 Windows 真机文件锁实测);修法=rename 失败时保留 .partial 并出专门文案「目标被占用,产物在 <name>.mp4.partial」,或 rename 前 open 独占探测 |
 | export 打磨两件（2026-07-08 深审）:失败 SnackBar 弹在模态 barrier 之下易漏看（export_video_dialog.dart:256）;同名输出 `-y` 静默覆盖无存在性提示（ffmpeg_video_export_service.dart:135） | ✅ | 随 EX-3（本 PR）:失败提示改对话框内嵌 InkErrorBanner;输出名同名时覆盖警示行（不阻断） |
-| restore_last_session 抢占守卫过窄（2026-07-08 深审:只查 currentCanvasId,PG 就绪窗口内用户进 Settings/Gallery 会被恢复流程硬拉进画布;restore_last_session.dart:38） | 🅿️ | 守卫扩为「用户已发生任何导航」即放弃恢复 |
+| restore_last_session 抢占守卫过窄（2026-07-08 深审:只查 currentCanvasId,PG 就绪窗口内用户进 Settings/Gallery 会被恢复流程硬拉进画布;restore_last_session.dart:38） | ✅ | Polish Wave 1 PR-8（本 PR）:守卫扩为画布/画廊/Settings 三信号任一即放弃恢复;Settings/Gallery 两用例钉死 |
 | link 智能默认 role 竞态残留（2026-07-08 深审:_defaultRole 读内存 edges 快照,首条 first_frame 边写在途时连第二条可产双 first_frame,uq_edges_live 不拦不同 source 同 role;link_action_controller.dart:83） | 🅿️ | 毫秒级低频;随上表「乐观新增竞态」并发模型债同窗处理 |
 | 无单实例守卫：升级窗口旧实例并存时（macOS）目录 rename 仍成功,旧实例沿绝对路径重建旧址旁写媒体（DIR-1/#183 评审 P2;Windows 句柄锁天然拦截） | 🅿️ | 单实例锁/启动互斥另卡;既有 out-of-contract 场景被迁移放大,非 DIR-1 范围 |
 | 深缩 + 厚泳道栈尾道内容不可达（#186 评审 P2-2:s=0.1×≥14 条默认泳道时位移项越出 100k 盒,皮可见内容点不中;根因=定舞台盒界 hitTest 短路 + Clip.none 越界绘制） | 🅿️ | 参数极端;与 P2-3 同根因族,随泳道命中层重构同窗处理 |
 | 竖向末道 <200px 时标题栏按钮点不动（#186 评审 P2-3:皮 Positioned 盒宽=lanesTotal,溢出部分可见不可命中;标签区可拖是唯一逃生口） | 🅿️ | 同上根因族;修法=标题栏盒宽脱离道宽或按钮区折叠 |
-| 建点位置固定世界 (200..600),全向漫游后建点必在屏幕外（#186 评审 P3-3:旧模型只右下漫游概率低,全向后被放大;命令面板/FAB/空态三入口同病） | 🅿️ | 改视口中心落点,S 级;非 #186 引入 |
+| 建点位置固定世界 (200..600),全向漫游后建点必在屏幕外（#186 评审 P3-3:旧模型只右下漫游概率低,全向后被放大;命令面板/FAB/空态三入口同病） | ✅ | Polish Wave 1 PR-8（本 PR）:`pickViewportCenteredNodePosition`——视口中心经逆变换入世界坐标+±60 散布防叠点,三入口接线;视口未上报回退旧固定区（既有测试语义不变）;矩阵换算单测钉死 |
 | 项目导出大文件路径（#188 评审 P2-4）:archive 包 deflate 把单文件压缩输出整段驻内存（GB 视频=GB 峰值）且同步压缩冻结 UI;附带 addFile 异常路径泄漏源文件句柄（Windows 进程退出才释放） | 🅿️ | 媒体改 store 不压缩 + Isolate.run 整体导出;与 LB-12 进度组件同窗做,v1 有 busy 防重入垫底 |
 | OrphanFileReaper 转真删前必须 restore-aware（LB-22 评审 P3-1）:还原旧备份后新生成文件成 DB 孤儿——reaper 真删会吃掉「还原更新备份时还需要的文件」;当前 DRY-RUN 无害 | 🅿️ | LB-13b 真删灰度的前置不变量;修法=还原动作后重置 mtime 护栏或记还原水位 |
 | pg_dump/pg_restore 无超时（LB-22 评审 P3-2）:挂死子进程让备份/还原 busy 永久锁 UI;与 EX-3 ffmpeg 同根因（ProcessRunner 无 kill/timeout 通道） | ✅ | Polish Wave 1 PR-2（本 PR）:`runWithWatchdog`（ProcessStarter 流式+定时 kill+**硬截止** timeout+killGrace——kill 无效也不永挂）;备份 10min/还原 30min,超时=kill+带 stderr/exit_code 归因 warn;exit 0 优先于超时判定（已成功不误删,同 EX-3 不变量）;还原 DROP tmp 加 `WITH (FORCE)`（超时 kill 后 backend 可能仍占库）+失败留证;**顺带评审 P1-1**:Process.start 补关子进程 stdin（对齐 Process.run,pg 密码提示从 10min 冻结回毫秒级 EOF 失败,EX-3 ffmpeg 同受益）;进程 fake 迁 _harness（backup/restore/watchdog 共用+契约自测;ffmpeg fake 因进度流语义专用留原地） |
 | 还原对换的 retired 库残留（DROP 失败仅 warn）与 swap_stranded 极端夹缝无启动期清扫/救援 | 🅿️ | 空间代价可接受;随 LB-12 同窗盘点:启动 housekeeping 扫 inkframe_retired_*/inkframe_restore_tmp 报告或回收 |
 | 回收站恢复绕过名字唯一性（#190 评审 P3-2）:建 Alpha→删→再建 Alpha→恢复旧 Alpha=工作库两个 Alpha;schema 无唯一约束,create/rename 的 UI 校验管不到 restore | 🅿️ | 不炸纯 UX 漂移;修法=restore 前查同名给改名/后缀,或列表 UI 容忍同名靠时间区分 |
-| zip `.partial` 落盘骨架三份逐字复制（LB-10/11/18；#191 评审 P3-3 复发实证:自吞守卫没跟着骨架走） | 🅿️ | 抽 `atomicZipWrite(target, build)` 共享件并内置 #188 P2-5 自吞排除;LB-12 动 zip 面时同窗 |
+| zip `.partial` 落盘骨架三份逐字复制（LB-10/11/18；#191 评审 P3-3 复发实证:自吞守卫没跟着骨架走） | 🅿️ | 抽 `atomicZipWrite(target, build)` 共享件并内置 #188 P2-5 自吞排除;**PR-8 范围裁定拆独立卡**(M 级:三服务 fake 契约面,与本簇 S 件不同窗;修法不变) |
 | pg.log 无轮转（pg_ctl -l 追加写;logger 的 10MB 预算只认 inkframe.* 前缀）——诊断包/磁盘体积长期无界（#191 评审 P3-5） | 🅿️ | pg.log 轮转（启动期截断/按大小滚动）或诊断包按 mtime 截取最近 N 份 |
-| 三大重操作互斥只在导入侧单向查（LB-12 拍板 9）:还原/导出入口不查 projectImportBusyProvider——导入进行中仍可点还原 | 🅿️ | 反向补查三行;或统一 heavyOperationBusyProvider 归一三个 busy 位 |
+| 三大重操作互斥只在导入侧单向查（LB-12 拍板 9）:还原/导出入口不查 projectImportBusyProvider——导入进行中仍可点还原 | ✅ | Polish Wave 1 PR-8（本 PR）:反向补查——项目导出入口查 import+restore busy,备份/还原区查 import+export busy;import 侧原有三方检查不变 |
 | 导入补偿删除失败→projects/{uuid} 孤儿目录无回收路径（#192 评审 P3-2:无 .import- 前缀 sweep 不认,reaper 又 DRY-RUN）;另记拍板 4 三处字面偏差（U+FFFD 奇名可过/最终路径长未预检/isWithin 代 resolveInProject）均安全失败 | 🅿️ | 随 LB-13 reaper 转真删同窗:无行背书目录纳入回收;字面偏差随安全面复审顺修 |
 | **迁移纪律备忘（#192 评审 P3-6）**:导入的列白名单过滤依赖「迁移只加可空/有默认列」——将来任何「新增 NOT NULL 无默认」迁移会让旧项目包导入必炸 | 🅿️ | ADR-0012 补一句:新增列必须可空或带默认,否则同时给导入侧加填充逻辑 |
 | GAP-1 评审 P3 残留（#200）:①unknownTemplate 在 UI 错误文案映射到 InvalidId 键（当前不可达——模板恒下拉;改自由输入即活雷,补专用键或注释）;②_openEditor 读失败报「保存失败」文案微错位;③写无顺序化（模态门控下重合概率趋零,硬化=_queue.then 串行链）;④_parseEntry seenIds 在 template/url 校验前占坑,被拒条目致后续同 id 合法条目误判 duplicate（既有债非本卡引入）;⑤section 内 provider 定义应迁 features/settings/providers/（风格） | 🅿️ | 均低害;①随模板扩展窗强制处理 |

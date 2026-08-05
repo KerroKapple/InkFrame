@@ -7,7 +7,9 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/project_repository.dart';
 import 'package:inkframe/core/models/app_preferences.dart';
+import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
+import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
 import 'package:inkframe/features/studio/providers/restore_last_session.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 
@@ -123,6 +125,33 @@ void main() {
     c.read(currentCanvasIdProvider.notifier).state = 'cv-manual';
     await c.read(restoreLastSessionProvider.future);
     expect(c.read(currentCanvasIdProvider), 'cv-manual');
+  });
+
+  test('债145：用户已进 Settings → 放弃恢复（不硬拉回画布）', () async {
+    final (:c, prefs: _) = build(
+      canvasRow: <String, Object?>{'id': 'cv1', 'project_id': 'p1'},
+      projectRow: <String, Object?>{'id': 'p1'},
+    );
+    c.read(currentScreenProvider.notifier).state = AppScreen.settings;
+
+    await c.read(restoreLastSessionProvider.future);
+
+    expect(c.read(currentCanvasIdProvider), isNull);
+    expect(c.read(currentScreenProvider), AppScreen.settings,
+        reason: '用户所在页不被打断');
+  });
+
+  test('债145：用户已进 Gallery → 放弃恢复', () async {
+    final (:c, prefs: _) = build(
+      canvasRow: <String, Object?>{'id': 'cv1', 'project_id': 'p1'},
+      projectRow: <String, Object?>{'id': 'p1'},
+    );
+    c.read(currentGalleryProjectProvider.notifier).state =
+        (id: 'p9', name: 'Nine');
+
+    await c.read(restoreLastSessionProvider.future);
+
+    expect(c.read(currentCanvasIdProvider), isNull);
   });
 
   test('存储抛 InkError → 静默留在首页，记录保留（下次再试）', () async {
