@@ -210,6 +210,33 @@ void main() {
         reason: '超时后 scratch 库被清');
   });
 
+  test('看门狗开火但 pg_restore 已 exit 0 → 照常对换 restored（exit0 优先,评审 P2-1）',
+      () async {
+    final name = seedBackup(autoMeta: true);
+    final runner = FakeProcessStarter(
+      writesOutput: false,
+      order: order,
+      orderTag: 'pg_restore',
+      killCompletesExit: false, // kill 打在已收尾的进程上=no-op
+      exitDelay: const Duration(milliseconds: 80),
+    );
+    final svc = PgSwapRestoreService(
+      paths: paths,
+      locator: _FakeLocator(binDir),
+      starter: runner,
+      clock: _FixedClock(DateTime.utc(2026, 7, 16, 10, 20, 30)),
+      maintenance: (c) async => maint,
+      restoreTimeout: const Duration(milliseconds: 30),
+    );
+
+    final outcome = await svc.restore(conn, name);
+
+    expect(outcome, RestoreOutcome.restored,
+        reason: 'scratch 已灌完——kill 迟到不应丢弃（已成功不误删）');
+    expect(order.where((s) => s.startsWith('ALTER DATABASE')), hasLength(2),
+        reason: '对换照常发生');
+  });
+
   test('sidecar sha 不符 → failedCorrupt，零进程零 SQL', () async {
     final name = seedBackup(meta: <String, Object?>{
       'sha256': 'deadbeef',

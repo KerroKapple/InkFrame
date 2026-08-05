@@ -13,6 +13,7 @@
 // timedOut 与 exitCode 的优先级归调用方：exit 0 = 工作已完成，即使看门狗
 // kill 迟到也不应丢弃产物（与 EX-3「已成功不误删」同一不变量，评审 P2-1）。
 import 'dart:async';
+import 'dart:io';
 
 import '../core/interfaces/process_runner.dart';
 
@@ -48,11 +49,17 @@ Future<WatchdogResult> runWithWatchdog(
   required Duration timeout,
   Duration killGrace = const Duration(seconds: 10),
 }) async {
-  final RunningProcess running = await starter.start(
-    executable,
-    arguments,
-    environment: environment,
-  );
+  // start 本身也纳入硬截止（复跑 P3-4）：可执行文件在无响应挂载上时
+  // Process.start 可能阻塞——收敛为 ProcessException,调用方按 spawn_failed 归因。
+  final RunningProcess running;
+  try {
+    running = await starter
+        .start(executable, arguments, environment: environment)
+        .timeout(timeout + killGrace);
+  } on TimeoutException {
+    throw ProcessException(
+        executable, arguments, 'spawn timed out (watchdog)', -1);
+  }
   var timedOut = false;
   final Timer watchdog = Timer(timeout, () {
     timedOut = true;
