@@ -250,3 +250,25 @@ See also: [docs/ARCHITECTURE.md](ARCHITECTURE.md) (env vars, key storage, data d
 
 另见：[docs/ARCHITECTURE.md](ARCHITECTURE.md)（环境变量、密钥后端、数据目录）、
 [docs/DATABASE.md](DATABASE.md)、[docs/BUILD-RELEASE.md](BUILD-RELEASE.md)。
+
+## Network proxy / 网络代理（LB-24）
+
+InkFrame 的所有出网请求（AI 服务商生成链路、产物下载、检查更新）读取标准代理环境变量：
+
+- `HTTPS_PROXY` / `https_proxy` — https 请求（缺失时回落 `HTTP_PROXY`）
+- `HTTP_PROXY` / `http_proxy` — http 请求
+- `NO_PROXY` / `no_proxy` — 逗号分隔例外表：精确 host、域后缀（`.foo.com` 或 `foo.com`）、`*`（全直连）
+
+示例（PowerShell）：
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+```
+
+中文网络环境连 OpenAI / Gemini 等海外服务商通常需要设置本节变量。注意：
+
+- 代理串接受 `http://host:port` 或 `host:port`；解析失败按直连处理（坏 env 不会断网）。
+- 若代理做 TLS 拦截（企业中间人证书），dio 会报证书错误——这是预期防护而非 InkFrame 缺陷；请将拦截根证书加入系统信任或对相应域名走 `NO_PROXY`。
+- 设置页代理区（免环境变量的 UI 配置）为后续切片（LB-24 P1）。
+
+All outbound requests honor `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` environment variables (case-insensitive names). Malformed proxy values fall back to direct connection. A settings-page proxy UI is planned as LB-24 P1.
