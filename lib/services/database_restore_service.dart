@@ -26,6 +26,7 @@ import '../core/paths/app_paths.dart';
 import '../storage/migrations/app_migrations.dart';
 import '../storage/pg_binary_locator.dart';
 import 'database_backup_service.dart';
+import 'process_watchdog.dart';
 
 /// 日志 module 名（内部标识，English-only）。
 const String kRestoreModule = 'db.restore';
@@ -101,23 +102,29 @@ class PgSwapRestoreService implements DatabaseRestoreService {
   PgSwapRestoreService({
     required AppPaths paths,
     required PgBinaryLocator locator,
-    required ProcessRunner runner,
+    required ProcessStarter starter,
     required Clock clock,
     MaintenanceSessionFactory maintenance = openPgMaintenanceSession,
     LoggerService? logger,
+    Duration restoreTimeout = const Duration(minutes: 30),
   })  : _paths = paths,
         _locator = locator,
-        _runner = runner,
+        _starter = starter,
         _clock = clock,
         _maintenance = maintenance,
-        _logger = logger;
+        _logger = logger,
+        _restoreTimeout = restoreTimeout;
 
   final AppPaths _paths;
   final PgBinaryLocator _locator;
-  final ProcessRunner _runner;
+  final ProcessStarter _starter;
   final Clock _clock;
   final MaintenanceSessionFactory _maintenance;
   final LoggerService? _logger;
+
+  /// pg_restore 看门狗上限（债153）：kill 后 --single-transaction 自动回滚
+  /// 无半状态,scratch 库随即被 drop——原库全程不动。
+  final Duration _restoreTimeout;
 
   @override
   Future<RestoreOutcome> restore(
@@ -164,7 +171,9 @@ class PgSwapRestoreService implements DatabaseRestoreService {
       return RestoreOutcome.failed;
     }
     try {
-      await session.execute('DROP DATABASE IF EXISTS "$kRestoreTmpDb"');
+      // FORCE 同 _dropTmpQuietly：上次超时残留的 backend 可能还占着 tmp 库。
+      await session
+          .execute('DROP DATABASE IF EXISTS "$kRestoreTmpDb" WITH (FORCE)');
       await session.execute('CREATE DATABASE "$kRestoreTmpDb"');
 
       final List<String> args = <String>[
@@ -178,21 +187,29 @@ class PgSwapRestoreService implements DatabaseRestoreService {
       final Map<String, String>? env = connection.password == null
           ? null
           : <String, String>{'PGPASSWORD': connection.password!};
-      final ProcessResult result;
+      final WatchdogResult result;
       try {
-        result = await _runner.run(pgRestore.path, args, environment: env);
+        result = await runWithWatchdog(_starter, pgRestore.path, args,
+            environment: env, timeout: _restoreTimeout);
       } on ProcessException catch (e) {
         _logger?.warn(kRestoreModule, 'restore.spawn_failed',
             extra: <String, Object?>{'reason': e.message});
         await _dropTmpQuietly(session);
         return RestoreOutcome.failed;
       }
+      // exit 0 优先于超时判定：kill 迟到、scratch 已灌完 → 照常对换
+      //（与 EX-3「已成功不误删」同一不变量,评审 P2-1）。
       if (result.exitCode != 0) {
-        _logger?.warn(kRestoreModule, 'restore.pg_restore_failed',
-            extra: <String, Object?>{
-              'exit_code': result.exitCode,
-              'stderr': result.stderr.toString().trim(),
-            });
+        final String event =
+            result.timedOut ? 'restore.timeout' : 'restore.pg_restore_failed';
+        _logger?.warn(kRestoreModule, event, extra: <String, Object?>{
+          if (result.timedOut) 'timeout_s': _restoreTimeout.inSeconds,
+          'exit_code': result.exitCode,
+          // 被 kill 的 pg_restore 的 stderr 尾部往往就是挂死根因（评审 P2-3）。
+          'stderr': result.stderrTail.trim(),
+          if (result.streamError != null)
+            'stream_error': result.streamError.toString(),
+        });
         await _dropTmpQuietly(session);
         return RestoreOutcome.failed;
       }
@@ -294,9 +311,15 @@ class PgSwapRestoreService implements DatabaseRestoreService {
 
   Future<void> _dropTmpQuietly(MaintenanceSession session) async {
     try {
-      await session.execute('DROP DATABASE IF EXISTS "$kRestoreTmpDb"');
-    } on MaintenanceSqlError {
-      // 清不掉留给下次进门的 DROP IF EXISTS。
+      // WITH (FORCE)（PG13+,内嵌 PG17）：超时 kill 后 pg_restore 的服务端
+      // backend 可能仍在跑长语句占着库,普通 DROP 会 55006 拒绝——恰是
+      // 超时分支的主流成因（评审 P1-2）。FORCE 直接终止占用连接。
+      await session
+          .execute('DROP DATABASE IF EXISTS "$kRestoreTmpDb" WITH (FORCE)');
+    } on MaintenanceSqlError catch (e) {
+      // 清不掉留给下次进门的 DROP;但必须留证（评审 P1-2:整库残留不可无声）。
+      _logger?.warn(kRestoreModule, 'restore.drop_tmp_failed',
+          extra: <String, Object?>{'error': e.toString()});
     }
   }
 

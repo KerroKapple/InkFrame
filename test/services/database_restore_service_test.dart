@@ -6,13 +6,14 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
 import 'package:inkframe/core/interfaces/database_restore_service.dart';
-import 'package:inkframe/core/interfaces/process_runner.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/database_restore_service.dart';
 import 'package:inkframe/storage/migrations/app_migrations.dart';
 import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:path/path.dart' as p;
+
+import '../_harness/fake_process.dart';
 
 class _FixedClock implements Clock {
   _FixedClock(this._now);
@@ -21,29 +22,15 @@ class _FixedClock implements Clock {
   DateTime nowUtc() => _now;
 }
 
-class _FakeRunner implements ProcessRunner {
-  _FakeRunner.withOrder(this.order, {this.exitCode = 0});
-  int exitCode;
-  int calls = 0;
-  String? lastExecutable;
-  List<String>? lastArgs;
-  Map<String, String>? lastEnv;
-  final List<String> order;
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-  }) async {
-    calls++;
-    lastExecutable = executable;
-    lastArgs = arguments;
-    lastEnv = environment;
-    order.add('pg_restore');
-    return ProcessResult(0, exitCode, '', exitCode == 0 ? '' : 'boom');
-  }
-}
+// 进程 fake 迁 _harness 共享（PR-2）；order 记 'pg_restore' 的时序语义经
+// orderTag 保留。writesOutput 关闭——pg_restore 无 -f 输出文件。
+FakeProcessStarter _restoreStarter(List<String> order, {int exitCode = 0}) =>
+    FakeProcessStarter(
+      exitCode: exitCode,
+      writesOutput: false,
+      order: order,
+      orderTag: 'pg_restore',
+    );
 
 class _FakeLocator implements PgBinaryLocator {
   _FakeLocator(this._binDir, {this.binExists = true});
@@ -142,13 +129,13 @@ void main() {
   }
 
   PgSwapRestoreService build({
-    _FakeRunner? runner,
+    FakeProcessStarter? runner,
     _FakeLocator? locator,
   }) =>
       PgSwapRestoreService(
         paths: paths,
         locator: locator ?? _FakeLocator(binDir),
-        runner: runner ?? _FakeRunner.withOrder(order),
+        starter: runner ?? _restoreStarter(order),
         clock: _FixedClock(DateTime.utc(2026, 7, 16, 10, 20, 30)),
         maintenance: (c) async => maint,
       );
@@ -156,13 +143,13 @@ void main() {
   test('成功序：drop tmp → create tmp → pg_restore(--single-transaction) → 探测 → 双 rename → drop retired',
       () async {
     final name = seedBackup(autoMeta: true);
-    final runner = _FakeRunner.withOrder(order);
+    final runner = _restoreStarter(order);
 
     final outcome = await build(runner: runner).restore(conn, name);
 
     expect(outcome, RestoreOutcome.restored);
     expect(order, <String>[
-      'DROP DATABASE IF EXISTS "inkframe_restore_tmp"',
+      'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)',
       'CREATE DATABASE "inkframe_restore_tmp"',
       'pg_restore',
       "SELECT 1 FROM pg_database WHERE datname = 'postgres'",
@@ -187,13 +174,67 @@ void main() {
 
   test('pg_restore 非零退出 → drop tmp、无任何 rename、failed（原库未动）', () async {
     final name = seedBackup(autoMeta: true);
-    final runner = _FakeRunner.withOrder(order, exitCode: 1);
+    final runner = _restoreStarter(order, exitCode: 1);
 
     final outcome = await build(runner: runner).restore(conn, name);
 
     expect(outcome, RestoreOutcome.failed);
     expect(order.where((s) => s.startsWith('ALTER DATABASE')), isEmpty);
-    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"');
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)');
+  });
+
+  test('pg_restore 挂死 → 看门狗超时 kill → failed、drop tmp、原库未动（债153）', () async {
+    final name = seedBackup(autoMeta: true);
+    final runner = FakeProcessStarter(
+      hang: true,
+      writesOutput: false,
+      order: order,
+      orderTag: 'pg_restore',
+    );
+    final svc = PgSwapRestoreService(
+      paths: paths,
+      locator: _FakeLocator(binDir),
+      starter: runner,
+      clock: _FixedClock(DateTime.utc(2026, 7, 16, 10, 20, 30)),
+      maintenance: (c) async => maint,
+      restoreTimeout: const Duration(milliseconds: 40),
+    );
+
+    final outcome = await svc.restore(conn, name);
+
+    expect(outcome, RestoreOutcome.failed);
+    expect(runner.last!.killed, isTrue, reason: '超时必须 kill 挂死子进程');
+    expect(order.where((s) => s.startsWith('ALTER DATABASE')), isEmpty,
+        reason: '--single-transaction + 未到对换步：原库未动');
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)',
+        reason: '超时后 scratch 库被清');
+  });
+
+  test('看门狗开火但 pg_restore 已 exit 0 → 照常对换 restored（exit0 优先,评审 P2-1）',
+      () async {
+    final name = seedBackup(autoMeta: true);
+    final runner = FakeProcessStarter(
+      writesOutput: false,
+      order: order,
+      orderTag: 'pg_restore',
+      killCompletesExit: false, // kill 打在已收尾的进程上=no-op
+      exitDelay: const Duration(milliseconds: 80),
+    );
+    final svc = PgSwapRestoreService(
+      paths: paths,
+      locator: _FakeLocator(binDir),
+      starter: runner,
+      clock: _FixedClock(DateTime.utc(2026, 7, 16, 10, 20, 30)),
+      maintenance: (c) async => maint,
+      restoreTimeout: const Duration(milliseconds: 30),
+    );
+
+    final outcome = await svc.restore(conn, name);
+
+    expect(outcome, RestoreOutcome.restored,
+        reason: 'scratch 已灌完——kill 迟到不应丢弃（已成功不误删）');
+    expect(order.where((s) => s.startsWith('ALTER DATABASE')), hasLength(2),
+        reason: '对换照常发生');
   });
 
   test('sidecar sha 不符 → failedCorrupt，零进程零 SQL', () async {
@@ -201,7 +242,7 @@ void main() {
       'sha256': 'deadbeef',
       'schemaVersion': 1,
     });
-    final runner = _FakeRunner.withOrder(order);
+    final runner = _restoreStarter(order);
 
     final outcome = await build(runner: runner).restore(conn, name);
 
@@ -245,7 +286,7 @@ void main() {
 
   test('非法名（穿越/杂名）→ failed，零进程零 SQL', () async {
     seedBackup();
-    final runner = _FakeRunner.withOrder(order);
+    final runner = _restoreStarter(order);
     final svc = build(runner: runner);
     expect(await svc.restore(conn, '../evil.dump'), RestoreOutcome.failed);
     expect(await svc.restore(conn, 'other.dump'), RestoreOutcome.failed);
@@ -285,7 +326,7 @@ void main() {
     final outcome = await build().restore(conn, name);
 
     expect(outcome, RestoreOutcome.failed);
-    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"');
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)');
     expect(order.where((s) => s.contains('RENAME TO "postgres"')), isEmpty);
   });
 
@@ -303,7 +344,7 @@ void main() {
       contains(
           'ALTER DATABASE "inkframe_retired_20260716102030" RENAME TO "postgres"'),
     );
-    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"');
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)');
     expect(order.where((s) => s.startsWith('DROP DATABASE "inkframe_retired')),
         isEmpty);
   });
@@ -322,7 +363,7 @@ void main() {
       database: 'postgres',
     );
     final name = seedBackup();
-    final runner = _FakeRunner.withOrder(order);
+    final runner = _restoreStarter(order);
     await build(runner: runner).restore(trustConn, name);
     expect(runner.lastEnv, anyOf(isNull, isEmpty));
   });

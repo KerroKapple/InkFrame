@@ -23,6 +23,7 @@ import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
 import '../storage/migrations/app_migrations.dart';
 import '../storage/pg_binary_locator.dart';
+import 'process_watchdog.dart';
 
 /// 日志 module 名（内部标识，English-only）。
 const String kBackupModule = 'db.backup';
@@ -72,20 +73,25 @@ class PgDumpBackupService implements DatabaseBackupService {
   PgDumpBackupService({
     required AppPaths paths,
     required PgBinaryLocator locator,
-    required ProcessRunner runner,
+    required ProcessStarter starter,
     required Clock clock,
     LoggerService? logger,
+    Duration dumpTimeout = const Duration(minutes: 10),
   })  : _paths = paths,
         _locator = locator,
-        _runner = runner,
+        _starter = starter,
         _clock = clock,
-        _logger = logger;
+        _logger = logger,
+        _dumpTimeout = dumpTimeout;
 
   final AppPaths _paths;
   final PgBinaryLocator _locator;
-  final ProcessRunner _runner;
+  final ProcessStarter _starter;
   final Clock _clock;
   final LoggerService? _logger;
+
+  /// pg_dump 看门狗上限（债153）：挂死不再永锁 busy；正常冷备远低于此值。
+  final Duration _dumpTimeout;
 
   /// 纯函数：当日每日备份文件名（UTC 日期，与仓库其它启动 housekeeping 同口径）。
   static String backupFileName(DateTime utc) {
@@ -236,9 +242,10 @@ class PgDumpBackupService implements DatabaseBackupService {
         ? null
         : <String, String>{'PGPASSWORD': connection.password!};
 
-    final ProcessResult result;
+    final WatchdogResult result;
     try {
-      result = await _runner.run(pgDump.path, args, environment: env);
+      result = await runWithWatchdog(_starter, pgDump.path, args,
+          environment: env, timeout: _dumpTimeout);
     } on ProcessException catch (e) {
       _logger?.warn(kBackupModule, 'backup.spawn_failed',
           extra: <String, Object?>{'reason': e.message});
@@ -246,10 +253,17 @@ class PgDumpBackupService implements DatabaseBackupService {
       return BackupOutcome.failed;
     }
 
+    // exit 0 优先于超时判定：kill 迟到、dump 已完整 → 照常发布
+    //（与 EX-3「已成功不误删」同一不变量,评审 P2-1）。
     if (result.exitCode != 0) {
-      _logger?.warn(kBackupModule, 'backup.failed', extra: <String, Object?>{
+      final String event = result.timedOut ? 'backup.timeout' : 'backup.failed';
+      _logger?.warn(kBackupModule, event, extra: <String, Object?>{
+        if (result.timedOut) 'timeout_s': _dumpTimeout.inSeconds,
         'exit_code': result.exitCode,
-        'stderr': result.stderr.toString().trim(),
+        // 被 kill 的 pg_dump 的 stderr 尾部往往就是挂死根因（评审 P2-3）。
+        'stderr': result.stderrTail.trim(),
+        if (result.streamError != null)
+          'stream_error': result.streamError.toString(),
       });
       _deleteQuietly(partial); // 清半成品，免占保留位。
       return BackupOutcome.failed;

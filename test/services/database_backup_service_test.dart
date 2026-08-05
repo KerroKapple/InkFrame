@@ -4,13 +4,14 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
-import 'package:inkframe/core/interfaces/process_runner.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/database_backup_service.dart';
 import 'package:inkframe/storage/migrations/app_migrations.dart';
 import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:path/path.dart' as p;
+
+import '../_harness/fake_process.dart';
 
 /// 定时 fake clock（UTC）。
 class _FixedClock implements Clock {
@@ -21,36 +22,7 @@ class _FixedClock implements Clock {
 }
 
 /// 记录调用并按脚本返回；成功时模拟 pg_dump 写出 `-f` 目标文件。
-class _FakeRunner implements ProcessRunner {
-  _FakeRunner({this.exitCode = 0, this.writesOutput = true});
-  int exitCode;
-  bool writesOutput;
-  int calls = 0;
-  String? lastExecutable;
-  List<String>? lastArgs;
-  Map<String, String>? lastEnv;
-
-  @override
-  Future<ProcessResult> run(
-    String executable,
-    List<String> arguments, {
-    Map<String, String>? environment,
-  }) async {
-    calls++;
-    lastExecutable = executable;
-    lastArgs = arguments;
-    lastEnv = environment;
-    // 真实 pg_dump 即便非零退出也常已把截断的 -Fc 头写进 -f 目标——writesOutput
-    // 时无论退出码都产出文件，好让「失败清半成品」断言测的是真删除而非空。
-    if (writesOutput) {
-      final fi = arguments.indexOf('-f');
-      if (fi >= 0 && fi + 1 < arguments.length) {
-        File(arguments[fi + 1]).writeAsStringSync('PGDMP-fake');
-      }
-    }
-    return ProcessResult(0, exitCode, '', exitCode == 0 ? '' : 'boom');
-  }
-}
+// 进程 fake 迁 _harness 共享（PR-2：流式 ProcessStarter + hang 看门狗场景）。
 
 /// 指向给定 bin 目录的 locator；binExists=false 模拟开发机无打包 PG。
 class _FakeLocator implements PgBinaryLocator {
@@ -127,19 +99,19 @@ void main() {
     tearDown(() => tmp.deleteSync(recursive: true));
 
     PgDumpBackupService service({
-      _FakeRunner? runner,
+      FakeProcessStarter? runner,
       _FakeLocator? locator,
       DateTime? now,
     }) =>
         PgDumpBackupService(
           paths: paths,
           locator: locator ?? _FakeLocator(binDir),
-          runner: runner ?? _FakeRunner(),
+          starter: runner ?? FakeProcessStarter(),
           clock: _FixedClock(now ?? DateTime.utc(2026, 7, 15)),
         );
 
     test('无当日备份 → 调 pg_dump（-Fc + 连接参数 + PGPASSWORD env）→ created', () async {
-      final runner = _FakeRunner();
+      final runner = FakeProcessStarter();
       final outcome = await service(runner: runner).backup(conn);
 
       expect(outcome, BackupOutcome.created);
@@ -157,7 +129,7 @@ void main() {
     });
 
     test('trust 集群（password=null）→ 不设 PGPASSWORD env', () async {
-      final runner = _FakeRunner();
+      final runner = FakeProcessStarter();
       const trustConn = BackupConnection(
         host: '127.0.0.1',
         port: 5544,
@@ -172,7 +144,7 @@ void main() {
       paths.backups.createSync(recursive: true);
       File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump'))
           .writeAsStringSync('existing');
-      final runner = _FakeRunner();
+      final runner = FakeProcessStarter();
 
       final outcome = await service(runner: runner).backup(conn);
 
@@ -181,7 +153,7 @@ void main() {
     });
 
     test('无打包 PG 二进制（开发机）→ 跳过、不调、不算失败', () async {
-      final runner = _FakeRunner();
+      final runner = FakeProcessStarter();
       final outcome = await service(
         runner: runner,
         locator: _FakeLocator(binDir, binExists: false),
@@ -192,7 +164,7 @@ void main() {
     });
 
     test('pg_dump 退出码非 0（已写出半成品）→ failed 且清掉 .partial 与最终名', () async {
-      final runner = _FakeRunner(exitCode: 1, writesOutput: true);
+      final runner = FakeProcessStarter(exitCode: 1, writesOutput: true);
       final outcome = await service(runner: runner).backup(conn);
 
       expect(outcome, BackupOutcome.failed);
@@ -203,13 +175,58 @@ void main() {
           reason: '失败必须清掉半成品 .partial，免占保留位/误判当日已有');
     });
 
+    test('pg_dump 挂死 → 看门狗超时 kill → failed 且清 .partial（债153）', () async {
+      final runner = FakeProcessStarter(hang: true);
+      final svc = PgDumpBackupService(
+        paths: paths,
+        locator: _FakeLocator(binDir),
+        starter: runner,
+        clock: _FixedClock(DateTime.utc(2026, 7, 15)),
+        dumpTimeout: const Duration(milliseconds: 40),
+      );
+
+      final outcome = await svc.backup(conn);
+
+      expect(outcome, BackupOutcome.failed);
+      expect(runner.last!.killed, isTrue, reason: '超时必须 kill 挂死子进程');
+      final f = File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump'));
+      expect(f.existsSync(), isFalse);
+      expect(File('${f.path}.partial').existsSync(), isFalse,
+          reason: '超时同失败：清半成品，免占保留位');
+    });
+
+    test('看门狗开火但 pg_dump 已 exit 0 → 照常发布 created（exit0 优先,评审 P2-1）',
+        () async {
+      final runner = FakeProcessStarter(
+        killCompletesExit: false, // kill 打在已收尾的进程上=no-op
+        exitDelay: const Duration(milliseconds: 80),
+      );
+      final svc = PgDumpBackupService(
+        paths: paths,
+        locator: _FakeLocator(binDir),
+        starter: runner,
+        clock: _FixedClock(DateTime.utc(2026, 7, 15)),
+        dumpTimeout: const Duration(milliseconds: 30),
+      );
+
+      final outcome = await svc.backup(conn);
+
+      expect(outcome, BackupOutcome.created,
+          reason: 'dump 已完整——kill 迟到不应丢弃（已成功不误删）');
+      expect(
+        File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump'))
+            .existsSync(),
+        isTrue,
+      );
+    });
+
     test('崩溃遗留的同日 .partial 不阻止重试，成功后被清理', () async {
       paths.backups.createSync(recursive: true);
       // 模拟上次同日 pg_dump 中途被 SIGKILL 留下的半成品。
       final leftover =
           File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump.partial'))
             ..writeAsStringSync('truncated');
-      final runner = _FakeRunner();
+      final runner = FakeProcessStarter();
 
       final outcome = await service(runner: runner).backup(conn);
 
@@ -227,7 +244,7 @@ void main() {
                 'inkframe-2026-07-${d.toString().padLeft(2, '0')}.dump'))
             .writeAsStringSync('old');
       }
-      final runner = _FakeRunner();
+      final runner = FakeProcessStarter();
       final outcome = await service(runner: runner).backup(conn); // 今日=07-15
 
       expect(outcome, BackupOutcome.created);
@@ -262,14 +279,14 @@ void main() {
     tearDown(() => tmp.deleteSync(recursive: true));
 
     PgDumpBackupService service({
-      _FakeRunner? runner,
+      FakeProcessStarter? runner,
       _FakeLocator? locator,
       DateTime? now,
     }) =>
         PgDumpBackupService(
           paths: paths,
           locator: locator ?? _FakeLocator(binDir),
-          runner: runner ?? _FakeRunner(),
+          starter: runner ?? FakeProcessStarter(),
           clock: _FixedClock(now ?? DateTime.utc(2026, 7, 15, 9, 30, 0)),
         );
 
@@ -302,7 +319,7 @@ void main() {
       paths.backups.createSync(recursive: true);
       File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump'))
           .writeAsStringSync('daily');
-      final runner = _FakeRunner();
+      final runner = FakeProcessStarter();
 
       final result = await service(runner: runner).backupNow(
         conn,
@@ -335,7 +352,7 @@ void main() {
     });
 
     test('backupNow 失败 → failed、fileName null、半成品清理', () async {
-      final runner = _FakeRunner(exitCode: 1, writesOutput: true);
+      final runner = FakeProcessStarter(exitCode: 1, writesOutput: true);
       final result = await service(runner: runner).backupNow(
         conn,
         kind: BackupKind.manual,
