@@ -1176,6 +1176,12 @@ class AppLocalizationsZh extends AppLocalizations {
       '文件名不能包含 \\ / : * ? \" < > | 字符、「..」、控制字符或系统保留名';
 
   @override
+  String get exportVideoOverwriteWarning => '同名文件已存在，导出将覆盖它。';
+
+  @override
+  String get exportVideoCancelExport => '取消导出';
+
+  @override
   String get exportVideoMoveUp => '上移';
 
   @override

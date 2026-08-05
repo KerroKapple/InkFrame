@@ -13,6 +13,7 @@ import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/video_export_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/export/widgets/export_video_dialog.dart';
+import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/components/ink_progress_bar.dart';
 
 import '../../../_harness/test_app.dart';
@@ -26,6 +27,9 @@ class _FakeVideoExportService implements VideoExportService {
   String? lastProjectId;
   List<String>? lastInputs;
   String? lastOutputBaseName;
+  int? lastTotalDurationMs;
+  void Function(double progress)? lastOnProgress;
+  ExportCancelToken? lastToken;
   int calls = 0;
   Completer<String>? gate;
 
@@ -34,11 +38,17 @@ class _FakeVideoExportService implements VideoExportService {
     required String projectId,
     required List<String> inputRelativePaths,
     String? outputBaseName,
+    int? totalDurationMs,
+    void Function(double progress)? onProgress,
+    ExportCancelToken? cancelToken,
   }) async {
     calls++;
     lastProjectId = projectId;
     lastInputs = inputRelativePaths;
     lastOutputBaseName = outputBaseName;
+    lastTotalDurationMs = totalDurationMs;
+    lastOnProgress = onProgress;
+    lastToken = cancelToken;
     final g = gate;
     if (g != null) return g.future;
     final e = error;
@@ -48,12 +58,16 @@ class _FakeVideoExportService implements VideoExportService {
 }
 
 class _FakeFileResolver implements FileResolverService {
+  _FakeFileResolver([this.root = 'Z:/fake']);
+
+  final String root;
+
   @override
   File resolveInProject({
     required String projectId,
     required String relativePath,
   }) =>
-      File('Z:/fake/$projectId/$relativePath');
+      File('$root/$projectId/$relativePath');
 
   @override
   File resolve({
@@ -92,6 +106,7 @@ Future<void> _pumpDialog(
   WidgetTester tester, {
   required _FakeVideoExportService service,
   List<CanvasNode>? nodes,
+  FileResolverService? resolver,
 }) async {
   final videoNodes = nodes ??
       <CanvasNode>[
@@ -116,7 +131,8 @@ Future<void> _pumpDialog(
     ),
     overrides: <Override>[
       videoExportServiceProvider.overrideWithValue(service),
-      fileResolverServiceProvider.overrideWithValue(_FakeFileResolver()),
+      fileResolverServiceProvider
+          .overrideWithValue(resolver ?? _FakeFileResolver()),
     ],
   );
   await tester.tap(find.text('open'));
@@ -252,7 +268,8 @@ void main() {
     expect(service.lastOutputBaseName, 'my_cut');
   });
 
-  testWidgets('ffmpeg_not_found → 专门文案 snackbar，对话框保持打开', (tester) async {
+  testWidgets('ffmpeg_not_found → 专门文案内嵌 banner（非 SnackBar），对话框保持打开',
+      (tester) async {
     final service = _FakeVideoExportService(
       error: const LocalIOError(
         extra: <String, Object?>{'reason': 'ffmpeg_not_found'},
@@ -270,10 +287,13 @@ void main() {
       ),
       findsOneWidget,
     );
+    // 债144①：失败提示内嵌对话框，不再弹 barrier 之下看不见的 SnackBar。
+    expect(find.byType(SnackBar), findsNothing);
+    expect(find.byType(InkErrorBanner), findsOneWidget);
     expect(find.text('Export video'), findsOneWidget);
   });
 
-  testWidgets('其他 LocalIOError → 走通用 errorLocalIO 文案', (tester) async {
+  testWidgets('其他 LocalIOError → 通用 errorLocalIO 文案内嵌 banner，可重试', (tester) async {
     final service = _FakeVideoExportService(
       error: const LocalIOError(
         extra: <String, Object?>{'reason': 'export_io_failed'},
@@ -288,6 +308,10 @@ void main() {
       find.text('Local disk I/O error. Check space and permissions.'),
       findsOneWidget,
     );
+    expect(find.byType(SnackBar), findsNothing);
+    // 失败后按钮回可用（可改名重试）。
+    final button = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(button.onPressed, isNotNull);
   });
 
   testWidgets('成功 → 关对话框 + snackbar 相对路径 + 复制绝对路径 action', (tester) async {
@@ -336,6 +360,107 @@ void main() {
     expect(input.enabled, isFalse);
 
     service.gate!.complete('exports/out.mp4');
+    await tester.pumpAndSettle();
+    expect(find.text('Export video'), findsNothing);
+  });
+
+  testWidgets('busy 进度：onProgress → 进度条 determinate；取消按钮 → token 取消',
+      (tester) async {
+    final service = _FakeVideoExportService()..gate = Completer<String>();
+    await _pumpDialog(tester, service: service);
+
+    await tester.tap(find.text('Export'));
+    await tester.pump();
+
+    // 初始分母未知（测试节点无 duration_ms）→ indeterminate。
+    var bar = tester.widget<InkProgressBar>(find.byType(InkProgressBar));
+    expect(bar.value, isNull);
+
+    service.lastOnProgress!(0.4);
+    await tester.pump();
+    bar = tester.widget<InkProgressBar>(find.byType(InkProgressBar));
+    expect(bar.value, 0.4);
+
+    // busy 期取消导出按钮可点，footer 关闭按钮禁用。
+    await tester.tap(find.text('Cancel export'));
+    await tester.pump();
+    expect(service.lastToken!.isCancelled, isTrue);
+
+    // 服务契约：取消收敛为 CancelledError → 对话框回可编辑态，无错误 banner。
+    service.gate!.completeError(
+      const CancelledError.byUser(
+        extra: <String, Object?>{'reason': 'export_cancelled'},
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Export video'), findsOneWidget, reason: '取消后对话框保持打开');
+    expect(find.byType(InkProgressBar), findsNothing, reason: '回到非 busy 态');
+    expect(find.byType(InkErrorBanner), findsNothing, reason: '取消不是错误');
+    final button = tester.widget<FilledButton>(find.byType(FilledButton));
+    expect(button.onPressed, isNotNull, reason: '可重新导出');
+  });
+
+  testWidgets('同名输出已存在 → 覆盖警示行；改名后消失（债144②）', (tester) async {
+    final root = Directory.systemTemp.createTempSync('exp_dup_');
+    addTearDown(() {
+      if (root.existsSync()) root.deleteSync(recursive: true);
+    });
+    File('${root.path}/p1/exports/dup.mp4')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(const <int>[1]);
+
+    final service = _FakeVideoExportService();
+    await _pumpDialog(
+      tester,
+      service: service,
+      resolver: _FakeFileResolver(root.path),
+    );
+
+    await tester.enterText(find.byType(TextField), 'dup');
+    await tester.pump();
+    expect(
+      find.text('A file with this name already exists — exporting will '
+          'overwrite it.'),
+      findsOneWidget,
+    );
+
+    await tester.enterText(find.byType(TextField), 'dup2');
+    await tester.pump();
+    expect(
+      find.text('A file with this name already exists — exporting will '
+          'overwrite it.'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('busy 期覆盖警示被屏蔽（评审 P2-5：不被自家在途产物触发）', (tester) async {
+    final root = Directory.systemTemp.createTempSync('exp_dup2_');
+    addTearDown(() {
+      if (root.existsSync()) root.deleteSync(recursive: true);
+    });
+    File('${root.path}/p1/exports/dup.mp4')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(const <int>[1]);
+
+    final service = _FakeVideoExportService()..gate = Completer<String>();
+    await _pumpDialog(
+      tester,
+      service: service,
+      resolver: _FakeFileResolver(root.path),
+    );
+
+    await tester.enterText(find.byType(TextField), 'dup');
+    await tester.pump();
+    const warning = 'A file with this name already exists — exporting will '
+        'overwrite it.';
+    expect(find.text(warning), findsOneWidget);
+
+    await tester.tap(find.text('Export'));
+    await tester.pump();
+    expect(find.text(warning), findsNothing, reason: 'busy 期不显示覆盖警示');
+
+    service.gate!.complete('exports/dup.mp4');
     await tester.pumpAndSettle();
     expect(find.text('Export video'), findsNothing);
   });

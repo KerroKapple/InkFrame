@@ -1225,6 +1225,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'File name cannot contain \\ / : * ? \" < > |, \'..\', control characters, or reserved device names';
 
   @override
+  String get exportVideoOverwriteWarning =>
+      'A file with this name already exists — exporting will overwrite it.';
+
+  @override
+  String get exportVideoCancelExport => 'Cancel export';
+
+  @override
   String get exportVideoMoveUp => 'Move up';
 
   @override

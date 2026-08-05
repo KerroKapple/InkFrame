@@ -8,7 +8,7 @@
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-07-28 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
+> 最近更新：2026-08-05 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
 > PKG-2A release CI 首跑绿,产物体积增量与 PG 二进制吻合（mac 39.6→68MB / win 36.7→71MB）;
 > 干净机实机验收待做;待签名 U1/U2 方为干净机免绕行可装）
 
@@ -100,7 +100,8 @@
 | **GAP-1 设置页 Custom Provider 编辑 UI（上线前必做最后一卡）**：CustomProviderStore 写侧（raw 保真+损坏拒写+原子写）;校验抽 core 纯函数双端共用;列表+表单+删除确认+重启生效常驻条;API Keys custom:* 行 displayName 顺带修——**随本卡合入,上线前必做 1-10 全部落地** | #200 |
 | LEG-1 ④ 收口:双平台安装物根含 THIRD-PARTY.md(mac staging-ditto / win Copy-Item 进 Release,zip 侧流水线断言硬校验;DMG 随 staging 进卷)——beta 准入第 9 条全项 ✅ | #204 |
 | QG-4 数据升级演练:CI populated-DB 迁移测(v1 起边迁边种+information_schema 全表非空守卫钉死「每个 schema PR 补种子」+真 PG 降级拒绝)+ realpg 升级演练 E2E(旧版 v6 数据目录→新版全链冷启数据存活)+ 发版 SOP 入 BUILD-RELEASE §15——beta.1 硬阻塞清剩 U1/U2 | #205 |
-| **PKG-2A PG 二进制分发源（方案 A 上游直拉,beta 硬阻塞里唯一零用户依赖项收官）**：fetch-binaries.sh 双模式重写——upstream 默认（Win=EDB 官方 zip `upstream.lock` 锁 URL+SHA256+裁剪 bin/lib/share;mac=runner brew postgresql@17+make-relocatable,主版本匹配）,`PG_ARTIFACT_BASE_URL` 保留为方案 B 覆盖;`.partial` 原子落位+必需工具校验（含 pg_dump/pg_restore）;release.yml 去门控无条件 fetch;回归测试入 ci release-scripts;**顺带 QG-6 的 checksums.txt**（publish job 全资产 sha256）;本机真栈验收=EDB 裁剪产物过 realpg E2E 全链 | 本 PR |
+| **PKG-2A PG 二进制分发源（方案 A 上游直拉,beta 硬阻塞里唯一零用户依赖项收官）**：fetch-binaries.sh 双模式重写——upstream 默认（Win=EDB 官方 zip `upstream.lock` 锁 URL+SHA256+裁剪 bin/lib/share;mac=runner brew postgresql@17+make-relocatable,主版本匹配）,`PG_ARTIFACT_BASE_URL` 保留为方案 B 覆盖;`.partial` 原子落位+必需工具校验（含 pg_dump/pg_restore）;release.yml 去门控无条件 fetch;回归测试入 ci release-scripts;**顺带 QG-6 的 checksums.txt**（publish job 全资产 sha256）;本机真栈验收=EDB 裁剪产物过 realpg E2E 全链 | #201/#202 |
+| **EX-3 导出进度+取消（Polish Wave 1 首卡,M4 E4）**：`ProcessStarter`/`RunningProcess` 流式进程通道（ISP 与 run() 分离,stderr 持续排干防背压;PR-2 备份/还原超时复用）→ concat 改 `-progress pipe:1` 流式解析 out_time_ms（微秒怪癖）,进度 0..1 单调、成功收口 1.0,分母=Σ所选 duration_ms 任一缺失→indeterminate;取消=token→kill→半成品清理→CancelledError.byUser 收敛 idle;**顺带债144 两件**:失败提示内嵌 banner+同名覆盖警示;波次设计+计划见 docs/superpowers/{specs,plans}/2026-08-05-* | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -140,8 +141,10 @@
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | ✅ | LB-15/#190：sidebar 回收站对话框（项目级）+ 管理画布已删区（画布级）;永久删除仍显式排除 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | ✅ | LB-01/#156：`core/constants/job_statuses.dart` 单一真相源 |
 | canvas→generation 跨 feature import 违例（18 处 / 11 文件：job_state / jobs_registry / batch_results_controller / cost_estimator 等,违反 ARCHITECTURE §1.3 互 import 禁令） | 🅿️ | 待 import 边界 lint（custom_lint 卡点解除后）收口:上提共享模型到 core/ 或建白名单逐步清零 |
-| 导出 busy 模态无取消/无超时（2026-07-08 深审:`Process.run` 无 timeout/kill 通道,busy 期 PopScope+禁按钮+barrier 三重封死,ffmpeg 挂起唯一逃生口=退出应用;export_video_dialog.dart:95 + system_process_runner.dart:11） | 🅿️ | 与 MASTERPLAN EX-3「进度取消」同卡收口:ProcessRunner 加 kill/timeout 通道 + 对话框取消 |
-| export 打磨两件（2026-07-08 深审）:失败 SnackBar 弹在模态 barrier 之下易漏看（export_video_dialog.dart:256）;同名输出 `-y` 静默覆盖无存在性提示（ffmpeg_video_export_service.dart:135） | 🅿️ | 小 PR:失败提示改对话框内嵌 banner;导出前 exists 检查 |
+| 导出 busy 模态无取消/无超时（2026-07-08 深审:`Process.run` 无 timeout/kill 通道,busy 期 PopScope+禁按钮+barrier 三重封死,ffmpeg 挂起唯一逃生口=退出应用;export_video_dialog.dart:95 + system_process_runner.dart:11） | ✅ | **取消面**随 EX-3（本 PR）收口:ProcessStarter 流式通道（kill+stdout 行流）+ 对话框 determinate 进度与「取消导出」;取消=kill+清 .partial+CancelledError 收敛 idle;产物 .partial→rename,exit 0 优先于取消判定（已成功不误删）;流异常兜底 UnknownError 防 busy 永挂;退出期 onDispose 自动 kill 防孤儿。**超时看门狗未做**→拆下行新债 |
+| 导出无超时看门狗（EX-3 评审 P2-7:仅交付取消;ffmpeg 卡死在不可达网络挂载等场景时进度停滞,取消按钮是唯一出口） | 🅿️ | 与 pg_dump/pg_restore 超时（本表既有行）同窗:Polish Wave 1 PR-2 复用 ProcessStarter+看门狗定时器统一收口 |
+| 导出同名覆盖的删后改名窄窗口（EX-3 复跑附带发现,PLAUSIBLE）:旧同名导出被播放器占用句柄时,`_deleteIfExists(outputFile)` 删不掉仅 warn→`renameSync` 失败→catch 清 .partial——整轮渲染只得一条泛化 export_io_failed（ffmpeg_video_export_service.dart:167-168） | 🅿️ | 低概率(需 Windows 真机文件锁实测);修法=rename 失败时保留 .partial 并出专门文案「目标被占用,产物在 <name>.mp4.partial」,或 rename 前 open 独占探测 |
+| export 打磨两件（2026-07-08 深审）:失败 SnackBar 弹在模态 barrier 之下易漏看（export_video_dialog.dart:256）;同名输出 `-y` 静默覆盖无存在性提示（ffmpeg_video_export_service.dart:135） | ✅ | 随 EX-3（本 PR）:失败提示改对话框内嵌 InkErrorBanner;输出名同名时覆盖警示行（不阻断） |
 | restore_last_session 抢占守卫过窄（2026-07-08 深审:只查 currentCanvasId,PG 就绪窗口内用户进 Settings/Gallery 会被恢复流程硬拉进画布;restore_last_session.dart:38） | 🅿️ | 守卫扩为「用户已发生任何导航」即放弃恢复 |
 | link 智能默认 role 竞态残留（2026-07-08 深审:_defaultRole 读内存 edges 快照,首条 first_frame 边写在途时连第二条可产双 first_frame,uq_edges_live 不拦不同 source 同 role;link_action_controller.dart:83） | 🅿️ | 毫秒级低频;随上表「乐观新增竞态」并发模型债同窗处理 |
 | 无单实例守卫：升级窗口旧实例并存时（macOS）目录 rename 仍成功,旧实例沿绝对路径重建旧址旁写媒体（DIR-1/#183 评审 P2;Windows 句柄锁天然拦截） | 🅿️ | 单实例锁/启动互斥另卡;既有 out-of-contract 场景被迁移放大,非 DIR-1 范围 |

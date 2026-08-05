@@ -19,6 +19,9 @@ class _FakeVideoExportService implements VideoExportService {
   String? lastProjectId;
   List<String>? lastInputs;
   String? lastOutputBaseName;
+  int? lastTotalDurationMs;
+  void Function(double progress)? lastOnProgress;
+  ExportCancelToken? lastToken;
   Completer<String>? gate;
 
   @override
@@ -26,10 +29,16 @@ class _FakeVideoExportService implements VideoExportService {
     required String projectId,
     required List<String> inputRelativePaths,
     String? outputBaseName,
+    int? totalDurationMs,
+    void Function(double progress)? onProgress,
+    ExportCancelToken? cancelToken,
   }) async {
     lastProjectId = projectId;
     lastInputs = inputRelativePaths;
     lastOutputBaseName = outputBaseName;
+    lastTotalDurationMs = totalDurationMs;
+    lastOnProgress = onProgress;
+    lastToken = cancelToken;
     final g = gate;
     if (g != null) return g.future;
     final e = error;
@@ -42,6 +51,7 @@ CanvasNode _videoResult(
   String id, {
   String canvasId = 'c1',
   String? videoUrl = 'videos/$_kDefault',
+  int? durationMs,
 }) =>
     CanvasNode(
       id: id,
@@ -51,7 +61,10 @@ CanvasNode _videoResult(
       projectId: 'p1',
       canvasId: canvasId,
       sourceNodeId: 'cfg-$id',
-      typeConfig: <String, Object?>{'video_url': ?videoUrl},
+      typeConfig: <String, Object?>{
+        'video_url': ?videoUrl,
+        'duration_ms': ?durationMs,
+      },
     );
 
 const _kDefault = 'a.mp4';
@@ -236,6 +249,118 @@ void main() {
     final state = container.read(exportControllerProvider);
     expect(state, isA<ExportVideoSuccess>());
     expect((state as ExportVideoSuccess).relativePath, 'exports/kept.mp4');
+  });
+
+  test('totalDurationMs：全部节点有时长 → Σ 透传', () async {
+    final (container, fake) = _make();
+    await container.read(exportControllerProvider.notifier).export(
+      projectId: 'p1',
+      nodes: <CanvasNode>[
+        _videoResult('n1', durationMs: 3000),
+        _videoResult('n2', durationMs: 5000),
+      ],
+    );
+
+    expect(fake.lastTotalDurationMs, 8000);
+  });
+
+  test('totalDurationMs：任一节点缺时长 → null（indeterminate 语义）', () async {
+    final (container, fake) = _make();
+    await container.read(exportControllerProvider.notifier).export(
+      projectId: 'p1',
+      nodes: <CanvasNode>[
+        _videoResult('n1', durationMs: 3000),
+        _videoResult('n2'), // 无 duration_ms
+      ],
+    );
+
+    expect(fake.lastTotalDurationMs, isNull);
+  });
+
+  test('onProgress 回调 → ExportVideoBusy(progress) 更新', () async {
+    final gate = Completer<String>();
+    final (container, fake) = _make(gate: gate);
+    final future = container.read(exportControllerProvider.notifier).export(
+      projectId: 'p1',
+      nodes: <CanvasNode>[_videoResult('n1', durationMs: 4000)],
+    );
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      container.read(exportControllerProvider),
+      isA<ExportVideoBusy>().having((s) => s.progress, 'progress', isNull),
+    );
+
+    fake.lastOnProgress!(0.5);
+    expect(
+      container.read(exportControllerProvider),
+      isA<ExportVideoBusy>().having((s) => s.progress, 'progress', 0.5),
+    );
+
+    gate.complete('exports/out.mp4');
+    await future;
+  });
+
+  test('cancelExport → token 传导取消；CancelledError 收敛为 idle（非 failure）',
+      () async {
+    final gate = Completer<String>();
+    final (container, fake) = _make(gate: gate);
+    final future = container.read(exportControllerProvider.notifier).export(
+      projectId: 'p1',
+      nodes: <CanvasNode>[_videoResult('n1', durationMs: 4000)],
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(fake.lastToken, isNotNull);
+
+    container.read(exportControllerProvider.notifier).cancelExport();
+    expect(fake.lastToken!.isCancelled, isTrue);
+
+    // 服务契约：取消后以 CancelledError 收敛。
+    gate.completeError(
+      const CancelledError.byUser(
+        extra: <String, Object?>{'reason': 'export_cancelled'},
+      ),
+    );
+    await future;
+
+    expect(container.read(exportControllerProvider), isA<ExportVideoIdle>());
+  });
+
+  test('container.dispose 在途导出被取消——退出防 ffmpeg 孤儿（评审 P2-7）', () async {
+    final gate = Completer<String>();
+    final fake = _FakeVideoExportService()..gate = gate;
+    final container = ProviderContainer(
+      overrides: <Override>[
+        videoExportServiceProvider.overrideWithValue(fake),
+      ],
+    );
+    container.listen(exportControllerProvider, (_, _) {});
+    final future = container.read(exportControllerProvider.notifier).export(
+      projectId: 'p1',
+      nodes: <CanvasNode>[_videoResult('n1')],
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(fake.lastToken!.isCancelled, isFalse);
+
+    container.dispose();
+    expect(fake.lastToken!.isCancelled, isTrue,
+        reason: 'onDispose 必须传导取消,kill 掉子进程');
+
+    // 服务契约收敛：CancelledError。_alive 守卫下不得再写 state、不得抛出。
+    gate.completeError(
+      const CancelledError.byUser(
+        extra: <String, Object?>{'reason': 'export_cancelled'},
+      ),
+    );
+    await future;
+  });
+
+  test('非 busy 期 cancelExport 为 no-op', () async {
+    final (container, fake) = _make();
+    container.read(exportControllerProvider.notifier).cancelExport();
+
+    expect(container.read(exportControllerProvider), isA<ExportVideoIdle>());
+    expect(fake.lastToken, isNull);
   });
 
   test('busy 期间重入 export 被忽略', () async {

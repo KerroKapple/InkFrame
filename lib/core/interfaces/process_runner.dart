@@ -18,3 +18,31 @@ abstract class ProcessRunner {
     Map<String, String>? environment,
   });
 }
+
+/// 流式进程句柄：进度解析与取消的最小通道（EX-3 首建，PR-2 备份/还原超时复用）。
+///
+/// 契约：
+/// - [stdoutLines] utf8 按行解码，单订阅流；
+/// - [exitCode] 完成时 stderr 已排干（[stderrTail] 此后读取才完整）——
+///   实现必须持续消费 stderr，否则管道背压可能把子进程挂死（Windows 尤甚）；
+/// - [kill] 幂等，平台默认信号（Windows TerminateProcess / POSIX SIGTERM）。
+abstract class RunningProcess {
+  Stream<String> get stdoutLines;
+  Future<int> get exitCode;
+
+  /// stderr 尾部截断（诊断用，≤4000 字符）。
+  String get stderrTail;
+
+  void kill();
+}
+
+/// 流式启动接口。与一次性 [ProcessRunner.run] 分离（ISP）：只有需要
+/// 进度/取消的消费方才依赖它，既有 run() 的 fake 零改动。
+/// 失败语义与 run() 一致：可执行文件不可启动抛 [ProcessException]。
+abstract class ProcessStarter {
+  Future<RunningProcess> start(
+    String executable,
+    List<String> arguments, {
+    Map<String, String>? environment,
+  });
+}

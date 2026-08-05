@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/video_export.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/interfaces/video_export_service.dart';
 import '../../canvas/models/canvas_node.dart';
 
 /// 导出状态机：idle / busy / success / failure。
@@ -21,7 +22,10 @@ class ExportVideoIdle extends ExportVideoState {
 }
 
 class ExportVideoBusy extends ExportVideoState {
-  const ExportVideoBusy();
+  const ExportVideoBusy({this.progress});
+
+  /// 0..1 导出进度；null = 分母未知（indeterminate）。
+  final double? progress;
 }
 
 class ExportVideoSuccess extends ExportVideoState {
@@ -50,10 +54,28 @@ final exportControllerProvider =
 );
 
 class ExportController extends AutoDisposeNotifier<ExportVideoState> {
+  ExportCancelToken? _token;
+
+  /// dispose 后禁写 state：应用退出期 container.dispose() 与在途导出并发时，
+  /// 迟到的进度/收敛回调对已回收 notifier 写 state 会抛（评审 P1-2 触发面 c）。
+  bool _alive = true;
+
   @override
-  ExportVideoState build() => const ExportVideoIdle();
+  ExportVideoState build() {
+    _alive = true;
+    // 退出期兜底：keepAlive 挂起的导出随 container.dispose() 一并取消，
+    // kill 掉 ffmpeg 子进程——否则应用退出后孤儿进程继续写盘（评审 P2-7）。
+    ref.onDispose(() {
+      _alive = false;
+      _token?.cancel();
+    });
+    return const ExportVideoIdle();
+  }
 
   bool get isBusy => state is ExportVideoBusy;
+
+  /// 取消进行中的导出；非 busy 期为 no-op。
+  void cancelExport() => _token?.cancel();
 
   /// 按给定顺序导出 [nodes]（video result 节点）。
   /// videoUrl / canvasId 缺失的节点跳过（UI 入口已过滤，这里防御性兜底）。
@@ -71,30 +93,56 @@ class ExportController extends AutoDisposeNotifier<ExportVideoState> {
             videoUrl: n.videoUrl!,
           ),
     ];
+    // 进度分母 = 所选输入总时长；任一缺失 → null（indeterminate）。
+    int? totalMs = 0;
+    for (final n in nodes) {
+      if (n.canvasId == null || n.videoUrl == null) continue;
+      final d = n.durationMs;
+      if (d == null || d <= 0) {
+        totalMs = null;
+        break;
+      }
+      totalMs = totalMs! + d;
+    }
     final service = ref.read(videoExportServiceProvider);
     // 导出期间挂起 autoDispose：对话框中途关闭也把状态机走完。
     final link = ref.keepAlive();
+    final token = ExportCancelToken();
+    _token = token;
     state = const ExportVideoBusy();
     try {
       final out = await service.concat(
         projectId: projectId,
         inputRelativePaths: inputs,
         outputBaseName: outputBaseName,
+        totalDurationMs: totalMs,
+        onProgress: (progress) {
+          if (_alive && state is ExportVideoBusy) {
+            state = ExportVideoBusy(progress: progress);
+          }
+        },
+        cancelToken: token,
       );
-      state = ExportVideoSuccess(out);
+      if (_alive) state = ExportVideoSuccess(out);
+    } on CancelledError {
+      // 用户主动取消不是失败：回 idle，对话框回到可编辑态。
+      if (_alive) state = const ExportVideoIdle();
     } on InkError catch (e) {
-      state = ExportVideoFailure(e);
+      if (_alive) state = ExportVideoFailure(e);
     } on PathSecurityError catch (e, st) {
       // 理论上被 UI 预校验挡住；防御性翻译为 invalidParameter。
-      state = ExportVideoFailure(
-        ProviderError(
-          code: InkErrorCode.invalidParameter,
-          cause: e,
-          stackTrace: st,
-          extra: const <String, Object?>{'reason': 'path_security'},
-        ),
-      );
+      if (_alive) {
+        state = ExportVideoFailure(
+          ProviderError(
+            code: InkErrorCode.invalidParameter,
+            cause: e,
+            stackTrace: st,
+            extra: const <String, Object?>{'reason': 'path_security'},
+          ),
+        );
+      }
     } finally {
+      _token = null;
       link.close();
     }
   }
