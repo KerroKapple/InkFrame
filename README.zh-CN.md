@@ -62,7 +62,7 @@ flowchart LR
 | Wanx (DashScope) | image · i2v · r2v · t2v | ✅ 已实现 |
 | Kling V3 / V3 Omni | video | ✅ 已实现 |
 | Gemini Image | image | ✅ 已实现 |
-| OpenAI GPT-Image（`gpt-image-1`） | image | ✅ 已实现 |
+| OpenAI GPT-Image（`gpt-image-2`） | image | ✅ 已实现 |
 | Stability Stable Image Core | image | ✅ 已实现 |
 | OpenAI 兼容自定义端点（`custom_providers.json`） | image | ✅ 已实现 |
 | Stable Diffusion (本地 ComfyUI) | image | 🟢 Help wanted |

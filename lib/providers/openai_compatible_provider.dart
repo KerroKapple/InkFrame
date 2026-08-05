@@ -124,7 +124,10 @@ class OpenAICompatibleImageProvider extends SyncProviderBase {
     }
   }
 
-  /// AspectRatio → OpenAI 兼容 size 字符串（与 gpt-image-1 同款交集）。
+  /// AspectRatio → OpenAI 兼容 size 字符串。**保守经典三档有意为之**：
+  /// 第三方兼容端点（OpenRouter/LiteLLM/本地 SD 桥等）真实能力未知，
+  /// 1024²/1536x1024/1024x1536 是接受面最广的经典交集——内置 openai-image
+  /// 的 gpt-image-2 真比例（1536x864 等）不适用于此路径，勿"顺手对齐"。
   /// 模板 capabilities 已收窄到三种比例，其余分支为防御性兜底。
   String _sizeFor(AspectRatio ratio) {
     switch (ratio) {

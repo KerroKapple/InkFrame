@@ -63,7 +63,7 @@ providers — caching results and project state locally as it goes.
 | Wanx (DashScope) | image · i2v · r2v · t2v | ✅ Implemented |
 | Kling V3 / V3 Omni | video | ✅ Implemented |
 | Gemini Image | image | ✅ Implemented |
-| OpenAI GPT-Image (`gpt-image-1`) | image | ✅ Implemented |
+| OpenAI GPT-Image (`gpt-image-2`) | image | ✅ Implemented |
 | Stability Stable Image Core | image | ✅ Implemented |
 | OpenAI-compatible custom endpoint (`custom_providers.json`) | image | ✅ Implemented |
 | Stable Diffusion (local ComfyUI) | image | 🟢 Help wanted |

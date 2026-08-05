@@ -254,8 +254,9 @@ beta 准入追加第 9 条:**第三方许可 NOTICE 上线**。用户必办追�
 > P0=M4 窗口内完成(gpt-image-1 有死线),P1=beta 前后,P2=1.0 前后评估。
 
 **P0(上线前,全部是现有 provider 的模型 ID/任务类型升级,零新协议)**
-- MOD-1 OpenAI 升级 gpt-image-1.5/2——**gpt-image-1 于 2026-10-23 弃用,有死线**(S;
-  现值 gpt-image-1 已核实)。
+- MOD-1 OpenAI 升级 gpt-image-1.5/2——**✅ 2026-08-05 Polish Wave 1**:直升
+  `gpt-image-2`(1.5 亦 2026-12-01 退役不作过渡);契约兼容(同步 b64/quality 三档),
+  16:9/9:16 改真比例尺寸(1536x864/864x1536),CostModel 对齐官方 medium 档。
 - MOD-2 从一切规划移除 Sora——API 2026-09-24 关停,无后继(0)。
 - MOD-3 Gemini 升级 Nano Banana 2/Pro + 多参考图(≤14 张,5 人角色一致性——分镜第一刚需)(M;
   现值 gemini-2.5-flash-image-preview 已核实)。

@@ -31,13 +31,18 @@ OpenAIImageProvider _buildProvider(Dio dio, {String key = 'test-key'}) {
   );
 }
 
-GenerationTask _task({String? prompt, GenerationMode? mode}) => GenerationTask(
+GenerationTask _task({
+  String? prompt,
+  GenerationMode? mode,
+  AspectRatio aspectRatio = AspectRatio.r1x1,
+}) =>
+    GenerationTask(
       providerId: 'openai-image',
       jobId: 'job-1',
       mode: mode ?? GenerationMode.textToImage,
       prompt: prompt ?? 'an ink wash painting of mountains',
       resolution: Resolution.p1080,
-      aspectRatio: AspectRatio.r1x1,
+      aspectRatio: aspectRatio,
     );
 
 /// 1×1 透明 PNG 的 base64——真 PNG 字节，仅作脱敏占位（与 Gemini fixture 同源）。
@@ -83,7 +88,7 @@ void main() {
     test('supportsCancellation == false', () {
       expect(kOpenAIImageCapabilities.supportsCancellation, isFalse);
     });
-    test('supportsSeed == false（gpt-image-1 无 seed）', () {
+    test('supportsSeed == false（gpt-image-2 无 seed）', () {
       expect(kOpenAIImageCapabilities.supportsSeed, isFalse);
     });
     test('supportsNegativePrompt == false', () {
@@ -110,8 +115,11 @@ void main() {
     test('maxBatchSize == 1', () {
       expect(kOpenAIImageCapabilities.maxBatchSize, 1);
     });
-    test('costModel 是 PerCall 变体', () {
-      expect(kOpenAIImageCapabilities.costModel, isA<PerCall>());
+    test('costModel 精确钉死 perCall 0.041（gpt-image-2 medium 1024² 档）', () {
+      expect(
+        kOpenAIImageCapabilities.costModel,
+        const CostModel.perCall(usdPerCall: 0.041),
+      );
     });
     test('capabilities 字段经 instance 暴露与 const 一致', () {
       final p = _buildProvider(Dio(BaseOptions(baseUrl: kOpenAIBaseUrl)));
@@ -244,7 +252,7 @@ void main() {
     });
 
     // HI-06：gpt-image-1 不接受 response_format 参数（带上即 400）。
-    test('请求体不含 response_format（gpt-image-1 拒绝该参数）', () async {
+    test('请求体不含 response_format（GPT image 系列拒绝该参数）', () async {
       final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
       Object? sentBody;
       dio.interceptors.add(InterceptorsWrapper(
@@ -265,6 +273,56 @@ void main() {
       expect(body.containsKey('response_format'), isFalse);
       expect(body['model'], kOpenAIModel);
       expect(body['size'], '1024x1024');
+    });
+
+    // MOD-1：gpt-image-1 于 2026-10-23 弃用；后继钉死 gpt-image-2
+    //（gpt-image-1.5 亦于 2026-12-01 退役,不作过渡）。
+    test('MOD-1: 模型 ID 钉死 gpt-image-2', () {
+      expect(kOpenAIModel, 'gpt-image-2');
+    });
+
+    test('MOD-1: 16:9 任务 → 真 16:9 尺寸 1536x864（gpt-image-2 任意尺寸）', () async {
+      final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
+      Object? sentBody;
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (o, h) {
+          sentBody = o.data;
+          h.next(o);
+        },
+      ));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kOpenAIImagePath,
+        (req) => req.reply(200, _inlineSubmitSuccess()),
+      );
+
+      await _buildProvider(dio)
+          .submit(_task(aspectRatio: AspectRatio.r16x9));
+
+      final body = sentBody! as Map;
+      expect(body['size'], '1536x864',
+          reason: 'gpt-image-1 时代 16:9 只能凑 3:2(1536x1024);gpt-image-2 起走真比例');
+    });
+
+    test('MOD-1: 9:16 任务 → 864x1536', () async {
+      final dio = Dio(BaseOptions(baseUrl: kOpenAIBaseUrl));
+      Object? sentBody;
+      dio.interceptors.add(InterceptorsWrapper(
+        onRequest: (o, h) {
+          sentBody = o.data;
+          h.next(o);
+        },
+      ));
+      final adapter = DioAdapter(dio: dio, matcher: const UrlRequestMatcher());
+      adapter.onPost(
+        kOpenAIImagePath,
+        (req) => req.reply(200, _inlineSubmitSuccess()),
+      );
+
+      await _buildProvider(dio)
+          .submit(_task(aspectRatio: AspectRatio.r9x16));
+
+      expect((sentBody! as Map)['size'], '864x1536');
     });
 
     test('401 → ProviderError(invalidKey)', () async {

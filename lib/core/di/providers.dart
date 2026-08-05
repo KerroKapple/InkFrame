@@ -2,7 +2,7 @@
 //
 // 已注册（内置）：
 //   - gemini-image      (PRD §10.2.1, 同步文生图)
-//   - openai-image      (OpenAI gpt-image-1, 同步文生图)
+//   - openai-image      (OpenAI gpt-image-2, 同步文生图)
 //   - wanx-image        (阿里万相，异步文生图)
 //   - wanx-t2v          (阿里万相，异步文生视频)
 //   - wanx-i2v          (阿里万相，异步图生视频)
