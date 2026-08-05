@@ -63,6 +63,7 @@ ProviderCapabilities fakeVideoCapabilities({
   List<GenerationMode>? modes,
   bool supportsFirstFrame = false,
   bool supportsLastFrame = false,
+  int maxRefImages = 0,
 }) {
   return ProviderCapabilities(
     providerId: id,
@@ -73,7 +74,7 @@ ProviderCapabilities fakeVideoCapabilities({
     supportedDurations: const <int>[5],
     supportedCameras: const <CameraMovement>[],
     maxBatchSize: 1,
-    maxRefImages: 0,
+    maxRefImages: maxRefImages,
     refImagesIncludeKeyframes: false,
     supportsFirstFrame: supportsFirstFrame,
     supportsLastFrame: supportsLastFrame,
