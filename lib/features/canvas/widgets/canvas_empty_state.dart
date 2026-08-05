@@ -14,6 +14,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/canvas_transform_controller.dart';
 import '../util/node_position.dart';
 
 class CanvasEmptyState extends ConsumerWidget {
@@ -32,7 +33,12 @@ class CanvasEmptyState extends ConsumerWidget {
   /// 随机源注入口（测试用）；null 时每次取系统熵。
   final Random? random;
 
-  Offset _pickPosition() => pickRandomNodePosition(random ?? Random());
+  /// 债150：视口中心落点（视口未上报时回退旧固定区随机——测试语义不变）。
+  Offset _pickPosition(WidgetRef ref) => pickViewportCenteredNodePosition(
+        random: random ?? Random(),
+        transform: ref.read(canvasTransformControllerProvider(canvasId)).value,
+        viewportSize: ref.read(canvasViewportSizeProvider),
+      );
 
   Future<void> _addNode(
     BuildContext context,
@@ -45,7 +51,7 @@ class CanvasEmptyState extends ConsumerWidget {
           .addNode(
             label: context.l10n.canvasNodeDefaultLabel,
             type: type,
-            position: _pickPosition(),
+            position: _pickPosition(ref),
           );
     } catch (_) {
       if (!context.mounted) return;

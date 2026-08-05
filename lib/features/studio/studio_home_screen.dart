@@ -667,6 +667,12 @@ class _ProjectGrid extends ConsumerWidget {
     // unmount 后依然有效。
     final busy = ref.read(projectExportBusyProvider.notifier);
     if (busy.state) return;
+    // 债158：三大重操作互斥的反向补查——导入/还原进行中不得开导出
+    //（此前只有导入侧单向查,导入中仍可点导出）。
+    if (ref.read(projectImportBusyProvider) ||
+        ref.read(databaseRestoreBusyProvider)) {
+      return;
+    }
     final toast = ref.read(toastServiceProvider);
     final logger = ref.read(loggerProvider);
     final picker = ref.read(saveLocationPickerProvider);

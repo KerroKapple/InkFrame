@@ -16,6 +16,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
 import '../canvas/models/canvas_node.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
+import '../canvas/providers/canvas_transform_controller.dart';
 import '../canvas/providers/current_canvas_id.dart';
 import '../canvas/util/node_position.dart';
 import '../export/widgets/export_video_dialog.dart';
@@ -105,7 +106,13 @@ Future<void> _addNode(
     await ref.read(canvasNodesControllerProvider(canvasId).notifier).addNode(
           label: label,
           type: type,
-          position: pickRandomNodePosition(Random()),
+          // 债150：视口中心落点（视口未上报回退旧固定区随机）。
+          position: pickViewportCenteredNodePosition(
+            random: Random(),
+            transform:
+                ref.read(canvasTransformControllerProvider(canvasId)).value,
+            viewportSize: ref.read(canvasViewportSizeProvider),
+          ),
         );
   } on InkError {
     if (!context.mounted) return;
