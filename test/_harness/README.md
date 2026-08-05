@@ -25,6 +25,7 @@ InkFrame 测试基础设施。所有 widget / provider / controller test 共享�
 | `fake_secure_storage.dart` | `FakeSecureStorage([seed])` 实现 `SecureStorageService` |
 | `fake_repositories.dart` | `InMemoryProjectRepository / InMemoryCanvasRepository / InMemoryNodeRepository / InMemoryEdgeRepository` |
 | `fake_batch_result.dart` | `FakeBatchResultRepo` 实现 `BatchResultRepository`（含 slot 收敛语义） |
+| `fake_process.dart` | `FakeProcessStarter`/`FakeStartedProcess` 实现 `ProcessStarter`/`RunningProcess`（hang/killCompletesExit/exitDelay 旋钮；backup/restore/watchdog 测试共用） |
 | `fake_character.dart` | Character 仓储 / 资产服务 fake |
 | `fake_prompt_preset.dart` | PromptPreset 仓储 fake |
 | `fake_unit_of_work.dart` | `FakeUnitOfWork`：把给定 fake 仓储原样暴露给闭包，不做真事务/回滚 |
@@ -33,6 +34,7 @@ InkFrame 测试基础设施。所有 widget / provider / controller test 共享�
 | `_fakes_test.dart` | fake_dio + fake_providers 契约测试 |
 | `_persistence_fakes_test.dart` | fake_clock + fake_secure_storage + fake_repositories 契约测试 |
 | `fake_batch_result_test.dart` | fake_batch_result 契约测试（守 `finalize*` 只翻 `generating` slot） |
+| `fake_process_test.dart` | fake_process 契约测试（exitCode 不依赖 stdout 订阅 / hang-until-kill / killCompletesExit） |
 
 字体加载走 `test/flutter_test_config.dart` 全局 `loadAppFonts()`（golden_toolkit）——所有 test 启动前注册 pubspec assets/fonts 下的真实字体。
 

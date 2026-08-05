@@ -195,6 +195,31 @@ void main() {
           reason: '超时同失败：清半成品，免占保留位');
     });
 
+    test('看门狗开火但 pg_dump 已 exit 0 → 照常发布 created（exit0 优先,评审 P2-1）',
+        () async {
+      final runner = FakeProcessStarter(
+        killCompletesExit: false, // kill 打在已收尾的进程上=no-op
+        exitDelay: const Duration(milliseconds: 80),
+      );
+      final svc = PgDumpBackupService(
+        paths: paths,
+        locator: _FakeLocator(binDir),
+        starter: runner,
+        clock: _FixedClock(DateTime.utc(2026, 7, 15)),
+        dumpTimeout: const Duration(milliseconds: 30),
+      );
+
+      final outcome = await svc.backup(conn);
+
+      expect(outcome, BackupOutcome.created,
+          reason: 'dump 已完整——kill 迟到不应丢弃（已成功不误删）');
+      expect(
+        File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump'))
+            .existsSync(),
+        isTrue,
+      );
+    });
+
     test('崩溃遗留的同日 .partial 不阻止重试，成功后被清理', () async {
       paths.backups.createSync(recursive: true);
       // 模拟上次同日 pg_dump 中途被 SIGKILL 留下的半成品。

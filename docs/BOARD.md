@@ -102,7 +102,7 @@
 | QG-4 数据升级演练:CI populated-DB 迁移测(v1 起边迁边种+information_schema 全表非空守卫钉死「每个 schema PR 补种子」+真 PG 降级拒绝)+ realpg 升级演练 E2E(旧版 v6 数据目录→新版全链冷启数据存活)+ 发版 SOP 入 BUILD-RELEASE §15——beta.1 硬阻塞清剩 U1/U2 | #205 |
 | **PKG-2A PG 二进制分发源（方案 A 上游直拉,beta 硬阻塞里唯一零用户依赖项收官）**：fetch-binaries.sh 双模式重写——upstream 默认（Win=EDB 官方 zip `upstream.lock` 锁 URL+SHA256+裁剪 bin/lib/share;mac=runner brew postgresql@17+make-relocatable,主版本匹配）,`PG_ARTIFACT_BASE_URL` 保留为方案 B 覆盖;`.partial` 原子落位+必需工具校验（含 pg_dump/pg_restore）;release.yml 去门控无条件 fetch;回归测试入 ci release-scripts;**顺带 QG-6 的 checksums.txt**（publish job 全资产 sha256）;本机真栈验收=EDB 裁剪产物过 realpg E2E 全链 | #201/#202 |
 | **EX-3 导出进度+取消（Polish Wave 1 首卡,M4 E4）**：`ProcessStarter`/`RunningProcess` 流式进程通道（ISP 与 run() 分离,stderr 持续排干防背压;PR-2 备份/还原超时复用）→ concat 改 `-progress pipe:1` 流式解析 out_time_ms（微秒怪癖）,进度 0..1 单调、成功收口 1.0,分母=Σ所选 duration_ms 任一缺失→indeterminate;取消=token→kill→半成品清理→CancelledError.byUser 收敛 idle;**顺带债144 两件**:失败提示内嵌 banner+同名覆盖警示;波次设计+计划见 docs/superpowers/{specs,plans}/2026-08-05-* | #206 |
-| **PR-2 备份/还原看门狗超时（Polish Wave 1;债153 收口）**：`runWithWatchdog` 共享助手（EX-3 流式通道+定时 kill）;pg_dump 10min/pg_restore 30min 上限,超时=kill+单独归因;还原单事务回滚无半状态;进程 fake 迁 `test/_harness/fake_process.dart` 三测试共用;导出看门狗重估为不活动检测随 EX-2（债表该行更新） | 本 PR |
+| **PR-2 备份/还原看门狗超时（Polish Wave 1;债153 收口）**：`runWithWatchdog`（EX-3 流式通道+定时 kill+硬截止 killGrace）;pg_dump 10min/pg_restore 30min,exit 0 优先于超时判定;还原 DROP tmp `WITH (FORCE)`+失败留证;**评审驱动加固**:Process.start 补关子进程 stdin（P1-1,pg 密码提示 10min 冻结→毫秒 EOF）、超时归因带 stderr、流异常留证不吞;进程 fake 迁 `test/_harness/fake_process.dart`（backup/restore/watchdog 共用+契约自测）;导出看门狗重估为不活动检测随 EX-2（债表该行更新） | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -154,7 +154,7 @@
 | 建点位置固定世界 (200..600),全向漫游后建点必在屏幕外（#186 评审 P3-3:旧模型只右下漫游概率低,全向后被放大;命令面板/FAB/空态三入口同病） | 🅿️ | 改视口中心落点,S 级;非 #186 引入 |
 | 项目导出大文件路径（#188 评审 P2-4）:archive 包 deflate 把单文件压缩输出整段驻内存（GB 视频=GB 峰值）且同步压缩冻结 UI;附带 addFile 异常路径泄漏源文件句柄（Windows 进程退出才释放） | 🅿️ | 媒体改 store 不压缩 + Isolate.run 整体导出;与 LB-12 进度组件同窗做,v1 有 busy 防重入垫底 |
 | OrphanFileReaper 转真删前必须 restore-aware（LB-22 评审 P3-1）:还原旧备份后新生成文件成 DB 孤儿——reaper 真删会吃掉「还原更新备份时还需要的文件」;当前 DRY-RUN 无害 | 🅿️ | LB-13b 真删灰度的前置不变量;修法=还原动作后重置 mtime 护栏或记还原水位 |
-| pg_dump/pg_restore 无超时（LB-22 评审 P3-2）:挂死子进程让备份/还原 busy 永久锁 UI;与 EX-3 ffmpeg 同根因（ProcessRunner 无 kill/timeout 通道） | ✅ | Polish Wave 1 PR-2（本 PR）:`runWithWatchdog`（ProcessStarter 流式+定时 kill,services/process_watchdog.dart）;备份 10min/还原 30min 上限,超时=kill+单独归因 warn;还原 --single-transaction 回滚无半状态、scratch 库随即 drop 原库不动;进程 fake 迁 _harness 共享 |
+| pg_dump/pg_restore 无超时（LB-22 评审 P3-2）:挂死子进程让备份/还原 busy 永久锁 UI;与 EX-3 ffmpeg 同根因（ProcessRunner 无 kill/timeout 通道） | ✅ | Polish Wave 1 PR-2（本 PR）:`runWithWatchdog`（ProcessStarter 流式+定时 kill+**硬截止** timeout+killGrace——kill 无效也不永挂）;备份 10min/还原 30min,超时=kill+带 stderr/exit_code 归因 warn;exit 0 优先于超时判定（已成功不误删,同 EX-3 不变量）;还原 DROP tmp 加 `WITH (FORCE)`（超时 kill 后 backend 可能仍占库）+失败留证;**顺带评审 P1-1**:Process.start 补关子进程 stdin（对齐 Process.run,pg 密码提示从 10min 冻结回毫秒级 EOF 失败,EX-3 ffmpeg 同受益）;进程 fake 迁 _harness（backup/restore/watchdog 共用+契约自测;ffmpeg fake 因进度流语义专用留原地） |
 | 还原对换的 retired 库残留（DROP 失败仅 warn）与 swap_stranded 极端夹缝无启动期清扫/救援 | 🅿️ | 空间代价可接受;随 LB-12 同窗盘点:启动 housekeeping 扫 inkframe_retired_*/inkframe_restore_tmp 报告或回收 |
 | 回收站恢复绕过名字唯一性（#190 评审 P3-2）:建 Alpha→删→再建 Alpha→恢复旧 Alpha=工作库两个 Alpha;schema 无唯一约束,create/rename 的 UI 校验管不到 restore | 🅿️ | 不炸纯 UX 漂移;修法=restore 前查同名给改名/后缀,或列表 UI 容忍同名靠时间区分 |
 | zip `.partial` 落盘骨架三份逐字复制（LB-10/11/18；#191 评审 P3-3 复发实证:自吞守卫没跟着骨架走） | 🅿️ | 抽 `atomicZipWrite(target, build)` 共享件并内置 #188 P2-5 自吞排除;LB-12 动 zip 面时同窗 |

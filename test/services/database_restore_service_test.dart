@@ -149,7 +149,7 @@ void main() {
 
     expect(outcome, RestoreOutcome.restored);
     expect(order, <String>[
-      'DROP DATABASE IF EXISTS "inkframe_restore_tmp"',
+      'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)',
       'CREATE DATABASE "inkframe_restore_tmp"',
       'pg_restore',
       "SELECT 1 FROM pg_database WHERE datname = 'postgres'",
@@ -180,7 +180,7 @@ void main() {
 
     expect(outcome, RestoreOutcome.failed);
     expect(order.where((s) => s.startsWith('ALTER DATABASE')), isEmpty);
-    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"');
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)');
   });
 
   test('pg_restore 挂死 → 看门狗超时 kill → failed、drop tmp、原库未动（债153）', () async {
@@ -206,7 +206,7 @@ void main() {
     expect(runner.last!.killed, isTrue, reason: '超时必须 kill 挂死子进程');
     expect(order.where((s) => s.startsWith('ALTER DATABASE')), isEmpty,
         reason: '--single-transaction + 未到对换步：原库未动');
-    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"',
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)',
         reason: '超时后 scratch 库被清');
   });
 
@@ -299,7 +299,7 @@ void main() {
     final outcome = await build().restore(conn, name);
 
     expect(outcome, RestoreOutcome.failed);
-    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"');
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)');
     expect(order.where((s) => s.contains('RENAME TO "postgres"')), isEmpty);
   });
 
@@ -317,7 +317,7 @@ void main() {
       contains(
           'ALTER DATABASE "inkframe_retired_20260716102030" RENAME TO "postgres"'),
     );
-    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp"');
+    expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)');
     expect(order.where((s) => s.startsWith('DROP DATABASE "inkframe_retired')),
         isEmpty);
   });

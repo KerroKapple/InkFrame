@@ -253,18 +253,17 @@ class PgDumpBackupService implements DatabaseBackupService {
       return BackupOutcome.failed;
     }
 
-    if (result.timedOut) {
-      // 看门狗 kill（债153）：与普通失败同收敛,单独归因方便诊断。
-      _logger?.warn(kBackupModule, 'backup.timeout', extra: <String, Object?>{
-        'timeout_s': _dumpTimeout.inSeconds,
-      });
-      _deleteQuietly(partial);
-      return BackupOutcome.failed;
-    }
+    // exit 0 优先于超时判定：kill 迟到、dump 已完整 → 照常发布
+    //（与 EX-3「已成功不误删」同一不变量,评审 P2-1）。
     if (result.exitCode != 0) {
-      _logger?.warn(kBackupModule, 'backup.failed', extra: <String, Object?>{
+      final String event = result.timedOut ? 'backup.timeout' : 'backup.failed';
+      _logger?.warn(kBackupModule, event, extra: <String, Object?>{
+        if (result.timedOut) 'timeout_s': _dumpTimeout.inSeconds,
         'exit_code': result.exitCode,
+        // 被 kill 的 pg_dump 的 stderr 尾部往往就是挂死根因（评审 P2-3）。
         'stderr': result.stderrTail.trim(),
+        if (result.streamError != null)
+          'stream_error': result.streamError.toString(),
       });
       _deleteQuietly(partial); // 清半成品，免占保留位。
       return BackupOutcome.failed;
