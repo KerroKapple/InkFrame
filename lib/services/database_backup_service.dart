@@ -23,6 +23,7 @@ import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
 import '../storage/migrations/app_migrations.dart';
 import '../storage/pg_binary_locator.dart';
+import 'process_watchdog.dart';
 
 /// 日志 module 名（内部标识，English-only）。
 const String kBackupModule = 'db.backup';
@@ -72,20 +73,25 @@ class PgDumpBackupService implements DatabaseBackupService {
   PgDumpBackupService({
     required AppPaths paths,
     required PgBinaryLocator locator,
-    required ProcessRunner runner,
+    required ProcessStarter starter,
     required Clock clock,
     LoggerService? logger,
+    Duration dumpTimeout = const Duration(minutes: 10),
   })  : _paths = paths,
         _locator = locator,
-        _runner = runner,
+        _starter = starter,
         _clock = clock,
-        _logger = logger;
+        _logger = logger,
+        _dumpTimeout = dumpTimeout;
 
   final AppPaths _paths;
   final PgBinaryLocator _locator;
-  final ProcessRunner _runner;
+  final ProcessStarter _starter;
   final Clock _clock;
   final LoggerService? _logger;
+
+  /// pg_dump 看门狗上限（债153）：挂死不再永锁 busy；正常冷备远低于此值。
+  final Duration _dumpTimeout;
 
   /// 纯函数：当日每日备份文件名（UTC 日期，与仓库其它启动 housekeeping 同口径）。
   static String backupFileName(DateTime utc) {
@@ -236,9 +242,10 @@ class PgDumpBackupService implements DatabaseBackupService {
         ? null
         : <String, String>{'PGPASSWORD': connection.password!};
 
-    final ProcessResult result;
+    final WatchdogResult result;
     try {
-      result = await _runner.run(pgDump.path, args, environment: env);
+      result = await runWithWatchdog(_starter, pgDump.path, args,
+          environment: env, timeout: _dumpTimeout);
     } on ProcessException catch (e) {
       _logger?.warn(kBackupModule, 'backup.spawn_failed',
           extra: <String, Object?>{'reason': e.message});
@@ -246,10 +253,18 @@ class PgDumpBackupService implements DatabaseBackupService {
       return BackupOutcome.failed;
     }
 
+    if (result.timedOut) {
+      // 看门狗 kill（债153）：与普通失败同收敛,单独归因方便诊断。
+      _logger?.warn(kBackupModule, 'backup.timeout', extra: <String, Object?>{
+        'timeout_s': _dumpTimeout.inSeconds,
+      });
+      _deleteQuietly(partial);
+      return BackupOutcome.failed;
+    }
     if (result.exitCode != 0) {
       _logger?.warn(kBackupModule, 'backup.failed', extra: <String, Object?>{
         'exit_code': result.exitCode,
-        'stderr': result.stderr.toString().trim(),
+        'stderr': result.stderrTail.trim(),
       });
       _deleteQuietly(partial); // 清半成品，免占保留位。
       return BackupOutcome.failed;

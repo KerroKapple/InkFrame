@@ -26,6 +26,7 @@ import '../core/paths/app_paths.dart';
 import '../storage/migrations/app_migrations.dart';
 import '../storage/pg_binary_locator.dart';
 import 'database_backup_service.dart';
+import 'process_watchdog.dart';
 
 /// 日志 module 名（内部标识，English-only）。
 const String kRestoreModule = 'db.restore';
@@ -101,23 +102,29 @@ class PgSwapRestoreService implements DatabaseRestoreService {
   PgSwapRestoreService({
     required AppPaths paths,
     required PgBinaryLocator locator,
-    required ProcessRunner runner,
+    required ProcessStarter starter,
     required Clock clock,
     MaintenanceSessionFactory maintenance = openPgMaintenanceSession,
     LoggerService? logger,
+    Duration restoreTimeout = const Duration(minutes: 30),
   })  : _paths = paths,
         _locator = locator,
-        _runner = runner,
+        _starter = starter,
         _clock = clock,
         _maintenance = maintenance,
-        _logger = logger;
+        _logger = logger,
+        _restoreTimeout = restoreTimeout;
 
   final AppPaths _paths;
   final PgBinaryLocator _locator;
-  final ProcessRunner _runner;
+  final ProcessStarter _starter;
   final Clock _clock;
   final MaintenanceSessionFactory _maintenance;
   final LoggerService? _logger;
+
+  /// pg_restore 看门狗上限（债153）：kill 后 --single-transaction 自动回滚
+  /// 无半状态,scratch 库随即被 drop——原库全程不动。
+  final Duration _restoreTimeout;
 
   @override
   Future<RestoreOutcome> restore(
@@ -178,12 +185,22 @@ class PgSwapRestoreService implements DatabaseRestoreService {
       final Map<String, String>? env = connection.password == null
           ? null
           : <String, String>{'PGPASSWORD': connection.password!};
-      final ProcessResult result;
+      final WatchdogResult result;
       try {
-        result = await _runner.run(pgRestore.path, args, environment: env);
+        result = await runWithWatchdog(_starter, pgRestore.path, args,
+            environment: env, timeout: _restoreTimeout);
       } on ProcessException catch (e) {
         _logger?.warn(kRestoreModule, 'restore.spawn_failed',
             extra: <String, Object?>{'reason': e.message});
+        await _dropTmpQuietly(session);
+        return RestoreOutcome.failed;
+      }
+      if (result.timedOut) {
+        // 看门狗 kill（债153）：单事务回滚无半状态,清 scratch 后按失败收敛。
+        _logger?.warn(kRestoreModule, 'restore.timeout',
+            extra: <String, Object?>{
+              'timeout_s': _restoreTimeout.inSeconds,
+            });
         await _dropTmpQuietly(session);
         return RestoreOutcome.failed;
       }
@@ -191,7 +208,7 @@ class PgSwapRestoreService implements DatabaseRestoreService {
         _logger?.warn(kRestoreModule, 'restore.pg_restore_failed',
             extra: <String, Object?>{
               'exit_code': result.exitCode,
-              'stderr': result.stderr.toString().trim(),
+              'stderr': result.stderrTail.trim(),
             });
         await _dropTmpQuietly(session);
         return RestoreOutcome.failed;

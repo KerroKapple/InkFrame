@@ -157,7 +157,7 @@ void main() {
     final backup = PgDumpBackupService(
       paths: paths,
       locator: locator,
-      runner: const SystemProcessRunner(),
+      starter: const SystemProcessRunner(),
       clock: _FixedClock(DateTime.utc(2026, 7, 17, 9)),
     );
     stage('pg_dump');
@@ -177,7 +177,7 @@ void main() {
     final restore = PgSwapRestoreService(
       paths: paths,
       locator: locator,
-      runner: const SystemProcessRunner(),
+      starter: const SystemProcessRunner(),
       clock: _FixedClock(DateTime.utc(2026, 7, 17, 10)),
     );
     final restored =

@@ -36,7 +36,7 @@ final databaseRestoreServiceProvider = Provider<DatabaseRestoreService>((ref) {
   return PgSwapRestoreService(
     paths: ref.watch(appPathsProvider),
     locator: ref.watch(pgBinaryLocatorProvider),
-    runner: ref.watch(processRunnerProvider),
+    starter: ref.watch(processStarterProvider),
     clock: ref.watch(clockProvider),
     logger: ref.watch(loggerProvider),
   );
