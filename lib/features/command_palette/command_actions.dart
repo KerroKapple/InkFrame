@@ -112,6 +112,7 @@ Future<void> _addNode(
             transform:
                 ref.read(canvasTransformControllerProvider(canvasId)).value,
             viewportSize: ref.read(canvasViewportSizeProvider),
+            nodeSize: defaultNodeSize(type),
           ),
         );
   } on InkError {

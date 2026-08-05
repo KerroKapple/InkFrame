@@ -34,10 +34,12 @@ class CanvasEmptyState extends ConsumerWidget {
   final Random? random;
 
   /// 债150：视口中心落点（视口未上报时回退旧固定区随机——测试语义不变）。
-  Offset _pickPosition(WidgetRef ref) => pickViewportCenteredNodePosition(
+  Offset _pickPosition(WidgetRef ref, CanvasNodeType type) =>
+      pickViewportCenteredNodePosition(
         random: random ?? Random(),
         transform: ref.read(canvasTransformControllerProvider(canvasId)).value,
         viewportSize: ref.read(canvasViewportSizeProvider),
+        nodeSize: defaultNodeSize(type),
       );
 
   Future<void> _addNode(
@@ -51,7 +53,7 @@ class CanvasEmptyState extends ConsumerWidget {
           .addNode(
             label: context.l10n.canvasNodeDefaultLabel,
             type: type,
-            position: _pickPosition(ref),
+            position: _pickPosition(ref, type),
           );
     } catch (_) {
       if (!context.mounted) return;
@@ -66,6 +68,22 @@ class CanvasEmptyState extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 空态代替 _CanvasStage 渲染,视口上报也要跟着来（评审 P2-1）：否则
+    // 首建路径读到 Size.zero(债150 不生效)或上一画布残值。模式同 canvas_view。
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (context.mounted) {
+            ref.read(canvasViewportSizeProvider.notifier).setSize(size);
+          }
+        });
+        return _body(context, ref);
+      },
+    );
+  }
+
+  Widget _body(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final l = context.l10n;

@@ -9,6 +9,8 @@ import 'dart:math';
 
 import 'package:flutter/widgets.dart';
 
+import 'canvas_extent.dart';
+
 const double _kMinOffset = 200;
 const double _kSpread = 400;
 
@@ -23,19 +25,25 @@ Offset pickRandomNodePosition(Random random) => Offset(
 
 /// 视口中心落点（债150）。[transform] 为画布 InteractiveViewer 当前矩阵
 /// （canvasTransformControllerProvider(canvasId).value）,[viewportSize] 来自
-/// canvasViewportSizeProvider;返回值为节点左上角世界坐标（按 [nodeSize] 让
-/// 节点几何中心对准视口中心）。
+/// canvasViewportSizeProvider;返回值为节点左上角**世界坐标**（按 [nodeSize]
+/// 让节点几何中心对准视口中心）。
+///
+/// 坐标系（PR-8 评审 P0-1）：逆变换得到的是 InteractiveViewer child 的
+/// **舞台坐标**（100k 定盒,节点渲染在 `world + kStageOrigin`）——落库前必须
+/// 经 [stageToWorld] 减掉 kStageOrigin,否则节点飞到 5 万像素外且不可命中。
 Offset pickViewportCenteredNodePosition({
   required Random random,
   required Matrix4 transform,
   required Size viewportSize,
   Size nodeSize = const Size(200, 160),
 }) {
-  if (viewportSize == Size.zero) return pickRandomNodePosition(random);
+  // isEmpty 而非 ==Size.zero：约束坍缩帧的 (0,h)/(w,0) 同样回退（评审 P3-2）。
+  if (viewportSize.isEmpty) return pickRandomNodePosition(random);
   final viewCenter =
       Offset(viewportSize.width / 2, viewportSize.height / 2);
-  final worldCenter =
+  final stageCenter =
       MatrixUtils.transformPoint(Matrix4.inverted(transform), viewCenter);
+  final worldCenter = stageToWorld(stageCenter);
   final scatter = Offset(
     (random.nextDouble() - 0.5) * _kCenterScatter,
     (random.nextDouble() - 0.5) * _kCenterScatter,

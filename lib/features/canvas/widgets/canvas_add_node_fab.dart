@@ -24,10 +24,12 @@ class CanvasAddNodeFab extends ConsumerWidget {
   final Random? random;
 
   /// 债150：视口中心落点（视口未上报时回退旧固定区随机——测试语义不变）。
-  Offset _pickPosition(WidgetRef ref) => pickViewportCenteredNodePosition(
+  Offset _pickPosition(WidgetRef ref, CanvasNodeType type) =>
+      pickViewportCenteredNodePosition(
         random: random ?? Random(),
         transform: ref.read(canvasTransformControllerProvider(canvasId)).value,
         viewportSize: ref.read(canvasViewportSizeProvider),
+        nodeSize: defaultNodeSize(type),
       );
 
   Future<void> _addNode(
@@ -41,7 +43,7 @@ class CanvasAddNodeFab extends ConsumerWidget {
           .addNode(
             label: context.l10n.canvasNodeDefaultLabel,
             type: type,
-            position: _pickPosition(ref),
+            position: _pickPosition(ref, type),
           );
     } catch (_) {
       if (!context.mounted) return;
