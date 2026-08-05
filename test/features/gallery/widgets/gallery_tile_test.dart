@@ -227,6 +227,38 @@ void main() {
     expect(find.text('Character saved'), findsOneWidget);
   });
 
+  testWidgets('GA-4 失败路径：源文件缺失 → 失败提示,不逃逸不建记录（P1-2 回归）',
+      (tester) async {
+    final root = await _root(tester);
+    // 不落盘 images/a.png——existsSync 守卫应直接失败提示。
+    final repo = FakeCharacterRepo();
+
+    await _pumpTile(
+      tester,
+      item: _image(),
+      root: root.path,
+      extraOverrides: <Override>[
+        characterRepositoryProvider.overrideWith((_) async => repo),
+        characterAssetServiceProvider
+            .overrideWithValue(FakeCharacterAssetService()),
+      ],
+    );
+    await tester.pump();
+
+    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Save as character'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Hero');
+    await tester.pump();
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.rows, isEmpty, reason: '零角色记录');
+    expect(find.text('Character saved'), findsNothing);
+    expect(tester.takeException(), isNull, reason: '不逃逸为崩溃');
+  });
+
   testWidgets('GA-4 视频项无「存为角色」菜单', (tester) async {
     final root = await _root(tester);
 

@@ -9,10 +9,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
+import '../../../theme/components/ink_input.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
 import '../../../theme/tokens.dart';
-import '../../../theme/components/ink_input.dart';
 import '../models/gallery_item.dart';
 import '../providers/current_gallery_project.dart';
 import '../providers/gallery_controller.dart';
@@ -150,22 +150,39 @@ class _GalleryContentState extends ConsumerState<_GalleryContent> {
                     filter.copyWith(kind: () => sel.first),
               ),
               const SizedBox(width: InkSpacing.md),
-              DropdownButton<String?>(
-                value: filter.canvasId,
-                underline: const SizedBox.shrink(),
-                items: <DropdownMenuItem<String?>>[
-                  DropdownMenuItem<String?>(
-                    value: null,
-                    child: Text(l.galleryFilterCanvasAll),
-                  ),
-                  for (final entry in canvasNames.entries)
+              Flexible(
+                child: DropdownButton<String?>(
+                  // 失配回落 null（评审 P2-1）：选中画布随数据刷新消失时不撞
+                  // DropdownButton 的 value∈items 断言（GA-6 删除落地前置）。
+                  value: canvasNames.containsKey(filter.canvasId)
+                      ? filter.canvasId
+                      : null,
+                  // isExpanded + 省略号（评审 P1-1）：按钮宽度否则=最宽画布名，
+                  // 长名在最小窗口直接 RenderFlex 溢出。
+                  isExpanded: true,
+                  underline: const SizedBox.shrink(),
+                  items: <DropdownMenuItem<String?>>[
                     DropdownMenuItem<String?>(
-                      value: entry.key,
-                      child: Text(entry.value),
+                      value: null,
+                      child: Text(
+                        l.galleryFilterCanvasAll,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                ],
-                onChanged: (v) =>
-                    notifier.state = filter.copyWith(canvasId: () => v),
+                    for (final entry in canvasNames.entries)
+                      DropdownMenuItem<String?>(
+                        value: entry.key,
+                        child: Text(
+                          entry.value,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (v) =>
+                      notifier.state = filter.copyWith(canvasId: () => v),
+                ),
               ),
               const SizedBox(width: InkSpacing.md),
               Expanded(

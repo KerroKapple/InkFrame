@@ -181,6 +181,56 @@ void main() {
     expect(container.read(currentGalleryProjectProvider), isNull);
   });
 
+  testWidgets('P1-1 回归：55 字画布名 + 最小窗口宽 → 筛选条不溢出', (tester) async {
+    final ca = await canvases.create(
+      projectId: 'p1',
+      name: 'A very long canvas name that keeps going and going yes!',
+    );
+    await nodes.create(
+      canvasId: ca,
+      type: 'image',
+      nodeRole: 'result',
+      typeConfig: <String, Object?>{'image_url': 'images/a.png'},
+    );
+
+    // 溢出会作为 FlutterError 直接判失败——pump 绿即回归钉死。
+    await pumpInkApp(
+      tester,
+      const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
+      surfaceSize: const Size(960, 700),
+      overrides: overrides(),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(DropdownButton<String?>), findsOneWidget);
+  });
+
+  testWidgets('GA-3 画布下拉：选画布过滤 + 选中值失配回落 All（P2-1 回归）', (tester) async {
+    final ca = await canvases.create(projectId: 'p1', name: 'Alpha');
+    final cb = await canvases.create(projectId: 'p1', name: 'Beta');
+    for (final c in <String>[ca, cb]) {
+      await nodes.create(
+        canvasId: c,
+        type: 'video',
+        nodeRole: 'result',
+        typeConfig: <String, Object?>{'video_url': 'videos/$c.mp4'},
+      );
+    }
+    await pumpInkApp(
+      tester,
+      const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
+      surfaceSize: const Size(1280, 800),
+      overrides: overrides(),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.videocam_outlined), findsNWidgets(2));
+
+    await tester.tap(find.byType(DropdownButton<String?>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Beta').last);
+    await tester.pumpAndSettle();
+    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+  });
+
   testWidgets('GA-3 筛选：类型分段过滤 + 搜索无命中 → 清除筛选恢复', (tester) async {
     await seedAssets();
     await pumpInkApp(
