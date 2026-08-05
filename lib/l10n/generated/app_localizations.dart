@@ -2276,6 +2276,18 @@ abstract class AppLocalizations {
   /// **'File name cannot contain \\ / : * ? \" < > |, \'..\', control characters, or reserved device names'**
   String get exportVideoInvalidName;
 
+  /// No description provided for @exportVideoOverwriteWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'A file with this name already exists — exporting will overwrite it.'**
+  String get exportVideoOverwriteWarning;
+
+  /// No description provided for @exportVideoCancelExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel export'**
+  String get exportVideoCancelExport;
+
   /// No description provided for @exportVideoMoveUp.
   ///
   /// In en, this message translates to:

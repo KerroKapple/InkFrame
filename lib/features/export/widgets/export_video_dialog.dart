@@ -9,6 +9,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/components/ink_progress_bar.dart';
 import '../../../theme/tokens.dart';
@@ -84,12 +85,30 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
   bool get _nameValid =>
       _trimmedName.isEmpty || isValidExportBaseName(_trimmedName);
 
+  /// 债144②：合法非空名与既有 `exports/<name>.mp4` 同名时给覆盖警示（不阻断）。
+  bool get _wouldOverwrite {
+    final name = _trimmedName;
+    if (name.isEmpty || !isValidExportBaseName(name)) return false;
+    try {
+      return ref
+          .read(fileResolverServiceProvider)
+          .resolveInProject(
+            projectId: widget.projectId,
+            relativePath: 'exports/$name.mp4',
+          )
+          .existsSync();
+    } on PathSecurityError {
+      return false;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final busy = ref.watch(exportControllerProvider) is ExportVideoBusy;
+    final state = ref.watch(exportControllerProvider);
+    final busy = state is ExportVideoBusy;
     final canExport = !busy && _selected.isNotEmpty && _nameValid;
 
     return PopScope(
@@ -144,10 +163,32 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                     l.exportVideoInvalidName,
                     style: typo.caption.copyWith(color: colors.danger),
                   ),
+                ] else if (_wouldOverwrite) ...<Widget>[
+                  const SizedBox(height: InkSpacing.xs),
+                  Text(
+                    l.exportVideoOverwriteWarning,
+                    // 提示不是错误：fg3 而非 danger。
+                    style: typo.caption.copyWith(color: colors.fg3),
+                  ),
                 ],
-                if (busy) ...<Widget>[
+                if (state is ExportVideoBusy) ...<Widget>[
                   const SizedBox(height: InkSpacing.md),
-                  const InkProgressBar(),
+                  InkProgressBar(value: state.progress),
+                  const SizedBox(height: InkSpacing.xs),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () => ref
+                          .read(exportControllerProvider.notifier)
+                          .cancelExport(),
+                      child: Text(l.exportVideoCancelExport),
+                    ),
+                  ),
+                ],
+                if (state is ExportVideoFailure) ...<Widget>[
+                  const SizedBox(height: InkSpacing.md),
+                  // 债144①：失败提示内嵌对话框（SnackBar 弹在 barrier 之下易漏看）。
+                  InkErrorBanner(message: _failureText(state.error)),
                 ],
                 const SizedBox(height: InkSpacing.xl),
                 Row(
@@ -294,10 +335,10 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                   ),
           ),
         );
-      case ExportVideoFailure(:final error):
-        messenger.showSnackBar(SnackBar(content: Text(_failureText(error))));
+      case ExportVideoFailure():
+        break; // 失败由 build 内嵌 InkErrorBanner 渲染（债144①）。
       case ExportVideoIdle() || ExportVideoBusy():
-        break; // export() 收敛后不会停在这两态。
+        break; // idle=用户取消；busy 在 export() 收敛后不会停留。
     }
   }
 

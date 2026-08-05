@@ -534,6 +534,8 @@
   "exportVideoOutputNameLabel": "Output file name (optional)",
   "exportVideoOutputNameHint": "Leave empty for a timestamped name",
   "exportVideoInvalidName": "File name cannot contain \\ / : * ? \" < > |, '..', control characters, or reserved device names",
+  "exportVideoOverwriteWarning": "A file with this name already exists — exporting will overwrite it.",
+  "exportVideoCancelExport": "Cancel export",
   "exportVideoMoveUp": "Move up",
   "exportVideoMoveDown": "Move down",
   "exportVideoStart": "Export",

@@ -63,7 +63,7 @@ CanvasNode _videoResult(
       sourceNodeId: 'cfg-$id',
       typeConfig: <String, Object?>{
         'video_url': ?videoUrl,
-        if (durationMs != null) 'duration_ms': durationMs,
+        'duration_ms': ?durationMs,
       },
     );
 
