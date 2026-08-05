@@ -17,7 +17,7 @@ final videoExportServiceProvider = Provider<VideoExportService>(
   (ref) => FfmpegVideoExportService(
     fileResolver: ref.watch(fileResolverServiceProvider),
     ffmpegLocator: ref.watch(ffmpegLocatorProvider),
-    processRunner: ref.watch(processRunnerProvider),
+    processStarter: ref.watch(processStarterProvider),
     clock: ref.watch(clockProvider),
   ),
   name: 'videoExportServiceProvider',

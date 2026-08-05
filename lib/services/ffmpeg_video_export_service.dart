@@ -1,8 +1,10 @@
 // FfmpegVideoExportService：concat demuxer 顺序拼接（流拷贝，不转码）。
 //
-// 命令形态：ffmpeg -f concat -safe 0 -i <list> -c copy -y <out>
+// 命令形态：ffmpeg -f concat -safe 0 -i <list> -c copy -progress pipe:1
+//           -nostats -y <out>
 // list 文件逐行 `file '<abs>'`，单引号按 concat demuxer 规则转义为 '\''；
 // 写入系统临时目录（可注入覆盖），成功/失败路径都在 finally 删除。
+// 进度经 stdout 键值流解析（EX-3）；取消 = kill + 半成品清理 + CancelledError。
 // 错误映射见 VideoExportService 接口 doc；不新增 InkErrorCode。
 import 'dart:io';
 
@@ -19,12 +21,12 @@ class FfmpegVideoExportService implements VideoExportService {
   FfmpegVideoExportService({
     required FileResolverService fileResolver,
     required FfmpegLocator ffmpegLocator,
-    required ProcessRunner processRunner,
+    required ProcessStarter processStarter,
     Clock clock = const SystemClock(),
     Directory? tempRoot,
   })  : _fileResolver = fileResolver,
         _ffmpegLocator = ffmpegLocator,
-        _processRunner = processRunner,
+        _processStarter = processStarter,
         _clock = clock,
         _tempRoot = tempRoot;
 
@@ -33,7 +35,7 @@ class FfmpegVideoExportService implements VideoExportService {
 
   final FileResolverService _fileResolver;
   final FfmpegLocator _ffmpegLocator;
-  final ProcessRunner _processRunner;
+  final ProcessStarter _processStarter;
   final Clock _clock;
   final Directory? _tempRoot;
 
@@ -42,6 +44,9 @@ class FfmpegVideoExportService implements VideoExportService {
     required String projectId,
     required List<String> inputRelativePaths,
     String? outputBaseName,
+    int? totalDurationMs,
+    void Function(double progress)? onProgress,
+    ExportCancelToken? cancelToken,
   }) async {
     if (inputRelativePaths.isEmpty) {
       throw const ProviderError(
@@ -88,17 +93,48 @@ class FfmpegVideoExportService implements VideoExportService {
       final listFile = File(p.join(tempDir.path, 'inputs.txt'))
         ..writeAsStringSync('${inputs.map(_listLine).join('\n')}\n');
 
-      final result = await _runFfmpeg(ffmpeg, listFile, outputFile);
-      if (result.exitCode != 0) {
+      final running = await _startFfmpeg(ffmpeg, listFile, outputFile);
+      cancelToken?.attach(running.kill);
+
+      final int? totalUs = (totalDurationMs != null && totalDurationMs > 0)
+          ? totalDurationMs * 1000
+          : null;
+      var last = 0.0;
+      await for (final line in running.stdoutLines) {
+        if (totalUs == null || onProgress == null) continue;
+        final next = parseProgressLine(
+          line,
+          totalDurationUs: totalUs,
+          last: last,
+        );
+        if (next != null) {
+          last = next;
+          onProgress(next);
+        }
+      }
+
+      final code = await running.exitCode;
+      if (cancelToken?.isCancelled ?? false) {
+        // 取消判定优先于退出码映射：kill 产生的非零码不是失败。
+        _deleteIfExists(outputFile);
+        throw const CancelledError.byUser(
+          extra: <String, Object?>{'reason': 'export_cancelled'},
+        );
+      }
+      if (code != 0) {
         // `-y` 可能已写出半截产物,失败时不留损坏文件。
         _deleteIfExists(outputFile);
         throw LocalIOError(
           extra: <String, Object?>{
             'reason': 'ffmpeg_failed',
-            'exit_code': result.exitCode,
-            'stderr': _tail(result.stderr.toString()),
+            'exit_code': code,
+            'stderr': _tail(running.stderrTail),
           },
         );
+      }
+      // 成功收口到 1.0（分母略大或流末行缺失时补齐终值）。
+      if (onProgress != null && totalUs != null && last < 1.0) {
+        onProgress(1.0);
       }
       return outputRelative;
     } on FileSystemException catch (e, st) {
@@ -121,17 +157,19 @@ class FfmpegVideoExportService implements VideoExportService {
     }
   }
 
-  Future<ProcessResult> _runFfmpeg(
+  Future<RunningProcess> _startFfmpeg(
     String ffmpeg,
     File listFile,
     File outputFile,
   ) async {
     try {
-      return await _processRunner.run(ffmpeg, <String>[
+      return await _processStarter.start(ffmpeg, <String>[
         '-f', 'concat',
         '-safe', '0',
         '-i', listFile.path,
         '-c', 'copy',
+        '-progress', 'pipe:1',
+        '-nostats',
         '-y', outputFile.path,
       ]);
     } on ProcessException catch (e, st) {
@@ -144,6 +182,24 @@ class FfmpegVideoExportService implements VideoExportService {
       );
     }
   }
+
+  /// -progress 键值行解析（static 供单测直击）。
+  /// out_time_ms 键名为 ms 实为**微秒**（ffmpeg 已知怪癖）；
+  /// 乱码/负值/回退值返回 null（进度单调不回退），超界 clamp 到 1.0。
+  static double? parseProgressLine(
+    String line, {
+    required int totalDurationUs,
+    required double last,
+  }) {
+    final m = _kOutTimePattern.firstMatch(line.trim());
+    if (m == null) return null;
+    final us = int.tryParse(m.group(1)!);
+    if (us == null || us < 0) return null;
+    final progress = (us / totalDurationUs).clamp(0.0, 1.0).toDouble();
+    return progress > last ? progress : null;
+  }
+
+  static final RegExp _kOutTimePattern = RegExp(r'^out_time_ms=(-?\d+)$');
 
   static void _deleteIfExists(File f) {
     try {
