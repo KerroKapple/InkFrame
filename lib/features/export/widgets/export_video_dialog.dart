@@ -163,7 +163,9 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                     l.exportVideoInvalidName,
                     style: typo.caption.copyWith(color: colors.danger),
                   ),
-                ] else if (_wouldOverwrite) ...<Widget>[
+                // busy 期屏蔽：导出自己写盘期间警示会被自家产物触发（评审 P2-5；
+                // 服务层已走 .partial+rename，此守卫兜 UI 语义——busy 期该行无意义）。
+                ] else if (!busy && _wouldOverwrite) ...<Widget>[
                   const SizedBox(height: InkSpacing.xs),
                   Text(
                     l.exportVideoOverwriteWarning,

@@ -433,4 +433,35 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets('busy 期覆盖警示被屏蔽（评审 P2-5：不被自家在途产物触发）', (tester) async {
+    final root = Directory.systemTemp.createTempSync('exp_dup2_');
+    addTearDown(() {
+      if (root.existsSync()) root.deleteSync(recursive: true);
+    });
+    File('${root.path}/p1/exports/dup.mp4')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(const <int>[1]);
+
+    final service = _FakeVideoExportService()..gate = Completer<String>();
+    await _pumpDialog(
+      tester,
+      service: service,
+      resolver: _FakeFileResolver(root.path),
+    );
+
+    await tester.enterText(find.byType(TextField), 'dup');
+    await tester.pump();
+    const warning = 'A file with this name already exists — exporting will '
+        'overwrite it.';
+    expect(find.text(warning), findsOneWidget);
+
+    await tester.tap(find.text('Export'));
+    await tester.pump();
+    expect(find.text(warning), findsNothing, reason: 'busy 期不显示覆盖警示');
+
+    service.gate!.complete('exports/dup.mp4');
+    await tester.pumpAndSettle();
+    expect(find.text('Export video'), findsNothing);
+  });
 }

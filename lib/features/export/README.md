@@ -36,10 +36,12 @@ widgets/    纯 UI（读 provider、走 token/l10n）
   输出文件名（留空=服务端时间戳默认名；同名已存在给覆盖警示行，不阻断）+
   busy 态（EX-3：分母=Σ所选 `duration_ms` 时 determinate 进度条，任一缺失
   → indeterminate；「取消导出」按钮 → `cancelExport()`，取消收敛回可编辑态，
-  不视为错误）。成功：关对话框 + snackbar 相对路径 + 「复制路径」（复制绝对
-  路径）；失败：**内嵌 `InkErrorBanner`**（不再用 barrier 之下的 SnackBar），
-  `InkError.messageKey` 走 l10n，**特例** ffmpeg_not_found 用专门文案
-  （含 INKFRAME_FFMPEG 提示）。
+  不视为错误；kill 迟到、ffmpeg 已 exit 0 时按成功收尾——已成功不误删；
+  覆盖警示在 busy 期屏蔽）。成功：关对话框 + snackbar 相对路径 + 「复制路径」
+  （复制绝对路径）；失败：**内嵌 `InkErrorBanner`**（不再用 barrier 之下的
+  SnackBar），`InkError.messageKey` 走 l10n，**特例** ffmpeg_not_found 用
+  专门文案（含 INKFRAME_FFMPEG 提示）。服务侧产物走 `.partial`→rename，
+  失败/取消不触碰既有同名旧导出。
 
 ## 入口
 画布顶栏（`canvas_top_chrome.dart` 的 `_ExportVideoButton`）：当前画布存在

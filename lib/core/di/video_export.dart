@@ -6,6 +6,7 @@ import '../../services/ffmpeg_video_export_service.dart';
 import '../interfaces/video_export_service.dart';
 import 'clock.dart';
 import 'file_resolver.dart';
+import 'logger.dart';
 import 'process_runner.dart';
 
 final ffmpegLocatorProvider = Provider<FfmpegLocator>(
@@ -19,6 +20,7 @@ final videoExportServiceProvider = Provider<VideoExportService>(
     ffmpegLocator: ref.watch(ffmpegLocatorProvider),
     processStarter: ref.watch(processStarterProvider),
     clock: ref.watch(clockProvider),
+    logger: ref.watch(loggerProvider),
   ),
   name: 'videoExportServiceProvider',
 );

@@ -141,7 +141,8 @@
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | ✅ | LB-15/#190：sidebar 回收站对话框（项目级）+ 管理画布已删区（画布级）;永久删除仍显式排除 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | ✅ | LB-01/#156：`core/constants/job_statuses.dart` 单一真相源 |
 | canvas→generation 跨 feature import 违例（18 处 / 11 文件：job_state / jobs_registry / batch_results_controller / cost_estimator 等,违反 ARCHITECTURE §1.3 互 import 禁令） | 🅿️ | 待 import 边界 lint（custom_lint 卡点解除后）收口:上提共享模型到 core/ 或建白名单逐步清零 |
-| 导出 busy 模态无取消/无超时（2026-07-08 深审:`Process.run` 无 timeout/kill 通道,busy 期 PopScope+禁按钮+barrier 三重封死,ffmpeg 挂起唯一逃生口=退出应用;export_video_dialog.dart:95 + system_process_runner.dart:11） | ✅ | EX-3（本 PR）:ProcessStarter 流式通道（kill+stdout 行流）+ 对话框 determinate 进度与「取消导出」;取消=kill+半成品清理+CancelledError 收敛为 idle。pg_dump/pg_restore 超时=本表既有行,随 Polish Wave 1 PR-2 收口 |
+| 导出 busy 模态无取消/无超时（2026-07-08 深审:`Process.run` 无 timeout/kill 通道,busy 期 PopScope+禁按钮+barrier 三重封死,ffmpeg 挂起唯一逃生口=退出应用;export_video_dialog.dart:95 + system_process_runner.dart:11） | ✅ | **取消面**随 EX-3（本 PR）收口:ProcessStarter 流式通道（kill+stdout 行流）+ 对话框 determinate 进度与「取消导出」;取消=kill+清 .partial+CancelledError 收敛 idle;产物 .partial→rename,exit 0 优先于取消判定（已成功不误删）;流异常兜底 UnknownError 防 busy 永挂;退出期 onDispose 自动 kill 防孤儿。**超时看门狗未做**→拆下行新债 |
+| 导出无超时看门狗（EX-3 评审 P2-7:仅交付取消;ffmpeg 卡死在不可达网络挂载等场景时进度停滞,取消按钮是唯一出口） | 🅿️ | 与 pg_dump/pg_restore 超时（本表既有行）同窗:Polish Wave 1 PR-2 复用 ProcessStarter+看门狗定时器统一收口 |
 | export 打磨两件（2026-07-08 深审）:失败 SnackBar 弹在模态 barrier 之下易漏看（export_video_dialog.dart:256）;同名输出 `-y` 静默覆盖无存在性提示（ffmpeg_video_export_service.dart:135） | ✅ | 随 EX-3（本 PR）:失败提示改对话框内嵌 InkErrorBanner;输出名同名时覆盖警示行（不阻断） |
 | restore_last_session 抢占守卫过窄（2026-07-08 深审:只查 currentCanvasId,PG 就绪窗口内用户进 Settings/Gallery 会被恢复流程硬拉进画布;restore_last_session.dart:38） | 🅿️ | 守卫扩为「用户已发生任何导航」即放弃恢复 |
 | link 智能默认 role 竞态残留（2026-07-08 深审:_defaultRole 读内存 edges 快照,首条 first_frame 边写在途时连第二条可产双 first_frame,uq_edges_live 不拦不同 source 同 role;link_action_controller.dart:83） | 🅿️ | 毫秒级低频;随上表「乐观新增竞态」并发模型债同窗处理 |

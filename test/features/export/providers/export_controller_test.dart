@@ -326,6 +326,35 @@ void main() {
     expect(container.read(exportControllerProvider), isA<ExportVideoIdle>());
   });
 
+  test('container.dispose 在途导出被取消——退出防 ffmpeg 孤儿（评审 P2-7）', () async {
+    final gate = Completer<String>();
+    final fake = _FakeVideoExportService()..gate = gate;
+    final container = ProviderContainer(
+      overrides: <Override>[
+        videoExportServiceProvider.overrideWithValue(fake),
+      ],
+    );
+    container.listen(exportControllerProvider, (_, _) {});
+    final future = container.read(exportControllerProvider.notifier).export(
+      projectId: 'p1',
+      nodes: <CanvasNode>[_videoResult('n1')],
+    );
+    await Future<void>.delayed(Duration.zero);
+    expect(fake.lastToken!.isCancelled, isFalse);
+
+    container.dispose();
+    expect(fake.lastToken!.isCancelled, isTrue,
+        reason: 'onDispose 必须传导取消,kill 掉子进程');
+
+    // 服务契约收敛：CancelledError。_alive 守卫下不得再写 state、不得抛出。
+    gate.completeError(
+      const CancelledError.byUser(
+        extra: <String, Object?>{'reason': 'export_cancelled'},
+      ),
+    );
+    await future;
+  });
+
   test('非 busy 期 cancelExport 为 no-op', () async {
     final (container, fake) = _make();
     container.read(exportControllerProvider.notifier).cancelExport();

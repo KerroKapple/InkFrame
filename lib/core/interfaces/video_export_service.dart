@@ -43,17 +43,22 @@ abstract class VideoExportService {
   /// - [totalDurationMs] 为所选输入总时长（分母）；null 或 <=0 时 [onProgress]
   ///   永不回调（UI 走 indeterminate）。
   /// - [onProgress] 回调值 0..1，单调不回退；成功返回前保证收口到 1.0。
-  /// - [cancelToken] 取消 → kill 子进程 + 清理半成品 →
-  ///   CancelledError.byUser(extra.reason='export_cancelled')；取消判定优先于
-  ///   非零退出码映射。
+  /// - [cancelToken] 取消 → kill 子进程；随后若退出码非零 →
+  ///   CancelledError.byUser(extra.reason='export_cancelled') 且清理半成品；
+  ///   **若 kill 迟到、进程已 exit 0，产物完整——正常返回成功，绝不删除**
+  ///   （「已成功不误删」）。
+  /// - 产物落盘走 `.partial`→rename：失败/取消只清 `.partial`，
+  ///   既有同名旧导出全程不被触碰。
   ///
   /// 错误映射（InkError 体系）：
   /// - 空输入列表 → ProviderError(invalidParameter, extra.reason='empty_input_list')
   /// - 输入文件不存在 → LocalIOError(extra.reason='input_not_found')
   /// - ffmpeg 不可用 → LocalIOError(extra.reason='ffmpeg_not_found')
   /// - ffmpeg 非零退出 → LocalIOError(extra.reason='ffmpeg_failed'，stderr 进
-  ///   extra；已写出的半截产物会被清理)
+  ///   extra；`.partial` 半成品会被清理)
   /// - 导出目录创建 / 临时 list 写入失败 → LocalIOError(extra.reason='export_io_failed')
+  /// - stdout 流读取 / 进度回调异常 → UnknownError(extra.reason=
+  ///   'export_stream_failed'；先 kill 防孤儿再收敛，绝不让 busy 态永挂)
   Future<String> concat({
     required String projectId,
     required List<String> inputRelativePaths,

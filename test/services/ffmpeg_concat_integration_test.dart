@@ -97,14 +97,18 @@ void main() {
     }
   }, timeout: const Timeout(Duration(minutes: 2)));
 
-  test('取消：预取消 token → 真进程被 kill，CancelledError 且无产物残留', () async {
+  test('取消：预取消 token → 真进程被 kill;两种竞态终局都不留 .partial', () async {
     final env = await _setUpRealFfmpeg();
     if (env == null) return;
     try {
       final token = ExportCancelToken()..cancel();
+      final out = env.resolver.resolveInProject(
+        projectId: 'p1',
+        relativePath: 'exports/cancelled.mp4',
+      );
 
-      await expectLater(
-        env.svc.concat(
+      try {
+        await env.svc.concat(
           projectId: 'p1',
           inputRelativePaths: const <String>[
             'canvases/c1/videos/a.mp4',
@@ -112,15 +116,15 @@ void main() {
           ],
           outputBaseName: 'cancelled',
           cancelToken: token,
-        ),
-        throwsA(isA<CancelledError>()),
-      );
-
-      final out = env.resolver.resolveInProject(
-        projectId: 'p1',
-        relativePath: 'exports/cancelled.mp4',
-      );
-      expect(out.existsSync(), isFalse, reason: '取消不留半成品');
+        );
+        // 竞态合法终局 2：kill 迟到,ffmpeg 已 exit 0——已成功不误删。
+        expect(out.existsSync(), isTrue);
+      } on CancelledError {
+        // 竞态合法终局 1（预期主路径）：kill 生效——不留任何产物。
+        expect(out.existsSync(), isFalse, reason: '取消不留产物');
+      }
+      expect(File('${out.path}.partial').existsSync(), isFalse,
+          reason: '两种终局都不残留 .partial');
     } finally {
       if (env.tempRoot.existsSync()) {
         await env.tempRoot.delete(recursive: true);

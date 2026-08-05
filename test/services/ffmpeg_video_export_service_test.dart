@@ -72,15 +72,19 @@ void main() {
           .path;
       expect(starter.executable, 'ffmpeg');
       final args = starter.arguments!;
-      expect(args, hasLength(13));
+      expect(args, hasLength(15));
       expect(args.sublist(0, 5), <String>['-f', 'concat', '-safe', '0', '-i']);
       expect(args[5], starter.listPath);
       expect(args.sublist(6), <String>[
         '-c', 'copy',
         '-progress', 'pipe:1',
         '-nostats',
-        '-y', outAbs,
+        '-f', 'mp4',
+        '-y', '$outAbs.partial',
       ]);
+      // .partial → rename 落最终名。
+      expect(File(outAbs).existsSync(), isTrue);
+      expect(File('$outAbs.partial').existsSync(), isFalse);
 
       final absA = resolver
           .resolveInProject(projectId: projectId, relativePath: relA)
@@ -249,13 +253,13 @@ void main() {
           reason: 'TOCTOU 后应失效 locator 缓存,下次重新探测');
     });
 
-    test('ffmpeg 非零退出 → 半截输出产物被清理', () async {
+    test('ffmpeg 非零退出 → .partial 被清理,用户既有同名旧导出不动（评审 P2-6）', () async {
       starter.exitCode = 1;
       final svc = buildService();
-      // 预置"ffmpeg -y 已写出的半截产物"
-      final partial = resolver.resolveInProject(
+      // 预置"用户既有的同名旧导出"（最终名,非 .partial）。
+      final oldFinal = resolver.resolveInProject(
         projectId: projectId,
-        relativePath: 'exports/partial.mp4',
+        relativePath: 'exports/keep.mp4',
       )
         ..parent.createSync(recursive: true)
         ..writeAsBytesSync(const <int>[9, 9]);
@@ -264,14 +268,35 @@ void main() {
         svc.concat(
           projectId: projectId,
           inputRelativePaths: const <String>[relA],
-          outputBaseName: 'partial',
+          outputBaseName: 'keep',
         ),
         throwsA(
           isA<LocalIOError>()
               .having((e) => e.extra['reason'], 'reason', 'ffmpeg_failed'),
         ),
       );
-      expect(partial.existsSync(), isFalse, reason: '失败不留损坏产物');
+      expect(File('${oldFinal.path}.partial').existsSync(), isFalse,
+          reason: '失败不留 .partial 半成品');
+      expect(oldFinal.existsSync(), isTrue, reason: '旧导出不被连坐删除');
+      expect(oldFinal.readAsBytesSync(), const <int>[9, 9]);
+    });
+
+    test('exit 0 但无产物 → ffmpeg_failed（防 rename 空转假成功）', () async {
+      starter.createOutput = false;
+      final svc = buildService();
+
+      await expectLater(
+        svc.concat(
+          projectId: projectId,
+          inputRelativePaths: const <String>[relA],
+          outputBaseName: 'ghost',
+        ),
+        throwsA(
+          isA<LocalIOError>()
+              .having((e) => e.extra['reason'], 'reason', 'ffmpeg_failed')
+              .having((e) => e.extra['exit_code'], 'exit_code', 0),
+        ),
+      );
     });
 
     test('临时 list 文件成功路径清理', () async {
@@ -374,7 +399,8 @@ void main() {
     });
 
     group('取消（EX-3）', () {
-      test('进行中取消 → kill + 半成品删除 + CancelledError + 临时目录清理', () async {
+      test('进行中取消 → kill + .partial 删除 + 旧同名导出保留 + CancelledError + 临时目录清理',
+          () async {
         starter.stdoutLines = <String>[
           'out_time_ms=1000000',
           'out_time_ms=2000000',
@@ -382,8 +408,8 @@ void main() {
         ];
         final svc = buildService();
         final token = ExportCancelToken();
-        // 预置"取消前 -y 已写出的半截产物"
-        final partial = resolver.resolveInProject(
+        // 预置"用户既有的同名旧导出"——取消绝不连坐（评审 P2-6）。
+        final oldFinal = resolver.resolveInProject(
           projectId: projectId,
           relativePath: 'exports/cx.mp4',
         )
@@ -409,9 +435,36 @@ void main() {
         );
 
         expect(starter.last!.killed, isTrue, reason: '取消必须 kill 子进程');
-        expect(partial.existsSync(), isFalse, reason: '取消不留半成品');
+        expect(File('${oldFinal.path}.partial').existsSync(), isFalse,
+            reason: '取消不留 .partial 半成品');
+        expect(oldFinal.existsSync(), isTrue, reason: '旧导出不被连坐删除');
         expect(File(starter.listPath!).existsSync(), isFalse);
         expect(Directory(p.dirname(starter.listPath!)).existsSync(), isFalse);
+      });
+
+      test('迟到取消：kill 到达时进程已 exit 0 → 成功返回,产物不误删（评审 P1-1）', () async {
+        starter
+          ..stdoutLines = <String>['out_time_ms=3500000']
+          ..killCompletesExit = false; // 仿真取消到达时进程已自然退出
+        final svc = buildService();
+        final token = ExportCancelToken();
+
+        final rel = await svc.concat(
+          projectId: projectId,
+          inputRelativePaths: const <String>[relA],
+          outputBaseName: 'late',
+          totalDurationMs: 4000,
+          onProgress: (_) => token.cancel(),
+          cancelToken: token,
+        );
+
+        expect(rel, 'exports/late.mp4');
+        expect(starter.last!.killed, isTrue, reason: 'kill 被尝试过（但迟到）');
+        final out = resolver.resolveInProject(
+          projectId: projectId,
+          relativePath: rel,
+        );
+        expect(out.existsSync(), isTrue, reason: '已成功不误删——完整产物保留');
       });
 
       test('启动前已取消 → 立即 kill，不产出成功', () async {
@@ -446,6 +499,62 @@ void main() {
           ),
           throwsA(isA<CancelledError>()),
         );
+      });
+    });
+
+    group('流异常兜底（评审 P1-2）', () {
+      test('stdout 流 error → kill 防孤儿 + .partial 清理 + UnknownError 收敛', () async {
+        starter
+          ..stdoutLines = <String>['out_time_ms=1000000']
+          ..emitStreamError = const FormatException('bad pipe bytes');
+        final svc = buildService();
+
+        await expectLater(
+          svc.concat(
+            projectId: projectId,
+            inputRelativePaths: const <String>[relA],
+            outputBaseName: 'boom',
+            totalDurationMs: 2000,
+            onProgress: (_) {},
+          ),
+          throwsA(
+            isA<UnknownError>()
+                .having(
+                  (e) => e.extra['reason'],
+                  'reason',
+                  'export_stream_failed',
+                )
+                .having((e) => e.cause, 'cause', isA<FormatException>()),
+          ),
+        );
+
+        expect(starter.last!.killed, isTrue, reason: '流异常必须 kill 防孤儿进程');
+        expect(starter.outputPath, isNotNull);
+        expect(File(starter.outputPath!).existsSync(), isFalse,
+            reason: '.partial 已清理');
+      });
+
+      test('onProgress 回调抛出 → 同样走 UnknownError 收敛,不逃逸', () async {
+        starter.stdoutLines = <String>['out_time_ms=1000000'];
+        final svc = buildService();
+
+        await expectLater(
+          svc.concat(
+            projectId: projectId,
+            inputRelativePaths: const <String>[relA],
+            outputBaseName: 'cb',
+            totalDurationMs: 2000,
+            onProgress: (_) => throw StateError('listener gone'),
+          ),
+          throwsA(
+            isA<UnknownError>().having(
+              (e) => e.extra['reason'],
+              'reason',
+              'export_stream_failed',
+            ),
+          ),
+        );
+        expect(starter.last!.killed, isTrue);
       });
     });
   });
@@ -492,9 +601,13 @@ class _FakeStarter implements ProcessStarter {
   List<String>? arguments;
   String? listPath;
   String? listContent;
+  String? outputPath;
   int exitCode = 0;
   String stderrText = '';
   bool throwOnStart = false;
+  bool createOutput = true;
+  bool killCompletesExit = true;
+  Object? emitStreamError;
   List<String> stdoutLines = <String>[];
   _FakeProcess? last;
 
@@ -513,10 +626,22 @@ class _FakeStarter implements ProcessStarter {
       // 服务在 finally 里删 list——此处即时读出内容供断言。
       listContent = File(args[i + 1]).readAsStringSync();
     }
+    final y = args.indexOf('-y');
+    if (y >= 0 && y + 1 < args.length) {
+      outputPath = args[y + 1];
+      // 仿真 ffmpeg `-y`：启动即创建/截断输出文件（.partial）。
+      if (createOutput) {
+        File(outputPath!)
+          ..parent.createSync(recursive: true)
+          ..writeAsBytesSync(const <int>[0xF, 0xF]);
+      }
+    }
     return last = _FakeProcess(
       lines: stdoutLines,
       exit: exitCode,
       stderr: stderrText,
+      killCompletesExit: killCompletesExit,
+      emitStreamError: emitStreamError,
     );
   }
 }
@@ -526,6 +651,8 @@ class _FakeProcess implements RunningProcess {
     required List<String> lines,
     required int exit,
     required String stderr,
+    this.killCompletesExit = true,
+    this.emitStreamError,
   })  : _lines = lines,
         _exit = exit,
         _stderr = stderr;
@@ -533,6 +660,14 @@ class _FakeProcess implements RunningProcess {
   final List<String> _lines;
   final int _exit;
   final String _stderr;
+
+  /// false = 仿真「kill 到达时进程已自然退出」：kill 只记账，
+  /// 流照常收尾、exitCode 照常按 _exit 完成（迟到取消场景）。
+  final bool killCompletesExit;
+
+  /// 非 null 时在行发射后向流注入 error（仿真管道读取异常）。
+  final Object? emitStreamError;
+
   bool killed = false;
   final Completer<int> _exitCompleter = Completer<int>();
   late final StreamController<String> _ctrl =
@@ -542,14 +677,17 @@ class _FakeProcess implements RunningProcess {
     for (final line in _lines) {
       await Future<void>.delayed(Duration.zero);
       // kill 竞态：终止后停止发射，收尾由 kill() 负责。
-      if (killed || _ctrl.isClosed) return;
+      if (_ctrl.isClosed) return;
       _ctrl.add(line);
     }
     await Future<void>.delayed(Duration.zero);
-    if (!killed && !_ctrl.isClosed) {
-      await _ctrl.close();
-      _exitCompleter.complete(_exit);
+    if (_ctrl.isClosed) return;
+    final err = emitStreamError;
+    if (err != null) {
+      _ctrl.addError(err);
     }
+    await _ctrl.close();
+    if (!_exitCompleter.isCompleted) _exitCompleter.complete(_exit);
   }
 
   @override
@@ -565,6 +703,7 @@ class _FakeProcess implements RunningProcess {
   void kill() {
     if (killed) return;
     killed = true;
+    if (!killCompletesExit) return;
     _ctrl.close();
     if (!_exitCompleter.isCompleted) _exitCompleter.complete(-15);
   }
