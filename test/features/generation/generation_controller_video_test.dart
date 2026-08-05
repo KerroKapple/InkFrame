@@ -454,6 +454,12 @@ void main() {
       );
       expect(task.mode, GenerationMode.imageToVideo,
           reason: '注入后沿现推断逻辑 → imageToVideo');
+      // 落库参数与 image 对位用例对称（评审 N3①）。
+      final params = jobs.creates.first['parameters'] as Map<String, Object?>;
+      expect(
+        params['ref_image_paths'],
+        contains('/abs/proj-1/characters/hero-0.png'),
+      );
     },
   );
 

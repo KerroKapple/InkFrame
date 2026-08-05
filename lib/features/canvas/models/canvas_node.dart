@@ -88,7 +88,8 @@ class CanvasNode {
   }
 
   /// video config 节点的生成模式（"t2v" / "i2v"）；未设置返回 null，
-  /// 生成时按 incoming data edges 自动推断（见 GenerationController）。
+  /// 生成时按 incoming data edges **与角色注入**自动推断（见
+  /// GenerationController；CH-1 起角色图并入也会翻 imageToVideo）。
   String? get videoMode {
     final v = typeConfig['mode'];
     return v is String && v.isNotEmpty ? v : null;

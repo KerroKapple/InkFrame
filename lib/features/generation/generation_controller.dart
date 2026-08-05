@@ -656,7 +656,8 @@ class GenerationController {
   ///   - image：provider 声明 maxRefImages>0 且支持 imageToImage；
   ///   - video（CH-1）：仅要求 maxRefImages>0——不检查 modes（r2v/omni 的
   ///     参考图语义不经 modes 表达；注入后 mode 推断沿现逻辑 → imageToVideo）。
-  /// 合并去重后按 maxRefImages 截断（边连参考图优先，角色图补足）。
+  /// 合并去重（边连参考图优先，角色图补足）；**不在此截断**——由 provider
+  /// 自身 take(maxRefImages) 收口（评审 #1 拍板，见函数体注释）。
   /// 角色查不到 / 资产文件缺失静默跳过，不阻断生成。
   Future<_RefImages> _injectCharacterRefs({
     required _RefImages base,

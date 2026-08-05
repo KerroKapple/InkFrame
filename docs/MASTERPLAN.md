@@ -85,7 +85,7 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 | E2 画廊 | 视频缩略/播/时长;筛选;存角色;发送画布;删除(文件+DB 同步收敛) | GA-1~7 |
 | E3 聚合器 | 设置页可视化 CRUD+key 校验;≥2 协议模板;(二期)新增热生效 | AG-1~5 |
 | E4 导出 | narrative 自动排序(主体已随 PR #143 合入 main;剩 EX-1′)+转码归一+进度取消(**EX-3 ✅ 2026-08-05 Polish Wave 1**:ProcessStarter 流式通道+determinate 进度+取消,顺带债144 两件) | EX-1′~3 |
-| E5 角色进阶 | 视频生成自动带角色图(**CH-1 ✅ 2026-08-05 Polish Wave 1**);video inspector 角色区;角色库管理页 | CH-1~3 |
+| E5 角色进阶 | 视频生成自动带角色图(**CH-1 注入链路 ✅ 2026-08-05 Polish Wave 1**——注:video inspector 尚无角色区,character_ids 当前仅 image inspector 可写/导入可带,用户可见入口随 CH-2);video inspector 角色区;角色库管理页 | CH-1~3 |
 | E6 项目复制 | ⚠️ **裁决:排上线后**(BOARD 原判"单独立项";≡ backend BP-11,复用 LB-12 导入机器后
   成本减半)。features 的 PD-1~3 保留为**实现细化参考**,不进 M4 波次;若用户要提前,依赖 LB-12 | PD-1~3(细化) |
 | E7 跨模块 metadata | duration/width/height/seed 回填 result 与 batch slot(**多 epic 阻塞点**) | XM-1~2 |
