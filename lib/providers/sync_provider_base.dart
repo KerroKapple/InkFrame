@@ -15,6 +15,7 @@ import '../core/models/generation_task.dart';
 import '../core/models/job_status.dart';
 import '../core/models/key_validation_result.dart';
 import '../core/models/provider_capabilities.dart';
+import '../core/net/proxy_env.dart' show applyEnvProxy;
 import 'dio_error_mapper.dart';
 import 'rate_limiter.dart';
 
@@ -173,13 +174,17 @@ abstract class SyncProviderBase
   static String _rand() =>
       Random.secure().nextInt(0xFFFFFFFF).toRadixString(16).padLeft(8, '0');
 
-  static Dio _buildDefaultDio(String baseUrl) => Dio(
-        BaseOptions(
-          baseUrl: baseUrl,
-          connectTimeout: const Duration(seconds: 10),
-          sendTimeout: const Duration(seconds: 30),
-          receiveTimeout: const Duration(seconds: 120),
-          responseType: ResponseType.json,
-        ),
-      );
+  static Dio _buildDefaultDio(String baseUrl) {
+    final dio = Dio(
+      BaseOptions(
+        baseUrl: baseUrl,
+        connectTimeout: const Duration(seconds: 10),
+        sendTimeout: const Duration(seconds: 30),
+        receiveTimeout: const Duration(seconds: 120),
+        responseType: ResponseType.json,
+      ),
+    );
+    applyEnvProxy(dio); // LB-24：注入 dio（测试）不受影响,仅默认构造挂代理
+    return dio;
+  }
 }

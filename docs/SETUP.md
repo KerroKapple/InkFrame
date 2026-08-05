@@ -243,6 +243,31 @@ PGPASSWORD=<pw> pg_restore -h 127.0.0.1 -p <port> -U inkframe -d postgres \
   --clean --if-exists "<data-root>/backups/inkframe-2026-07-15.dump"
 ```
 
+## Network proxy / 网络代理（LB-24）
+
+InkFrame 的全部 Dart 层出网请求（AI 服务商生成链路、产物下载、检查更新）读取标准代理环境变量（变量名大小写双查）：
+
+- `HTTPS_PROXY` — https 请求；缺失时依次回落 `HTTP_PROXY`、`ALL_PROXY`
+- `HTTP_PROXY` — http 请求；缺失时回落 `ALL_PROXY`
+- `NO_PROXY` — 逗号分隔例外表：精确 host、域后缀（`.foo.com`、`*.foo.com` 或裸 `foo.com`）、`*`（全直连）
+- 变量**存在但为空串** = 显式禁用该档（同 curl），不再向后回落
+
+示例（PowerShell；**改环境变量需重启 InkFrame**——进程启动时读取一次）：
+
+```powershell
+$env:HTTPS_PROXY = "http://127.0.0.1:7890"
+```
+
+中文网络环境连 OpenAI / Gemini 等海外服务商通常需要设置本节变量。已知边界（有意取舍，勿当 bug 报）：
+
+- 代理串接受 `http://user:pass@host:port` / `http://host:port` / `host:port`（Basic 凭据会透传）。**解析不出目标**（如含空格/非法字符）的值按直连处理；**能解析但指向不可达或非代理地址**的值会得到连接错误——与 curl 行为一致，不做连通性预检。
+- `localhost` / `127.x` / `::1` 目标**恒直连**——本机端点（自定义 OpenAI 兼容 endpoint、LM Studio、ComfyUI 桥）不会被代理劫持，无需手工加 `NO_PROXY`。
+- **不支持**：SOCKS 代理（`socks5://` 值按直连处理）、`NO_PROXY` 的端口段（`host:8080`）与 CIDR（`10.0.0.0/8`）写法——这类条目按普通 host 字面匹配，通常不命中。
+- 若代理做 TLS 拦截（企业中间人证书），dio 会报证书错误——这是预期防护而非 InkFrame 缺陷；请将拦截根证书加入系统信任或对相应域名走 `NO_PROXY`。
+- 设置页代理区（免环境变量的 UI 配置）为后续切片（LB-24 P1）。
+
+All Dart-layer outbound requests honor `HTTPS_PROXY` / `HTTP_PROXY` / `ALL_PROXY` / `NO_PROXY` (case-insensitive; empty value = explicit disable; loopback targets always bypass; Basic credentials pass through). Values whose target cannot be parsed fall back to direct connection; parseable-but-wrong values fail with connection errors, same as curl. SOCKS, `NO_PROXY` port/CIDR entries are unsupported. Restart the app after changing variables. A settings-page proxy UI is planned as LB-24 P1.
+
 ---
 
 See also: [docs/ARCHITECTURE.md](ARCHITECTURE.md) (env vars, key storage, data dirs),

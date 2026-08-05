@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/github_update_check_service.dart';
 import '../interfaces/update_check_service.dart';
+import '../net/proxy_env.dart';
 import 'package_info.dart';
 
 final updateCheckServiceProvider = Provider<UpdateCheckService>(
@@ -18,6 +19,7 @@ final updateCheckServiceProvider = Provider<UpdateCheckService>(
         receiveTimeout: const Duration(seconds: 10),
       ),
     );
+    applyEnvProxy(dio); // LB-24：HTTPS_PROXY/HTTP_PROXY/NO_PROXY env
     ref.onDispose(dio.close);
     return GithubUpdateCheckService(
       dio: dio,
