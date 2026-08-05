@@ -37,7 +37,8 @@ abstract class VideoExportService {
   /// - 流拷贝（`-c copy`）不转码：要求所有输入编码参数一致，否则产物可能
   ///   损坏或不可播——转码归一是后续切片。
   /// - [outputBaseName] 为导出文件名主体（不含扩展名），必须是单层文件名段；
-  ///   缺省时按 UTC 毫秒时间戳生成。同名输出会被覆盖（ffmpeg -y）。
+  ///   缺省时按 UTC 毫秒时间戳生成。同名输出在**成功收尾时**被替换
+  ///   （`.partial`→rename；`-y` 只作用于 `.partial`）。
   ///
   /// 进度与取消（EX-3）：
   /// - [totalDurationMs] 为所选输入总时长（分母）；null 或 <=0 时 [onProgress]
