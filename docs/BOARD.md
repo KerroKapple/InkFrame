@@ -107,7 +107,7 @@
 | **PR-5 CH-1 视频角色注入（Polish Wave 1;M4 E5 首卡）**：`_injectCharacterRefs` 门改双分支——image 保持现规则;video 仅要求 maxRefImages>0（卡面禁令:不检查 modes,r2v/omni 不校验 mode 不炸）;注入后 mode 推断沿现逻辑 → imageToVideo;测试钉死「modes 只含 t2v 也注入」+ i2v 零注入 + image 回归 | #209 |
 | **PR-4 画廊筛选/搜索 + 存为角色（Polish Wave 1;M4 GA-3/4）**：`GalleryFilter` 纯函数三轴过滤（kind/画布/canvasName 搜索,prompt 搜索 non-goal）+ 筛选条（分段/下拉/搜索框）+ no-match 态清除筛选;GA-4=image tile 菜单 → 命名对话框 → canvas charactersController.createFromImage（补偿在控制器,操作期 listenManual 保活防 autoDispose 竞态）;画廊根改 Material;ARB +7 键;评审 3×P1 全修（长画布名溢出/CharacterAssetError 逃逸/ref-after-dispose） | #210 |
 | **PR-6 MOD-1 OpenAI 直升 gpt-image-2（Polish Wave 1;死线卡:gpt-image-1 2026-10-23 弃用）**：模型 ID 换新（1.5 亦 2026-12-01 退役不过渡）;契约兼容零结构改动（同步 b64/quality/无 response_format）;16:9/9:16 改**真比例**尺寸 1536x864/864x1536（gpt-image-1 时代只能凑 3:2,分镜第一刚需）;CostModel 对齐官方 medium 档 $0.041;PROVIDER-API §9.2/§13 同步 | #211 |
-| **PR-7 LB-24 网络代理 P0（Polish Wave 1）**：`core/net/proxy_env.dart`——`proxyRuleFor` 纯函数（HTTPS_PROXY/HTTP_PROXY/NO_PROXY 大小写双查,https 回落 HTTP_PROXY,NO_PROXY 精确/后缀/通配,坏 env 安全直连）+ `applyEnvProxy` 挂 4 个 Dio 构造点（sync/dashscope 基类默认构造+更新检查+产物下载;注入 dio 的测试零扰动）;SETUP.md 网络代理节含 TLS 拦截提示;**P1 设置页代理区另卡** | 本 PR |
+| **PR-7 LB-24 网络代理 P0（Polish Wave 1）**：`core/net/proxy_env.dart`——`proxyRuleFor` 纯函数（HTTPS_PROXY/HTTP_PROXY/ALL_PROXY/NO_PROXY 大小写双查,空串=显式禁用,凭据透传 `user:pass@`,loopback 恒直连,`*.glob`,解析不出目标才直连兜底——能解析但错误的值=连接错误同 curl）+ `applyEnvProxy` 挂 4 个 Dio 构造点（无代理变量时不动 adapter 保 dio 默认;注入 dio 零扰动）;接线层 e2e 双测（真 socket fake 代理/NO_PROXY 旁路）;SETUP.md 边界清单（SOCKS/端口段/CIDR 不支持,重启生效,TLS 拦截提示）;**P1 设置页代理区另卡** | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 
