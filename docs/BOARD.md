@@ -36,7 +36,7 @@
 | 批量 / 变体（生产侧 + 消费侧全链路） | ✅ | P1 | 消费侧骨架（`854124b`）+ 生产侧：提交事务预建 slot 占位、JobQueue 逐 slot 落库、结果节点 Inspector 挂 `BatchResultsGrid`、取消/失败/孤儿收敛。拍板语义：≥1 成即 job success、取消保留已成 slot。经 3 路对抗评审,2×P1+4×P2 全修 |
 | 提示词模板 / 预设库 | ✅ | P1 | 项目级 schema_v7 预设库 + Inspector 点选应用/存为预设（`8a28777`） |
 | 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + 图像/视频 Inspector 实时预估（`1273522`/`d1dfc46`） |
-| 视频 Inspector 接成本 | ✅ | P2 | `d1dfc46`。角色注入 v1 仍仅图像；视频首/尾帧语义已接通——video inspector 挂入边区 + role 切换，控制器建行前校验帧能力位不支持即显式拒绝（PR #138 B1/B2） |
+| 视频 Inspector 接成本 | ✅ | P2 | `d1dfc46`。角色注入自 Polish Wave 1 CH-1 起覆盖视频（原 v1 仅图像）；视频首/尾帧语义已接通——video inspector 挂入边区 + role 切换，控制器建行前校验帧能力位不支持即显式拒绝（PR #138 B1/B2） |
 | 文件系统导入参考图（file_selector） | ✅ | P2 | Characters 区「从文件导入」（`94e18ab`）。桌面需开发者模式，与 media_kit 同 |
 | CI 烟测 + golden 首跑绿（beta DoD） | ✅ | P1 | run 28595968123 全绿（analyze/test+coverage 70% 闸/golden/secret-scan）。唯一 CI 红为 ME-31 测试自朽（坏迁移 v6 与真实链重号被跳过），已动态化修复 `5d519b7` |
 
@@ -103,7 +103,8 @@
 | **PKG-2A PG 二进制分发源（方案 A 上游直拉,beta 硬阻塞里唯一零用户依赖项收官）**：fetch-binaries.sh 双模式重写——upstream 默认（Win=EDB 官方 zip `upstream.lock` 锁 URL+SHA256+裁剪 bin/lib/share;mac=runner brew postgresql@17+make-relocatable,主版本匹配）,`PG_ARTIFACT_BASE_URL` 保留为方案 B 覆盖;`.partial` 原子落位+必需工具校验（含 pg_dump/pg_restore）;release.yml 去门控无条件 fetch;回归测试入 ci release-scripts;**顺带 QG-6 的 checksums.txt**（publish job 全资产 sha256）;本机真栈验收=EDB 裁剪产物过 realpg E2E 全链 | #201/#202 |
 | **EX-3 导出进度+取消（Polish Wave 1 首卡,M4 E4）**：`ProcessStarter`/`RunningProcess` 流式进程通道（ISP 与 run() 分离,stderr 持续排干防背压;PR-2 备份/还原超时复用）→ concat 改 `-progress pipe:1` 流式解析 out_time_ms（微秒怪癖）,进度 0..1 单调、成功收口 1.0,分母=Σ所选 duration_ms 任一缺失→indeterminate;取消=token→kill→半成品清理→CancelledError.byUser 收敛 idle;**顺带债144 两件**:失败提示内嵌 banner+同名覆盖警示;波次设计+计划见 docs/superpowers/{specs,plans}/2026-08-05-* | #206 |
 | **PR-2 备份/还原看门狗超时（Polish Wave 1;债153 收口）**：`runWithWatchdog`（EX-3 流式通道+定时 kill+硬截止 killGrace）;pg_dump 10min/pg_restore 30min,exit 0 优先于超时判定;还原 DROP tmp `WITH (FORCE)`+失败留证;**评审驱动加固**:Process.start 补关子进程 stdin（P1-1,pg 密码提示 10min 冻结→毫秒 EOF）、超时归因带 stderr、流异常留证不吞;进程 fake 迁 `test/_harness/fake_process.dart`（backup/restore/watchdog 共用+契约自测）;导出看门狗重估为不活动检测随 EX-2（债表该行更新） | #207 |
-| **PR-3 画廊视频缩略图+播放（Polish Wave 1;M4 GA-1/2/7）**：`GalleryItem.thumbnailRelativePath`（读节点已落库 thumbnail_url,非现场抽帧,batch slot 无）→ tile 缩略图+播放/时长角标（缩略图缺失回退图标占位）→ 点击 existsSync 守卫开 canvas 共用 `video_lightbox`,视频缺失 → broken 态;GA-7=时长角标 mm:ss 回归断言;freezed 定向重生成（全量误删按 PLAYBOOK §2.2 checkout 恢复实证一次） | 本 PR |
+| **PR-3 画廊视频缩略图+播放（Polish Wave 1;M4 GA-1/2/7）**：`GalleryItem.thumbnailRelativePath`（读节点已落库 thumbnail_url,非现场抽帧,batch slot 无）→ tile 缩略图+播放/时长角标（缩略图缺失回退图标占位）→ 点击 existsSync 守卫开 canvas 共用 `video_lightbox`,视频缺失 → broken 态;GA-7=时长角标 mm:ss 回归断言;freezed 定向重生成（全量误删按 PLAYBOOK §2.2 checkout 恢复实证一次） | #208 |
+| **PR-5 CH-1 视频角色注入（Polish Wave 1;M4 E5 首卡）**：`_injectCharacterRefs` 门改双分支——image 保持现规则;video 仅要求 maxRefImages>0（卡面禁令:不检查 modes,r2v/omni 不校验 mode 不炸）;注入后 mode 推断沿现逻辑 → imageToVideo;测试钉死「modes 只含 t2v 也注入」+ i2v 零注入 + image 回归 | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 

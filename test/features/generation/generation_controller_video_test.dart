@@ -325,7 +325,11 @@ void main() {
   late _FakeLaneRepo laneRepo;
   late _RecordingRegistry jobsRegistry;
 
-  GenerationController buildCtrl() => GenerationController(
+  GenerationController buildCtrl({
+    FakeCharacterRepo? characters,
+    FakeCharacterAssetService? characterAssets,
+  }) =>
+      GenerationController(
         nodes: nodes,
         edges: edges,
         jobs: jobs,
@@ -335,8 +339,8 @@ void main() {
         resolver: resolver,
         canvas: canvasRepo,
         lanes: laneRepo,
-        characters: FakeCharacterRepo(),
-        characterAssets: FakeCharacterAssetService(),
+        characters: characters ?? FakeCharacterRepo(),
+        characterAssets: characterAssets ?? FakeCharacterAssetService(),
         batchResults: FakeBatchResultRepo(),
         uow: FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, jobs: jobs)),
         jobsRegistry: jobsRegistry,
@@ -361,6 +365,7 @@ void main() {
     String prompt = 'a flying cat',
     int? durationMs,
     String? camera,
+    List<String>? characterIds,
   }) async {
     const id = 'cfgV';
     final typeConfig = <String, Object?>{
@@ -369,6 +374,7 @@ void main() {
     };
     if (durationMs != null) typeConfig['duration_ms'] = durationMs;
     if (camera != null) typeConfig['camera'] = camera;
+    if (characterIds != null) typeConfig['character_ids'] = characterIds;
     nodes.rows[id] = {
       'id': id,
       'canvas_id': 'cvx',
@@ -405,6 +411,86 @@ void main() {
       'role': role,
     });
   }
+
+  // ---- CH-1 视频角色注入（M4 E5）----------------------------------------
+  test(
+    'CH-1 视频角色注入：maxRefImages>0 即注入(不检查 modes) + mode==imageToVideo',
+    () async {
+      // r2v/omni 风格 caps：modes 故意**只含 textToVideo**——钉死「video 分支
+      // 不得检查 modes」的卡面禁令：注入照常发生、下游也不校验 mode∈modes。
+      registry = CachingProviderRegistry({
+        providerId: () => FakeProvider(
+          capabilities: fakeVideoCapabilities(
+            id: providerId,
+            modes: const <GenerationMode>[GenerationMode.textToVideo],
+            maxRefImages: 3,
+          ),
+        ),
+      });
+      final characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+        'char-1': <String, Object?>{
+          'id': 'char-1',
+          'project_id': 'proj-1',
+          'name': 'Hero',
+          'reference_image_paths': <String>['characters/hero-0.png'],
+        },
+      });
+      final cfg = await seedVideoConfigNode(
+        durationMs: 5000,
+        characterIds: <String>['char-1'],
+      );
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl(
+        characters: characters,
+        characterAssets: FakeCharacterAssetService(),
+      ).submitFromConfigNode(cfg);
+
+      final task = queue.lastTask!;
+      expect(
+        task.refImagePaths,
+        contains('/abs/proj-1/characters/hero-0.png'),
+        reason: '角色图注入 video 任务',
+      );
+      expect(task.mode, GenerationMode.imageToVideo,
+          reason: '注入后沿现推断逻辑 → imageToVideo');
+    },
+  );
+
+  test('CH-1 i2v 风格（maxRefImages=0）→ 零注入，mode 保持 textToVideo', () async {
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(
+        capabilities: fakeVideoCapabilities(
+          id: providerId,
+          modes: const <GenerationMode>[
+            GenerationMode.textToVideo,
+            GenerationMode.imageToVideo,
+          ],
+        ),
+      ),
+    });
+    final characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    final cfg = await seedVideoConfigNode(
+      durationMs: 5000,
+      characterIds: <String>['char-1'],
+    );
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl(
+      characters: characters,
+      characterAssets: FakeCharacterAssetService(),
+    ).submitFromConfigNode(cfg);
+
+    final task = queue.lastTask!;
+    expect(task.refImagePaths, isEmpty, reason: 'maxRefImages=0 零注入');
+    expect(task.mode, GenerationMode.textToVideo);
+  });
 
   test('video config + 无 data edge → resultNode.type=video + mode=textToVideo',
       () async {

@@ -648,13 +648,14 @@ class GenerationController {
     );
   }
 
-  /// M2 角色一致性：把 config 节点挂接的项目级角色参考图并进 refImagePaths。
+  /// M2 角色一致性（CH-1 起覆盖 image+video）：把 config 节点挂接的
+  /// 项目级角色参考图并进 refImagePaths。
   ///
   /// 门控（缺一即原样返回 base，绝不误翻 mode / 破坏文生图）：
-  ///   - 仅 image 节点（video 的 i2v 走首/尾帧语义，v1 不覆盖）；
-  ///   - projectId 非空；
-  ///   - config.type_config['character_ids'] 非空；
-  ///   - provider 声明 maxRefImages>0 且支持 imageToImage。
+  ///   - projectId 非空；config.type_config['character_ids'] 非空；
+  ///   - image：provider 声明 maxRefImages>0 且支持 imageToImage；
+  ///   - video（CH-1）：仅要求 maxRefImages>0——不检查 modes（r2v/omni 的
+  ///     参考图语义不经 modes 表达；注入后 mode 推断沿现逻辑 → imageToVideo）。
   /// 合并去重后按 maxRefImages 截断（边连参考图优先，角色图补足）。
   /// 角色查不到 / 资产文件缺失静默跳过，不阻断生成。
   Future<_RefImages> _injectCharacterRefs({
@@ -664,14 +665,24 @@ class GenerationController {
     required String providerId,
     required String? projectId,
   }) async {
-    if (nodeType != 'image' || projectId == null) return base;
+    if (projectId == null) return base;
     final ids = _readCharacterIds(typeConfig);
     if (ids.isEmpty) return base;
 
     final caps = registry.get(providerId).capabilities;
-    if (caps.maxRefImages <= 0 ||
-        !caps.modes.contains(GenerationMode.imageToImage)) {
-      return base;
+    // CH-1 双分支门：image 保持现规则（maxRefImages>0 且 imageToImage）；
+    // video 仅要求 maxRefImages>0——**不检查 modes**（r2v/omni 的参考图语义
+    // 不经 modes 表达，注入后 mode 推断沿现逻辑 → imageToVideo，下游不校验）。
+    switch (nodeType) {
+      case 'image':
+        if (caps.maxRefImages <= 0 ||
+            !caps.modes.contains(GenerationMode.imageToImage)) {
+          return base;
+        }
+      case 'video':
+        if (caps.maxRefImages <= 0) return base;
+      default:
+        return base;
     }
 
     final relPaths = <String>[];
