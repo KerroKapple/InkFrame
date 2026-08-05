@@ -84,6 +84,7 @@ void main() {
       typeConfig: <String, Object?>{
         'video_url': 'videos/v.mp4',
         'duration_ms': 5000,
+        'thumbnail_url': 'thumbnails/v.jpg',
       },
       createdAt: DateTime.utc(2026, 1, 2),
     );
@@ -98,8 +99,11 @@ void main() {
     expect(items[0].canvasId, cb);
     expect(items[0].canvasName, 'Beta');
     expect(items[0].durationMs, 5000);
+    expect(items[0].thumbnailRelativePath, 'thumbnails/v.jpg',
+        reason: 'GA-1: 节点已落库的 thumbnail_url 透传');
     expect(items[0].slotIndex, isNull);
     expect(items[1].kind, GalleryItemKind.image);
+    expect(items[1].thumbnailRelativePath, isNull);
     expect(items[1].nodeId, img);
     expect(items[1].relativePath, 'images/a.png');
     expect(items[1].canvasId, ca);

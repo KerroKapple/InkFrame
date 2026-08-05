@@ -63,6 +63,7 @@ class GalleryController
             nodeId: node.id,
             createdAt: createdAt,
             durationMs: node.durationMs,
+            thumbnailRelativePath: node.thumbnailUrl,
           ),
         );
       }

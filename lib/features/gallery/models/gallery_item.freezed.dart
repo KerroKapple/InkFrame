@@ -19,7 +19,9 @@ mixin _$GalleryItem {
  String get canvasId; String get canvasName;/// 来源节点；批量 slot 为其挂载的结果节点。
  String get nodeId; DateTime get createdAt;/// 批量 slot 来源时的槽位序号；节点主产物为 null。
  int? get slotIndex;/// 视频时长（毫秒）；未知为 null。
- int? get durationMs;
+ int? get durationMs;/// 视频首帧缩略图的 canvas 相对路径（GA-1：读节点已落库的
+/// thumbnail_url，非现场抽帧）；图片/未抽帧视频为 null。
+ String? get thumbnailRelativePath;
 /// Create a copy of GalleryItem
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,16 +32,16 @@ $GalleryItemCopyWith<GalleryItem> get copyWith => _$GalleryItemCopyWithImpl<Gall
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryItem&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.relativePath, relativePath) || other.relativePath == relativePath)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.canvasName, canvasName) || other.canvasName == canvasName)&&(identical(other.nodeId, nodeId) || other.nodeId == nodeId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.slotIndex, slotIndex) || other.slotIndex == slotIndex)&&(identical(other.durationMs, durationMs) || other.durationMs == durationMs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GalleryItem&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.relativePath, relativePath) || other.relativePath == relativePath)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.canvasName, canvasName) || other.canvasName == canvasName)&&(identical(other.nodeId, nodeId) || other.nodeId == nodeId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.slotIndex, slotIndex) || other.slotIndex == slotIndex)&&(identical(other.durationMs, durationMs) || other.durationMs == durationMs)&&(identical(other.thumbnailRelativePath, thumbnailRelativePath) || other.thumbnailRelativePath == thumbnailRelativePath));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,kind,relativePath,canvasId,canvasName,nodeId,createdAt,slotIndex,durationMs);
+int get hashCode => Object.hash(runtimeType,kind,relativePath,canvasId,canvasName,nodeId,createdAt,slotIndex,durationMs,thumbnailRelativePath);
 
 @override
 String toString() {
-  return 'GalleryItem(kind: $kind, relativePath: $relativePath, canvasId: $canvasId, canvasName: $canvasName, nodeId: $nodeId, createdAt: $createdAt, slotIndex: $slotIndex, durationMs: $durationMs)';
+  return 'GalleryItem(kind: $kind, relativePath: $relativePath, canvasId: $canvasId, canvasName: $canvasName, nodeId: $nodeId, createdAt: $createdAt, slotIndex: $slotIndex, durationMs: $durationMs, thumbnailRelativePath: $thumbnailRelativePath)';
 }
 
 
@@ -50,7 +52,7 @@ abstract mixin class $GalleryItemCopyWith<$Res>  {
   factory $GalleryItemCopyWith(GalleryItem value, $Res Function(GalleryItem) _then) = _$GalleryItemCopyWithImpl;
 @useResult
 $Res call({
- GalleryItemKind kind, String relativePath, String canvasId, String canvasName, String nodeId, DateTime createdAt, int? slotIndex, int? durationMs
+ GalleryItemKind kind, String relativePath, String canvasId, String canvasName, String nodeId, DateTime createdAt, int? slotIndex, int? durationMs, String? thumbnailRelativePath
 });
 
 
@@ -67,7 +69,7 @@ class _$GalleryItemCopyWithImpl<$Res>
 
 /// Create a copy of GalleryItem
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? relativePath = null,Object? canvasId = null,Object? canvasName = null,Object? nodeId = null,Object? createdAt = null,Object? slotIndex = freezed,Object? durationMs = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? relativePath = null,Object? canvasId = null,Object? canvasName = null,Object? nodeId = null,Object? createdAt = null,Object? slotIndex = freezed,Object? durationMs = freezed,Object? thumbnailRelativePath = freezed,}) {
   return _then(_self.copyWith(
 kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as GalleryItemKind,relativePath: null == relativePath ? _self.relativePath : relativePath // ignore: cast_nullable_to_non_nullable
@@ -77,7 +79,8 @@ as String,nodeId: null == nodeId ? _self.nodeId : nodeId // ignore: cast_nullabl
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,slotIndex: freezed == slotIndex ? _self.slotIndex : slotIndex // ignore: cast_nullable_to_non_nullable
 as int?,durationMs: freezed == durationMs ? _self.durationMs : durationMs // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,thumbnailRelativePath: freezed == thumbnailRelativePath ? _self.thumbnailRelativePath : thumbnailRelativePath // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -162,10 +165,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( GalleryItemKind kind,  String relativePath,  String canvasId,  String canvasName,  String nodeId,  DateTime createdAt,  int? slotIndex,  int? durationMs)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( GalleryItemKind kind,  String relativePath,  String canvasId,  String canvasName,  String nodeId,  DateTime createdAt,  int? slotIndex,  int? durationMs,  String? thumbnailRelativePath)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _GalleryItem() when $default != null:
-return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_that.nodeId,_that.createdAt,_that.slotIndex,_that.durationMs);case _:
+return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_that.nodeId,_that.createdAt,_that.slotIndex,_that.durationMs,_that.thumbnailRelativePath);case _:
   return orElse();
 
 }
@@ -183,10 +186,10 @@ return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( GalleryItemKind kind,  String relativePath,  String canvasId,  String canvasName,  String nodeId,  DateTime createdAt,  int? slotIndex,  int? durationMs)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( GalleryItemKind kind,  String relativePath,  String canvasId,  String canvasName,  String nodeId,  DateTime createdAt,  int? slotIndex,  int? durationMs,  String? thumbnailRelativePath)  $default,) {final _that = this;
 switch (_that) {
 case _GalleryItem():
-return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_that.nodeId,_that.createdAt,_that.slotIndex,_that.durationMs);case _:
+return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_that.nodeId,_that.createdAt,_that.slotIndex,_that.durationMs,_that.thumbnailRelativePath);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -203,10 +206,10 @@ return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_t
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( GalleryItemKind kind,  String relativePath,  String canvasId,  String canvasName,  String nodeId,  DateTime createdAt,  int? slotIndex,  int? durationMs)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( GalleryItemKind kind,  String relativePath,  String canvasId,  String canvasName,  String nodeId,  DateTime createdAt,  int? slotIndex,  int? durationMs,  String? thumbnailRelativePath)?  $default,) {final _that = this;
 switch (_that) {
 case _GalleryItem() when $default != null:
-return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_that.nodeId,_that.createdAt,_that.slotIndex,_that.durationMs);case _:
+return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_that.nodeId,_that.createdAt,_that.slotIndex,_that.durationMs,_that.thumbnailRelativePath);case _:
   return null;
 
 }
@@ -218,7 +221,7 @@ return $default(_that.kind,_that.relativePath,_that.canvasId,_that.canvasName,_t
 
 
 class _GalleryItem implements GalleryItem {
-  const _GalleryItem({required this.kind, required this.relativePath, required this.canvasId, required this.canvasName, required this.nodeId, required this.createdAt, this.slotIndex, this.durationMs});
+  const _GalleryItem({required this.kind, required this.relativePath, required this.canvasId, required this.canvasName, required this.nodeId, required this.createdAt, this.slotIndex, this.durationMs, this.thumbnailRelativePath});
   
 
 @override final  GalleryItemKind kind;
@@ -234,6 +237,9 @@ class _GalleryItem implements GalleryItem {
 @override final  int? slotIndex;
 /// 视频时长（毫秒）；未知为 null。
 @override final  int? durationMs;
+/// 视频首帧缩略图的 canvas 相对路径（GA-1：读节点已落库的
+/// thumbnail_url，非现场抽帧）；图片/未抽帧视频为 null。
+@override final  String? thumbnailRelativePath;
 
 /// Create a copy of GalleryItem
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +251,16 @@ _$GalleryItemCopyWith<_GalleryItem> get copyWith => __$GalleryItemCopyWithImpl<_
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryItem&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.relativePath, relativePath) || other.relativePath == relativePath)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.canvasName, canvasName) || other.canvasName == canvasName)&&(identical(other.nodeId, nodeId) || other.nodeId == nodeId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.slotIndex, slotIndex) || other.slotIndex == slotIndex)&&(identical(other.durationMs, durationMs) || other.durationMs == durationMs));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GalleryItem&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.relativePath, relativePath) || other.relativePath == relativePath)&&(identical(other.canvasId, canvasId) || other.canvasId == canvasId)&&(identical(other.canvasName, canvasName) || other.canvasName == canvasName)&&(identical(other.nodeId, nodeId) || other.nodeId == nodeId)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.slotIndex, slotIndex) || other.slotIndex == slotIndex)&&(identical(other.durationMs, durationMs) || other.durationMs == durationMs)&&(identical(other.thumbnailRelativePath, thumbnailRelativePath) || other.thumbnailRelativePath == thumbnailRelativePath));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,kind,relativePath,canvasId,canvasName,nodeId,createdAt,slotIndex,durationMs);
+int get hashCode => Object.hash(runtimeType,kind,relativePath,canvasId,canvasName,nodeId,createdAt,slotIndex,durationMs,thumbnailRelativePath);
 
 @override
 String toString() {
-  return 'GalleryItem(kind: $kind, relativePath: $relativePath, canvasId: $canvasId, canvasName: $canvasName, nodeId: $nodeId, createdAt: $createdAt, slotIndex: $slotIndex, durationMs: $durationMs)';
+  return 'GalleryItem(kind: $kind, relativePath: $relativePath, canvasId: $canvasId, canvasName: $canvasName, nodeId: $nodeId, createdAt: $createdAt, slotIndex: $slotIndex, durationMs: $durationMs, thumbnailRelativePath: $thumbnailRelativePath)';
 }
 
 
@@ -265,7 +271,7 @@ abstract mixin class _$GalleryItemCopyWith<$Res> implements $GalleryItemCopyWith
   factory _$GalleryItemCopyWith(_GalleryItem value, $Res Function(_GalleryItem) _then) = __$GalleryItemCopyWithImpl;
 @override @useResult
 $Res call({
- GalleryItemKind kind, String relativePath, String canvasId, String canvasName, String nodeId, DateTime createdAt, int? slotIndex, int? durationMs
+ GalleryItemKind kind, String relativePath, String canvasId, String canvasName, String nodeId, DateTime createdAt, int? slotIndex, int? durationMs, String? thumbnailRelativePath
 });
 
 
@@ -282,7 +288,7 @@ class __$GalleryItemCopyWithImpl<$Res>
 
 /// Create a copy of GalleryItem
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? kind = null,Object? relativePath = null,Object? canvasId = null,Object? canvasName = null,Object? nodeId = null,Object? createdAt = null,Object? slotIndex = freezed,Object? durationMs = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? kind = null,Object? relativePath = null,Object? canvasId = null,Object? canvasName = null,Object? nodeId = null,Object? createdAt = null,Object? slotIndex = freezed,Object? durationMs = freezed,Object? thumbnailRelativePath = freezed,}) {
   return _then(_GalleryItem(
 kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
 as GalleryItemKind,relativePath: null == relativePath ? _self.relativePath : relativePath // ignore: cast_nullable_to_non_nullable
@@ -292,7 +298,8 @@ as String,nodeId: null == nodeId ? _self.nodeId : nodeId // ignore: cast_nullabl
 as String,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as DateTime,slotIndex: freezed == slotIndex ? _self.slotIndex : slotIndex // ignore: cast_nullable_to_non_nullable
 as int?,durationMs: freezed == durationMs ? _self.durationMs : durationMs // ignore: cast_nullable_to_non_nullable
-as int?,
+as int?,thumbnailRelativePath: freezed == thumbnailRelativePath ? _self.thumbnailRelativePath : thumbnailRelativePath // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

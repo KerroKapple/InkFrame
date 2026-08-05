@@ -30,5 +30,9 @@ abstract class GalleryItem with _$GalleryItem {
 
     /// 视频时长（毫秒）；未知为 null。
     int? durationMs,
+
+    /// 视频首帧缩略图的 canvas 相对路径（GA-1：读节点已落库的
+    /// thumbnail_url，非现场抽帧）；图片/未抽帧视频为 null。
+    String? thumbnailRelativePath,
   }) = _GalleryItem;
 }

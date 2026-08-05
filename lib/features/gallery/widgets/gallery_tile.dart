@@ -1,7 +1,8 @@
-// GalleryTile：画廊网格单元——图片缩略 / 视频占位（图标+时长）+ 类型/画布名 caption。
+// GalleryTile：画廊网格单元——图片缩略 / 视频缩略图+播放（GA-1/2）+ 类型/画布名 caption。
 //
 // 图片经 fileResolverServiceProvider 解析后 Image.file 渲染（同 BatchResultsGrid），
-// 点击开图片 lightbox；视频首切片不接缩略图/播放（见 features/gallery/README.md）。
+// 点击开图片 lightbox；视频有已落库缩略图（thumbnail_url）则渲染缩略图 +
+// 播放/时长角标，点击经 existsSync 守卫开 video_lightbox，文件缺失显 broken 态。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -12,17 +13,28 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../canvas/widgets/video_lightbox.dart';
 import '../models/gallery_item.dart';
 import 'gallery_image_lightbox.dart';
 
-class GalleryTile extends ConsumerWidget {
+class GalleryTile extends ConsumerStatefulWidget {
   const GalleryTile({super.key, required this.projectId, required this.item});
 
   final String projectId;
   final GalleryItem item;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<GalleryTile> createState() => _GalleryTileState();
+}
+
+class _GalleryTileState extends ConsumerState<GalleryTile> {
+  /// 点击时视频文件缺失 → broken 态（预览区替换为 broken 图标）。
+  bool _videoBroken = false;
+
+  GalleryItem get item => widget.item;
+
+  @override
+  Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return DecoratedBox(
@@ -36,7 +48,7 @@ class GalleryTile extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: <Widget>[
-            Expanded(child: _preview(context, ref)),
+            Expanded(child: _preview(context)),
             Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: InkSpacing.sm,
@@ -70,21 +82,26 @@ class GalleryTile extends ConsumerWidget {
     );
   }
 
-  Widget _preview(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    if (item.kind == GalleryItemKind.video) {
-      return _videoPlaceholder(context, colors);
-    }
-    final File file;
+  /// canvas 双参根解析；非法路径 → null（渲染 broken 占位）。
+  File? _resolve(String relativePath) {
     try {
-      file = ref
-          .read(fileResolverServiceProvider)
-          .resolve(
-            projectId: projectId,
+      return ref.read(fileResolverServiceProvider).resolve(
+            projectId: widget.projectId,
             canvasId: item.canvasId,
-            relativePath: item.relativePath,
+            relativePath: relativePath,
           );
     } on PathSecurityError {
+      return null;
+    }
+  }
+
+  Widget _preview(BuildContext context) {
+    final colors = context.inkColors;
+    if (item.kind == GalleryItemKind.video) {
+      return _videoPreview(context, colors);
+    }
+    final file = _resolve(item.relativePath);
+    if (file == null) {
       return _iconPlaceholder(colors, Icons.broken_image_outlined);
     }
     return GestureDetector(
@@ -94,6 +111,72 @@ class GalleryTile extends ConsumerWidget {
         fit: BoxFit.cover,
         errorBuilder: (_, _, _) =>
             _iconPlaceholder(colors, Icons.broken_image_outlined),
+      ),
+    );
+  }
+
+  Widget _videoPreview(BuildContext context, InkColors colors) {
+    if (_videoBroken) {
+      return _iconPlaceholder(colors, Icons.broken_image_outlined);
+    }
+    final thumbRel = item.thumbnailRelativePath;
+    final thumb = thumbRel == null ? null : _resolve(thumbRel);
+    return GestureDetector(
+      onTap: _playVideo,
+      child: thumb == null
+          ? _videoPlaceholder(context, colors)
+          : Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Image.file(
+                  thumb,
+                  fit: BoxFit.cover,
+                  // 缩略图缺失/损坏 → 回退首切片占位（仍可点击播放）。
+                  errorBuilder: (_, _, _) =>
+                      _videoPlaceholder(context, colors),
+                ),
+                Center(
+                  child: Icon(
+                    Icons.play_circle_outline,
+                    color: colors.fg1,
+                    size: 36,
+                  ),
+                ),
+                if (item.durationMs != null)
+                  Positioned(
+                    right: InkSpacing.xs,
+                    bottom: InkSpacing.xs,
+                    child: _durationBadge(context, colors, item.durationMs!),
+                  ),
+              ],
+            ),
+    );
+  }
+
+  /// GA-2：existsSync 守卫 → video_lightbox（绝对路径一次性使用，不落状态）。
+  Future<void> _playVideo() async {
+    final file = _resolve(item.relativePath);
+    if (file == null || !file.existsSync()) {
+      setState(() => _videoBroken = true);
+      return;
+    }
+    if (!mounted) return;
+    await showVideoLightbox(context, videoPath: file.path);
+  }
+
+  Widget _durationBadge(BuildContext context, InkColors colors, int ms) {
+    final typo = context.inkTypography;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: colors.surface1.withValues(alpha: 0.8),
+        borderRadius: BorderRadius.circular(InkRadius.sm),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(InkSpacing.xs),
+        child: Text(
+          _fmtDuration(ms),
+          style: typo.caption.copyWith(color: colors.fg1),
+        ),
       ),
     );
   }
