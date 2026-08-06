@@ -1181,7 +1181,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showcaseTitle => '内置图片示例';
 
   @override
-  String get showcaseSubtitle => '由 Codex 内置生图工具生成，并随应用打包供本地预览；这些图片不是项目生成记录。';
+  String get showcaseSubtitle =>
+      '随应用打包的 AI 生成示例图，可离线预览；它们不是项目生成记录，也不需要 API Key。';
 
   @override
   String get showcaseBackTooltip => '返回工作室';

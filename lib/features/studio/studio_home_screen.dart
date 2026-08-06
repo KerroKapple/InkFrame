@@ -122,6 +122,9 @@ class _StudioMainArea extends ConsumerWidget {
                                 _showNewProjectDialog(context, ref, const []),
                             onCreateSample: () =>
                                 _createSampleProject(context, ref),
+                            onOpenShowcase: () => ref
+                                .read(currentScreenProvider.notifier)
+                                .state = AppScreen.showcase,
                           )
                         : _ProjectGrid(projects: projects),
                   ),
@@ -373,10 +376,12 @@ class _StudioEmptyState extends StatelessWidget {
   const _StudioEmptyState({
     required this.onCreate,
     required this.onCreateSample,
+    required this.onOpenShowcase,
   });
 
   final VoidCallback onCreate;
   final VoidCallback onCreateSample;
+  final VoidCallback onOpenShowcase;
 
   @override
   Widget build(BuildContext context) {
@@ -429,6 +434,13 @@ class _StudioEmptyState extends StatelessWidget {
                 label: context.l10n.studioCreateSampleProject,
                 icon: Icons.auto_awesome_outlined,
                 onPressed: onCreateSample,
+              ),
+              const SizedBox(height: InkSpacing.sm),
+              // 零项目用户的内置示例入口——项目卡 ⋮ 菜单此时不存在（评审 P1-1）。
+              InkGhostButton(
+                label: context.l10n.showcaseEntryLabel,
+                icon: Icons.photo_library_outlined,
+                onPressed: onOpenShowcase,
               ),
             ],
           ),

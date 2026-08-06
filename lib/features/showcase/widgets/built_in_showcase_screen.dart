@@ -1,12 +1,15 @@
-// Codex 内置生图示例页：展示随应用打包的本地预览资产。
+// 内置示例页：展示随应用打包的 AI 生成预览图。
 //
 // 这些图片不是项目生成记录，不进入 Gallery 聚合器，也不依赖用户 API Key。
+// 入口三处（零项目空态下项目卡菜单不存在，故三处并存）：
+// Studio 项目卡 ⋮ 菜单 / Studio 空态 CTA / 命令面板 studio 上下文。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/current_screen.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_card.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
 
@@ -110,6 +113,9 @@ class _ShowcaseCard extends StatelessWidget {
     required this.meta,
   });
 
+  /// 卡片最大显示宽（内容区 1280 双栏时宽卡约 800）——解码上限按它算。
+  static const double _cardMaxWidth = 820;
+
   final String assetPath;
   final double aspectRatio;
   final String title;
@@ -119,13 +125,10 @@ class _ShowcaseCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colors.surface2,
-        borderRadius: BorderRadius.circular(InkRadius.lg),
-        border: Border.all(color: colors.border),
-        boxShadow: InkShadow.card,
-      ),
+    // 用设计系统组件而非手搓 BoxDecoration（评审 P2-3：与 InkCard 逐字段重复,
+    // 违反 Components Over Primitives）。padding 归零让图铺满卡片。
+    return InkCard(
+      padding: EdgeInsets.zero,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(InkRadius.lg),
         child: Column(
@@ -136,6 +139,11 @@ class _ShowcaseCard extends StatelessWidget {
               child: Image.asset(
                 assetPath,
                 fit: BoxFit.cover,
+                // 按显示宽 × DPR 解码（ME-26 既有约定,同 node_card/
+                // video_node_body）：否则两张图全尺寸解码常驻 ≈9.4MB。
+                cacheWidth: (_cardMaxWidth *
+                        MediaQuery.devicePixelRatioOf(context))
+                    .round(),
                 semanticLabel: title,
                 errorBuilder: (_, _, _) => ColoredBox(
                   color: colors.surface3,

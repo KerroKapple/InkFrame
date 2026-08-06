@@ -92,7 +92,9 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   return switch (ref.read(currentScreenProvider)) {
     AppScreen.settings => <CommandAction>[_backToStudio(l)],
     AppScreen.showcase => <CommandAction>[_backToStudio(l), _openSettings(l)],
-    AppScreen.studio => <CommandAction>[_openSettings(l)],
+    // studio：内置示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
+    // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。
+    AppScreen.studio => <CommandAction>[_openShowcase(l), _openSettings(l)],
   };
 }
 
@@ -152,6 +154,15 @@ CommandAction _backToStudio(AppLocalizations l) => CommandAction(
                 (p) => p.copyWith(clearLastCanvas: true),
               ),
         );
+      },
+    );
+
+CommandAction _openShowcase(AppLocalizations l) => CommandAction(
+      id: 'openShowcase',
+      icon: Icons.photo_library_outlined,
+      label: l.showcaseEntryLabel,
+      run: (context, ref) async {
+        ref.read(currentScreenProvider.notifier).state = AppScreen.showcase;
       },
     );
 

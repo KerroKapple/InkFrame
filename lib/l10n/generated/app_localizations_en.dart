@@ -1229,7 +1229,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get showcaseSubtitle =>
-      'Generated with Codex\'s built-in image tool and bundled for local preview. These are not project generation records.';
+      'AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.';
 
   @override
   String get showcaseBackTooltip => 'Back to Studio';
