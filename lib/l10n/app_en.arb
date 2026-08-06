@@ -534,6 +534,15 @@
   "galleryKindImage": "Image",
   "galleryKindVideo": "Video",
 
+  "showcaseEntryLabel": "Built-in samples",
+  "showcaseTitle": "Built-in image samples",
+  "showcaseSubtitle": "AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.",
+  "showcaseBackTooltip": "Back to Studio",
+  "showcaseSquareTitle": "Mountain study",
+  "showcaseSquareMeta": "1:1 · Ink wash",
+  "showcaseWideTitle": "Storyboard establishing shot",
+  "showcaseWideMeta": "16:9 · Ink wash",
+
   "exportVideoTooltip": "Export video",
   "exportVideoDisabledTooltip": "No video results on this canvas yet",
   "exportVideoDialogTitle": "Export video",

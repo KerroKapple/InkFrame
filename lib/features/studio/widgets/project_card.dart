@@ -13,6 +13,7 @@ class StudioProjectCard extends StatelessWidget {
     required this.metaLine,
     required this.onTap,
     this.onOpenGallery,
+    this.onOpenShowcase,
     this.onRename,
     this.onDelete,
     this.onManageCanvases,
@@ -23,6 +24,7 @@ class StudioProjectCard extends StatelessWidget {
   final String metaLine;
   final VoidCallback onTap;
   final VoidCallback? onOpenGallery;
+  final VoidCallback? onOpenShowcase;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
   final VoidCallback? onManageCanvases;
@@ -60,6 +62,7 @@ class StudioProjectCard extends StatelessWidget {
                 ),
               ),
               if (onOpenGallery != null ||
+                  onOpenShowcase != null ||
                   onRename != null ||
                   onDelete != null ||
                   onManageCanvases != null ||
@@ -69,6 +72,7 @@ class StudioProjectCard extends StatelessWidget {
                   right: InkSpacing.xs,
                   child: _ProjectMenu(
                     onOpenGallery: onOpenGallery,
+                    onOpenShowcase: onOpenShowcase,
                     onRename: onRename,
                     onDelete: onDelete,
                     onManageCanvases: onManageCanvases,
@@ -110,12 +114,13 @@ class StudioProjectCard extends StatelessWidget {
   }
 }
 
-enum _ProjectAction { gallery, rename, canvases, export, delete }
+enum _ProjectAction { gallery, showcase, rename, canvases, export, delete }
 
 /// 项目卡右上角操作菜单（画廊 / 重命名 / 管理画布 / 导出 / 删除）；菜单点击不冒泡到卡片 onTap。
 class _ProjectMenu extends StatelessWidget {
   const _ProjectMenu({
     this.onOpenGallery,
+    this.onOpenShowcase,
     this.onRename,
     this.onDelete,
     this.onManageCanvases,
@@ -123,6 +128,7 @@ class _ProjectMenu extends StatelessWidget {
   });
 
   final VoidCallback? onOpenGallery;
+  final VoidCallback? onOpenShowcase;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
   final VoidCallback? onManageCanvases;
@@ -139,6 +145,8 @@ class _ProjectMenu extends StatelessWidget {
         switch (a) {
           case _ProjectAction.gallery:
             onOpenGallery?.call();
+          case _ProjectAction.showcase:
+            onOpenShowcase?.call();
           case _ProjectAction.rename:
             onRename?.call();
           case _ProjectAction.canvases:
@@ -154,6 +162,11 @@ class _ProjectMenu extends StatelessWidget {
           PopupMenuItem<_ProjectAction>(
             value: _ProjectAction.gallery,
             child: Text(context.l10n.galleryEntryLabel),
+          ),
+        if (onOpenShowcase != null)
+          PopupMenuItem<_ProjectAction>(
+            value: _ProjectAction.showcase,
+            child: Text(context.l10n.showcaseEntryLabel),
           ),
         if (onRename != null)
           PopupMenuItem<_ProjectAction>(

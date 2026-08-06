@@ -1222,6 +1222,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get galleryKindVideo => 'Video';
 
   @override
+  String get showcaseEntryLabel => 'Built-in samples';
+
+  @override
+  String get showcaseTitle => 'Built-in image samples';
+
+  @override
+  String get showcaseSubtitle =>
+      'AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.';
+
+  @override
+  String get showcaseBackTooltip => 'Back to Studio';
+
+  @override
+  String get showcaseSquareTitle => 'Mountain study';
+
+  @override
+  String get showcaseSquareMeta => '1:1 · Ink wash';
+
+  @override
+  String get showcaseWideTitle => 'Storyboard establishing shot';
+
+  @override
+  String get showcaseWideMeta => '16:9 · Ink wash';
+
+  @override
   String get exportVideoTooltip => 'Export video';
 
   @override

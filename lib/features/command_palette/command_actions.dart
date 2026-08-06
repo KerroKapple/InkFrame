@@ -43,6 +43,7 @@ class CommandAction {
 /// - canvas 打开：三种新建节点 + 导出视频（有可导出 result 时）+ 返回/设置
 /// - gallery：返回 Studio + 设置
 /// - settings：返回 Studio
+/// - showcase：返回 Studio + 设置
 /// - studio 首页：设置
 List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   final l = context.l10n;
@@ -90,7 +91,10 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   }
   return switch (ref.read(currentScreenProvider)) {
     AppScreen.settings => <CommandAction>[_backToStudio(l)],
-    AppScreen.studio => <CommandAction>[_openSettings(l)],
+    AppScreen.showcase => <CommandAction>[_backToStudio(l), _openSettings(l)],
+    // studio：内置示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
+    // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。
+    AppScreen.studio => <CommandAction>[_openShowcase(l), _openSettings(l)],
   };
 }
 
@@ -150,6 +154,15 @@ CommandAction _backToStudio(AppLocalizations l) => CommandAction(
                 (p) => p.copyWith(clearLastCanvas: true),
               ),
         );
+      },
+    );
+
+CommandAction _openShowcase(AppLocalizations l) => CommandAction(
+      id: 'openShowcase',
+      icon: Icons.photo_library_outlined,
+      label: l.showcaseEntryLabel,
+      run: (context, ref) async {
+        ref.read(currentScreenProvider.notifier).state = AppScreen.showcase;
       },
     );
 

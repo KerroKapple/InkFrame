@@ -496,6 +496,15 @@
   "galleryKindImage": "图片",
   "galleryKindVideo": "视频",
 
+  "showcaseEntryLabel": "内置示例",
+  "showcaseTitle": "内置图片示例",
+  "showcaseSubtitle": "随应用打包的 AI 生成示例图，可离线预览；它们不是项目生成记录，也不需要 API Key。",
+  "showcaseBackTooltip": "返回工作室",
+  "showcaseSquareTitle": "山水习作",
+  "showcaseSquareMeta": "1:1 · 水墨",
+  "showcaseWideTitle": "分镜建立镜头",
+  "showcaseWideMeta": "16:9 · 水墨",
+
   "exportVideoTooltip": "导出视频",
   "exportVideoDisabledTooltip": "画布上还没有视频生成结果",
   "exportVideoDialogTitle": "导出视频",

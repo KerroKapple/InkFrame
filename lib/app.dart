@@ -5,7 +5,7 @@
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
 // - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
 // - 锁屏后路由：currentCanvasId 优先；其次 currentGalleryProject（项目产物画廊）；
-//   否则按 currentScreenProvider 在 Studio / Settings 切换
+//   否则按 currentScreenProvider 在 Studio / Settings / Showcase 切换
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
 //   时以 StartupErrorView 替代白屏；loading/data 均照常进 _UnlockedShell
 // - 首帧闸门（ON-1，挂 DB-ready 之后）：onboardingCompleted=false → 弹首启向导并
@@ -32,6 +32,7 @@ import 'features/gallery/providers/current_gallery_project.dart';
 import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/showcase/widgets/built_in_showcase_screen.dart';
 import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
 import 'features/studio/studio_home_screen.dart';
@@ -164,6 +165,7 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
       body = switch (ref.watch(currentScreenProvider)) {
         AppScreen.studio => const Scaffold(body: StudioHomeScreen()),
         AppScreen.settings => const SettingsScreen(),
+        AppScreen.showcase => const Scaffold(body: BuiltInShowcaseScreen()),
       };
     }
     return CommandPaletteShortcuts(child: body);

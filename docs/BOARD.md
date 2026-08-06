@@ -108,7 +108,8 @@
 | **PR-4 画廊筛选/搜索 + 存为角色（Polish Wave 1;M4 GA-3/4）**：`GalleryFilter` 纯函数三轴过滤（kind/画布/canvasName 搜索,prompt 搜索 non-goal）+ 筛选条（分段/下拉/搜索框）+ no-match 态清除筛选;GA-4=image tile 菜单 → 命名对话框 → canvas charactersController.createFromImage（补偿在控制器,操作期 listenManual 保活防 autoDispose 竞态）;画廊根改 Material;ARB +7 键;评审 3×P1 全修（长画布名溢出/CharacterAssetError 逃逸/ref-after-dispose） | #210 |
 | **PR-6 MOD-1 OpenAI 直升 gpt-image-2（Polish Wave 1;死线卡:gpt-image-1 2026-10-23 弃用）**：模型 ID 换新（1.5 亦 2026-12-01 退役不过渡）;契约兼容零结构改动（同步 b64/quality/无 response_format）;16:9/9:16 改**真比例**尺寸 1536x864/864x1536（gpt-image-1 时代只能凑 3:2,分镜第一刚需）;CostModel 对齐官方 medium 档 $0.041;PROVIDER-API §9.2/§13 同步 | #211 |
 | **PR-7 LB-24 网络代理 P0（Polish Wave 1）**：`core/net/proxy_env.dart`——`proxyRuleFor` 纯函数（HTTPS_PROXY/HTTP_PROXY/ALL_PROXY/NO_PROXY 大小写双查,空串=显式禁用,凭据透传 `user:pass@`,loopback 恒直连,`*.glob`,解析不出目标才直连兜底——能解析但错误的值=连接错误同 curl）+ `applyEnvProxy` 挂 4 个 Dio 构造点（无代理变量时不动 adapter 保 dio 默认;注入 dio 零扰动）;接线层 e2e 双测（真 socket fake 代理/NO_PROXY 旁路）;SETUP.md 边界清单（SOCKS/端口段/CIDR 不支持,重启生效,TLS 拦截提示）;**P1 设置页代理区另卡** | #212 |
-| **PR-8 框架债三小件（Polish Wave 1 收官）**：债150 建点视口中心（三入口,逆变换+散布,矩阵单测）;债145 restore 守卫扩三导航信号;债158 三大重操作互斥反向补查（导出查 import+restore,备份/还原区查 import+export）;债156 atomicZipWrite 裁定拆独立卡（M 级另窗） | 本 PR |
+| **PR-8 框架债三小件（Polish Wave 1 收官）**：债150 建点视口中心（三入口,逆变换+散布,矩阵单测）;债145 restore 守卫扩三导航信号;债158 三大重操作互斥反向补查（导出查 import+restore,备份/还原区查 import+export）;债156 atomicZipWrite 裁定拆独立卡（M 级另窗） | #213 |
+| **内置示例页（Codex 协作产出;DEMO-1 前哨）**：随包 AI 生成双图（1024² + 1536×864,`assets/showcase/`,无第三方版权不进 THIRD-PARTY）→ 只读展示页（不进 Gallery 聚合、不依赖 API Key）;入口三处（项目卡 ⋮ / **Studio 空态 CTA** / 命令面板 studio 上下文——零项目用户也够得到,评审 P1-1）;ARB 8 键 + 路由 `AppScreen.showcase`;评审修:出货文案去掉第三方工具名、InkCard 复用、ME-26 按宽解码、资产打包守卫测、路由+单栏分支补测。**演示内容规划见 `docs/superpowers/specs/2026-08-06-demo-content-brief.md`（3 模板 22 张 prompt + createSample v2 集成规格,待开卡）** | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 

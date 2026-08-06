@@ -1175,6 +1175,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryKindVideo => '视频';
 
   @override
+  String get showcaseEntryLabel => '内置示例';
+
+  @override
+  String get showcaseTitle => '内置图片示例';
+
+  @override
+  String get showcaseSubtitle =>
+      '随应用打包的 AI 生成示例图，可离线预览；它们不是项目生成记录，也不需要 API Key。';
+
+  @override
+  String get showcaseBackTooltip => '返回工作室';
+
+  @override
+  String get showcaseSquareTitle => '山水习作';
+
+  @override
+  String get showcaseSquareMeta => '1:1 · 水墨';
+
+  @override
+  String get showcaseWideTitle => '分镜建立镜头';
+
+  @override
+  String get showcaseWideMeta => '16:9 · 水墨';
+
+  @override
   String get exportVideoTooltip => '导出视频';
 
   @override

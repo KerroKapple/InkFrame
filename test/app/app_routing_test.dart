@@ -27,6 +27,7 @@ import 'package:inkframe/core/models/custom_provider_config.dart';
 import 'package:inkframe/services/ffmpeg_locator.dart';
 import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
+import 'package:inkframe/features/showcase/widgets/built_in_showcase_screen.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 import 'package:postgres/postgres.dart';
@@ -175,5 +176,69 @@ void main() {
 
     expect(find.byType(GalleryScreen), findsOneWidget);
     expect(find.byType(StudioHomeScreen), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // 评审 P1-2：新增 AppScreen.showcase 此前 shell 路由零覆盖——把 app.dart:168
+  // 的分支改成渲染别的页,全量测试照样绿。本例与下一例把它钉死。
+  testWidgets('unlocked + showcase → 渲染 BuiltInShowcaseScreen', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final paths = await _setupPaths(tester, 'ink_route_showcase_');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          appPathsProvider.overrideWithValue(paths),
+          _onboardingDone(),
+          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
+          currentScreenProvider.overrideWith((_) => AppScreen.showcase),
+          currentCanvasIdProvider.overrideWith((_) => null),
+          orphanReapStartupProvider.overrideWith((_) async {}),
+          _sealDbReady(),
+          workspaceProjectsProvider
+              .overrideWith((_) async => const <ProjectWithCanvases>[]),
+        ],
+        child: const InkFrameApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(BuiltInShowcaseScreen), findsOneWidget);
+    expect(find.byType(StudioHomeScreen), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('画布优先级高于 showcase：canvasId 非空时不渲染示例页', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final paths = await _setupPaths(tester, 'ink_route_showcase_prio_');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          appPathsProvider.overrideWithValue(paths),
+          _onboardingDone(),
+          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
+          // screen=showcase 但画布已打开 → 画布赢（app.dart 路由优先级）。
+          currentScreenProvider.overrideWith((_) => AppScreen.showcase),
+          currentCanvasIdProvider.overrideWith((_) => 'cv-1'),
+          orphanReapStartupProvider.overrideWith((_) async {}),
+          _sealDbReady(),
+          workspaceProjectsProvider
+              .overrideWith((_) async => const <ProjectWithCanvases>[]),
+          canvasRepositoryProvider
+              .overrideWith((_) async => InMemoryCanvasRepository()),
+          nodeRepositoryProvider
+              .overrideWith((_) async => InMemoryNodeRepository()),
+          batchResultRepositoryProvider
+              .overrideWith((_) async => FakeBatchResultRepo()),
+        ],
+        child: const InkFrameApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(BuiltInShowcaseScreen), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }
