@@ -43,6 +43,7 @@ class CommandAction {
 /// - canvas 打开：三种新建节点 + 导出视频（有可导出 result 时）+ 返回/设置
 /// - gallery：返回 Studio + 设置
 /// - settings：返回 Studio
+/// - showcase：返回 Studio + 设置
 /// - studio 首页：设置
 List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   final l = context.l10n;
@@ -90,6 +91,7 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   }
   return switch (ref.read(currentScreenProvider)) {
     AppScreen.settings => <CommandAction>[_backToStudio(l)],
+    AppScreen.showcase => <CommandAction>[_backToStudio(l), _openSettings(l)],
     AppScreen.studio => <CommandAction>[_openSettings(l)],
   };
 }

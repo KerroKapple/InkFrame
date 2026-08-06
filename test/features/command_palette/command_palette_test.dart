@@ -128,6 +128,19 @@ void main() {
     expect(container.read(currentScreenProvider), AppScreen.settings);
   });
 
+  testWidgets('showcase 上下文可返回 Studio 或打开设置', (tester) async {
+    final container = await _pumpShell(tester);
+    container.read(currentScreenProvider.notifier).state = AppScreen.showcase;
+    await _pressCtrlK(tester);
+
+    expect(find.text('Back to Studio'), findsOneWidget);
+    expect(find.text('Open settings'), findsOneWidget);
+
+    await tester.tap(find.text('Back to Studio'));
+    await tester.pumpAndSettle();
+    expect(container.read(currentScreenProvider), AppScreen.studio);
+  });
+
   testWidgets('canvas 上下文动作集：三种新建节点 + 返回/设置；无可导出节点时不出 Export video',
       (tester) async {
     final container = await _pumpShell(tester, overrides: <Override>[

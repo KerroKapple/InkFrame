@@ -639,6 +639,9 @@ class _ProjectGrid extends ConsumerWidget {
               onOpenGallery: () => ref
                   .read(currentGalleryProjectProvider.notifier)
                   .state = (id: p.id, name: p.name),
+              onOpenShowcase: () =>
+                  ref.read(currentScreenProvider.notifier).state =
+                      AppScreen.showcase,
               onRename: () => _renameProject(context, ref, p),
               onExport: () => _exportProject(context, ref, p),
               onManageCanvases: () => showDialog<void>(

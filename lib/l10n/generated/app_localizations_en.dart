@@ -1222,6 +1222,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get galleryKindVideo => 'Video';
 
   @override
+  String get showcaseEntryLabel => 'Built-in samples';
+
+  @override
+  String get showcaseTitle => 'Built-in image samples';
+
+  @override
+  String get showcaseSubtitle =>
+      'Generated with Codex\'s built-in image tool and bundled for local preview. These are not project generation records.';
+
+  @override
+  String get showcaseBackTooltip => 'Back to Studio';
+
+  @override
+  String get showcaseSquareTitle => 'Mountain study';
+
+  @override
+  String get showcaseSquareMeta => '1:1 · Ink wash';
+
+  @override
+  String get showcaseWideTitle => 'Storyboard establishing shot';
+
+  @override
+  String get showcaseWideMeta => '16:9 · Ink wash';
+
+  @override
   String get exportVideoTooltip => 'Export video';
 
   @override

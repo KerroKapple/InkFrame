@@ -2276,6 +2276,54 @@ abstract class AppLocalizations {
   /// **'Video'**
   String get galleryKindVideo;
 
+  /// No description provided for @showcaseEntryLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in samples'**
+  String get showcaseEntryLabel;
+
+  /// No description provided for @showcaseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in image samples'**
+  String get showcaseTitle;
+
+  /// No description provided for @showcaseSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated with Codex\'s built-in image tool and bundled for local preview. These are not project generation records.'**
+  String get showcaseSubtitle;
+
+  /// No description provided for @showcaseBackTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Studio'**
+  String get showcaseBackTooltip;
+
+  /// No description provided for @showcaseSquareTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Mountain study'**
+  String get showcaseSquareTitle;
+
+  /// No description provided for @showcaseSquareMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'1:1 · Ink wash'**
+  String get showcaseSquareMeta;
+
+  /// No description provided for @showcaseWideTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Storyboard establishing shot'**
+  String get showcaseWideTitle;
+
+  /// No description provided for @showcaseWideMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'16:9 · Ink wash'**
+  String get showcaseWideMeta;
+
   /// No description provided for @exportVideoTooltip.
   ///
   /// In en, this message translates to:

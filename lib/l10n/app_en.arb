@@ -534,6 +534,15 @@
   "galleryKindImage": "Image",
   "galleryKindVideo": "Video",
 
+  "showcaseEntryLabel": "Built-in samples",
+  "showcaseTitle": "Built-in image samples",
+  "showcaseSubtitle": "Generated with Codex's built-in image tool and bundled for local preview. These are not project generation records.",
+  "showcaseBackTooltip": "Back to Studio",
+  "showcaseSquareTitle": "Mountain study",
+  "showcaseSquareMeta": "1:1 · Ink wash",
+  "showcaseWideTitle": "Storyboard establishing shot",
+  "showcaseWideMeta": "16:9 · Ink wash",
+
   "exportVideoTooltip": "Export video",
   "exportVideoDisabledTooltip": "No video results on this canvas yet",
   "exportVideoDialogTitle": "Export video",

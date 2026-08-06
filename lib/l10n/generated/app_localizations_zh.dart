@@ -1175,6 +1175,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryKindVideo => '视频';
 
   @override
+  String get showcaseEntryLabel => '内置示例';
+
+  @override
+  String get showcaseTitle => '内置图片示例';
+
+  @override
+  String get showcaseSubtitle => '由 Codex 内置生图工具生成，并随应用打包供本地预览；这些图片不是项目生成记录。';
+
+  @override
+  String get showcaseBackTooltip => '返回工作室';
+
+  @override
+  String get showcaseSquareTitle => '山水习作';
+
+  @override
+  String get showcaseSquareMeta => '1:1 · 水墨';
+
+  @override
+  String get showcaseWideTitle => '分镜建立镜头';
+
+  @override
+  String get showcaseWideMeta => '16:9 · 水墨';
+
+  @override
   String get exportVideoTooltip => '导出视频';
 
   @override

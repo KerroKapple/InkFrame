@@ -256,6 +256,8 @@ lib/
 │   │   ├── settings_screen.dart
 │   │   ├── providers/
 │   │   └── widgets/
+│   ├── showcase/                      # Bundled Codex image samples (local preview; no project records/API key)
+│   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
 │   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
 │   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
