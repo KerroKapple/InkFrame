@@ -5,7 +5,8 @@
 //
 // 纯 UI 层：持久化与提交状态机委托 InspectorSubmitController(nodeId)，
 // 与 ImageConfigInspector 共享同一控制器和 InspectorStatusBinding。
-// camera 枚举经 ARB 映射展示，不直出枚举名。
+// camera 枚举经 `util/camera_labels.dart` 映射展示（SB-3 起与 shot 面板共享），
+// 不直出枚举名。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,24 +21,9 @@ import '../../../theme/tokens.dart';
 import '../../generation/services/cost_estimator.dart';
 import '../models/canvas_node.dart';
 import '../providers/inspector_submit_controller.dart';
+import '../util/camera_labels.dart';
 import 'inspector_status_panel.dart';
 import 'node_inputs_section.dart';
-
-/// CameraMovement → 用户可读文案。exhaustive switch，新枚举漏映射编译期报错。
-String cameraMovementLabel(BuildContext context, CameraMovement camera) {
-  final l = context.l10n;
-  return switch (camera) {
-    CameraMovement.static_ => l.cameraStatic,
-    CameraMovement.pushIn => l.cameraPushIn,
-    CameraMovement.pullOut => l.cameraPullOut,
-    CameraMovement.panLeft => l.cameraPanLeft,
-    CameraMovement.panRight => l.cameraPanRight,
-    CameraMovement.tiltUp => l.cameraTiltUp,
-    CameraMovement.tiltDown => l.cameraTiltDown,
-    CameraMovement.orbit => l.cameraOrbit,
-    CameraMovement.handheld => l.cameraHandheld,
-  };
-}
 
 class VideoConfigInspector extends ConsumerStatefulWidget {
   const VideoConfigInspector({super.key, required this.node});

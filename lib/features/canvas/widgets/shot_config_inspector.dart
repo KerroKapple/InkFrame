@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
@@ -20,6 +21,7 @@ import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/inspector_submit_controller.dart';
+import '../util/camera_labels.dart';
 
 class ShotConfigInspector extends ConsumerStatefulWidget {
   const ShotConfigInspector({super.key, required this.node});
@@ -31,16 +33,42 @@ class ShotConfigInspector extends ConsumerStatefulWidget {
       _ShotConfigInspectorState();
 }
 
+/// 分镜可选时长档（秒）。这里是**导演意图**，不是 provider 能力表——
+/// shot 阶段还没选 provider。真正的可用集在 video inspector 按
+/// `supportedDurations` 钳制（SB-4 由本节点直达视频时也走那条钳制）。
+const List<int> kShotDurationOptions = <int>[3, 5, 10, 15];
+
 class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
   final TextEditingController _notesCtrl = TextEditingController();
   Timer? _debounce;
   bool _busy = false;
+  int? _durationSec;
+  CameraMovement? _camera;
 
   @override
   void initState() {
     super.initState();
-    final n = widget.node.typeConfig['shot_notes'];
+    final tc = widget.node.typeConfig;
+    final n = tc['shot_notes'];
     if (n is String) _notesCtrl.text = n;
+
+    // duration_ms 与 video 面板同键同单位（毫秒）——SB-4 直达视频时原样透传。
+    // 不在档位表里的历史值不硬塞进下拉（会触发 DropdownButton 的
+    // "value 不在 items" 断言），当作未设置。
+    final ms = tc['duration_ms'];
+    final sec = ms is int ? ms ~/ 1000 : null;
+    _durationSec = kShotDurationOptions.contains(sec) ? sec : null;
+
+    _camera = _parseCamera(tc['camera']);
+  }
+
+  /// 存的是枚举 name；认不出的值（手改 JSON / 未来枚举回滚）当未设置，不抛。
+  CameraMovement? _parseCamera(Object? raw) {
+    if (raw is! String) return null;
+    for (final c in CameraMovement.values) {
+      if (c.name == raw) return c;
+    }
+    return null;
   }
 
   @override
@@ -48,6 +76,16 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
     _debounce?.cancel();
     _notesCtrl.dispose();
     super.dispose();
+  }
+
+  /// 立即落盘（下拉是离散选择，不需要防抖）。saveConfig 内部已吞异常，
+  /// 自动保存是 best-effort。
+  void _save(Map<String, Object?> patch) {
+    unawaited(
+      ref
+          .read(inspectorSubmitControllerProvider(widget.node.id).notifier)
+          .saveConfig(patch),
+    );
   }
 
   void _onChanged(String value) {
@@ -146,6 +184,69 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
               minLines: 4,
               maxLines: 10,
               onChanged: _onChanged,
+            ),
+            const SizedBox(height: InkSpacing.lg),
+            Text(
+              context.l10n.inspectorShotDurationLabel,
+              style: typo.caption.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            DropdownButton<int?>(
+              value: _durationSec,
+              isExpanded: true,
+              items: <DropdownMenuItem<int?>>[
+                DropdownMenuItem<int?>(
+                  child: Text(context.l10n.inspectorShotParamUnset),
+                ),
+                for (final d in kShotDurationOptions)
+                  DropdownMenuItem<int?>(
+                    value: d,
+                    child: Text(context.l10n.inspectorVideoDurationOption(d)),
+                  ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (v) {
+                      setState(() => _durationSec = v);
+                      // 清空写 null 而不是省略键——省略会让 saveConfig 的
+                      // merge 保留旧值，用户点了「未设置」却清不掉。
+                      _save(<String, Object?>{
+                        'duration_ms': v == null ? null : v * 1000,
+                      });
+                    },
+            ),
+            const SizedBox(height: InkSpacing.md),
+            Text(
+              context.l10n.inspectorShotCameraLabel,
+              style: typo.caption.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            // 列**全量**枚举：shot 记的是意图，此刻还没选 provider。
+            // 生成时由 video inspector 的 supportedCameras 钳制收口。
+            DropdownButton<CameraMovement?>(
+              value: _camera,
+              isExpanded: true,
+              items: <DropdownMenuItem<CameraMovement?>>[
+                DropdownMenuItem<CameraMovement?>(
+                  child: Text(context.l10n.inspectorShotParamUnset),
+                ),
+                for (final c in CameraMovement.values)
+                  DropdownMenuItem<CameraMovement?>(
+                    value: c,
+                    child: Text(cameraMovementLabel(context, c)),
+                  ),
+              ],
+              onChanged: _busy
+                  ? null
+                  : (v) {
+                      setState(() => _camera = v);
+                      _save(<String, Object?>{'camera': v?.name});
+                    },
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            Text(
+              context.l10n.inspectorShotParamHint,
+              style: typo.caption.copyWith(color: colors.fg4),
             ),
             const SizedBox(height: InkSpacing.lg),
             FilledButton.icon(

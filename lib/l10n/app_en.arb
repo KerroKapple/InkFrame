@@ -294,6 +294,10 @@
   "inspectorShotNotesHint": "Describe this shot (camera, action, mood)…",
   "inspectorShotGenerateImage": "Generate image from notes",
   "inspectorShotLinkFailed": "Image node added, but linking failed",
+  "inspectorShotDurationLabel": "Intended duration",
+  "inspectorShotCameraLabel": "Intended camera movement",
+  "inspectorShotParamUnset": "Not set",
+  "inspectorShotParamHint": "Recorded as intent — the provider you pick when generating decides what is actually supported.",
 
   "canvasAddImageNode": "Add image node",
   "canvasAddVideoNode": "Add video node",

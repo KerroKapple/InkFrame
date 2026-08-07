@@ -285,6 +285,10 @@
   "inspectorShotNotesHint": "描述这个分镜（机位、动作、氛围）…",
   "inspectorShotGenerateImage": "用备注生成图片",
   "inspectorShotLinkFailed": "图片节点已创建，连线失败",
+  "inspectorShotDurationLabel": "预期时长",
+  "inspectorShotCameraLabel": "预期运镜",
+  "inspectorShotParamUnset": "未设置",
+  "inspectorShotParamHint": "这里记的是意图——真正能不能做到，由生成时选的 provider 决定。",
 
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
