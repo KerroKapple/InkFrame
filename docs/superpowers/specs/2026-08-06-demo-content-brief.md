@@ -7,23 +7,20 @@
 
 ---
 
-## 0. 执行前必读：当前工作区状态
+## 0. 执行前必读：当前状态与一期范围
 
-`git status` 显示 **main 分支上有一批未提交改动**（showcase 页 + 两张图 + ARB + 路由 + 测试，
-12 文件 / +422 −188）。仓库铁律是 **main 保护、所有改动走 feature 分支 + PR**
-（`docs/CLAUDE.md` Git 节）。
+**状态（2026-08-07 更新）**：showcase 页 + 两张随包图已随 **PR #214（`d2afb2d`）合入 main**，
+工作区干净。本节初版写的「main 上有未提交改动、先切分支挪走」那段指令**已作废**，勿再执行。
 
-**第一步必须先把它挪走**：
+`assets/showcase/` 的两张图（`ink-wash-mountains-square.jpg` 1024²/246KB、
+`ink-wash-storyboard-wide.jpg` 1536×864/297KB）现由内置示例页在用，**原位不动**；
+它们同时是模板一的画风基准，见 §A.1「已有资产的处置」。
 
-```bash
-git checkout -b feat/demo-showcase        # 从当前 main（含未提交改动）切出分支
-git add -A && git commit -m "feat(showcase): 内置出图示例页 + 双图资产"
-# 之后照常 push → PR → CI 五件套绿 → squash 合并
-```
+**一期范围（当前要执行的）**：只做 **模板一 `homecoming` 的 8 张图**（§A.3）+ 其集成（Part B）。
+模板二 `echo-station`、模板三 `morning-tram` 的 prompt 已写全并保留在本文档 §A.4 / §A.5，
+**二期再出**——一次性 +4.5MB 进安装包不划算，且一期若要改规格只返工 8 张。
 
-已存在的两张图 `assets/showcase/ink-wash-mountains-square.jpg`（1024²、246KB）与
-`ink-wash-storyboard-wide.jpg`（1536×864、297KB）**保留复用**——它们正好是本说明书
-模板一的画风基准，见 §A.1「已有资产的处置」。
+**投喂 Codex 的指令块见 §A.0**（一期只需读 §A.0 + §A.3 两节）。
 
 > ⚠️ 另请注意：这两张图**不能**用来给 BOARD 的 MOD-1「真 key 冒烟」验收项打勾。
 > 那一项要的是「InkFrame 发出的准确请求体被 OpenAI API 接受」的证据（HTTP 200 +
@@ -33,7 +30,99 @@ git add -A && git commit -m "feat(showcase): 内置出图示例页 + 双图资�
 
 # Part A — 出图任务
 
+## A.0 一期投喂指令（给 Codex 的完整任务书）
+
+> 一期只做模板一。Codex 执行时只需要本节 + §A.3 的 8 条 prompt，其余章节可不读。
+
+### 任务
+
+用内置出图能力生成 **8 张图**：6 张分镜 + 2 张角色参考。prompt 在 **§A.3**，逐条原样复制，
+一条一张，不改写、不合并、不精简。
+
+### 产物落点（严格照此路径与命名，大小写敏感）
+
+```
+assets/samples/homecoming/
+├── shot-01.jpg
+├── shot-02.jpg
+├── shot-03.jpg
+├── shot-04.jpg
+├── shot-05.jpg
+├── shot-06.jpg
+├── character-portrait.jpg     # §A.3「角色参考图」第一条（半身）
+└── character-full.jpg         # §A.3「角色参考图」第二条（全身）
+```
+
+`assets/samples/` 目录当前**不存在**，需新建。文件名与 §A.3 的小标题一一对应：
+`shot-0N.jpg` 对应 §A.3「出图 prompt」里的 **shot-0N**。
+
+### 规格
+
+| 项 | 分镜图 `shot-0N.jpg` | 角色参考图 `character-*.jpg` |
+|---|---|---|
+| 像素尺寸 | **1536 × 864**（严格，验收会逐张读像素） | **1024 × 1024**（严格） |
+| 格式 | JPEG | JPEG |
+| 单张体积 | **≤ 220 KB** | **≤ 160 KB** |
+
+**体积超了就降 JPEG 质量重存（从 ~78 往下调），绝不改像素尺寸。** 尺寸不对 = 验收直接打回。
+8 张合计应 ≈ 1.6–1.8 MB。
+
+### 这些图会出现在哪里（决定构图取向，务必读）
+
+**不是给内置示例页用的**——那页用的是 `assets/showcase/` 的两张，本次不动它。
+
+这 8 张的去处是 **「创建示例项目」**：用户点「创建示例项目」后，程序会把这些字节写进用户的
+项目目录，于是画布上直接呈现一条完整分镜链——
+
+- 6 张分镜图 → 6 个 **image result 节点**的成品图，挂在对应 shot 节点下方
+- 2 张角色图 → 项目角色**「蓑衣旅人」**的参考图，在角色区展示
+- 6 张分镜图同时进**画廊**，可筛选、可「存为角色」
+
+因此每张图要同时经得起**两种观看尺度**：
+
+1. **画布节点卡缩略图（约 260 px 宽）** —— 主体缩到这个尺寸仍要一眼可辨。避免「整幅都是细密
+   皴擦纹理、主体淹没其中」；旅人身上那抹红要在缩略图上仍然看得见。
+2. **画廊大图预览（全屏）** —— 细节要经得起放大。
+
+配套两条硬要求：
+
+- **主体不要贴边**：节点卡按 16:9 等比显示、画廊可能有轻微裁切，四周留出安全边距
+- **不要在画面里写字**：任何文字（标题、字幕、水印、签名、伪汉字）都不要出现——它们在缩略图上
+  变成噪点，且我们无法对其做 i18n
+
+### 不要做的事（越界会被打回）
+
+- ❌ **不要动 git**：不建分支、不 `add`、不 `commit`、不 `push`。图由我方随 Part B 集成 PR
+  一起提交——单独的资产 PR 既没进 `pubspec.yaml` 也没有测试引用，是死重。
+- ❌ **不要改任何代码**：`.dart` / `pubspec.yaml` / ARB / 测试一律不碰。一期出图任务的产出
+  **只有 8 个 jpg 文件**，`git status` 应当只多出 `assets/samples/homecoming/` 一个未跟踪目录。
+- ❌ **不要动 `assets/showcase/`** 的两张已发布资产。
+- ❌ **不要把图放到 `assets/samples/homecoming/` 以外的任何位置**（含临时目录、桌面、下载夹）。
+- ❌ **不要顺手把模板二/三也生成了**（§A.4 / §A.5 是二期的，现在出了也用不上，白烧）。
+- ❌ **不要简写 prompt**。跨请求没有上下文，写 `the same traveler` 必然画出另一个人；
+  斗笠 / 蓑衣 / **红围巾** / 竹杖行囊这几个锚点词一个都不能删。
+
+### 允许的自由裁量
+
+- 单张跑偏就**重抽那一张**，不用重跑整组。水墨风对细节宽容，「一眼看得出是同一个人」即达标。
+- 出图模型若因内容策略拒绝某条 prompt：把**动作描述**改温和些重试，**角色描述保持原样**。
+- 同一模板尽量在一次会话里连续生成，中途不改风格串措辞。
+
+### 交付回报格式（照抄这张表填，我据此验收）
+
+| 文件 | 像素尺寸 | 字节数 | 重抽次数 |
+|---|---|---|---|
+| shot-01.jpg | | | |
+| …（8 行填满） | | | |
+
+若你的环境读不到像素尺寸，只填字节数即可，尺寸由我方逐张解码核验。另外请一并说明：
+
+1. 有没有哪条 prompt 被模型拒绝过、你如何改的（原话贴出来）
+2. 有没有哪张你自己觉得角色一致性存疑
+
 ## A.1 交付总表
+
+> **本节是全量口径（三模板 22 张）。一期只出下表第一行的 8 张**——执行口径以 §A.0 为准。
 
 三个故事模板，每个 = N 张分镜图 + 2 张角色参考图。
 
@@ -283,13 +372,99 @@ Soft watercolor anime style, warm morning light, gentle pastel palette, delicate
 Soft watercolor anime style, warm morning light, gentle pastel palette, delicate line work. Closing shot at a bakery storefront: a young baker's apprentice girl with dark hair in a single braid tied with a yellow ribbon and a flour-dusted white apron over a soft blue dress, holding the shop door open with a bright smile as the first customer steps in. Fresh loaves steaming in the window display, the orange tabby cat with a white chest patch sitting by the doorway. Warm morning light floods the entrance. Horizontal 16:9 framing.
 ```
 
-## A.6 A 部分验收
+## A.6 A 部分验收（全量三模板，**二期**收口用）
 
 - [ ] 22 张图齐全，命名与目录严格按 §A.1
 - [ ] 尺寸正确（分镜 1536×864、角色 1024×1024），单张不超体积上限
 - [ ] 同模板内主角**一眼可辨为同一人**（不追求像素级一致）
 - [ ] 三个模板画风彼此明显不同
 - [ ] 无水印、无签名、无可辨识的第三方 IP 元素
+
+## A.7 一期验收（模板一 8 张 · 我方执行）
+
+分两档：**机器判定**的直接跑测试，**目视判定**的逐张看。机器档不过就退回重出，不进目视档。
+
+### 机器判定（4 条，测试即闸门）
+
+下面这个测试文件随 Part B 集成 PR 落地为 `test/features/studio/sample_assets_test.dart`
+（沿用 `test/features/showcase/showcase_assets_test.dart` 的守卫思路：**尺寸/体积/存在性/
+pubspec 声明**四条一次钉死，防止有人日后换图换崩、或漏声明导致打包后全是 broken 占位）：
+
+```dart
+// 一期示例资产守卫：尺寸、体积、齐全性、pubspec 声明。
+import 'dart:io';
+import 'dart:ui' as ui;
+
+import 'package:flutter_test/flutter_test.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const dir = 'assets/samples/homecoming';
+
+  Future<ui.Image> decode(File f) async {
+    final codec = await ui.instantiateImageCodec(await f.readAsBytes());
+    return (await codec.getNextFrame()).image;
+  }
+
+  Future<void> check(
+    String name, {
+    required int w,
+    required int h,
+    required int maxKb,
+  }) async {
+    final f = File('$dir/$name');
+    expect(f.existsSync(), isTrue, reason: '缺图：$dir/$name');
+    expect(f.lengthSync(), lessThanOrEqualTo(maxKb * 1024),
+        reason: '$name 超体积上限 ${maxKb}KB（实际 ${f.lengthSync() ~/ 1024}KB）');
+    final img = await decode(f);
+    expect(img.width, w, reason: '$name 宽应为 $w,实际 ${img.width}');
+    expect(img.height, h, reason: '$name 高应为 $h,实际 ${img.height}');
+  }
+
+  test('分镜图 6 张：1536×864 / ≤220KB', () async {
+    for (var i = 1; i <= 6; i++) {
+      await check('shot-0$i.jpg', w: 1536, h: 864, maxKb: 220);
+    }
+  });
+
+  test('角色参考图 2 张：1024×1024 / ≤160KB', () async {
+    for (final n in ['character-portrait.jpg', 'character-full.jpg']) {
+      await check(n, w: 1024, h: 1024, maxKb: 160);
+    }
+  });
+
+  test('pubspec.yaml 声明了 assets/samples/homecoming/', () {
+    expect(
+      File('pubspec.yaml').readAsStringSync().contains('- $dir/'),
+      isTrue,
+      reason: 'pubspec 未声明 $dir/ → 打包后示例图全变 broken 占位',
+    );
+  });
+}
+```
+
+> 若 `ui.instantiateImageCodec` 在当前 test binding 下不可用，退化方案是纯 Dart 解析 JPEG
+> 的 SOFn 段读宽高（无需新依赖），断言不变。
+
+第 4 条机器判定不在上面的测试里，验收时手工跑一次：
+
+```bash
+git status --short assets/    # 期望只多出 assets/samples/homecoming/ 8 个未跟踪文件,别的一律没有
+```
+
+### 目视判定（3 条）
+
+- [ ] **角色一致性**：6 张分镜 + 2 张角色图里的旅人一眼可辨为同一人（斗笠 / 蓑衣 / 红围巾
+      三锚点齐全；不追求像素级一致）
+- [ ] **缩略图可读性**：把每张缩到 260 px 宽看一眼，主体仍可辨、红围巾仍可见
+- [ ] **干净**：画面内无文字/字幕/水印/签名/伪汉字，无可辨识的第三方 IP 元素
+
+### 验收通过之后
+
+图不单独提 PR。直接进 Part B 集成分支 `feat/demo-sample-storyboard`，与
+`pubspec.yaml` 声明、`createSample` v2、ARB 新键、上面这个守卫测试**同一个 PR** 落地——
+这样 CI 才真正跑到这些资产，而不是让它们在仓库里躺成无人引用的死重。
 
 ---
 
@@ -462,3 +637,4 @@ i18n（`docs/CLAUDE.md` i18n 节）。作为英文常量放在 `lib/features/stu
 |---|---|---|
 | 2026-08-06 | 初版：A 出图任务（3 模板 22 张全 prompt）+ B 集成任务（一期只集成 homecoming） | Claude |
 | 2026-08-06 | 补随包资产来源登记表（评审 P3-1） | Claude |
+| 2026-08-07 | §0 改写（原「main 有未提交改动」指令随 #214 合并作废）；新增 §A.0 一期投喂指令（落点/规格/页面说明/禁做项/回报格式）与 §A.7 一期验收（守卫测试代码 + 目视三条） | Claude |
