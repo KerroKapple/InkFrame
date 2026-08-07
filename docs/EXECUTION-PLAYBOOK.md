@@ -91,6 +91,11 @@
   提交信息 → **main 上 ci / smoke / secret-scan 三个 workflow 被静默跳过,留不下绿色记录**。
   跑过 update-goldens 的分支合并后,必须去 Actions → `ci` → Run workflow(选 main)补跑一次。
   (#216 实际踩到:合并后 `gh run list --branch main` 里根本没有该 commit 的 run。)
+- 连带子坑:**GitHub 扫的是整条 commit message,不管标记出现在什么位置、是否被引号包着**。
+  所以写「记录这个坑」的提交时,commit message 里**不能出现该标记的字面量**——否则这条提交
+  自己就被跳过(#217 实测踩到:提交推上去,分支零 run,`gh pr checks` 报
+  `no checks reported`)。回避写法:描述成「方括号包起来的 skip-ci」。**文件内容不受影响**,
+  本文档正文照常写字面量。
 - 实际事故:#214 给 Studio 空态加了「Built-in samples」CTA,基线未重铸,红着被合进 main
   (合并命令用 `;` 未把关,见 §1 第 7 步),两个 PR 之后才发现。
 
