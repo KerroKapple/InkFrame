@@ -38,6 +38,17 @@
 7. **PR + CI**:推送后开 PR;CI 五件套(analyze+lint / test+coverage 70% 闸 / golden /
    release scripts / secret-scan)全绿才可合并;squash 合并后删分支(本地+远端)。
 
+   > ⚠️ **合并必须由 CI 结果把关,不能只是"等 CI 跑完"。** 分支保护当前不强制这五项——
+   > 红着也合得进去,main 会静默变红。把等待与合并串成一条命令时**必须用 `&&` 不能用 `;`**:
+   >
+   > ```bash
+   > gh pr checks <N> --watch && gh pr merge <N> --squash --delete-branch   # ✅ 红了就不合
+   > gh pr checks <N> --watch ; gh pr merge <N> --squash --delete-branch    # ❌ 红了照合
+   > ```
+   >
+   > 此坑已实际发生:#214 的 golden 红着被合进 main,直到 #215 才发现(见 §2.3)。
+   > 合并后**复核一次** `gh run list --branch main --limit 3`,确认 main 是绿的。
+
 **检查点例外**:长任务中途怕丢工作,允许打 WIP checkpoint commit(消息注明"勿作测试绿基线"),
 完成后 `git reset --soft` 合成一个干净 commit 再推——仅限**未推送**的本地链。
 
@@ -63,6 +74,16 @@
   (像素 diff ≈1%,字体光栅化差异)。**基线锁 CI ubuntu**;本地失败在白名单内可放行,
   但必须逐一核对失败用例名恰为这三个。重铸基线走 `update-goldens.yml` workflow_dispatch,
   **禁止**本地 `--update-goldens` 产物入库。
+- **改了被 golden 覆盖的 UI = 必须重铸基线,且本地跑不出来。** 本地一律 `--exclude-tags golden`,
+  所以「加了个按钮」这种改动在本地全绿、到 CI 才炸。当前被覆盖的空态见
+  `test/app/empty_states_golden_test.dart`(studio_empty / canvas_empty 等)与
+  `node_card_golden_test.dart`。改到这些界面时,提 PR 前就预期 golden 会红,流程是:
+  1. 先把功能改动推上分支
+  2. Actions → `update-goldens` → Run workflow,**选你的分支**(不是 main)
+  3. 它会把新基线提交回该分支;`git pull` 后**肉眼核对 PNG** 确认变化正是你的意图
+  4. 再等 CI 全绿合并
+- 实际事故:#214 给 Studio 空态加了「Built-in samples」CTA,基线未重铸,红着被合进 main
+  (合并命令用 `;` 未把关,见 §1 第 7 步),两个 PR 之后才发现。
 
 ### 2.4 测试 tag 与环境开关
 - `dart_test.yaml` 注册三 tag:`pg` / `golden` / `ffmpeg`。集成测默认**包含在运行中**、
