@@ -1286,6 +1286,12 @@ abstract class AppLocalizations {
   /// **'Generate image from notes'**
   String get inspectorShotGenerateImage;
 
+  /// No description provided for @inspectorShotGenerateVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Generate video from notes'**
+  String get inspectorShotGenerateVideo;
+
   /// No description provided for @inspectorShotLinkFailed.
   ///
   /// In en, this message translates to:

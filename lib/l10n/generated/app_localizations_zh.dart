@@ -653,6 +653,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorShotGenerateImage => '用备注生成图片';
 
   @override
+  String get inspectorShotGenerateVideo => '用备注生成视频';
+
+  @override
   String get inspectorShotLinkFailed => '图片节点已创建，连线失败';
 
   @override

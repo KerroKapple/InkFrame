@@ -686,6 +686,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorShotGenerateImage => 'Generate image from notes';
 
   @override
+  String get inspectorShotGenerateVideo => 'Generate video from notes';
+
+  @override
   String get inspectorShotLinkFailed => 'Image node added, but linking failed';
 
   @override

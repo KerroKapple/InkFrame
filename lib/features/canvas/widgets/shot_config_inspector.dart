@@ -78,6 +78,12 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
     super.dispose();
   }
 
+  /// 预期时长换算成毫秒（未设置时 null）——与 video 面板同键同单位。
+  int? get _durationMsOrNull {
+    final sec = _durationSec;
+    return sec == null ? null : sec * 1000;
+  }
+
   /// 立即落盘（下拉是离散选择，不需要防抖）。saveConfig 内部已吞异常，
   /// 自动保存是 best-effort。
   void _save(Map<String, Object?> patch) {
@@ -102,9 +108,34 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
       !_busy && _notesCtrl.text.trim().isNotEmpty && widget.node.canvasId != null;
 
   /// 以当前备注为 prompt 新建 image config 节点（shot 右侧偏移一格），
-  /// 并加 narrative 边 shot→image。notifier 与文案在 await 前取好：面板中途
-  /// 销毁也保证「节点+边」成对落地。失败仅 snackbar，节点/连线失败分开报。
-  Future<void> _generateImageFromNotes() async {
+  /// 并加 narrative 边 shot→image。
+  Future<void> _generateImageFromNotes() => _generateFromNotes(
+        type: CanvasNodeType.image,
+        extraConfig: const <String, Object?>{},
+      );
+
+  /// SB-4：同上，但建 video config 节点，并把本镜的**镜头级参数**（SB-3 的
+  /// 预期时长 / 预期运镜）一并带过去，省得用户在 video 面板重填一遍。
+  ///
+  /// 带过去的是**意图**：video 面板会按所选 provider 的
+  /// `supportedDurations` / `supportedCameras` 钳制，不支持的值落地即被丢回
+  /// 未设置——这正是 SB-3 说的「能不能真做到由生成时收口」。
+  Future<void> _generateVideoFromNotes() => _generateFromNotes(
+        type: CanvasNodeType.video,
+        extraConfig: <String, Object?>{
+          'duration_ms': ?_durationMsOrNull,
+          'camera': ?_camera?.name,
+        },
+      );
+
+  /// 在 shot 右侧偏移一格新建 config 节点 + narrative 边 shot→新节点。
+  ///
+  /// notifier 与文案在 await 前取好：面板中途销毁也保证「节点+边」成对落地。
+  /// 失败仅 snackbar，节点/连线失败分开报——建节点失败就没必要报连线。
+  Future<void> _generateFromNotes({
+    required CanvasNodeType type,
+    required Map<String, Object?> extraConfig,
+  }) async {
     final canvasId = widget.node.canvasId;
     final notes = _notesCtrl.text.trim();
     if (canvasId == null || notes.isEmpty || _busy) return;
@@ -121,9 +152,9 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
       try {
         created = await nodes.addNode(
           label: label,
-          type: CanvasNodeType.image,
+          type: type,
           position: position,
-          typeConfig: <String, Object?>{'prompt': notes},
+          typeConfig: <String, Object?>{'prompt': notes, ...extraConfig},
         );
       } on InkError catch (_) {
         _showSnack(addFailedMsg);
@@ -256,6 +287,16 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
                 size: InkSpacing.md,
               ),
               label: Text(context.l10n.inspectorShotGenerateImage),
+            ),
+            const SizedBox(height: InkSpacing.sm),
+            // SB-4：直达视频。次要按钮——图片是分镜的主流程，视频是进阶动作。
+            OutlinedButton.icon(
+              onPressed: _canGenerate ? _generateVideoFromNotes : null,
+              icon: const Icon(
+                Icons.movie_creation_outlined,
+                size: InkSpacing.md,
+              ),
+              label: Text(context.l10n.inspectorShotGenerateVideo),
             ),
           ],
         ),

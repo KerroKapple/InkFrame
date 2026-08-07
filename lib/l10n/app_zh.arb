@@ -284,6 +284,7 @@
   "inspectorShotNotesLabel": "分镜备注",
   "inspectorShotNotesHint": "描述这个分镜（机位、动作、氛围）…",
   "inspectorShotGenerateImage": "用备注生成图片",
+  "inspectorShotGenerateVideo": "用备注生成视频",
   "inspectorShotLinkFailed": "图片节点已创建，连线失败",
   "inspectorShotDurationLabel": "预期时长",
   "inspectorShotCameraLabel": "预期运镜",
