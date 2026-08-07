@@ -48,6 +48,10 @@
    >
    > 此坑已实际发生:#214 的 golden 红着被合进 main,直到 #215 才发现(见 §2.3)。
    >
+   > 另注:**`gh pr create` 之后别立刻 `gh pr checks --watch`**。检查尚未注册时该命令
+   > **立即失败**(报 `no checks reported`)而不是等待,`&&` 链会把它当成红,得到一次假红报。
+   > 正确姿势:先 `gh run list --branch <分支>` 确认 run 已建(约 10-20s),再 watch。
+   >
    > 合并后**复核一次** `gh run list --branch main --limit 3`,确认 main 是绿的。复核时注意
    > 两种"不绿":**红**(有 run、conclusion=failure)与**根本没有 run**(commit body 含
    > `[skip ci]`,见 §2.3)。后者容易误读成"还没跑完",要按 commit SHA 核对而不是看最新几行。
