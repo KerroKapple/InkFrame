@@ -11,6 +11,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # 手动补跑:squash commit 的 body 若含 [skip ci](例如分支上跑过 update-goldens,
+  # 机器人那条提交带此标记,squash 会把它并进 body),main 上三个 workflow 会被静默
+  # 跳过、留不下绿色记录。此时用 Actions → ci → Run workflow(选 main)补一次。
+  workflow_dispatch:
 
 env:
   FLUTTER_VERSION: 3.41.6
