@@ -11,7 +11,9 @@ import 'package:inkframe/core/di/video_export.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/video_export_service.dart';
+import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/export/util/export_order.dart';
 import 'package:inkframe/features/export/widgets/export_video_dialog.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/components/ink_progress_bar.dart';
@@ -69,13 +71,15 @@ class _FakeFileResolver implements FileResolverService {
   }) =>
       File('$root/$projectId/$relativePath');
 
+  /// EX-1′ 起行首缩略图会走这里（画布相对路径）。指向不存在的路径即可——
+  /// 断言的是「文件读不到时 errorBuilder 兜到占位」，不需要真图。
   @override
   File resolve({
     required String projectId,
     required String canvasId,
     required String relativePath,
   }) =>
-      throw UnimplementedError();
+      File('$root/$projectId/canvases/$canvasId/$relativePath');
 
   @override
   String toRelative({
@@ -90,7 +94,13 @@ class _FakeFileResolver implements FileResolverService {
       throw UnimplementedError();
 }
 
-CanvasNode _videoResult(String label, double x, String file) => CanvasNode(
+CanvasNode _videoResult(
+  String label,
+  double x,
+  String file, {
+  String? thumbnail,
+}) =>
+    CanvasNode(
       id: 'node-$label',
       label: label,
       type: CanvasNodeType.video,
@@ -98,7 +108,10 @@ CanvasNode _videoResult(String label, double x, String file) => CanvasNode(
       projectId: 'p1',
       canvasId: 'c1',
       sourceNodeId: 'cfg-$label',
-      typeConfig: <String, Object?>{'video_url': 'videos/$file'},
+      typeConfig: <String, Object?>{
+        'video_url': 'videos/$file',
+        'thumbnail_url': ?thumbnail,
+      },
       position: Offset(x, 0),
     );
 
@@ -107,14 +120,24 @@ Future<void> _pumpDialog(
   required _FakeVideoExportService service,
   List<CanvasNode>? nodes,
   FileResolverService? resolver,
+  List<CanvasNode> Function(List<CanvasNode>)? order,
 }) async {
-  final videoNodes = nodes ??
+  // EX-1′ 起排序不在对话框内，走调用方同一条路径 orderVideoNodesForExport
+  // （无 narrative 边时等价于旧的 position.x 升序）。[order] 可替换掉这一步，
+  // 用来单独钉「对话框不重排」。
+  final input = nodes ??
       <CanvasNode>[
-        // 故意乱序：断言按 position.x 升序展示。
+        // 故意乱序：断言经排序后按 position.x 升序展示。
         _videoResult('B', 200, 'b.mp4'),
         _videoResult('A', 100, 'a.mp4'),
         _videoResult('C', 300, 'c.mp4'),
       ];
+  final videoNodes = order != null
+      ? order(input)
+      : orderVideoNodesForExport(
+          allNodes: input,
+          edges: const <CanvasEdge>[],
+        );
   await pumpInkApp(
     tester,
     Scaffold(
@@ -182,6 +205,46 @@ void main() {
       ),
       <CanvasNode>[valid],
     );
+  });
+
+  // EX-1′ 新契约：对话框**照单全收**传入顺序,不再自己排。
+  // 钉死这条,否则哪天有人在 initState 里"顺手补个 sort"就会静默盖掉链序,
+  // 而上面那条 x 升序用例照样绿（无链时两者结果恰好相同）。
+  testWidgets('对话框保持传入顺序,不自行按 position.x 重排', (tester) async {
+    final service = _FakeVideoExportService();
+    // 刻意让传入顺序与 position.x 相反。
+    await _pumpDialog(
+      tester,
+      service: service,
+      nodes: <CanvasNode>[
+        _videoResult('C', 300, 'c.mp4'),
+        _videoResult('B', 200, 'b.mp4'),
+        _videoResult('A', 100, 'a.mp4'),
+      ],
+      order: (ns) => ns, // 绕开排序,直接把乱序喂进对话框
+    );
+
+    final yC = tester.getTopLeft(find.text('C')).dy;
+    final yB = tester.getTopLeft(find.text('B')).dy;
+    final yA = tester.getTopLeft(find.text('A')).dy;
+    expect(yC, lessThan(yB), reason: '对话框不该重排');
+    expect(yB, lessThan(yA), reason: '对话框不该重排');
+  });
+
+  testWidgets('缩略图：有 thumbnail_url 出图,缺失出占位图标', (tester) async {
+    final service = _FakeVideoExportService();
+    await _pumpDialog(
+      tester,
+      service: service,
+      nodes: <CanvasNode>[
+        _videoResult('A', 100, 'a.mp4', thumbnail: 'videos/a.jpg'),
+        _videoResult('B', 200, 'b.mp4'),
+      ],
+    );
+
+    // 有 thumbnail_url 的那行走 Image.file；文件在 fake resolver 下不存在,
+    // errorBuilder 兜到占位——两行都应有 movie 占位图标,且不崩。
+    expect(find.byIcon(Icons.movie_outlined), findsWidgets);
   });
 
   testWidgets('列表按 position.x 升序展示 + 默认全选', (tester) async {

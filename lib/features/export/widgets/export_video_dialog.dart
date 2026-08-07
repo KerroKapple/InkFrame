@@ -1,5 +1,8 @@
-// 导出视频对话框：video result 勾选（默认全选）+ 手动排序（默认按 position.x
-// 升序=分镜从左到右）+ 输出名预校验 + concat 触发与成败反馈。
+// 导出视频对话框：video result 勾选（默认全选）+ 手动排序（默认序由
+// `util/export_order.dart` 按 narrative 链算好后传入，无链退回 position.x）
+// + 输出名预校验 + concat 触发与成败反馈。
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,20 +20,13 @@ import '../../canvas/models/canvas_node.dart';
 import '../providers/export_controller.dart';
 import '../util/export_file_name.dart';
 
-/// 顶栏入口与对话框共用的过滤：role==result、type==video、videoUrl 非空、
-/// canvasId 非空——与 ExportController.export 的输入条件一致，
-/// 消除「列表可见但导出时静默丢弃」的错位。
-List<CanvasNode> exportableVideoNodes(List<CanvasNode> nodes) => <CanvasNode>[
-      for (final n in nodes)
-        if (n.role == NodeRole.result &&
-            n.type == CanvasNodeType.video &&
-            n.videoUrl != null &&
-            n.canvasId != null)
-          n,
-    ];
+/// 行首缩略图尺寸（16:9，够认出镜头又不撑高行）。
+const double _kThumbWidth = 64;
+const double _kThumbHeight = 36;
 
-/// 打开导出对话框。[videoNodes] 须已经过 [exportableVideoNodes] 过滤，
-/// 排序在对话框内完成。
+/// 打开导出对话框。[videoNodes] 须已由 `orderVideoNodesForExport` 过滤并排好序
+/// （EX-1′ 起排序移出对话框——链序需要全量节点与边，对话框只拿得到 video
+/// result 子集）。
 Future<void> showExportVideoDialog(
   BuildContext context, {
   required String projectId,
@@ -67,10 +63,9 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
   @override
   void initState() {
     super.initState();
-    _rows = <CanvasNode>[...widget.videoNodes]..sort((a, b) {
-        final byX = a.position.dx.compareTo(b.position.dx);
-        return byX != 0 ? byX : a.id.compareTo(b.id);
-      });
+    // 顺序由调用方 orderVideoNodesForExport 定（narrative 链序，无链退回
+    // position.x）——这里只照单全收，用户仍可手动上下移。
+    _rows = <CanvasNode>[...widget.videoNodes];
     _selected = <String>{for (final n in _rows) n.id};
   }
 
@@ -228,6 +223,8 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
 
     return Row(
       children: <Widget>[
+        _thumbnail(context, node),
+        const SizedBox(width: InkSpacing.sm),
         Checkbox(
           value: _selected.contains(node.id),
           onChanged: busy
@@ -284,6 +281,55 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
           onPressed: canMoveDown ? () => _move(index, 1) : null,
         ),
       ],
+    );
+  }
+
+  /// 行首缩略图（EX-1′；与 GA-1 画廊同源——读节点已落库的 `thumbnail_url`，
+  /// 不现场抽帧）。缺缩略图 / 文件已不在 / 解码失败一律回退图标占位：导出列表
+  /// 的用途是认镜头，缩略图缺失不该让整行不可用。
+  Widget _thumbnail(BuildContext context, CanvasNode node) {
+    final colors = context.inkColors;
+    final rel = node.thumbnailUrl;
+    final canvasId = node.canvasId;
+    File? file;
+    if (rel != null && canvasId != null) {
+      try {
+        file = ref.read(fileResolverServiceProvider).resolve(
+              projectId: widget.projectId,
+              canvasId: canvasId,
+              relativePath: rel,
+            );
+      } on PathSecurityError {
+        file = null;
+      }
+    }
+
+    Widget placeholder() => ColoredBox(
+          color: colors.surface2,
+          child: Icon(
+            Icons.movie_outlined,
+            size: InkSpacing.md,
+            color: colors.fg4,
+          ),
+        );
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(InkRadius.sm),
+      child: SizedBox(
+        width: _kThumbWidth,
+        height: _kThumbHeight,
+        child: file == null
+            ? placeholder()
+            : Image.file(
+                file,
+                fit: BoxFit.cover,
+                // 按显示宽解码，避免 1080p 首帧整张进内存（ME-26）。
+                cacheWidth:
+                    (_kThumbWidth * MediaQuery.devicePixelRatioOf(context))
+                        .round(),
+                errorBuilder: (_, _, _) => placeholder(),
+              ),
+      ),
     );
   }
 

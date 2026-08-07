@@ -23,6 +23,15 @@ extension DbRow on Map<String, Object?> {
     throw _decodeError(col, 'String', v);
   }
 
+  /// 可空时间戳列（TIMESTAMPTZ）。驱动可能给 DateTime，也可能给 ISO 字符串
+  /// （fake / JSON 快照路径）——两者都归一到 UTC；解析不出来按缺失处理，
+  /// 不抛：时间戳只用于排序取最新，缺一个不该让整行解码失败。
+  DateTime? optDateTime(String col) => switch (this[col]) {
+        final DateTime d => d.toUtc(),
+        final String s => DateTime.tryParse(s)?.toUtc(),
+        _ => null,
+      };
+
   /// 可空文本列。null → null；非 String → LocalIOError。
   String? optString(String col) {
     final v = this[col];

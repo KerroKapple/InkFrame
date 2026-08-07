@@ -47,9 +47,24 @@ widgets/    纯 UI（读 provider、走 token/l10n）
 画布顶栏（`canvas_top_chrome.dart` 的 `_ExportVideoButton`）：当前画布存在
 video result 节点（`videoUrl` 非空）时可用，否则禁用 + 说明 tooltip。
 
+## 排序（EX-1′）
+默认序 = narrative 链序，算在 `util/export_order.dart`（`orderVideoNodesForExport`），
+**不在对话框内**——链序需要全量节点与边，对话框只拿得到 video result 子集。
+两个入口（顶栏 + 命令面板）走同一条路径，对话框照单全收传入顺序。
+
+video result 节点挂在 config 节点下（`sourceNodeId`），自己不在 narrative 链上，
+所以不能把 result 集合直接喂给 `orderByNarrativeChain`——那会一条边都找不到、
+静默退化成 position.x。正解是先按链排 config/shot 节点，再经
+`canvas/util/node_artifacts.dart` 映射到各自产物。画布没有 narrative 边时，
+结果等价于旧的 position.x 升序。
+
+**只改顺序，不改候选集**：同一镜重跑的多个 take 仍全部列出（成组跟在该镜位置、
+新→旧）。默认全选因此仍会重复导出该镜——这是本卡之前就有的行为，收窄默认选中
+属产品行为变更，见 BOARD 债表。
+
 ## 本切片不做（后续切片）
-narrative 链自动排序（EX-1′，依赖 SB-5）/ 转码与分辨率归一（EX-2，依赖
-D-M4-6 拍板）/ 导出历史列表 / 打包 ffmpeg 二进制评估。
+转码与分辨率归一（EX-2，依赖 D-M4-6 拍板）/ 导出历史列表 /
+打包 ffmpeg 二进制评估。
 
 ## 约束
 - 文案走 `context.l10n.*`，样式走 token（ADR-0010）
