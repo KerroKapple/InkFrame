@@ -8,7 +8,7 @@
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-08-05 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
+> 最近更新：2026-08-07 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
 > PKG-2A release CI 首跑绿,产物体积增量与 PG 二进制吻合（mac 39.6→68MB / win 36.7→71MB）;
 > 干净机实机验收待做;待签名 U1/U2 方为干净机免绕行可装）
 
@@ -44,7 +44,7 @@
 
 | 功能 | 状态 | 备注 |
 |---|---|---|
-| 分镜 / Shot 节点（脚本→分镜→序列） | 🔵 | Shot 编辑器落地（`3ba33d3`）；**首切片完成**：「用本镜备注生成图像」（shot_notes→image config 节点+narrative 边）+ FAB/空态 shot 创建入口 + addNode typeConfig 透传。后续：脚本解析、镜头级参数、序列预览 |
+| 分镜 / Shot 节点（脚本→分镜→序列） | 🔵 | Shot 编辑器落地（`3ba33d3`）；**首切片完成**：「用本镜备注生成图像」（shot_notes→image config 节点+narrative 边）+ FAB/空态 shot 创建入口 + addNode typeConfig 透传。**SB-5 链排序 util 落地**（`canvas/util/narrative_order.dart`——E1/E4 公共地基,同时解锁 SB-6 序列预览与 EX-1′ 导出叙事序）。后续：脚本解析（SB-1,**D-M4-1 待拍板**）、镜头级参数（SB-3）、序列预览（SB-6） |
 | 视频导出 / 拼接 | 🔵 | **服务层落地**：`VideoExportService.concat`（项目相对路径进出）→ `FfmpegVideoExportService`（concat demuxer 流拷贝 `-c copy`，不转码，要求输入同编码参数）+ `FfmpegLocator`（INKFRAME_FFMPEG env → PATH 探测，命中缓存）+ 最小 `ProcessRunner` 抽象（fake 可注入）；`FileResolverService.resolveInProject`（项目根边界安全校验，导出落 `exports/`）。**不打包 ffmpeg 二进制**（体积/许可评估延后）：系统有 ffmpeg 才真拼接，没有 → `LocalIOError(reason=ffmpeg_not_found)`。真 ffmpeg 集成测 `@Tags(['ffmpeg'])` TEST_FFMPEG=1 门控。**UI 入口落地**：`features/export`——画布顶栏「导出视频」按钮（无 video result 时禁用+说明 tooltip）→ 导出对话框（按 position.x 升序默认全选、复选/上下移手动排序、输出名本地预校验同 `_assertPlainFileName` 规则、busy 态 indeterminate、成功 snackbar+复制绝对路径、ffmpeg_not_found 专门文案 `exportVideoFfmpegMissing`）；`ExportController` 承担画布相对→项目相对路径换算（补 `canvases/<canvasId>/` 前缀）。后续：narrative 链自动排序、转码/分辨率归一、打包二进制评估 |
 | 本地素材 / 产物画廊（借鉴 InvokeAI） | 🔵 | **首切片落地**：`features/gallery`——project 维度只读聚合（result 节点 image_url/video_url + batch_results 成功 slot，`listSuccessByProject` 一次跨画布查询 + 与节点主图同路径去重，createdAt 倒序）→ 网格 UI（图片 tile 走 fileResolver + 图片 lightbox；视频 tile 图标+时长占位）；入口=Studio 项目卡菜单「Gallery」，路由走 `currentGalleryProjectProvider`（同 canvasId 语义）。**视频缩略图/播放（GA-1/2/7,PR-3 #208）与筛选/搜索+存为角色（GA-3/4,PR-4）已随 Polish Wave 1 落地**；后续：拖入画布（GA-5,D-M4-2 待拍板）、删除（GA-6,D-M4-3 待拍板）；视频时长已全链路打通（#177 写侧 + XM-1b 存量启动回填）；fake `listSuccessByProject` join 派生列由种子行提供（契约见注释，PG 集成测兜真语义） |
 | 模型扩展（自定义 Provider，BYO-key） | 🔵 | **首切片落地**：`custom_providers.json`（逐条校验 + 损坏兜底）→ 协议模板 `openai-image` 派生 capabilities → `OpenAICompatibleImageProvider`(extends SyncProviderBase) → 启动期一次性注册（改 json 重启生效）；key 复用 `provider.custom:<id>.api_key`，设置页/门控/banner 零改动生效。PROVIDER-API §13 已重写为唯一方案，ADR-0009 已修订（2026-07-02）。后续：设置页编辑 UI、运行时增删（registry 变异非 invalidate）、更多协议模板 |
@@ -109,7 +109,9 @@
 | **PR-6 MOD-1 OpenAI 直升 gpt-image-2（Polish Wave 1;死线卡:gpt-image-1 2026-10-23 弃用）**：模型 ID 换新（1.5 亦 2026-12-01 退役不过渡）;契约兼容零结构改动（同步 b64/quality/无 response_format）;16:9/9:16 改**真比例**尺寸 1536x864/864x1536（gpt-image-1 时代只能凑 3:2,分镜第一刚需）;CostModel 对齐官方 medium 档 $0.041;PROVIDER-API §9.2/§13 同步 | #211 |
 | **PR-7 LB-24 网络代理 P0（Polish Wave 1）**：`core/net/proxy_env.dart`——`proxyRuleFor` 纯函数（HTTPS_PROXY/HTTP_PROXY/ALL_PROXY/NO_PROXY 大小写双查,空串=显式禁用,凭据透传 `user:pass@`,loopback 恒直连,`*.glob`,解析不出目标才直连兜底——能解析但错误的值=连接错误同 curl）+ `applyEnvProxy` 挂 4 个 Dio 构造点（无代理变量时不动 adapter 保 dio 默认;注入 dio 零扰动）;接线层 e2e 双测（真 socket fake 代理/NO_PROXY 旁路）;SETUP.md 边界清单（SOCKS/端口段/CIDR 不支持,重启生效,TLS 拦截提示）;**P1 设置页代理区另卡** | #212 |
 | **PR-8 框架债三小件（Polish Wave 1 收官）**：债150 建点视口中心（三入口,逆变换+散布,矩阵单测）;债145 restore 守卫扩三导航信号;债158 三大重操作互斥反向补查（导出查 import+restore,备份/还原区查 import+export）;债156 atomicZipWrite 裁定拆独立卡（M 级另窗） | #213 |
-| **内置示例页（Codex 协作产出;DEMO-1 前哨）**：随包 AI 生成双图（1024² + 1536×864,`assets/showcase/`,无第三方版权不进 THIRD-PARTY）→ 只读展示页（不进 Gallery 聚合、不依赖 API Key）;入口三处（项目卡 ⋮ / **Studio 空态 CTA** / 命令面板 studio 上下文——零项目用户也够得到,评审 P1-1）;ARB 8 键 + 路由 `AppScreen.showcase`;评审修:出货文案去掉第三方工具名、InkCard 复用、ME-26 按宽解码、资产打包守卫测、路由+单栏分支补测。**演示内容规划见 `docs/superpowers/specs/2026-08-06-demo-content-brief.md`（3 模板 22 张 prompt + createSample v2 集成规格,待开卡）** | 本 PR |
+| **内置示例页（Codex 协作产出;DEMO-1 前哨）**：随包 AI 生成双图（1024² + 1536×864,`assets/showcase/`,无第三方版权不进 THIRD-PARTY）→ 只读展示页（不进 Gallery 聚合、不依赖 API Key）;入口三处（项目卡 ⋮ / **Studio 空态 CTA** / 命令面板 studio 上下文——零项目用户也够得到,评审 P1-1）;ARB 8 键 + 路由 `AppScreen.showcase`;评审修:出货文案去掉第三方工具名、InkCard 复用、ME-26 按宽解码、资产打包守卫测、路由+单栏分支补测。**演示内容规划见 `docs/superpowers/specs/2026-08-06-demo-content-brief.md`（3 模板 22 张 prompt + createSample v2 集成规格,待开卡）** | #214 |
+| **CI 事故收口:main 自 #214 起红 3 个 commit**——根因=给 Studio 空态加 CTA 按钮但未重铸 golden 基线（golden 本地恒 exclude,只在 CI 炸）;基线经 `update-goldens.yml` 在 canonical ubuntu 重出并肉眼核对。**四层坑全记入 PLAYBOOK §1.7/§2.3**:①改 golden 覆盖的 UI 必须重铸基线 ②合并命令 `gh pr checks --watch` 与 `gh pr merge` 必须 `&&` 不能 `;`（分支保护当前不强制五项检查,红着合得进去）③`update-goldens` 机器人提交带跳过标记,squash 时并进 body 传染给 main 致三 workflow 静默跳过 ④commit 消息**与 PR 标题**都不能写该标记字面量;五个 workflow 全部补 `workflow_dispatch` 可手动补跑 | #216/#217/#218 |
+| **SB-5 narrative 链排序 util（M4 E1/E4 公共地基;MASTERPLAN 关键路径首件）**：纯函数 `orderByNarrativeChain({nodes, edges, include})`——只认 narrative 边且两端在场（悬空边忽略）;链头=参与图且入度 0,按 (dx,dy,id);显式栈 DFS 前序,同源多出边按 (sortOrder,边 id);visited **出栈时**标记（菱形汇合不重复输出、环不死循环）;遍历走不到的（纯环+孤立）按 (dx,dy,id) 追加——**任何形态都产出确定性全序,输出恒为输入的一个排列**（少一节点=导出少一镜）;`include` 只滤输出不打断链序（滤掉链中间节点,两侧仍保持链相对序——EX-1′ 用法）。15 例覆盖单链/多链/分叉/汇合/环/尾环/孤立/悬空边/include/全序不变量。**解锁 SB-6 序列预览 + EX-1′ 导出叙事序** | 本 PR |
 
 ## M1 补遗（审计发现的悬空项）
 
