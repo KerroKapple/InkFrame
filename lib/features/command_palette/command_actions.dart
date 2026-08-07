@@ -14,11 +14,14 @@ import '../../core/di/preferences.dart';
 import '../../core/errors/ink_error.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
+import '../canvas/models/canvas_edge.dart';
 import '../canvas/models/canvas_node.dart';
+import '../canvas/providers/canvas_edges_controller.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
 import '../canvas/providers/canvas_transform_controller.dart';
 import '../canvas/providers/current_canvas_id.dart';
 import '../canvas/util/node_position.dart';
+import '../export/util/export_order.dart';
 import '../export/widgets/export_video_dialog.dart';
 import '../gallery/providers/current_gallery_project.dart';
 
@@ -131,9 +134,12 @@ Future<void> _addNode(
 }
 
 void _openExport(BuildContext context, WidgetRef ref, String canvasId) {
-  final videoNodes = exportableVideoNodes(
-    ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+  // EX-1′：与顶栏入口同一条排序路径（narrative 链序）。
+  final videoNodes = orderVideoNodesForExport(
+    allNodes: ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasNode>[],
+    edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+        const <CanvasEdge>[],
   );
   final projectId = videoNodes.isEmpty ? null : videoNodes.first.projectId;
   if (projectId == null) return; // 面板打开到执行之间节点已变化：静默不弹

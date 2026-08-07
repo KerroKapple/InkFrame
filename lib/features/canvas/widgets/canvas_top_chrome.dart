@@ -12,9 +12,12 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
 import '../../command_palette/widgets/command_palette_chip.dart';
+import '../../export/util/export_order.dart';
 import '../../export/widgets/export_video_dialog.dart';
+import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
+import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/current_canvas_id.dart';
 import 'base_style_editor_dialog.dart';
@@ -243,9 +246,13 @@ class _ExportVideoButton extends ConsumerWidget {
   }
 
   void _open(BuildContext context, WidgetRef ref) {
-    final videoNodes = exportableVideoNodes(
-      ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+    // EX-1′：默认序改 narrative 链序,需要全量节点 + 边（result 节点自己不在
+    // 链上,挂在 config 节点下）。
+    final videoNodes = orderVideoNodesForExport(
+      allNodes: ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
           const <CanvasNode>[],
+      edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+          const <CanvasEdge>[],
     );
     final projectId =
         videoNodes.isEmpty ? null : videoNodes.first.projectId;

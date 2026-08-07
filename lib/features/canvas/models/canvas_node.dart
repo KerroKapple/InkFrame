@@ -32,6 +32,7 @@ class CanvasNode {
     this.typeConfig = const <String, Object?>{},
     this.position = Offset.zero,
     this.size = const Size(200, 160),
+    this.createdAt,
   });
 
   final String id;
@@ -56,6 +57,12 @@ class CanvasNode {
 
   final Offset position;
   final Size size;
+
+  /// 建行时间（schema `nodes.created_at`，UTC）。乐观新增等未落库的本地节点为
+  /// null。用途是「同一 config 重跑多次时取最新产物」——不能靠列表序，
+  /// `listByCanvas` 的 ORDER BY 是 `z_index ASC, created_at ASC`，z_index 由
+  /// 用户拖动层级决定，与生成时间无关。见 `util/node_artifacts.dart`。
+  final DateTime? createdAt;
 
   /// 便捷获取 result 节点的相对图像路径；config 节点或未设置时为 null。
   String? get imageUrl {
@@ -122,6 +129,7 @@ class CanvasNode {
     Map<String, Object?>? typeConfig,
     Offset? position,
     Size? size,
+    DateTime? createdAt,
   }) =>
       CanvasNode(
         id: id,
@@ -135,6 +143,7 @@ class CanvasNode {
         typeConfig: typeConfig ?? this.typeConfig,
         position: position ?? this.position,
         size: size ?? this.size,
+        createdAt: createdAt ?? this.createdAt,
       );
 
   @override
@@ -151,7 +160,8 @@ class CanvasNode {
           laneId == other.laneId &&
           mapEquals(typeConfig, other.typeConfig) &&
           position == other.position &&
-          size == other.size;
+          size == other.size &&
+          createdAt == other.createdAt;
 
   @override
   int get hashCode => Object.hash(
@@ -167,6 +177,7 @@ class CanvasNode {
             typeConfig.entries.map((e) => Object.hash(e.key, e.value))),
         position,
         size,
+        createdAt,
       );
 }
 
@@ -213,6 +224,7 @@ extension CanvasNodeMapping on CanvasNode {
         row.optDouble(NodeCol.width) ?? 240,
         row.optDouble(NodeCol.height) ?? 240,
       ),
+      createdAt: row.optDateTime(NodeCol.createdAt),
     );
   }
 }
