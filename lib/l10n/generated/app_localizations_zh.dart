@@ -668,6 +668,38 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorShotParamHint => '这里记的是意图——真正能不能做到，由生成时选的 provider 决定。';
 
   @override
+  String get sequencePreviewTitle => '序列预览';
+
+  @override
+  String get sequencePreviewTooltip => '按叙事顺序预览分镜';
+
+  @override
+  String get sequencePreviewDisabledTooltip => '用叙事连线把分镜串起来后即可预览序列';
+
+  @override
+  String get sequencePreviewEmpty => '暂时没有可预览的内容';
+
+  @override
+  String get sequencePreviewNoArtifact => '尚未生成';
+
+  @override
+  String sequencePreviewShotCounter(int index, int total) {
+    return '第 $index / $total 镜';
+  }
+
+  @override
+  String get sequencePreviewPrevious => '上一镜';
+
+  @override
+  String get sequencePreviewNext => '下一镜';
+
+  @override
+  String get sequencePreviewReplay => '从头播放';
+
+  @override
+  String get sequencePreviewMissingFile => '文件已丢失';
+
+  @override
   String get canvasAddImageNode => '添加图片节点';
 
   @override

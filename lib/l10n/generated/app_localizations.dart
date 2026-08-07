@@ -1316,6 +1316,66 @@ abstract class AppLocalizations {
   /// **'Recorded as intent — the provider you pick when generating decides what is actually supported.'**
   String get inspectorShotParamHint;
 
+  /// No description provided for @sequencePreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence preview'**
+  String get sequencePreviewTitle;
+
+  /// No description provided for @sequencePreviewTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview the storyboard in narrative order'**
+  String get sequencePreviewTooltip;
+
+  /// No description provided for @sequencePreviewDisabledTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Link shots with narrative edges to preview a sequence'**
+  String get sequencePreviewDisabledTooltip;
+
+  /// No description provided for @sequencePreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to preview yet'**
+  String get sequencePreviewEmpty;
+
+  /// No description provided for @sequencePreviewNoArtifact.
+  ///
+  /// In en, this message translates to:
+  /// **'Not generated yet'**
+  String get sequencePreviewNoArtifact;
+
+  /// No description provided for @sequencePreviewShotCounter.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot {index} of {total}'**
+  String sequencePreviewShotCounter(int index, int total);
+
+  /// No description provided for @sequencePreviewPrevious.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous shot'**
+  String get sequencePreviewPrevious;
+
+  /// No description provided for @sequencePreviewNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next shot'**
+  String get sequencePreviewNext;
+
+  /// No description provided for @sequencePreviewReplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Replay from the start'**
+  String get sequencePreviewReplay;
+
+  /// No description provided for @sequencePreviewMissingFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File is missing'**
+  String get sequencePreviewMissingFile;
+
   /// No description provided for @canvasAddImageNode.
   ///
   /// In en, this message translates to:

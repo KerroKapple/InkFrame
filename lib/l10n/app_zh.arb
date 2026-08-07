@@ -290,6 +290,23 @@
   "inspectorShotParamUnset": "未设置",
   "inspectorShotParamHint": "这里记的是意图——真正能不能做到，由生成时选的 provider 决定。",
 
+  "sequencePreviewTitle": "序列预览",
+  "sequencePreviewTooltip": "按叙事顺序预览分镜",
+  "sequencePreviewDisabledTooltip": "用叙事连线把分镜串起来后即可预览序列",
+  "sequencePreviewEmpty": "暂时没有可预览的内容",
+  "sequencePreviewNoArtifact": "尚未生成",
+  "sequencePreviewShotCounter": "第 {index} / {total} 镜",
+  "@sequencePreviewShotCounter": {
+    "placeholders": {
+      "index": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "sequencePreviewPrevious": "上一镜",
+  "sequencePreviewNext": "下一镜",
+  "sequencePreviewReplay": "从头播放",
+  "sequencePreviewMissingFile": "文件已丢失",
+
   "canvasAddImageNode": "添加图片节点",
   "canvasAddVideoNode": "添加视频节点",
   "canvasAddShotNode": "添加分镜节点",

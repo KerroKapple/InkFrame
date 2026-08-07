@@ -14,6 +14,8 @@ import '../../../theme/tokens.dart';
 import '../../command_palette/widgets/command_palette_chip.dart';
 import '../../export/util/export_order.dart';
 import '../../export/widgets/export_video_dialog.dart';
+import '../../storyboard/util/sequence_builder.dart';
+import '../../storyboard/widgets/sequence_preview_dialog.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
@@ -197,6 +199,8 @@ class _Trailing extends ConsumerWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         if (canvasId != null) ...<Widget>[
+          _SequencePreviewButton(canvasId: canvasId),
+          const SizedBox(width: InkSpacing.sm),
           _ExportVideoButton(canvasId: canvasId),
           const SizedBox(width: InkSpacing.sm),
           _BaseStyleButton(canvasId: canvasId),
@@ -204,6 +208,57 @@ class _Trailing extends ConsumerWidget {
         ],
         const CommandPaletteChip(),
       ],
+    );
+  }
+}
+
+/// 「序列预览」入口（SB-6）：画布上没有任何 narrative 边时禁用——没有叙事链
+/// 就没有"序列"可言。可用性只 watch 边（不 watch 节点），拖动节点不重建顶栏。
+class _SequencePreviewButton extends ConsumerWidget {
+  const _SequencePreviewButton({required this.canvasId});
+
+  final String canvasId;
+
+  static bool _hasNarrative(AsyncValue<List<CanvasEdge>> async) =>
+      (async.valueOrNull ?? const <CanvasEdge>[])
+          .any((e) => e.edgeType == EdgeType.narrative);
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final colors = context.inkColors;
+    final l = context.l10n;
+    final enabled = ref.watch(
+      canvasEdgesControllerProvider(canvasId).select(_hasNarrative),
+    );
+    return Tooltip(
+      message: enabled
+          ? l.sequencePreviewTooltip
+          : l.sequencePreviewDisabledTooltip,
+      child: IconButton(
+        icon: Icon(
+          Icons.play_circle_outline,
+          size: 18,
+          color: enabled ? colors.fg2 : colors.fg4,
+        ),
+        padding: EdgeInsets.zero,
+        constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+        splashRadius: 16,
+        onPressed: enabled ? () => _open(context, ref) : null,
+      ),
+    );
+  }
+
+  void _open(BuildContext context, WidgetRef ref) {
+    final nodes = ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+        const <CanvasNode>[];
+    final edges = ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+        const <CanvasEdge>[];
+    final projectId = nodes.isEmpty ? null : nodes.first.projectId;
+    if (projectId == null) return; // 按压瞬间节点已变化：静默不弹
+    showSequencePreviewDialog(
+      context,
+      projectId: projectId,
+      shots: buildSequence(nodes: nodes, edges: edges),
     );
   }
 }
