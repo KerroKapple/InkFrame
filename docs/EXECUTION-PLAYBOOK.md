@@ -47,7 +47,10 @@
    > ```
    >
    > 此坑已实际发生:#214 的 golden 红着被合进 main,直到 #215 才发现(见 §2.3)。
-   > 合并后**复核一次** `gh run list --branch main --limit 3`,确认 main 是绿的。
+   >
+   > 合并后**复核一次** `gh run list --branch main --limit 3`,确认 main 是绿的。复核时注意
+   > 两种"不绿":**红**(有 run、conclusion=failure)与**根本没有 run**(commit body 含
+   > `[skip ci]`,见 §2.3)。后者容易误读成"还没跑完",要按 commit SHA 核对而不是看最新几行。
 
 **检查点例外**:长任务中途怕丢工作,允许打 WIP checkpoint commit(消息注明"勿作测试绿基线"),
 完成后 `git reset --soft` 合成一个干净 commit 再推——仅限**未推送**的本地链。
@@ -82,6 +85,12 @@
   2. Actions → `update-goldens` → Run workflow,**选你的分支**(不是 main)
   3. 它会把新基线提交回该分支;`git pull` 后**肉眼核对 PNG** 确认变化正是你的意图
   4. 再等 CI 全绿合并
+- ⚠️ **`update-goldens` 会给分支留一条带 `[skip ci]` 的机器人提交**
+  (`test(golden): regenerate baselines on ubuntu runner [skip ci]`)。squash 合并时
+  GitHub 把各条 commit message 并进 squash commit 的 body,`[skip ci]` 随之进入 main 的
+  提交信息 → **main 上 ci / smoke / secret-scan 三个 workflow 被静默跳过,留不下绿色记录**。
+  跑过 update-goldens 的分支合并后,必须去 Actions → `ci` → Run workflow(选 main)补跑一次。
+  (#216 实际踩到:合并后 `gh run list --branch main` 里根本没有该 commit 的 run。)
 - 实际事故:#214 给 Studio 空态加了「Built-in samples」CTA,基线未重铸,红着被合进 main
   (合并命令用 `;` 未把关,见 §1 第 7 步),两个 PR 之后才发现。
 
