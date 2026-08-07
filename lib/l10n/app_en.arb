@@ -299,6 +299,23 @@
   "inspectorShotParamUnset": "Not set",
   "inspectorShotParamHint": "Recorded as intent — the provider you pick when generating decides what is actually supported.",
 
+  "sequencePreviewTitle": "Sequence preview",
+  "sequencePreviewTooltip": "Preview the storyboard in narrative order",
+  "sequencePreviewDisabledTooltip": "Link shots with narrative edges to preview a sequence",
+  "sequencePreviewEmpty": "Nothing to preview yet",
+  "sequencePreviewNoArtifact": "Not generated yet",
+  "sequencePreviewShotCounter": "Shot {index} of {total}",
+  "@sequencePreviewShotCounter": {
+    "placeholders": {
+      "index": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "sequencePreviewPrevious": "Previous shot",
+  "sequencePreviewNext": "Next shot",
+  "sequencePreviewReplay": "Replay from the start",
+  "sequencePreviewMissingFile": "File is missing",
+
   "canvasAddImageNode": "Add image node",
   "canvasAddVideoNode": "Add video node",
   "@canvasAddVideoNode": {},

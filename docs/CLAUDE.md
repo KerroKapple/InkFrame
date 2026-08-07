@@ -234,14 +234,14 @@ lib/
 │   ├── canvas/                        # Node canvas
 │   │   ├── models/
 │   │   ├── providers/                 # Riverpod ViewModels
-│   │   ├── util/
+│   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart
 │   │   └── widgets/
 │   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps _UnlockedShell)
 │   │   ├── command_actions.dart       # CommandAction + context-aware hardwired action list (≤6)
 │   │   └── widgets/                   # palette dialog / top-chrome chip / app-level shortcuts wrapper
 │   ├── export/                        # Video export UI (concat dialog; entry in canvas top chrome)
 │   │   ├── providers/                 # ExportController (canvas→project path conversion)
-│   │   ├── util/                      # Output-name pre-validation
+│   │   ├── util/                      # Output-name pre-validation + export_order.dart (EX-1′ narrative-chain default order)
 │   │   └── widgets/
 │   ├── gallery/                       # Project-wide generated-asset gallery (read-only)
 │   │   ├── models/
@@ -260,6 +260,10 @@ lib/
 │   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
 │   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
+│   ├── storyboard/                    # Sequence preview (SB-6) — play the narrative chain end to end
+│   │   ├── models/                    # sequence_shot.dart (what each shot shows, and for how long)
+│   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist; pure)
+│   │   └── widgets/                   # sequence_preview_dialog.dart (playback + advance only)
 │   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
 │       ├── studio_home_screen.dart
 │       ├── open_canvas.dart           # Open/create a canvas from Studio

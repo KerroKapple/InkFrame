@@ -702,6 +702,40 @@ class AppLocalizationsEn extends AppLocalizations {
       'Recorded as intent — the provider you pick when generating decides what is actually supported.';
 
   @override
+  String get sequencePreviewTitle => 'Sequence preview';
+
+  @override
+  String get sequencePreviewTooltip =>
+      'Preview the storyboard in narrative order';
+
+  @override
+  String get sequencePreviewDisabledTooltip =>
+      'Link shots with narrative edges to preview a sequence';
+
+  @override
+  String get sequencePreviewEmpty => 'Nothing to preview yet';
+
+  @override
+  String get sequencePreviewNoArtifact => 'Not generated yet';
+
+  @override
+  String sequencePreviewShotCounter(int index, int total) {
+    return 'Shot $index of $total';
+  }
+
+  @override
+  String get sequencePreviewPrevious => 'Previous shot';
+
+  @override
+  String get sequencePreviewNext => 'Next shot';
+
+  @override
+  String get sequencePreviewReplay => 'Replay from the start';
+
+  @override
+  String get sequencePreviewMissingFile => 'File is missing';
+
+  @override
   String get canvasAddImageNode => 'Add image node';
 
   @override
