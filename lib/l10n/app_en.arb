@@ -293,6 +293,7 @@
   "inspectorShotNotesLabel": "Shot notes",
   "inspectorShotNotesHint": "Describe this shot (camera, action, mood)…",
   "inspectorShotGenerateImage": "Generate image from notes",
+  "inspectorShotGenerateVideo": "Generate video from notes",
   "inspectorShotLinkFailed": "Image node added, but linking failed",
   "inspectorShotDurationLabel": "Intended duration",
   "inspectorShotCameraLabel": "Intended camera movement",
