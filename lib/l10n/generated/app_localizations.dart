@@ -1292,6 +1292,30 @@ abstract class AppLocalizations {
   /// **'Image node added, but linking failed'**
   String get inspectorShotLinkFailed;
 
+  /// No description provided for @inspectorShotDurationLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Intended duration'**
+  String get inspectorShotDurationLabel;
+
+  /// No description provided for @inspectorShotCameraLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Intended camera movement'**
+  String get inspectorShotCameraLabel;
+
+  /// No description provided for @inspectorShotParamUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get inspectorShotParamUnset;
+
+  /// No description provided for @inspectorShotParamHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Recorded as intent — the provider you pick when generating decides what is actually supported.'**
+  String get inspectorShotParamHint;
+
   /// No description provided for @canvasAddImageNode.
   ///
   /// In en, this message translates to:

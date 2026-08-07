@@ -689,6 +689,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorShotLinkFailed => 'Image node added, but linking failed';
 
   @override
+  String get inspectorShotDurationLabel => 'Intended duration';
+
+  @override
+  String get inspectorShotCameraLabel => 'Intended camera movement';
+
+  @override
+  String get inspectorShotParamUnset => 'Not set';
+
+  @override
+  String get inspectorShotParamHint =>
+      'Recorded as intent — the provider you pick when generating decides what is actually supported.';
+
+  @override
   String get canvasAddImageNode => 'Add image node';
 
   @override

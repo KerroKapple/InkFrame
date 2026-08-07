@@ -656,6 +656,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorShotLinkFailed => '图片节点已创建，连线失败';
 
   @override
+  String get inspectorShotDurationLabel => '预期时长';
+
+  @override
+  String get inspectorShotCameraLabel => '预期运镜';
+
+  @override
+  String get inspectorShotParamUnset => '未设置';
+
+  @override
+  String get inspectorShotParamHint => '这里记的是意图——真正能不能做到，由生成时选的 provider 决定。';
+
+  @override
   String get canvasAddImageNode => '添加图片节点';
 
   @override
