@@ -96,6 +96,12 @@
   自己就被跳过(#217 实测踩到:提交推上去,分支零 run,`gh pr checks` 报
   `no checks reported`)。回避写法:描述成「方括号包起来的 skip-ci」。**文件内容不受影响**,
   本文档正文照常写字面量。
+- 再一层:**squash 合并时 PR 标题会成为 squash commit 的主题行**,所以
+  **PR 标题同样不能出现该标记的字面量**。#217 只改了 commit message、漏了 PR 标题,
+  合进 main 后又被跳过一次。一句话总结:**凡是会进 commit message 的地方
+  (commit 主题/正文、PR 标题、squash 时被并入的各条 commit 消息)都要回避**。
+- 补跑手段:`ci` / `smoke` / `secret-scan` 三个 workflow 均已加 `workflow_dispatch`,
+  可 `gh workflow run <file> --ref main` 手动补一次(`release` / `update-goldens` 本就是手动)。
 - 实际事故:#214 给 Studio 空态加了「Built-in samples」CTA,基线未重铸,红着被合进 main
   (合并命令用 `;` 未把关,见 §1 第 7 步),两个 PR 之后才发现。
 
