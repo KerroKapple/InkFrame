@@ -262,7 +262,7 @@ lib/
 │   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
 │   ├── storyboard/                    # Sequence preview (SB-6) — play the narrative chain end to end
 │   │   ├── models/                    # sequence_shot.dart (what each shot shows, and for how long)
-│   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist; pure)
+│   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist) + script_splitter.dart (SB-1 rule-based, no LLM); both pure
 │   │   └── widgets/                   # sequence_preview_dialog.dart (playback + advance only)
 │   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
 │       ├── studio_home_screen.dart

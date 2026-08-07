@@ -7,8 +7,28 @@
 ```
 models/sequence_shot.dart    播放清单条目（一镜放什么、放多久）
 util/sequence_builder.dart   画布节点+边 → 播放清单（纯函数，全单测）
+util/script_splitter.dart    粘贴的文本 → 分镜草稿（纯 Dart，无 Flutter 依赖）
 widgets/sequence_preview_dialog.dart  只负责"放"与"推进"
 ```
+
+## 脚本拆分（SB-1）
+
+`splitScript(text, strategy)` 把一段粘来的文本拆成 `ShotDraft{label, notes}`。
+**纯规则，零 LLM**（D-M4-1 拍 A 档）—— 没有 API key 也能用，行为可断言、可单测、不花钱。
+
+两种策略：`blankLine`（空行分段，适合有段落结构的剧本）、`perLine`（每行一镜）。
+
+最容易写漏的是**剥行首编号**。用户粘来的文本十有八九带 `1.` / `镜头1` / `第3镜` /
+`SHOT 1` / `# `，留着会污染 prompt（"1. 山径破晓" 会让模型去画一个数字 1）。但也不能
+剥过头 —— "1920 年代的街道"、"3D 渲染质感"里的数字是内容。分界：
+
+- **有词锚的**（`镜头N` / `第N镜` / `SHOT N` / `Scene N`）→ 分隔符可有可无
+- **光秃秃的数字** → **必须**跟分隔符（`.` `)` `、` `：` `-`），否则不认
+
+只剥**段首那一行**：段内的 "2 号机位跟拍" 是内容，不是第 2 镜。markdown 井号单独一趟剥，
+因为它既可独立出现（`# 山径破晓`）也可叠在编号前（`### Shot 1 dawn`）。
+
+`label` 是段首行截 60 字（展示用），`notes` 恒为全文 —— 截断不该丢内容。
 
 排序复用 SB-5 的 `canvas/util/narrative_order.dart`，产物查找复用 EX-1′ 首建的
 `canvas/util/node_artifacts.dart` —— 本 feature 不再造第二套（卡面裁决）。
