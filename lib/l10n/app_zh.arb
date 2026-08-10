@@ -552,5 +552,19 @@
   "commandPaletteTooltip": "命令面板",
   "commandPaletteSearchHint": "输入命令…",
   "commandPaletteNoResults": "没有匹配的命令",
-  "commandBackToStudio": "返回工作室"
+  "commandBackToStudio": "返回工作室",
+
+  "canvasAddImportScript": "导入脚本…",
+  "canvasEmptyImportScript": "导入脚本",
+  "scriptImportTitle": "导入脚本",
+  "scriptImportHint": "把脚本粘进来。每一镜变成一个节点，按顺序串成一条链。",
+  "scriptImportStrategyLabel": "拆分方式",
+  "scriptImportStrategyBlankLine": "空行分段",
+  "scriptImportStrategyPerLine": "每行一镜",
+  "scriptImportPreviewLabel": "预览",
+  "scriptImportPreviewEmpty": "还没有可导入的内容。",
+  "scriptImportShotCount": "{count, plural, other{{count} 镜}}",
+  "scriptImportConfirm": "创建分镜",
+  "scriptImportDone": "{count, plural, other{已添加 {count} 镜到画布}}",
+  "scriptImportFailed": "脚本导入失败，画布未做改动。"
 }

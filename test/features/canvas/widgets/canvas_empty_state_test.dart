@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_empty_state.dart';
+import 'package:inkframe/features/storyboard/widgets/script_import_dialog.dart';
 
 import '../../../_harness/test_app.dart';
 
@@ -25,6 +26,23 @@ void main() {
     expect(find.byIcon(Icons.add_photo_alternate_outlined), findsOneWidget);
     expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
     expect(find.byIcon(Icons.movie_outlined), findsOneWidget);
+  });
+
+  // SB-2：空画布是「粘脚本」最自然的落点——手上有本子的人不该被逼着一个个建节点。
+  testWidgets('「导入脚本」CTA 打开脚本导入对话框', (tester) async {
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: CanvasEmptyState(canvasId: 'c1', onBackgroundTap: () {}),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Import script'), findsOneWidget);
+    await tester.tap(find.text('Import script'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(ScriptImportDialog), findsOneWidget);
   });
 
   testWidgets('点击空白触发 onBackgroundTap', (tester) async {

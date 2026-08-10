@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_transform_controller.dart';
@@ -135,6 +136,16 @@ class CanvasEmptyState extends ConsumerWidget {
                         _addNode(context, ref, CanvasNodeType.shot),
                     icon: const Icon(Icons.movie_outlined, size: 16),
                     label: Text(l.canvasEmptyAddShot),
+                  ),
+                  // SB-2：手上已有本子的人，空画布该给的是「粘进来」而不是「一个个建」。
+                  OutlinedButton.icon(
+                    onPressed: () => showScriptImportDialog(
+                      context,
+                      canvasId: canvasId,
+                      origin: _pickPosition(ref, CanvasNodeType.shot),
+                    ),
+                    icon: const Icon(Icons.playlist_add, size: 16),
+                    label: Text(l.canvasEmptyImportScript),
                   ),
                 ],
               ),

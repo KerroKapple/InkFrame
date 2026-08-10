@@ -2557,6 +2557,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Back to Studio'**
   String get commandBackToStudio;
+
+  /// Add-node FAB menu item that opens the script import dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Import script…'**
+  String get canvasAddImportScript;
+
+  /// Empty-canvas CTA that opens the script import dialog
+  ///
+  /// In en, this message translates to:
+  /// **'Import script'**
+  String get canvasEmptyImportScript;
+
+  /// No description provided for @scriptImportTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Import script'**
+  String get scriptImportTitle;
+
+  /// No description provided for @scriptImportHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste your script. Each shot becomes a node, chained in order.'**
+  String get scriptImportHint;
+
+  /// No description provided for @scriptImportStrategyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Split by'**
+  String get scriptImportStrategyLabel;
+
+  /// No description provided for @scriptImportStrategyBlankLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Blank line'**
+  String get scriptImportStrategyBlankLine;
+
+  /// No description provided for @scriptImportStrategyPerLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Every line'**
+  String get scriptImportStrategyPerLine;
+
+  /// No description provided for @scriptImportPreviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get scriptImportPreviewLabel;
+
+  /// No description provided for @scriptImportPreviewEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to import yet.'**
+  String get scriptImportPreviewEmpty;
+
+  /// Script import preview header: how many shots the current text splits into
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 shot} other{{count} shots}}'**
+  String scriptImportShotCount(int count);
+
+  /// No description provided for @scriptImportConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Create shots'**
+  String get scriptImportConfirm;
+
+  /// Snackbar after a successful script import
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 shot added to the canvas} other{{count} shots added to the canvas}}'**
+  String scriptImportDone(int count);
+
+  /// No description provided for @scriptImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t import the script. Nothing was added to the canvas.'**
+  String get scriptImportFailed;
 }
 
 class _AppLocalizationsDelegate
