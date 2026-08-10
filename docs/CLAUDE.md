@@ -260,10 +260,11 @@ lib/
 │   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
 │   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
-│   ├── storyboard/                    # Sequence preview (SB-6) — play the narrative chain end to end
+│   ├── storyboard/                    # Script in, sequence out — paste a script into a shot chain (SB-1/SB-2), play the chain end to end (SB-6)
 │   │   ├── models/                    # sequence_shot.dart (what each shot shows, and for how long)
+│   │   ├── providers/                 # script_import_controller.dart (ShotDrafts → shot chain in ONE transaction; failure leaves no residue)
 │   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist) + script_splitter.dart (SB-1 rule-based, no LLM); both pure
-│   │   └── widgets/                   # sequence_preview_dialog.dart (playback + advance only)
+│   │   └── widgets/                   # script_import_dialog.dart (paste + strategy + live preview) + sequence_preview_dialog.dart (playback + advance only)
 │   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
 │       ├── studio_home_screen.dart
 │       ├── open_canvas.dart           # Open/create a canvas from Studio

@@ -1,14 +1,17 @@
-# storyboard —— 序列预览（SB-6）
+# storyboard —— 脚本进画布，分镜出片子
 
-把画布上的 narrative 链当成一条片子，从头播一遍。
+一头是**入口**（SB-1/SB-2：粘一段脚本 → 一条串好的分镜链），另一头是**出口**
+（SB-6：把这条链当成片子从头播一遍）。
 
 ## 分层
 
 ```
 models/sequence_shot.dart    播放清单条目（一镜放什么、放多久）
-util/sequence_builder.dart   画布节点+边 → 播放清单（纯函数，全单测）
 util/script_splitter.dart    粘贴的文本 → 分镜草稿（纯 Dart，无 Flutter 依赖）
-widgets/sequence_preview_dialog.dart  只负责"放"与"推进"
+util/sequence_builder.dart   画布节点+边 → 播放清单（纯函数，全单测）
+providers/script_import_controller.dart  分镜草稿 → 画布上的 shot 链（单事务落库）
+widgets/script_import_dialog.dart        粘贴 + 策略切换 + 实时预览
+widgets/sequence_preview_dialog.dart     只负责"放"与"推进"
 ```
 
 ## 脚本拆分（SB-1）
@@ -29,6 +32,25 @@ widgets/sequence_preview_dialog.dart  只负责"放"与"推进"
 因为它既可独立出现（`# 山径破晓`）也可叠在编号前（`### Shot 1 dawn`）。
 
 `label` 是段首行截 60 字（展示用），`notes` 恒为全文 —— 截断不该丢内容。
+
+## 批量建链（SB-2）
+
+对话框负责「看」：粘贴框 + 策略切换 + 实时预览（几镜、每镜叫什么）。拆分规则再讲究也有
+猜错的时候，用户得先看见结果才敢按创建 —— 切换策略后预览立刻重算，等于把规则摊开给人验。
+
+`ScriptImportController.importDrafts` 负责「落」：N 个 shot 节点 + N-1 条 narrative 边
+**全部收进单个事务**。半条链（几个建好的散镜 + 几条边）比一个错误提示难收拾得多 —— 用户既
+不知道哪几镜落地了，也没有一键撤销，所以失败必须零残留。
+
+两处容易踩：
+
+- **不走 CanvasNodesController**：它一次只建一个节点，也不参与事务。这里直接经
+  `unitOfWorkProvider` 的 scope 写库，落地后再 invalidate 节点与边两个控制器让内存态跟上。
+- **provider 不加 autoDispose**：调用方只 `ref.read` 拿一次控制器（不订阅），autoDispose
+  会在 read 之后立刻销毁 ref，事务 await 完再 invalidate 就撞上已销毁的 ref，画布刷不出新链。
+
+落点：第一镜落视口中心，后续沿 x 轴每 `kShotChainSpacingX`(260) 排开（shot 卡宽 240，
+留 20 走线余量）。入口 = 画布 FAB 菜单「导入脚本…」+ 空态 CTA「导入脚本」。
 
 排序复用 SB-5 的 `canvas/util/narrative_order.dart`，产物查找复用 EX-1′ 首建的
 `canvas/util/node_artifacts.dart` —— 本 feature 不再造第二套（卡面裁决）。
@@ -76,9 +98,15 @@ shot ──narrative──> image config ──sourceNodeId──> image result
 
 ## 测试
 
+- `script_splitter_test.dart`（22 例）：分段策略、剥编号的边界、退化输入
+- `script_import_controller_test.dart`（10 例）：链形状、落点、单事务、**失败零残留**、invalidate
+- `script_import_dialog_test.dart`（6 例）：预览实时性、策略切换、成功/失败路径
 - `sequence_builder_test.dart`（14 例）：折叠、时长优先级、取最新产物、跳过规则
 - `sequence_preview_dialog_test.dart`（12 例）：handle 生命周期、推进语义、控件门控
 - `canvas_top_chrome_sequence_test.dart`（4 例）：入口可用性门控
+
+「失败零残留」用的 fake UoW 会**真回滚**（写入先落 staging，闭包整体成功才 commit）；
+真事务的回滚语义由 `test/storage/transaction_integration_test.dart`（真 PG）兜底。
 
 media_kit 真播放需要 GPU / 原生层，测试一律走 fake handle —— 真实播放靠手动回归。
 

@@ -614,5 +614,37 @@
   "commandBackToStudio": "Back to Studio",
   "@commandBackToStudio": {
     "description": "Command palette action — leave canvas/gallery/settings and return to the Studio home"
-  }
+  },
+
+  "canvasAddImportScript": "Import script…",
+  "@canvasAddImportScript": {
+    "description": "Add-node FAB menu item that opens the script import dialog"
+  },
+  "canvasEmptyImportScript": "Import script",
+  "@canvasEmptyImportScript": {
+    "description": "Empty-canvas CTA that opens the script import dialog"
+  },
+  "scriptImportTitle": "Import script",
+  "scriptImportHint": "Paste your script. Each shot becomes a node, chained in order.",
+  "scriptImportStrategyLabel": "Split by",
+  "scriptImportStrategyBlankLine": "Blank line",
+  "scriptImportStrategyPerLine": "Every line",
+  "scriptImportPreviewLabel": "Preview",
+  "scriptImportPreviewEmpty": "Nothing to import yet.",
+  "scriptImportShotCount": "{count, plural, =1{1 shot} other{{count} shots}}",
+  "@scriptImportShotCount": {
+    "description": "Script import preview header: how many shots the current text splits into",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scriptImportConfirm": "Create shots",
+  "scriptImportDone": "{count, plural, =1{1 shot added to the canvas} other{{count} shots added to the canvas}}",
+  "@scriptImportDone": {
+    "description": "Snackbar after a successful script import",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "scriptImportFailed": "Couldn't import the script. Nothing was added to the canvas."
 }

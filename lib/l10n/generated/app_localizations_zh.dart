@@ -1321,4 +1321,57 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get commandBackToStudio => '返回工作室';
+
+  @override
+  String get canvasAddImportScript => '导入脚本…';
+
+  @override
+  String get canvasEmptyImportScript => '导入脚本';
+
+  @override
+  String get scriptImportTitle => '导入脚本';
+
+  @override
+  String get scriptImportHint => '把脚本粘进来。每一镜变成一个节点，按顺序串成一条链。';
+
+  @override
+  String get scriptImportStrategyLabel => '拆分方式';
+
+  @override
+  String get scriptImportStrategyBlankLine => '空行分段';
+
+  @override
+  String get scriptImportStrategyPerLine => '每行一镜';
+
+  @override
+  String get scriptImportPreviewLabel => '预览';
+
+  @override
+  String get scriptImportPreviewEmpty => '还没有可导入的内容。';
+
+  @override
+  String scriptImportShotCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 镜',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scriptImportConfirm => '创建分镜';
+
+  @override
+  String scriptImportDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已添加 $count 镜到画布',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scriptImportFailed => '脚本导入失败，画布未做改动。';
 }

@@ -1375,4 +1375,61 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get commandBackToStudio => 'Back to Studio';
+
+  @override
+  String get canvasAddImportScript => 'Import script…';
+
+  @override
+  String get canvasEmptyImportScript => 'Import script';
+
+  @override
+  String get scriptImportTitle => 'Import script';
+
+  @override
+  String get scriptImportHint =>
+      'Paste your script. Each shot becomes a node, chained in order.';
+
+  @override
+  String get scriptImportStrategyLabel => 'Split by';
+
+  @override
+  String get scriptImportStrategyBlankLine => 'Blank line';
+
+  @override
+  String get scriptImportStrategyPerLine => 'Every line';
+
+  @override
+  String get scriptImportPreviewLabel => 'Preview';
+
+  @override
+  String get scriptImportPreviewEmpty => 'Nothing to import yet.';
+
+  @override
+  String scriptImportShotCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shots',
+      one: '1 shot',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scriptImportConfirm => 'Create shots';
+
+  @override
+  String scriptImportDone(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shots added to the canvas',
+      one: '1 shot added to the canvas',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get scriptImportFailed =>
+      'Couldn\'t import the script. Nothing was added to the canvas.';
 }

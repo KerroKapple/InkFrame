@@ -2,6 +2,7 @@
 //
 // 画布右下角的"添加节点"FAB。原本住在 app.dart，S2 下沉到 canvas slice 自治。
 // 弹 PopupMenu 让用户选 image / video，再写入 canvasNodesControllerProvider。
+// SB-2 后菜单多一项「导入脚本」——它不建单个节点，而是开对话框批量建链。
 
 import 'dart:math';
 
@@ -10,10 +11,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/tokens.dart';
+import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_transform_controller.dart';
 import '../util/node_position.dart';
+
+/// FAB 菜单项。不能直接用 [CanvasNodeType]——「导入脚本」不是一种节点类型。
+enum _FabAction { imageNode, videoNode, shotNode, importScript }
 
 class CanvasAddNodeFab extends ConsumerWidget {
   const CanvasAddNodeFab({super.key, required this.canvasId, this.random});
@@ -73,12 +78,12 @@ class CanvasAddNodeFab extends ConsumerWidget {
       overlay.size.height - bottomRight.dy,
     );
 
-    final selected = await showMenu<CanvasNodeType>(
+    final selected = await showMenu<_FabAction>(
       context: context,
       position: position,
-      items: <PopupMenuEntry<CanvasNodeType>>[
-        PopupMenuItem<CanvasNodeType>(
-          value: CanvasNodeType.image,
+      items: <PopupMenuEntry<_FabAction>>[
+        PopupMenuItem<_FabAction>(
+          value: _FabAction.imageNode,
           child: Row(
             children: <Widget>[
               const Icon(Icons.add_photo_alternate_outlined),
@@ -87,8 +92,8 @@ class CanvasAddNodeFab extends ConsumerWidget {
             ],
           ),
         ),
-        PopupMenuItem<CanvasNodeType>(
-          value: CanvasNodeType.video,
+        PopupMenuItem<_FabAction>(
+          value: _FabAction.videoNode,
           child: Row(
             children: <Widget>[
               const Icon(Icons.videocam_outlined),
@@ -97,8 +102,8 @@ class CanvasAddNodeFab extends ConsumerWidget {
             ],
           ),
         ),
-        PopupMenuItem<CanvasNodeType>(
-          value: CanvasNodeType.shot,
+        PopupMenuItem<_FabAction>(
+          value: _FabAction.shotNode,
           child: Row(
             children: <Widget>[
               const Icon(Icons.movie_outlined),
@@ -107,10 +112,34 @@ class CanvasAddNodeFab extends ConsumerWidget {
             ],
           ),
         ),
+        PopupMenuItem<_FabAction>(
+          value: _FabAction.importScript,
+          child: Row(
+            children: <Widget>[
+              const Icon(Icons.playlist_add),
+              const SizedBox(width: InkSpacing.sm),
+              Text(context.l10n.canvasAddImportScript),
+            ],
+          ),
+        ),
       ],
     );
     if (selected == null || !context.mounted) return;
-    await _addNode(context, ref, selected);
+    switch (selected) {
+      case _FabAction.imageNode:
+        await _addNode(context, ref, CanvasNodeType.image);
+      case _FabAction.videoNode:
+        await _addNode(context, ref, CanvasNodeType.video);
+      case _FabAction.shotNode:
+        await _addNode(context, ref, CanvasNodeType.shot);
+      case _FabAction.importScript:
+        // 整条链从视口中心起铺——第一镜正对着用户，后续沿 x 轴排开。
+        await showScriptImportDialog(
+          context,
+          canvasId: canvasId,
+          origin: _pickPosition(ref, CanvasNodeType.shot),
+        );
+    }
   }
 
   @override
