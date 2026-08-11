@@ -15,6 +15,7 @@ import '../../core/interfaces/node_repository.dart';
 import '../../core/interfaces/thumbnail_service.dart';
 import '../../core/interfaces/video_download_service.dart';
 import '../../core/logging/logger_service.dart';
+import '../../core/media/png_dimensions.dart';
 import '../../core/models/generation_task.dart';
 import '../../core/models/provider_capabilities.dart';
 import 'job_queue_util.dart';
@@ -108,11 +109,47 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     await repo.update(id.toString(), patch);
   }
 
-  Map<String, Object?> _slotSuccessPatch(String relPath) => <String, Object?>{
+  /// XM-2：成功 slot 顺带落图片元数据。[size] 解析不出（非 PNG / 头部残缺）
+  /// 或 [seed] 为空时**省略该键**，让列停在 NULL——写 0 会被下游当成真实尺寸。
+  Map<String, Object?> _slotSuccessPatch(
+    String relPath, {
+    PngSize? size,
+    int? seed,
+  }) =>
+      <String, Object?>{
         BatchResultCol.status: SlotStatuses.success,
         BatchResultCol.outputUrl: relPath,
+        if (size != null) BatchResultCol.width: size.width,
+        if (size != null) BatchResultCol.height: size.height,
+        BatchResultCol.seed: ?seed,
         BatchResultCol.completedAt: DateTime.now().toUtc().toIso8601String(),
       };
+
+  /// XM-2：图片主图的 type_config 元数据补丁（与 XM-1 视频侧同键同语义）。
+  /// 拿不到就不写键——patchTypeConfig 是合并语义，省略即保持原样。
+  Map<String, Object?> _imageMetaPatch(PngSize? size, int? seed) =>
+      <String, Object?>{
+        if (size != null) 'width': size.width,
+        if (size != null) 'height': size.height,
+        'seed': ?seed,
+      };
+
+  /// 回读已落盘文件的开头若干字节解析 PNG 尺寸（远端下载路径拿不到 bytes）。
+  /// 只读 [kPngHeaderProbeBytes] 字节，不把整张图读进内存；任何 IO 失败都吞掉
+  /// ——元数据是锦上添花，绝不能让它把一次成功的生成拖成失败。
+  Future<PngSize?> _probePngHeader(File file, String jobId) async {
+    try {
+      final head = <int>[];
+      await for (final chunk in file.openRead(0, kPngHeaderProbeBytes)) {
+        head.addAll(chunk);
+      }
+      return pngDimensions(head);
+    } on FileSystemException catch (e) {
+      _logger?.warn(kJobQueueLogModule, 'png header probe failed (swallowed)',
+          extra: {'job_id': jobId, 'message': e.message});
+      return null;
+    }
+  }
 
   Map<String, Object?> _slotErrorPatch(InkError error) => <String, Object?>{
         BatchResultCol.status: SlotStatuses.error,
@@ -167,8 +204,9 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     }
     try {
       final relativePaths = <String>[];
+      PngSize? firstSize;
       for (var i = 0; i < bytesList.length; i++) {
-        final bytes = bytesList[i];
+        final bytes = bytesList[i] as List<int>;
         final relPath = 'images/${task.jobId}-$i.png';
         final file = fileResolver.resolve(
           projectId: projectId,
@@ -176,12 +214,15 @@ class JobMediaPersisterImpl implements JobMediaPersister {
           relativePath: relPath,
         );
         await file.parent.create(recursive: true);
-        await file.writeAsBytes(bytes as List<int>);
+        await file.writeAsBytes(bytes);
+        // XM-2：bytes 就在手上，解析尺寸零额外 IO。只需首张——主图口径。
+        if (i == 0) firstSize = pngDimensions(bytes);
         relativePaths.add(relPath);
       }
       // 多张时只取首张做主图（PRD §4.4：image_url 单值；批量在 batch_results 表）。
       await nodeRepo.patchTypeConfig(resultNodeId, {
         'image_url': relativePaths.first,
+        ..._imageMetaPatch(firstSize, task.seed),
       });
       return null;
     } on FileSystemException catch (e) {
@@ -219,6 +260,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     required NodeRepository nodeRepo,
   }) async {
     String? firstSuccessRel;
+    PngSize? firstSuccessSize;
     InkError? lastError;
     final count = min(bytesList.length, task.batchSize);
     for (var i = 0; i < count; i++) {
@@ -226,6 +268,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
       if (running.cancelled) break;
       final relPath = 'images/${task.jobId}-$i.png';
       InkError? slotError;
+      PngSize? size;
       try {
         final file = fileResolver.resolve(
           projectId: projectId,
@@ -233,7 +276,9 @@ class JobMediaPersisterImpl implements JobMediaPersister {
           relativePath: relPath,
         );
         await file.parent.create(recursive: true);
-        await file.writeAsBytes(bytesList[i] as List<int>);
+        final bytes = bytesList[i] as List<int>;
+        await file.writeAsBytes(bytes);
+        size = pngDimensions(bytes); // XM-2：逐 slot 各记各的尺寸
       } on FileSystemException catch (e) {
         slotError = LocalIOError(
           cause: e,
@@ -255,8 +300,12 @@ class JobMediaPersisterImpl implements JobMediaPersister {
         );
       }
       if (slotError == null) {
-        await _updateSlot(resultNodeId, i, _slotSuccessPatch(relPath));
-        firstSuccessRel ??= relPath;
+        await _updateSlot(resultNodeId, i,
+            _slotSuccessPatch(relPath, size: size, seed: task.seed));
+        if (firstSuccessRel == null) {
+          firstSuccessRel = relPath;
+          firstSuccessSize = size;
+        }
       } else {
         lastError = slotError;
         _logger?.warn(kJobQueueLogModule, 'batch slot failed', extra: {
@@ -293,6 +342,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     }
     await nodeRepo.patchTypeConfig(resultNodeId, {
       'image_url': firstSuccessRel,
+      ..._imageMetaPatch(firstSuccessSize, task.seed),
     });
     return null;
   }
@@ -368,6 +418,14 @@ class JobMediaPersisterImpl implements JobMediaPersister {
       await downloader.download(url: url, destination: file);
 
       final patch = <String, Object?>{urlKey: relPath};
+
+      // XM-2：图片走远端下载时 bytes 不经手，回读文件头 33 字节补尺寸。
+      // 视频的 width/height 由 XM-1 的抽帧探针给（见下方），此处不重复。
+      if (!isVideo) {
+        patch.addAll(
+          _imageMetaPatch(await _probePngHeader(file, task.jobId), task.seed),
+        );
+      }
 
       // 视频可选：抽首帧（S4 换真实现；S3 provider 返回 null 时跳过）。
       final thumbnail = _thumbnail;
@@ -459,6 +517,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     required VideoDownloadService downloader,
   }) async {
     String? firstSuccessRel;
+    PngSize? firstSuccessSize;
     InkError? lastError;
     final count = min(remoteUrls.length, task.batchSize);
     for (var i = 0; i < count; i++) {
@@ -466,6 +525,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
       if (running.cancelled) break;
       final relPath = 'images/${task.jobId}-$i.png';
       InkError? slotError;
+      PngSize? size;
       try {
         final file = fileResolver.resolve(
           projectId: projectId,
@@ -473,6 +533,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
           relativePath: relPath,
         );
         await downloader.download(url: remoteUrls[i], destination: file);
+        size = await _probePngHeader(file, task.jobId); // XM-2
       } on VideoDownloadError catch (e) {
         slotError = DownloadError(
           cause: e,
@@ -505,8 +566,12 @@ class JobMediaPersisterImpl implements JobMediaPersister {
         );
       }
       if (slotError == null) {
-        await _updateSlot(resultNodeId, i, _slotSuccessPatch(relPath));
-        firstSuccessRel ??= relPath;
+        await _updateSlot(resultNodeId, i,
+            _slotSuccessPatch(relPath, size: size, seed: task.seed));
+        if (firstSuccessRel == null) {
+          firstSuccessRel = relPath;
+          firstSuccessSize = size;
+        }
       } else {
         lastError = slotError;
         _logger?.warn(kJobQueueLogModule, 'batch slot failed', extra: {
@@ -544,6 +609,7 @@ class JobMediaPersisterImpl implements JobMediaPersister {
     }
     await nodeRepo.patchTypeConfig(resultNodeId, {
       'image_url': firstSuccessRel,
+      ..._imageMetaPatch(firstSuccessSize, task.seed),
     });
     return null;
   }
