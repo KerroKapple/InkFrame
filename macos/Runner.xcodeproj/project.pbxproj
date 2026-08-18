@@ -241,6 +241,7 @@
 				33CC110E2044A8840003C045 /* Bundle Framework */,
 				3399D490228B24CF009A79C7 /* ShellScript */,
 				67960350FD9C5662BA2D3EBE /* [CP] Embed Pods Frameworks */,
+				E0035BEF0DA71181CCEFA294 /* Bundle Embedded PostgreSQL */,
 			);
 			buildRules = (
 			);
@@ -399,6 +400,25 @@
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
+		};
+		E0035BEF0DA71181CCEFA294 /* Bundle Embedded PostgreSQL */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle Embedded PostgreSQL";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\nARCH_DIR=\"macos-arm64\"\n[ \"$(uname -m)\" = \"x86_64\" ] && ARCH_DIR=\"macos-x64\"\nSRC=\"${SRCROOT}/Runner/Resources/pg/${ARCH_DIR}\"\nDST=\"${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.app/Contents/Resources/pg/${ARCH_DIR}\"\nif [ -d \"$SRC/bin\" ]; then\n  echo \"Bundling embedded PostgreSQL: $SRC -> $DST\"\n  /bin/mkdir -p \"$DST\"\n  /usr/bin/rsync -a --delete \"$SRC/\" \"$DST/\"\nelse\n  echo \"warning: embedded PostgreSQL not found at $SRC; run scripts/pg/make-relocatable-macos.sh\"\nfi\n";
 		};
 		EB2DCFBE4878365BD662776F /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
