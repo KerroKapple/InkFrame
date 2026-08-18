@@ -108,7 +108,7 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
 > 与 UI 卡去重:LB-06≡GAP-3、LB-15≡GAP-2、LB-05 联动 GAP-8——同一工作只排一张;
 > Inspector 测试欠账裁决为**上线前**(UI GAP-7 为准,backend 债 #19 让渡)。
 > 严格复审新增三卡:**LB-22 备份还原路径 ✅ #189**(SCRAM 后用户无法手工 pg_restore——app 内还原入口,
-> beta 前 M)、**LB-23 内存基线**(ImageCache 上限/长会话水位,S-M)、**LB-24 网络代理支持**
+> beta 前 M)、**LB-23 内存基线 ✅ #227**(ImageCache 上限/长会话水位,S-M)、**LB-24 网络代理支持**
 > (dio 不读系统代理,中文用户连不上海外模型商——`HTTPS_PROXY` env 先行 + 设置页代理区,上线前 M)。
 
 **债表处置总账**:24 行 → 上线前必修 11、条件必修 1(build_runner,freezed 3.2.6 触发)、

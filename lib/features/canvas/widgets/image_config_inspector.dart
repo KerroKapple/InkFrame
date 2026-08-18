@@ -907,6 +907,10 @@ class _CharacterChip extends StatelessWidget {
                   width: _kCharacterThumbSize,
                   height: _kCharacterThumbSize,
                   fit: BoxFit.cover,
+                  // LB-23：微缩略图按显示尺寸缩略解码。
+                  cacheWidth: (_kCharacterThumbSize *
+                          MediaQuery.devicePixelRatioOf(context))
+                      .round(),
                   // 缺文件/坏图占位，不崩 UI。
                   errorBuilder: (_, _, _) => Icon(
                     Icons.person_outline,
