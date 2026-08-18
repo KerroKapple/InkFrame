@@ -323,6 +323,7 @@ lib/
     ├── crash_reporter.dart            # FileCrashReporter (uncaught-error crash file + keep-3 rotation, no context/extra)
     ├── error_hooks.dart               # installErrorHooks + reportUncaught (FlutterError/PlatformDispatcher/zone → logger + CrashReporter)
     ├── lifecycle_timer.dart           # LifecycleTimer (startup stage timing → app.lifecycle {stage, ms}; see docs/perf-baseline.md)
+    ├── image_cache_config.dart        # configureImageCache (LB-23: ImageCache 上限 256MB; main bootstrap 调用一次)
     ├── dio_video_download_service.dart
     ├── process_watchdog.dart          # runWithWatchdog (ProcessStarter 流式 + 定时 kill + 硬截止; pg_dump/pg_restore 超时)
     ├── system_process_runner.dart     # ProcessRunner/ProcessStarter impl (Process.run / Process.start+stdin close)

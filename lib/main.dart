@@ -47,6 +47,7 @@ import 'services/custom_providers_file_service.dart';
 import 'features/settings/providers/update_check_controller.dart';
 import 'services/error_hooks.dart';
 import 'services/file_preferences_service.dart';
+import 'services/image_cache_config.dart';
 import 'services/lifecycle_timer.dart';
 import 'theme/tokens.dart';
 
@@ -69,6 +70,8 @@ void main() {
   runZonedGuarded<Future<void>>(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
+      // LB-23：ImageCache 字节上限 100MB→256MB（依据见 core/constants/image_cache.dart）。
+      configureImageCache();
 
       // 崩溃钩子所需最小依赖尽早就绪，最大化未捕获错误覆盖面（覆盖其后整段 bootstrap）。
       final Duration pathsStart = elapsed.elapsed;
