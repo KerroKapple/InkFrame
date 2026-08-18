@@ -148,6 +148,9 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
       child: Image.file(
         file,
         fit: BoxFit.cover,
+        // LB-23：按 tile 上限缩略解码，禁原图全解码
+        //（220 = gallery_screen._tileMaxExtent，逻辑px × dpr）。
+        cacheWidth: (220 * MediaQuery.devicePixelRatioOf(context)).round(),
         errorBuilder: (_, _, _) =>
             _iconPlaceholder(colors, Icons.broken_image_outlined),
       ),
@@ -171,6 +174,9 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
           : Image.file(
               thumb,
               fit: BoxFit.cover,
+              // LB-23：视频缩略图同按 tile 上限缩略解码。
+              cacheWidth:
+                  (220 * MediaQuery.devicePixelRatioOf(context)).round(),
               // 播放/时长角标经 frameBuilder 挂在图内：缩略图缺失/解码失败时
               // errorBuilder 整体接管，不残留兄弟浮标叠影（评审 F1）。
               frameBuilder: (context, child, frame, wasSync) => Stack(

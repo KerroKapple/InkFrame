@@ -33,6 +33,8 @@ class GalleryImageLightboxContent extends StatelessWidget {
         Positioned.fill(
           child: InteractiveViewer(
             child: Center(
+              // LB-23 有意豁免 cacheWidth：InteractiveViewer 可缩放，
+              // 必须全分辨率解码；lightbox 为瞬态单图，关窗即回收。
               child: Image.file(
                 imageFile,
                 fit: BoxFit.contain,

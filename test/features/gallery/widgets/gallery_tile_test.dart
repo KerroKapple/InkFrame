@@ -287,4 +287,38 @@ void main() {
         reason: '视频文件缺失 → broken 态');
     expect(find.byType(Dialog), findsNothing);
   });
+
+  // LB-23：画廊 tile 必须 cacheWidth 缩略解码（220px tile 全解码原图 = 内存炸点）。
+  // ResizeImage 解包模式同 generation_render_node_e2e_test.dart（ME-26 先例）。
+  testWidgets('LB-23 图片 tile 缩略解码（ResizeImage）', (tester) async {
+    final root = await _root(tester);
+    File('${root.path}/p1/canvases/c1/images/a.png')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(_kPngBytes);
+
+    await _pumpTile(tester, item: _image(), root: root.path);
+    await tester.pump();
+
+    final img = tester.widget<Image>(find.byType(Image));
+    expect(img.image, isA<ResizeImage>(),
+        reason: 'gallery tile 未设 cacheWidth——原图全解码');
+  });
+
+  testWidgets('LB-23 视频缩略图缩略解码（ResizeImage）', (tester) async {
+    final root = await _root(tester);
+    File('${root.path}/p1/canvases/c1/thumbnails/v.jpg')
+      ..parent.createSync(recursive: true)
+      ..writeAsBytesSync(_kPngBytes);
+
+    await _pumpTile(
+      tester,
+      item: _video(thumb: 'thumbnails/v.jpg'),
+      root: root.path,
+    );
+    await tester.pump();
+
+    final img = tester.widget<Image>(find.byType(Image));
+    expect(img.image, isA<ResizeImage>(),
+        reason: '视频缩略图未设 cacheWidth——原图全解码');
+  });
 }

@@ -116,6 +116,8 @@ class _BatchSlotTile extends ConsumerWidget {
         return Image.file(
           file,
           fit: BoxFit.cover,
+          // LB-23：2 列格宽上限 180 逻辑px × dpr 缩略解码。
+          cacheWidth: (180 * MediaQuery.devicePixelRatioOf(context)).round(),
           errorBuilder: (_, _, _) =>
               _placeholder(colors, Icons.broken_image_outlined),
         );
