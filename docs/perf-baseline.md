@@ -71,3 +71,40 @@ grep '"module":"app.lifecycle"' ~/Library/Application\ Support/InkFrame/logs/ink
 | 冷启 | `pg_ready`（含 initdb） | < 15s | TODO(measure on real macOS/Windows) | TODO(measure on real macOS/Windows) |
 
 回填时一并记录机器规格（CPU / 内存 / 磁盘类型）与 app 版本，便于跨机比较。
+
+## 内存水位（LB-23）
+
+### 方法论
+- 指标：进程 RSS（mac `ps -o rss= -p <pid>`；win 任务管理器「内存」列或
+  `Get-Process inkframe | % WorkingSet64`）。Release 构建，采样前静置 10s。
+- 三场景：**空载**（启动进 Studio 不开项目）；**画廊 100 项**（示例项目扩种或真实项目，
+  Gallery 滚到底再回顶）；**连续生成 20 张**（任一 provider，1024px，逐张等完成）。
+
+### 阈值（验收线）
+| 场景 | 阈值 | 依据 |
+|---|---|---|
+| 空载 | < 400 MB | Flutter desktop shell + 嵌入式 PG 常驻 |
+| 画廊 100 项 | < 800 MB | 空载 + ImageCache 上限 256MB + 解码抖动余量 |
+| 连续生成 20 张后回落 | < 900 MB 且 10min 内不再增长 | 泄漏红线：持续线性增长即 bug |
+
+### 实测记录
+| 场景 | macOS (arm64) | Windows (x64) |
+|---|---|---|
+| 空载 | 140 MB（2026-08-18，alpha.11+ 本机 arm64；主进程 30s 稳定，嵌入式 PG 子进程另 23 MB） | 待测（群内 Windows 机） |
+| 画廊 100 项 | 待测（需 ≥100 项真实产物） | 待测 |
+| 连续生成 20 张 | 待测（需 API key 手工跑，SOP 如上） | 待测 |
+
+### ImageCache 策略（评估记录）
+默认 100MB/1000 张 → 字节上限调 256MB（`kImageCacheMaxBytes`，main bootstrap 设定）。
+依据：cacheWidth 收口后画廊 100 项工作集 ≈80MB 贴默认上限，滚动抖动淘汰；
+桌面内存充裕。条目上限不动。cacheWidth 覆盖清单：node_card / video_node_body（先例）
++ gallery_tile（图片 tile + 视频缩略图两站点）/ batch_results_grid /
+node_inputs_section / image_config_inspector（本卡）；
+豁免：gallery_image_lightbox（InteractiveViewer 缩放需全分辨率）。
+
+### keepAlive 常驻盘点（LB-23 子项④）
+8 文件（database / providers / rate_limiter / canvas_transform / inspector_submit /
+export_controller / generation_controller / jobs_registry），`grep -rln keepAlive lib`
+2026-08-18 复核一致。持大对象者仅 ImageCache 域外的 jobs_registry（handle 缓存，
+随 purge 收敛）与 database pool——均为设计内常驻；无未管控大对象。
+上线后如需精算记 BP 系。

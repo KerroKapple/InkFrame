@@ -186,6 +186,10 @@ commit 更新 DATABASE/ARCHITECTURE 对应节。
 - **LB-23 内存基线**(S-M):perf-baseline.md 加内存水位节(空载/画廊 100 项/连续生成 20 张后的
   RSS,双平台实测);ImageCache 上限策略评估;画廊 tile `Image.file(cacheWidth:)` 缩略解码
   列为 GA-1/GAP-5 验收项;keepAlive provider 持大对象盘点(17 处)记 BP 系。
+  状态:已随 #227 落地——cacheWidth 收口 ×4 文件 5 站点(gallery tile 图/视频缩略图、
+  batch grid、两处微缩略图;lightbox InteractiveViewer 有意豁免)、ImageCache 256MB
+  (kImageCacheMaxBytes)、perf-baseline 内存水位节(mac 空载已实测 140MB;画廊/生成/win 列
+  按 SOP 待填)、keepAlive 盘点 8 文件无未管控大对象。
 
 ### D. 可观测性
 
