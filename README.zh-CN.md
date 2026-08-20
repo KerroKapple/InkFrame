@@ -1,6 +1,8 @@
 <div align="center">
 
-# 🎬 InkFrame
+<img src="docs/media/logo.png" alt="InkFrame logo" width="128">
+
+# InkFrame
 
 **[English](./README.md)** | **中文**
 
