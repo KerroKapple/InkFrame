@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1C1814"/>
+      <stop offset="1" stop-color="#0B0908"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E3C67B"/>
+      <stop offset="0.55" stop-color="#C9A85B"/>
+      <stop offset="1" stop-color="#A88340"/>
+    </linearGradient>
+    <radialGradient id="ink" cx="0.36" cy="0.30" r="0.95">
+      <stop offset="0" stop-color="#EACd85"/>
+      <stop offset="0.55" stop-color="#C9A85B"/>
+      <stop offset="1" stop-color="#8F6E2C"/>
+    </radialGradient>
+  </defs>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="url(#bg)"/>
+  <rect x="100" y="100" width="824" height="824" rx="185" fill="none" stroke="#3C342A" stroke-width="6"/>
+  <!-- 取景框四角 bracket -->
+  <g fill="none" stroke="url(#gold)" stroke-width="46" stroke-linecap="round">
+    <path d="M 262 396 L 262 314 Q 262 262 314 262 L 396 262"/>
+    <path d="M 628 262 L 710 262 Q 762 262 762 314 L 762 396"/>
+    <path d="M 762 628 L 762 710 Q 762 762 710 762 L 628 762"/>
+    <path d="M 396 762 L 314 762 Q 262 762 262 710 L 262 628"/>
+  </g>
+  <!-- 中央墨团:书法顿笔团块,笔锋从团块右肩带出、宽进尖出 -->
+  <path d="M 470 430
+           C 428 464, 400 512, 404 560
+           C 409 618, 460 654, 520 648
+           C 582 642, 622 594, 614 534
+           C 608 488, 580 452, 542 432
+           C 566 400, 602 372, 652 356
+           C 674 349, 694 346, 710 348
+           C 678 356, 648 372, 622 396
+           C 602 414, 586 434, 576 456
+           C 560 442, 540 432, 518 428
+           C 501 425, 484 425, 470 430 Z"
+        fill="url(#ink)"/>
+</svg>
