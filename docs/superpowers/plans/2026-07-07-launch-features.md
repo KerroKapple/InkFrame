@@ -149,6 +149,10 @@ narrative 链可序列播放且与导出同序。
   使用——需决策:留原文件共享 or 一并抽公共 widget;这不是零决策机械搬移**;
   video 侧挂 NodeInputsSection 前,门控 maxRefImages>0;顺带给 1019 行的 image inspector 减重
   (勿与 P1-17 _PromptPreview 债同窗)。
+  状态:已随 #230 落地——三类抽共享 characters_section.dart(NameDialog/CharacterChip
+  一并转公开,_PresetsSection 改 import;image inspector 1033→672 行零行为变化,
+  既有角色区测试一行未改全绿);video 侧 maxRefImages>0 门控挂载,
+  requireImageToImageMode=false 对齐 CH-1 注入口径(不检查 modes)。
 - **CH-3 角色库管理页**(M/L,可并行;入口形态 D-M4-8 默认 A 可先行):新 `features/characters/`
   整屏(路由完全仿 gallery 的 currentGalleryProjectProvider 模式,优先级 canvas>gallery>
   characters>screen);列表卡(缩略图/名称/描述/图数);改名/删除用现有 controller 方法;
