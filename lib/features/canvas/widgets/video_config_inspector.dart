@@ -22,6 +22,7 @@ import '../../generation/services/cost_estimator.dart';
 import '../models/canvas_node.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
+import 'characters_section.dart';
 import 'inspector_status_panel.dart';
 import 'node_inputs_section.dart';
 
@@ -300,6 +301,17 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                   context.l10n.inspectorVideoGenerateDisabledNoKey,
               onSubmit: _submit,
             ),
+            // CH-2：角色区（CH-1 视频注入的用户入口）。门控对齐注入门：
+            // 仅 maxRefImages>0 挂载——与 image 侧「常挂+警示文案」有意不同，
+            // 视频多数 provider 无 ref 能力,常挂=一屏死区。
+            if (selected != null && selected.maxRefImages > 0) ...[
+              const SizedBox(height: InkSpacing.lg),
+              CharactersSection(
+                targetNode: widget.node,
+                selectedCaps: selected,
+                requireImageToImageMode: false,
+              ),
+            ],
             // 入边（首/尾帧、参考图连线）：i2v 的首尾帧语义由此处 role 切换驱动，
             // GenerationController 按 role 分流到 firstFramePath/lastFramePath。
             if (widget.node.canvasId != null) ...[
