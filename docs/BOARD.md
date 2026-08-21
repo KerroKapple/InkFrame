@@ -8,7 +8,7 @@
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-08-07 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
+> 最近更新：2026-08-21 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
 > PKG-2A release CI 首跑绿,产物体积增量与 PG 二进制吻合（mac 39.6→68MB / win 36.7→71MB）;
 > 干净机实机验收待做;待签名 U1/U2 方为干净机免绕行可装）
 
@@ -121,6 +121,7 @@
 | **XM-2 图片元数据（M4;补齐 XM-1 的图片侧）**：`core/media/png_dimensions.dart` 纯函数（PNG 签名 + IHDR,不引解码库）→ 四个落盘点（inline 单/批、remote 单/批）顺手解析宽高,连同 `task.seed` 写进 `node.type_config`（主图那一张,与 XM-1 视频侧同键）与 `batch_results.width/height/seed`（逐 slot 各记各的,schema 已建未用的列自此有值）。**判定刻意严格、拿不到就不写键**：认错了会把垃圾尺寸写进库再一路带到排版,而列停在 NULL 画廊才知道退回默认比例——每条正向断言都配一条「非 PNG 时这些键根本不出现」的反向断言。inline 路径 bytes 在手零额外 IO;remote 路径回读文件头 33 字节（完整 IHDR 含 CRC）,**任何探针失败一律吞掉**——元数据是锦上添花,绝不能把一次成功的生成拖成失败。视频侧不动（宽高仍归 XM-1 抽帧探针）。+22 例 | #226 |
 | LB-23 内存基线:cacheWidth 缩略解码收口 ×4 文件 5 站点（gallery tile 图片+视频缩略图/batch grid/两微缩略图;lightbox InteractiveViewer 有意豁免）+ ImageCache 上限 100→256MB（`kImageCacheMaxBytes`,main bootstrap 设定）+ perf-baseline 内存水位节（方法论/阈值/mac 空载实测 140MB,画廊与生成场景按 SOP 待填,Windows 列待群内机器）+ keepAlive 盘点 8 文件无未管控大对象 | #227 |
 | CH-2 视频 Inspector 角色区:角色区/命名框/角色 chip 抽共享 `characters_section.dart`（image inspector 1033→672 行,行为零变化以既有角色区测试一行未改全绿为证）+ video inspector 门控挂载（`maxRefImages>0` 对齐 CH-1 注入门,不检查 imageToImage——r2v/omni 语义;与 image 侧常挂+警示有意不同,视频多数 provider 无 ref 能力常挂=一屏死区）——CH-1 视频角色注入自此有用户可见入口 | #230 |
+| **D-M4-2~8 七决策批量拍板落档(2026-08-21,全取推荐 A 档)**:画廊→画布=菜单动作 / 画廊删除=永久删行+文件 / 聚合器=编辑+重启 / 第二模板=openai-chat-image / 转码=单开关 1080p30 H.264 丢音频 / 项目复制=不带 jobs/batch/exports / 角色库=独立整屏仿 Gallery。**M4 Wave 3 全解锁**(CH-3→GA-5/6→AG-4/5→EX-2);详见 MASTERPLAN §9。顺带清理 4 个已合入 worktree + 8 条残留本地分支 | #231 |
 
 ## M1 补遗（审计发现的悬空项）
 
