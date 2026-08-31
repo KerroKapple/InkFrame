@@ -90,17 +90,26 @@ final inspectorSubmitControllerProvider = AutoDisposeNotifierProviderFamily<
 class InspectorSubmitController
     extends AutoDisposeFamilyNotifier<InspectorSubmitState, String> {
   Timer? _debounce;
+  KeepAliveLink? _debounceKeepAlive;
 
   static const debounceDuration = Duration(milliseconds: 500);
 
   @override
   InspectorSubmitState build(String configNodeId) {
-    ref.onDispose(() => _debounce?.cancel());
+    ref.onDispose(_cancelPendingDebounce);
     return const InspectorSubmitIdle();
   }
 
   bool get isBusy =>
       state is InspectorSubmitSubmitting || state is InspectorSubmitRunning;
+
+  /// 取消挂起的防抖计时器并释放其 keepAlive（不落盘）。
+  void _cancelPendingDebounce() {
+    _debounce?.cancel();
+    _debounce = null;
+    _debounceKeepAlive?.close();
+    _debounceKeepAlive = null;
+  }
 
   /// 立即持久化 type_config patch。失败静默——单次保存失败不打断输入流，
   /// 下次保存覆盖（与生成提交路径不同，这里没有用户可见的失败面）。
@@ -114,10 +123,20 @@ class InspectorSubmitController
   }
 
   /// prompt 防抖保存：连续输入只落最后一次。
+  ///
+  /// 挂起期间用 [Ref.keepAlive] 挂起本 provider 的 autoDispose——
+  /// 否则切换 Inspector 选中的节点会在计时器触发前就把它回收，onDispose 只
+  /// cancel 计时器、不落盘，编辑内容直接丢失（2026-08-31 审计 P0）。
   void savePromptDebounced(String prompt) {
-    _debounce?.cancel();
+    _cancelPendingDebounce();
+    _debounceKeepAlive = ref.keepAlive();
     _debounce = Timer(debounceDuration, () {
-      unawaited(saveConfig(<String, Object?>{'prompt': prompt}));
+      final link = _debounceKeepAlive;
+      _debounceKeepAlive = null;
+      unawaited(
+        saveConfig(<String, Object?>{'prompt': prompt})
+            .whenComplete(() => link?.close()),
+      );
     });
   }
 
@@ -127,7 +146,8 @@ class InspectorSubmitController
   /// 终态结果/失败由 CanvasScreen 的 registry listener 反映。
   Future<void> submit(Map<String, Object?> finalConfig) async {
     if (isBusy) return;
-    _debounce?.cancel();
+    // 即将写完整 finalConfig：丢弃挂起的局部 prompt patch，不需要它再补落一次。
+    _cancelPendingDebounce();
     // 提交期间挂起 autoDispose：widget 中途关闭也要把状态机走完。
     final link = ref.keepAlive();
     state = const InspectorSubmitSubmitting();
