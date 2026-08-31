@@ -1,4 +1,4 @@
-// DiskOrphanFileReaper：OrphanFileReaper 的磁盘实现（LB-13 slice B，DRY-RUN v1）。
+// DiskOrphanFileReaper：OrphanFileReaper 的磁盘实现（LB-13 slice B）。
 //
 // 只扫 projects/<p>/canvases/<c>/{images,videos}——绝不碰其它任何目录（安全#3）。
 // 三重安全：
@@ -8,8 +8,10 @@
 //      的节点也算引用——软删可 LB-15 恢复，其产物必须留。
 //   #3 目录白名单：只列 images/ 与 videos/，其余一律不扫描、不识别。
 //
-// DRY-RUN：识别到的孤儿只 logger.info('orphan.reap.dryrun', ...)，**绝不删除**。
-// 真实删除在 reap(dryRun:false) 分支——本卡任何调用点都不传 false，故该分支不可达。
+// 只读：识别到的孤儿只 logger.info('orphan.reap.dryrun', ...)，**这个类里没有任何
+// 删除代码**——2026-08-31 审计 P0：曾经的 reap(dryRun:false) 分支是一条真实可达、
+// 无恢复机制的删除路径，即便当时没有调用点传 false，也不该让删除实现待在一个号称
+// "只读审计"的服务里。真正的删除功能必须是独立评审的另一个实现。
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
@@ -61,10 +63,10 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
       File(p.join(_paths.config.path, kOrphanReapMarkerName));
 
   @override
-  Future<OrphanReapReport> reap({bool dryRun = true}) async {
+  Future<OrphanReapReport> reap() async {
     final now = _clock.nowUtc();
 
-    // 节流：距上次成功回收不足阈值直接跳过（dry-run 也节流，免得每次启动刷屏）。
+    // 节流：距上次成功回收不足阈值直接跳过（免得每次启动刷屏）。
     final last = _readLastReap();
     if (last != null && now.difference(last) < kOrphanReapThrottle) {
       return const OrphanReapReport.skipped();
@@ -89,16 +91,6 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
           'age_days': c.ageDays,
         },
       );
-      // ── DRY-RUN 边界 ──────────────────────────────────────────────────
-      // 真实删除只在 dryRun=false 时发生。本卡任何调用点都不传 false（默认 true），故此
-      // 分支不可达——保证本卡「永不删除」。未来卡验证 dry-run 日志无误后翻开关。下段整体
-      // 排除覆盖率统计（不为覆盖率 wire dryRun:false，那会真的删文件）。marker 须独占整行，
-      // 尾部不能带注释文字，否则 coverage 解析器（锚定行尾）识别不到 start → 报 unmatched。
-      // coverage:ignore-start
-      if (!dryRun) {
-        await _reapFile(c.file);
-      }
-      // coverage:ignore-end
     }
 
     _logger?.info(
@@ -107,7 +99,7 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
       extra: <String, Object?>{
         'orphan_count': candidates.length,
         'total_bytes': totalBytes,
-        'dry_run': dryRun,
+        'dry_run': true,
       },
     );
 
@@ -115,7 +107,7 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
 
     return OrphanReapReport(
       throttledSkip: false,
-      dryRun: dryRun,
+      dryRun: true,
       orphanCount: candidates.length,
       totalBytes: totalBytes,
     );
@@ -219,22 +211,6 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
       // 写标记失败：仅影响下次节流（最坏重复一次 dry-run），绝不阻断。
     }
   }
-
-  // 未来卡的删除路径，本卡不可达（无处 wire dryRun:false）；下方方法整体排除覆盖率统计。
-  // coverage:ignore-start
-  /// 真实删除——仅 reap(dryRun:false) 触达。本卡不可达（无处 wire false）。
-  Future<void> _reapFile(File file) async {
-    try {
-      await file.delete();
-    } on FileSystemException catch (e) {
-      _logger?.warn(
-        kOrphanReapModule,
-        'orphan.reap.delete_failed',
-        extra: <String, Object?>{'reason': e.message},
-      );
-    }
-  }
-  // coverage:ignore-end
 }
 
 /// 孤儿候选：一个被判定为孤儿的文件 + 元信息。

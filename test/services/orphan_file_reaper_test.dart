@@ -336,5 +336,5 @@ class _ThrowingReaper implements OrphanFileReaper {
   final Object _error;
 
   @override
-  Future<OrphanReapReport> reap({bool dryRun = true}) async => throw _error;
+  Future<OrphanReapReport> reap() async => throw _error;
 }
