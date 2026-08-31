@@ -122,23 +122,29 @@ class InspectorSubmitController
     }
   }
 
-  /// prompt 防抖保存：连续输入只落最后一次。
+  /// 通用防抖保存：连续调用只落最后一次 patch。
   ///
-  /// 挂起期间用 [Ref.keepAlive] 挂起本 provider 的 autoDispose——
-  /// 否则切换 Inspector 选中的节点会在计时器触发前就把它回收，onDispose 只
-  /// cancel 计时器、不落盘，编辑内容直接丢失（2026-08-31 审计 P0）。
-  void savePromptDebounced(String prompt) {
+  /// 挂起期间用 [Ref.keepAlive] 挂起本 provider 的 autoDispose——否则切换
+  /// Inspector 选中的节点会在计时器触发前就把它回收，编辑内容直接丢失
+  /// （2026-08-31 审计 P0）。prompt 字段与 shot_notes 字段共用这份实现——不能
+  /// 各自维护一份本地 Timer：widget 的 dispose() 里不允许再用 ref 去 flush
+  /// （Riverpod 的 ConsumerStatefulElement 在 widget 自身 unmount 时就会拒绝
+  /// 该 widget 发起的任何 ref 访问，与 provider 容器是否还活着无关），所以
+  /// debounce 必须整个挂在 controller（跟着 provider 容器的生命周期走）上，
+  /// 而不是 widget 的 State 上。
+  void saveDebounced(Map<String, Object?> patch) {
     _cancelPendingDebounce();
     _debounceKeepAlive = ref.keepAlive();
     _debounce = Timer(debounceDuration, () {
       final link = _debounceKeepAlive;
       _debounceKeepAlive = null;
-      unawaited(
-        saveConfig(<String, Object?>{'prompt': prompt})
-            .whenComplete(() => link?.close()),
-      );
+      unawaited(saveConfig(patch).whenComplete(() => link?.close()));
     });
   }
+
+  /// prompt 防抖保存：连续输入只落最后一次。
+  void savePromptDebounced(String prompt) =>
+      saveDebounced(<String, Object?>{'prompt': prompt});
 
   /// 提交生成。先把最终 config 落盘，再发起生成。
   ///

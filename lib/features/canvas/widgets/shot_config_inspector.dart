@@ -40,7 +40,6 @@ const List<int> kShotDurationOptions = <int>[3, 5, 10, 15];
 
 class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
   final TextEditingController _notesCtrl = TextEditingController();
-  Timer? _debounce;
   bool _busy = false;
   int? _durationSec;
   CameraMovement? _camera;
@@ -73,7 +72,6 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
 
   @override
   void dispose() {
-    _debounce?.cancel();
     _notesCtrl.dispose();
     super.dispose();
   }
@@ -96,12 +94,9 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
 
   void _onChanged(String value) {
     setState(() {}); // 备注是否为空 → 生成按钮可用性
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      ref
-          .read(inspectorSubmitControllerProvider(widget.node.id).notifier)
-          .saveConfig(<String, Object?>{'shot_notes': value});
-    });
+    ref
+        .read(inspectorSubmitControllerProvider(widget.node.id).notifier)
+        .saveDebounced(<String, Object?>{'shot_notes': value});
   }
 
   bool get _canGenerate =>
