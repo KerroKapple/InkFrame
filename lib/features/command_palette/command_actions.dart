@@ -24,6 +24,7 @@ import '../canvas/util/node_position.dart';
 import '../export/util/export_order.dart';
 import '../export/widgets/export_video_dialog.dart';
 import '../gallery/providers/current_gallery_project.dart';
+import '../studio/project_import_flow.dart';
 
 /// 单个可执行命令：图标 + 已本地化 label + 执行闭包。
 @immutable
@@ -96,8 +97,13 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
     AppScreen.settings => <CommandAction>[_backToStudio(l)],
     AppScreen.showcase => <CommandAction>[_backToStudio(l), _openSettings(l)],
     // studio：内置示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
-    // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。
-    AppScreen.studio => <CommandAction>[_openShowcase(l), _openSettings(l)],
+    // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。2026-08-31 审计 P0：
+    // 导入项目此前在这里完全够不到，见 studio/project_import_flow.dart。
+    AppScreen.studio => <CommandAction>[
+        _importProject(l),
+        _openShowcase(l),
+        _openSettings(l),
+      ],
   };
 }
 
@@ -170,6 +176,13 @@ CommandAction _openShowcase(AppLocalizations l) => CommandAction(
       run: (context, ref) async {
         ref.read(currentScreenProvider.notifier).state = AppScreen.showcase;
       },
+    );
+
+CommandAction _importProject(AppLocalizations l) => CommandAction(
+      id: 'importProject',
+      icon: Icons.unarchive_outlined,
+      label: l.studioImportProject,
+      run: (context, ref) => runProjectImportFlow(context, ref),
     );
 
 CommandAction _openSettings(AppLocalizations l) => CommandAction(

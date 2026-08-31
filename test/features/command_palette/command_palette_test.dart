@@ -5,13 +5,19 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/current_screen.dart';
+import 'package:inkframe/core/di/logger.dart';
+import 'package:inkframe/core/di/project_archive.dart';
+import 'package:inkframe/core/interfaces/project_import_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
+import 'package:inkframe/features/generation/services/toast_service.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
+
+import '../../helpers/recording_logger.dart';
 
 /// 空画布节点集（隔离 DB DI）。
 class _EmptyNodesController extends CanvasNodesController {
@@ -57,6 +63,23 @@ class _RecordingNodesController extends CanvasNodesController {
   }) async {
     added.add(type);
     return CanvasNode(id: 'n1', label: label, type: type, canvasId: arg);
+  }
+}
+
+/// 导入流程测试用 fake service。
+class _FakeImportService implements ProjectImportService {
+  @override
+  Future<ImportResult> importArchive({required String zipPath}) async =>
+      const ImportResult(outcome: ImportOutcome.failed);
+}
+
+/// 记录 toast 调用的 fake。
+class _RecordingToast implements ToastService {
+  final List<String> messages = [];
+
+  @override
+  void show(String message, {ToastKind kind = ToastKind.info}) {
+    messages.add(message);
   }
 }
 
@@ -126,6 +149,26 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(CommandPaletteDialog), findsNothing);
     expect(container.read(currentScreenProvider), AppScreen.settings);
+  });
+
+  testWidgets('studio 上下文能直接执行 Import project（回归 2026-08-31 审计 P0）',
+      (tester) async {
+    final toast = _RecordingToast();
+    final container = await _pumpShell(tester, overrides: <Override>[
+      openFilePickerProvider.overrideWithValue(() async => null),
+      projectImportServiceProvider.overrideWith((ref) async => _FakeImportService()),
+      toastServiceProvider.overrideWithValue(toast),
+      loggerProvider.overrideWithValue(RecordingLogger()),
+    ]);
+    await _pressCtrlK(tester);
+
+    expect(find.text('Import project…'), findsOneWidget);
+    await tester.tap(find.text('Import project…'));
+    await tester.pumpAndSettle();
+
+    // picker 返回 null（用户取消）：面板已经关闭，且没有崩溃/挂起。
+    expect(find.byType(CommandPaletteDialog), findsNothing);
+    expect(container.read(projectImportBusyProvider), isFalse);
   });
 
   testWidgets('showcase 上下文可返回 Studio 或打开设置', (tester) async {
