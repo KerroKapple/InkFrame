@@ -2,7 +2,7 @@
 //
 // shot 是真实节点类型（image/text/video/shot），此前无编辑面板。本面板先提供分镜
 // 备注（type_config.shot_notes），作为后续 storyboard→shot→序列 流水线的编辑起点。
-// 持久化经 InspectorSubmitController.saveConfig（防抖），与 image/video 面板同构。
+// 持久化经 InspectorSubmitController.saveDebounced（防抖），与 image/video 面板同构。
 // 「用本镜备注生成图像」：以 shot_notes 为 prompt 在旁侧新建 image config 节点，
 // 并挂一条 narrative 边（shot→image），复用现有生成链路（M3 §1 首切片）。
 import 'dart:async';

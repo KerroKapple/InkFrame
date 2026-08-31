@@ -2,7 +2,8 @@
 //
 // 从 Image/VideoConfigInspector 抽出的共享逻辑：
 //   - 四态状态机：idle / submitting / running / failure
-//   - type_config 持久化（含 prompt 防抖保存）——widget 不再直写 repository
+//   - type_config 持久化（含防抖保存，prompt/shot_notes 共用同一实现）——
+//     widget 不再直写 repository
 //   - submit：先落最终 config，再经 GenerationController.submitFromConfigNode
 //   - 失败携带结构化 InspectorSubmitError，文案由 view 层映射 ARB
 //
@@ -132,6 +133,12 @@ class InspectorSubmitController
   /// 该 widget 发起的任何 ref 访问，与 provider 容器是否还活着无关），所以
   /// debounce 必须整个挂在 controller（跟着 provider 容器的生命周期走）上，
   /// 而不是 widget 的 State 上。
+  ///
+  /// 每个 node 只有一个挂起中的 Timer/patch 槽位：同一 node 上第二次
+  /// saveDebounced/savePromptDebounced 调用会在第一次落盘前把它替换掉。
+  /// 因此同一 node 上两个不同的防抖字段会互相打架——目前不是活 bug（prompt
+  /// 与 shot_notes 分属不相交的节点类型），但后续若有 node 类型要同时防抖
+  /// 两个字段，需要另外处理。
   void saveDebounced(Map<String, Object?> patch) {
     _cancelPendingDebounce();
     _debounceKeepAlive = ref.keepAlive();
@@ -152,7 +159,7 @@ class InspectorSubmitController
   /// 终态结果/失败由 CanvasScreen 的 registry listener 反映。
   Future<void> submit(Map<String, Object?> finalConfig) async {
     if (isBusy) return;
-    // 即将写完整 finalConfig：丢弃挂起的局部 prompt patch，不需要它再补落一次。
+    // 即将写完整 finalConfig：丢弃挂起的局部 patch，不需要它再补落一次。
     _cancelPendingDebounce();
     // 提交期间挂起 autoDispose：widget 中途关闭也要把状态机走完。
     final link = ref.keepAlive();
