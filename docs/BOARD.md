@@ -32,7 +32,7 @@
 | 功能 | 状态 | 优先级 | 备注 |
 |---|---|---|---|
 | 参考图 / 首尾帧 UI（Provider 已支持，缺界面） | ✅ | P0 | 共享 `NodeInputsSection`（image+video 均挂载，缩略图/role 按 `supportsFirstFrame/LastFrame` 门控/n-max 计数）；连线经画布 link 模式，image→video 智能默认 first_frame（PR #138 B1/B3） |
-| 角色一致性（项目级角色参考，自动带入生成） | ✅ | P0 | characters 表/仓储/资产服务 + 生成按能力注入 + Inspector 角色区/存为角色（`528a3e9`/`eda2d7c`）。仅 image 节点、maxRefImages>0 且 imageToImage 生效 |
+| 角色一致性（项目级角色参考，自动带入生成） | ✅ | P0 | characters 表/仓储/资产服务 + 生成按能力注入 + Inspector 角色区/存为角色（`528a3e9`/`eda2d7c`）。image 节点:maxRefImages>0 且 imageToImage;video 节点:仅 maxRefImages>0、不查 modes(CH-1 #209 注入链 + CH-2 #230 Inspector 入口) |
 | 批量 / 变体（生产侧 + 消费侧全链路） | ✅ | P1 | 消费侧骨架（`854124b`）+ 生产侧：提交事务预建 slot 占位、JobQueue 逐 slot 落库、结果节点 Inspector 挂 `BatchResultsGrid`、取消/失败/孤儿收敛。拍板语义：≥1 成即 job success、取消保留已成 slot。经 3 路对抗评审,2×P1+4×P2 全修 |
 | 提示词模板 / 预设库 | ✅ | P1 | 项目级 schema_v7 预设库 + Inspector 点选应用/存为预设（`8a28777`） |
 | 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + 图像/视频 Inspector 实时预估（`1273522`/`d1dfc46`） |
@@ -193,3 +193,4 @@
 | 防抖自动保存「在途写入」与 submit() 竞序（2026-08-31 审计 W3 P1;#232 明确不做）:计时器已触发、`saveConfig` 正 await 仓储时 submit() 落完整 finalConfig,旧 patch 可能晚到覆盖终稿 prompt;#232 只修「挂起未发射」被 dispose 丢弃这一种 | 🅿️ | 需写序号/版本号或串行写链,属审计 §二A「autoDispose/取消 vs 异步写」系统性模式(5 窗口互证),应一次架构修复而非逐点补丁 |
 | 自动保存失败静默（2026-08-31 审计 W17 P1;#232 明确不做）:`saveConfig` 吞 InkError,UI 无失败态/无重试;下一次输入覆盖即"自愈",但最后一次编辑若正好失败即静默丢 | 🅿️ | UX 面而非数据丢失 bug;随 W17 UX P1 批次(长耗时操作进度/失败原因上屏)同窗 |
 | InspectorSubmitController 单 node 单防抖槽位（#232 设计裁定）:同一 node 上第二个 `saveDebounced` 会把第一个未落盘的 patch 整个顶掉;当前 prompt / shot_notes 分属 image·video / shot 节点,不相交,非活 bug | 🅿️ | 若将来某节点类型要同时防抖两个字段,改为按 key 分槽或合并 patch |
+| CH-2 合并后评审残留（#230;2026-09-02 对抗评审,三反驳者多数通过）:①video inspector「存为角色」只认 reference 角色的入边,而 image→video 连线默认 first_frame,常态下按钮恒灰(用户须先把边切成 reference 才能存);②挂载角色数 + 首尾帧/参考图合计超过 maxRefImages 时 UI 无任何提示,而 take() 截掉的恰是角色图;③`_createFromReference`/`_importFromFile` 在 `await _promptName` 之后直接 ref.read 无 mounted 守卫(抽出前即如此);④gallery_tile 仍留一份私有 `_CharacterNameDialog`,与已公开的 InspectorNameDialog 成三份近似件 | 🅿️ | ①②UX 面,随 E5 CH-3 角色库页同窗定夺;③④低成本顺手清 |
