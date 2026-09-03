@@ -1,4 +1,4 @@
-// DiskOrphanFileReaper 单测（LB-13 slice B，DRY-RUN v1）。
+// DiskOrphanFileReaper 单测（LB-13 slice B，只读扫描——无删除代码）。
 //
 // 覆盖：识别逻辑（恰好命中未引用 AND >7d）、mtime 守卫、目录白名单安全、
 // 引用集构建（含软删节点）、节流、以及 dry-run「绝不删除 + 记 orphan.reap.dryrun」。

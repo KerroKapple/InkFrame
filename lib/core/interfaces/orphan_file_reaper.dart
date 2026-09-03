@@ -5,7 +5,7 @@
 // **没有任何删除实现**——不是"默认关闭的开关"，是这个类里根本不存在删除代码。
 // 真正的删除需要独立实现、独立评审，不在本契约里。
 abstract class OrphanFileReaper {
-  /// 扫描并识别孤儿文件，只记 orphan.reap.dryrun 日志、不删除、不改动磁盘。
+  /// 扫描并识别孤儿文件，只记 orphan.reap.dryrun 日志、不删除、不碰任何媒体文件（唯一落盘 = config/ 下的节流标记）。
   /// 节流：距上次成功回收不足阈值则直接跳过（返回 [OrphanReapReport.skipped]）。
   /// 引用集构建失败（InkError）向上抛——由启动兜底 swallow 成 warn，绝不阻断。
   Future<OrphanReapReport> reap();

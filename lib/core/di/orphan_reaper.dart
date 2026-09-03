@@ -1,4 +1,4 @@
-// OrphanFileReaper DI + 启动触发（LB-13 slice B，DRY-RUN v1）。
+// OrphanFileReaper DI + 启动触发（LB-13 slice B，只读扫描——无删除代码）。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../interfaces/orphan_file_reaper.dart';

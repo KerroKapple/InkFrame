@@ -147,7 +147,6 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
             if (age <= kOrphanMinAge) continue;
             out.add(
               OrphanCandidate(
-                file: entity,
                 relativePath: rel,
                 sizeBytes: stat.size,
                 ageDays: age.inDays,
@@ -217,13 +216,10 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
 /// 本卡只用于日志 / 统计，从不据此删除。
 class OrphanCandidate {
   const OrphanCandidate({
-    required this.file,
     required this.relativePath,
     required this.sizeBytes,
     required this.ageDays,
   });
-
-  final File file;
 
   /// 画布相对路径（`images/<f>` 或 `videos/<f>`）。
   final String relativePath;
