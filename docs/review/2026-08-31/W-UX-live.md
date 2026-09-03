@@ -34,7 +34,7 @@ What I did establish, as a substitute check, is that the current branch's Dart c
 4. Considered falling back to a web/Edge build (also listed as an available device) to at least see *some* UI — rejected: the task explicitly scopes this as a desktop-app audit, and InkFrame's desktop-only plugins (embedded PostgreSQL, `window_manager` frameless chrome, `media_kit` desktop video, Windows Credential Manager secure storage) mean a web build would not compile/behave the same and would produce a misleading, non-representative audit.
 5. Ran `flutter analyze lib` as a sanity check that the branch itself isn't broken — clean, confirming the blocker is environmental, not a code regression on `feat/ch-2-video-inspector-characters`.
 
-No native-desktop screenshot/input tooling was available in this session either (only Chrome-browser MCP tools, explicitly out of scope per the task); a PowerShell screenshot helper was prepared (`GetWindowRect` + `CopyFromScreen`) at `C:\Users\Kerro\AppData\Local\Temp\claude\...\scratchpad\screenshot.ps1` for use once the app can launch, but it was never exercised since no window ever appeared.
+No native-desktop screenshot/input tooling was available in this session either (only Chrome-browser MCP tools, explicitly out of scope per the task); a PowerShell screenshot helper was prepared (`GetWindowRect` + `CopyFromScreen`) at 本会话临时目录下的 `screenshot.ps1` for use once the app can launch, but it was never exercised since no window ever appeared.
 
 ## Screenshots
 

@@ -131,7 +131,7 @@ M6 「公开上线」……… 官网 + 示例项目 + 冷启动执行(HN/Reddit
   Windows CI 排 pg 标签+控制器测试全 fake 故此前不可见);Windows 分支改 inheritStdio;
   随附 realpg 门控真栈 E2E(真 initdb SCRAM→pg_ctl→迁移→pg_dump→pg_restore 对换→teardown)
 - **LB-13 purge 语义修正+孤儿文件回收**:✅ 切片 A(#163,purge 加 success-slot 守卫保画廊);
-  ✅ 切片 B = **LB-13b**(#165,OrphanFileReaper DRY-RUN v1 只记不删;真删除待 dry-run 灰度后;**2026-08-31 审计 P0-1/#232**:删除分支已整体移除,真删须另立独立评审的实现)
+  ✅ 切片 B = **LB-13b**(#165,OrphanFileReaper DRY-RUN v1 只记不删;**2026-08-31 审计 P0-1/#232**:删除分支已整体移除,真删须另立独立评审的实现)
 - **LB-14 崩溃遗留空 result 节点收敛**:✅ #162(启动 softDeleteEmptyOrphanResults);
   **LB-09 启动失败 surface**:✅ #169(PG 引导失败全屏错误替代白屏);
   **LB-17 全局错误钩子**:✅ #160(runZonedGuarded + crash 落盘)+ **LB-18 诊断包**:✅ #191

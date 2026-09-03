@@ -428,6 +428,15 @@ W4.md P1 (same root cause, found independently by three windows)."
 
 ### Task 3: Stop `ShotConfigInspector`'s local notes debounce from losing edits on dispose
 
+> **⚠️ 本节以下步骤是计划稿，与最终落地不一致（as-built deviation，2026-09-02 补记）。**
+> 计划原方案是「在 `_ShotConfigInspectorState.dispose()` 里 flush 本地 `Timer`」。**该方案行不通**：
+> Riverpod 的 `ConsumerStatefulElement` 在 widget 自身 unmount 时就会拒绝该 widget 发起的任何
+> `ref` 访问（与 provider 容器是否还活着无关），因此 `dispose()` 里 `ref.read(...).saveConfig(...)`
+> 必然抛出。实际落地改为：**删掉 widget 本地 Timer**，把 Task 2 的机制泛化成
+> `InspectorSubmitController.saveDebounced(patch)`，prompt 与 shot_notes 共用同一份防抖 + keepAlive
+> 实现（见 commit `28bd0ec`）。以下 Step 1~6 的代码块保留为历史记录，**不要照着实施**；
+> 单 node 单挂起槽位的限制已记入 `docs/BOARD.md` 债表。
+
 **Files:**
 - Modify: `lib/features/canvas/widgets/shot_config_inspector.dart`
 - Test: `test/features/canvas/widgets/shot_config_inspector_test.dart`

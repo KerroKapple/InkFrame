@@ -15,6 +15,7 @@ import 'package:inkframe/features/studio/providers/workspace_projects_provider.d
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
+import 'package:inkframe/theme/primitives/ink_ghost_button.dart';
 
 import '../../../helpers/recording_logger.dart';
 
@@ -156,5 +157,23 @@ void main() {
     expect(service.paths, <String>['C:/tmp/p.zip']);
     expect(toast.shown.single.message, 'Project imported');
     expect(container.read(selectedProjectIdProvider), 'new-proj');
+  });
+
+  testWidgets('零项目空态：还原 busy 时导入按钮同样禁用（与 FAB 同一把互斥锁）',
+      (tester) async {
+    // 空态下 FAB 整行不渲染,故上面那条 busy 用例够不到这个按钮——两处各有一份
+    // busy 表达式,只测 FAB 那份等于没测空态那份(PLAYBOOK §5.3 规则漂移)。
+    final container = await pump(tester, pickedPath: 'C:/tmp/p.zip');
+    container.read(databaseRestoreBusyProvider.notifier).state = true;
+    await tester.pumpAndSettle();
+
+    final btn = tester.widget<InkGhostButton>(
+      find.widgetWithText(InkGhostButton, 'Import project…'),
+    );
+    expect(btn.onPressed, isNull, reason: '还原在途时空态导入按钮必须禁用');
+
+    await tester.tap(find.text('Import project…'), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(service.paths, isEmpty);
   });
 }

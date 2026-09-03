@@ -48,7 +48,8 @@ class CommandAction {
 /// - gallery：返回 Studio + 设置
 /// - settings：返回 Studio
 /// - showcase：返回 Studio + 设置
-/// - studio 首页：设置
+/// - studio 首页：导入项目 + 内置示例 + 设置（零项目空态下项目卡菜单不存在,
+///   导入必须能从这里够到——2026-08-31 审计 P0-3）
 List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   final l = context.l10n;
   final canvasId = ref.read(currentCanvasIdProvider);
