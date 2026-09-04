@@ -179,6 +179,33 @@ void main() {
     ]);
   });
 
+  test(
+      'savePromptDebounced：切换选中(无监听器)也不能丢掉挂起的写入——回归 2026-08-31 审计 P0',
+      () async {
+    final container = makeContainer(_FakeGenerationController());
+    // 关键：不调用 container.listen(...)。真实 app 里，切换 Inspector 的
+    // 选中节点会让旧的 inspectorSubmitControllerProvider(oldId) 失去最后一个
+    // watcher；如果防抖挂起期间没有 keepAlive，autoDispose 会在计时器触发前
+    // 就把它回收，onDispose 只 cancel 了计时器，编辑内容直接丢失。
+    final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+    ctrl.savePromptDebounced('final draft');
+
+    // 让 autoDispose 有机会在防抖窗口内触发（不保活的话，这里就会被回收）。
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(
+      InspectorSubmitController.debounceDuration + const Duration(milliseconds: 100),
+    );
+
+    expect(
+      repo.patches,
+      [
+        {'prompt': 'final draft'},
+      ],
+      reason: 'ref.keepAlive() 应挂起 autoDispose 直到挂起的防抖写入完成',
+    );
+  });
+
   test('saveConfig：立即落盘一次', () async {
     final container = makeContainer(_FakeGenerationController());
     final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);

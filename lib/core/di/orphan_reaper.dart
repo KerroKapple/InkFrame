@@ -1,4 +1,4 @@
-// OrphanFileReaper DI + 启动触发（LB-13 slice B，DRY-RUN v1）。
+// OrphanFileReaper DI + 启动触发（LB-13 slice B，只读扫描——无删除代码）。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../interfaces/orphan_file_reaper.dart';
@@ -22,8 +22,8 @@ final orphanFileReaperProvider = FutureProvider<OrphanFileReaper>((ref) async {
   );
 }, name: 'orphanFileReaperProvider');
 
-/// 启动首帧后触发一次孤儿回收（DRY-RUN + 节流）。housekeeping：任何失败只 warn，
-/// 绝不阻断启动或其它流程。**刻意不传 dryRun**——保持默认 true（本卡绝不删文件）。
+/// 启动首帧后触发一次孤儿回收（只读扫描 + 节流）。housekeeping：任何失败只 warn，
+/// 绝不阻断启动或其它流程。DiskOrphanFileReaper 里没有删除实现，reap() 恒只读。
 final orphanReapStartupProvider = FutureProvider<void>((ref) async {
   final logger = ref.watch(loggerProvider);
   try {

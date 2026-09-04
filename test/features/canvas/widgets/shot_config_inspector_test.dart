@@ -143,6 +143,48 @@ void main() {
       await tester.pump();
     });
 
+    testWidgets(
+        '输入备注后立即切换选中(dispose)——挂起的防抖写入仍应落盘(回归 2026-08-31 审计 P0)',
+        (tester) async {
+      final id = await nodeRepo.create(
+        canvasId: canvasId,
+        type: 'shot',
+        nodeRole: 'config',
+      );
+      final node = CanvasNode(
+        id: id,
+        label: '',
+        type: CanvasNodeType.shot,
+        role: NodeRole.config,
+        canvasId: canvasId,
+        typeConfig: const <String, Object?>{},
+      );
+      await pump(tester, node);
+
+      await tester.enterText(find.byType(TextField), 'dolly in on face');
+      await tester.pump();
+
+      // 切换选中：把 ShotConfigInspector 从树里换掉，在 500ms 防抖窗口内触发
+      // 其 State.dispose()——不能只 cancel 计时器，必须先把最后一次输入落盘。
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: SizedBox.shrink()),
+        overrides: [
+          nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
+          edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+        ],
+      );
+
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump();
+
+      expect(
+        (nodeRepo.rows[id]!['type_config'] as Map<String, Object?>)[
+            'shot_notes'],
+        'dolly in on face',
+      );
+    });
+
     testWidgets('连线失败 → 节点已创建 + 专用连线失败 snackbar', (tester) async {
       edgeRepo = _FailingEdgeRepository();
       const node = CanvasNode(

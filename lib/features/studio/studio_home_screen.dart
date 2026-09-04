@@ -2,8 +2,6 @@
 //
 // 布局：Column(chrome, Expanded(Row(LibrarySidebar 280, Expanded(Stack(main, fab)))))
 // 状态：workspaceProjectsProvider 的 loading / error / empty / data 四态。
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -13,7 +11,6 @@ import '../../core/di/logger.dart';
 import '../../core/di/project_archive.dart';
 import '../../core/di/repositories.dart';
 import '../../core/errors/ink_error.dart';
-import '../../core/interfaces/project_import_service.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/components/ink_error_banner.dart';
@@ -31,6 +28,7 @@ import 'providers/trashed_items_providers.dart';
 import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
 import 'open_canvas.dart';
+import 'project_import_flow.dart';
 import 'providers/workspace_projects_provider.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
@@ -116,17 +114,26 @@ class _StudioMainArea extends ConsumerWidget {
                       onRetry: () =>
                           ref.invalidate(workspaceProjectsProvider),
                     ),
-                    data: (projects) => projects.isEmpty
-                        ? _StudioEmptyState(
-                            onCreate: () =>
-                                _showNewProjectDialog(context, ref, const []),
-                            onCreateSample: () =>
-                                _createSampleProject(context, ref),
-                            onOpenShowcase: () => ref
-                                .read(currentScreenProvider.notifier)
-                                .state = AppScreen.showcase,
-                          )
-                        : _ProjectGrid(projects: projects),
+                    data: (projects) {
+                      final importBusy =
+                          ref.watch(projectImportBusyProvider) ||
+                              ref.watch(databaseRestoreBusyProvider) ||
+                              ref.watch(projectExportBusyProvider);
+                      return projects.isEmpty
+                          ? _StudioEmptyState(
+                              onCreate: () => _showNewProjectDialog(
+                                  context, ref, const []),
+                              onCreateSample: () =>
+                                  _createSampleProject(context, ref),
+                              onOpenShowcase: () => ref
+                                  .read(currentScreenProvider.notifier)
+                                  .state = AppScreen.showcase,
+                              onImport: importBusy
+                                  ? null
+                                  : () => runProjectImportFlow(context, ref),
+                            )
+                          : _ProjectGrid(projects: projects);
+                    },
                   ),
                 ),
               ],
@@ -147,7 +154,7 @@ class _StudioMainArea extends ConsumerWidget {
                             ref.watch(databaseRestoreBusyProvider) ||
                             ref.watch(projectExportBusyProvider)
                         ? null
-                        : () => _importProject(context, ref),
+                        : () => runProjectImportFlow(context, ref),
                   ),
                   const SizedBox(width: InkSpacing.sm),
                   InkAmberButton(
@@ -168,100 +175,6 @@ class _StudioMainArea extends ConsumerWidget {
         ],
       ),
     );
-  }
-
-  /// LB-12：项目包导入——picker → barrier 模态 → service → 成功选中新项目。
-  /// 三大重操作（导入/还原/导出）互斥；依赖首 await 前 read 持有（#188 P1-1）。
-  Future<void> _importProject(BuildContext context, WidgetRef ref) async {
-    final importBusy = ref.read(projectImportBusyProvider.notifier);
-    if (importBusy.state ||
-        ref.read(databaseRestoreBusyProvider) ||
-        ref.read(projectExportBusyProvider)) {
-      return;
-    }
-    final toast = ref.read(toastServiceProvider);
-    final logger = ref.read(loggerProvider);
-    final picker = ref.read(openFilePickerProvider);
-    final serviceFuture = ref.read(projectImportServiceProvider.future);
-    final selected = ref.read(selectedProjectIdProvider.notifier);
-    final container = ProviderScope.containerOf(context, listen: false);
-    final navigator = Navigator.of(context, rootNavigator: true);
-    final l10n = context.l10n;
-    final progressMsg = l10n.importInProgress;
-    final doneMsg = l10n.importDone;
-    importBusy.state = true;
-    try {
-      final String? path;
-      try {
-        path = await picker();
-      } catch (e, st) {
-        // 放行点：平台 picker 异常不得静默（#192 评审 P3-5）。
-        logger.error(_logModule, 'import picker failed',
-            cause: e, stackTrace: st);
-        toast.show(l10n.importFailed, kind: ToastKind.error);
-        return;
-      }
-      if (path == null || !context.mounted) return;
-
-      // barrier 模态罩全程（导入分钟级；LB-22 同款）。
-      BuildContext? barrierCtx;
-      unawaited(showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        barrierColor: context.inkColors.scrim,
-        builder: (ctx) {
-          barrierCtx = ctx;
-          return PopScope(
-            canPop: false,
-            child: AlertDialog(
-              content: Row(
-                children: [
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                  const SizedBox(width: InkSpacing.md),
-                  Text(progressMsg),
-                ],
-              ),
-            ),
-          );
-        },
-      ));
-      ImportResult result;
-      try {
-        final service = await serviceFuture;
-        result = await service.importArchive(zipPath: path);
-      } catch (e, st) {
-        // 放行点：service 已收敛所有已知失败——这里兜装配错误，失败必须可见。
-        logger.error(_logModule, 'import unexpected', cause: e, stackTrace: st);
-        result = const ImportResult(outcome: ImportOutcome.failed);
-      } finally {
-        final ctx = barrierCtx;
-        if (ctx != null && ctx.mounted) {
-          Navigator.of(ctx).pop();
-        } else {
-          navigator.pop();
-        }
-      }
-
-      if (result.outcome == ImportOutcome.imported) {
-        container.invalidate(workspaceProjectsProvider);
-        selected.state = result.newProjectId;
-        toast.show(doneMsg, kind: ToastKind.success);
-      } else {
-        final String msg = switch (result.outcome) {
-          ImportOutcome.failedFormat => l10n.importFailedFormat,
-          ImportOutcome.failedVersionNewer => l10n.importFailedVersionNewer,
-          ImportOutcome.failedCorrupt => l10n.importFailedCorrupt,
-          ImportOutcome.failed || ImportOutcome.imported => l10n.importFailed,
-        };
-        toast.show(msg, kind: ToastKind.error);
-      }
-    } finally {
-      importBusy.state = false;
-    }
   }
 
   /// ON-2：示例项目入口。createSample 内部会切 currentCanvasId 直达画布。
@@ -375,11 +288,13 @@ class _StudioErrorState extends StatelessWidget {
 class _StudioEmptyState extends StatelessWidget {
   const _StudioEmptyState({
     required this.onCreate,
+    required this.onImport,
     required this.onCreateSample,
     required this.onOpenShowcase,
   });
 
   final VoidCallback onCreate;
+  final VoidCallback? onImport;
   final VoidCallback onCreateSample;
   final VoidCallback onOpenShowcase;
 
@@ -428,6 +343,14 @@ class _StudioEmptyState extends StatelessWidget {
                 label: context.l10n.studioNewProject,
                 icon: Icons.add,
                 onPressed: onCreate,
+              ),
+              const SizedBox(height: InkSpacing.sm),
+              // 2026-08-31 审计 P0：零项目用户手里只有归档文件时，此前完全没有
+              // 入口能导入——项目卡 ⋮ 菜单此时不存在，FAB 也只在非空态渲染。
+              InkGhostButton(
+                label: context.l10n.studioImportProject,
+                icon: Icons.unarchive_outlined,
+                onPressed: onImport,
               ),
               const SizedBox(height: InkSpacing.sm),
               InkGhostButton(
