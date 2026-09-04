@@ -122,7 +122,26 @@
 - 裸 lcov 数字误导。用 `scripts/coverage/report.sh`(镜像 CI 口径);exclude 清单的
   **单一事实源是 `ci.yml`**。CI 闸门 70%。
 
-### 2.7 其他
+### 2.7 HTTP_PROXY 让 flutter test 全线加载失败（挂代理的机器高发）
+- **症状**:`flutter test` 一个用例都跑不起来,每个 suite 报
+  `Failed to load "...": Connection closed before test suite loaded`,伴随
+  `Shell: Exception: HttpException: Connection closed before full header was received,
+  uri = http://127.0.0.1:<随机端口>`。**与被测代码无关**——不碰 Flutter 的纯函数测试
+  同样炸,而 `flutter analyze` 照常 0 issue,极易误判成"我把代码改坏了"。
+- **原因**:`flutter test` 起一个本机 HTTP 服务把编译产物喂给 `flutter_tester.exe`,
+  而 tester 侧的 Dart HttpClient 会读 `HTTP_PROXY` / `http_proxy` 环境变量。机器上挂了
+  代理(Clash 一类常见 `http://127.0.0.1:7890`)又没设 `NO_PROXY` 时,tester 把自己那条
+  `http://127.0.0.1:<随机端口>` 也送进代理,代理转不出去就把连接掐了。
+- **规避**:跑测试时把回环排除出代理——
+  `NO_PROXY=127.0.0.1,localhost no_proxy=127.0.0.1,localhost flutter test ...`
+  (大小写各设一份,不同实现查的键不一样);一劳永逸就把
+  `NO_PROXY=127.0.0.1,localhost` 写进系统环境变量。
+- **排查手法**:先跑一个**没碰过的纯函数测试**——它也炸就一定是环境不是代码;
+  再 `env | grep -i proxy` 看有没有 `NO_PROXY` 兜底。
+- 注意这与 LB-24(`core/net/proxy_env.dart`)是两件事:那个是**应用运行时**读代理变量,
+  本条是**开发机跑测试**被同一批变量误伤;两者都靠 `NO_PROXY` 放行 loopback。
+
+### 2.8 其他
 - git 输出大量 `LF will be replaced by CRLF` 警告:无害噪音,忽略。
 - hooks 状态分机器:**Windows 机**未设 `core.hooksPath`(flutter 不在 PATH 所致),hook 逻辑由
   CI 兜底、自查闸门(§1.3)手动跑;**macOS 机** `.git/hooks/pre-commit|pre-push` 已符号链接到
