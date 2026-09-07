@@ -269,6 +269,7 @@ lib/
 │   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
 │       ├── studio_home_screen.dart
 │       ├── open_canvas.dart           # Open/create a canvas from Studio
+│       ├── project_import_flow.dart   # runProjectImportFlow — LB-12 archive import, one path shared by FAB / zero-project empty state / ⌘K (audit 2026-08-31 P0-3)
 │       ├── controllers/
 │       ├── models/
 │       ├── providers/
@@ -309,7 +310,7 @@ lib/
     ├── file_preferences_service.dart  # config/preferences.json load/save
     ├── custom_providers_file_service.dart  # config/custom_providers.json parse + fallback
     ├── character_asset_service.dart
-    ├── orphan_file_reaper.dart        # DiskOrphanFileReaper (disk orphan media GC; DRY-RUN v1 — logs only, never deletes; LB-13)
+    ├── orphan_file_reaper.dart        # DiskOrphanFileReaper (disk orphan media GC; read-only scan — logs candidates, contains NO delete code at all; LB-13, audit 2026-08-31 P0-1)
     ├── database_backup_service.dart   # PgDumpBackupService (daily/manual/prerestore pg_dump -Fc, per-family retention 7/3/3, meta.json sidecar; LB-10/LB-22)
     ├── database_restore_service.dart  # PgSwapRestoreService (restore into scratch DB then rename-swap — failed restore leaves data untouched; LB-22)
     ├── diagnostics_bundle_service.dart # ZipDiagnosticsBundleService (support bundle: info+logs+crashes+config allowlist, never api keys; LB-18)

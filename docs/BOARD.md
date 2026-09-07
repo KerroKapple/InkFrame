@@ -32,7 +32,7 @@
 | 功能 | 状态 | 优先级 | 备注 |
 |---|---|---|---|
 | 参考图 / 首尾帧 UI（Provider 已支持，缺界面） | ✅ | P0 | 共享 `NodeInputsSection`（image+video 均挂载，缩略图/role 按 `supportsFirstFrame/LastFrame` 门控/n-max 计数）；连线经画布 link 模式，image→video 智能默认 first_frame（PR #138 B1/B3） |
-| 角色一致性（项目级角色参考，自动带入生成） | ✅ | P0 | characters 表/仓储/资产服务 + 生成按能力注入 + Inspector 角色区/存为角色（`528a3e9`/`eda2d7c`）。仅 image 节点、maxRefImages>0 且 imageToImage 生效 |
+| 角色一致性（项目级角色参考，自动带入生成） | ✅ | P0 | characters 表/仓储/资产服务 + 生成按能力注入 + Inspector 角色区/存为角色（`528a3e9`/`eda2d7c`）。image 节点:maxRefImages>0 且 imageToImage;video 节点:仅 maxRefImages>0、不查 modes(CH-1 #209 注入链 + CH-2 #230 Inspector 入口) |
 | 批量 / 变体（生产侧 + 消费侧全链路） | ✅ | P1 | 消费侧骨架（`854124b`）+ 生产侧：提交事务预建 slot 占位、JobQueue 逐 slot 落库、结果节点 Inspector 挂 `BatchResultsGrid`、取消/失败/孤儿收敛。拍板语义：≥1 成即 job success、取消保留已成 slot。经 3 路对抗评审,2×P1+4×P2 全修 |
 | 提示词模板 / 预设库 | ✅ | P1 | 项目级 schema_v7 预设库 + Inspector 点选应用/存为预设（`8a28777`） |
 | 成本估算 UI（CostModel 已定义，缺消费端） | ✅ | P2 | `estimateCostUsd` + 图像/视频 Inspector 实时预估（`1273522`/`d1dfc46`） |
@@ -122,6 +122,7 @@
 | LB-23 内存基线:cacheWidth 缩略解码收口 ×4 文件 5 站点（gallery tile 图片+视频缩略图/batch grid/两微缩略图;lightbox InteractiveViewer 有意豁免）+ ImageCache 上限 100→256MB（`kImageCacheMaxBytes`,main bootstrap 设定）+ perf-baseline 内存水位节（方法论/阈值/mac 空载实测 140MB,画廊与生成场景按 SOP 待填,Windows 列待群内机器）+ keepAlive 盘点 8 文件无未管控大对象 | #227 |
 | CH-2 视频 Inspector 角色区:角色区/命名框/角色 chip 抽共享 `characters_section.dart`（image inspector 1033→672 行,行为零变化以既有角色区测试一行未改全绿为证）+ video inspector 门控挂载（`maxRefImages>0` 对齐 CH-1 注入门,不检查 imageToImage——r2v/omni 语义;与 image 侧常挂+警示有意不同,视频多数 provider 无 ref 能力常挂=一屏死区）——CH-1 视频角色注入自此有用户可见入口 | #230 |
 | **D-M4-2~8 七决策批量拍板落档(2026-08-21,全取推荐 A 档)**:画廊→画布=菜单动作 / 画廊删除=永久删行+文件 / 聚合器=编辑+重启 / 第二模板=openai-chat-image / 转码=单开关 1080p30 H.264 丢音频 / 项目复制=不带 jobs/batch/exports / 角色库=独立整屏仿 Gallery。**M4 Wave 3 全解锁**(CH-3→GA-5/6→AG-4/5→EX-2);详见 MASTERPLAN §9。顺带清理 4 个已合入 worktree + 8 条残留本地分支 | #231 |
+| **审计 P0 ×3 收口（2026-08-31 全量审计,证据见 `docs/review/2026-08-31/`）**：①`OrphanFileReaper` 号称只读却留着 `reap(dryRun:false)` 真删分支——接口收成无参 `reap()`,删除实现整段拿掉(不是"默认关"而是这个类里根本没有删除代码;真删另立独立评审的实现);②Inspector 防抖自动保存在切换选中时被 dispose 直接丢弃最后一次编辑——`InspectorSubmitController.saveDebounced(patch)` 挂起期间 `ref.keepAlive()` 撑住 autoDispose 直到落盘,prompt 与 shot_notes 共用这一份(**卡面原定"widget dispose 里 flush"走不通**:ConsumerStatefulElement 在自身 unmount 时拒绝该 widget 的任何 ref 访问,故防抖必须整个挂在 controller 上;单 node 单挂起槽位,两防抖字段同 node 时会互相顶掉——当前两字段分属不相交节点类型,记债);③零项目空态找不到「导入项目」——私有 `_importProject` 抽成 `studio/project_import_flow.dart` 顶层 `runProjectImportFlow`,FAB / 空态 CTA / ⌘K 三入口同一条路径,busy 互斥门与 FAB 同源。golden `studio_empty` 重铸。**刻意不做**(记债):已发射在途的自动保存仍可能晚于 submit() 落盘覆盖终稿(需写序号/版本机制,属审计 §二A 系统性模式);自动保存失败仍静默无重试面。审计报告 20 份随本 PR 入库。+5 例(计划 4 + 评审补 1) | #232 |
 
 ## M1 补遗（审计发现的悬空项）
 
@@ -173,14 +174,14 @@
 | 竖向末道 <200px 时标题栏按钮点不动（#186 评审 P2-3:皮 Positioned 盒宽=lanesTotal,溢出部分可见不可命中;标签区可拖是唯一逃生口） | 🅿️ | 同上根因族;修法=标题栏盒宽脱离道宽或按钮区折叠 |
 | 建点位置固定世界 (200..600),全向漫游后建点必在屏幕外（#186 评审 P3-3:旧模型只右下漫游概率低,全向后被放大;命令面板/FAB/空态三入口同病） | ✅ | Polish Wave 1 PR-8（本 PR）:`pickViewportCenteredNodePosition`——视口中心经逆变换入世界坐标+±60 散布防叠点,三入口接线;视口未上报回退旧固定区（既有测试语义不变）;矩阵换算单测钉死 |
 | 项目导出大文件路径（#188 评审 P2-4）:archive 包 deflate 把单文件压缩输出整段驻内存（GB 视频=GB 峰值）且同步压缩冻结 UI;附带 addFile 异常路径泄漏源文件句柄（Windows 进程退出才释放） | 🅿️ | 媒体改 store 不压缩 + Isolate.run 整体导出;与 LB-12 进度组件同窗做,v1 有 busy 防重入垫底 |
-| OrphanFileReaper 转真删前必须 restore-aware（LB-22 评审 P3-1）:还原旧备份后新生成文件成 DB 孤儿——reaper 真删会吃掉「还原更新备份时还需要的文件」;当前 DRY-RUN 无害 | 🅿️ | LB-13b 真删灰度的前置不变量;修法=还原动作后重置 mtime 护栏或记还原水位 |
+| OrphanFileReaper 转真删前必须 restore-aware（LB-22 评审 P3-1）:还原旧备份后新生成文件成 DB 孤儿——reaper 真删会吃掉「还原更新备份时还需要的文件」;当前 reaper 无删除代码（#232 P0-1）,无害 | 🅿️ | 将来若另立真删实现,此为前置不变量;修法=还原动作后重置 mtime 护栏或记还原水位 |
 | pg_dump/pg_restore 无超时（LB-22 评审 P3-2）:挂死子进程让备份/还原 busy 永久锁 UI;与 EX-3 ffmpeg 同根因（ProcessRunner 无 kill/timeout 通道） | ✅ | Polish Wave 1 PR-2（本 PR）:`runWithWatchdog`（ProcessStarter 流式+定时 kill+**硬截止** timeout+killGrace——kill 无效也不永挂）;备份 10min/还原 30min,超时=kill+带 stderr/exit_code 归因 warn;exit 0 优先于超时判定（已成功不误删,同 EX-3 不变量）;还原 DROP tmp 加 `WITH (FORCE)`（超时 kill 后 backend 可能仍占库）+失败留证;**顺带评审 P1-1**:Process.start 补关子进程 stdin（对齐 Process.run,pg 密码提示从 10min 冻结回毫秒级 EOF 失败,EX-3 ffmpeg 同受益）;进程 fake 迁 _harness（backup/restore/watchdog 共用+契约自测;ffmpeg fake 因进度流语义专用留原地） |
 | 还原对换的 retired 库残留（DROP 失败仅 warn）与 swap_stranded 极端夹缝无启动期清扫/救援 | 🅿️ | 空间代价可接受;随 LB-12 同窗盘点:启动 housekeeping 扫 inkframe_retired_*/inkframe_restore_tmp 报告或回收 |
 | 回收站恢复绕过名字唯一性（#190 评审 P3-2）:建 Alpha→删→再建 Alpha→恢复旧 Alpha=工作库两个 Alpha;schema 无唯一约束,create/rename 的 UI 校验管不到 restore | 🅿️ | 不炸纯 UX 漂移;修法=restore 前查同名给改名/后缀,或列表 UI 容忍同名靠时间区分 |
 | zip `.partial` 落盘骨架三份逐字复制（LB-10/11/18；#191 评审 P3-3 复发实证:自吞守卫没跟着骨架走） | 🅿️ | 抽 `atomicZipWrite(target, build)` 共享件并内置 #188 P2-5 自吞排除;**PR-8 范围裁定拆独立卡**(M 级:三服务 fake 契约面,与本簇 S 件不同窗;修法不变) |
 | pg.log 无轮转（pg_ctl -l 追加写;logger 的 10MB 预算只认 inkframe.* 前缀）——诊断包/磁盘体积长期无界（#191 评审 P3-5） | 🅿️ | pg.log 轮转（启动期截断/按大小滚动）或诊断包按 mtime 截取最近 N 份 |
 | 三大重操作互斥只在导入侧单向查（LB-12 拍板 9）:还原/导出入口不查 projectImportBusyProvider——导入进行中仍可点还原 | ✅ | Polish Wave 1 PR-8（本 PR）:反向补查——项目导出入口查 import+restore busy,备份/还原区查 import+export busy;import 侧原有三方检查不变 |
-| 导入补偿删除失败→projects/{uuid} 孤儿目录无回收路径（#192 评审 P3-2:无 .import- 前缀 sweep 不认,reaper 又 DRY-RUN）;另记拍板 4 三处字面偏差（U+FFFD 奇名可过/最终路径长未预检/isWithin 代 resolveInProject）均安全失败 | 🅿️ | 随 LB-13 reaper 转真删同窗:无行背书目录纳入回收;字面偏差随安全面复审顺修 |
+| 导入补偿删除失败→projects/{uuid} 孤儿目录无回收路径（#192 评审 P3-2:无 .import- 前缀 sweep 不认,reaper 又无删除实现）;另记拍板 4 三处字面偏差（U+FFFD 奇名可过/最终路径长未预检/isWithin 代 resolveInProject）均安全失败 | 🅿️ | 随将来独立评审的真删实现同窗:无行背书目录纳入回收;字面偏差随安全面复审顺修 |
 | **迁移纪律备忘（#192 评审 P3-6）**:导入的列白名单过滤依赖「迁移只加可空/有默认列」——将来任何「新增 NOT NULL 无默认」迁移会让旧项目包导入必炸 | 🅿️ | ADR-0012 补一句:新增列必须可空或带默认,否则同时给导入侧加填充逻辑 |
 | GAP-1 评审 P3 残留（#200）:①unknownTemplate 在 UI 错误文案映射到 InvalidId 键（当前不可达——模板恒下拉;改自由输入即活雷,补专用键或注释）;②_openEditor 读失败报「保存失败」文案微错位;③写无顺序化（模态门控下重合概率趋零,硬化=_queue.then 串行链）;④_parseEntry seenIds 在 template/url 校验前占坑,被拒条目致后续同 id 合法条目误判 duplicate（既有债非本卡引入）;⑤section 内 provider 定义应迁 features/settings/providers/（风格） | 🅿️ | 均低害;①随模板扩展窗强制处理 |
 | GAP-3 评审 P3 残留（#199）:①方向读错期 lane_toolbar 置灰未做（二元域无损毁,但 toggle 到不了 horizontal 的怪异 UX）;②横幅三源 `??` 链+单 `_dismissed` 遮蔽——关掉 edges 错后并发 lanes/direction 错不上屏（改集合）;③非 InkError→errorUnknown 后无任何日志线索（此前 raw toString 至少可报障）,建议 error 分支补 log 或 ProviderObserver.providerDidFail | 🅿️ | ①②低害 UX;③可观测性,随日志面收口 |
@@ -189,3 +190,8 @@
 | PKG-2A 评审 P3 残留:fetch-binaries macOS upstream 无架构核对——arm64 机上 INKFRAME_PG_PLATFORM=macos-x64 会把 arm64 二进制落进 x64 目录且本机 verify 照过（操作员失误场景;release.yml 现只建 arm64;make-relocatable 旧脚本同病） | 🅿️ | 随 macos-13 x64 matrix（PKG-7 真做）同窗加 uname 对 PLATFORM 的核对 |
 | 导出默认全选把同一镜的多个 take 一起选上（EX-1′ 本卡范围裁定：只改序不改候选集）：重跑过的镜在默认导出里会重复出现,用户须手动取消勾选旧 take | 🅿️ | 本卡之前即如此,非新引入。修法=默认只勾每个 source 节点的最新 take（`resultsFor` 头一个）,旧 take 仍列出可手动补选;属产品行为变更,随下一个动导出对话框的窗口拍板后做 |
 | ON-2b 评审 P3 三条（#195）:①真 PG 回滚测只走 projects+canvas 两仓储,建议扩成与 createSample 同构四步;②泳道带厚 400 魔数散落三处（接口默认/注释/测试）,建议提 kDefaultLaneSize;③示例 laneStylePrompt 走 zh 本地化与 base_style_presets「模型合约保英文」惯例有张力（用户可见可编辑,判定可接受）——产品可拍板改为仅本地化 label | 🅿️ | ①②低成本顺窗;③产品取舍,英文语系 provider 出图质量考量 |
+| 防抖自动保存「在途写入」与 submit() 竞序（2026-08-31 审计 W3 P1;#232 明确不做）:计时器已触发、`saveConfig` 正 await 仓储时 submit() 落完整 finalConfig,旧 patch 可能晚到覆盖终稿 prompt;#232 只修「挂起未发射」被 dispose 丢弃这一种 | 🅿️ | 需写序号/版本号或串行写链,属审计 §二A「autoDispose/取消 vs 异步写」系统性模式(5 窗口互证),应一次架构修复而非逐点补丁 |
+| 自动保存失败静默（2026-08-31 审计 W17 P1;#232 明确不做）:`saveConfig` 吞 InkError,UI 无失败态/无重试;下一次输入覆盖即"自愈",但最后一次编辑若正好失败即静默丢 | 🅿️ | UX 面而非数据丢失 bug;随 W17 UX P1 批次(长耗时操作进度/失败原因上屏)同窗 |
+| InspectorSubmitController 单 node 单防抖槽位（#232 设计裁定）:同一 node 上第二个 `saveDebounced` 会把第一个未落盘的 patch 整个顶掉;当前 prompt / shot_notes 分属 image·video / shot 节点,不相交,非活 bug | 🅿️ | 若将来某节点类型要同时防抖两个字段,改为按 key 分槽或合并 patch |
+| CH-2 合并后评审残留（#230;2026-09-02 对抗评审,三反驳者多数通过）:①video inspector「存为角色」只认 reference 角色的入边,而 image→video 连线默认 first_frame,常态下按钮恒灰(用户须先把边切成 reference 才能存);②挂载角色数 + 首尾帧/参考图合计超过 maxRefImages 时 UI 无任何提示,而 take() 截掉的恰是角色图;③`_createFromReference`/`_importFromFile` 在 `await _promptName` 之后直接 ref.read 无 mounted 守卫(抽出前即如此);④gallery_tile 仍留一份私有 `_CharacterNameDialog`,与已公开的 InspectorNameDialog 成三份近似件 | 🅿️ | ①②UX 面,随 E5 CH-3 角色库页同窗定夺;③④低成本顺手清 |
+| 退出应用会丢挂起的防抖自动保存（#232 对抗评审 P2,反驳者 2/3 判超范围,此处仅记账）:`AppTeardown._run` 的顺序是「JobQueue → **Pool.close** → PgController.stop → container.dispose」,防抖计时器的 keepAlive 只挡得住 autoDispose、挡不住整个容器被 dispose;且即便此时补落盘,连接池已关也写不进去。窗口≤500ms,比"切换选中"窄得多,但同属 P0-2 那类"挂起写入被丢弃" | 🅿️ | 正解=退出序列在关 Pool **之前**加一步 flush 全部挂起防抖(需 controller 侧暴露 flushAll 或由 teardown 遍历已挂载的 InspectorSubmitController);与上面「在途写入 vs submit 竞序」同属一次写序列化改造 |

@@ -58,7 +58,7 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
     // 的 context 才能 showDialog。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // LB-13：首帧后触发磁盘孤儿文件回收（DRY-RUN + ≥7d 节流）。fire-and-forget，
+      // LB-13：首帧后触发磁盘孤儿文件回收（只读扫描 + ≥7d 节流;该服务无删除实现）。fire-and-forget，
       // housekeeping，内部吞错只 warn，绝不阻断启动或抢占其它流程。
       ref.read(orphanReapStartupProvider);
       // XM-1b：存量视频元数据回填（同级 housekeeping，稳态只花一条 SQL）。
