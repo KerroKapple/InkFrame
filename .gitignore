@@ -58,6 +58,9 @@ inkframe_userdata/
 # Claude Code 内部状态文件（每个 dev 机器独立）
 .claude/
 
+# subagent-driven-development 的本地执行台账与 review 包（每次执行独立，不入库）
+.superpowers/
+
 # CI 临时
 /untranslated.json
 
