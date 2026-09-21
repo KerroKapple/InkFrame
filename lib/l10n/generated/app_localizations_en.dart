@@ -1455,4 +1455,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shellCanvasEmptyBody =>
       'Pick a canvas in Studio and it opens right here.';
+
+  @override
+  String get shellSequenceEmptyBody =>
+      'Open a canvas first, then preview its narrative chain here.';
+
+  @override
+  String get shellExportEmptyBody =>
+      'Open a canvas first, then export its video results here.';
 }

@@ -1,4 +1,4 @@
-// 序列标签体（T7 过渡形状；真身在 T10）。
+// 序列标签体。
 //
 // 三态，都必须真实可点进入，不是灰按钮一片：
 // ① canvasId == null → 去 Studio 的引导空态。**此分支不 watch 任何仓储**
@@ -38,7 +38,10 @@ class SequenceTab extends ConsumerWidget {
       return ShellEmptyState(
         icon: Icons.account_tree_outlined,
         title: l.shellCanvasEmptyTitle,
-        body: l.shellCanvasEmptyBody,
+        // 标题复用画布标签的（"还没有打开画布"对三个标签一字不差地成立，R65
+        // 不许为同一句话开第二个键）；正文【不】复用——canvas 那句是"它就会在
+        // 这里打开"，指的是画布本身在画布标签里展开，放到序列标签就是错的。
+        body: l.shellSequenceEmptyBody,
         ctaLabel: l.shellGoToStudio,
         onCta: () =>
             ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio),
@@ -49,7 +52,10 @@ class SequenceTab extends ConsumerWidget {
     );
     // 【必须显式订阅节点控制器】它是 autoDispose family：无人订阅时 _open 里的
     // ref.read 只拿得到 AsyncLoading（valueOrNull == null）→ nodes 为空 →
-    // projectId 为 null → 静默 return，按钮变哑键。
+    // buildSequence 产出空清单 → 对话框照开、只是一镜都没有（T10 把 projectId
+    // 改走 ShellState 之后，症状从"按钮变哑键"变成"弹出空对话框"——同样不报错。
+    // 钉住它的是「点击打开序列预览对话框」那条用例的 'Not generated yet' 断言，
+    // 删掉本行实测即红，见 task-10-report 变异 M3）。
     // 从 CanvasTopChrome 搬过来时这条极易丢：旧顶栏里是隔壁的导出按钮顺手
     // watch 着节点，序列按钮才一直能用——那是【隐式】依赖，拆成两个标签就断了。
     // select 收窄成常量：保持订阅，但节点变化（拖动等）不重建本标签。
@@ -59,7 +65,10 @@ class SequenceTab extends ConsumerWidget {
         message:
             enabled ? l.sequencePreviewTooltip : l.sequencePreviewDisabledTooltip,
         child: InkGhostButton(
-          label: l.sequencePreviewTooltip,
+          // 按钮面上用短标题（既有键 sequencePreviewTitle = "Sequence preview"），
+          // 整句 sequencePreviewTooltip 留在 tooltip 里。不新开 shellSequencePlay：
+          // 已有一个字面合适的键，R65 不许为同一句话开第二个。
+          label: l.sequencePreviewTitle,
           icon: Icons.play_circle_outline,
           onPressed: enabled ? () => _open(context, ref, canvasId) : null,
         ),
@@ -72,8 +81,13 @@ class SequenceTab extends ConsumerWidget {
         const <CanvasNode>[];
     final edges = ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[];
-    final projectId = nodes.isEmpty ? null : nodes.first.projectId;
-    if (projectId == null) return; // 按压瞬间节点已变化：静默不弹
+    // projectId 走外壳的项目上下文，不再从 nodes.first.projectId 摸（spec §8.2）。
+    // 旧写法把"能不能弹对话框"绑在了节点数据上：节点列表恰好为空、或首个节点
+    // 的 project_id 为空（存量行允许），按钮就变哑键——而按钮的启用判据只看
+    // 【边】，两者不同源，于是"看着能点、点了没反应"。外壳态才是项目的真相源
+    // （三个 openCanvas 调用点全都带 withProject）。
+    final projectId = ref.read(shellControllerProvider).project?.id;
+    if (projectId == null) return; // 外壳尚无项目上下文：静默不弹
     showSequencePreviewDialog(
       context,
       projectId: projectId,

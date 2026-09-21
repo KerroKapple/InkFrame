@@ -649,5 +649,7 @@
   "shellCloseOverlay": "Close",
   "shellGoToStudio": "Go to Studio",
   "shellCanvasEmptyTitle": "No canvas open",
-  "shellCanvasEmptyBody": "Pick a canvas in Studio and it opens right here."
+  "shellCanvasEmptyBody": "Pick a canvas in Studio and it opens right here.",
+  "shellSequenceEmptyBody": "Open a canvas first, then preview its narrative chain here.",
+  "shellExportEmptyBody": "Open a canvas first, then export its video results here."
 }

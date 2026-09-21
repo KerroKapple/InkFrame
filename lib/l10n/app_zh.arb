@@ -572,5 +572,7 @@
   "shellCloseOverlay": "关闭",
   "shellGoToStudio": "去工作室",
   "shellCanvasEmptyTitle": "还没有打开画布",
-  "shellCanvasEmptyBody": "去工作室选一个画布，它就会在这里打开。"
+  "shellCanvasEmptyBody": "去工作室选一个画布，它就会在这里打开。",
+  "shellSequenceEmptyBody": "先打开一个画布，就能在这里预览它的叙事链。",
+  "shellExportEmptyBody": "先打开一个画布，就能在这里导出它的视频结果。"
 }

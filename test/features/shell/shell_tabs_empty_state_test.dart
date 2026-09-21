@@ -1,4 +1,4 @@
-// 序列 / 导出标签的可用性判据（T7 过渡形状）。
+// 序列 / 导出标签：可用性判据 + 空态 + 拉起既有对话框。
 //
 // 本文件的用例【整体搬运】自 canvas_top_chrome_sequence_test.dart 与
 // canvas_top_chrome_export_test.dart——那两个文件随 CanvasTopChrome 删除，但
@@ -26,6 +26,7 @@ import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/shell/widgets/tabs/export_tab.dart';
 import 'package:inkframe/features/shell/widgets/tabs/sequence_tab.dart';
+import 'package:inkframe/features/storyboard/widgets/sequence_preview_dialog.dart';
 import 'package:inkframe/theme/primitives/ink_ghost_button.dart';
 
 import '../../_harness/test_app.dart';
@@ -49,14 +50,54 @@ class _FakeEdgesController extends CanvasEdgesController {
 /// 被碰到就炸：用来证明 canvasId == null 那一支真的不读仓储。
 class _ExplodingNodeRepository implements NodeRepository {
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw StateError('node repository must not be touched by empty tabs');
+  dynamic noSuchMethod(Invocation invocation) => throw StateError(
+      'node repository must not be touched by empty tabs: '
+      '${invocation.memberName}');
 }
 
 class _ExplodingEdgeRepository implements EdgeRepository {
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      throw StateError('edge repository must not be touched by empty tabs');
+  dynamic noSuchMethod(Invocation invocation) => throw StateError(
+      'edge repository must not be touched by empty tabs: '
+      '${invocation.memberName}');
+}
+
+/// 仓储【被解析】的记账。
+///
+/// 光有「一碰就炸」的 fake 还不够：控制器的 build 是 async 的，里面抛出的异常
+/// 被 Riverpod 收进 AsyncError，既不会冒到 zone 也不会进 tester.takeException()
+/// ——于是"把 ref.watch(canvasNodesControllerProvider(canvasId ?? ''))
+/// 提到 if 之前"这种改法照样全绿（空态仍然渲染，异常被吞）。
+/// 真正有鉴别力的信号是【仓储 provider 有没有被读过】：控制器 build 的第一句
+/// 就是 await ref.watch(nodeRepositoryProvider.future)，所以这个布尔位在
+/// 异常发生之前就已经翻了。
+bool _nodeRepoResolved = false;
+bool _edgeRepoResolved = false;
+
+List<Override> _explodingRepos() {
+  _nodeRepoResolved = false;
+  _edgeRepoResolved = false;
+  return <Override>[
+    nodeRepositoryProvider.overrideWith((_) async {
+      _nodeRepoResolved = true;
+      return _ExplodingNodeRepository();
+    }),
+    edgeRepositoryProvider.overrideWith((_) async {
+      _edgeRepoResolved = true;
+      return _ExplodingEdgeRepository();
+    }),
+  ];
+}
+
+void _expectNoRepositoryTouched(WidgetTester tester) {
+  expect(
+    <bool>[_nodeRepoResolved, _edgeRepoResolved],
+    <bool>[false, false],
+    reason: '空态分支碰了仓储——懒物化只挡住"没点过的标签"，点开之后的空态分支'
+        '必须自证不读仓储：一旦 eager 碰 canvas/node/edge 仓储就会去起真内嵌 '
+        'PostgreSQL，覆盖率收集会永挂',
+  );
+  expect(tester.takeException(), isNull);
 }
 
 CanvasNode _videoResult(String id, {String? canvasId = 'c1'}) => CanvasNode(
@@ -121,11 +162,19 @@ const _shot = CanvasNode(
 );
 
 /// 播种外壳态（canvasId 是 ShellState 的派生投影，禁止 override 投影本身）。
+///
+/// 打开画布的那一支必须同时带 project：_open 的 projectId 现在走
+/// ShellState.project（spec §8.2），而生产侧三个 openCanvas 调用点全都带
+/// withProject，所以"有 canvasId 却没有 project"不是可达态。
 Override _shellWith({String? canvasId}) => shellControllerProvider.overrideWith(
       () => ShellNavigator(
         initial: canvasId == null
             ? const ShellState()
-            : ShellState(tab: ShellTab.canvas, canvasId: canvasId),
+            : ShellState(
+                tab: ShellTab.canvas,
+                canvasId: canvasId,
+                project: const ProjectRef(id: 'p1', name: 'Alpha'),
+              ),
       ),
     );
 
@@ -275,19 +324,18 @@ void main() {
       await pumpInkApp(
         tester,
         const Scaffold(body: ExportTab()),
-        overrides: <Override>[
-          _shellWith(),
-          nodeRepositoryProvider
-              .overrideWith((_) async => _ExplodingNodeRepository()),
-          edgeRepositoryProvider
-              .overrideWith((_) async => _ExplodingEdgeRepository()),
-        ],
+        overrides: <Override>[_shellWith(), ..._explodingRepos()],
       );
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.movie_outlined), findsNothing);
       expect(find.text('No canvas open'), findsOneWidget);
+      expect(
+        find.text('Open a canvas first, then export its video results here.'),
+        findsOneWidget,
+      );
       expect(find.text('Go to Studio'), findsOneWidget);
+      _expectNoRepositoryTouched(tester);
     });
   });
 
@@ -371,23 +419,57 @@ void main() {
       await tester.pumpWidget(const SizedBox.shrink()); // 收尾:走 dispose 取消定时器
     });
 
+    // 【本 PR 的核心取舍，不许静默失效】序列预览的 media_kit Player 从 initState
+    // 持有到 dispose 且自动播放。正因如此第 1 步才决定：序列标签只做空态 + 拉起
+    // 对话框，而【不】把 SequencePreviewContent 抬成常驻标签视图——抬上去它就会
+    // 在后台标签里一直播。这条约束只有"关掉对话框后 SequencePreviewContent 不在
+    // 树里"能守住。
+    //
+    // skipOffstage: false 是必需的：默认 true 会跳过 Offstage 子树（保活宿主正是
+    // 靠 Offstage 藏起非活动标签），一条"不在树里"的断言不写 false 就是假绿
+    // ——本分支已经因此踩过 2/7 例恒真。
+    testWidgets('关闭序列对话框后 SequencePreviewContent 离树（Player 已 dispose）',
+        (tester) async {
+      await _pumpSequence(
+        tester,
+        edges: <CanvasEdge>[_edge('e1', EdgeType.narrative)],
+      );
+
+      await tester.tap(find.byIcon(Icons.play_circle_outline));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(
+        find.byType(SequencePreviewContent, skipOffstage: false),
+        findsOneWidget,
+        reason: '前置条件：对话框先得真的开出来，否则下面那条"离树"是恒真的',
+      );
+
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byType(SequencePreviewContent, skipOffstage: false),
+        findsNothing,
+        reason: '关掉后还留在树里 ⇒ media_kit Player 没 dispose ⇒ 后台标签里继续播',
+      );
+    });
+
     testWidgets('canvasId 为 null → 出去 Studio 引导，不渲染序列 CTA，且不碰仓储',
         (tester) async {
       await pumpInkApp(
         tester,
         const Scaffold(body: SequenceTab()),
-        overrides: <Override>[
-          _shellWith(),
-          nodeRepositoryProvider
-              .overrideWith((_) async => _ExplodingNodeRepository()),
-          edgeRepositoryProvider
-              .overrideWith((_) async => _ExplodingEdgeRepository()),
-        ],
+        overrides: <Override>[_shellWith(), ..._explodingRepos()],
       );
       await tester.pumpAndSettle();
 
       expect(find.byIcon(Icons.play_circle_outline), findsNothing);
       expect(find.text('No canvas open'), findsOneWidget);
+      expect(
+        find.text('Open a canvas first, then preview its narrative chain here.'),
+        findsOneWidget,
+      );
+      _expectNoRepositoryTouched(tester);
     });
   });
 }

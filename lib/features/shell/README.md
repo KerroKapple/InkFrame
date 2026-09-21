@@ -36,8 +36,10 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | 标签条绝不进 chrome 的槽位 | `InkWindowChrome` 整条包在 `DragToMoveArea` 里，其 `onDoubleTap` 让单击等满 `kDoubleTapTimeout`(300ms) | `test/features/shell/shell_tab_bar_test.dart`（一帧落地） |
 | `ShellContentStack` 的焦点重夺【无条件】，不许加 `hasFocus` 守卫 | 切换那一帧画布 FocusNode 还没 unfocus，守卫会跳过请求 → 焦点掉到 ModalScope 的 FocusScope → 全 app ⌘K 失效 | T8 的 V2 用例 |
 | `ShellBreadcrumb` 条件 watch：`canvasId == null` 时不碰 `canvasRepository` | 否则每个 boot 级 widget test 都得额外密封画布仓储 | `shell_chrome_test.dart` + `test/widget_test.dart` |
-| 序列/导出标签的 `canvasId == null` 分支不 watch 任何仓储 | 一旦 eager 碰仓储就会去起真内嵌 PG，测试挂到 isolate 超时 | `shell_tabs_empty_state_test.dart`（会抛的 fake 仓储） |
-| 序列标签订阅节点控制器、导出标签订阅边控制器（`select` 收窄成常量） | 它们是 autoDispose family：无人订阅时 `_open` 里 `ref.read` 只拿到 `AsyncLoading` ⇒ 序列按钮变哑键、导出默认序静默退化成非叙事链序。旧 `CanvasTopChrome` 里两个按钮互相替对方撑着，拆成两个标签后这层**隐式**依赖断了 | `shell_tabs_empty_state_test.dart`（跨控制器订阅组） |
+| 序列/导出标签的 `canvasId == null` 分支不 watch 任何仓储 | 一旦 eager 碰仓储就会去起真内嵌 PG，测试挂到 isolate 超时 | `shell_tabs_empty_state_test.dart` 的 `_expectNoRepositoryTouched`。**注意断的是"仓储 provider 有没有被解析过"，不是 `tester.takeException()`**：控制器 build 是 async 的，里面抛的异常被 Riverpod 收进 `AsyncError`，既不冒到 zone 也不进 `takeException()`——T10 实测把 watch 提到 `if` 之前时，只留 `takeException` 的版本全绿 |
+| 序列标签订阅节点控制器、导出标签订阅边控制器（`select` 收窄成常量） | 它们是 autoDispose family：无人订阅时 `_open` 里 `ref.read` 只拿到 `AsyncLoading` ⇒ 序列弹出空对话框（T10 前是按钮变哑键）、导出默认序静默退化成非叙事链序。旧 `CanvasTopChrome` 里两个按钮互相替对方撑着，拆成两个标签后这层**隐式**依赖断了 | `shell_tabs_empty_state_test.dart`：结构代理在「跨控制器订阅组」，真正有鉴别力的是「点击打开序列预览对话框」与 R49 顺序用例 |
+| `SequencePreviewContent` **只活在对话框里**，关掉即离树 | 它的 media_kit `Player` 从 `initState` 持有到 `dispose` 且自动播放；一旦抬成常驻标签视图，就会在后台标签里一直播。这正是"序列标签只做空态 + 拉起对话框"这个取舍的全部理由 | `shell_tabs_empty_state_test.dart`「关闭序列对话框后…离树」。断言必须写 `skipOffstage: false`——保活宿主用 `Offstage` 藏非活动标签，默认 `true` 会跳过整棵子树，T10 实测去掉后该断言恒真 |
+| `_open` 的 `projectId` 取自 `ShellState.project`，不从节点数据摸 | 启用判据与 projectId 来源必须同源：旧写法启用只看【边】、projectId 却从 `nodes.first.projectId` 取，节点列表为空或首节点 `project_id` 为空时就"看着能点、点了没反应" | `shell_tabs_empty_state_test.dart` 的点击类用例（夹具 `_shellWith` 带 `ProjectRef`） |
 
 ## 已知且接受的副作用（隐藏标签仍会 build / layout）
 
@@ -75,5 +77,5 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | `widgets/shell_empty_state.dart` | 复用空态（图标 + 标题 + 可选副标题 + 可选 CTA） |
 | `widgets/shell_overlay_layer.dart` | 浮层槽分发（settings / showcase），**不保活** |
 | `widgets/shell_tab_bar.dart` | 标签条接线层：ShellState → `InkShellTabBar` 的纯数据。呈现在 `lib/theme/components/ink_shell_tab_bar.dart`，**那一层不认识 `ShellTab`**（R47；`test/quality/no_reverse_layer_import_test.dart` 钉死） |
-| `widgets/tabs/*.dart` | 五个标签体（序列 / 导出为 T7 过渡形状，真身在 T10；画廊真身已在 T9 落地，含脏刷新） |
+| `widgets/tabs/*.dart` | 五个标签体（序列 / 导出：空态 + 拉起既有对话框，见上表最后三条不变量；画廊含脏刷新） |
 | `util/tab_availability.dart` | `hasNarrativeEdges` / `canExportVideo`——从已删除的 `canvas_top_chrome.dart` 原样搬运的纯判据 |

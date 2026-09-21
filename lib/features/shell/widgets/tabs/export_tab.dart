@@ -1,4 +1,4 @@
-// 导出标签体（T7 过渡形状；真身在 T10）。三态说明见 sequence_tab.dart 头注。
+// 导出标签体。三态说明见 sequence_tab.dart 头注。
 //
 // 可用性判据走 shell/util/tab_availability.dart 的 canExportVideo——从
 // canvas_top_chrome.dart 原样搬运，不重写。
@@ -30,7 +30,8 @@ class ExportTab extends ConsumerWidget {
       return ShellEmptyState(
         icon: Icons.account_tree_outlined,
         title: l.shellCanvasEmptyTitle,
-        body: l.shellCanvasEmptyBody,
+        // 正文不复用 shellCanvasEmptyBody，理由同 sequence_tab。
+        body: l.shellExportEmptyBody,
         ctaLabel: l.shellGoToStudio,
         onCta: () =>
             ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio),
@@ -66,8 +67,11 @@ class ExportTab extends ConsumerWidget {
       edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
           const <CanvasEdge>[],
     );
-    final projectId = videoNodes.isEmpty ? null : videoNodes.first.projectId;
-    if (projectId == null) return; // 按压瞬间节点已变化：静默不弹
+    if (videoNodes.isEmpty) return; // 按压瞬间节点已变化：静默不弹
+    // projectId 走外壳的项目上下文，不再从 videoNodes.first.projectId 摸
+    // （spec §8.2）。理由同 sequence_tab._open。
+    final projectId = ref.read(shellControllerProvider).project?.id;
+    if (projectId == null) return; // 外壳尚无项目上下文：静默不弹
     showExportVideoDialog(context, projectId: projectId, videoNodes: videoNodes);
   }
 }

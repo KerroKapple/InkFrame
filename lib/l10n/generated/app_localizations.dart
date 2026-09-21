@@ -2665,6 +2665,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pick a canvas in Studio and it opens right here.'**
   String get shellCanvasEmptyBody;
+
+  /// No description provided for @shellSequenceEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a canvas first, then preview its narrative chain here.'**
+  String get shellSequenceEmptyBody;
+
+  /// No description provided for @shellExportEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a canvas first, then export its video results here.'**
+  String get shellExportEmptyBody;
 }
 
 class _AppLocalizationsDelegate

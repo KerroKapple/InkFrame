@@ -1395,4 +1395,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shellCanvasEmptyBody => '去工作室选一个画布，它就会在这里打开。';
+
+  @override
+  String get shellSequenceEmptyBody => '先打开一个画布，就能在这里预览它的叙事链。';
+
+  @override
+  String get shellExportEmptyBody => '先打开一个画布，就能在这里导出它的视频结果。';
 }
