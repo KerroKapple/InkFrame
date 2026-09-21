@@ -1,6 +1,6 @@
 // GalleryScreen：项目维度产物画廊（M3 素材库首切片，只读浏览）。
 //
-// 布局：InkWindowChrome（面包屑）+ 产物网格；
+// 布局：InkWindowChrome（返回 + 面包屑）+ 产物网格；
 // 状态：galleryControllerProvider(projectId) 的 loading / error / empty / data 四态。
 // 入口：Studio 项目卡菜单「Gallery」（nav.openGallery，见 shellControllerProvider）。
 import 'package:flutter/material.dart';
@@ -14,6 +14,8 @@ import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/primitives/ink_accent_chip.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
 import '../../../theme/tokens.dart';
+import '../../shell/models/shell_state.dart';
+import '../../shell/providers/shell_controller.dart';
 import '../models/gallery_item.dart';
 import '../providers/gallery_controller.dart';
 import '../providers/gallery_filter.dart';
@@ -99,6 +101,17 @@ class _GalleryTopChrome extends ConsumerWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return InkWindowChrome(
+      leading: IconButton(
+        tooltip: context.l10n.galleryBackTooltip,
+        icon: Icon(Icons.arrow_back, size: 18, color: colors.fg2),
+        // fix round 1（R27）：T6 交付态标签条要到 T7 才存在——没有这个返回键，
+        // 画廊就只剩一个无任何可见提示的 ⌘K 出口。goTab(studio) 等价性：
+        // 进画廊只有 Studio 项目卡一条路，此时 canvasId==null，goTab(studio)
+        // 后画廊分支（tab==gallery）失配、canvasId 仍 null，落到
+        // StudioHomeScreen——与旧「清 gallery 回 Studio」逐帧同效。
+        onPressed: () =>
+            ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio),
+      ),
       center: Text(
         context.l10n.galleryBreadcrumb(projectName),
         style: typo.headlineXs.copyWith(color: colors.fg1),

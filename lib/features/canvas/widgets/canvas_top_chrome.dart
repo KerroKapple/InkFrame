@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/preferences.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -39,6 +40,11 @@ class CanvasTopChrome extends ConsumerWidget implements PreferredSizeWidget {
       leading: _LeadingRow(
         onBack: () {
           ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
+          // 主动回首页 = 下次启动停留 Studio（fix round 1，R26：这行不依赖
+          // 被退役的三条 provider，本可原样保留，不该随迁移一起删）。
+          ref.read(preferencesServiceProvider).update(
+                (p) => p.copyWith(clearLastCanvas: true),
+              );
         },
       ),
       center: _Breadcrumb(canvasName: canvasName),

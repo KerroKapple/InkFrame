@@ -25,6 +25,7 @@ import 'package:inkframe/core/di/video_export.dart';
 import 'package:inkframe/core/interfaces/custom_provider_store.dart';
 import 'package:inkframe/core/models/custom_provider_config.dart';
 import 'package:inkframe/services/ffmpeg_locator.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_screen.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/showcase/widgets/built_in_showcase_screen.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -217,7 +218,15 @@ void main() {
     expect(find.byType(StudioHomeScreen), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
-  testWidgets('画布优先级高于 showcase：canvasId 非空时不渲染示例页', (tester) async {
+  // fix round 1（R25）：此例原名"画布优先级高于 showcase"，断言画布赢——那是
+  // 旧系统里【不可达的合成态】：旧 `_openSettings`/`_openShowcase` 落笔前都会
+  // 先清 canvasId，"overlay=showcase 且 canvasId 非空"这个组合根本出不来。
+  // 它形式上钉住了旧判序，却把一条真实可达的路径（画布打开时按 ⌘K 开示例页）
+  // 压成了回归——ShellState.openOverlay 刻意保留 canvasId（保活语义），
+  // 若判序仍 canvasId-first，浮层入口在画布上会变成死键。
+  // overlay-first 才是目标架构（spec 的外层 IndexedStack 是"浮层槽 vs 标签
+  // 宿主"二选一，浮层盖住宿主的同时画布仍在宿主里活着）——本例改断浮层赢。
+  testWidgets('浮层优先级高于画布：canvasId 非空时 showcase 仍可见', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final paths = await _setupPaths(tester, 'ink_route_showcase_prio_');
@@ -228,7 +237,7 @@ void main() {
           appPathsProvider.overrideWithValue(paths),
           _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          // screen=showcase 但画布已打开 → 画布赢（app.dart 路由优先级）。
+          // overlay=showcase 且画布已打开 → 浮层赢（app.dart 路由优先级）。
           shellControllerProvider.overrideWith(
             () => ShellNavigator(
               initial: const ShellState(
@@ -254,6 +263,53 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.byType(BuiltInShowcaseScreen), findsNothing);
+    expect(find.byType(BuiltInShowcaseScreen), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // R25 新增：画布已打开时 openOverlay(settings) → SettingsScreen 可见（不再
+  // 是死键）。变异证明见 task-6-report.md「R25 变异证明」——把 app.dart 判序
+  // 改回 canvasId-first 时，本例会转红（SettingsScreen findsNothing）。
+  testWidgets('画布已打开 + openOverlay(settings) → SettingsScreen 可见', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final paths = await _setupPaths(tester, 'ink_route_settings_over_canvas_');
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          appPathsProvider.overrideWithValue(paths),
+          _onboardingDone(),
+          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
+          shellControllerProvider.overrideWith(
+            () => ShellNavigator(
+              initial: const ShellState(
+                overlay: ShellOverlay.settings,
+                canvasId: 'cv-1',
+              ),
+            ),
+          ),
+          // 密封 ON-3 ffmpeg 探测：不真 spawn `ffmpeg -version`。
+          ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
+          // 密封 GAP-1 自定义服务商编辑区：默认 store 抛 UnimplementedError。
+          customProviderStoreProvider.overrideWithValue(const _EmptyStore()),
+          orphanReapStartupProvider.overrideWith((_) async {}),
+          _sealDbReady(),
+          workspaceProjectsProvider
+              .overrideWith((_) async => const <ProjectWithCanvases>[]),
+          canvasRepositoryProvider
+              .overrideWith((_) async => InMemoryCanvasRepository()),
+          nodeRepositoryProvider
+              .overrideWith((_) async => InMemoryNodeRepository()),
+          batchResultRepositoryProvider
+              .overrideWith((_) async => FakeBatchResultRepo()),
+        ],
+        child: const InkFrameApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(SettingsScreen), findsOneWidget);
+    expect(find.byType(CanvasScreen), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

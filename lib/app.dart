@@ -151,22 +151,25 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
 
   @override
   Widget build(BuildContext context) {
-    // T6 过渡态：状态层已换成 ShellState，但渲染仍是单 body 的 if 链，
-    // 且【判序保持 canvasId-first】——与今天逐帧等价，
-    // 于是 app_routing_test 的 5 条断言一字不改即可通过。
+    // T6 过渡态：状态层已换成 ShellState，但渲染仍是单 body 的 if 链。
+    // 【判序 overlay-first】（fix round 1，R25）：ShellState.openOverlay 刻意
+    // 保留 canvasId（保活语义），若判序仍 canvasId-first，浮层会被画布分支
+    // 永久遮死——画布/画廊上开设置或示例页会变成死键。浮层盖住标签宿主是
+    // spec 的目标语义（外层 IndexedStack 二选一：浮层槽 vs 标签宿主），
+    // 本次判序调整就是提前落地这一条，不等 T7。
     // 外壳骨架（两级 IndexedStack + 标签条）在 T7 接上。
     final s = ref.watch(shellControllerProvider);
     final Widget body;
-    if (s.canvasId != null) {
+    if (s.overlay == ShellOverlay.settings) {
+      body = const SettingsScreen();
+    } else if (s.overlay == ShellOverlay.showcase) {
+      body = const Scaffold(body: BuiltInShowcaseScreen());
+    } else if (s.canvasId != null) {
       body = const CanvasScreen(isVisible: true);
     } else if (s.tab == ShellTab.gallery && s.project != null) {
       body = Scaffold(
         body: GalleryScreen(projectId: s.project!.id, projectName: s.project!.name),
       );
-    } else if (s.overlay == ShellOverlay.settings) {
-      body = const SettingsScreen();
-    } else if (s.overlay == ShellOverlay.showcase) {
-      body = const Scaffold(body: BuiltInShowcaseScreen());
     } else {
       body = const Scaffold(body: StudioHomeScreen());
     }

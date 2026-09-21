@@ -19,15 +19,21 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   if (canvasId == null || projectId == null) return;
 
   final bool valid;
-  Map<String, dynamic>? projectRow;
+  // fix round 1（M-5）：name 的类型窄化放在 try 内、用 `as String?` 安全转型
+  // ——旧版本 `projectRow['name'] as String` 落在 try 外，name 为 null（脏行）
+  // 时会抛 TypeError 逃出 `on InkError` 网，冒泡成 FutureProvider 未捕获错误。
+  // 现在缺 name 直接并入 valid=false，走既有的「清记录、留在首页」路径。
+  String? projectName;
   try {
     final canvases = await ref.read(canvasRepositoryProvider.future);
     final projects = await ref.read(projectRepositoryProvider.future);
     // findById 均带 deleted_at IS NULL 过滤：软删的画布/项目直接判无效。
     final canvasRow = await canvases.findById(canvasId);
-    projectRow = await projects.findById(projectId);
+    final projectRow = await projects.findById(projectId);
+    projectName = projectRow?['name'] as String?;
     valid = canvasRow != null &&
         projectRow != null &&
+        projectName != null &&
         canvasRow['project_id'] == projectId;
   } on InkError catch (_) {
     return; // 存储未就绪/失败：不恢复也不清记录，下次启动再试。
@@ -44,6 +50,6 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   if (!ref.read(shellControllerProvider).isPristine) return;
   ref.read(shellControllerProvider.notifier).openCanvas(
         canvasId,
-        withProject: ProjectRef(id: projectId, name: projectRow['name'] as String),
+        withProject: ProjectRef(id: projectId, name: projectName),
       );
 }, name: 'restoreLastSessionProvider');
