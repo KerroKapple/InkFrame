@@ -257,6 +257,9 @@ lib/
 │   │   ├── settings_screen.dart
 │   │   ├── providers/
 │   │   └── widgets/
+│   ├── shell/                         # Persistent-tab app shell state (pure new addition, not yet wired to lib/app.dart)
+│   │   ├── models/                    # shell_state.dart (ShellTab / ShellOverlay / ProjectRef / ShellState — hand-written value object, 7 named transitions, no copyWith)
+│   │   └── providers/                 # shell_controller.dart (ShellNavigator Notifier + shellControllerProvider — sole write entry point)
 │   ├── showcase/                      # Bundled Codex image samples (local preview; no project records/API key)
 │   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
