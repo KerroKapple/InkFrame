@@ -34,13 +34,30 @@ void main() {
       expect(s.openCanvas('c9', withProject: p2).project, p2);
     });
 
-    test('openGallery 落在 gallery 标签、写 project、保留 canvasId', () {
-      const s = ShellState(tab: ShellTab.canvas, canvasId: 'c1', project: p1);
+    // M-4（fix round 2）：openCanvas('') 不该被照单全收——空串会让 canvasId
+    // 变成非 null 但无意义的 ''，isPristine 判假、画布标签进入"已打开"分支，
+    // 下游按 id 查库直接落空。
+    test('openCanvas 空串 id 触发 assert', () {
+      const s = ShellState();
+      expect(() => s.openCanvas(''), throwsAssertionError);
+    });
+
+    test('openGallery 落在 gallery 标签、写 project、保留 canvasId、清浮层', () {
+      // M-5（fix round 2）：起始态刻意带一个已打开的 overlay——原用例起点本来
+      // 就是 overlay:null，观测不到"清浮层"这一步，和 R19 修掉的 navigator
+      // 委托测试是同一个数据构造错误，R19 只修了那一层，这里补上 state 层。
+      const s = ShellState(
+        tab: ShellTab.canvas,
+        overlay: ShellOverlay.settings,
+        canvasId: 'c1',
+        project: p1,
+      );
       final n = s.openGallery(p2);
       expect(n.tab, ShellTab.gallery);
       expect(n.project, p2);
       expect(n.canvasId, 'c1');
-      expect(n.overlay, isNull);
+      expect(n.overlay, isNull,
+          reason: 'M-5：起点已经打开了浮层，这里才能真正观测到 openGallery 清浮层的动作');
     });
 
     test('setProject 只换上下文，不动标签与浮层', () {
@@ -95,6 +112,15 @@ void main() {
       expect(const ShellState(tab: ShellTab.gallery).isPristine, isFalse);
       // project 不参与：Studio 里选了项目但没导航，仍应恢复上次画布。
       expect(const ShellState(project: p1).isPristine, isTrue);
+    });
+
+    // M-3（fix round 2）：hasOverlay 此前零覆盖——写成 `overlay == null`（符号
+    // 反了）也没有任何用例会红，违反 docs/CLAUDE.md「Every public method has
+    // a test」。
+    test('hasOverlay：有浮层为真，无浮层为假', () {
+      expect(const ShellState().hasOverlay, isFalse);
+      expect(const ShellState(overlay: ShellOverlay.settings).hasOverlay, isTrue);
+      expect(const ShellState(overlay: ShellOverlay.showcase).hasOverlay, isTrue);
     });
   });
 

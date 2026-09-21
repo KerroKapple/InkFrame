@@ -5,7 +5,11 @@
 //
 // 【禁止补 copyWith】——补了就等于把 tab × overlay × canvasId × project 的
 // 合法性还给人工纪律。本文件的全部意义在于：每个合法迁移都有名字，
-// 于是 "tab: settings + canvasId: 'x'" 这类自相矛盾的态在类型层面无法构造。
+// 于是"浮层打开的同时顺手把 canvasId 清掉"这类没有对应具名迁移、
+// 只有 copyWith 才写得出来的自相矛盾态，在类型层面无法构造。
+// （M-7，fix round 2：原注释举的 "tab: settings + canvasId: 'x'" 例子本身
+// 就写不出来——settings 是 ShellOverlay 不是 ShellTab，两者类型不同，
+// 编译器直接拒绝，不需要靠"无 copyWith"来挡；换成真正被挡住的那种态。）
 //
 // 【没有 closeCanvas()】——本 PR 不提供任何能清 canvasId 的公共动词
 // （resetSession 除外）。老代码里那些"清 canvasId"写点的真实意图都是"回 Studio"，
@@ -81,11 +85,18 @@ class ShellState {
   ShellState goTab(ShellTab next) =>
       ShellState(tab: next, canvasId: canvasId, project: project);
 
-  ShellState openCanvas(String id, {ProjectRef? withProject}) => ShellState(
-        tab: ShellTab.canvas,
-        canvasId: id,
-        project: withProject ?? project,
-      );
+  /// M-4（fix round 2）：空串不设防会被 openCanvas('') 照单全收——canvasId
+  /// 变成 ''，isPristine 判假，画布标签进入"已打开"分支，下游按 id 查库落空。
+  /// 用 assert 而非 InkError：这是调用方的编程错误（传了个不存在的 id），
+  /// 不是运行时可恢复的业务态。
+  ShellState openCanvas(String id, {ProjectRef? withProject}) {
+    assert(id.isNotEmpty, 'openCanvas: id must not be empty');
+    return ShellState(
+      tab: ShellTab.canvas,
+      canvasId: id,
+      project: withProject ?? project,
+    );
+  }
 
   ShellState openGallery(ProjectRef p) =>
       ShellState(tab: ShellTab.gallery, canvasId: canvasId, project: p);

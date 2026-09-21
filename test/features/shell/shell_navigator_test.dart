@@ -16,10 +16,21 @@ void main() {
   }
 
   // 这是整个 PR 的地基合同：写在第一条，任何违反它的改动都当场红。
-  test('地基合同：切标签绝不改 canvasId', () {
+  //
+  // R20（fix round 2）：评审员发现 goTab 在 navigator 层零鉴别力——把它错接成
+  // `_set(state.openOverlay(ShellOverlay.settings))`（参数 t 完全不用），此前
+  // 22 条用例全绿："地基合同"只看 canvasId（openOverlay 恰好也保 canvasId）；
+  // "幂等"只数通知次数（第一次仍通知，被 _set 等值早退吃掉第二次，还是 1）；
+  // "select(canvasId)"只看 canvasId 未变。三条测试各自只盯着 canvasId 或通知
+  // 次数，没有一条真正检查"标签确实切到了 goTab 传入的那个值"。补上 tab 断言，
+  // 让这条同时钉死 canvasId 不变 **和** tab 确实切换两件事。
+  test('地基合同：切标签绝不改 canvasId，且 tab 确实切到目标标签', () {
     final c = makeContainer(const ShellState(tab: ShellTab.canvas, canvasId: 'c1'));
     c.read(shellControllerProvider.notifier).goTab(ShellTab.gallery);
     expect(c.read(shellControllerProvider).canvasId, 'c1');
+    expect(c.read(shellControllerProvider).tab, ShellTab.gallery,
+        reason: 'R20：goTab 必须真的把 tab 切到传入的目标标签，不能是"忽略参数、'
+            '只是碰巧没动 canvasId"的错误实现');
   });
 
   test('幂等：连续两次同迁移只通知一次', () {

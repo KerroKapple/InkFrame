@@ -13,6 +13,18 @@
 //
 // 导航器不做 IO：偏好落盘（lastCanvasId / lastProjectId）留在 open_canvas.dart
 // 原处（SRP：导航器只管内存态，可纯单测、零 mock）。
+//
+// 【生命周期契约（R21，fix round 2）】本 provider 永不 invalidate / refresh；
+// 会话重置只走 resetSession()。原因：ref.invalidate(shellControllerProvider)
+// 或 ref.refresh(shellControllerProvider) 都会重跑 build()，拿回默认的
+// const ShellState()——canvasId 静默归 null，画布保活当场销毁，而且绕过
+// resetSession() 里 ref.invalidate(galleryControllerProvider) 那一步（画廊会
+// 继续捧着还原前那个库的产物）。ShellState 值对象层"清 canvasId 不可达"这条
+// 不变式只在方法面上成立，在 provider 生命周期这一层是敞开的——任何调用方
+// 都能用 invalidate/refresh 绕过去。这条契约由
+// test/quality/shell_controller_lifecycle_test.dart 源码级钉死：lib/ 下出现
+// invalidate(shellControllerProvider 或 refresh(shellControllerProvider 一律
+// fail。会话重置（还原备份 / 切换工作区）一律改调 resetSession()。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../gallery/providers/gallery_controller.dart';
