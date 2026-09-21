@@ -66,7 +66,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | `models/shell_state.dart` | `ShellTab` / `ShellOverlay` / `ProjectRef` / `ShellState`（手写不可变值对象，7 个具名迁移，无 copyWith） |
 | `providers/shell_controller.dart` | `ShellNavigator` + `shellControllerProvider`——外壳状态的唯一写入口 |
 | `providers/active_project.dart` | `activeProjectProvider`（`ShellState.project` 的只读投影） |
-| `providers/gallery_dirty.dart` | `galleryDirtyProvider`——任一 job 转 `JobSucceeded` 即置脏；画廊标签由不可见→可见时刷一次再清脏（T9） |
+| `providers/gallery_dirty.dart` | `galleryDirtyProvider`——任一 job 转 `JobSucceeded` 即置脏；画廊标签由不可见→可见时刷一次再清脏（T9）。**不是实时刷新**：用户正看着画廊时不动，切走再切回才更新 |
 | `widgets/ink_shell.dart` | 外壳根：唯一 Scaffold + chrome + 标签条 + 内容区 |
 | `widgets/shell_content_stack.dart` | 两级 IndexedStack + `_shellFocus` 兜底焦点 |
 | `widgets/shell_keep_alive_host.dart` | 懒物化 + 物化后常驻的五槽宿主 |

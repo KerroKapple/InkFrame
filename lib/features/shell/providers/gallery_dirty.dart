@@ -6,6 +6,11 @@
 // 成本远高于偶尔多刷一次——刷新走 skipLoadingOnRefresh 的就地换数据，
 // 滚动/搜索框/筛选全保，用户无感。
 //
+// 【误刷的上界】galleryControllerProvider 是 AutoDisposeFamily：切项目会直接
+// dispose 掉旧 projectId 的 entry。所以"A 项目生成完、切到 B 项目画廊"这种
+// 跨项目误刷，最坏也只是对**当前**项目多跑一次聚合——不可能把 A 的数据带进
+// B，也不可能让 B 的筛选态丢失。误刷的代价严格封顶在"一次多余查询"。
+//
 // 【去重不是优化，是正确性】JobSucceeded 是终态，会长期留在 registry 里。
 // 若只判断"当前列表里存在 JobSucceeded"，任何一次 registry 变更（哪怕是另一
 // 条 job 刚入队）都会把刚清掉的脏标记重新置上 ⇒ clear() 永远清不干净 ⇒

@@ -25,6 +25,10 @@ class GalleryTab extends ConsumerStatefulWidget {
   ///
   /// 【T9 已接上】false → true 的那一跳是脏刷新的唯一触发沿：后台生成完成
   /// 时不刷（用户看不见，刷了只是白费一次聚合查询），等用户真的切回画廊再刷。
+  ///
+  /// 【F5：这不是实时刷新，是 by design】用户正盯着画廊时后台生成完成，画廊
+  /// 原地不动——得切走再切回才更新。要做成实时的话，就是"用户滚到一半、列表
+  /// 在脚底下变长"，那是另一种体验决策，不在 T9 范围内。
   final bool isVisible;
 
   @override
@@ -53,6 +57,11 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
       if (project != null) {
         ref.invalidate(galleryControllerProvider(project.id));
       }
+      // 【F4：project == null 时脏标记被无刷新地丢掉，这是安全的】
+      // 没有项目就没有 entry 可 invalidate；而 galleryControllerProvider 是
+      // AutoDisposeFamily，用户之后选中任何项目时，那个 entry 本来就是全新
+      // 构建的（第一次 build 就会读到最新数据）。留着脏标记只会让下一次切入
+      // 画廊白刷一次刚建好的 entry。
       ref.read(galleryDirtyProvider.notifier).clear();
     });
   }

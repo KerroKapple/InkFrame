@@ -2336,6 +2336,12 @@ abstract class AppLocalizations {
   /// **'Filters active'**
   String get galleryFilterActiveChip;
 
+  /// Gallery tool bar count of currently visible (post-filter) assets, shown next to the project name
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}'**
+  String galleryItemCount(int count);
+
   /// No description provided for @showcaseEntryLabel.
   ///
   /// In en, this message translates to:
@@ -2653,12 +2659,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No canvas open'**
   String get shellCanvasEmptyTitle;
-
-  /// Gallery tool bar asset count next to the project name
-  ///
-  /// In en, this message translates to:
-  /// **'{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}'**
-  String shellGalleryItemCount(int count);
 
   /// No description provided for @shellCanvasEmptyBody.
   ///

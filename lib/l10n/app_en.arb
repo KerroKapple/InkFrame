@@ -541,6 +541,13 @@
   "galleryKindImage": "Image",
   "galleryKindVideo": "Video",
   "galleryFilterActiveChip": "Filters active",
+  "galleryItemCount": "{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}",
+  "@galleryItemCount": {
+    "description": "Gallery tool bar count of currently visible (post-filter) assets, shown next to the project name",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "showcaseEntryLabel": "Built-in samples",
   "showcaseTitle": "Built-in image samples",
@@ -642,12 +649,5 @@
   "shellCloseOverlay": "Close",
   "shellGoToStudio": "Go to Studio",
   "shellCanvasEmptyTitle": "No canvas open",
-  "shellGalleryItemCount": "{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}",
-  "@shellGalleryItemCount": {
-    "description": "Gallery tool bar asset count next to the project name",
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
   "shellCanvasEmptyBody": "Pick a canvas in Studio and it opens right here."
 }

@@ -1255,6 +1255,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get galleryFilterActiveChip => 'Filters active';
 
   @override
+  String galleryItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count assets',
+      one: '1 asset',
+      zero: 'No assets',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get showcaseEntryLabel => 'Built-in samples';
 
   @override
@@ -1439,18 +1451,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shellCanvasEmptyTitle => 'No canvas open';
-
-  @override
-  String shellGalleryItemCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count assets',
-      one: '1 asset',
-      zero: 'No assets',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get shellCanvasEmptyBody =>

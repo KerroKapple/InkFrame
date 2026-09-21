@@ -1205,6 +1205,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryFilterActiveChip => '筛选生效中';
 
   @override
+  String galleryItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个产物',
+      zero: '没有产物',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get showcaseEntryLabel => '内置示例';
 
   @override
@@ -1381,16 +1392,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shellCanvasEmptyTitle => '还没有打开画布';
-
-  @override
-  String shellGalleryItemCount(int count) {
-    String _temp0 = intl.Intl.pluralLogic(
-      count,
-      locale: localeName,
-      other: '$count 个产物',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get shellCanvasEmptyBody => '去工作室选一个画布，它就会在这里打开。';

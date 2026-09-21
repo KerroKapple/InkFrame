@@ -49,6 +49,19 @@ class GalleryScreen extends ConsumerWidget {
         projectId,
       ).select((GalleryFilter f) => f.isActive),
     );
+    // 【R69：渲染什么就数什么】计数必须是**筛选后**的条数，不是全量。
+    // 全量计数会让同一屏自相矛盾：工具条上「筛选生效中」chip + 「12 assets」，
+    // 正下方网格里却只有 1 个 tile。
+    // 用 select 而不是 watch 整个 filter：只在条数真的变了时才重建工具条，
+    // 搜索框逐字输入不会每个字符都推一次 GalleryScreen 重建。
+    final List<GalleryItem>? items = itemsAsync.valueOrNull;
+    final int? visibleCount = items == null
+        ? null
+        : ref.watch(
+            galleryFilterProvider(projectId).select(
+              (GalleryFilter f) => filterGalleryItems(items, f).length,
+            ),
+          );
     // Material 根：筛选条的 Dropdown/TextField 需要 Material 祖先（GA-3）。
     return Material(
       color: colors.surfaceCanvas,
@@ -57,7 +70,7 @@ class GalleryScreen extends ConsumerWidget {
           _GalleryToolBar(
             projectName: projectName,
             // 只在 data 态给计数；loading/error 下不显示（不是显示 0）。
-            itemCount: itemsAsync.valueOrNull?.length,
+            itemCount: visibleCount,
             filtersActive: filtersActive,
             onClearFilters: () =>
                 ref.read(galleryFilterProvider(projectId).notifier).state =
@@ -117,7 +130,8 @@ class _GalleryToolBar extends ConsumerWidget {
 
   final String projectName;
 
-  /// null ⇒ 还没拿到数据（loading / error），计数整块不渲染。
+  /// 当前**可见**（筛选后）的产物条数。null ⇒ 还没拿到数据（loading /
+  /// error），计数整块不渲染。
   final int? itemCount;
   final bool filtersActive;
   final VoidCallback onClearFilters;
@@ -143,7 +157,7 @@ class _GalleryToolBar extends ConsumerWidget {
           if (itemCount != null) ...<Widget>[
             const SizedBox(width: InkSpacing.sm),
             Text(
-              context.l10n.shellGalleryItemCount(itemCount!),
+              context.l10n.galleryItemCount(itemCount!),
               style: typo.body.copyWith(color: colors.fg3),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

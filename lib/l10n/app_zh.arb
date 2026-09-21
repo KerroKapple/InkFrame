@@ -507,6 +507,12 @@
   "galleryKindImage": "图片",
   "galleryKindVideo": "视频",
   "galleryFilterActiveChip": "筛选生效中",
+  "galleryItemCount": "{count, plural, =0{没有产物} other{{count} 个产物}}",
+  "@galleryItemCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "showcaseEntryLabel": "内置示例",
   "showcaseTitle": "内置图片示例",
@@ -566,11 +572,5 @@
   "shellCloseOverlay": "关闭",
   "shellGoToStudio": "去工作室",
   "shellCanvasEmptyTitle": "还没有打开画布",
-  "shellGalleryItemCount": "{count, plural, other{{count} 个产物}}",
-  "@shellGalleryItemCount": {
-    "placeholders": {
-      "count": { "type": "int" }
-    }
-  },
   "shellCanvasEmptyBody": "去工作室选一个画布，它就会在这里打开。"
 }
