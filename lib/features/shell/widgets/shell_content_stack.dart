@@ -62,9 +62,12 @@ class _ShellContentStackState extends State<ShellContentStack> {
     // _ModalScopeState 的 FocusScope，⌘K 面板计数为 0。
     //
     // T7 复评当时"构造不出证伪场景"的原因：⌘K 只在【画布先抢过焦点】的路径上
-    // 才会掉链子。若当前标签里没有 CanvasShortcuts 这类主动夺焦者，焦点一直
-    // 停在 CommandPaletteShortcuts 自己的 autofocus 兜底节点上，切标签不改变
-    // 它，⌘K 自然全程可用——那条路径下本段确实无作用面，但那不是全部路径。
+    // 才会掉链子。若当前标签里没有 CanvasShortcuts 这类主动夺焦者，⌘K 全程可用
+    // ——焦点要么留在 CommandPaletteShortcuts 的 autofocus 兜底节点上，要么落到
+    // 本节点（守卫版下也会落过来：此刻持焦的兜底节点是 _shellFocus 的【祖先】
+    // 而非后代，hasFocus 为 false，守卫并不跳过请求），**两者都在
+    // CommandPaletteShortcuts 之下**，按键照常冒泡。那条路径下本段确实无作用面，
+    // 但那不是全部路径。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _shellFocus.requestFocus();
     });

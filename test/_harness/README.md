@@ -29,7 +29,8 @@ InkFrame 测试基础设施。所有 widget / provider / controller test 共享�
 | `fake_character.dart` | Character 仓储 / 资产服务 fake |
 | `fake_prompt_preset.dart` | PromptPreset 仓储 fake |
 | `fake_unit_of_work.dart` | `FakeUnitOfWork`：把给定 fake 仓储原样暴露给闭包，不做真事务/回滚 |
-| `shell_app.dart` | `pumpInkShell(tester, {initial, paths, ...})` 外壳级启动器 + `sealedShellOverrides` / `tapShellTab` / `setupTempPaths` / `readShellContainer` |
+| `fake_canvas.dart` | 画布层内存 fake：`FakeNodesController` / `FakeEdgesController` / `EmptyLanesController` / `StubFileResolver` + `textNode()` / `twoNodes` 节点种子（`canvas_shortcuts_test` 与外壳 V1/V2 端到端用例共用——别再各自复制一份，V2 的 `findsNWidgets(2)` 就锚在 `twoNodes` 的基数上） |
+| `shell_app.dart` | `pumpInkShell(tester, {initial, paths, ...})` 外壳级启动器 + `sealedShellOverrides` / `tapShellTab` / `setupTempPaths` / `readShellContainer` / `sendCtrl` / `sendMeta` |
 | `shell_expect.dart` | `expectShellSurface<T>(mounted:, onstage:, hittable:)` 三条正交通道断言 |
 | `golden_scaffold.dart` | `pumpGoldenScene(tester, child, size:, overrides:, ...)` 固定 surface + 真字体 |
 | `_harness_test.dart` | test_app + fixtures 契约测试 |

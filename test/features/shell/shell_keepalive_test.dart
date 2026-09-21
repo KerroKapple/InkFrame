@@ -3,7 +3,10 @@
 // 【本文件与 shell_keep_alive_host_test.dart 的分工】那边证的是「子树还在树上」
 // （StatelessWidget + Text 探针）。子树存活是 State 存活的必要条件，不是充分
 // 条件——同一个 Element 位置上换一个 Key、或宿主每帧重建 KeyedSubtree，
-// 子树照样"在树上"，State 却已经被重建过一轮。V1 要验的是【State 对象里的值】。
+// 子树照样"在树上"，State 却已经被重建过一轮。V1 要验的是【切换后真实状态还在】，
+// 其中只有 ③ 咬到 State 对象本人——①② 在"槽位 Key 随 activeTab 变"的变异下是
+// 绿的，它们证到的是 autoDispose family entry 存活（仍是真状态、仍是 V1 用户标准
+// 的一部分，但比 State 存活弱一档）。
 //
 // 三条用例各自钉一种状态载体：
 //  ① TransformationController 的矩阵——autoDispose family provider 持有，

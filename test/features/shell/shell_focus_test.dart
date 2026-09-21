@@ -9,16 +9,29 @@
 //    三段合起来才是 V2，缺中间任何一段都能被一个变异悄悄穿过去。
 //
 // 【两条 Delete 断言的鉴别力，如实记录（T8 变异实测）】
-// 「不可见画布不吞 Delete」由两条【互相独立、各自充分】的机制共同保证：
+// 「不可见画布不吞 Delete」由【三条互相独立、各自充分】的机制共同保证：
 //   ① CanvasTab 把 isVisible 直通 CanvasShortcuts.isActive（本仓库的接线）；
 //   ② IndexedStack 给非 index 子套 ExcludeFocus(excluding: true)
-//      （basic.dart:4883 → visibility.dart:267，框架保证）。
-// 因此【没有任何单点变异能把这两条断言打红】——实测：单独把 isVisible 写死
-// true 不红；单独把 IndexedStack 换成 Stack+Offstage（去掉 ExcludeFocus）也不红；
-// 两者同时变异才红。这两条是纵深防御断言，不是某一处实现的靶子；
-// ① 的专属靶子在 shell_canvas_visibility_test.dart，② 是框架契约。
-// 真正咬住某一处实现的是本文件的 ⌘K 断言（护 _shellFocus）与第三条正向对照
-// （护 CanvasShortcuts.didUpdateWidget 的 post-frame 复焦）。
+//      （basic.dart:4883 → visibility.dart:267，框架保证）。注意【有两层】：
+//      外层 shell_content_stack.dart 的 IndexedStack 管"开浮层"，
+//      内层 shell_keep_alive_host.dart 的 IndexedStack 管"切标签"；
+//   ③ ShellContentStack._shellFocus 在 tab / overlay 变化时无条件夺焦，
+//      把焦点从画布身上拿走（它同时还是 ⌘K 的护栏，见下面那条断言）。
+//
+// 因此要把这两条断言打红，必须【三重同时变异】。实测配方（照抄，别省）：
+//   1. shell_content_stack.dart 的 `CanvasTab(isVisible: _isVisible(...))`
+//      → `CanvasTab(isVisible: true)`
+//   2. 【两处 IndexedStack 都要换成 Stack + Offstage】——
+//      shell_content_stack.dart 的外层，**以及** shell_keep_alive_host.dart
+//      的内层逐槽 Offstage。只换一处只摘掉一半 ExcludeFocus，跑出来仍是绿的。
+//   3. shell_content_stack.dart 的 `_shellFocus.requestFocus()` → no-op
+// 缺任何一条都不红（单变异、双变异都实测过：Delete 两条恒绿，只有 V2-C 会红）。
+//
+// 所以这两条是纵深防御断言，不是某一处实现的靶子——但它们【有靶子】，别当死
+// 断言删掉：删了之后，V2 那条「切走标签后按 Delete 不会误删」在 lib/ 侧就没有
+// 端到端护栏了。各机制自己的单点靶子：① 在 shell_canvas_visibility_test.dart，
+// ② 是框架契约，③ 是本文件的 ⌘K 断言。第三条正向对照则护住
+// CanvasShortcuts.didUpdateWidget 的 post-frame 复焦。
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
