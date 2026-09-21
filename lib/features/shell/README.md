@@ -33,7 +33,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | 内容懒物化、物化后永不换回占位 | V4 成立的唯一物理前提：没访问过的标签体 `findsNothing` 才是真断言 | `shell_keep_alive_host_test.dart` + `test/app/app_routing_test.dart` |
 | 全树唯一 `InkWindowChrome` | 每个已物化标签各带一份 = 两套最小化/关闭按钮 | `shell_window_chrome_test.dart`（V3a） |
 | 外壳持根 `Scaffold`，画布/设置自带的 Scaffold 保留不动 | `ScaffoldMessenger` 对每个 **root** Scaffold 各推一份 SnackBar；不加祖先 ⇒ 一条 toast 渲染两份，且序列/导出标签（无 Scaffold）激活时 toast 画在离台子树里 | `shell_window_chrome_test.dart`（V3b） |
-| 标签条绝不进 chrome 的槽位 | `InkWindowChrome` 整条包在 `DragToMoveArea` 里，其 `onDoubleTap` 让单击等满 `kDoubleTapTimeout`(300ms) | `test/theme/ink_shell_tab_bar_test.dart`（一帧落地） |
+| 标签条绝不进 chrome 的槽位 | `InkWindowChrome` 整条包在 `DragToMoveArea` 里，其 `onDoubleTap` 让单击等满 `kDoubleTapTimeout`(300ms) | `test/features/shell/shell_tab_bar_test.dart`（一帧落地） |
 | `ShellContentStack` 的焦点重夺【无条件】，不许加 `hasFocus` 守卫 | 切换那一帧画布 FocusNode 还没 unfocus，守卫会跳过请求 → 焦点掉到 ModalScope 的 FocusScope → 全 app ⌘K 失效 | T8 的 V2 用例 |
 | `ShellBreadcrumb` 条件 watch：`canvasId == null` 时不碰 `canvasRepository` | 否则每个 boot 级 widget test 都得额外密封画布仓储 | `shell_chrome_test.dart` + `test/widget_test.dart` |
 | 序列/导出标签的 `canvasId == null` 分支不 watch 任何仓储 | 一旦 eager 碰仓储就会去起真内嵌 PG，测试挂到 isolate 超时 | `shell_tabs_empty_state_test.dart`（会抛的 fake 仓储） |
@@ -73,5 +73,6 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | `widgets/shell_breadcrumb.dart` | `studio › project › canvas`（条件 watch） |
 | `widgets/shell_empty_state.dart` | 复用空态（图标 + 标题 + 可选副标题 + 可选 CTA） |
 | `widgets/shell_overlay_layer.dart` | 浮层槽分发（settings / showcase），**不保活** |
+| `widgets/shell_tab_bar.dart` | 标签条接线层：ShellState → `InkShellTabBar` 的纯数据。呈现在 `lib/theme/components/ink_shell_tab_bar.dart`，**那一层不认识 `ShellTab`**（R47；`test/quality/no_reverse_layer_import_test.dart` 钉死） |
 | `widgets/tabs/*.dart` | 五个标签体（序列 / 导出为 T7 过渡形状，真身在 T10；画廊真身在 T9） |
 | `util/tab_availability.dart` | `hasNarrativeEdges` / `canExportVideo`——从已删除的 `canvas_top_chrome.dart` 原样搬运的纯判据 |

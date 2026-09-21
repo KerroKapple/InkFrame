@@ -12,11 +12,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ink_shell_tab_bar.dart';
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
 import 'shell_chrome.dart';
 import 'shell_content_stack.dart';
+import 'shell_tab_bar.dart';
 
 class InkShell extends ConsumerWidget {
   const InkShell({super.key});
@@ -29,7 +29,7 @@ class InkShell extends ConsumerWidget {
       body: Column(
         children: <Widget>[
           const ShellChrome(), // 56：全树唯一 InkWindowChrome
-          const InkShellTabBar(), // 44：在 DragToMoveArea 之外
+          const ShellTabBar(), // 44：在 DragToMoveArea 之外（见该文件头注）
           Expanded(child: ShellContentStack(tab: s.tab, overlay: s.overlay)),
         ],
       ),
