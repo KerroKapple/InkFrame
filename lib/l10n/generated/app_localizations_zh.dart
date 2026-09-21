@@ -1222,6 +1222,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryKindVideo => '视频';
 
   @override
+  String get galleryFilterActiveChip => '筛选生效中';
+
+  @override
   String get showcaseEntryLabel => '内置示例';
 
   @override

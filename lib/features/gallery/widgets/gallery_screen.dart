@@ -11,6 +11,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/components/ink_window_chrome.dart';
+import '../../../theme/primitives/ink_accent_chip.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
 import '../../../theme/tokens.dart';
 import '../models/gallery_item.dart';
@@ -33,12 +34,28 @@ class GalleryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final itemsAsync = ref.watch(galleryControllerProvider(projectId));
+    // 筛选器是 autoDispose，而它唯一的 watcher _GalleryContent 只存在于
+    // data 且非空这一个分支（见下方 when）。loading / error / 空态三条路径下
+    // 筛选态会被静默回收 → 用户的筛选在一次重试后凭空消失。
+    // 这条 watch 把筛选器的存活性锚在 GalleryScreen 自身的生命周期上，
+    // 顺带驱动工具条的“筛选生效中”指示——它不是单纯为了渲染一个 chip
+    // 才写的，删掉这条 watch 会让 4a 修的回收 bug 静默复发（Task 7 挪
+    // chip 进 InkToolBar 时请保留这条 watch，别当死代码删掉）。
+    final filtersActive = ref.watch(
+      galleryFilterProvider.select((GalleryFilter f) => f.isActive),
+    );
     // Material 根：筛选条的 Dropdown/TextField 需要 Material 祖先（GA-3）。
     return Material(
       color: colors.surfaceCanvas,
       child: Column(
         children: <Widget>[
-          _GalleryTopChrome(projectName: projectName),
+          _GalleryTopChrome(
+            projectName: projectName,
+            filtersActive: filtersActive,
+            onClearFilters: () =>
+                ref.read(galleryFilterProvider.notifier).state =
+                    const GalleryFilter(),
+          ),
           Expanded(
             child: itemsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -58,9 +75,15 @@ class GalleryScreen extends ConsumerWidget {
 }
 
 class _GalleryTopChrome extends ConsumerWidget {
-  const _GalleryTopChrome({required this.projectName});
+  const _GalleryTopChrome({
+    required this.projectName,
+    required this.filtersActive,
+    required this.onClearFilters,
+  });
 
   final String projectName;
+  final bool filtersActive;
+  final VoidCallback onClearFilters;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -79,6 +102,17 @@ class _GalleryTopChrome extends ConsumerWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
+      // T4a：筛选生效中指示 + 就地清除（T9 会把它挪进 InkToolBar）。
+      trailing: filtersActive
+          ? Tooltip(
+              message: context.l10n.galleryFilterClear,
+              child: InkAccentChip(
+                label: context.l10n.galleryFilterActiveChip,
+                icon: Icons.filter_alt,
+                onPressed: onClearFilters,
+              ),
+            )
+          : null,
     );
   }
 }

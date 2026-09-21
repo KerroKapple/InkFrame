@@ -1272,6 +1272,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get galleryKindVideo => 'Video';
 
   @override
+  String get galleryFilterActiveChip => 'Filters active';
+
+  @override
   String get showcaseEntryLabel => 'Built-in samples';
 
   @override

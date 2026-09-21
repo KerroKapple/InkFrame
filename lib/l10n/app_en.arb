@@ -555,6 +555,7 @@
   "gallerySavedAsCharacter": "Character saved",
   "galleryKindImage": "Image",
   "galleryKindVideo": "Video",
+  "galleryFilterActiveChip": "Filters active",
 
   "showcaseEntryLabel": "Built-in samples",
   "showcaseTitle": "Built-in image samples",

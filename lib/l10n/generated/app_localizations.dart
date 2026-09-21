@@ -2366,6 +2366,12 @@ abstract class AppLocalizations {
   /// **'Video'**
   String get galleryKindVideo;
 
+  /// No description provided for @galleryFilterActiveChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Filters active'**
+  String get galleryFilterActiveChip;
+
   /// No description provided for @showcaseEntryLabel.
   ///
   /// In en, this message translates to:
