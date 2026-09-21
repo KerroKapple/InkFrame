@@ -8,14 +8,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final linkModeControllerProvider =
-    AutoDisposeNotifierProvider<LinkModeController, String?>(
+    AutoDisposeNotifierProviderFamily<LinkModeController, String?, String>(
   LinkModeController.new,
   name: 'linkModeControllerProvider',
 );
 
-class LinkModeController extends AutoDisposeNotifier<String?> {
+class LinkModeController extends AutoDisposeFamilyNotifier<String?, String> {
   @override
-  String? build() => null;
+  String? build(String canvasId) => null;
 
   void start(String sourceNodeId) {
     state = sourceNodeId;

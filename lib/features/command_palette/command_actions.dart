@@ -125,7 +125,7 @@ Future<void> _addNode(
             random: Random(),
             transform:
                 ref.read(canvasTransformControllerProvider(canvasId)).value,
-            viewportSize: ref.read(canvasViewportSizeProvider),
+            viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
             nodeSize: defaultNodeSize(type),
           ),
         );

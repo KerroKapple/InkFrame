@@ -35,9 +35,9 @@ class LinkActionController
   /// 把当前 link source 连到 [targetNodeId]；非 link 模式下 no-op。
   /// 无论成败都退出 link 模式。
   Future<void> linkTo(String targetNodeId) async {
-    final sourceId = ref.read(linkModeControllerProvider);
+    final sourceId = ref.read(linkModeControllerProvider(arg));
     if (sourceId == null) return;
-    final linkCtrl = ref.read(linkModeControllerProvider.notifier);
+    final linkCtrl = ref.read(linkModeControllerProvider(arg).notifier);
 
     if (targetNodeId == sourceId) {
       linkCtrl.cancel();

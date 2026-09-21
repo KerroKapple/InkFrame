@@ -8,13 +8,15 @@ void main() {
   late ProviderContainer container;
   late SelectedEdgeController ctrl;
 
+  const canvasId = 'c1';
+
   setUp(() {
     container = ProviderContainer();
-    ctrl = container.read(selectedEdgeControllerProvider.notifier);
+    ctrl = container.read(selectedEdgeControllerProvider(canvasId).notifier);
   });
   tearDown(() => container.dispose());
 
-  String? s() => container.read(selectedEdgeControllerProvider);
+  String? s() => container.read(selectedEdgeControllerProvider(canvasId));
 
   test('初始 null', () {
     expect(s(), isNull);

@@ -23,18 +23,23 @@ final canvasTransformControllerProvider =
       return controller;
     }, name: 'canvasTransformControllerProvider');
 
-/// 画布视口尺寸（由舞台层 LayoutBuilder 上报）。围绕视口中心缩放时需要它。
+/// 画布视口尺寸（由舞台层 LayoutBuilder 上报），按 canvasId 分族——与
+/// canvasTransformControllerProvider 对称，避免第二个被布局的画布状表面覆盖它。
 final canvasViewportSizeProvider =
-    AutoDisposeNotifierProvider<CanvasViewportSize, Size>(
+    AutoDisposeNotifierProviderFamily<CanvasViewportSize, Size, String>(
       CanvasViewportSize.new,
       name: 'canvasViewportSizeProvider',
     );
 
-class CanvasViewportSize extends AutoDisposeNotifier<Size> {
+class CanvasViewportSize extends AutoDisposeFamilyNotifier<Size, String> {
   @override
-  Size build() {
-    // 无人 watch（仅缩放处 read），不 keepAlive 会在 setSize 后随即自毁并复位 Size.zero，
-    // 令快捷键缩放读到 0×0 → 围绕 (0,0) 而非视口中心（D2）。keepAlive 保其存活。
+  Size build(String canvasId) {
+    // 无人 watch（仅缩放处 read），不 keepAlive 会在 setSize 后随即自毁并复位
+    // Size.zero，令快捷键缩放读到 0×0 → 围绕 (0,0) 而非视口中心（D2）。
+    //
+    // 债：family 上的 keepAlive 意味着每个开过的 canvasId 都永久留一个 entry
+    // ——"与 transform 对称"这句话在 dispose 语义上并不成立。后续让缩放路径
+    // 改 watch 后去掉 keepAlive。见 docs/BOARD.md。
     ref.keepAlive();
     return Size.zero;
   }

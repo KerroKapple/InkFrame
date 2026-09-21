@@ -8,13 +8,15 @@ void main() {
   late ProviderContainer container;
   late CanvasSelectionController ctrl;
 
+  const canvasId = 'c1';
+
   setUp(() {
     container = ProviderContainer();
-    ctrl = container.read(canvasSelectionControllerProvider.notifier);
+    ctrl = container.read(canvasSelectionControllerProvider(canvasId).notifier);
   });
   tearDown(() => container.dispose());
 
-  Set<String> s() => container.read(canvasSelectionControllerProvider);
+  Set<String> s() => container.read(canvasSelectionControllerProvider(canvasId));
 
   group('CanvasSelectionController', () {
     test('初始为空', () {

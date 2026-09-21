@@ -274,14 +274,15 @@ class _CanvasBody extends ConsumerWidget {
     CanvasNode node,
   ) async {
     // link 模式：编排交给 LinkActionController，结果经 ref.listen 出 snackbar。
-    if (ref.read(linkModeControllerProvider) != null) {
+    if (ref.read(linkModeControllerProvider(canvasId)) != null) {
       await ref
           .read(linkActionControllerProvider(canvasId).notifier)
           .linkTo(node.id);
       return;
     }
 
-    final selectionCtrl = ref.read(canvasSelectionControllerProvider.notifier);
+    final selectionCtrl =
+        ref.read(canvasSelectionControllerProvider(canvasId).notifier);
 
     // 可播放 video result → 打开 Lightbox，不走常规多选。
     final playablePath = ref.read(playableVideoPathProvider(node));
@@ -309,11 +310,11 @@ class _CanvasBody extends ConsumerWidget {
     // 本层不再 watch 选中/链接态——这两类高频变化下沉到各插槽各自 watch，
     // 避免改一次选中就整层（含全部节点卡片）重建。
     void onEmptyTap() {
-      if (ref.read(linkModeControllerProvider) != null) {
-        ref.read(linkModeControllerProvider.notifier).cancel();
+      if (ref.read(linkModeControllerProvider(canvasId)) != null) {
+        ref.read(linkModeControllerProvider(canvasId).notifier).cancel();
       }
-      ref.read(canvasSelectionControllerProvider.notifier).clear();
-      ref.read(selectedEdgeControllerProvider.notifier).clear();
+      ref.read(canvasSelectionControllerProvider(canvasId).notifier).clear();
+      ref.read(selectedEdgeControllerProvider(canvasId).notifier).clear();
     }
 
     final Widget canvasArea;
@@ -342,17 +343,17 @@ class _CanvasBody extends ConsumerWidget {
           child: _EdgeLaneErrorSlot(canvasId: canvasId),
         ),
         // 链接提示条：仅随 linkMode 重建。
-        const Positioned(
+        Positioned(
           top: InkSpacing.md,
           left: InkSpacing.md,
           right: InkSpacing.md,
-          child: _LinkHintSlot(),
+          child: _LinkHintSlot(canvasId: canvasId),
         ),
         // 多选计数 chip：仅随选中数量重建。
-        const Positioned(
+        Positioned(
           top: InkSpacing.md,
           right: InkSpacing.md,
-          child: _SelectionCountSlot(),
+          child: _SelectionCountSlot(canvasId: canvasId),
         ),
         // 泳道工具栏：左下角固定，位于链接提示条之下。
         Positioned(
@@ -367,7 +368,7 @@ class _CanvasBody extends ConsumerWidget {
       children: [
         Expanded(child: leftArea),
         // Inspector：单选 config 节点时浮出，仅随选中态重建。
-        _InspectorSlot(nodes: nodes),
+        _InspectorSlot(canvasId: canvasId, nodes: nodes),
       ],
     );
   }
@@ -392,7 +393,7 @@ class _CanvasStage extends ConsumerWidget {
     WidgetRef ref,
     CanvasEdge edge,
   ) async {
-    ref.read(selectedEdgeControllerProvider.notifier).clear();
+    ref.read(selectedEdgeControllerProvider(canvasId).notifier).clear();
     final edgesCtrl = ref.read(
       canvasEdgesControllerProvider(canvasId).notifier,
     );
@@ -426,7 +427,7 @@ class _CanvasStage extends ConsumerWidget {
     final colors = context.inkColors;
     // 选中/链接态不在本层 watch——下沉到 _NodeCardSlot 各自 watch，改选中
     // 只重建涉及的卡片，不再整层重建（丝滑核心）。
-    final selectedEdgeId = ref.watch(selectedEdgeControllerProvider);
+    final selectedEdgeId = ref.watch(selectedEdgeControllerProvider(canvasId));
     final edges =
         // 良性降级（GAP-3 审计 B 类）：错误横幅在 _EdgeLaneErrorSlot
         ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
@@ -462,7 +463,7 @@ class _CanvasStage extends ConsumerWidget {
         direction: direction,
       );
       if (hitId != null) {
-        ref.read(selectedEdgeControllerProvider.notifier).select(hitId);
+        ref.read(selectedEdgeControllerProvider(canvasId).notifier).select(hitId);
         return;
       }
       onEmptyTap();
@@ -501,7 +502,7 @@ class _CanvasStage extends ConsumerWidget {
           final size = constraints.biggest;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (context.mounted) {
-              ref.read(canvasViewportSizeProvider.notifier).setSize(size);
+              ref.read(canvasViewportSizeProvider(canvasId).notifier).setSize(size);
             }
           });
           // 泳道模型（终版）：泳道栈锚在世界原点——拖画布时整体跟着世界走，
@@ -1025,9 +1026,9 @@ class _NodeCardSlot extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     // .select：仅当本节点的"是否被选中"翻转时才重建本卡片。
     final selected = ref.watch(
-      canvasSelectionControllerProvider.select((s) => s.contains(node.id)),
+      canvasSelectionControllerProvider(canvasId).select((s) => s.contains(node.id)),
     );
-    final linkSourceId = ref.watch(linkModeControllerProvider);
+    final linkSourceId = ref.watch(linkModeControllerProvider(canvasId));
     return RepaintBoundary(
       child: NodeCard(
         node: node,
@@ -1083,7 +1084,7 @@ class _NodeCardSlot extends ConsumerWidget {
           move();
         },
         onStartLink: () =>
-            ref.read(linkModeControllerProvider.notifier).start(node.id),
+            ref.read(linkModeControllerProvider(canvasId).notifier).start(node.id),
         onDelete: onDelete,
         isLinkSource: linkSourceId == node.id,
         isLinkCandidate: linkSourceId != null && linkSourceId != node.id,
@@ -1145,23 +1146,27 @@ class _EdgeLaneErrorSlotState extends ConsumerState<_EdgeLaneErrorSlot> {
 
 /// 链接提示条插槽：仅随 linkMode 变化重建。
 class _LinkHintSlot extends ConsumerWidget {
-  const _LinkHintSlot();
+  const _LinkHintSlot({required this.canvasId});
+
+  final String canvasId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final active = ref.watch(linkModeControllerProvider) != null;
+    final active = ref.watch(linkModeControllerProvider(canvasId)) != null;
     return active ? _LinkHintBanner() : const SizedBox.shrink();
   }
 }
 
 /// 多选计数 chip 插槽：仅随选中数量变化重建。
 class _SelectionCountSlot extends ConsumerWidget {
-  const _SelectionCountSlot();
+  const _SelectionCountSlot({required this.canvasId});
+
+  final String canvasId;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(
-      canvasSelectionControllerProvider.select((s) => s.length),
+      canvasSelectionControllerProvider(canvasId).select((s) => s.length),
     );
     if (count < 2) return const SizedBox.shrink();
     return _SelectionCountChip(count: count);
@@ -1171,13 +1176,14 @@ class _SelectionCountSlot extends ConsumerWidget {
 /// Inspector 插槽：单选节点时浮出（config/result 分流交 NodeInspectorRouter）；
 /// 仅随选中态重建，不连带画布。
 class _InspectorSlot extends ConsumerWidget {
-  const _InspectorSlot({required this.nodes});
+  const _InspectorSlot({required this.canvasId, required this.nodes});
 
+  final String canvasId;
   final List<CanvasNode> nodes;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(canvasSelectionControllerProvider);
+    final selected = ref.watch(canvasSelectionControllerProvider(canvasId));
     CanvasNode? target;
     if (selected.length == 1) {
       final id = selected.first;

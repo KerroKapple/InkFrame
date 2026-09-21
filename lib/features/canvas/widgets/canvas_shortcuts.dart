@@ -224,7 +224,7 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   void _deleteSelection() {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
-    final selected = ref.read(canvasSelectionControllerProvider);
+    final selected = ref.read(canvasSelectionControllerProvider(canvasId));
     if (selected.isEmpty) return;
     // fire-and-forget：删除自身带 undo/失败 snackbar，无需等待。
     deleteNodesWithUndo(context, ref, canvasId: canvasId, nodeIds: selected);
@@ -236,24 +236,26 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     final nodes = ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull;
     if (nodes == null) return;
     ref
-        .read(canvasSelectionControllerProvider.notifier)
+        .read(canvasSelectionControllerProvider(canvasId).notifier)
         .selectAll(nodes.map((n) => n.id));
   }
 
   void _escape() {
-    if (ref.read(linkModeControllerProvider) != null) {
-      ref.read(linkModeControllerProvider.notifier).cancel();
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    if (ref.read(linkModeControllerProvider(canvasId)) != null) {
+      ref.read(linkModeControllerProvider(canvasId).notifier).cancel();
       return;
     }
-    ref.read(canvasSelectionControllerProvider.notifier).clear();
-    ref.read(selectedEdgeControllerProvider.notifier).clear();
+    ref.read(canvasSelectionControllerProvider(canvasId).notifier).clear();
+    ref.read(selectedEdgeControllerProvider(canvasId).notifier).clear();
   }
 
   void _zoom(double factor) {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
     final controller = ref.read(canvasTransformControllerProvider(canvasId));
-    final size = ref.read(canvasViewportSizeProvider);
+    final size = ref.read(canvasViewportSizeProvider(canvasId));
     controller.value = zoomedTransform(
       current: controller.value,
       factor: factor,

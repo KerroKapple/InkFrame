@@ -221,7 +221,7 @@ void main() {
 
   testWidgets('Delete 键删除选中节点（复用 PL-4a 删除路径）', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
-    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
     await tester.pump();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.delete);
@@ -235,7 +235,7 @@ void main() {
 
   testWidgets('Backspace 键同样删除选中节点', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
-    container.read(canvasSelectionControllerProvider.notifier).select('b');
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('b');
     await tester.pump();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
@@ -246,7 +246,7 @@ void main() {
 
   testWidgets('多选 Delete → 批量删除 + 一条批量撤销', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
-    container.read(canvasSelectionControllerProvider.notifier).selectAll(
+    container.read(canvasSelectionControllerProvider('c1').notifier).selectAll(
       <String>['a', 'b'],
     );
     await tester.pump();
@@ -261,28 +261,28 @@ void main() {
 
   testWidgets('Esc 清空节点 + 边选择', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
-    container.read(canvasSelectionControllerProvider.notifier).select('a');
-    container.read(selectedEdgeControllerProvider.notifier).select('e1');
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
+    container.read(selectedEdgeControllerProvider('c1').notifier).select('e1');
     await tester.pump();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
 
-    expect(container.read(canvasSelectionControllerProvider), isEmpty);
-    expect(container.read(selectedEdgeControllerProvider), isNull);
+    expect(container.read(canvasSelectionControllerProvider('c1')), isEmpty);
+    expect(container.read(selectedEdgeControllerProvider('c1')), isNull);
   });
 
   testWidgets('Esc 优先退出连线模式，不清空选择', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
-    container.read(linkModeControllerProvider.notifier).start('a');
-    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    container.read(linkModeControllerProvider('c1').notifier).start('a');
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
     await tester.pump();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
 
-    expect(container.read(linkModeControllerProvider), isNull); // 退出连线
-    expect(container.read(canvasSelectionControllerProvider), {'a'}); // 选择保留
+    expect(container.read(linkModeControllerProvider('c1')), isNull); // 退出连线
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'a'}); // 选择保留
   });
 
   testWidgets('Ctrl+A 全选当前画布所有节点', (tester) async {
@@ -290,7 +290,7 @@ void main() {
 
     await _sendCtrl(tester, LogicalKeyboardKey.keyA);
 
-    expect(container.read(canvasSelectionControllerProvider), {'a', 'b'});
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'a', 'b'});
   });
 
   testWidgets('⌘±（Ctrl+= / Ctrl+-）改变缩放变换', (tester) async {
@@ -323,7 +323,7 @@ void main() {
       surfaceSize: const Size(800, 600),
     );
     // viewport size 已上报且未被 autoDispose 复位。
-    final size = container.read(canvasViewportSizeProvider);
+    final size = container.read(canvasViewportSizeProvider('c1'));
     expect(size, isNot(Size.zero));
     expect(size.width, greaterThan(0));
 
@@ -388,7 +388,7 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(CanvasView)),
     );
-    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
     await tester.pump();
 
     // 不点击任何东西：Delete 应删除节点（证明画布抢回了焦点，未被 PL-1 autofocus 独占）。
@@ -429,7 +429,7 @@ void main() {
     );
 
     // 选中一个节点（若快捷键误命中会被删/被全选覆盖）。
-    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
     await tester.pump();
 
     // 焦点移入文本框。
@@ -441,12 +441,12 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
     await tester.pumpAndSettle();
     expect(find.text('Node A'), findsOneWidget); // 节点未被删
-    expect(container.read(canvasSelectionControllerProvider), {'a'}); // 选择未变
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'a'}); // 选择未变
 
     // ⌘A：应选中框内文本，而非全选画布节点。
     await _sendCtrl(tester, LogicalKeyboardKey.keyA);
     expect(
-      container.read(canvasSelectionControllerProvider),
+      container.read(canvasSelectionControllerProvider('c1')),
       {'a'},
       reason: '文本框聚焦时 ⌘A 不得触发画布全选',
     );
@@ -455,7 +455,7 @@ void main() {
   // ===== 保活安全：不可见的画布不得吞 Delete（V2 前半）=====
   testWidgets('isActive:false → Delete 不删节点，且 ⌘K 仍能开命令面板', (tester) async {
     final container = await _pump(tester, nodes: twoNodes, isActive: false);
-    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
     await tester.pumpAndSettle();
 
     await _sendKey(tester, LogicalKeyboardKey.delete);
@@ -472,7 +472,7 @@ void main() {
   // ===== 保活安全：重新可见时必须自己拿回焦点（V2 后半）=====
   testWidgets('isActive false→true → 不点任何东西，Delete 直接恢复生效', (tester) async {
     final handle = await _pumpToggleable(tester, nodes: twoNodes);
-    handle.container.read(canvasSelectionControllerProvider.notifier).select('a');
+    handle.container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
     await tester.pumpAndSettle();
 
     await _setActive(tester, handle.setActive, true); // 由 StatefulBuilder 翻转
@@ -495,7 +495,7 @@ void main() {
       nodes: twoNodes,
       initialActive: true,
     );
-    handle.container.read(canvasSelectionControllerProvider.notifier).select('a');
+    handle.container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
     await tester.pumpAndSettle();
 
     // 先证明画布此刻确实持焦：Delete 应该能删掉节点，否则这条用例什么都没测。
@@ -508,7 +508,7 @@ void main() {
     );
 
     // 用户正在用画布 → 切到别的标签（isActive 变 false）→ 画布必须交出焦点。
-    handle.container.read(canvasSelectionControllerProvider.notifier).select('b');
+    handle.container.read(canvasSelectionControllerProvider('c1').notifier).select('b');
     await tester.pumpAndSettle();
     await _setActive(tester, handle.setActive, false);
     await tester.pumpAndSettle();

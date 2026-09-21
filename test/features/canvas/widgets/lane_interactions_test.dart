@@ -405,7 +405,7 @@ void main() {
     await tester.tap(card);
     await tester.pump();
     expect(
-      container.read(canvasSelectionControllerProvider),
+      container.read(canvasSelectionControllerProvider('cv1')),
       contains('n3'),
     );
   });

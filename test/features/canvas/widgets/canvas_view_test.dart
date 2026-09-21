@@ -278,11 +278,11 @@ void main() {
 
     await tester.tap(find.text('Node A'));
     await tester.pump();
-    expect(container.read(canvasSelectionControllerProvider), {'a'});
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'a'});
 
     await tester.tap(find.text('Node B'));
     await tester.pump();
-    expect(container.read(canvasSelectionControllerProvider), {'b'});
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'b'});
   });
 
   testWidgets('Shift 多选 → 两个节点都选中 + 计数 chip 显示', (tester) async {
@@ -295,13 +295,13 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     await tester.pump();
 
-    expect(container.read(canvasSelectionControllerProvider), {'a', 'b'});
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'a', 'b'});
     expect(find.text('2 selected'), findsOneWidget);
   });
 
   testWidgets('link 模式点击目标节点 → 创建连线 + Link created', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
-    container.read(linkModeControllerProvider.notifier).start('a');
+    container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
     // link 模式 banner 出现。
     expect(
@@ -313,20 +313,20 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Link created'), findsOneWidget);
-    expect(container.read(linkModeControllerProvider), isNull);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
   testWidgets('link 模式点击源节点自身 → Cannot link a node to itself',
       (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
-    container.read(linkModeControllerProvider.notifier).start('a');
+    container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
 
     await tester.tap(find.text('Node A'));
     await tester.pumpAndSettle();
 
     expect(find.text('Cannot link a node to itself'), findsOneWidget);
-    expect(container.read(linkModeControllerProvider), isNull);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
   testWidgets('db_code 23505 → Link already exists', (tester) async {
@@ -335,7 +335,7 @@ void main() {
       nodes: twoNodes,
       edgeError: const LocalIOError(extra: {'db_code': '23505'}),
     );
-    container.read(linkModeControllerProvider.notifier).start('a');
+    container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
 
     await tester.tap(find.text('Node B'));
@@ -351,7 +351,7 @@ void main() {
       nodes: twoNodes,
       edgeError: const LocalIOError(extra: {'db_code': '23503'}),
     );
-    container.read(linkModeControllerProvider.notifier).start('a');
+    container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
 
     await tester.tap(find.text('Node B'));
@@ -490,7 +490,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(Dialog), findsNothing);
-    expect(container.read(canvasSelectionControllerProvider), {'v'});
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'v'});
   });
 
   group('PL-4a 删除防误伤（Deleted · Undo）', () {
@@ -583,7 +583,7 @@ void main() {
       );
 
       // 选中连线 → 中点浮出删除按钮。
-      container.read(selectedEdgeControllerProvider.notifier).select('e1');
+      container.read(selectedEdgeControllerProvider('c1').notifier).select('e1');
       await tester.pumpAndSettle();
 
       await tester.tap(find.byIcon(Icons.close));

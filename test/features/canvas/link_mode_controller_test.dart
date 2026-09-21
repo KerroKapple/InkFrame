@@ -8,13 +8,15 @@ void main() {
   late ProviderContainer container;
   late LinkModeController ctrl;
 
+  const canvasId = 'c1';
+
   setUp(() {
     container = ProviderContainer();
-    ctrl = container.read(linkModeControllerProvider.notifier);
+    ctrl = container.read(linkModeControllerProvider(canvasId).notifier);
   });
   tearDown(() => container.dispose());
 
-  String? s() => container.read(linkModeControllerProvider);
+  String? s() => container.read(linkModeControllerProvider(canvasId));
 
   test('初始 null', () {
     expect(s(), isNull);
