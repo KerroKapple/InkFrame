@@ -198,6 +198,29 @@ void main() {
     expect(prefs.current.lastProjectId, 'p1', reason: '记录仍在');
   });
 
+  test('开关 false + 记录已失效（画布被软删）→ 仍不清记录', () async {
+    // R80：这一例钉的是开关守卫的【位置】，不只是它的存在性。
+    // 上一例喂的是【有效】记录——那一格无论守卫放在库查询之前还是放在
+    // `if (!valid)` 之后，行为都一样，对位置零鉴别力。
+    // 只有「开关关 + 记录恰好失效」这一格能把两个位置分开：守卫前置 →
+    // 压根不查库，记录留着；守卫后置 → 先判无效、走 clearLastCanvas，
+    // 记录被静默清掉，用户重新打开开关也回不去了。
+    final (:c, :prefs) = build(
+      seed: const AppPreferences(
+        lastCanvasId: 'cv1',
+        lastProjectId: 'p1',
+        shellKeepLastCanvas: false,
+      ),
+      canvasRow: null,
+      projectRow: null,
+    );
+
+    await c.read(restoreLastSessionProvider.future);
+
+    expect(prefs.current.lastCanvasId, 'cv1');
+    expect(prefs.current.lastProjectId, 'p1');
+  });
+
   test('存储抛 InkError → 静默留在首页，记录保留（下次再试）', () async {
     final (:c, :prefs) = build(canvasError: const LocalIOError());
     await c.read(restoreLastSessionProvider.future);

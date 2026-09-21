@@ -22,8 +22,17 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   final projectId = saved.lastProjectId;
   if (canvasId == null || projectId == null) return;
   // T11：开关关掉 = 这次不回去，但【不清记录】——用户可能只是这次想从
-  // Studio 开始。放在校验之前：不查库（省两次 PG 往返），也就不会误入下面
-  // 那条「记录失效 → 清记录」的路径。
+  // Studio 开始，重新打开开关还应当回到同一张画布。
+  //
+  // 【这四行的位置是 load-bearing 的，不只是它的存在】：必须在库查询之前。
+  // 挪到下面 `if (!valid)` 之后，「开关关着 + 上次画布恰好已被软删」这一格
+  // 就会先判无效、走 clearLastCanvas，把记录静默清掉——开关说"保留"，
+  // 应用却没保留，而且用户重新打开开关也回不去了。
+  // 由 restore_last_session_test.dart 的
+  // `开关 false + 记录已失效（画布被软删）→ 仍不清记录` 钉死：
+  // 实跑变异（把本守卫挪到 `if (!valid)` 之后）→ 该例红
+  // `Expected: 'cv1' / Actual: <null>`，而喂有效记录的那例仍绿
+  // （两例钉的是不同格子，有效记录那一格对位置零鉴别力）。
   if (!saved.shellKeepLastCanvas) return;
 
   final bool valid;
