@@ -17,7 +17,6 @@ providers/workspace_projects_provider 工作区项目数据源
 providers/restore_last_session       启动恢复上次画布（app.dart 接线；画布/项目任一软删则不恢复）
 widgets/library_sidebar              左侧库（Projects / Archive）
 widgets/project_card                 项目卡片（名 + 元信息行 + 右上菜单四动作：Gallery / 重命名 / 管理画布 / 删除）
-widgets/studio_top_chrome            顶栏（trailing：⌘K + Settings + Avatar）
 widgets/studio_provider_banner       "未配置 API Key" 提示条
 ```
 

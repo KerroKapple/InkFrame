@@ -9,7 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_card.dart';
-import '../../../theme/components/ink_window_chrome.dart';
+import '../../../theme/components/ink_tool_bar.dart';
 import '../../../theme/tokens.dart';
 import '../../shell/providers/shell_controller.dart';
 
@@ -28,14 +28,17 @@ class BuiltInShowcaseScreen extends ConsumerWidget {
       color: colors.surfaceCanvas,
       child: Column(
         children: <Widget>[
-          InkWindowChrome(
+          // 浮层自己不带窗口 chrome：它盖在外壳 chrome【之下】、内容区之内，
+          // 因此继承外壳的 DragToMoveArea 与三个窗口按钮（D6）。
+          // 关闭途径三条：本工具条的关闭键、点任一标签、⌘K（Esc 刻意不做，见 §7.5）。
+          InkToolBar(
             leading: IconButton(
-              tooltip: l.showcaseBackTooltip,
+              tooltip: l.shellCloseOverlay,
               icon: Icon(Icons.arrow_back, size: 18, color: colors.fg2),
               onPressed: () =>
                   ref.read(shellControllerProvider.notifier).closeOverlay(),
             ),
-            center: Text(
+            title: Text(
               l.showcaseTitle,
               style: typo.headlineXs.copyWith(color: colors.fg1),
               maxLines: 1,

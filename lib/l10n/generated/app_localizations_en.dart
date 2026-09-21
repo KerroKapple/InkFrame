@@ -830,9 +830,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioLibraryProjects => 'Projects';
 
   @override
-  String get studioBreadcrumbAll => 'All Projects';
-
-  @override
   String get studioEmptyTitle => 'No projects yet';
 
   @override
@@ -1055,15 +1052,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasRenderQueueCollapse => 'Collapse render queue';
 
   @override
-  String get canvasBreadcrumbProject => 'Project';
-
-  @override
-  String get canvasBreadcrumbCanvas => 'Canvas';
-
-  @override
-  String get canvasBackToStudio => 'Studio';
-
-  @override
   String get canvasEmptyTitle => 'This canvas is empty';
 
   @override
@@ -1232,9 +1220,6 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get galleryBackTooltip => 'Back to Studio';
-
-  @override
   String get galleryEmptyTitle => 'No generated assets yet';
 
   @override
@@ -1283,9 +1268,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get showcaseSubtitle =>
       'AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.';
-
-  @override
-  String get showcaseBackTooltip => 'Back to Studio';
 
   @override
   String get showcaseSquareTitle => 'Mountain study';
@@ -1435,4 +1417,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scriptImportFailed =>
       'Couldn\'t import the script. Nothing was added to the canvas.';
+
+  @override
+  String get shellTabStudio => 'Studio';
+
+  @override
+  String get shellTabCanvas => 'Canvas';
+
+  @override
+  String get shellTabSequence => 'Sequence';
+
+  @override
+  String get shellTabGallery => 'Gallery';
+
+  @override
+  String get shellTabExport => 'Export';
+
+  @override
+  String get shellBreadcrumbNoProject => 'No project';
+
+  @override
+  String get shellCloseOverlay => 'Close';
+
+  @override
+  String get shellGoToStudio => 'Go to Studio';
+
+  @override
+  String get shellCanvasEmptyTitle => 'No canvas open';
+
+  @override
+  String get shellCanvasEmptyBody =>
+      'Pick a canvas in Studio and it opens right here.';
 }

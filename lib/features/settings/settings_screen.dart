@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/components/ink_tool_bar.dart';
 import '../../theme/tokens.dart';
 import '../shell/providers/shell_controller.dart';
 import 'widgets/about_section.dart';
@@ -27,14 +28,25 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
+    final typo = context.inkTypography;
+    // 【Scaffold 保留】：它因为有外壳根 Scaffold 作祖先而变成 nested，
+    // _isRoot 返回 false ⇒ 自动排除出 SnackBar 广播（V3b）。
     return Scaffold(
       backgroundColor: colors.surface1,
-      appBar: AppBar(
-        // shell 路由走 ShellState.overlay（非 Navigator），返回键手动挂。
-        leading: const SettingsBackButton(),
-        title: Text(context.l10n.settingsTitle),
-      ),
-      body: SingleChildScrollView(
+      // AppBar(56) → InkToolBar(44)（D10）：chrome 56 + 标签条 44 + AppBar 56 =
+      // 156 的三层横栏在 960×600 下只剩 444 内容高，用户已拍板不可接受。
+      body: Column(
+        children: <Widget>[
+          InkToolBar(
+            // shell 浮层走 ShellState.overlay（非 Navigator），返回键手动挂。
+            leading: const SettingsBackButton(),
+            title: Text(
+              context.l10n.settingsTitle,
+              style: typo.headlineXs.copyWith(color: colors.fg1),
+            ),
+          ),
+          Expanded(
+            child: SingleChildScrollView(
         padding: const EdgeInsets.all(InkSpacing.lg),
         // 内容列水平居中（宽屏下贴左不美观）；列内文本仍左对齐。
         child: Center(
@@ -64,6 +76,9 @@ class SettingsScreen extends ConsumerWidget {
             ),
           ),
         ),
+            ),
+          ),
+        ],
       ),
     );
   }

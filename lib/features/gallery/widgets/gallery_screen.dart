@@ -1,6 +1,6 @@
 // GalleryScreen：项目维度产物画廊（M3 素材库首切片，只读浏览）。
 //
-// 布局：InkWindowChrome（返回 + 面包屑）+ 产物网格；
+// 布局：InkToolBar（项目名 + 筛选 chip + 去 Studio）+ 产物网格；
 // 状态：galleryControllerProvider(projectId) 的 loading / error / empty / data 四态。
 // 入口：Studio 项目卡菜单「Gallery」（nav.openGallery，见 shellControllerProvider）。
 import 'package:flutter/material.dart';
@@ -10,7 +10,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_input.dart';
-import '../../../theme/components/ink_window_chrome.dart';
+import '../../../theme/components/ink_tool_bar.dart';
 import '../../../theme/primitives/ink_accent_chip.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
 import '../../../theme/tokens.dart';
@@ -40,9 +40,10 @@ class GalleryScreen extends ConsumerWidget {
     // 筛选态会被静默回收 → 用户的筛选在一次重试后凭空消失。
     // 这条 watch 把筛选器的存活性锚在 GalleryScreen 自身的生命周期上，
     // 顺带驱动工具条的“筛选生效中”指示——它不是单纯为了渲染一个 chip
-    // 才写的，删掉这条 watch 会让 4a 修的回收 bug 静默复发（Task 7 删
-    // _GalleryTopChrome、放临时占位工具条时请保留这条 watch，Task 9 落地
-    // 真正的 InkToolBar 时同样保留，别当死代码删掉）。
+    // 才写的，删掉这条 watch 会让 4a 修的回收 bug 静默复发，且没有任何测试
+    // 会红（gallery_filter_scope_test.dart 测的是 provider 层）。
+    // T7 把 _GalleryTopChrome 换成 _GalleryToolBar 时它原样留下，Task 9 落地
+    // 真正的工具条内容时同样保留，别当死代码删掉。
     final filtersActive = ref.watch(
       galleryFilterProvider(
         projectId,
@@ -53,7 +54,7 @@ class GalleryScreen extends ConsumerWidget {
       color: colors.surfaceCanvas,
       child: Column(
         children: <Widget>[
-          _GalleryTopChrome(
+          _GalleryToolBar(
             projectName: projectName,
             filtersActive: filtersActive,
             onClearFilters: () =>
@@ -85,8 +86,19 @@ class GalleryScreen extends ConsumerWidget {
   }
 }
 
-class _GalleryTopChrome extends ConsumerWidget {
-  const _GalleryTopChrome({
+/// 画廊工具条（T7）：取代已删除的 _GalleryTopChrome。
+///
+/// 「返回」这个动作在标签模型下不存在了（标签条恒在，点 Studio 标签即可），
+/// 但「换个项目看」仍然是真实需求 ⇒ 降级成 shellGoToStudio 的 ghost 按钮。
+///
+/// 【T4a 的两件东西必须原样活着】：filtersActive 指示 chip 与它的就地清除。
+/// chip 是 GalleryScreen 顶层那条 galleryFilterProvider watch 的消费者——没有
+/// 消费者，那条 watch 会被后人当死代码删掉，「loading/error/空态三分支下筛选器
+/// 被 autoDispose 静默回收」这个 bug 当场复发，且没有任何测试会红。
+/// 清除逻辑只改 provider（跨 State 边界够不到 _searchCtrl），由
+/// _GalleryContentState 里的 ref.listen 单向回灌搜索框。
+class _GalleryToolBar extends ConsumerWidget {
+  const _GalleryToolBar({
     required this.projectName,
     required this.filtersActive,
     required this.onClearFilters,
@@ -100,36 +112,31 @@ class _GalleryTopChrome extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    return InkWindowChrome(
-      leading: IconButton(
-        tooltip: context.l10n.galleryBackTooltip,
-        icon: Icon(Icons.arrow_back, size: 18, color: colors.fg2),
-        // fix round 1（R27）：T6 交付态标签条要到 T7 才存在——没有这个返回键，
-        // 画廊就只剩一个无任何可见提示的 ⌘K 出口。goTab(studio) 等价性：
-        // 进画廊只有 Studio 项目卡一条路，此时 canvasId==null，goTab(studio)
-        // 后画廊分支（tab==gallery）失配、canvasId 仍 null，落到
-        // StudioHomeScreen——与旧「清 gallery 回 Studio」逐帧同效。
-        onPressed: () =>
-            ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio),
-      ),
-      center: Text(
+    return InkToolBar(
+      title: Text(
         context.l10n.galleryBreadcrumb(projectName),
         style: typo.headlineXs.copyWith(color: colors.fg1),
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      // T4a：筛选生效中指示 + 就地清除（Task 7 删 _GalleryTopChrome 时先落
-      // 临时占位工具条，Task 9 再做真正的 InkToolBar）。
-      trailing: filtersActive
-          ? Tooltip(
-              message: context.l10n.galleryFilterClear,
-              child: InkAccentChip(
-                label: context.l10n.galleryFilterActiveChip,
-                icon: Icons.filter_alt,
-                onPressed: onClearFilters,
-              ),
-            )
-          : null,
+      actions: <Widget>[
+        if (filtersActive)
+          Tooltip(
+            message: context.l10n.galleryFilterClear,
+            child: InkAccentChip(
+              label: context.l10n.galleryFilterActiveChip,
+              icon: Icons.filter_alt,
+              onPressed: onClearFilters,
+            ),
+          ),
+        InkGhostButton(
+          label: context.l10n.shellGoToStudio,
+          icon: Icons.home_outlined,
+          compact: true,
+          onPressed: () =>
+              ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio),
+        ),
+      ],
     );
   }
 }

@@ -155,7 +155,10 @@ void main() {
     expect(find.text('Alpha'), findsNWidgets(2));
   });
 
-  testWidgets('返回按钮：goTab(studio)（fix round 1 R27 恢复）', (tester) async {
+  // T7：「返回」在标签模型下不存在了（标签条恒在），入口降级成工具条上的
+  // shellGoToStudio ghost 按钮——动作与断言一字未变，只换了触发件。
+  // 工具条不在 DragToMoveArea 里 ⇒ 不再需要 pump(400ms) 越过手势仲裁。
+  testWidgets('工具条「去 Studio」：goTab(studio)', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final container = ProviderContainer(overrides: overrides());
@@ -177,9 +180,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    // DragToMoveArea 带 onDoubleTap 竞争手势：单击需过 300ms 仲裁超时才落地
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('Go to Studio'));
+    await tester.pump();
     expect(container.read(shellControllerProvider).tab, ShellTab.studio);
   });
 

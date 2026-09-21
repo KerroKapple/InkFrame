@@ -43,9 +43,10 @@ widgets/    纯 UI（读 provider、走 token/l10n）
   专门文案（含 INKFRAME_FFMPEG 提示）。服务侧产物走 `.partial`→rename，
   失败/取消不触碰既有同名旧导出。
 
-## 入口
-画布顶栏（`canvas_top_chrome.dart` 的 `_ExportVideoButton`）：当前画布存在
-video result 节点（`videoUrl` 非空）时可用，否则禁用 + 说明 tooltip。
+「导出」标签（`features/shell/widgets/tabs/export_tab.dart`）：当前画布存在
+video result 节点（`videoUrl` 非空）时可用，否则禁用 + 说明 tooltip。判据是
+`features/shell/util/tab_availability.dart` 的 `canExportVideo`（T7 从已删除的
+`canvas_top_chrome.dart` 原样搬运，未重写）。
 
 ## 排序（EX-1′）
 默认序 = narrative 链序，算在 `util/export_order.dart`（`orderVideoNodesForExport`），

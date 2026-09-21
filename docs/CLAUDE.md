@@ -257,9 +257,11 @@ lib/
 │   │   ├── settings_screen.dart
 │   │   ├── providers/
 │   │   └── widgets/
-│   ├── shell/                         # Persistent-tab app shell state — single source of truth, wired into lib/app.dart (T6; tab widget shell itself lands in T7)
+│   ├── shell/                         # Persistent-tab app shell — the sole host after unlock; lib/app.dart's body is just InkShell (no routing predicates left there). See lib/features/shell/README.md for the invariants
 │   │   ├── models/                    # shell_state.dart (ShellTab / ShellOverlay / ProjectRef / ShellState — hand-written value object, 7 named transitions, no copyWith)
-│   │   └── providers/                 # shell_controller.dart (ShellNavigator Notifier + shellControllerProvider — sole write entry point) + active_project.dart (activeProjectProvider — read-only projection of ShellState.project)
+│   │   ├── providers/                 # shell_controller.dart (ShellNavigator Notifier + shellControllerProvider — sole write entry point) + active_project.dart (activeProjectProvider — read-only projection of ShellState.project)
+│   │   ├── util/                      # tab_availability.dart (hasNarrativeEdges / canExportVideo — pure predicates moved verbatim out of the deleted canvas_top_chrome.dart)
+│   │   └── widgets/                   # ink_shell.dart (sole root Scaffold + chrome + tab bar) / shell_content_stack.dart (two-level IndexedStack + fallback focus) / shell_keep_alive_host.dart (five lazily-materialized, then permanent tab slots) / shell_chrome.dart (the tree's only InkWindowChrome) / shell_breadcrumb.dart / shell_empty_state.dart / shell_overlay_layer.dart (settings + showcase overlays; NOT kept alive) + tabs/ (studio / canvas / sequence / gallery / export bodies)
 │   ├── showcase/                      # Bundled Codex image samples (local preview; no project records/API key)
 │   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)

@@ -1,382 +1,201 @@
-// Shell 路由 widget test：验证 _UnlockedShell 在 ShellState 切换时
-// 正确渲染 StudioHomeScreen / SettingsScreen。
-import 'dart:async';
-import 'dart:io';
-
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+// Shell 路由 widget test：验证外壳（InkShell）在 ShellState 切换时把哪个 surface
+// 摆上台、哪个保活在台下。
+//
+// 【T7 起断言语义变了】五（现为七）例全部改走 expectShellSurface 的三条正交通道：
+// 在树（skipOffstage: false）/ 在台（默认 skipOffstage）/ 可命中。
+// 只写「在台」通道会漏掉保活回归，只写「在树」通道会漏掉切换回归——两条都要。
+//
+// find.byType 默认 skipOffstage: true 会跳过 Offstage 子树：任何不显式写
+// skipOffstage: false 的保活断言都是假绿。反向变异（把在树通道改回默认）
+// 必须【不红】，见 task-7-report.md。
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/app.dart';
-import 'package:inkframe/core/di/database.dart';
-import 'package:inkframe/core/di/orphan_reaper.dart';
-import 'package:inkframe/core/di/paths.dart';
-import 'package:inkframe/core/di/preferences.dart';
-import 'package:inkframe/core/di/secure_storage.dart';
-import 'package:inkframe/core/models/app_preferences.dart';
-import 'package:inkframe/core/paths/app_paths.dart';
-import 'package:inkframe/services/file_preferences_service.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_screen.dart';
+import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
-import 'package:inkframe/features/studio/models/project_with_canvases.dart';
-import 'package:inkframe/core/di/custom_providers.dart';
-import 'package:inkframe/core/di/repositories.dart';
-import 'package:inkframe/core/di/video_export.dart';
-import 'package:inkframe/core/interfaces/custom_provider_store.dart';
-import 'package:inkframe/core/models/custom_provider_config.dart';
-import 'package:inkframe/services/ffmpeg_locator.dart';
-import 'package:inkframe/features/canvas/widgets/canvas_screen.dart';
-import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/showcase/widgets/built_in_showcase_screen.dart';
-import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
-import 'package:postgres/postgres.dart';
 
-import '../_harness/fake_batch_result.dart';
-import '../_harness/fake_repositories.dart';
-
-/// 密封 LB-09 的 DB-ready gate：pgMigratedPoolProvider 停在 loading，_StartupGate
-/// 照常进 _UnlockedShell，boot 测试不触发真 PG/dart:io（否则覆盖率收集永挂）。
-Override _sealDbReady() =>
-    pgMigratedPoolProvider.overrideWith((ref) => Completer<Pool<void>>().future);
-
-Future<AppPaths> _setupPaths(WidgetTester tester, String prefix) async {
-  final Directory tmp = Directory.systemTemp.createTempSync(prefix);
-  addTearDown(() => tmp.deleteSync(recursive: true));
-  final AppPaths paths = DefaultAppPaths.forRoot(tmp);
-  await tester.runAsync(() => paths.ensureInitialized());
-  return paths;
-}
-
-/// 本文件只测路由，非首启路径：跳过 ON-1 向导。
-Override _onboardingDone() => preferencesServiceProvider.overrideWithValue(
-      InMemoryPreferencesService(
-        const AppPreferences(onboardingCompleted: true),
-      ),
-    );
-
-/// 固定命中的 ffmpeg 探测（ON-3 行在 SettingsScreen 内,禁真 spawn）。
-class _FakeFfmpegLocator implements FfmpegLocator {
-  @override
-  Future<String?> locate() async => 'ffmpeg';
-  @override
-  void invalidate() {}
-}
-
-/// 恒空的自定义服务商 store（GAP-1 区在 SettingsScreen 内）。
-class _EmptyStore implements CustomProviderStore {
-  const _EmptyStore();
-  @override
-  Future<List<CustomProviderConfig>> list() async => const [];
-  @override
-  Future<void> upsert(CustomProviderConfig config) async {}
-  @override
-  Future<void> remove(String id) async {}
-}
+import '../_harness/shell_app.dart';
+import '../_harness/shell_expect.dart';
 
 void main() {
-  testWidgets('unlocked + studio screen → 渲染 StudioHomeScreen', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final paths = await _setupPaths(tester, 'ink_route_studio_');
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          appPathsProvider.overrideWithValue(paths),
-          _onboardingDone(),
-          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          shellControllerProvider
-              .overrideWith(() => ShellNavigator(initial: const ShellState())),
-          // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
-          orphanReapStartupProvider.overrideWith((_) async {}),
-          _sealDbReady(),
-          // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
-          workspaceProjectsProvider
-              .overrideWith((_) async => const <ProjectWithCanvases>[]),
-        ],
-        child: const InkFrameApp(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(StudioHomeScreen), findsOneWidget);
-    expect(find.byType(SettingsScreen), findsNothing);
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  testWidgets('unlocked + settings screen → 渲染 SettingsScreen', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final paths = await _setupPaths(tester, 'ink_route_settings_');
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          appPathsProvider.overrideWithValue(paths),
-          _onboardingDone(),
-          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          shellControllerProvider.overrideWith(
-            () => ShellNavigator(
-              initial: const ShellState(overlay: ShellOverlay.settings),
-            ),
-          ),
-          // 密封 ON-3 ffmpeg 探测：不真 spawn `ffmpeg -version`。
-          ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
-          // 密封 GAP-1 自定义服务商编辑区：默认 store 抛 UnimplementedError。
-          customProviderStoreProvider
-              .overrideWithValue(const _EmptyStore()),
-          // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
-          orphanReapStartupProvider.overrideWith((_) async {}),
-          _sealDbReady(),
-          // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
-          workspaceProjectsProvider
-              .overrideWith((_) async => const <ProjectWithCanvases>[]),
-        ],
-        child: const InkFrameApp(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(SettingsScreen), findsOneWidget);
-    expect(find.byType(StudioHomeScreen), findsNothing);
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  testWidgets('unlocked + gallery target → 渲染 GalleryScreen', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final paths = await _setupPaths(tester, 'ink_route_gallery_');
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          appPathsProvider.overrideWithValue(paths),
-          _onboardingDone(),
-          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          shellControllerProvider.overrideWith(
-            () => ShellNavigator(
-              initial: const ShellState(
-                tab: ShellTab.gallery,
-                project: ProjectRef(id: 'p1', name: 'Alpha'),
-              ),
-            ),
-          ),
-          // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
-          orphanReapStartupProvider.overrideWith((_) async {}),
-          _sealDbReady(),
-          workspaceProjectsProvider
-              .overrideWith((_) async => const <ProjectWithCanvases>[]),
-          // 密封：画廊读仓储不真起内嵌 PG。
-          canvasRepositoryProvider
-              .overrideWith((_) async => InMemoryCanvasRepository()),
-          nodeRepositoryProvider
-              .overrideWith((_) async => InMemoryNodeRepository()),
-          batchResultRepositoryProvider
-              .overrideWith((_) async => FakeBatchResultRepo()),
-        ],
-        child: const InkFrameApp(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(GalleryScreen), findsOneWidget);
-    expect(find.byType(StudioHomeScreen), findsNothing);
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  // 评审 P1-2：新增 ShellOverlay.showcase 此前 shell 路由零覆盖——把 app.dart
-  // 的分支改成渲染别的页,全量测试照样绿。本例与下一例把它钉死。
-  testWidgets('unlocked + showcase → 渲染 BuiltInShowcaseScreen', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final paths = await _setupPaths(tester, 'ink_route_showcase_');
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          appPathsProvider.overrideWithValue(paths),
-          _onboardingDone(),
-          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          shellControllerProvider.overrideWith(
-            () => ShellNavigator(
-              initial: const ShellState(overlay: ShellOverlay.showcase),
-            ),
-          ),
-          orphanReapStartupProvider.overrideWith((_) async {}),
-          _sealDbReady(),
-          workspaceProjectsProvider
-              .overrideWith((_) async => const <ProjectWithCanvases>[]),
-        ],
-        child: const InkFrameApp(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(BuiltInShowcaseScreen), findsOneWidget);
-    expect(find.byType(StudioHomeScreen), findsNothing);
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  // fix round 1（R25）：此例原名"画布优先级高于 showcase"，断言画布赢——那是
-  // 旧系统里【不可达的合成态】：旧 `_openSettings`/`_openShowcase` 落笔前都会
-  // 先清 canvasId，"overlay=showcase 且 canvasId 非空"这个组合根本出不来。
-  // 它形式上钉住了旧判序，却把一条真实可达的路径（画布打开时按 ⌘K 开示例页）
-  // 压成了回归——ShellState.openOverlay 刻意保留 canvasId（保活语义），
-  // 若判序仍 canvasId-first，浮层入口在画布上会变成死键。
-  // overlay-first 才是目标架构（spec 的外层 IndexedStack 是"浮层槽 vs 标签
-  // 宿主"二选一，浮层盖住宿主的同时画布仍在宿主里活着）——本例改断浮层赢。
-  testWidgets('浮层优先级高于画布：canvasId 非空时 showcase 仍可见', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final paths = await _setupPaths(tester, 'ink_route_showcase_prio_');
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          appPathsProvider.overrideWithValue(paths),
-          _onboardingDone(),
-          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          // overlay=showcase 且画布已打开 → 浮层赢（app.dart 路由优先级）。
-          // tab: canvas 是必需的（fix round 3，R37）：R33 给画布分支加了
-          // tab == ShellTab.canvas 判据，不带 tab 的话这个态压根不会走到
-          // 画布分支，判序变异（canvasId-first）对本例就无害了——R25 的
-          // 护栏会被静默打空。
-          shellControllerProvider.overrideWith(
-            () => ShellNavigator(
-              initial: const ShellState(
-                tab: ShellTab.canvas,
-                overlay: ShellOverlay.showcase,
-                canvasId: 'cv-1',
-              ),
-            ),
-          ),
-          orphanReapStartupProvider.overrideWith((_) async {}),
-          _sealDbReady(),
-          workspaceProjectsProvider
-              .overrideWith((_) async => const <ProjectWithCanvases>[]),
-          canvasRepositoryProvider
-              .overrideWith((_) async => InMemoryCanvasRepository()),
-          nodeRepositoryProvider
-              .overrideWith((_) async => InMemoryNodeRepository()),
-          batchResultRepositoryProvider
-              .overrideWith((_) async => FakeBatchResultRepo()),
-        ],
-        child: const InkFrameApp(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(BuiltInShowcaseScreen), findsOneWidget);
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  // R25 新增：画布已打开时 openOverlay(settings) → SettingsScreen 可见（不再
-  // 是死键）。变异证明见 task-6-report.md「R25 变异证明」——把 app.dart 判序
-  // 改回 canvasId-first（连带 R33 的 tab 判据一起模拟，即精确复原本例改动前
-  // 的判序）时，本例会转红（SettingsScreen findsNothing）。fix round 3
-  // （R37）：种子补 `tab: ShellTab.canvas`——不带它这个态压根不会走到画布
-  // 分支，判序变异对本例就无害了，注释此前的说法已被证伪，这里改成事实。
-  testWidgets('画布已打开 + openOverlay(settings) → SettingsScreen 可见', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final paths = await _setupPaths(tester, 'ink_route_settings_over_canvas_');
-
-    await tester.pumpWidget(
-      ProviderScope(
-        overrides: <Override>[
-          appPathsProvider.overrideWithValue(paths),
-          _onboardingDone(),
-          anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          shellControllerProvider.overrideWith(
-            () => ShellNavigator(
-              initial: const ShellState(
-                tab: ShellTab.canvas,
-                overlay: ShellOverlay.settings,
-                canvasId: 'cv-1',
-              ),
-            ),
-          ),
-          // 密封 ON-3 ffmpeg 探测：不真 spawn `ffmpeg -version`。
-          ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
-          // 密封 GAP-1 自定义服务商编辑区：默认 store 抛 UnimplementedError。
-          customProviderStoreProvider.overrideWithValue(const _EmptyStore()),
-          orphanReapStartupProvider.overrideWith((_) async {}),
-          _sealDbReady(),
-          workspaceProjectsProvider
-              .overrideWith((_) async => const <ProjectWithCanvases>[]),
-          canvasRepositoryProvider
-              .overrideWith((_) async => InMemoryCanvasRepository()),
-          nodeRepositoryProvider
-              .overrideWith((_) async => InMemoryNodeRepository()),
-          batchResultRepositoryProvider
-              .overrideWith((_) async => FakeBatchResultRepo()),
-        ],
-        child: const InkFrameApp(),
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(SettingsScreen), findsOneWidget);
-    expect(find.byType(CanvasScreen), findsNothing);
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  // fix round 2（R33）：画布分支必须带 tab==canvas 判据，否则 goTab() 保留
-  // canvasId（标签保活语义）导致"回 Studio"后画面纹丝不动——本次会话一旦
-  // 打开过画布，canvasId 就再也不会变回 null（ShellState 没有能清它的公共
-  // 动词，resetSession() 除外）。等价于复评员 PROBE A：画布态 → goTab(studio)
-  // → 断 StudioHomeScreen 可见且 CanvasScreen 不可见。
-  testWidgets('画布态 goTab(studio) 后 → StudioHomeScreen 可见，CanvasScreen 不可见',
+  testWidgets('unlocked + studio 标签 → Studio 在台；设置浮层槽从未物化',
       (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final paths = await _setupPaths(tester, 'ink_route_canvas_back_to_studio_');
+    final paths = await setupTempPaths(tester, 'ink_route_studio_');
+    await pumpInkShell(tester, paths: paths);
 
-    final container = ProviderContainer(
-      overrides: <Override>[
-        appPathsProvider.overrideWithValue(paths),
-        _onboardingDone(),
-        anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-        shellControllerProvider.overrideWith(
-          () => ShellNavigator(
-            initial: const ShellState(
-              tab: ShellTab.canvas,
-              canvasId: 'cv-1',
-            ),
-          ),
-        ),
-        orphanReapStartupProvider.overrideWith((_) async {}),
-        _sealDbReady(),
-        workspaceProjectsProvider
-            .overrideWith((_) async => const <ProjectWithCanvases>[]),
-        canvasRepositoryProvider
-            .overrideWith((_) async => InMemoryCanvasRepository()),
-        nodeRepositoryProvider
-            .overrideWith((_) async => InMemoryNodeRepository()),
-        batchResultRepositoryProvider
-            .overrideWith((_) async => FakeBatchResultRepo()),
-      ],
+    expectShellSurface<StudioHomeScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+      reason: '默认标签就是 studio',
     );
-    addTearDown(container.dispose);
+    expectShellSurface<SettingsScreen>(
+      mounted: false,
+      onstage: false,
+      hittable: false,
+      reason: '从未打开过设置，浮层槽应是 SizedBox.shrink',
+    );
+  }, timeout: const Timeout(Duration(seconds: 10)));
 
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: const InkFrameApp(),
+  testWidgets('unlocked + settings 浮层 → 设置在台，Studio 保活离台', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_route_settings_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(overlay: ShellOverlay.settings),
+    );
+
+    expectShellSurface<SettingsScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+    );
+    expectShellSurface<StudioHomeScreen>(
+      mounted: true,
+      onstage: false,
+      hittable: false,
+      reason: 'tab 仍是 studio（浮层不改 tab）⇒ 槽已物化，但被浮层盖住',
+    );
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('unlocked + gallery 标签 → 画廊在台；Studio 槽从未物化', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_route_gallery_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(
+        tab: ShellTab.gallery,
+        project: ProjectRef(id: 'p1', name: 'Alpha'),
       ),
     );
+
+    expectShellSurface<GalleryScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+    );
+    // 懒物化：初始标签是 gallery，studio 槽这辈子还没被点过 ⇒ 真的不在树里。
+    // 这一条是 V4 成立的物理前提（宿主 eager 建五子的变异必须打红它）。
+    expectShellSurface<StudioHomeScreen>(
+      mounted: false,
+      onstage: false,
+      hittable: false,
+      reason: '从未激活过 studio 标签 ⇒ 槽内仍是 SizedBox.shrink',
+    );
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // 评审 P1-2：ShellOverlay.showcase 此前 shell 路由零覆盖——把分支改成渲染别的
+  // 页，全量测试照样绿。本例与下一例把它钉死。
+  testWidgets('unlocked + showcase 浮层 → 示例页在台，Studio 保活离台', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_route_showcase_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(overlay: ShellOverlay.showcase),
+    );
+
+    expectShellSurface<BuiltInShowcaseScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+    );
+    expectShellSurface<StudioHomeScreen>(
+      mounted: true,
+      onstage: false,
+      hittable: false,
+    );
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // T6 fix round 1（R25）起本例断「浮层赢」；T7 把语义进一步说清楚：不是
+  // 「画布输了」，而是【浮层永远在上、画布保活在下】——所以画布必须 mounted。
+  testWidgets('浮层在上、画布保活在下：canvasId 非空 + showcase', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_route_showcase_prio_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(
+        tab: ShellTab.canvas,
+        overlay: ShellOverlay.showcase,
+        canvasId: 'cv-1',
+      ),
+    );
+
+    expectShellSurface<BuiltInShowcaseScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+    );
+    expectShellSurface<CanvasScreen>(
+      mounted: true,
+      onstage: false,
+      hittable: false,
+      reason: '浮层盖住 ⇒ 画布离台且点不穿，但仍在树里（保活）',
+    );
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // R25：画布已打开时 openOverlay(settings) 不是死键。
+  testWidgets('画布已打开 + openOverlay(settings) → 设置在台，画布保活在下',
+      (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_route_settings_over_canvas_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(
+        tab: ShellTab.canvas,
+        overlay: ShellOverlay.settings,
+        canvasId: 'cv-1',
+      ),
+    );
+
+    expectShellSurface<SettingsScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+    );
+    expectShellSurface<CanvasScreen>(
+      mounted: true,
+      onstage: false,
+      hittable: false,
+    );
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // R33（T6 fix round 2）：画布态 goTab(studio) 必须真的换台。
+  // T7 起追加保活断言：画布【不再消失】，而是离台但仍在树里——这正是本 PR 的
+  // 核心行为变更，也是「切标签时把非活动槽换回 SizedBox.shrink」那条变异的靶子。
+  testWidgets('画布态 goTab(studio) → Studio 在台，画布离台但保活', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_route_canvas_back_to_studio_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(tab: ShellTab.canvas, canvasId: 'cv-1'),
+    );
+
+    expectShellSurface<CanvasScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+      reason: '起始态：画布在台',
+    );
+
+    readShellContainer(tester)
+        .read(shellControllerProvider.notifier)
+        .goTab(ShellTab.studio);
     await tester.pump();
     await tester.pump();
 
-    // 起始态：画布可见。
-    expect(find.byType(CanvasScreen), findsOneWidget);
-
-    container.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
-    await tester.pump();
-    await tester.pump();
-
-    expect(find.byType(StudioHomeScreen), findsOneWidget);
-    expect(find.byType(CanvasScreen), findsNothing);
+    expectShellSurface<StudioHomeScreen>(
+      mounted: true,
+      onstage: true,
+      hittable: true,
+    );
+    expectShellSurface<CanvasScreen>(
+      mounted: true,
+      onstage: false,
+      hittable: false,
+      reason: 'V1 保活：切走标签不销毁画布子树',
+    );
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

@@ -1,4 +1,6 @@
-// CanvasTopChrome — 调色板按钮 + base style 编辑对话框集成测试。
+// CanvasToolBar — 调色板按钮 + base style 编辑对话框集成测试。
+// T7：从已删除的 CanvasTopChrome 改指画布工具条；工具条不在 DragToMoveArea 里，
+// 单击一帧落地，原先越过 kDoubleTapTimeout 的 pump(400ms) 不再需要。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,7 +9,7 @@ import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
-import 'package:inkframe/features/canvas/widgets/canvas_top_chrome.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_tool_bar.dart';
 
 import '../../../_harness/test_app.dart';
 
@@ -77,7 +79,7 @@ void main() {
     final repo = _FakeCanvasRepository();
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasTopChrome(canvasName: 'X')),
+      const Scaffold(body: CanvasToolBar()),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
         canvasRepositoryProvider.overrideWith((_) async => repo),
@@ -92,7 +94,7 @@ void main() {
   testWidgets('调色板按钮在 canvasId 为 null 时隐藏', (tester) async {
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasTopChrome(canvasName: 'X')),
+      const Scaffold(body: CanvasToolBar()),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => null),
       ],
@@ -109,7 +111,7 @@ void main() {
     final repo = _FakeCanvasRepository(prefix: 'old-pre', suffix: 'old-suf');
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasTopChrome(canvasName: 'X')),
+      const Scaffold(body: CanvasToolBar()),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
         canvasRepositoryProvider.overrideWith((_) async => repo),
@@ -119,9 +121,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(Icons.palette_outlined));
-    // DragToMoveArea 的 onDoubleTap 会把单击识别延迟 kDoubleTapTimeout(300ms)，
-    // 必须 pump 越过该窗口，onPressed 才会触发。
-    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
     await tester.pumpAndSettle();
 
     // 对话框已打开，且用已存值预填（验证 await .future 防数据丢失 guard）。

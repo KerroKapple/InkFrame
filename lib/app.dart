@@ -4,8 +4,8 @@
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
 // - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
-// - 锁屏后路由：ShellState.canvasId 优先；其次 tab==gallery && project（项目产物画廊）；
-//   否则按 ShellState.overlay 在 Studio / Settings / Showcase 切换
+// - 解锁后不再有"路由"：body 恒为 InkShell（持久标签外壳），哪个 surface 在台上
+//   由 ShellContentStack 的两级 IndexedStack 依 ShellState 决定，本文件零判据
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
 //   时以 StartupErrorView 替代白屏；loading/data 均照常进 _UnlockedShell
 // - 首帧闸门（ON-1，挂 DB-ready 之后）：onboardingCompleted=false → 弹首启向导并
@@ -24,17 +24,11 @@ import 'core/di/orphan_reaper.dart';
 import 'core/di/preferences.dart';
 import 'core/di/theme.dart';
 import 'core/di/video_backfill.dart';
-import 'features/canvas/widgets/canvas_screen.dart';
 import 'features/command_palette/widgets/command_palette_shortcuts.dart';
-import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
-import 'features/settings/settings_screen.dart';
-import 'features/shell/models/shell_state.dart';
-import 'features/shell/providers/shell_controller.dart';
-import 'features/showcase/widgets/built_in_showcase_screen.dart';
+import 'features/shell/widgets/ink_shell.dart';
 import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
-import 'features/studio/studio_home_screen.dart';
 import 'features/studio/widgets/onboarding_dialog.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
@@ -149,37 +143,13 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
     });
   }
 
+  // T6 的 if 链已在 T7 退役：渲染全部交给 InkShell（唯一根 Scaffold + 唯一
+  // chrome + 持久标签条 + 两级 IndexedStack）。本文件不再持有任何路由判据——
+  // "哪个 surface 在台上"这件事只在 ShellContentStack 一处决定。
+  //
+  // CommandPaletteShortcuts 必须留在 InkShell【之上】：ShellContentStack 的
+  // _shellFocus 在切换时无条件夺焦，若 ⌘K 绑定在它之下会被一并抢走。
   @override
-  Widget build(BuildContext context) {
-    // T6 过渡态：状态层已换成 ShellState，但渲染仍是单 body 的 if 链。
-    // 【判序 overlay-first】（fix round 1，R25）：ShellState.openOverlay 刻意
-    // 保留 canvasId（保活语义），若判序仍 canvasId-first，浮层会被画布分支
-    // 永久遮死——画布/画廊上开设置或示例页会变成死键。浮层盖住标签宿主是
-    // spec 的目标语义（外层 IndexedStack 二选一：浮层槽 vs 标签宿主），
-    // 本次判序调整就是提前落地这一条，不等 T7。
-    // 【画布分支带 tab 判据】（fix round 2，R33）：goTab() 同样保留 canvasId
-    // （标签保活语义），且 ShellState 没有任何能清 canvasId 的公共动词
-    // （resetSession() 除外）。若这支只看 canvasId != null，本次会话一旦打
-    // 开过画布，canvasId 就再也不会变回 null——goTab(studio) 后画面纹丝不
-    // 动，整个会话回不到 Studio。canvasId 继续留着 = 画布标签保活，
-    // 但只有 tab 仍是 canvas 时它才是【当前可见】标签，这与 T7 的保活宿主
-    // 语义一致。
-    // 外壳骨架（两级 IndexedStack + 标签条）在 T7 接上。
-    final s = ref.watch(shellControllerProvider);
-    final Widget body;
-    if (s.overlay == ShellOverlay.settings) {
-      body = const SettingsScreen();
-    } else if (s.overlay == ShellOverlay.showcase) {
-      body = const Scaffold(body: BuiltInShowcaseScreen());
-    } else if (s.tab == ShellTab.canvas && s.canvasId != null) {
-      body = const CanvasScreen(isVisible: true);
-    } else if (s.tab == ShellTab.gallery && s.project != null) {
-      body = Scaffold(
-        body: GalleryScreen(projectId: s.project!.id, projectName: s.project!.name),
-      );
-    } else {
-      body = const Scaffold(body: StudioHomeScreen());
-    }
-    return CommandPaletteShortcuts(child: body);
-  }
+  Widget build(BuildContext context) =>
+      const CommandPaletteShortcuts(child: InkShell());
 }

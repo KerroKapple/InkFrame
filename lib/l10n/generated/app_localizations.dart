@@ -1556,12 +1556,6 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get studioLibraryProjects;
 
-  /// No description provided for @studioBreadcrumbAll.
-  ///
-  /// In en, this message translates to:
-  /// **'All Projects'**
-  String get studioBreadcrumbAll;
-
   /// No description provided for @studioEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -1946,24 +1940,6 @@ abstract class AppLocalizations {
   /// **'Collapse render queue'**
   String get canvasRenderQueueCollapse;
 
-  /// No description provided for @canvasBreadcrumbProject.
-  ///
-  /// In en, this message translates to:
-  /// **'Project'**
-  String get canvasBreadcrumbProject;
-
-  /// No description provided for @canvasBreadcrumbCanvas.
-  ///
-  /// In en, this message translates to:
-  /// **'Canvas'**
-  String get canvasBreadcrumbCanvas;
-
-  /// Canvas top chrome — labeled affordance to return to the Studio home
-  ///
-  /// In en, this message translates to:
-  /// **'Studio'**
-  String get canvasBackToStudio;
-
   /// No description provided for @canvasEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -2288,12 +2264,6 @@ abstract class AppLocalizations {
   /// **'{projectName} / Gallery'**
   String galleryBreadcrumb(String projectName);
 
-  /// No description provided for @galleryBackTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to Studio'**
-  String get galleryBackTooltip;
-
   /// No description provided for @galleryEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -2389,12 +2359,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.'**
   String get showcaseSubtitle;
-
-  /// No description provided for @showcaseBackTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Back to Studio'**
-  String get showcaseBackTooltip;
 
   /// No description provided for @showcaseSquareTitle.
   ///
@@ -2641,6 +2605,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t import the script. Nothing was added to the canvas.'**
   String get scriptImportFailed;
+
+  /// No description provided for @shellTabStudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Studio'**
+  String get shellTabStudio;
+
+  /// No description provided for @shellTabCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get shellTabCanvas;
+
+  /// No description provided for @shellTabSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence'**
+  String get shellTabSequence;
+
+  /// No description provided for @shellTabGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery'**
+  String get shellTabGallery;
+
+  /// No description provided for @shellTabExport.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get shellTabExport;
+
+  /// No description provided for @shellBreadcrumbNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'No project'**
+  String get shellBreadcrumbNoProject;
+
+  /// No description provided for @shellCloseOverlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get shellCloseOverlay;
+
+  /// No description provided for @shellGoToStudio.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to Studio'**
+  String get shellGoToStudio;
+
+  /// No description provided for @shellCanvasEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No canvas open'**
+  String get shellCanvasEmptyTitle;
+
+  /// No description provided for @shellCanvasEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a canvas in Studio and it opens right here.'**
+  String get shellCanvasEmptyBody;
 }
 
 class _AppLocalizationsDelegate

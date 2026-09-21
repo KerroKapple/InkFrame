@@ -792,9 +792,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioLibraryProjects => '项目';
 
   @override
-  String get studioBreadcrumbAll => '全部项目';
-
-  @override
   String get studioEmptyTitle => '还没有项目';
 
   @override
@@ -1008,15 +1005,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasRenderQueueCollapse => '收起渲染队列';
 
   @override
-  String get canvasBreadcrumbProject => '项目';
-
-  @override
-  String get canvasBreadcrumbCanvas => '画布';
-
-  @override
-  String get canvasBackToStudio => '工作室';
-
-  @override
   String get canvasEmptyTitle => '当前画布为空';
 
   @override
@@ -1183,9 +1171,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get galleryBackTooltip => '返回工作室';
-
-  @override
   String get galleryEmptyTitle => '还没有生成内容';
 
   @override
@@ -1233,9 +1218,6 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get showcaseSubtitle =>
       '随应用打包的 AI 生成示例图，可离线预览；它们不是项目生成记录，也不需要 API Key。';
-
-  @override
-  String get showcaseBackTooltip => '返回工作室';
 
   @override
   String get showcaseSquareTitle => '山水习作';
@@ -1377,4 +1359,34 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get scriptImportFailed => '脚本导入失败，画布未做改动。';
+
+  @override
+  String get shellTabStudio => '工作室';
+
+  @override
+  String get shellTabCanvas => '画布';
+
+  @override
+  String get shellTabSequence => '序列';
+
+  @override
+  String get shellTabGallery => '画廊';
+
+  @override
+  String get shellTabExport => '导出';
+
+  @override
+  String get shellBreadcrumbNoProject => '未选择项目';
+
+  @override
+  String get shellCloseOverlay => '关闭';
+
+  @override
+  String get shellGoToStudio => '去工作室';
+
+  @override
+  String get shellCanvasEmptyTitle => '还没有打开画布';
+
+  @override
+  String get shellCanvasEmptyBody => '去工作室选一个画布，它就会在这里打开。';
 }
