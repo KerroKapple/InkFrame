@@ -19,7 +19,11 @@ import 'canvas_top_chrome.dart';
 import 'canvas_view.dart';
 
 class CanvasScreen extends ConsumerWidget {
-  const CanvasScreen({super.key});
+  const CanvasScreen({super.key, required this.isVisible});
+
+  /// 本画布页当前是否是外壳里可见的那一标签（保活场景下的可见性开关，
+  /// 而非挂载与否）——直通给 CanvasShortcuts 的 isActive。
+  final bool isVisible;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -41,9 +45,10 @@ class CanvasScreen extends ConsumerWidget {
             // 就地浮出，不再用占位 mock 面板。
             // PL-2：画布快捷键层包裹整行（含 Inspector），autofocus 使按键即时生效；
             // 焦点在 Inspector 文本框时删除/全选让位文本编辑（见 CanvasShortcuts）。
-            const Expanded(
+            Expanded(
               child: CanvasShortcuts(
-                child: Row(
+                isActive: isVisible,
+                child: const Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Expanded(child: CanvasView()),

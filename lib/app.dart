@@ -156,7 +156,9 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
     final gallery = ref.watch(currentGalleryProjectProvider);
     final Widget body;
     if (canvasId != null) {
-      body = const CanvasScreen();
+      // T7 会换成真值 state.isTabVisible(ShellTab.canvas)；本任务只做
+      // CanvasShortcuts 的焦点让渡机制，先临时传 true 保持现有行为不变。
+      body = const CanvasScreen(isVisible: true);
     } else if (gallery != null) {
       body = Scaffold(
         body: GalleryScreen(projectId: gallery.id, projectName: gallery.name),

@@ -26,6 +26,8 @@ import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
+import 'package:inkframe/l10n/generated/app_localizations.dart';
+import 'package:inkframe/theme/app_theme.dart';
 
 import '../../../_harness/test_app.dart';
 
@@ -111,7 +113,7 @@ CanvasNode _textNode(String id, String label, double x) => CanvasNode(
   size: const Size(180, 120),
 );
 
-List<Override> _overrides(List<CanvasNode> nodes) => <Override>[
+List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
   currentCanvasIdProvider.overrideWith((ref) => 'c1'),
   canvasNodesControllerProvider.overrideWith(() => _FakeNodesController(nodes)),
   canvasEdgesControllerProvider.overrideWith(() => _FakeEdgesController()),
@@ -119,20 +121,72 @@ List<Override> _overrides(List<CanvasNode> nodes) => <Override>[
   fileResolverServiceProvider.overrideWithValue(_StubResolver()),
 ];
 
-/// 画布单独包在 CanvasShortcuts 下（对齐 canvas_screen 的包裹方式）。
+/// 画布单独包在 CanvasShortcuts 下，外层再套 CommandPaletteShortcuts——
+/// 对齐 app.dart 的生产嵌套（PL-1 全路由外层 ⌘K + canvas_screen 的包裹方式），
+/// 这样 isActive:false 场景下才能断言"画布让出的焦点冒泡到了 ⌘K，而非整个键盘失灵"。
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   required List<CanvasNode> nodes,
   Size? surfaceSize,
+  bool isActive = true,
 }) async {
   await pumpInkApp(
     tester,
-    const Scaffold(body: CanvasShortcuts(child: CanvasView())),
-    overrides: _overrides(nodes),
+    Scaffold(
+      body: CommandPaletteShortcuts(
+        child: CanvasShortcuts(isActive: isActive, child: const CanvasView()),
+      ),
+    ),
+    overrides: _canvasOverrides(nodes),
     surfaceSize: surfaceSize,
   );
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byType(CanvasView)));
+}
+
+/// 由 _pumpToggleable 装填：在测试里翻转 isActive。
+late void Function(bool) _setActiveFn;
+
+Future<void> _setActive(WidgetTester tester, bool v) async {
+  _setActiveFn(v);
+  await tester.pump();
+}
+
+/// 与 _pump 同构，唯一区别：CanvasShortcuts 包进 StatefulBuilder，isActive 可翻转。
+/// 初始 false。
+Future<ProviderContainer> _pumpToggleable(
+  WidgetTester tester, {
+  required List<CanvasNode> nodes,
+}) async {
+  final container = ProviderContainer(overrides: _canvasOverrides(nodes));
+  addTearDown(container.dispose);
+  bool active = false;
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp(
+        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1.0),
+        locale: const Locale('en'),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: CommandPaletteShortcuts(
+            child: StatefulBuilder(
+              builder: (BuildContext ctx, StateSetter setState) {
+                _setActiveFn = (bool v) => setState(() => active = v);
+                return CanvasShortcuts(
+                  isActive: active,
+                  child: const CanvasView(),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return container;
 }
 
 /// 通过 InteractiveViewer widget 读当前变换——与 transform provider 是否 family 无关。
@@ -148,6 +202,17 @@ Future<void> _sendCtrl(WidgetTester tester, LogicalKeyboardKey key) async {
   await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
   await tester.pump();
 }
+
+/// 发送不带修饰的按键（Delete / Backspace / Esc 等）。
+Future<void> _sendKey(WidgetTester tester, LogicalKeyboardKey key) async {
+  await tester.sendKeyEvent(key);
+  await tester.pump();
+}
+
+/// 发送带 ⌘/Ctrl 修饰的按键——快捷键表跨平台同时注册了 meta+control 双变体，
+/// 测试环境用 Ctrl 变体驱动即可（与 _sendCtrl 一致）。
+Future<void> _sendMeta(WidgetTester tester, LogicalKeyboardKey key) =>
+    _sendCtrl(tester, key);
 
 void main() {
   final twoNodes = <CanvasNode>[
@@ -315,10 +380,10 @@ void main() {
       tester,
       const Scaffold(
         body: CommandPaletteShortcuts(
-          child: CanvasShortcuts(child: CanvasView()),
+          child: CanvasShortcuts(isActive: true, child: CanvasView()),
         ),
       ),
-      overrides: _overrides(twoNodes),
+      overrides: _canvasOverrides(twoNodes),
     );
     await tester.pumpAndSettle();
     final container = ProviderScope.containerOf(
@@ -347,6 +412,7 @@ void main() {
       tester,
       Scaffold(
         body: CanvasShortcuts(
+          isActive: true,
           child: Column(
             children: <Widget>[
               const Expanded(child: CanvasView()),
@@ -356,7 +422,7 @@ void main() {
           ),
         ),
       ),
-      overrides: _overrides(twoNodes),
+      overrides: _canvasOverrides(twoNodes),
     );
     await tester.pumpAndSettle();
     final container = ProviderScope.containerOf(
@@ -384,6 +450,42 @@ void main() {
       container.read(canvasSelectionControllerProvider),
       {'a'},
       reason: '文本框聚焦时 ⌘A 不得触发画布全选',
+    );
+  });
+
+  // ===== 保活安全：不可见的画布不得吞 Delete（V2 前半）=====
+  testWidgets('isActive:false → Delete 不删节点，且 ⌘K 仍能开命令面板', (tester) async {
+    final container = await _pump(tester, nodes: twoNodes, isActive: false);
+    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    await tester.pumpAndSettle();
+
+    await _sendKey(tester, LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(NodeCard), findsNWidgets(2), reason: '不可见画布不得响应 Delete');
+
+    // 同一帧里 ⌘K 必须仍然可用——证明我们让出的是画布焦点，不是把键盘整个掐死。
+    await _sendMeta(tester, LogicalKeyboardKey.keyK);
+    await tester.pumpAndSettle();
+    expect(find.byType(CommandPaletteDialog), findsOneWidget);
+  });
+
+  // ===== 保活安全：重新可见时必须自己拿回焦点（V2 后半）=====
+  testWidgets('isActive false→true → 不点任何东西，Delete 直接恢复生效', (tester) async {
+    final container = await _pumpToggleable(tester, nodes: twoNodes);
+    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    await tester.pumpAndSettle();
+
+    await _setActive(tester, true); // 由 StatefulBuilder 翻转
+    await tester.pumpAndSettle(); // 等 post-frame 复焦跑完
+
+    await _sendKey(tester, LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(NodeCard),
+      findsNWidgets(1),
+      reason: 'ExcludeFocus 文档明说重新可见不会自动复焦，必须由 didUpdateWidget 的 post-frame 补上',
     );
   });
 }
