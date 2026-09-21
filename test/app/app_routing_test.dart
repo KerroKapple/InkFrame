@@ -238,9 +238,14 @@ void main() {
           _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           // overlay=showcase 且画布已打开 → 浮层赢（app.dart 路由优先级）。
+          // tab: canvas 是必需的（fix round 3，R37）：R33 给画布分支加了
+          // tab == ShellTab.canvas 判据，不带 tab 的话这个态压根不会走到
+          // 画布分支，判序变异（canvasId-first）对本例就无害了——R25 的
+          // 护栏会被静默打空。
           shellControllerProvider.overrideWith(
             () => ShellNavigator(
               initial: const ShellState(
+                tab: ShellTab.canvas,
                 overlay: ShellOverlay.showcase,
                 canvasId: 'cv-1',
               ),
@@ -268,7 +273,10 @@ void main() {
 
   // R25 新增：画布已打开时 openOverlay(settings) → SettingsScreen 可见（不再
   // 是死键）。变异证明见 task-6-report.md「R25 变异证明」——把 app.dart 判序
-  // 改回 canvasId-first 时，本例会转红（SettingsScreen findsNothing）。
+  // 改回 canvasId-first（连带 R33 的 tab 判据一起模拟，即精确复原本例改动前
+  // 的判序）时，本例会转红（SettingsScreen findsNothing）。fix round 3
+  // （R37）：种子补 `tab: ShellTab.canvas`——不带它这个态压根不会走到画布
+  // 分支，判序变异对本例就无害了，注释此前的说法已被证伪，这里改成事实。
   testWidgets('画布已打开 + openOverlay(settings) → SettingsScreen 可见', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -283,6 +291,7 @@ void main() {
           shellControllerProvider.overrideWith(
             () => ShellNavigator(
               initial: const ShellState(
+                tab: ShellTab.canvas,
                 overlay: ShellOverlay.settings,
                 canvasId: 'cv-1',
               ),

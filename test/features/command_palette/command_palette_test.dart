@@ -277,10 +277,14 @@ void main() {
   // Settings 时按 ⌘K 应该拿到 Settings 上下文动作集，而不是对着当前不可见
   // 画布动刀的 addNode/export 动作集（command_actions.dart 的
   // tab==canvas 判据在 overlay!=null 时短路，见 R33/M-4）。
+  // fix round 3（R39）：节点集换成 _ExportableNodesController——
+  // _EmptyNodesController 下 canExport 恒 false，'Export video' 那条
+  // findsNothing 即便判序坏掉也不会出现，鉴别力为零，纯装饰。
   testWidgets('画布上开着 Settings 时按 ⌘K → 只有 Settings 动作集，没有画布动作',
       (tester) async {
     final container = await _pumpShell(tester, overrides: <Override>[
-      canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
+      canvasNodesControllerProvider
+          .overrideWith(_ExportableNodesController.new),
     ]);
     container.read(shellControllerProvider.notifier).openCanvas('c1');
     container
@@ -294,5 +298,25 @@ void main() {
     expect(find.text('Add video node'), findsNothing);
     expect(find.text('Add shot node'), findsNothing);
     expect(find.text('Export video'), findsNothing);
+  });
+
+  // fix round 3（R38）：command_actions.dart:72 的 tab==canvas 判据此前零
+  // 覆盖——R34 那条走 overlay 短路，测不到这里。失败场景：T7 重构时若丢掉
+  // 这行判据，回到 Studio 后 ⌘K 仍会拿到对着【当前不可见】画布动刀的
+  // addNode/export 动作集，往后台画布里静默塞节点。
+  testWidgets('回到 Studio 后按 ⌘K → 不再是画布动作集，是 Studio 动作集',
+      (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    await _warmNodes(container, 'c1');
+    container.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
+    await _pressCtrlK(tester);
+
+    expect(find.text('Add image node'), findsNothing);
+    expect(find.text('Add video node'), findsNothing);
+    expect(find.text('Add shot node'), findsNothing);
+    expect(find.text('Import project…'), findsOneWidget);
   });
 }
