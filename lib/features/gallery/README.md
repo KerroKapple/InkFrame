@@ -9,7 +9,7 @@
 
 ```
 models/     不可变领域模型（freezed）
-providers/  Riverpod 控制器 + 路由状态（screen-scoped）
+providers/  Riverpod 控制器（均为 autoDispose family，按 projectId 分键）
 widgets/    纯 UI（读 provider、走 token/l10n）
 ```
 

@@ -426,7 +426,9 @@ Focus(
    > 标题三处共用 `shellCanvasEmptyTitle`（R65：同一句话不开第二个键）。
    >
    > **下一个人注意：不要照着上面那行去"补" `shellNeedsCanvas`。** 它不是遗漏，
-   > 是被替换掉的方案。护栏在 `test/features/shell/shell_empty_state_cta_test.dart`。**此分支不 watch 任何仓储** —— 硬约束：`app_routing_test` 的 studio/settings 两例只密封了 `workspaceProjectsProvider`，序列/导出标签一旦 eager 碰 canvas/node/edge 仓储就会去起真内嵌 PG（该文件 `:38-40`、`:96` 的注释自己点名：真 PG / dart:io 会让覆盖率收集永挂）。懒物化已挡住大半，但空态分支仍须自证不碰仓储 ⇒ 配一条「用会抛的 fake 仓储 override，被碰到就红」的用例。
+   > 是被替换掉的方案。护栏在 `test/features/shell/shell_empty_state_cta_test.dart`。
+
+   **此分支不 watch 任何仓储** —— 硬约束：`app_routing_test` 的 studio/settings 两例只密封了 `workspaceProjectsProvider`，序列/导出标签一旦 eager 碰 canvas/node/edge 仓储就会去起真内嵌 PG（该文件 `:38-40`、`:96` 的注释自己点名：真 PG / dart:io 会让覆盖率收集永挂）。懒物化已挡住大半，但空态分支仍须自证不碰仓储 ⇒ 配一条「用会抛的 fake 仓储 override，被碰到就红」的用例。
 2. `canvasId != null` 但不满足可用性（序列：无 narrative 边；导出：无可导出 video）→ 空态 + 按钮禁用 + 复用既有的 `sequencePreviewDisabledTooltip` / `exportVideoDisabledTooltip` 作为解释文案。
 3. 满足条件 → 按钮可点 → 弹既有对话框。
 
@@ -441,7 +443,9 @@ Focus(
 > `orderVideoNodesForExport(...).first`（**链序**，见 `export_order.dart`）——候选集
 > 相同、排序不同，只要"链序第一个"与"原序第一个"不是同一节点、且前者 `project_id`
 > 为空（存量行允许），面板里就会出现「Export video」、点下去什么都不发生。
-> 已修，护栏是 `command_palette_test.dart` 的 R86 用例。`openCanvas` 的 `withProject` 在 `open_canvas.dart` / `canvas_bootstrap_controller.dart` / `restore_last_session.dart` 三条路径上播种。
+> 已修，护栏是 `command_palette_test.dart` 的 R86 用例。
+
+`openCanvas` 的 `withProject` 在 `open_canvas.dart` / `canvas_bootstrap_controller.dart` / `restore_last_session.dart` 三条路径上播种。
 
 ### 8.3 画廊标签的三个 bug
 
