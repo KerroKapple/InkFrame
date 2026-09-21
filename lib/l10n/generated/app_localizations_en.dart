@@ -527,6 +527,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check for updates at startup';
 
   @override
+  String get shellKeepLastCanvasTitle => 'Restore last canvas on startup';
+
+  @override
+  String get shellKeepLastCanvasSubtitle =>
+      'Reopen the canvas you were last working on when InkFrame starts. Turning this off keeps the record — switch it back on to return to the same canvas.';
+
+  @override
   String get generationMissingKey => 'API key is missing';
 
   @override

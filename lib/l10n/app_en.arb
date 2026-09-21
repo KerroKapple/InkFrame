@@ -217,6 +217,9 @@
   "settingsAboutUpdateOpenFailed": "Couldn't open the release page",
   "settingsAboutUpdateAutoCheckLabel": "Check for updates at startup",
 
+  "shellKeepLastCanvasTitle": "Restore last canvas on startup",
+  "shellKeepLastCanvasSubtitle": "Reopen the canvas you were last working on when InkFrame starts. Turning this off keeps the record — switch it back on to return to the same canvas.",
+
   "generationMissingKey": "API key is missing",
   "generationInvalidConfig": "Invalid configuration: {reason}",
   "@generationInvalidConfig": {

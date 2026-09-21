@@ -2,7 +2,11 @@
 // → 置 currentCanvasId 直接回画布。任一无效则清掉记录、停留 Studio。
 //
 // best-effort：PG 未就绪/查询失败不阻断启动（吞 InkError 静默留在首页）；
-// 恢复完成前用户已手动打开画布时不抢占。
+// 恢复完成前用户已发生任何导航时不抢占（判据 ShellState.isPristine）。
+//
+// 是否恢复由偏好开关 shellKeepLastCanvas 单独控制（默认开），且它是这件事
+// 的【唯一真相源】——lib 里不再有第二处「悄悄清掉会话记录」的写点
+// （T11 退掉了 ⌘K「Back to Studio」里那处 clearLastCanvas）。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/preferences.dart';
@@ -17,6 +21,10 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   final canvasId = saved.lastCanvasId;
   final projectId = saved.lastProjectId;
   if (canvasId == null || projectId == null) return;
+  // T11：开关关掉 = 这次不回去，但【不清记录】——用户可能只是这次想从
+  // Studio 开始。放在校验之前：不查库（省两次 PG 往返），也就不会误入下面
+  // 那条「记录失效 → 清记录」的路径。
+  if (!saved.shellKeepLastCanvas) return;
 
   final bool valid;
   // fix round 1（M-5）：name 的类型窄化放在 try 内、用 `as String?` 安全转型
@@ -43,10 +51,11 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
     await prefs.update((p) => p.copyWith(clearLastCanvas: true));
     return;
   }
-  // 债145：守卫从「只查画布」扩为「用户已发生任何导航即放弃恢复」——
-  // PG 就绪窗口内用户已进 Settings/Gallery 时,不再把人硬拉回画布。
-  // T6 过渡态：语义暂用 isPristine 近似——开关判据在 T11 加
-  // （shellKeepLastCanvas）。
+  // 债145：守卫判据 = 用户尚未发生任何导航（isPristine 的三项合取：
+  // canvasId == null && overlay == null && tab == ShellTab.studio）。
+  // tab 默认 studio，所以 PG 就绪窗口内用户切到任何标签 / 开任何浮层 /
+  // 自己打开画布，本判据都自然为假——不需要额外的布尔闩。
+  // 三项各有一例单测钉死（restore_last_session_test.dart）。
   if (!ref.read(shellControllerProvider).isPristine) return;
   ref.read(shellControllerProvider.notifier).openCanvas(
         canvasId,

@@ -1004,6 +1004,18 @@ abstract class AppLocalizations {
   /// **'Check for updates at startup'**
   String get settingsAboutUpdateAutoCheckLabel;
 
+  /// No description provided for @shellKeepLastCanvasTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore last canvas on startup'**
+  String get shellKeepLastCanvasTitle;
+
+  /// No description provided for @shellKeepLastCanvasSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reopen the canvas you were last working on when InkFrame starts. Turning this off keeps the record — switch it back on to return to the same canvas.'**
+  String get shellKeepLastCanvasSubtitle;
+
   /// No description provided for @generationMissingKey.
   ///
   /// In en, this message translates to:

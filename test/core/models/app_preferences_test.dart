@@ -193,4 +193,47 @@ void main() {
     // clear 只影响对应字段。
     expect(p.copyWith(clearCanvasEdgeColor: true).canvasCardColor, 2);
   });
+
+  test('shellKeepLastCanvas 默认 true', () {
+    expect(const AppPreferences().shellKeepLastCanvas, isTrue);
+  });
+
+  test('空 map 解析出 shellKeepLastCanvas == true', () {
+    // fromMap 缺省【必须】退 true，与本文件 `updateCheckEnabled` 同款
+    // （`uce is bool ? uce : true`）。写反的后果：所有老用户
+    // （preferences.json 里没有这个键）升级后会话恢复静默失效。
+    expect(
+      AppPreferences.fromMap(const <String, Object?>{}).shellKeepLastCanvas,
+      isTrue,
+    );
+  });
+
+  test('shellKeepLastCanvas fromMap 容错：类型错 → 退 true', () {
+    final p = AppPreferences.fromMap(<String, Object?>{
+      'shell_keep_last_canvas': 'no', // 类型错
+    });
+    expect(p.shellKeepLastCanvas, isTrue);
+  });
+
+  test('shellKeepLastCanvas toMap/fromMap 往返（false 必须活下来）', () {
+    const off = AppPreferences(shellKeepLastCanvas: false);
+    expect(off.toMap()['shell_keep_last_canvas'], isFalse);
+    expect(AppPreferences.fromMap(off.toMap()).shellKeepLastCanvas, isFalse);
+  });
+
+  test('copyWith shellKeepLastCanvas：置位 / 不传保留', () {
+    const p = AppPreferences();
+    expect(p.copyWith(shellKeepLastCanvas: false).shellKeepLastCanvas, isFalse);
+    expect(
+      p.copyWith(shellKeepLastCanvas: false).copyWith().shellKeepLastCanvas,
+      isFalse,
+    );
+  });
+
+  test('shellKeepLastCanvas 参与 ==/hashCode', () {
+    const on = AppPreferences();
+    const off = AppPreferences(shellKeepLastCanvas: false);
+    expect(on == off, isFalse);
+    expect(on.hashCode == off.hashCode, isFalse);
+  });
 }

@@ -499,6 +499,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutUpdateAutoCheckLabel => '启动时自动检查更新';
 
   @override
+  String get shellKeepLastCanvasTitle => '启动时恢复上次的画布';
+
+  @override
+  String get shellKeepLastCanvasSubtitle =>
+      '启动 InkFrame 时自动打开上次编辑的画布。关闭只是这次不回去，记录仍然保留——重新打开即可回到同一张画布。';
+
+  @override
   String get generationMissingKey => 'API Key 未配置';
 
   @override

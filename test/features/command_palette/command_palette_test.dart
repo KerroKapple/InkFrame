@@ -5,8 +5,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/logger.dart';
+import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/project_archive.dart';
 import 'package:inkframe/core/interfaces/project_import_service.dart';
+import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
@@ -16,6 +18,7 @@ import 'package:inkframe/features/generation/services/toast_service.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
+import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
 import '../../helpers/recording_logger.dart';
@@ -255,10 +258,14 @@ void main() {
     expect(find.text('No matching commands'), findsOneWidget);
   });
 
-  testWidgets('Back to Studio 动作切回 studio 标签，canvasId 保持不变',
+  testWidgets('Back to Studio 动作切回 studio 标签，canvasId 与会话记录都不动',
       (tester) async {
+    final prefs = InMemoryPreferencesService(
+      const AppPreferences(lastCanvasId: 'cv-saved', lastProjectId: 'p-saved'),
+    );
     final container = await _pumpShell(tester, overrides: <Override>[
       canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
+      preferencesServiceProvider.overrideWithValue(prefs),
     ]);
     container.read(shellControllerProvider.notifier).openCanvas('c1');
     await _warmNodes(container, 'c1');
@@ -271,6 +278,11 @@ void main() {
     // 应继续持有 'c1'，只是不再是当前可见标签。
     expect(container.read(shellControllerProvider).tab, ShellTab.studio);
     expect(container.read(currentCanvasIdProvider), 'c1');
+    // T11：这条动作【不再】写 clearLastCanvas。标签模型下切到 Studio 标签
+    // 不等于关闭画布，而「下次启动是否回到上次画布」的唯一真相源是
+    // shellKeepLastCanvas 开关——⌘K 不该背着用户把记录清掉。
+    expect(prefs.current.lastCanvasId, 'cv-saved');
+    expect(prefs.current.lastProjectId, 'p-saved');
   });
 
   // fix round 2（R34）：overlay-first 动作集此前零测试覆盖。画布上开着

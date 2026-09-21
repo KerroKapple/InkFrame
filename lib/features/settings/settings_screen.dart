@@ -1,6 +1,7 @@
 // SettingsScreen — 设置页。
 //
-// 组合：ApiKeys / Theme / Canvas / Language / Storage / About 六个 section。
+// 组合：ApiKeys / CustomProviders / Theme / CanvasAppearance / Language /
+// Startup / StoragePath / Backup / Diagnostics / About。
 // 展示由 ShellState.overlay == ShellOverlay.settings 驱动（shellControllerProvider）；
 // 当前仍可由其他 slice push 进入。
 
@@ -19,6 +20,7 @@ import 'widgets/canvas_appearance_section.dart';
 import 'widgets/custom_providers_section.dart';
 import 'widgets/diagnostics_section.dart';
 import 'widgets/language_section.dart';
+import 'widgets/startup_section.dart';
 import 'widgets/storage_path_section.dart';
 import 'widgets/theme_section.dart';
 
@@ -64,6 +66,8 @@ class SettingsScreen extends ConsumerWidget {
                 CanvasAppearanceSection(),
                 SizedBox(height: InkSpacing.xl),
                 LanguageSection(),
+                SizedBox(height: InkSpacing.xl),
+                StartupSection(),
                 SizedBox(height: InkSpacing.xl),
                 StoragePathSection(),
                 SizedBox(height: InkSpacing.xl),

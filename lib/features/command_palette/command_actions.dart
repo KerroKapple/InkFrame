@@ -3,13 +3,11 @@
 // 动作按当前路由上下文组装（canvas / gallery / settings / studio）；
 // label 经 context.l10n 解析后快照进 CommandAction，执行闭包在面板关闭后
 // 由调用方以 (context, ref) 触发，await 之后一律先查 context.mounted。
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/di/preferences.dart';
 import '../../core/errors/ink_error.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
@@ -169,17 +167,16 @@ CommandAction _backToStudio(AppLocalizations l) => CommandAction(
       id: 'backToStudio',
       icon: Icons.arrow_back,
       label: l.commandBackToStudio,
+      // T11 退掉了这里原有的 `clearLastCanvas: true` 写点（R26 的恢复决定
+      // 在 T11 落地后失效）。理由：标签模型下切到 Studio 标签【不等于关闭
+      // 画布】——画布还在保活宿主里活着，用户只是去看另一个标签。旧语义
+      // 「主动回首页 = 下次启动停在 Studio」绑的是互斥路由时代「回家即离开
+      // 画布」的前提，那个前提没有了。而且它与标签条上的 Studio 标签行为
+      // 不自洽（同一个动作，一条静默清记录、一条不清），也会在用户明确
+      // 打开 shellKeepLastCanvas 的情况下背着他把记录清掉。
+      // 现在「下次启动是否回到上次画布」的唯一真相源是该偏好开关。
       run: (context, ref) async {
         ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
-        // 主动回首页 = 下次启动停留 Studio（fix round 1，R26：T6 之前 lib 里
-        // 唯一承载"用户主动回首页"语义的写点就是这行；删掉后这条语义在 lib
-        // 里变成静默的洞——T11 若要替换机制应是深思熟虑的决定，不该是继承
-        // 一次迁移期间的疏漏，先恢复。fire-and-forget）。
-        unawaited(
-          ref.read(preferencesServiceProvider).update(
-                (p) => p.copyWith(clearLastCanvas: true),
-              ),
-        );
       },
     );
 

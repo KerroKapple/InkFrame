@@ -208,6 +208,9 @@
   "settingsAboutUpdateOpenFailed": "无法打开发布页",
   "settingsAboutUpdateAutoCheckLabel": "启动时自动检查更新",
 
+  "shellKeepLastCanvasTitle": "启动时恢复上次的画布",
+  "shellKeepLastCanvasSubtitle": "启动 InkFrame 时自动打开上次编辑的画布。关闭只是这次不回去，记录仍然保留——重新打开即可回到同一张画布。",
+
   "generationMissingKey": "API Key 未配置",
   "generationInvalidConfig": "配置无效：{reason}",
   "@generationInvalidConfig": {
