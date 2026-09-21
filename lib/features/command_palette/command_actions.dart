@@ -158,8 +158,18 @@ void _openExport(BuildContext context, WidgetRef ref, String canvasId) {
     edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[],
   );
-  final projectId = videoNodes.isEmpty ? null : videoNodes.first.projectId;
-  if (projectId == null) return; // 面板打开到执行之间节点已变化：静默不弹
+  if (videoNodes.isEmpty) return; // 面板打开到执行之间节点已变化：静默不弹
+  // R86：projectId 走外壳的项目上下文，与 export_tab.dart 同源（spec §8.2 点名
+  // 要迁的【两个】写点之外的第三处，T10 漏下了）。
+  //
+  // 旧写法取 videoNodes.first.projectId，而启用判据（canExport）取的是
+  // exportableVideoNodes(...).first——**候选集相同、排序不同**：
+  // orderVideoNodesForExport 先按 narrative 链序、链外的再按 position.x 追加。
+  // 只要「链序第一个」与「原序第一个」不是同一节点、且前者 project_id 为空
+  // （存量行允许），⌘K 面板里就会出现「Export video」、点下去什么都不发生
+  // ——正是 spec 要消灭的「看着能点、点了没反应」，只是换到了命令面板这条入口。
+  final projectId = ref.read(shellControllerProvider).project?.id;
+  if (projectId == null) return; // 外壳尚无项目上下文：静默不弹
   showExportVideoDialog(context, projectId: projectId, videoNodes: videoNodes);
 }
 

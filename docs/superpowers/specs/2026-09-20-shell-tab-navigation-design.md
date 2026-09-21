@@ -253,6 +253,11 @@ final activeProjectProvider = Provider<ProjectRef?>(
 
 零向后兼容：不留别名、不留转发。收口判据：`git grep -n "AppScreen\|currentScreenProvider\|currentGalleryProjectProvider"` 零命中。
 
+> **执行期订正（R87，fix round 18）：这条收口判据只 grep 了【符号名】，漏了【文件名】那一路。**
+> `lib/features/gallery/README.md` 一直把 `current_gallery_project.dart` 当现役 provider
+> 列着，`grep currentGalleryProjectProvider` 查不出来。删整个文件时，判据应同时含
+> 蛇形文件名：`git grep -n "current_gallery_project\|current_screen"`。已修。
+
 ---
 
 ## 6. 保活与焦点
@@ -409,13 +414,34 @@ Focus(
 
 三态（都必须真实可点进入，不是灰按钮一片）：
 
-1. `canvasId == null` → 空态 + 按钮**禁用** + `shellNeedsCanvas` 说明行。**此分支不 watch 任何仓储** —— 硬约束：`app_routing_test` 的 studio/settings 两例只密封了 `workspaceProjectsProvider`，序列/导出标签一旦 eager 碰 canvas/node/edge 仓储就会去起真内嵌 PG（该文件 `:38-40`、`:96` 的注释自己点名：真 PG / dart:io 会让覆盖率收集永挂）。懒物化已挡住大半，但空态分支仍须自证不碰仓储 ⇒ 配一条「用会抛的 fake 仓储 override，被碰到就红」的用例。
+1. `canvasId == null` → 空态 + 按钮**禁用** + `shellNeedsCanvas` 说明行。
+   > **执行期回填（R89，fix round 18）：本条没有照做，实现比它好。**
+   > 实到的形状是 `ShellEmptyState` + 一个**可点的**「Go to Studio」CTA
+   > （`shellGoToStudio`），**没有禁用按钮，`shellNeedsCanvas` 这个键根本没建**。
+   >
+   > 理由：禁用按钮对「还没打开画布」是**错的反馈**——它暗示"这个按钮本该能用，
+   > 但现在坏了"，而真实情况是用户只是需要先去选一个画布。D12 要的是**可行动的
+   > 引导**，一个灰按钮加一行说明做不到这件事。正文复用各标签自己的键
+   > （`shellCanvasEmptyBody` / `shellSequenceEmptyBody` / `shellExportEmptyBody`），
+   > 标题三处共用 `shellCanvasEmptyTitle`（R65：同一句话不开第二个键）。
+   >
+   > **下一个人注意：不要照着上面那行去"补" `shellNeedsCanvas`。** 它不是遗漏，
+   > 是被替换掉的方案。护栏在 `test/features/shell/shell_empty_state_cta_test.dart`。**此分支不 watch 任何仓储** —— 硬约束：`app_routing_test` 的 studio/settings 两例只密封了 `workspaceProjectsProvider`，序列/导出标签一旦 eager 碰 canvas/node/edge 仓储就会去起真内嵌 PG（该文件 `:38-40`、`:96` 的注释自己点名：真 PG / dart:io 会让覆盖率收集永挂）。懒物化已挡住大半，但空态分支仍须自证不碰仓储 ⇒ 配一条「用会抛的 fake 仓储 override，被碰到就红」的用例。
 2. `canvasId != null` 但不满足可用性（序列：无 narrative 边；导出：无可导出 video）→ 空态 + 按钮禁用 + 复用既有的 `sequencePreviewDisabledTooltip` / `exportVideoDisabledTooltip` 作为解释文案。
 3. 满足条件 → 按钮可点 → 弹既有对话框。
 
 **可用性判据原样搬运**：`canvas_top_chrome.dart` 里 `_SequencePreviewButton` 的 `_hasNarrative` 与 `_ExportVideoButton` 的 `_canExport` 两条纯函数路径整体迁到 `sequence_tab.dart` / `export_tab.dart`，不重写。`canvas_top_chrome_export_test.dart` / `_sequence_test.dart` 的禁用判据覆盖**整体搬**进 `shell_tabs_empty_state_test.dart` —— **不许删，只许搬**，PR 描述里点名这两个文件的测试数量前后一致。
 
-**projectId 来源**：`ShellState.project!.id`，不再走 `nodes.first.projectId` 的静默 return（`canvas_top_chrome.dart:257,314` / `command_actions.dart:144-145` 今天在它为 null 时静默返回）。`openCanvas` 的 `withProject` 在 `open_canvas.dart` / `canvas_bootstrap_controller.dart` / `restore_last_session.dart` 三条路径上播种。
+**projectId 来源**：`ShellState.project!.id`，不再走 `nodes.first.projectId` 的静默 return（`canvas_top_chrome.dart:257,314` / `command_actions.dart:144-145` 今天在它为 null 时静默返回）。
+
+> **执行期回填（R86，fix round 18）：写点是【三个】不是两个。** T10 只迁了两个标签体
+> （`sequence_tab.dart` / `export_tab.dart`），`command_actions._openExport` 被漏下，
+> 直到最终全分支评审才发现。⌘K 那处的失败形态比标签体更阴：启用判据取
+> `exportableVideoNodes(nodes).first`（**原序**），`_openExport` 取
+> `orderVideoNodesForExport(...).first`（**链序**，见 `export_order.dart`）——候选集
+> 相同、排序不同，只要"链序第一个"与"原序第一个"不是同一节点、且前者 `project_id`
+> 为空（存量行允许），面板里就会出现「Export video」、点下去什么都不发生。
+> 已修，护栏是 `command_palette_test.dart` 的 R86 用例。`openCanvas` 的 `withProject` 在 `open_canvas.dart` / `canvas_bootstrap_controller.dart` / `restore_last_session.dart` 三条路径上播种。
 
 ### 8.3 画廊标签的三个 bug
 
@@ -516,7 +542,24 @@ if (!ref.read(shellControllerProvider).isPristine) return;   // canvasId==null &
 
 全部走 `shell*` / `shellTab*` 前缀。en 是真相源，zh 同 commit 补齐；**每个改 ARB 的任务各自跑 `flutter gen-l10n` 并把 `lib/l10n/generated/` 一起提交** —— generated 陈旧 `flutter test` 抓不到，只有 `flutter analyze lib test` 会红。
 
-**新增 24 条**（标签名 ×5、面包屑、关闭、去 Studio、画布空态 ×2、画廊 ×5、序列 ×3、导出 ×3、`shellNeedsCanvas`、恢复开关 ×2）。其中 `shellGalleryItemCount` 需要 `@` metadata 块声明 `{count}` 占位符（两个 ARB 都要写，否则 gen-l10n 生成的签名不带参）。
+~~**新增 24 条**（标签名 ×5、面包屑、关闭、去 Studio、画布空态 ×2、画廊 ×5、序列 ×3、导出 ×3、`shellNeedsCanvas`、恢复开关 ×2）。~~
+
+> **执行期订正（R89，fix round 18）：实到 16 条，不是 24 条。**
+> 24 这个数是在"每个标签各配一套空态标题+正文+说明行"的假设下估的；实现里
+> 标题三处共用（R65 不许为同一句话开第二个键）、`shellNeedsCanvas` 整条方案被
+> 换掉（见 §8.2 条 1 的回填）、画廊侧也没到 5 条。
+>
+> 实际 `git diff main -- lib/l10n/app_en.arb` 的键集差：
+> - **新增 16 条** = `shell*` 14 条（`shellTabStudio` / `shellTabCanvas` /
+>   `shellTabSequence` / `shellTabGallery` / `shellTabExport` /
+>   `shellBreadcrumbNoProject` / `shellCloseOverlay` / `shellGoToStudio` /
+>   `shellCanvasEmptyTitle` / `shellCanvasEmptyBody` / `shellSequenceEmptyBody` /
+>   `shellExportEmptyBody` / `shellKeepLastCanvasTitle` / `shellKeepLastCanvasSubtitle`）
+>   + 画廊侧 2 条（`galleryFilterActiveChip` / `galleryItemCount`）。
+> - **退役 7 条**（与下方清单一致，已核对 grep 零命中）。
+>
+> `shellGalleryItemCount` 实际叫 `galleryItemCount`（它属画廊工具条，不属外壳），
+> `{count}` 占位符的 `@` metadata 块两个 ARB 都已写。
 
 **退役 7 条死 key**（连 `@` metadata 一起删）：`studioBreadcrumbAll`、`canvasBreadcrumbProject`、`canvasBreadcrumbCanvas`、`canvasBackToStudio`、`galleryBreadcrumb`、`galleryBackTooltip`、`showcaseBackTooltip`。
 
