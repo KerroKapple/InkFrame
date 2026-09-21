@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/open_canvas.dart';
 
@@ -23,6 +25,7 @@ void main() {
       createCanvas: (_) async => fail('不该建画布'),
     );
     expect(container.read(currentCanvasIdProvider), 'cv-a');
+    expect(container.read(shellControllerProvider).tab, ShellTab.canvas);
   });
 
   test('0 画布 → 建新画布并 set', () async {
@@ -39,6 +42,7 @@ void main() {
       createCanvas: (projectId) async => 'cv-new',
     );
     expect(container.read(currentCanvasIdProvider), 'cv-new');
+    expect(container.read(shellControllerProvider).tab, ShellTab.canvas);
   });
 
   test('create 失败 → 不 set，错误冒泡', () async {
@@ -58,6 +62,7 @@ void main() {
       throwsStateError,
     );
     expect(container.read(currentCanvasIdProvider), isNull);
+    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
   });
 
   test('打开成功 → 偏好记下 lastCanvasId/lastProjectId（重启恢复用）', () async {
@@ -77,5 +82,6 @@ void main() {
     final prefs = container.read(preferencesServiceProvider).current;
     expect(prefs.lastCanvasId, 'cv-a');
     expect(prefs.lastProjectId, 'p1');
+    expect(container.read(shellControllerProvider).tab, ShellTab.canvas);
   });
 }

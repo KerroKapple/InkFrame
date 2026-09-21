@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
+import 'package:inkframe/features/settings/widgets/startup_section.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/theme/components/ink_tool_bar.dart';
@@ -38,6 +39,10 @@ void main() {
       findsNothing,
       reason: '换回 AppBar = 三层横栏 156，内容区掉回 444',
     );
+    // T12 卫生项(c)：StartupSection 是本 PR 新增的接线（settings_screen.dart:70），
+    // 删掉它用户就再也改不了那个开关，而门禁全绿——只给这一个新增 section 补
+    // 存在性断言，其余九个是既有状态，批量补属于范围蔓延（另开卡）。
+    expect(find.byType(StartupSection), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
   testWidgets('返回键点击 → 关闭浮层', (tester) async {

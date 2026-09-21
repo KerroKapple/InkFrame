@@ -71,27 +71,37 @@ class _ExplodingEdgeRepository implements EdgeRepository {
 /// 真正有鉴别力的信号是【仓储 provider 有没有被读过】：控制器 build 的第一句
 /// 就是 await ref.watch(nodeRepositoryProvider.future)，所以这个布尔位在
 /// 异常发生之前就已经翻了。
-bool _nodeRepoResolved = false;
-bool _edgeRepoResolved = false;
+///
+/// 用例内局部（而非文件级可变布尔）：文件级布尔只在 _explodingRepos() 里重置，
+/// 若未来有用例调 _expectNoRepositoryTouched 前没先调 _explodingRepos()，读到
+/// 的会是【上一条用例的残值】——顺序依赖的假绿/假红。装进这个小对象后，每条
+/// 用例天然拿到自己独立的一份，没有"忘了重置"这条路可走。
+class _RepoTouchTracker {
+  bool nodeRepoResolved = false;
+  bool edgeRepoResolved = false;
+}
 
-List<Override> _explodingRepos() {
-  _nodeRepoResolved = false;
-  _edgeRepoResolved = false;
-  return <Override>[
+({List<Override> overrides, _RepoTouchTracker tracker}) _explodingRepos() {
+  final tracker = _RepoTouchTracker();
+  final overrides = <Override>[
     nodeRepositoryProvider.overrideWith((_) async {
-      _nodeRepoResolved = true;
+      tracker.nodeRepoResolved = true;
       return _ExplodingNodeRepository();
     }),
     edgeRepositoryProvider.overrideWith((_) async {
-      _edgeRepoResolved = true;
+      tracker.edgeRepoResolved = true;
       return _ExplodingEdgeRepository();
     }),
   ];
+  return (overrides: overrides, tracker: tracker);
 }
 
-void _expectNoRepositoryTouched(WidgetTester tester) {
+void _expectNoRepositoryTouched(
+  WidgetTester tester,
+  _RepoTouchTracker tracker,
+) {
   expect(
-    <bool>[_nodeRepoResolved, _edgeRepoResolved],
+    <bool>[tracker.nodeRepoResolved, tracker.edgeRepoResolved],
     <bool>[false, false],
     reason: '空态分支碰了仓储——懒物化只挡住"没点过的标签"，点开之后的空态分支'
         '必须自证不读仓储：一旦 eager 碰 canvas/node/edge 仓储就会去起真内嵌 '
@@ -321,10 +331,11 @@ void main() {
 
     testWidgets('canvasId 为 null → 出去 Studio 引导，不渲染导出 CTA，且不碰仓储',
         (tester) async {
+      final repos = _explodingRepos();
       await pumpInkApp(
         tester,
         const Scaffold(body: ExportTab()),
-        overrides: <Override>[_shellWith(), ..._explodingRepos()],
+        overrides: <Override>[_shellWith(), ...repos.overrides],
       );
       await tester.pumpAndSettle();
 
@@ -335,7 +346,7 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Go to Studio'), findsOneWidget);
-      _expectNoRepositoryTouched(tester);
+      _expectNoRepositoryTouched(tester, repos.tracker);
     });
   });
 
@@ -456,10 +467,11 @@ void main() {
 
     testWidgets('canvasId 为 null → 出去 Studio 引导，不渲染序列 CTA，且不碰仓储',
         (tester) async {
+      final repos = _explodingRepos();
       await pumpInkApp(
         tester,
         const Scaffold(body: SequenceTab()),
-        overrides: <Override>[_shellWith(), ..._explodingRepos()],
+        overrides: <Override>[_shellWith(), ...repos.overrides],
       );
       await tester.pumpAndSettle();
 
@@ -469,7 +481,8 @@ void main() {
         find.text('Open a canvas first, then preview its narrative chain here.'),
         findsOneWidget,
       );
-      _expectNoRepositoryTouched(tester);
+      expect(find.text('Go to Studio'), findsOneWidget);
+      _expectNoRepositoryTouched(tester, repos.tracker);
     });
   });
 }
