@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
 import 'package:inkframe/features/gallery/providers/gallery_controller.dart';
+import 'package:inkframe/features/gallery/providers/gallery_filter.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
@@ -105,4 +106,72 @@ void main() {
       );
     },
   );
+
+  test('筛选按 projectId 分键：A 的画布筛选不得清空 B 的网格', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final subA =
+        container.listen(galleryFilterProvider('pA'), (_, _) {}, fireImmediately: true);
+    final subB =
+        container.listen(galleryFilterProvider('pB'), (_, _) {}, fireImmediately: true);
+    addTearDown(subA.close);
+    addTearDown(subB.close);
+
+    container.read(galleryFilterProvider('pA').notifier).state =
+        const GalleryFilter(canvasId: 'canvas-in-A');
+
+    expect(container.read(galleryFilterProvider('pA')).canvasId, 'canvas-in-A');
+    expect(container.read(galleryFilterProvider('pB')).canvasId, isNull,
+        reason: 'A 的 canvasId 比 B 的项必然零命中，而筛选控件会回落显示"未筛选"——界面撒谎');
+  });
+
+  testWidgets('搜索框从筛选态播种：切项目后输入框显示该项目自己的 query，不是空的或上一个项目的',
+      (tester) async {
+    final canvases = InMemoryCanvasRepository();
+    final nodes = InMemoryNodeRepository();
+    final batch = FakeBatchResultRepo();
+    final container = ProviderContainer(
+      overrides: <Override>[
+        canvasRepositoryProvider.overrideWith((_) async => canvases),
+        nodeRepositoryProvider.overrideWith((_) async => nodes),
+        batchResultRepositoryProvider.overrideWith((_) async => batch),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final ca = await canvases.create(projectId: 'pA', name: 'Alpha');
+    await nodes.create(
+      canvasId: ca,
+      type: 'video',
+      nodeRole: 'result',
+      typeConfig: <String, Object?>{'video_url': 'videos/a.mp4'},
+    );
+
+    // 项目 A 已经带着一条 query 筛选（模拟“回到画廊标签”这一保活场景）。
+    container.read(galleryFilterProvider('pA').notifier).state =
+        const GalleryFilter(query: 'alpha-scene');
+
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: const GalleryScreen(projectId: 'pA', projectName: 'Alpha'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'alpha-scene',
+      reason: '_searchCtrl 是 onChanged 的唯一输入源，从不读回 filter.query；'
+          '切项目/error 重试/data→空 都会重建 State 但不重建 filter，'
+          '于是输入框显示空、筛选却仍生效——界面与真相脱同步',
+    );
+  });
 }

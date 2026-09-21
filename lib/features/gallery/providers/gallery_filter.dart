@@ -58,7 +58,10 @@ List<GalleryItem> filterGalleryItems(
   ];
 }
 
-/// 画廊筛选状态（screen-scoped:离开画廊即复位）。
+/// 画廊筛选状态，按 projectId 分族——跨项目不共享，避免 A 的 canvasId 筛选
+/// 静默清空 B 的网格（而三个筛选控件因失配回落全都显示"未筛选"）。
 final galleryFilterProvider =
-    StateProvider.autoDispose<GalleryFilter>((ref) => const GalleryFilter(),
-        name: 'galleryFilterProvider');
+    StateProvider.autoDispose.family<GalleryFilter, String>(
+      (ref, projectId) => const GalleryFilter(),
+      name: 'galleryFilterProvider',
+    );

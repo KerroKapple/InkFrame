@@ -42,7 +42,9 @@ class GalleryScreen extends ConsumerWidget {
     // 才写的，删掉这条 watch 会让 4a 修的回收 bug 静默复发（Task 7 挪
     // chip 进 InkToolBar 时请保留这条 watch，别当死代码删掉）。
     final filtersActive = ref.watch(
-      galleryFilterProvider.select((GalleryFilter f) => f.isActive),
+      galleryFilterProvider(
+        projectId,
+      ).select((GalleryFilter f) => f.isActive),
     );
     // Material 根：筛选条的 Dropdown/TextField 需要 Material 祖先（GA-3）。
     return Material(
@@ -53,7 +55,7 @@ class GalleryScreen extends ConsumerWidget {
             projectName: projectName,
             filtersActive: filtersActive,
             onClearFilters: () =>
-                ref.read(galleryFilterProvider.notifier).state =
+                ref.read(galleryFilterProvider(projectId).notifier).state =
                     const GalleryFilter(),
           ),
           Expanded(
@@ -65,7 +67,14 @@ class GalleryScreen extends ConsumerWidget {
               ),
               data: (items) => items.isEmpty
                   ? const _GalleryEmptyState()
-                  : _GalleryContent(projectId: projectId, items: items),
+                  : _GalleryContent(
+                      // ValueKey(projectId)：切项目强制重建 State，保证
+                      // _searchCtrl 的播种（initState）在每个项目上都跑一次，
+                      // 不因 Element 复用而只在第一次切入时生效。
+                      key: ValueKey<String>(projectId),
+                      projectId: projectId,
+                      items: items,
+                    ),
             ),
           ),
         ],
@@ -119,7 +128,11 @@ class _GalleryTopChrome extends ConsumerWidget {
 
 /// GA-3：筛选条（类型分段 + 画布下拉 + canvasName 搜索）+ 过滤后网格/无命中态。
 class _GalleryContent extends ConsumerStatefulWidget {
-  const _GalleryContent({required this.projectId, required this.items});
+  const _GalleryContent({
+    super.key,
+    required this.projectId,
+    required this.items,
+  });
 
   final String projectId;
   final List<GalleryItem> items;
@@ -129,7 +142,18 @@ class _GalleryContent extends ConsumerStatefulWidget {
 }
 
 class _GalleryContentState extends ConsumerState<_GalleryContent> {
-  final TextEditingController _searchCtrl = TextEditingController();
+  late final TextEditingController _searchCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    // _searchCtrl 是 onChanged 的唯一输入源，从不从 filter.query 读回；
+    // 切项目 / error 重试 / data→空 三条路径都会重建 State 但不重建 filter，
+    // 于是输入框显示空、筛选却仍然生效——界面与真相脱同步。
+    final seeded = ref.read(galleryFilterProvider(widget.projectId)).query;
+    _searchCtrl = TextEditingController(text: seeded)
+      ..selection = TextSelection.collapsed(offset: seeded.length);
+  }
 
   @override
   void dispose() {
@@ -139,14 +163,15 @@ class _GalleryContentState extends ConsumerState<_GalleryContent> {
 
   void _clearFilters() {
     _searchCtrl.clear();
-    ref.read(galleryFilterProvider.notifier).state = const GalleryFilter();
+    ref.read(galleryFilterProvider(widget.projectId).notifier).state =
+        const GalleryFilter();
   }
 
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final filter = ref.watch(galleryFilterProvider);
-    final notifier = ref.read(galleryFilterProvider.notifier);
+    final filter = ref.watch(galleryFilterProvider(widget.projectId));
+    final notifier = ref.read(galleryFilterProvider(widget.projectId).notifier);
     final filtered = filterGalleryItems(widget.items, filter);
     // 画布下拉候选：保序去重（聚合序=createdAt 倒序内的首见序）。
     final canvasNames = <String, String>{
