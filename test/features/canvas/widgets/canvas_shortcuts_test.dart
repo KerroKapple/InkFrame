@@ -370,6 +370,62 @@ void main() {
     );
   });
 
+  // ===== D3+：切画布后选中态不跟随（Task 2 评审 Important #1 补测；
+  // 原四条 isolation 用例在同一 container 里读两个 family key，Notifier.build()
+  // 全是常量返回，family 一旦不坏就恒真——不咬「某调用点传错 canvasId」这唯一的
+  // 静默失效模式。本用例驱动真实消费方：c1 选中 → 切 c2 → 按 Delete，
+  // 断言 c1 的选中不会在 c2 上把节点删掉。=====
+  testWidgets('切换画布 → 旧画布的选中不会跟到新画布，Delete 不误删', (tester) async {
+    final container = await _pump(tester, nodes: twoNodes);
+    // 预热并保活 c2 的节点：理由同 D3——切换瞬间若出现 loading 空档，舞台会
+    // 短暂卸载，反而掩盖串味 bug（本用例要测的正是"接错线"，不能被空档遮住）。
+    final sub = container.listen(
+      canvasNodesControllerProvider('c2'),
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await tester.pumpAndSettle();
+
+    // c1 选中节点 'a'。同时保活 c1 的选中态：不保活的话，autoDispose 会在
+    // 没人 watch 它之后把这个 family entry 连同选中值一起清空,即便读错线
+    // （改读死 'c1'）也只会读到"刚清空的空集",把本该咬住的 bug 自愈掉——
+    // 这正是本用例第一版失败的原因（见 fix report 里的变异验证记录）。
+    // 保活模拟 Task 5/6/7 保活宿主落地后的真实世界：c1、c2 会真的同时存活。
+    final selectionSub = container.listen(
+      canvasSelectionControllerProvider('c1'),
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(selectionSub.close);
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
+    await tester.pump();
+
+    // 切到 c2（同一 CanvasScreen 常驻，仅换 canvasId；c2 已 AsyncData，无 loading 空档）。
+    container.read(currentCanvasIdProvider.notifier).state = 'c2';
+    await tester.pumpAndSettle();
+
+    expect(
+      container.read(canvasSelectionControllerProvider('c2')),
+      isEmpty,
+      reason: 'c2 是全新画布，不应继承 c1 的选中集',
+    );
+
+    // 不点击任何东西，直接按 Delete：c2 上没有真实选中，理应 no-op。
+    // 若 CanvasShortcuts._deleteSelection 某处把 canvasId 接错线（例如误读了
+    // c1 的选中集，同时仍对当前渲染的 c2 节点表执行删除），'Node A' 会从
+    // 屏幕上消失——这是本用例唯一要咬住的静默串味模式。
+    await tester.sendKeyEvent(LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Node A'),
+      findsOneWidget,
+      reason: 'c2 上没有真实选中，Delete 必须是 no-op；若节点被删，'
+          '说明某处误读了 c1 的选中集',
+    );
+  });
+
   // ===== D1：生产嵌套下画布仍拿到焦点（PL-1 ⌘K 层在外层）=====
   testWidgets('生产嵌套：CommandPaletteShortcuts 外层时画布仍持焦（Delete 生效 + ⌘K 仍开面板）', (
     tester,
