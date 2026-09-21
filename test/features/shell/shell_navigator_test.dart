@@ -63,14 +63,64 @@ void main() {
   test('openGallery / openOverlay / closeOverlay 委托语义与 ShellState 一致', () {
     final c = makeContainer(const ShellState(tab: ShellTab.canvas, canvasId: 'c1'));
     final nav = c.read(shellControllerProvider.notifier);
+    // R19：先开一个浮层，让 openGallery 的"清浮层"这一步真正被观测到——
+    // 若起始态本来就是 overlay:null，漏清浮层的实现也能让下面的
+    // isNull 断言蒙混过关。
+    nav.openOverlay(ShellOverlay.settings);
     nav.openGallery(p1);
     expect(c.read(shellControllerProvider).tab, ShellTab.gallery);
     expect(c.read(shellControllerProvider).canvasId, 'c1');
+    expect(c.read(shellControllerProvider).overlay, isNull,
+        reason: 'openGallery 必须清掉已经打开的浮层，不是"起点本来就是 null"的巧合');
     nav.openOverlay(ShellOverlay.settings);
     expect(c.read(shellControllerProvider).overlay, ShellOverlay.settings);
     expect(c.read(shellControllerProvider).tab, ShellTab.gallery);
     nav.closeOverlay();
     expect(c.read(shellControllerProvider).overlay, isNull);
     expect(c.read(shellControllerProvider).tab, ShellTab.gallery);
+  });
+
+  // R17 fix round 1：ShellNavigator 是从 T6 起所有导航接线的唯一入口，
+  // 委托接错是静默失效——setProject/openCanvas/resetSession 此前只被
+  // ShellState 自身的同名方法测试间接覆盖，navigator 这一层的委托线本身
+  // 缺直接用例。变异已证实：把 openCanvas 错接成 closeOverlay，
+  // 22 条旧用例全绿——这三条补上后堵住这个缺口。
+
+  test('openCanvas 委托：canvasId 写入传入值，且落在 canvas 标签', () {
+    final c = makeContainer(const ShellState(tab: ShellTab.studio, project: p1));
+    final nav = c.read(shellControllerProvider.notifier);
+    nav.openCanvas('c9');
+    expect(c.read(shellControllerProvider).canvasId, 'c9',
+        reason: 'openCanvas 特有的状态变化：canvasId 必须变成传入的那个值');
+    expect(c.read(shellControllerProvider).tab, ShellTab.canvas,
+        reason: 'openCanvas 特有的状态变化：必须落在 canvas 标签');
+    expect(c.read(shellControllerProvider).project, p1);
+  });
+
+  test('setProject 委托：只换 project，不动 tab 与 canvasId', () {
+    const p2 = ProjectRef(id: 'p2', name: 'Beta');
+    final c = makeContainer(
+        const ShellState(tab: ShellTab.canvas, canvasId: 'c1', project: p1));
+    final nav = c.read(shellControllerProvider.notifier);
+    nav.setProject(p2);
+    expect(c.read(shellControllerProvider).project, p2,
+        reason: 'setProject 特有的状态变化：project 必须换成传入值');
+    expect(c.read(shellControllerProvider).tab, ShellTab.canvas,
+        reason: 'setProject 不该动 tab——否则会和 openGallery/openCanvas 撞车');
+    expect(c.read(shellControllerProvider).canvasId, 'c1',
+        reason: 'setProject 不该动 canvasId——否则会当场毁掉画布保活');
+  });
+
+  test('resetSession 委托：从非平凡起始态回到 isPristine', () {
+    final c = makeContainer(const ShellState(
+      tab: ShellTab.gallery,
+      overlay: ShellOverlay.settings,
+      canvasId: 'c1',
+      project: p1,
+    ));
+    final nav = c.read(shellControllerProvider.notifier);
+    nav.resetSession();
+    expect(c.read(shellControllerProvider).isPristine, isTrue,
+        reason: '还原备份后库换了，四项必须真正归零，不是从一个已经很干净的起点混过去');
   });
 }
