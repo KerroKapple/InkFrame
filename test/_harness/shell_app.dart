@@ -9,6 +9,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/app.dart';
@@ -123,6 +124,19 @@ Future<AppPaths> setupTempPaths(WidgetTester tester, String prefix) async {
   await tester.runAsync(() => paths.ensureInitialized());
   return paths;
 }
+
+/// 发送带 Ctrl 修饰的按键。快捷键表跨平台同时注册 meta + control 双变体，
+/// 测试环境统一用 Ctrl 变体驱动（与 canvas_shortcuts_test.dart 一致）。
+Future<void> sendCtrl(WidgetTester tester, LogicalKeyboardKey key) async {
+  await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+  await tester.sendKeyEvent(key);
+  await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+  await tester.pump();
+}
+
+/// ⌘ 系快捷键在测试里就是 Ctrl 变体（见 sendCtrl）。
+Future<void> sendMeta(WidgetTester tester, LogicalKeyboardKey key) =>
+    sendCtrl(tester, key);
 
 /// 拿到外壳所在的 ProviderContainer，用来在测试里直接驱动 / 读回 provider。
 ProviderContainer readShellContainer(WidgetTester tester) =>

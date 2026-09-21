@@ -54,14 +54,17 @@ class _ShellContentStackState extends State<ShellContentStack> {
     // CanvasShortcuts 的 _claimFocus 在后代 build 期间注册（晚），
     // post-frame 队列 FIFO ⇒ 晚的赢 ⇒ 切回画布页时画布稳拿焦点。
     //
-    // 【T7 复评实测，务必先读完再动手】这段目前**没有任何测试守着**，而且
-    // 复评构造不出能证伪它的场景：加 hasFocus 守卫、乃至把整段重夺删成 no-op，
-    // 全量测试都全绿，⌘K 行为探针仍然 handled == true、面板照常弹出。
-    // 机理上讲得通——CommandPaletteShortcuts 的 CallbackShortcuts 是整个外壳的
-    // 【祖先】，任何后代持焦时按键都会冒泡上去；只有"整棵子树无人持焦"时才轮得
-    // 到这个兜底。所以它的作用面比上面这段注释原本暗示的窄得多。
-    // T8 会做一次有界尝试去复现"焦点整体掉出"的假说；复现不了就把这段改成
-    // 「兜底，无已知回归场景」。在那之前不要因为"没测试"就删它。
+    // 【T8 实测：上面这段不是纸面推理，已有护栏】守它的是
+    // test/features/shell/shell_focus_test.dart 的
+    // 「V2：浮层打开时画布不可见，Delete 不删节点且 ⌘K 仍可用」那条 ⌘K 断言。
+    // 两次变异都把它打红：(a) 本 requestFocus 改成 no-op；(b) 加 hasFocus 守卫。
+    // 焦点探针显示，两种变异下开浮层后 primaryFocus 都变成
+    // _ModalScopeState 的 FocusScope，⌘K 面板计数为 0。
+    //
+    // T7 复评当时"构造不出证伪场景"的原因：⌘K 只在【画布先抢过焦点】的路径上
+    // 才会掉链子。若当前标签里没有 CanvasShortcuts 这类主动夺焦者，焦点一直
+    // 停在 CommandPaletteShortcuts 自己的 autofocus 兜底节点上，切标签不改变
+    // 它，⌘K 自然全程可用——那条路径下本段确实无作用面，但那不是全部路径。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _shellFocus.requestFocus();
     });

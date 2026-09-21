@@ -1,16 +1,11 @@
 // CanvasShortcuts widget 测试（PL-2）：五组键位（Delete / Esc / ⌘A / ⌘± / ⌘0）
 // 驱动真实画布 + 焦点链陷阱（Inspector 文本框聚焦时不误伤画布）。
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
-import 'package:inkframe/core/interfaces/file_resolver_service.dart';
-import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
-import 'package:inkframe/features/canvas/models/style_lane.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
@@ -28,89 +23,8 @@ import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
 
+import '../../../_harness/fake_canvas.dart';
 import '../../../_harness/test_app.dart';
-
-/// 内存 Fake：build 返回 seed，removeNode/restore 就地增删。
-class _FakeNodesController extends CanvasNodesController {
-  _FakeNodesController(this._seed);
-  final List<CanvasNode> _seed;
-
-  @override
-  Future<List<CanvasNode>> build(String canvasId) async => _seed;
-
-  @override
-  Future<NodeDeletion?> removeNode(String id) async {
-    final previous = state.valueOrNull ?? const <CanvasNode>[];
-    CanvasNode? removed;
-    for (final n in previous) {
-      if (n.id == id) removed = n;
-    }
-    state = AsyncData(
-      previous.where((n) => n.id != id).toList(growable: false),
-    );
-    if (removed == null) return null;
-    return (node: removed, edgeIds: const <String>[]);
-  }
-
-  @override
-  Future<void> restore(NodeDeletion deletion) async {
-    final previous = state.valueOrNull ?? const <CanvasNode>[];
-    state = AsyncData([...previous, deletion.node]);
-  }
-}
-
-class _FakeEdgesController extends CanvasEdgesController {
-  @override
-  Future<List<CanvasEdge>> build(String canvasId) async => const <CanvasEdge>[];
-}
-
-class _EmptyLanesController extends CanvasLanesController {
-  @override
-  Future<List<StyleLane>> build(String canvasId) async => const <StyleLane>[];
-}
-
-/// NodeCard 通过 fileResolverServiceProvider 解析缩略图；用桩隔离磁盘/appPaths。
-class _StubResolver implements FileResolverService {
-  @override
-  File resolveInProject({
-    required String projectId,
-    required String relativePath,
-  }) => throw UnimplementedError();
-
-  @override
-  File resolve({
-    required String projectId,
-    required String canvasId,
-    required String relativePath,
-  }) => File(
-    '${Directory.systemTemp.path}'
-    '${Platform.pathSeparator}__inkframe_missing__'
-    '${Platform.pathSeparator}$relativePath',
-  );
-
-  @override
-  String toRelative({
-    required String projectId,
-    required String canvasId,
-    required File source,
-  }) => throw UnimplementedError();
-
-  @override
-  Directory canvasRoot({required String projectId, required String canvasId}) =>
-      Directory(
-        '${Directory.systemTemp.path}'
-        '${Platform.pathSeparator}__inkframe_missing__',
-      );
-}
-
-CanvasNode _textNode(String id, String label, double x) => CanvasNode(
-  id: id,
-  label: label,
-  type: CanvasNodeType.text,
-  canvasId: 'c1',
-  position: Offset(x, 40),
-  size: const Size(180, 120),
-);
 
 List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
   // currentCanvasIdProvider 现是 shellControllerProvider 的派生投影，
@@ -118,10 +32,10 @@ List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
   // override 投影本身——否则 nav.openCanvas('c2') 不会反映到派生值上。
   shellControllerProvider
       .overrideWith(() => ShellNavigator(initial: const ShellState(canvasId: 'c1'))),
-  canvasNodesControllerProvider.overrideWith(() => _FakeNodesController(nodes)),
-  canvasEdgesControllerProvider.overrideWith(() => _FakeEdgesController()),
-  canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
-  fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+  canvasNodesControllerProvider.overrideWith(() => FakeNodesController(nodes)),
+  canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
+  canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
+  fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
 ];
 
 /// 画布单独包在 CanvasShortcuts 下，外层再套 CommandPaletteShortcuts——
@@ -219,11 +133,6 @@ Future<void> _sendMeta(WidgetTester tester, LogicalKeyboardKey key) =>
     _sendCtrl(tester, key);
 
 void main() {
-  final twoNodes = <CanvasNode>[
-    _textNode('a', 'Node A', 40),
-    _textNode('b', 'Node B', 320),
-  ];
-
   testWidgets('Delete 键删除选中节点（复用 PL-4a 删除路径）', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
     container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
