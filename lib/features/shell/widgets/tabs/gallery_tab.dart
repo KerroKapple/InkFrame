@@ -16,6 +16,11 @@ import '../shell_empty_state.dart';
 class GalleryTab extends ConsumerWidget {
   const GalleryTab({super.key, required this.isVisible});
 
+  /// 本标签此刻是否可见。
+  ///
+  /// 【T7 刻意不读】——签名先立住是为了 T9 的"不可见→可见且脏时才 invalidate"
+  /// 脏刷新（galleryDirtyProvider）。本步读了也无处可用，与其写个假用法，不如
+  /// 在这里写明白：读代码的人不会误以为画廊今天已经有可见性行为。
   final bool isVisible;
 
   @override

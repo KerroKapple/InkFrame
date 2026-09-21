@@ -53,7 +53,15 @@ class _ShellContentStackState extends State<ShellContentStack> {
     // 顺序安全性来自【注册时机】：本回调在祖先重建时先注册（早），
     // CanvasShortcuts 的 _claimFocus 在后代 build 期间注册（晚），
     // post-frame 队列 FIFO ⇒ 晚的赢 ⇒ 切回画布页时画布稳拿焦点。
-    // 这条是 load-bearing，改动前先读 shell_focus_test.dart。
+    //
+    // 【T7 复评实测，务必先读完再动手】这段目前**没有任何测试守着**，而且
+    // 复评构造不出能证伪它的场景：加 hasFocus 守卫、乃至把整段重夺删成 no-op，
+    // 全量测试都全绿，⌘K 行为探针仍然 handled == true、面板照常弹出。
+    // 机理上讲得通——CommandPaletteShortcuts 的 CallbackShortcuts 是整个外壳的
+    // 【祖先】，任何后代持焦时按键都会冒泡上去；只有"整棵子树无人持焦"时才轮得
+    // 到这个兜底。所以它的作用面比上面这段注释原本暗示的窄得多。
+    // T8 会做一次有界尝试去复现"焦点整体掉出"的假说；复现不了就把这段改成
+    // 「兜底，无已知回归场景」。在那之前不要因为"没测试"就删它。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _shellFocus.requestFocus();
     });

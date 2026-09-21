@@ -24,8 +24,14 @@ void expectShellSurface<T extends Widget>({
 }) {
   final String tag = reason == null ? '$T' : '$T · $reason';
 
-  // 通道 1：在树里吗。V4 的核心——必须显式 skipOffstage: false，
-  // 否则保活会让 findsNothing 恒真、断言永远绿着却什么都不测。
+  // 通道 1：在树里吗。V4 的核心——必须显式 skipOffstage: false。
+  //
+  // 【别删 mounted:false 的那些调用点】T7 复评实测澄清过一次：把本通道改回
+  // 默认 skipOffstage，7 例里红 5 绿 2；仍绿的 2 条都是 mounted:false 型。
+  // 但那**只说明它对"改回默认 skipOffstage"这一种改法恒真**，不等于它没用——
+  // 换一条真实变异（把浮层槽改成常驻保活）就能把 studio 例 SettingsScreen 的
+  // 本通道打红。mounted:false 守的是"浮层/标签被意外保活、后台常驻 pending
+  // frame"这一类回归，是 load-bearing 的。
   expect(
     find.byType(T, skipOffstage: false),
     mounted ? findsOneWidget : findsNothing,

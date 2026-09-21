@@ -70,6 +70,39 @@ CanvasNode _videoResult(String id, {String? canvasId = 'c1'}) => CanvasNode(
       typeConfig: const <String, Object?>{'video_url': 'videos/a.mp4'},
     );
 
+/// 一个 config 节点 + 挂在它名下的一个 video result（R49 的链序夹具）。
+/// position.x 同时喂给两者，好让"退化成 position.x 序"这条路径可观测。
+List<CanvasNode> _chainedShot(String tag, {required double x}) => <CanvasNode>[
+      CanvasNode(
+        id: 'cfg-$tag',
+        label: 'cfg-$tag',
+        type: CanvasNodeType.video,
+        projectId: 'p1',
+        canvasId: 'c1',
+        position: Offset(x, 0),
+      ),
+      CanvasNode(
+        id: 'r-$tag',
+        label: 'take-$tag',
+        type: CanvasNodeType.video,
+        role: NodeRole.result,
+        projectId: 'p1',
+        canvasId: 'c1',
+        sourceNodeId: 'cfg-$tag',
+        position: Offset(x, 0),
+        typeConfig: const <String, Object?>{'video_url': 'videos/a.mp4'},
+      ),
+    ];
+
+CanvasEdge _narrative(String id, {required String from, required String to}) =>
+    CanvasEdge(
+      id: id,
+      canvasId: 'c1',
+      sourceNodeId: from,
+      targetNodeId: to,
+      edgeType: EdgeType.narrative,
+    );
+
 CanvasEdge _edge(String id, EdgeType type) => CanvasEdge(
       id: id,
       canvasId: 'c1',
@@ -198,6 +231,43 @@ void main() {
 
       expect(find.text('kept-node'), findsOneWidget);
       expect(find.text('dropped-node'), findsNothing);
+    });
+
+    // R49：只断"边控制器还活着"是**结构代理**，只打得中"把那行 ref.watch 删掉"
+    // 这一种改法。保留订阅、只把 _open 里的 edges 换成空（`null ?? const []`）
+    // 照样全绿——而后果是对话框照开、导出照跑、无任何报错，用户拿到一条镜头
+    // 顺序乱掉的成片。T10 明确会重写这段 _open（projectId 改走 ShellState），
+    // 正好是这段代码，所以这里必须有一条断**结果顺序**的断言。
+    //
+    // 构造：链序 a→b→c 与 position.x 序（c,b,a）刻意**相反**——边一旦落空，
+    // orderVideoNodesForExport 会退化成 position.x 升序，顺序当场翻转。
+    testWidgets('R49：导出对话框按 narrative 链序列出，而非 position.x 序',
+        (tester) async {
+      await _pumpExport(
+        tester,
+        <CanvasNode>[
+          ..._chainedShot('c', x: 100),
+          ..._chainedShot('b', x: 200),
+          ..._chainedShot('a', x: 300),
+        ],
+        edges: <CanvasEdge>[
+          _narrative('e-ab', from: 'cfg-a', to: 'cfg-b'),
+          _narrative('e-bc', from: 'cfg-b', to: 'cfg-c'),
+        ],
+      );
+
+      expect(_cta(tester, Icons.movie_outlined).onPressed, isNotNull);
+      await tester.tap(find.byIcon(Icons.movie_outlined));
+      await tester.pumpAndSettle();
+
+      final double yA = tester.getTopLeft(find.text('take-a')).dy;
+      final double yB = tester.getTopLeft(find.text('take-b')).dy;
+      final double yC = tester.getTopLeft(find.text('take-c')).dy;
+      expect(
+        <double>[yA, yB, yC],
+        orderedEquals(<double>[yA, yB, yC]..sort()),
+        reason: '链序 a→b→c 必须赢过 position.x 序（c,b,a）——边落空会当场翻转',
+      );
     });
 
     testWidgets('canvasId 为 null → 出去 Studio 引导，不渲染导出 CTA，且不碰仓储',
