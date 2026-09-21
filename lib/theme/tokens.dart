@@ -50,6 +50,7 @@ class InkColors {
     required this.surface2,
     required this.surface3,
     required this.surface4,
+    required this.surface5,
     required this.fg1,
     required this.fg2,
     required this.fg3,
@@ -69,6 +70,7 @@ class InkColors {
     required this.border,
     required this.borderSubtle,
     required this.borderHover,
+    required this.borderStrong,
     required this.focusRing,
     required this.overlay,
     required this.scrim,
@@ -82,6 +84,8 @@ class InkColors {
         surface2: Color(0xFF15110E),
         surface3: Color(0xFF1C1814),
         surface4: Color(0xFF2A2520),
+        // dark()：ramp 0B0908 → 100C0A → 15110E → 1C1814 → 2A2520，surface5 延续暖褐爬升。
+        surface5: Color(0xFF36302A),
         fg1: Color(0xFFE8DFD0),
         fg2: Color(0xFFB5A89A),
         fg3: Color(0xFF8A7E70),
@@ -103,6 +107,7 @@ class InkColors {
         border: Color(0xFF2A2522),
         borderSubtle: Color(0xFF1C1814),
         borderHover: Color(0xFF3C342A),
+        borderStrong: Color(0xFF0D0A08),
         focusRing: Color(0xFFC9A85B),
         overlay: Color(0xCC0B0908),
         scrim: Color(0xB3000000),
@@ -116,6 +121,8 @@ class InkColors {
         surface2: Color(0xFFFFFAF0),
         surface3: Color(0xFFEFE7D5),
         surface4: Color(0xFFE5DBC4),
+        // light()：这条 ramp 本身不单调（越活跃越压暗），surface5 是 E5DBC4 再压一档。
+        surface5: Color(0xFFD9CDB6),
         fg1: Color(0xFF2A2520),
         fg2: Color(0xFF5A5048),
         fg3: Color(0xFF8A7E70),
@@ -138,6 +145,8 @@ class InkColors {
         border: Color(0xFFD5CAB0),
         borderSubtle: Color(0xFFE5DBC4),
         borderHover: Color(0xFFB89A6A),
+        // borderStrong 刻意不取 8A7E70——那是 fg3 的值，会被误读为文字。
+        borderStrong: Color(0xFF9A8B70),
         focusRing: Color(0xFFA88340),
         overlay: Color(0xCCF5EFE3),
         scrim: Color(0x66000000),
@@ -151,6 +160,8 @@ class InkColors {
         surface2: Color(0xFF0A0807),
         surface3: Color(0xFF15110E),
         surface4: Color(0xFF201A14),
+        // highContrast()：激活标签取更亮的暖褐。
+        surface5: Color(0xFF2B241C),
         fg1: Color(0xFFFFFFFF),
         fg2: Color(0xFFF0E8D8),
         fg3: Color(0xFFDDD0B5),
@@ -172,6 +183,9 @@ class InkColors {
         border: Color(0xFFFFFFFF),
         borderSubtle: Color(0xFFA0998A),
         borderHover: Color(0xFFFFFFFF),
+        // border 本来就是纯白，"强"分隔线不可能比纯白更强，
+        // 故 borderStrong 与 border 同值——这是刻意的，不是遗漏。
+        borderStrong: Color(0xFFFFFFFF),
         focusRing: Color(0xFFFFCB52),
         overlay: Color(0xEE000000),
         scrim: Color(0xCC000000),
@@ -195,6 +209,9 @@ class InkColors {
   final Color scrim; // 全屏遮罩
   final Color surfaceCanvas; // 画布最底层（surface-0）
   final Color surface4; // 活跃控件（surface-4）
+  /// 最高抬升面：激活标签 chip 底 / 列表选中行底。
+  /// 只用于"激活 / 选中"的底，不做卡片底（那是 surface2/surface3）。
+  final Color surface5;
   final Color fg4; // 极弱辅助文本（text-quaternary）
   final Color accentHover;
   final Color accentPressed;
@@ -205,6 +222,9 @@ class InkColors {
   final Color info; // 语义信息蓝
   final Color borderSubtle;
   final Color borderHover;
+  /// 结构性强分隔线：chrome ↔ 标签条 ↔ 内容 三段之间的硬边界。
+  /// 只用于外壳级分区；组件内部细线继续用 borderSubtle。
+  final Color borderStrong;
   final Color inputFill; // 输入框半透明底（暗色提亮 / 浅色压暗）
 }
 
