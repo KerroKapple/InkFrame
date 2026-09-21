@@ -1,9 +1,9 @@
-// 项目卡菜单「Gallery」入口：点击后设置 currentGalleryProjectProvider（id+name）。
+// 项目卡菜单「Gallery」入口：点击后调用 nav.openGallery(ProjectRef(id, name))。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
-import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
@@ -43,16 +43,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(container.read(currentGalleryProjectProvider), isNull);
+    expect(container.read(shellControllerProvider).project, isNull);
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Gallery'));
     await tester.pumpAndSettle();
 
-    expect(
-      container.read(currentGalleryProjectProvider),
-      (id: 'p1', name: 'Alpha'),
-    );
+    final s = container.read(shellControllerProvider);
+    expect(s.tab, ShellTab.gallery);
+    expect(s.project, const ProjectRef(id: 'p1', name: 'Alpha'));
   });
 
   testWidgets('项目卡菜单 Built-in samples → 切到内置示例页', (tester) async {
@@ -87,12 +86,12 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    expect(container.read(shellControllerProvider).overlay, isNull);
     await tester.tap(find.byIcon(Icons.more_vert));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Built-in samples'));
     await tester.pumpAndSettle();
 
-    expect(container.read(currentScreenProvider), AppScreen.showcase);
+    expect(container.read(shellControllerProvider).overlay, ShellOverlay.showcase);
   });
 }

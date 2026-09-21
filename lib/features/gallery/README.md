@@ -42,9 +42,9 @@ widgets/    纯 UI（读 provider、走 token/l10n）
 - `gallery_image_lightbox.dart` — 图片放大预览 Dialog（视频版见 canvas 的 `video_lightbox`）
 
 ## 入口
-Studio 项目卡右上菜单「Gallery」→ 写 `currentGalleryProjectProvider` →
-`app.dart` `_UnlockedShell` 切到 `GalleryScreen`；返回按钮清空该状态回 Studio。
-路由优先级：`currentCanvasId` 优先于 gallery——画布打开时画廊被遮蔽（`app.dart`
+Studio 项目卡右上菜单「Gallery」→ 调 `nav.openGallery(ProjectRef(...))`
+（`shellControllerProvider`）→ `app.dart` `_UnlockedShell` 切到 `GalleryScreen`。
+路由优先级：`ShellState.canvasId` 优先于 gallery——画布打开时画廊被遮蔽（`app.dart`
 先判画布再判画廊）。
 
 ## 后续切片

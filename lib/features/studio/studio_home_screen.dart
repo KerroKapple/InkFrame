@@ -5,7 +5,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/di/current_screen.dart';
 import '../../core/di/database_restore.dart';
 import '../../core/di/logger.dart';
 import '../../core/di/project_archive.dart';
@@ -21,7 +20,8 @@ import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
 import '../../services/project_archive_service.dart';
 import '../canvas/providers/canvas_bootstrap_controller.dart';
-import '../gallery/providers/current_gallery_project.dart';
+import '../shell/models/shell_state.dart';
+import '../shell/providers/shell_controller.dart';
 import 'controllers/studio_projects_controller.dart';
 import 'providers/project_export_busy.dart';
 import 'providers/trashed_items_providers.dart';
@@ -53,9 +53,9 @@ class StudioHomeScreen extends ConsumerWidget {
           StudioTopChrome(
             studioName: studioName,
             breadcrumbTail: context.l10n.studioBreadcrumbAll,
-            onOpenSettings: () =>
-                ref.read(currentScreenProvider.notifier).state =
-                    AppScreen.settings,
+            onOpenSettings: () => ref
+                .read(shellControllerProvider.notifier)
+                .openOverlay(ShellOverlay.settings),
           ),
           const StudioProviderBanner(),
           const Expanded(
@@ -126,8 +126,8 @@ class _StudioMainArea extends ConsumerWidget {
                               onCreateSample: () =>
                                   _createSampleProject(context, ref),
                               onOpenShowcase: () => ref
-                                  .read(currentScreenProvider.notifier)
-                                  .state = AppScreen.showcase,
+                                  .read(shellControllerProvider.notifier)
+                                  .openOverlay(ShellOverlay.showcase),
                               onImport: importBusy
                                   ? null
                                   : () => runProjectImportFlow(context, ref),
@@ -572,11 +572,11 @@ class _ProjectGrid extends ConsumerWidget {
                 }
               },
               onOpenGallery: () => ref
-                  .read(currentGalleryProjectProvider.notifier)
-                  .state = (id: p.id, name: p.name),
-              onOpenShowcase: () =>
-                  ref.read(currentScreenProvider.notifier).state =
-                      AppScreen.showcase,
+                  .read(shellControllerProvider.notifier)
+                  .openGallery(ProjectRef(id: p.id, name: p.name)),
+              onOpenShowcase: () => ref
+                  .read(shellControllerProvider.notifier)
+                  .openOverlay(ShellOverlay.showcase),
               onRename: () => _renameProject(context, ref, p),
               onExport: () => _exportProject(context, ref, p),
               onManageCanvases: () => showDialog<void>(

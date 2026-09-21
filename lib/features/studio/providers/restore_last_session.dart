@@ -5,12 +5,11 @@
 // 恢复完成前用户已手动打开画布时不抢占。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/di/current_screen.dart';
 import '../../../core/di/preferences.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
-import '../../canvas/providers/current_canvas_id.dart';
-import '../../gallery/providers/current_gallery_project.dart';
+import '../../shell/models/shell_state.dart';
+import '../../shell/providers/shell_controller.dart';
 
 final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   final prefs = ref.read(preferencesServiceProvider);
@@ -20,12 +19,13 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   if (canvasId == null || projectId == null) return;
 
   final bool valid;
+  Map<String, dynamic>? projectRow;
   try {
     final canvases = await ref.read(canvasRepositoryProvider.future);
     final projects = await ref.read(projectRepositoryProvider.future);
     // findById 均带 deleted_at IS NULL 过滤：软删的画布/项目直接判无效。
     final canvasRow = await canvases.findById(canvasId);
-    final projectRow = await projects.findById(projectId);
+    projectRow = await projects.findById(projectId);
     valid = canvasRow != null &&
         projectRow != null &&
         canvasRow['project_id'] == projectId;
@@ -39,10 +39,11 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   }
   // 债145：守卫从「只查画布」扩为「用户已发生任何导航即放弃恢复」——
   // PG 就绪窗口内用户已进 Settings/Gallery 时,不再把人硬拉回画布。
-  final userNavigated = ref.read(currentCanvasIdProvider) != null ||
-      ref.read(currentGalleryProjectProvider) != null ||
-      ref.read(currentScreenProvider) != AppScreen.studio;
-  if (!userNavigated) {
-    ref.read(currentCanvasIdProvider.notifier).state = canvasId;
-  }
+  // T6 过渡态：语义暂用 isPristine 近似——开关判据在 T11 加
+  // （shellKeepLastCanvas）。
+  if (!ref.read(shellControllerProvider).isPristine) return;
+  ref.read(shellControllerProvider.notifier).openCanvas(
+        canvasId,
+        withProject: ProjectRef(id: projectId, name: projectRow['name'] as String),
+      );
 }, name: 'restoreLastSessionProvider');

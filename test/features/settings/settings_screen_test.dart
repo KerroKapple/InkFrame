@@ -5,13 +5,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 
 import '../../_harness/test_app.dart';
 
 void main() {
-  testWidgets('返回键点击 → currentScreenProvider 回 studio', (tester) async {
+  testWidgets('返回键点击 → 关闭浮层', (tester) async {
     await pumpInkApp(
       tester,
       const Scaffold(body: SettingsBackButton()),
@@ -20,11 +21,13 @@ void main() {
       tester.element(find.byType(SettingsBackButton)),
       listen: false,
     );
-    container.read(currentScreenProvider.notifier).state = AppScreen.settings;
+    container
+        .read(shellControllerProvider.notifier)
+        .openOverlay(ShellOverlay.settings);
 
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pump();
 
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    expect(container.read(shellControllerProvider).overlay, isNull);
   });
 }

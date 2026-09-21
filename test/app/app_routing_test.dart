@@ -1,4 +1,4 @@
-// Shell 路由 widget test：验证 _UnlockedShell 在 currentScreenProvider 切换时
+// Shell 路由 widget test：验证 _UnlockedShell 在 ShellState 切换时
 // 正确渲染 StudioHomeScreen / SettingsScreen。
 import 'dart:async';
 import 'dart:io';
@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/app.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/orphan_reaper.dart';
 import 'package:inkframe/core/di/paths.dart';
@@ -16,8 +15,9 @@ import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
-import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/core/di/custom_providers.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -25,7 +25,6 @@ import 'package:inkframe/core/di/video_export.dart';
 import 'package:inkframe/core/interfaces/custom_provider_store.dart';
 import 'package:inkframe/core/models/custom_provider_config.dart';
 import 'package:inkframe/services/ffmpeg_locator.dart';
-import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/showcase/widgets/built_in_showcase_screen.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -86,8 +85,8 @@ void main() {
           appPathsProvider.overrideWithValue(paths),
           _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          currentScreenProvider.overrideWith((_) => AppScreen.studio),
-          currentCanvasIdProvider.overrideWith((_) => null),
+          shellControllerProvider
+              .overrideWith(() => ShellNavigator(initial: const ShellState())),
           // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
           orphanReapStartupProvider.overrideWith((_) async {}),
           _sealDbReady(),
@@ -116,8 +115,11 @@ void main() {
           appPathsProvider.overrideWithValue(paths),
           _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          currentScreenProvider.overrideWith((_) => AppScreen.settings),
-          currentCanvasIdProvider.overrideWith((_) => null),
+          shellControllerProvider.overrideWith(
+            () => ShellNavigator(
+              initial: const ShellState(overlay: ShellOverlay.settings),
+            ),
+          ),
           // 密封 ON-3 ffmpeg 探测：不真 spawn `ffmpeg -version`。
           ffmpegLocatorProvider.overrideWithValue(_FakeFfmpegLocator()),
           // 密封 GAP-1 自定义服务商编辑区：默认 store 抛 UnimplementedError。
@@ -151,13 +153,17 @@ void main() {
           appPathsProvider.overrideWithValue(paths),
           _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          currentScreenProvider.overrideWith((_) => AppScreen.studio),
-          currentCanvasIdProvider.overrideWith((_) => null),
+          shellControllerProvider.overrideWith(
+            () => ShellNavigator(
+              initial: const ShellState(
+                tab: ShellTab.gallery,
+                project: ProjectRef(id: 'p1', name: 'Alpha'),
+              ),
+            ),
+          ),
           // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io（否则 coverage 收集永挂）。
           orphanReapStartupProvider.overrideWith((_) async {}),
           _sealDbReady(),
-          currentGalleryProjectProvider
-              .overrideWith((_) => (id: 'p1', name: 'Alpha')),
           workspaceProjectsProvider
               .overrideWith((_) async => const <ProjectWithCanvases>[]),
           // 密封：画廊读仓储不真起内嵌 PG。
@@ -178,7 +184,7 @@ void main() {
     expect(find.byType(StudioHomeScreen), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
-  // 评审 P1-2：新增 AppScreen.showcase 此前 shell 路由零覆盖——把 app.dart:168
+  // 评审 P1-2：新增 ShellOverlay.showcase 此前 shell 路由零覆盖——把 app.dart
   // 的分支改成渲染别的页,全量测试照样绿。本例与下一例把它钉死。
   testWidgets('unlocked + showcase → 渲染 BuiltInShowcaseScreen', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -191,8 +197,11 @@ void main() {
           appPathsProvider.overrideWithValue(paths),
           _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
-          currentScreenProvider.overrideWith((_) => AppScreen.showcase),
-          currentCanvasIdProvider.overrideWith((_) => null),
+          shellControllerProvider.overrideWith(
+            () => ShellNavigator(
+              initial: const ShellState(overlay: ShellOverlay.showcase),
+            ),
+          ),
           orphanReapStartupProvider.overrideWith((_) async {}),
           _sealDbReady(),
           workspaceProjectsProvider
@@ -220,8 +229,14 @@ void main() {
           _onboardingDone(),
           anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
           // screen=showcase 但画布已打开 → 画布赢（app.dart 路由优先级）。
-          currentScreenProvider.overrideWith((_) => AppScreen.showcase),
-          currentCanvasIdProvider.overrideWith((_) => 'cv-1'),
+          shellControllerProvider.overrideWith(
+            () => ShellNavigator(
+              initial: const ShellState(
+                overlay: ShellOverlay.showcase,
+                canvasId: 'cv-1',
+              ),
+            ),
+          ),
           orphanReapStartupProvider.overrideWith((_) async {}),
           _sealDbReady(),
           workspaceProjectsProvider

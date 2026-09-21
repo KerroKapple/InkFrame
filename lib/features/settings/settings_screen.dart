@@ -1,16 +1,16 @@
 // SettingsScreen — 设置页。
 //
 // 组合：ApiKeys / Theme / Canvas / Language / Storage / About 六个 section。
-// 路由展示由 inkframe-dev 在 core/di/currentScreenProvider 落地后接管；当前
-// 仍可由其他 slice push 进入。
+// 展示由 ShellState.overlay == ShellOverlay.settings 驱动（shellControllerProvider）；
+// 当前仍可由其他 slice push 进入。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/di/current_screen.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
+import '../shell/providers/shell_controller.dart';
 import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
 import 'widgets/backup_section.dart';
@@ -30,7 +30,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: colors.surface1,
       appBar: AppBar(
-        // shell 路由走 currentScreenProvider（非 Navigator），返回键手动挂。
+        // shell 路由走 ShellState.overlay（非 Navigator），返回键手动挂。
         leading: const SettingsBackButton(),
         title: Text(context.l10n.settingsTitle),
       ),
@@ -69,7 +69,7 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-/// 设置页返回键：shell 路由回 studio（独立小件方便单测，不用整页 pump——
+/// 设置页返回键：关闭浮层，回到原标签（独立小件方便单测，不用整页 pump——
 /// 全屏 pump 受 StoragePathSection ticker 挂起坑影响，见其测试头注）。
 class SettingsBackButton extends ConsumerWidget {
   const SettingsBackButton({super.key});
@@ -80,7 +80,7 @@ class SettingsBackButton extends ConsumerWidget {
       tooltip: MaterialLocalizations.of(context).backButtonTooltip,
       icon: const Icon(Icons.arrow_back),
       onPressed: () =>
-          ref.read(currentScreenProvider.notifier).state = AppScreen.studio,
+          ref.read(shellControllerProvider.notifier).closeOverlay(),
     );
   }
 }

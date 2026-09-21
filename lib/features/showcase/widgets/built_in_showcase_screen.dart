@@ -6,12 +6,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/di/current_screen.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_card.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
+import '../../shell/providers/shell_controller.dart';
 
 class BuiltInShowcaseScreen extends ConsumerWidget {
   const BuiltInShowcaseScreen({super.key});
@@ -32,8 +32,8 @@ class BuiltInShowcaseScreen extends ConsumerWidget {
             leading: IconButton(
               tooltip: l.showcaseBackTooltip,
               icon: Icon(Icons.arrow_back, size: 18, color: colors.fg2),
-              onPressed: () => ref.read(currentScreenProvider.notifier).state =
-                  AppScreen.studio,
+              onPressed: () =>
+                  ref.read(shellControllerProvider.notifier).closeOverlay(),
             ),
             center: Text(
               l.showcaseTitle,

@@ -6,12 +6,13 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/di/current_screen.dart';
 import '../../../core/di/secure_storage.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
 import '../../../theme/tokens.dart';
+import '../../shell/models/shell_state.dart';
+import '../../shell/providers/shell_controller.dart';
 
 class StudioProviderBanner extends ConsumerWidget {
   const StudioProviderBanner({super.key});
@@ -52,8 +53,9 @@ class StudioProviderBanner extends ConsumerWidget {
             const SizedBox(width: InkSpacing.md),
             InkGhostButton(
               label: l.studioNoKeyBannerAction,
-              onPressed: () => ref.read(currentScreenProvider.notifier).state =
-                  AppScreen.settings,
+              onPressed: () => ref
+                  .read(shellControllerProvider.notifier)
+                  .openOverlay(ShellOverlay.settings),
             ),
           ],
         ),

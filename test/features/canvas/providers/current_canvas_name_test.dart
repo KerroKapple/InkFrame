@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
-import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_name.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 
 import '../../../_harness/fake_repositories.dart';
 
@@ -14,7 +14,7 @@ void main() {
       canvasRepositoryProvider.overrideWith((ref) async => canvasRepo),
     ]);
     addTearDown(container.dispose);
-    container.read(currentCanvasIdProvider.notifier).state = id;
+    container.read(shellControllerProvider.notifier).openCanvas(id);
 
     final name = await container.read(currentCanvasNameProvider.future);
     expect(name, '分镜画布 A');

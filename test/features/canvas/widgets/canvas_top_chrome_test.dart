@@ -1,4 +1,5 @@
-// CanvasTopChrome：Studio 回归按钮 + breadcrumb 渲染 + 点击清空 currentCanvasIdProvider。
+// CanvasTopChrome：Studio 回归按钮 + breadcrumb 渲染 + 点击回到 studio 标签
+// （T6：goTab(studio) 不再清 canvasId——保活语义交给 T7 的标签宿主）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,6 +7,8 @@ import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_top_chrome.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
@@ -44,14 +47,16 @@ void main() {
     expect(find.text('M'), findsNothing);
   });
 
-  testWidgets('点击 Studio 按钮清空 currentCanvasIdProvider', (tester) async {
+  testWidgets('点击 Studio 按钮 → tab 切到 studio，canvasId 保持不变', (tester) async {
     final container = ProviderContainer(
       overrides: <Override>[
         canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
+        shellControllerProvider.overrideWith(
+          () => ShellNavigator(initial: const ShellState(canvasId: 'c1')),
+        ),
       ],
     );
     addTearDown(container.dispose);
-    container.read(currentCanvasIdProvider.notifier).state = 'c1';
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -76,6 +81,7 @@ void main() {
     // the kDoubleTapTimeout (300ms). Pump past it so the tap resolves.
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(container.read(currentCanvasIdProvider), isNull);
+    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
+    expect(container.read(currentCanvasIdProvider), 'c1');
   });
 }

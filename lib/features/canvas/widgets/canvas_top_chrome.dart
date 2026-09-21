@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/di/preferences.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -14,6 +13,8 @@ import '../../../theme/tokens.dart';
 import '../../command_palette/widgets/command_palette_chip.dart';
 import '../../export/util/export_order.dart';
 import '../../export/widgets/export_video_dialog.dart';
+import '../../shell/models/shell_state.dart';
+import '../../shell/providers/shell_controller.dart';
 import '../../storyboard/util/sequence_builder.dart';
 import '../../storyboard/widgets/sequence_preview_dialog.dart';
 import '../models/canvas_edge.dart';
@@ -37,11 +38,7 @@ class CanvasTopChrome extends ConsumerWidget implements PreferredSizeWidget {
     return InkWindowChrome(
       leading: _LeadingRow(
         onBack: () {
-          ref.read(currentCanvasIdProvider.notifier).state = null;
-          // 主动回首页 = 下次启动停留 Studio（fire-and-forget 清会话记录）。
-          ref.read(preferencesServiceProvider).update(
-                (p) => p.copyWith(clearLastCanvas: true),
-              );
+          ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
         },
       ),
       center: _Breadcrumb(canvasName: canvasName),

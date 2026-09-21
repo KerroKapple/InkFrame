@@ -3,7 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/controllers/studio_state.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -44,7 +45,7 @@ void main() {
     expect(find.byIcon(Icons.add), findsNothing);
   });
 
-  testWidgets('footer settings icon 点击导航到设置页（currentScreenProvider）',
+  testWidgets('footer settings icon 点击打开设置浮层（shellControllerProvider）',
       (tester) async {
     final container = ProviderContainer(overrides: <Override>[
       workspaceProjectsProvider.overrideWith((_) async => const []),
@@ -64,10 +65,10 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    expect(container.read(shellControllerProvider).overlay, isNull);
     await tester.tap(find.byIcon(Icons.settings_outlined));
     await tester.pump();
-    expect(container.read(currentScreenProvider), AppScreen.settings);
+    expect(container.read(shellControllerProvider).overlay, ShellOverlay.settings);
   });
 
   testWidgets('LibrarySidebar 显示 project 行 + 点击切换 selectedProjectIdProvider',

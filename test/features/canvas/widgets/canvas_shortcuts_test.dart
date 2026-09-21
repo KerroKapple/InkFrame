@@ -16,9 +16,10 @@ import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
-import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/providers/selected_edge_controller.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
@@ -112,7 +113,11 @@ CanvasNode _textNode(String id, String label, double x) => CanvasNode(
 );
 
 List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
-  currentCanvasIdProvider.overrideWith((ref) => 'c1'),
+  // currentCanvasIdProvider 现是 shellControllerProvider 的派生投影，
+  // 本文件要在测试内切换 canvasId（D3/D3+ 用例），因此播种真相源而非
+  // override 投影本身——否则 nav.openCanvas('c2') 不会反映到派生值上。
+  shellControllerProvider
+      .overrideWith(() => ShellNavigator(initial: const ShellState(canvasId: 'c1'))),
   canvasNodesControllerProvider.overrideWith(() => _FakeNodesController(nodes)),
   canvasEdgesControllerProvider.overrideWith(() => _FakeEdgesController()),
   canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
@@ -360,7 +365,7 @@ void main() {
     expect(_ivTransform(tester), isNot(initialCanvasTransform()));
 
     // 切到 c2（同一 CanvasScreen 常驻，仅换 canvasId；c2 已 AsyncData，无 loading 空档）。
-    container.read(currentCanvasIdProvider.notifier).state = 'c2';
+    container.read(shellControllerProvider.notifier).openCanvas('c2');
     await tester.pumpAndSettle();
 
     expect(
@@ -402,7 +407,7 @@ void main() {
     await tester.pump();
 
     // 切到 c2（同一 CanvasScreen 常驻，仅换 canvasId；c2 已 AsyncData，无 loading 空档）。
-    container.read(currentCanvasIdProvider.notifier).state = 'c2';
+    container.read(shellControllerProvider.notifier).openCanvas('c2');
     await tester.pumpAndSettle();
 
     expect(

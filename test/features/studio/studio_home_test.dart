@@ -3,13 +3,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
@@ -263,13 +264,13 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    expect(container.read(shellControllerProvider).overlay, isNull);
     final settingsButton =
         find.byKey(StudioTopChrome.settingsButtonKey);
     expect(settingsButton, findsOneWidget);
     await tester.tap(settingsButton, warnIfMissed: false);
     await tester.pumpAndSettle();
-    expect(container.read(currentScreenProvider), AppScreen.settings);
+    expect(container.read(shellControllerProvider).overlay, ShellOverlay.settings);
   });
 
   testWidgets('StudioHome empty CTA 点击：打开 New Project Dialog 并校验空名',

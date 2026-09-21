@@ -7,9 +7,9 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/project_repository.dart';
 import 'package:inkframe/core/models/app_preferences.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
-import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/providers/restore_last_session.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 
@@ -73,7 +73,7 @@ void main() {
   test('画布/项目均有效 → 置 currentCanvasId', () async {
     final (:c, :prefs) = build(
       canvasRow: <String, Object?>{'id': 'cv1', 'project_id': 'p1'},
-      projectRow: <String, Object?>{'id': 'p1'},
+      projectRow: <String, Object?>{'id': 'p1', 'name': 'Project One'},
     );
     await c.read(restoreLastSessionProvider.future);
     expect(c.read(currentCanvasIdProvider), 'cv1');
@@ -122,7 +122,7 @@ void main() {
       canvasRow: <String, Object?>{'id': 'cv1', 'project_id': 'p1'},
       projectRow: <String, Object?>{'id': 'p1'},
     );
-    c.read(currentCanvasIdProvider.notifier).state = 'cv-manual';
+    c.read(shellControllerProvider.notifier).openCanvas('cv-manual');
     await c.read(restoreLastSessionProvider.future);
     expect(c.read(currentCanvasIdProvider), 'cv-manual');
   });
@@ -132,12 +132,12 @@ void main() {
       canvasRow: <String, Object?>{'id': 'cv1', 'project_id': 'p1'},
       projectRow: <String, Object?>{'id': 'p1'},
     );
-    c.read(currentScreenProvider.notifier).state = AppScreen.settings;
+    c.read(shellControllerProvider.notifier).openOverlay(ShellOverlay.settings);
 
     await c.read(restoreLastSessionProvider.future);
 
     expect(c.read(currentCanvasIdProvider), isNull);
-    expect(c.read(currentScreenProvider), AppScreen.settings,
+    expect(c.read(shellControllerProvider).overlay, ShellOverlay.settings,
         reason: '用户所在页不被打断');
   });
 
@@ -146,8 +146,8 @@ void main() {
       canvasRow: <String, Object?>{'id': 'cv1', 'project_id': 'p1'},
       projectRow: <String, Object?>{'id': 'p1'},
     );
-    c.read(currentGalleryProjectProvider.notifier).state =
-        (id: 'p9', name: 'Nine');
+    c.read(shellControllerProvider.notifier)
+        .openGallery(const ProjectRef(id: 'p9', name: 'Nine'));
 
     await c.read(restoreLastSessionProvider.future);
 

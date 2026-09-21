@@ -4,8 +4,8 @@
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
 // - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
-// - 锁屏后路由：currentCanvasId 优先；其次 currentGalleryProject（项目产物画廊）；
-//   否则按 currentScreenProvider 在 Studio / Settings / Showcase 切换
+// - 锁屏后路由：ShellState.canvasId 优先；其次 tab==gallery && project（项目产物画廊）；
+//   否则按 ShellState.overlay 在 Studio / Settings / Showcase 切换
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
 //   时以 StartupErrorView 替代白屏；loading/data 均照常进 _UnlockedShell
 // - 首帧闸门（ON-1，挂 DB-ready 之后）：onboardingCompleted=false → 弹首启向导并
@@ -17,7 +17,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/di/current_screen.dart';
 import 'core/di/database.dart';
 import 'core/di/database_backup.dart';
 import 'core/di/locale.dart';
@@ -25,13 +24,13 @@ import 'core/di/orphan_reaper.dart';
 import 'core/di/preferences.dart';
 import 'core/di/theme.dart';
 import 'core/di/video_backfill.dart';
-import 'features/canvas/providers/current_canvas_id.dart';
 import 'features/canvas/widgets/canvas_screen.dart';
 import 'features/command_palette/widgets/command_palette_shortcuts.dart';
-import 'features/gallery/providers/current_gallery_project.dart';
 import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
 import 'features/settings/settings_screen.dart';
+import 'features/shell/models/shell_state.dart';
+import 'features/shell/providers/shell_controller.dart';
 import 'features/showcase/widgets/built_in_showcase_screen.dart';
 import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
@@ -152,23 +151,24 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
 
   @override
   Widget build(BuildContext context) {
-    final canvasId = ref.watch(currentCanvasIdProvider);
-    final gallery = ref.watch(currentGalleryProjectProvider);
+    // T6 过渡态：状态层已换成 ShellState，但渲染仍是单 body 的 if 链，
+    // 且【判序保持 canvasId-first】——与今天逐帧等价，
+    // 于是 app_routing_test 的 5 条断言一字不改即可通过。
+    // 外壳骨架（两级 IndexedStack + 标签条）在 T7 接上。
+    final s = ref.watch(shellControllerProvider);
     final Widget body;
-    if (canvasId != null) {
-      // T7 会换成真值 state.isTabVisible(ShellTab.canvas)；本任务只做
-      // CanvasShortcuts 的焦点让渡机制，先临时传 true 保持现有行为不变。
+    if (s.canvasId != null) {
       body = const CanvasScreen(isVisible: true);
-    } else if (gallery != null) {
+    } else if (s.tab == ShellTab.gallery && s.project != null) {
       body = Scaffold(
-        body: GalleryScreen(projectId: gallery.id, projectName: gallery.name),
+        body: GalleryScreen(projectId: s.project!.id, projectName: s.project!.name),
       );
+    } else if (s.overlay == ShellOverlay.settings) {
+      body = const SettingsScreen();
+    } else if (s.overlay == ShellOverlay.showcase) {
+      body = const Scaffold(body: BuiltInShowcaseScreen());
     } else {
-      body = switch (ref.watch(currentScreenProvider)) {
-        AppScreen.studio => const Scaffold(body: StudioHomeScreen()),
-        AppScreen.settings => const SettingsScreen(),
-        AppScreen.showcase => const Scaffold(body: BuiltInShowcaseScreen()),
-      };
+      body = const Scaffold(body: StudioHomeScreen());
     }
     return CommandPaletteShortcuts(child: body);
   }

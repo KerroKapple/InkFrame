@@ -1,8 +1,8 @@
 // GalleryScreen：项目维度产物画廊（M3 素材库首切片，只读浏览）。
 //
-// 布局：InkWindowChrome（返回 + 面包屑）+ 产物网格；
+// 布局：InkWindowChrome（面包屑）+ 产物网格；
 // 状态：galleryControllerProvider(projectId) 的 loading / error / empty / data 四态。
-// 入口：Studio 项目卡菜单「Gallery」（currentGalleryProjectProvider，app.dart 顶层切换）。
+// 入口：Studio 项目卡菜单「Gallery」（nav.openGallery，见 shellControllerProvider）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -15,7 +15,6 @@ import '../../../theme/primitives/ink_accent_chip.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
 import '../../../theme/tokens.dart';
 import '../models/gallery_item.dart';
-import '../providers/current_gallery_project.dart';
 import '../providers/gallery_controller.dart';
 import '../providers/gallery_filter.dart';
 import 'gallery_tile.dart';
@@ -100,12 +99,6 @@ class _GalleryTopChrome extends ConsumerWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return InkWindowChrome(
-      leading: IconButton(
-        tooltip: context.l10n.galleryBackTooltip,
-        icon: Icon(Icons.arrow_back, size: 18, color: colors.fg2),
-        onPressed: () =>
-            ref.read(currentGalleryProjectProvider.notifier).state = null,
-      ),
       center: Text(
         context.l10n.galleryBreadcrumb(projectName),
         style: typo.headlineXs.copyWith(color: colors.fg1),

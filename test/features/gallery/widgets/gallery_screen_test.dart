@@ -9,11 +9,8 @@ import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
-import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_tile.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
-import 'package:inkframe/theme/app_theme.dart';
 
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_repositories.dart';
@@ -152,33 +149,6 @@ void main() {
     );
     // 两个 tile 的 caption 都带画布名
     expect(find.text('Alpha'), findsNWidgets(2));
-  });
-
-  testWidgets('返回按钮：清空 currentGalleryProjectProvider', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1280, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer(overrides: overrides());
-    addTearDown(container.dispose);
-    container.read(currentGalleryProjectProvider.notifier).state =
-        (id: 'p1', name: 'Alpha');
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    // DragToMoveArea 带 onDoubleTap 竞争手势：单击需过 300ms 仲裁超时才落地
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(container.read(currentGalleryProjectProvider), isNull);
   });
 
   testWidgets('P1-1 回归：55 字画布名 + 最小窗口宽 → 筛选条不溢出', (tester) async {

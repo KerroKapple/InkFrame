@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/widgets/studio_provider_banner.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 
@@ -46,9 +47,9 @@ void main() {
     addTearDown(container.dispose);
     await tester.pumpWidget(_host(container));
     await tester.pump();
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    expect(container.read(shellControllerProvider).overlay, isNull);
     await tester.tap(find.text('Configure in Settings'));
     await tester.pump();
-    expect(container.read(currentScreenProvider), AppScreen.settings);
+    expect(container.read(shellControllerProvider).overlay, ShellOverlay.settings);
   });
 }

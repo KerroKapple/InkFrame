@@ -2,7 +2,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/showcase/widgets/built_in_showcase_screen.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
@@ -99,12 +100,17 @@ void main() {
     }
   });
 
-  testWidgets('返回按钮切回 Studio', (tester) async {
+  testWidgets('返回按钮关闭浮层', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer();
+    final container = ProviderContainer(overrides: <Override>[
+      shellControllerProvider.overrideWith(
+        () => ShellNavigator(
+          initial: const ShellState(overlay: ShellOverlay.showcase),
+        ),
+      ),
+    ]);
     addTearDown(container.dispose);
-    container.read(currentScreenProvider.notifier).state = AppScreen.showcase;
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -122,7 +128,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.arrow_back));
     await tester.pump(const Duration(milliseconds: 400));
 
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    expect(container.read(shellControllerProvider).overlay, isNull);
   });
 }
 

@@ -9,8 +9,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/di/current_screen.dart';
-import '../../core/di/preferences.dart';
 import '../../core/errors/ink_error.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
@@ -19,11 +17,11 @@ import '../canvas/models/canvas_node.dart';
 import '../canvas/providers/canvas_edges_controller.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
 import '../canvas/providers/canvas_transform_controller.dart';
-import '../canvas/providers/current_canvas_id.dart';
 import '../canvas/util/node_position.dart';
 import '../export/util/export_order.dart';
 import '../export/widgets/export_video_dialog.dart';
-import '../gallery/providers/current_gallery_project.dart';
+import '../shell/models/shell_state.dart';
+import '../shell/providers/shell_controller.dart';
 import '../studio/project_import_flow.dart';
 
 /// 单个可执行命令：图标 + 已本地化 label + 执行闭包。
@@ -52,7 +50,8 @@ class CommandAction {
 ///   导入必须能从这里够到——2026-08-31 审计 P0-3）
 List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   final l = context.l10n;
-  final canvasId = ref.read(currentCanvasIdProvider);
+  final s = ref.read(shellControllerProvider);
+  final canvasId = s.canvasId;
   if (canvasId != null) {
     // 画布打开期间 CanvasScreen 常驻 watch 该 provider，read 即为已加载态。
     final videoNodes = exportableVideoNodes(
@@ -91,16 +90,16 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
       _openSettings(l),
     ];
   }
-  if (ref.read(currentGalleryProjectProvider) != null) {
+  if (s.tab == ShellTab.gallery && s.project != null) {
     return <CommandAction>[_backToStudio(l), _openSettings(l)];
   }
-  return switch (ref.read(currentScreenProvider)) {
-    AppScreen.settings => <CommandAction>[_backToStudio(l)],
-    AppScreen.showcase => <CommandAction>[_backToStudio(l), _openSettings(l)],
+  return switch (s.overlay) {
+    ShellOverlay.settings => <CommandAction>[_backToStudio(l)],
+    ShellOverlay.showcase => <CommandAction>[_backToStudio(l), _openSettings(l)],
     // studio：内置示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
     // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。2026-08-31 审计 P0：
     // 导入项目此前在这里完全够不到，见 studio/project_import_flow.dart。
-    AppScreen.studio => <CommandAction>[
+    null => <CommandAction>[
         _importProject(l),
         _openShowcase(l),
         _openSettings(l),
@@ -158,15 +157,7 @@ CommandAction _backToStudio(AppLocalizations l) => CommandAction(
       icon: Icons.arrow_back,
       label: l.commandBackToStudio,
       run: (context, ref) async {
-        ref.read(currentCanvasIdProvider.notifier).state = null;
-        ref.read(currentGalleryProjectProvider.notifier).state = null;
-        ref.read(currentScreenProvider.notifier).state = AppScreen.studio;
-        // 主动回首页 = 下次启动停留 Studio（与顶栏返回钮同语义，fire-and-forget）。
-        unawaited(
-          ref.read(preferencesServiceProvider).update(
-                (p) => p.copyWith(clearLastCanvas: true),
-              ),
-        );
+        ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
       },
     );
 
@@ -175,7 +166,9 @@ CommandAction _openShowcase(AppLocalizations l) => CommandAction(
       icon: Icons.photo_library_outlined,
       label: l.showcaseEntryLabel,
       run: (context, ref) async {
-        ref.read(currentScreenProvider.notifier).state = AppScreen.showcase;
+        ref
+            .read(shellControllerProvider.notifier)
+            .openOverlay(ShellOverlay.showcase);
       },
     );
 
@@ -191,8 +184,8 @@ CommandAction _openSettings(AppLocalizations l) => CommandAction(
       icon: Icons.settings_outlined,
       label: l.studioOpenSettings,
       run: (context, ref) async {
-        ref.read(currentCanvasIdProvider.notifier).state = null;
-        ref.read(currentGalleryProjectProvider.notifier).state = null;
-        ref.read(currentScreenProvider.notifier).state = AppScreen.settings;
+        ref
+            .read(shellControllerProvider.notifier)
+            .openOverlay(ShellOverlay.settings);
       },
     );

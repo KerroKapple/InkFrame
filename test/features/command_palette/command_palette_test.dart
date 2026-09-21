@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/project_archive.dart';
 import 'package:inkframe/core/interfaces/project_import_service.dart';
@@ -14,6 +13,8 @@ import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
 import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
@@ -148,7 +149,7 @@ void main() {
     await tester.tap(find.text('Open settings'));
     await tester.pumpAndSettle();
     expect(find.byType(CommandPaletteDialog), findsNothing);
-    expect(container.read(currentScreenProvider), AppScreen.settings);
+    expect(container.read(shellControllerProvider).overlay, ShellOverlay.settings);
   });
 
   testWidgets('studio 上下文能直接执行 Import project（回归 2026-08-31 审计 P0）',
@@ -173,7 +174,9 @@ void main() {
 
   testWidgets('showcase 上下文可返回 Studio 或打开设置', (tester) async {
     final container = await _pumpShell(tester);
-    container.read(currentScreenProvider.notifier).state = AppScreen.showcase;
+    container
+        .read(shellControllerProvider.notifier)
+        .openOverlay(ShellOverlay.showcase);
     await _pressCtrlK(tester);
 
     expect(find.text('Back to Studio'), findsOneWidget);
@@ -181,7 +184,7 @@ void main() {
 
     await tester.tap(find.text('Back to Studio'));
     await tester.pumpAndSettle();
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
   });
 
   testWidgets('canvas 上下文动作集：三种新建节点 + 返回/设置；无可导出节点时不出 Export video',
@@ -189,7 +192,7 @@ void main() {
     final container = await _pumpShell(tester, overrides: <Override>[
       canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
     ]);
-    container.read(currentCanvasIdProvider.notifier).state = 'c1';
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
     await _warmNodes(container, 'c1');
     await _pressCtrlK(tester);
 
@@ -206,7 +209,7 @@ void main() {
       canvasNodesControllerProvider
           .overrideWith(_ExportableNodesController.new),
     ]);
-    container.read(currentCanvasIdProvider.notifier).state = 'c1';
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
     await _warmNodes(container, 'c1');
     await _pressCtrlK(tester);
 
@@ -219,7 +222,7 @@ void main() {
       canvasNodesControllerProvider
           .overrideWith(_RecordingNodesController.new),
     ]);
-    container.read(currentCanvasIdProvider.notifier).state = 'c1';
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
     await _warmNodes(container, 'c1');
     await _pressCtrlK(tester);
 
@@ -238,7 +241,7 @@ void main() {
     final container = await _pumpShell(tester, overrides: <Override>[
       canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
     ]);
-    container.read(currentCanvasIdProvider.notifier).state = 'c1';
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
     await _warmNodes(container, 'c1');
     await _pressCtrlK(tester);
 
@@ -252,19 +255,21 @@ void main() {
     expect(find.text('No matching commands'), findsOneWidget);
   });
 
-  testWidgets('Back to Studio 动作清空 currentCanvasIdProvider 并回 studio',
+  testWidgets('Back to Studio 动作切回 studio 标签，canvasId 保持不变',
       (tester) async {
     final container = await _pumpShell(tester, overrides: <Override>[
       canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
     ]);
-    container.read(currentCanvasIdProvider.notifier).state = 'c1';
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
     await _warmNodes(container, 'c1');
     await _pressCtrlK(tester);
 
     await tester.tap(find.text('Back to Studio'));
     await tester.pumpAndSettle();
 
-    expect(container.read(currentCanvasIdProvider), isNull);
-    expect(container.read(currentScreenProvider), AppScreen.studio);
+    // T6：goTab(studio) 不清 canvasId——保活宿主在 T7 落地后，画布标签
+    // 应继续持有 'c1'，只是不再是当前可见标签。
+    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
+    expect(container.read(currentCanvasIdProvider), 'c1');
   });
 }
