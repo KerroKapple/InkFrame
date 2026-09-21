@@ -13,6 +13,8 @@
 // 【顺序】由 ShellTab.values 决定——声明序 == 标签条渲染序 == 保活宿主 children
 // 序，三者由 shell_tab_order_test.dart 钉死。
 //
+// 【keyOf 保持 public】测试靠它定位 chip；_labelOf / _iconOf 只有本文件用，收成私有。
+//
 // 【Key 是跨层契约】ValueKey('shellTab-<name>') 在这里构造、由 theme 层原样落到
 // chip 上。改这个取值会让 tapShellTab() 与整个 shell_tab_bar_test.dart 全体
 // churn，不要"顺手规范化"。
@@ -28,7 +30,7 @@ import '../providers/shell_controller.dart';
 class ShellTabBar extends ConsumerWidget {
   const ShellTabBar({super.key});
 
-  static String labelOf(AppLocalizations l, ShellTab tab) => switch (tab) {
+  static String _labelOf(AppLocalizations l, ShellTab tab) => switch (tab) {
         ShellTab.studio => l.shellTabStudio,
         ShellTab.canvas => l.shellTabCanvas,
         ShellTab.sequence => l.shellTabSequence,
@@ -36,7 +38,7 @@ class ShellTabBar extends ConsumerWidget {
         ShellTab.export => l.shellTabExport,
       };
 
-  static IconData iconOf(ShellTab tab) => switch (tab) {
+  static IconData _iconOf(ShellTab tab) => switch (tab) {
         ShellTab.studio => Icons.home_outlined,
         ShellTab.canvas => Icons.account_tree_outlined,
         ShellTab.sequence => Icons.view_timeline_outlined,
@@ -57,8 +59,8 @@ class ShellTabBar extends ConsumerWidget {
         for (final ShellTab t in ShellTab.values)
           InkShellTabBarItem(
             key: keyOf(t),
-            label: labelOf(l, t),
-            icon: iconOf(t),
+            label: _labelOf(l, t),
+            icon: _iconOf(t),
             selected: t == active,
             onTap: () => nav.goTab(t),
           ),

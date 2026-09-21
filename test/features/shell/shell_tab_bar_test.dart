@@ -61,7 +61,7 @@ void main() {
       findsOneWidget,
     );
     expect(tester.getSize(find.byType(InkShellTabBar)).height, 44);
-    // 真实 l10n 文案接上了（labelOf 的接线，不只是画了个壳）。
+    // 真实 l10n 文案接上了（_labelOf 的接线，不只是画了个壳）。
     expect(find.text('Sequence'), findsOneWidget);
   });
 

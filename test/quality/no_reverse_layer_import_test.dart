@@ -10,8 +10,20 @@
 // `InkShellTabBarItem` 纯数据。没有这条闸，下一个人会照着原样再写一遍。
 //
 // 已知局限（与 no_direct_instantiation_test.dart 同款、同样接受）：逐行正则，
-// 拆行写的 import 或 `as` 别名绕得过去。目标是拦住随手写出来的自然写法，
-// 不是做静态分析器。
+// 目标是拦住随手写出来的自然写法，不是做静态分析器。**下面这份清单是拿探针
+// 逐条实测出来的，不是估的**——本仓库把注释当变异证明的档案在用，留一句被证伪
+// 的断言比没注释更糟。
+//
+// 抓得到：
+// - `import 'package:inkframe/features/…' as sst;`（正则无 `$` 锚点，别名落在
+//   闭合引号之后，抓得到；早先头注写的"as 别名绕得过去"是错的，已更正）
+// - `import "package:inkframe/features/…";`（双引号、带前导空格）
+//
+// 漏得掉：
+// - `import` 与路径**拆成两行**写
+// - `export '../../features/…';` —— 刻意不管。在 theme 层 export 一个 feature
+//   模型是深思熟虑的动作、不是手滑，真出现了应该在评审里谈；但这个口子存在，
+//   写在纸面上，别让下一个人以为它被焊死了。
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';

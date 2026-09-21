@@ -6,6 +6,12 @@
 //
 // 槽位：leading = Ink/Frame 小 logo，center = ShellBreadcrumb，
 // trailing = ⌘K chip + ⚙（设置浮层入口，复用 studioOpenSettings 文案）。
+//
+// 【别把标签条放进这三个槽位】整条 InkWindowChrome 包在 DragToMoveArea 里，其
+// onDoubleTap 让其中任何单击等满 kDoubleTapTimeout(300ms)——标签是全应用最高频
+// 交互，300ms 延迟是真 UX 回归，还会给每个外壳测试加固定 400ms 税。
+// 标签条是 InkShell 里 chrome 的兄弟（ink_shell.dart），完整理由与判据见
+// shell_tab_bar.dart 头注。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
