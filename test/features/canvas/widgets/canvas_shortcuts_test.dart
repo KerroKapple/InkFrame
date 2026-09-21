@@ -26,8 +26,6 @@ import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
-import 'package:inkframe/theme/app_theme.dart';
 
 import '../../../_harness/test_app.dart';
 
@@ -144,49 +142,50 @@ Future<ProviderContainer> _pump(
   return ProviderScope.containerOf(tester.element(find.byType(CanvasView)));
 }
 
-/// 由 _pumpToggleable 装填：在测试里翻转 isActive。
-late void Function(bool) _setActiveFn;
+/// _pumpToggleable 的返回句柄：container 供断言/驱动 provider，setActive 供翻转 isActive。
+/// 不用跨用例共享的 late 全局——避免忘记先 pump 就调用 setter 时抛出难读的
+/// LateInitializationError，也避免第二个 toggle 用例互相串味。
+typedef _ToggleableHandle =
+    ({ProviderContainer container, void Function(bool) setActive});
 
-Future<void> _setActive(WidgetTester tester, bool v) async {
-  _setActiveFn(v);
+/// 用 [handle.setActive] 翻转 isActive 并 pump 一帧（不 settle——调用方按需自己 pumpAndSettle）。
+Future<void> _setActive(
+  WidgetTester tester,
+  void Function(bool) setActive,
+  bool v,
+) async {
+  setActive(v);
   await tester.pump();
 }
 
-/// 与 _pump 同构，唯一区别：CanvasShortcuts 包进 StatefulBuilder，isActive 可翻转。
-/// 初始 false。
-Future<ProviderContainer> _pumpToggleable(
+/// 与 _pump 同构（同样走 pumpInkApp + ProviderScope.containerOf，不手写 MaterialApp），
+/// 唯一区别：CanvasShortcuts 包进 StatefulBuilder，isActive 可在测试中翻转。
+Future<_ToggleableHandle> _pumpToggleable(
   WidgetTester tester, {
   required List<CanvasNode> nodes,
+  bool initialActive = false,
 }) async {
-  final container = ProviderContainer(overrides: _canvasOverrides(nodes));
-  addTearDown(container.dispose);
-  bool active = false;
-  await tester.pumpWidget(
-    UncontrolledProviderScope(
-      container: container,
-      child: MaterialApp(
-        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1.0),
-        locale: const Locale('en'),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: CommandPaletteShortcuts(
-            child: StatefulBuilder(
-              builder: (BuildContext ctx, StateSetter setState) {
-                _setActiveFn = (bool v) => setState(() => active = v);
-                return CanvasShortcuts(
-                  isActive: active,
-                  child: const CanvasView(),
-                );
-              },
-            ),
-          ),
+  bool active = initialActive;
+  late void Function(bool) setActiveFn;
+  await pumpInkApp(
+    tester,
+    Scaffold(
+      body: CommandPaletteShortcuts(
+        child: StatefulBuilder(
+          builder: (BuildContext ctx, StateSetter setState) {
+            setActiveFn = (bool v) => setState(() => active = v);
+            return CanvasShortcuts(isActive: active, child: const CanvasView());
+          },
         ),
       ),
     ),
+    overrides: _canvasOverrides(nodes),
   );
   await tester.pumpAndSettle();
-  return container;
+  final container = ProviderScope.containerOf(
+    tester.element(find.byType(CanvasView)),
+  );
+  return (container: container, setActive: setActiveFn);
 }
 
 /// 通过 InteractiveViewer widget 读当前变换——与 transform provider 是否 family 无关。
@@ -472,11 +471,11 @@ void main() {
 
   // ===== 保活安全：重新可见时必须自己拿回焦点（V2 后半）=====
   testWidgets('isActive false→true → 不点任何东西，Delete 直接恢复生效', (tester) async {
-    final container = await _pumpToggleable(tester, nodes: twoNodes);
-    container.read(canvasSelectionControllerProvider.notifier).select('a');
+    final handle = await _pumpToggleable(tester, nodes: twoNodes);
+    handle.container.read(canvasSelectionControllerProvider.notifier).select('a');
     await tester.pumpAndSettle();
 
-    await _setActive(tester, true); // 由 StatefulBuilder 翻转
+    await _setActive(tester, handle.setActive, true); // 由 StatefulBuilder 翻转
     await tester.pumpAndSettle(); // 等 post-frame 复焦跑完
 
     await _sendKey(tester, LogicalKeyboardKey.delete);
@@ -486,6 +485,78 @@ void main() {
       find.byType(NodeCard),
       findsNWidgets(1),
       reason: 'ExcludeFocus 文档明说重新可见不会自动复焦，必须由 didUpdateWidget 的 post-frame 补上',
+    );
+  });
+
+  // ===== 保活安全：正在用的画布切走不可见后，必须立刻交出焦点（V2 补漏，Important #1）=====
+  testWidgets('isActive true→false → Delete 不再删节点', (tester) async {
+    final handle = await _pumpToggleable(
+      tester,
+      nodes: twoNodes,
+      initialActive: true,
+    );
+    handle.container.read(canvasSelectionControllerProvider.notifier).select('a');
+    await tester.pumpAndSettle();
+
+    // 先证明画布此刻确实持焦：Delete 应该能删掉节点，否则这条用例什么都没测。
+    await _sendKey(tester, LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+    expect(
+      find.byType(NodeCard),
+      findsNWidgets(1),
+      reason: '先证明 isActive:true 时画布确实持焦，Delete 有效',
+    );
+
+    // 用户正在用画布 → 切到别的标签（isActive 变 false）→ 画布必须交出焦点。
+    handle.container.read(canvasSelectionControllerProvider.notifier).select('b');
+    await tester.pumpAndSettle();
+    await _setActive(tester, handle.setActive, false);
+    await tester.pumpAndSettle();
+
+    await _sendKey(tester, LogicalKeyboardKey.delete);
+    await tester.pumpAndSettle();
+    expect(
+      find.byType(NodeCard),
+      findsNWidgets(1),
+      reason: '切到不可见标签后，画布必须让出焦点，Delete 不得再生效',
+    );
+  });
+
+  // ===== 保活安全：不可见时子树内的输入框也不得被聚焦（V2 补漏，Important #1）=====
+  // descendantsAreFocusable:false 唯一能被打靶的用例——Inspector 的 TextField 就在
+  // CanvasShortcuts 子树内（canvas_screen.dart 把整个 Row 包在 CanvasShortcuts 里）。
+  testWidgets('isActive:false 时子树内的 TextField 不得被聚焦', (tester) async {
+    final fieldController = TextEditingController(text: 'hello');
+    addTearDown(fieldController.dispose);
+    final fieldFocusNode = FocusNode(debugLabel: 'inspector-field-stub');
+    addTearDown(fieldFocusNode.dispose);
+
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: CanvasShortcuts(
+          isActive: false,
+          child: Column(
+            children: <Widget>[
+              const Expanded(child: CanvasView()),
+              // Inspector 文本框替身：同处于 CanvasShortcuts 子树内的 EditableText。
+              TextField(controller: fieldController, focusNode: fieldFocusNode),
+            ],
+          ),
+        ),
+      ),
+      overrides: _canvasOverrides(twoNodes),
+    );
+    await tester.pumpAndSettle();
+
+    fieldFocusNode.requestFocus();
+    await tester.pumpAndSettle();
+
+    expect(
+      fieldFocusNode.hasFocus,
+      isFalse,
+      reason: 'isActive:false 的 CanvasShortcuts 子树必须整体拒绝聚焦（含 Inspector 输入框），'
+          '否则用户正在框里打字时切走标签，焦点会滞留在看不见的界面上',
     );
   });
 }
