@@ -312,4 +312,62 @@ void main() {
     expect(find.byType(SettingsScreen), findsOneWidget);
     expect(find.byType(CanvasScreen), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // fix round 2（R33）：画布分支必须带 tab==canvas 判据，否则 goTab() 保留
+  // canvasId（标签保活语义）导致"回 Studio"后画面纹丝不动——本次会话一旦
+  // 打开过画布，canvasId 就再也不会变回 null（ShellState 没有能清它的公共
+  // 动词，resetSession() 除外）。等价于复评员 PROBE A：画布态 → goTab(studio)
+  // → 断 StudioHomeScreen 可见且 CanvasScreen 不可见。
+  testWidgets('画布态 goTab(studio) 后 → StudioHomeScreen 可见，CanvasScreen 不可见',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final paths = await _setupPaths(tester, 'ink_route_canvas_back_to_studio_');
+
+    final container = ProviderContainer(
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        _onboardingDone(),
+        anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
+        shellControllerProvider.overrideWith(
+          () => ShellNavigator(
+            initial: const ShellState(
+              tab: ShellTab.canvas,
+              canvasId: 'cv-1',
+            ),
+          ),
+        ),
+        orphanReapStartupProvider.overrideWith((_) async {}),
+        _sealDbReady(),
+        workspaceProjectsProvider
+            .overrideWith((_) async => const <ProjectWithCanvases>[]),
+        canvasRepositoryProvider
+            .overrideWith((_) async => InMemoryCanvasRepository()),
+        nodeRepositoryProvider
+            .overrideWith((_) async => InMemoryNodeRepository()),
+        batchResultRepositoryProvider
+            .overrideWith((_) async => FakeBatchResultRepo()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const InkFrameApp(),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+
+    // 起始态：画布可见。
+    expect(find.byType(CanvasScreen), findsOneWidget);
+
+    container.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
+    await tester.pump();
+    await tester.pump();
+
+    expect(find.byType(StudioHomeScreen), findsOneWidget);
+    expect(find.byType(CanvasScreen), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 10)));
 }

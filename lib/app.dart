@@ -157,6 +157,13 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
     // 永久遮死——画布/画廊上开设置或示例页会变成死键。浮层盖住标签宿主是
     // spec 的目标语义（外层 IndexedStack 二选一：浮层槽 vs 标签宿主），
     // 本次判序调整就是提前落地这一条，不等 T7。
+    // 【画布分支带 tab 判据】（fix round 2，R33）：goTab() 同样保留 canvasId
+    // （标签保活语义），且 ShellState 没有任何能清 canvasId 的公共动词
+    // （resetSession() 除外）。若这支只看 canvasId != null，本次会话一旦打
+    // 开过画布，canvasId 就再也不会变回 null——goTab(studio) 后画面纹丝不
+    // 动，整个会话回不到 Studio。canvasId 继续留着 = 画布标签保活，
+    // 但只有 tab 仍是 canvas 时它才是【当前可见】标签，这与 T7 的保活宿主
+    // 语义一致。
     // 外壳骨架（两级 IndexedStack + 标签条）在 T7 接上。
     final s = ref.watch(shellControllerProvider);
     final Widget body;
@@ -164,7 +171,7 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
       body = const SettingsScreen();
     } else if (s.overlay == ShellOverlay.showcase) {
       body = const Scaffold(body: BuiltInShowcaseScreen());
-    } else if (s.canvasId != null) {
+    } else if (s.tab == ShellTab.canvas && s.canvasId != null) {
       body = const CanvasScreen(isVisible: true);
     } else if (s.tab == ShellTab.gallery && s.project != null) {
       body = Scaffold(

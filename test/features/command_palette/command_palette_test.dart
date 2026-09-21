@@ -272,4 +272,27 @@ void main() {
     expect(container.read(shellControllerProvider).tab, ShellTab.studio);
     expect(container.read(currentCanvasIdProvider), 'c1');
   });
+
+  // fix round 2（R34）：overlay-first 动作集此前零测试覆盖。画布上开着
+  // Settings 时按 ⌘K 应该拿到 Settings 上下文动作集，而不是对着当前不可见
+  // 画布动刀的 addNode/export 动作集（command_actions.dart 的
+  // tab==canvas 判据在 overlay!=null 时短路，见 R33/M-4）。
+  testWidgets('画布上开着 Settings 时按 ⌘K → 只有 Settings 动作集，没有画布动作',
+      (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    container
+        .read(shellControllerProvider.notifier)
+        .openOverlay(ShellOverlay.settings);
+    await _warmNodes(container, 'c1');
+    await _pressCtrlK(tester);
+
+    expect(find.text('Back to Studio'), findsOneWidget);
+    expect(find.text('Add image node'), findsNothing);
+    expect(find.text('Add video node'), findsNothing);
+    expect(find.text('Add shot node'), findsNothing);
+    expect(find.text('Export video'), findsNothing);
+  });
 }

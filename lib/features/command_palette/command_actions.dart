@@ -66,7 +66,10 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
     };
   }
   final canvasId = s.canvasId;
-  if (canvasId != null) {
+  // fix round 2（R33）：同步 app.dart 的 tab==canvas 判据——goTab() 同样
+  // 保留 canvasId（标签保活语义），若这里只看 canvasId != null，回到
+  // Studio 后 ⌘K 仍会拿到对着当前不可见画布动刀的动作集（addNode/export）。
+  if (s.tab == ShellTab.canvas && canvasId != null) {
     // 画布打开期间 CanvasScreen 常驻 watch 该 provider，read 即为已加载态。
     final videoNodes = exportableVideoNodes(
       ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
