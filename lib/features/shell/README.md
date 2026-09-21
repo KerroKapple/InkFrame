@@ -40,6 +40,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | 序列标签订阅节点控制器、导出标签订阅边控制器（`select` 收窄成常量） | 它们是 autoDispose family：无人订阅时 `_open` 里 `ref.read` 只拿到 `AsyncLoading` ⇒ 序列弹出空对话框（T10 前是按钮变哑键）、导出默认序静默退化成非叙事链序。旧 `CanvasTopChrome` 里两个按钮互相替对方撑着，拆成两个标签后这层**隐式**依赖断了 | `shell_tabs_empty_state_test.dart`：结构代理在「跨控制器订阅组」，真正有鉴别力的是「点击打开序列预览对话框」与 R49 顺序用例 |
 | `SequencePreviewContent` **只活在对话框里**，关掉即离树 | 它的 media_kit `Player` 从 `initState` 持有到 `dispose` 且自动播放；一旦抬成常驻标签视图，就会在后台标签里一直播。这正是"序列标签只做空态 + 拉起对话框"这个取舍的全部理由 | `shell_tabs_empty_state_test.dart`「关闭序列对话框后…离树」。断言必须写 `skipOffstage: false`——保活宿主用 `Offstage` 藏非活动标签，默认 `true` 会跳过整棵子树，T10 实测去掉后该断言恒真 |
 | `_open` 的 `projectId` 取自 `ShellState.project`，不从节点数据摸 | 启用判据与 projectId 来源必须同源：旧写法启用只看【边】、projectId 却从 `nodes.first.projectId` 取，节点列表为空或首节点 `project_id` 为空时就"看着能点、点了没反应" | `shell_tabs_empty_state_test.dart` 的点击类用例（夹具 `_shellWith` 带 `ProjectRef`） |
+| **同一时刻只保活一个 `canvasId`**：五槽保活是按 `ShellTab` 分的，不是按 `canvasId` 分的。`canvas` 那一槽从头到尾只有一个 `KeyedSubtree('shellTabBody-canvas')`，`CanvasTab` 内部 `watch(currentCanvasIdProvider)` 变了就在同一个槽位里换内容 | 从画布 A 切到画布 B 不是"多开一个保活槽"，是把槽位里的树换成 B；A 的滚动位置/本地 UI 态随之丢弃——这是当前设计的边界，不是 bug | `shell_keep_alive_host_test.dart`（五槽 == 五个 `ShellTab`，与 `canvasId` 无关） |
 
 ## 已知且接受的副作用（隐藏标签仍会 build / layout）
 
