@@ -39,8 +39,9 @@ class GalleryScreen extends ConsumerWidget {
     // 筛选态会被静默回收 → 用户的筛选在一次重试后凭空消失。
     // 这条 watch 把筛选器的存活性锚在 GalleryScreen 自身的生命周期上，
     // 顺带驱动工具条的“筛选生效中”指示——它不是单纯为了渲染一个 chip
-    // 才写的，删掉这条 watch 会让 4a 修的回收 bug 静默复发（Task 7 挪
-    // chip 进 InkToolBar 时请保留这条 watch，别当死代码删掉）。
+    // 才写的，删掉这条 watch 会让 4a 修的回收 bug 静默复发（Task 7 删
+    // _GalleryTopChrome、放临时占位工具条时请保留这条 watch，Task 9 落地
+    // 真正的 InkToolBar 时同样保留，别当死代码删掉）。
     final filtersActive = ref.watch(
       galleryFilterProvider(
         projectId,
@@ -111,7 +112,8 @@ class _GalleryTopChrome extends ConsumerWidget {
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      // T4a：筛选生效中指示 + 就地清除（T9 会把它挪进 InkToolBar）。
+      // T4a：筛选生效中指示 + 就地清除（Task 7 删 _GalleryTopChrome 时先落
+      // 临时占位工具条，Task 9 再做真正的 InkToolBar）。
       trailing: filtersActive
           ? Tooltip(
               message: context.l10n.galleryFilterClear,
@@ -172,6 +174,21 @@ class _GalleryContentState extends ConsumerState<_GalleryContent> {
     final l = context.l10n;
     final filter = ref.watch(galleryFilterProvider(widget.projectId));
     final notifier = ref.read(galleryFilterProvider(widget.projectId).notifier);
+    // 顶栏 chip 的「清除筛选」只改 provider（跨 State 边界，够不到这里的
+    // _searchCtrl）；这里单向回灌：filter.query 变了且跟输入框当前文本
+    // 不一致时才写回。自己打字触发的那次变化，写回前 _searchCtrl.text
+    // 已经等于 next.query，判等直接短路——不会打断输入时的光标。
+    ref.listen<GalleryFilter>(galleryFilterProvider(widget.projectId), (
+      _,
+      next,
+    ) {
+      if (next.query != _searchCtrl.text) {
+        _searchCtrl.value = TextEditingValue(
+          text: next.query,
+          selection: TextSelection.collapsed(offset: next.query.length),
+        );
+      }
+    });
     final filtered = filterGalleryItems(widget.items, filter);
     // 画布下拉候选：保序去重（聚合序=createdAt 倒序内的首见序）。
     final canvasNames = <String, String>{

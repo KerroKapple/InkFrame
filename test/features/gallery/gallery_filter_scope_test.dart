@@ -1,10 +1,8 @@
-// 画廊筛选器的存活性（T4a）：筛选态不得因为列表进入 loading/error/空态而被回收。
-//
-// 纯 ProviderContainer 层面无法稳定复现——autoDispose 的销毁经
-// scheduleMicrotask/Timer 调度，测试同步 read 抢在调度落地前完成，
-// 因此改走 widget 层：真实驱动 GalleryScreen 的 data(非空)→data(空)→
-// data(非空) 三态切换，断言筛选条状态（SegmentedButton 选中值）
-// 不因 `_GalleryContent` 卸载/重挂载而被 autoDispose 静默复位。
+// 画廊筛选器的存活性（T4a）+ 分键 + 搜索框播种/回灌（T4b + fix round）：
+// - 筛选态不得因为列表进入 loading/error/空态而被回收；
+// - 跨项目不共享；
+// - 搜索框既要从 filter.query 播种，也要在 filter 从外部（如顶栏 chip）
+//   被清空时把自己同步清空，不能停留在上一次输入的文本上。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,11 +11,11 @@ import 'package:inkframe/features/gallery/models/gallery_item.dart';
 import 'package:inkframe/features/gallery/providers/gallery_controller.dart';
 import 'package:inkframe/features/gallery/providers/gallery_filter.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
-import 'package:inkframe/theme/app_theme.dart';
+import 'package:inkframe/theme/primitives/ink_accent_chip.dart';
 
 import '../../_harness/fake_batch_result.dart';
 import '../../_harness/fake_repositories.dart';
+import '../../_harness/test_app.dart';
 
 void main() {
   testWidgets(
@@ -26,14 +24,6 @@ void main() {
       final canvases = InMemoryCanvasRepository();
       final nodes = InMemoryNodeRepository();
       final batch = FakeBatchResultRepo();
-      final container = ProviderContainer(
-        overrides: <Override>[
-          canvasRepositoryProvider.overrideWith((_) async => canvases),
-          nodeRepositoryProvider.overrideWith((_) async => nodes),
-          batchResultRepositoryProvider.overrideWith((_) async => batch),
-        ],
-      );
-      addTearDown(container.dispose);
 
       final canvasId = await canvases.create(projectId: 'p1', name: 'Alpha');
       final nodeId = await nodes.create(
@@ -43,20 +33,23 @@ void main() {
         typeConfig: <String, Object?>{'video_url': 'videos/v.mp4'},
       );
 
-      await tester.binding.setSurfaceSize(const Size(1280, 800));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      await tester.pumpWidget(
-        UncontrolledProviderScope(
-          container: container,
-          child: MaterialApp(
-            theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-          ),
-        ),
+      await pumpInkApp(
+        tester,
+        const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
+        overrides: <Override>[
+          canvasRepositoryProvider.overrideWith((_) async => canvases),
+          nodeRepositoryProvider.overrideWith((_) async => nodes),
+          batchResultRepositoryProvider.overrideWith((_) async => batch),
+        ],
+        surfaceSize: const Size(1280, 800),
       );
       await tester.pumpAndSettle();
+
+      // pump 之后从树上取 container——不手写 MaterialApp/UncontrolledProviderScope，
+      // 仅为了后面 container.invalidate 这一步而借用 pumpInkApp 装配好的那份。
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(GalleryScreen)),
+      );
 
       // 选中「Video」分段——建立用户的筛选态。
       await tester.tap(
@@ -130,14 +123,6 @@ void main() {
     final canvases = InMemoryCanvasRepository();
     final nodes = InMemoryNodeRepository();
     final batch = FakeBatchResultRepo();
-    final container = ProviderContainer(
-      overrides: <Override>[
-        canvasRepositoryProvider.overrideWith((_) async => canvases),
-        nodeRepositoryProvider.overrideWith((_) async => nodes),
-        batchResultRepositoryProvider.overrideWith((_) async => batch),
-      ],
-    );
-    addTearDown(container.dispose);
 
     final ca = await canvases.create(projectId: 'pA', name: 'Alpha');
     await nodes.create(
@@ -147,22 +132,21 @@ void main() {
       typeConfig: <String, Object?>{'video_url': 'videos/a.mp4'},
     );
 
-    // 项目 A 已经带着一条 query 筛选（模拟“回到画廊标签”这一保活场景）。
-    container.read(galleryFilterProvider('pA').notifier).state =
-        const GalleryFilter(query: 'alpha-scene');
-
-    await tester.binding.setSurfaceSize(const Size(1280, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const GalleryScreen(projectId: 'pA', projectName: 'Alpha'),
+    await pumpInkApp(
+      tester,
+      const GalleryScreen(projectId: 'pA', projectName: 'Alpha'),
+      overrides: <Override>[
+        canvasRepositoryProvider.overrideWith((_) async => canvases),
+        nodeRepositoryProvider.overrideWith((_) async => nodes),
+        batchResultRepositoryProvider.overrideWith((_) async => batch),
+        // 项目 A 已经带着一条 query 筛选（模拟“回到画廊标签”这一保活场景）——
+        // 用 family 实参的 overrideWith 直接播种初始状态,不再需要 pump 前
+        // 手动拿 container 写 state,顺带让这条用例也能走 pumpInkApp。
+        galleryFilterProvider('pA').overrideWith(
+          (ref) => const GalleryFilter(query: 'alpha-scene'),
         ),
-      ),
+      ],
+      surfaceSize: const Size(1280, 800),
     );
     await tester.pumpAndSettle();
 
@@ -174,4 +158,67 @@ void main() {
           '于是输入框显示空、筛选却仍生效——界面与真相脱同步',
     );
   });
+
+  testWidgets('顶栏 chip 清除筛选：搜索框必须跟着清空，不能留着上一次输入的文本',
+      (tester) async {
+    final canvases = InMemoryCanvasRepository();
+    final nodes = InMemoryNodeRepository();
+    final batch = FakeBatchResultRepo();
+
+    final ca = await canvases.create(projectId: 'pA', name: 'Alpha');
+    await nodes.create(
+      canvasId: ca,
+      type: 'video',
+      nodeRole: 'result',
+      typeConfig: <String, Object?>{'video_url': 'videos/a.mp4'},
+    );
+
+    await pumpInkApp(
+      tester,
+      const GalleryScreen(projectId: 'pA', projectName: 'Alpha'),
+      overrides: <Override>[
+        canvasRepositoryProvider.overrideWith((_) async => canvases),
+        nodeRepositoryProvider.overrideWith((_) async => nodes),
+        batchResultRepositoryProvider.overrideWith((_) async => batch),
+      ],
+      surfaceSize: const Size(1280, 800),
+    );
+    await tester.pumpAndSettle();
+
+    // 在搜索框里打字，建立筛选态——顶栏 chip 应该随之出现。
+    await tester.enterText(find.byType(TextField), 'foo');
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      'foo',
+    );
+    expect(find.byType(InkAccentChip), findsOneWidget);
+
+    // 点顶栏的「筛选生效中」chip 清除筛选。chip 被 InkWindowChrome 包在
+    // DragToMoveArea（window_manager）里,它自带 onDoubleTap,导致同一
+    // 指针的 tap 识别器要等 kDoubleTapTimeout 才能在手势竞技场胜出——
+    // 额外 pump 500ms 把这段等待喂给 fake clock,否则 onTap 不会触发。
+    await tester.tap(find.byType(InkAccentChip));
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.read(galleryFilterProvider('pA')).isActive,
+      isFalse,
+      reason: 'chip 点击必须把 provider 状态清空',
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      '',
+      reason: 'chip 只改 provider、不碰 _searchCtrl 就会重新制造 4b 要消灭的'
+          '「输入框与筛选态脱同步」——清除筛选必须同时清空搜索框',
+    );
+  });
+}
+
+extension on WidgetTester {
+  T read<T>(ProviderListenable<T> provider) =>
+      ProviderScope.containerOf(element(find.byType(GalleryScreen))).read(
+        provider,
+      );
 }
