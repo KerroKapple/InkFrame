@@ -2258,12 +2258,6 @@ abstract class AppLocalizations {
   /// **'Gallery'**
   String get galleryEntryLabel;
 
-  /// Gallery top chrome breadcrumb
-  ///
-  /// In en, this message translates to:
-  /// **'{projectName} / Gallery'**
-  String galleryBreadcrumb(String projectName);
-
   /// No description provided for @galleryEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -2659,6 +2653,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No canvas open'**
   String get shellCanvasEmptyTitle;
+
+  /// Gallery tool bar asset count next to the project name
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}'**
+  String shellGalleryItemCount(int count);
 
   /// No description provided for @shellCanvasEmptyBody.
   ///

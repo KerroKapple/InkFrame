@@ -151,8 +151,16 @@ void main() {
       ),
       findsOneWidget,
     );
-    // 两个 tile 的 caption 都带画布名
-    expect(find.text('Alpha'), findsNWidgets(2));
+    // 两个 tile 的 caption 都带画布名。
+    // T9 起工具条标题就是裸项目名（面包屑 galleryBreadcrumb 退役），它与画布名
+    // 同为 'Alpha' ⇒ 断言必须收窄到 tile 内，否则数到的是 3 个。
+    expect(
+      find.descendant(
+        of: find.byType(GalleryTile),
+        matching: find.text('Alpha'),
+      ),
+      findsNWidgets(2),
+    );
   });
 
   // T7：「返回」在标签模型下不存在了（标签条恒在），入口降级成工具条上的

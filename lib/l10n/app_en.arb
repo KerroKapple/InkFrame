@@ -528,13 +528,6 @@
 
   "commonRetry": "Retry",
   "galleryEntryLabel": "Gallery",
-  "galleryBreadcrumb": "{projectName} / Gallery",
-  "@galleryBreadcrumb": {
-    "description": "Gallery top chrome breadcrumb",
-    "placeholders": {
-      "projectName": { "type": "String" }
-    }
-  },
   "galleryEmptyTitle": "No generated assets yet",
   "galleryEmptySubtitle": "Images and videos generated on this project's canvases will appear here.",
   "galleryLoadFailed": "Failed to load gallery",
@@ -649,5 +642,12 @@
   "shellCloseOverlay": "Close",
   "shellGoToStudio": "Go to Studio",
   "shellCanvasEmptyTitle": "No canvas open",
+  "shellGalleryItemCount": "{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}",
+  "@shellGalleryItemCount": {
+    "description": "Gallery tool bar asset count next to the project name",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "shellCanvasEmptyBody": "Pick a canvas in Studio and it opens right here."
 }

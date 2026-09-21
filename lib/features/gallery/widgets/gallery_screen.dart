@@ -56,12 +56,22 @@ class GalleryScreen extends ConsumerWidget {
         children: <Widget>[
           _GalleryToolBar(
             projectName: projectName,
+            // 只在 data 态给计数；loading/error 下不显示（不是显示 0）。
+            itemCount: itemsAsync.valueOrNull?.length,
             filtersActive: filtersActive,
             onClearFilters: () =>
                 ref.read(galleryFilterProvider(projectId).notifier).state =
                     const GalleryFilter(),
           ),
           Expanded(
+            // 【skipLoadingOnRefresh 保持默认 true——别动这个 when 的参数】
+            // riverpod 2.6.1：ref.invalidate 走 refresh 而非 reload，when 默认
+            // skipLoadingOnRefresh: true ⇒ 刷新期间不走 loading 分支 ⇒
+            // _GalleryContent 不卸载 ⇒ 滚动位置 / 搜索框文本 / 筛选态全保。
+            // 谁给它加上 skipLoadingOnRefresh: false，V1 的这三条会【同时】
+            // 失效。这不是纸面推理：T9 实测过这一刀，
+            // test/features/gallery/widgets/gallery_refresh_test.dart 会红
+            // （ScrollPosition.pixels 从 400.0 变回 0.0）。
             child: itemsAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (_, _) => _GalleryErrorState(
@@ -100,11 +110,15 @@ class GalleryScreen extends ConsumerWidget {
 class _GalleryToolBar extends ConsumerWidget {
   const _GalleryToolBar({
     required this.projectName,
+    required this.itemCount,
     required this.filtersActive,
     required this.onClearFilters,
   });
 
   final String projectName;
+
+  /// null ⇒ 还没拿到数据（loading / error），计数整块不渲染。
+  final int? itemCount;
   final bool filtersActive;
   final VoidCallback onClearFilters;
 
@@ -113,11 +127,29 @@ class _GalleryToolBar extends ConsumerWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return InkToolBar(
-      title: Text(
-        context.l10n.galleryBreadcrumb(projectName),
-        style: typo.headlineXs.copyWith(color: colors.fg1),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+      // 标题＝项目名 + 产物计数。「/ 画廊」那截面包屑随 T9 退役：标签条恒在，
+      // 用户看得见自己正站在画廊，再写一遍是噪声。
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Flexible(
+            child: Text(
+              projectName,
+              style: typo.headlineXs.copyWith(color: colors.fg1),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          if (itemCount != null) ...<Widget>[
+            const SizedBox(width: InkSpacing.sm),
+            Text(
+              context.l10n.shellGalleryItemCount(itemCount!),
+              style: typo.body.copyWith(color: colors.fg3),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ],
       ),
       actions: <Widget>[
         if (filtersActive)

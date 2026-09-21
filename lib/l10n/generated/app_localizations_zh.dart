@@ -1166,11 +1166,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryEntryLabel => '画廊';
 
   @override
-  String galleryBreadcrumb(String projectName) {
-    return '$projectName / 画廊';
-  }
-
-  @override
   String get galleryEmptyTitle => '还没有生成内容';
 
   @override
@@ -1386,6 +1381,16 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shellCanvasEmptyTitle => '还没有打开画布';
+
+  @override
+  String shellGalleryItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 个产物',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get shellCanvasEmptyBody => '去工作室选一个画布，它就会在这里打开。';

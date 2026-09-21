@@ -1215,11 +1215,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get galleryEntryLabel => 'Gallery';
 
   @override
-  String galleryBreadcrumb(String projectName) {
-    return '$projectName / Gallery';
-  }
-
-  @override
   String get galleryEmptyTitle => 'No generated assets yet';
 
   @override
@@ -1444,6 +1439,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get shellCanvasEmptyTitle => 'No canvas open';
+
+  @override
+  String shellGalleryItemCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count assets',
+      one: '1 asset',
+      zero: 'No assets',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get shellCanvasEmptyBody =>
