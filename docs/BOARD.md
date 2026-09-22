@@ -8,7 +8,7 @@
 > ROAD-TO-BETA）视为**归档快照**，不再更新；状态以本表为准。
 >
 > 状态图例：✅ 完成 · 🔵 进行中 · ⬜ 未开始 · 🅿️ 已延后（附因）
-> 最近更新：2026-08-21 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
+> 最近更新：2026-09-22 · 最新发布：**v0.1.0-alpha.11**（2026-07-22,首个含嵌入式 PG 的双平台产物;
 > PKG-2A release CI 首跑绿,产物体积增量与 PG 二进制吻合（mac 39.6→68MB / win 36.7→71MB）;
 > 干净机实机验收待做;待签名 U1/U2 方为干净机免绕行可装）
 
@@ -124,6 +124,7 @@
 | **D-M4-2~8 七决策批量拍板落档(2026-08-21,全取推荐 A 档)**:画廊→画布=菜单动作 / 画廊删除=永久删行+文件 / 聚合器=编辑+重启 / 第二模板=openai-chat-image / 转码=单开关 1080p30 H.264 丢音频 / 项目复制=不带 jobs/batch/exports / 角色库=独立整屏仿 Gallery。**M4 Wave 3 全解锁**(CH-3→GA-5/6→AG-4/5→EX-2);详见 MASTERPLAN §9。顺带清理 4 个已合入 worktree + 8 条残留本地分支 | #231 |
 | **审计 P0 ×3 收口（2026-08-31 全量审计,证据见 `docs/review/2026-08-31/`）**：①`OrphanFileReaper` 号称只读却留着 `reap(dryRun:false)` 真删分支——接口收成无参 `reap()`,删除实现整段拿掉(不是"默认关"而是这个类里根本没有删除代码;真删另立独立评审的实现);②Inspector 防抖自动保存在切换选中时被 dispose 直接丢弃最后一次编辑——`InspectorSubmitController.saveDebounced(patch)` 挂起期间 `ref.keepAlive()` 撑住 autoDispose 直到落盘,prompt 与 shot_notes 共用这一份(**卡面原定"widget dispose 里 flush"走不通**:ConsumerStatefulElement 在自身 unmount 时拒绝该 widget 的任何 ref 访问,故防抖必须整个挂在 controller 上;单 node 单挂起槽位,两防抖字段同 node 时会互相顶掉——当前两字段分属不相交节点类型,记债);③零项目空态找不到「导入项目」——私有 `_importProject` 抽成 `studio/project_import_flow.dart` 顶层 `runProjectImportFlow`,FAB / 空态 CTA / ⌘K 三入口同一条路径,busy 互斥门与 FAB 同源。golden `studio_empty` 重铸。**刻意不做**(记债):已发射在途的自动保存仍可能晚于 submit() 落盘覆盖终稿(需写序号/版本机制,属审计 §二A 系统性模式);自动保存失败仍静默无重试面。审计报告 20 份随本 PR 入库。+5 例(计划 4 + 评审补 1) | #232 |
 | **持久标签外壳重构（shell-tab-navigation，T1–T13）**：`lib/app.dart` 不再持有路由判据——body 恒为 `InkShell`，`ShellState`（手写不可变值对象，7 个具名迁移，无 copyWith）驱动五个持久标签（studio/canvas/sequence/gallery/export）。画布标签让渡可见性焦点（T1，`CanvasShortcuts({required isActive})` 堵住"隐藏画布吞 Delete"的安全问题）；`canvasViewportSizeProvider` 等画布级 provider 按 canvasId family 化（T2，为保活做隔离前置修复）；`ShellKeepAliveHost` 五槽懒物化、物化后永不换回占位（T7）；序列/导出标签从画布顶栏迁出、拉起既有对话框而非常驻播放（T9/T10，media_kit 生命周期约束）；画廊标签按不可见→可见边沿脏刷新（T9，`galleryDirtyProvider`）；⌘K/启动恢复/上次画布记忆随外壳改造同步（T6/T11/T12）。详见 `lib/features/shell/README.md`（不变量表 + 已知副作用 + 刻意不做）。golden 4 张（`studio_empty`/`studio_error`/`gallery_empty`/`settings_screen`）经 CI `update-goldens` 铸线回填（T13 Step 4，另行处理）。附带三条债与一张待补卡，见下表 | #234 |
+| **V0 视觉重做——中性灰 token + 无衬线排版**（`docs/design/handoff-2026-09/` 任务书 §5 首件）：`InkColors` 29 槽按交接 README 重写（六档 surface / 六档描边 / 六档 fg / 唯一琥珀 / scrim），暖色 ramp 与 12 个旧槽（brand·cta·warning·border·borderHover·overlay·inputFill…）整体裁撤并机械重映射；`InkTypography` 收成八档无衬线（Noto Sans SC 不打包、系统回落），Cormorant Garamond 连 ttf / OFL / 许可入册 / 关于页文案一并删除；新增 `test/quality/no_legacy_visuals_test.dart` 守旧 hex 与 serif 零残留。**只换值不动布局**，V1（壳 chrome 30/34/22 + 设置浮层 + 状态栏）串行其后 | #235 |
 
 ## M1 补遗（审计发现的悬空项）
 
