@@ -1377,22 +1377,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scriptImportFailed => '脚本导入失败，画布未做改动。';
 
   @override
-  String get shellMenuFile => 'File';
+  String get shellMenuFile => '文件';
 
   @override
-  String get shellMenuEdit => 'Edit';
+  String get shellMenuEdit => '编辑';
 
   @override
-  String get shellMenuCanvas => 'Canvas';
+  String get shellMenuCanvas => '画布';
 
   @override
-  String get shellMenuNode => 'Node';
+  String get shellMenuNode => '节点';
 
   @override
-  String get shellMenuWindow => 'Window';
+  String get shellMenuWindow => '窗口';
 
   @override
-  String get shellMenuHelp => 'Help';
+  String get shellMenuHelp => '帮助';
 
   @override
   String get shellTabStudio => '工作室';

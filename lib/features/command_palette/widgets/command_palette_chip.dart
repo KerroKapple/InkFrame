@@ -10,7 +10,10 @@ import '../../../theme/tokens.dart';
 import 'command_palette_dialog.dart';
 
 class CommandPaletteChip extends ConsumerWidget {
-  const CommandPaletteChip({super.key});
+  const CommandPaletteChip({super.key, this.compact = false});
+
+  /// 窄窗口（README §4：< 1100）只留放大镜 + 快捷键。
+  final bool compact;
 
   /// content 260 + padding 2×10。
   static const double width = 280;
@@ -34,7 +37,7 @@ class CommandPaletteChip extends ConsumerWidget {
             behavior: HitTestBehavior.opaque,
             onTap: () => showCommandPalette(context, ref),
             child: Container(
-              width: width,
+              width: compact ? null : width,
               height: height,
               padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
               decoration: BoxDecoration(
@@ -47,14 +50,15 @@ class CommandPaletteChip extends ConsumerWidget {
                     painter: _SearchGlyph(colors.fg6),
                   ),
                   const SizedBox(width: InkSpacing.s6),
-                  Expanded(
-                    child: Text(
-                      context.l10n.commandPaletteEntryPlaceholder,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: typo.body.copyWith(color: colors.fg6),
+                  if (!compact)
+                    Expanded(
+                      child: Text(
+                        context.l10n.commandPaletteEntryPlaceholder,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: typo.body.copyWith(color: colors.fg6),
+                      ),
                     ),
-                  ),
                   Text(
                     commandPaletteShortcutLabel(),
                     style: typo.monoSmall.copyWith(color: colors.fg6),

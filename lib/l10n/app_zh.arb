@@ -567,6 +567,12 @@
   "scriptImportDone": "{count, plural, other{已添加 {count} 镜到画布}}",
   "scriptImportFailed": "脚本导入失败，画布未做改动。",
 
+  "shellMenuFile": "文件",
+  "shellMenuEdit": "编辑",
+  "shellMenuCanvas": "画布",
+  "shellMenuNode": "节点",
+  "shellMenuWindow": "窗口",
+  "shellMenuHelp": "帮助",
   "shellTabStudio": "工作室",
   "shellTabCanvas": "画布",
   "shellTabSequence": "序列",

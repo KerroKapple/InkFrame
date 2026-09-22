@@ -108,17 +108,25 @@ class _MenuLabels extends StatelessWidget {
       l.shellMenuWindow,
       l.shellMenuHelp,
     ];
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        for (final String item in items)
-          Container(
-            height: InkWindowChrome.height,
-            padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
-            alignment: Alignment.center,
-            child: Text(item, style: typo.body.copyWith(color: colors.fg3)),
-          ),
-      ],
+    // 窄窗口下菜单标签放不下时从右侧裁掉，不报溢出（README §4：⌘K 入口先收成图标，
+    // 菜单其次）。
+    return ClipRect(
+      child: OverflowBox(
+        alignment: Alignment.centerLeft,
+        maxWidth: double.infinity,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (final String item in items)
+              Container(
+                height: InkWindowChrome.height,
+                padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
+                alignment: Alignment.center,
+                child: Text(item, style: typo.body.copyWith(color: colors.fg3)),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -130,10 +138,12 @@ class _ChromeTrailing extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // README §4：窗口窄于 1100 时 ⌘K 入口收成图标。
+    final bool compact = MediaQuery.sizeOf(context).width < 1100;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        const CommandPaletteChip(),
+        CommandPaletteChip(compact: compact),
         const SizedBox(width: InkSpacing.md),
         _SettingsIconButton(onPressed: onOpenSettings),
         const SizedBox(width: InkSpacing.s12),
