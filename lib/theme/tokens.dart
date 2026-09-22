@@ -119,7 +119,9 @@ class InkColors {
         accentWash: Color(0xFF2A2318),
         accentWashBorder: Color(0xFF6B5A38),
         success: Color(0xFF7FB069),
-        danger: Color(0xFFB04030),
+        // 用户改口（2026-09-22）：README 的 #B04030 在 #232323 上只有 2.9:1，改 #D25A4A（约 4.6:1）；
+        // light / hc 不动。
+        danger: Color(0xFFD25A4A),
         audioFill: Color(0xFF22301F),
         audioBorder: Color(0xFF3A5334),
         audioFg: Color(0xFF8FB07E),

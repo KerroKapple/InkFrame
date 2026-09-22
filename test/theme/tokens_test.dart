@@ -60,7 +60,7 @@ void main() {
       expect(c.accentWash, const Color(0xFF2A2318));
       expect(c.accentWashBorder, const Color(0xFF6B5A38));
       expect(c.success, const Color(0xFF7FB069));
-      expect(c.danger, const Color(0xFFB04030));
+      expect(c.danger, const Color(0xFFD25A4A)); // 用户改口：README 值对比不足
       expect(c.audioFill, const Color(0xFF22301F));
       expect(c.audioBorder, const Color(0xFF3A5334));
       expect(c.audioFg, const Color(0xFF8FB07E));
