@@ -7,14 +7,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final canvasSelectionControllerProvider =
-    AutoDisposeNotifierProvider<CanvasSelectionController, Set<String>>(
+    AutoDisposeNotifierProviderFamily<CanvasSelectionController, Set<String>, String>(
       CanvasSelectionController.new,
       name: 'canvasSelectionControllerProvider',
     );
 
-class CanvasSelectionController extends AutoDisposeNotifier<Set<String>> {
+class CanvasSelectionController
+    extends AutoDisposeFamilyNotifier<Set<String>, String> {
   @override
-  Set<String> build() => const <String>{};
+  Set<String> build(String canvasId) => const <String>{};
 
   void select(String id, {bool toggle = false}) {
     final next = Set<String>.of(state);

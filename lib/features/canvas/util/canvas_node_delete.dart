@@ -20,7 +20,7 @@ Future<void> deleteNodeWithUndo(
   required String canvasId,
   required String nodeId,
 }) async {
-  ref.read(canvasSelectionControllerProvider.notifier).removed(nodeId);
+  ref.read(canvasSelectionControllerProvider(canvasId).notifier).removed(nodeId);
   final nodesCtrl = ref.read(canvasNodesControllerProvider(canvasId).notifier);
   try {
     final deletion = await nodesCtrl.removeNode(nodeId);
@@ -58,7 +58,7 @@ Future<void> deleteNodesWithUndo(
       nodeId: nodeIds.first,
     );
   }
-  final selectionCtrl = ref.read(canvasSelectionControllerProvider.notifier);
+  final selectionCtrl = ref.read(canvasSelectionControllerProvider(canvasId).notifier);
   final nodesCtrl = ref.read(canvasNodesControllerProvider(canvasId).notifier);
   final deletions = <NodeDeletion>[];
   try {

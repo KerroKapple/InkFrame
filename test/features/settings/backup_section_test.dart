@@ -5,15 +5,15 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/database_backup.dart';
 import 'package:inkframe/core/di/database_restore.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
 import 'package:inkframe/core/interfaces/database_restore_service.dart';
-import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/generation/services/toast_service.dart';
 import 'package:inkframe/features/settings/widgets/backup_section.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/storage/pg_controller.dart';
 import 'package:inkframe/theme/app_theme.dart';
@@ -228,8 +228,7 @@ void main() {
       (tester) async {
     backup.backups = [_info('inkframe-2026-07-15.dump', BackupKind.daily)];
     final container = await pump(tester);
-    container.read(currentScreenProvider.notifier).state = AppScreen.settings;
-    container.read(currentCanvasIdProvider.notifier).state = 'c1';
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
 
     await tester.tap(find.text('Restore'));
     await tester.pumpAndSettle();
@@ -244,8 +243,8 @@ void main() {
     expect(flow.lastFile, 'inkframe-2026-07-15.dump');
     expect(flow.lastRequire, isTrue);
     expect(toast.shown.single.message, 'Restore complete');
-    expect(container.read(currentScreenProvider), AppScreen.studio);
-    expect(container.read(currentCanvasIdProvider), isNull);
+    // resetSession：四项归零（tab/overlay/canvasId/project 全回默认）。
+    expect(container.read(shellControllerProvider), const ShellState());
   });
 
   testWidgets('还原：取消不调 flow；失败 outcome → 对应文案', (tester) async {

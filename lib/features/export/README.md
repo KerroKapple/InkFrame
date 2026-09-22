@@ -43,14 +43,18 @@ widgets/    纯 UI（读 provider、走 token/l10n）
   专门文案（含 INKFRAME_FFMPEG 提示）。服务侧产物走 `.partial`→rename，
   失败/取消不触碰既有同名旧导出。
 
-## 入口
-画布顶栏（`canvas_top_chrome.dart` 的 `_ExportVideoButton`）：当前画布存在
-video result 节点（`videoUrl` 非空）时可用，否则禁用 + 说明 tooltip。
+「导出」标签（`features/shell/widgets/tabs/export_tab.dart`）：当前画布存在
+video result 节点（`videoUrl` 非空）时可用，否则禁用 + 说明 tooltip。判据是
+`features/shell/util/tab_availability.dart` 的 `canExportVideo`（T7 从已删除的
+`canvas_top_chrome.dart` 原样搬运，未重写）。
 
 ## 排序（EX-1′）
 默认序 = narrative 链序，算在 `util/export_order.dart`（`orderVideoNodesForExport`），
 **不在对话框内**——链序需要全量节点与边，对话框只拿得到 video result 子集。
-两个入口（顶栏 + 命令面板）走同一条路径，对话框照单全收传入顺序。
+两个入口（导出标签 + ⌘K 命令面板）走同一条路径，对话框照单全收传入顺序。
+**两处的 `projectId` 都取自 `ShellState.project`**，不从 `videoNodes.first.projectId`
+摸：启用判据看的是**原序**首个（`exportableVideoNodes(...).first`），排序看的是
+**链序**首个，两者不同源时就会出现「看着能点、点了没反应」（R86）。
 
 video result 节点挂在 config 节点下（`sourceNodeId`），自己不在 narrative 链上，
 所以不能把 result 集合直接喂给 `orderByNarrativeChain`——那会一条边都找不到、

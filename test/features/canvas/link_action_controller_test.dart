@@ -71,7 +71,7 @@ CanvasNode _node(String id, CanvasNodeType type) =>
   );
   addTearDown(container.dispose);
   // autoDispose 状态需要 listener 保活。
-  container.listen(linkModeControllerProvider, (_, _) {});
+  container.listen(linkModeControllerProvider('c1'), (_, _) {});
   container.listen(linkActionControllerProvider('c1'), (_, _) {});
   container.listen(canvasNodesControllerProvider('c1'), (_, _) {});
   container.listen(canvasEdgesControllerProvider('c1'), (_, _) {});
@@ -83,7 +83,7 @@ Future<void> _pump() => Future<void>.delayed(Duration.zero);
 void main() {
   test('成功连线 → created 事件 + addEdge(source,target) + 退出 link 模式', () async {
     final (container, fake) = _make();
-    container.read(linkModeControllerProvider.notifier).start('n1');
+    container.read(linkModeControllerProvider('c1').notifier).start('n1');
 
     await container
         .read(linkActionControllerProvider('c1').notifier)
@@ -94,12 +94,12 @@ void main() {
       container.read(linkActionControllerProvider('c1'))?.result,
       LinkActionResult.created,
     );
-    expect(container.read(linkModeControllerProvider), isNull);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
   test('自连 → selfLinkRejected，不触 DB，退出 link 模式', () async {
     final (container, fake) = _make();
-    container.read(linkModeControllerProvider.notifier).start('n1');
+    container.read(linkModeControllerProvider('c1').notifier).start('n1');
 
     await container
         .read(linkActionControllerProvider('c1').notifier)
@@ -110,14 +110,14 @@ void main() {
       container.read(linkActionControllerProvider('c1'))?.result,
       LinkActionResult.selfLinkRejected,
     );
-    expect(container.read(linkModeControllerProvider), isNull);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
   test('db_code 23505 → duplicate（连线已存在）', () async {
     final (container, _) = _make(
       error: const LocalIOError(extra: {'db_code': '23505'}),
     );
-    container.read(linkModeControllerProvider.notifier).start('n1');
+    container.read(linkModeControllerProvider('c1').notifier).start('n1');
 
     await container
         .read(linkActionControllerProvider('c1').notifier)
@@ -127,14 +127,14 @@ void main() {
       container.read(linkActionControllerProvider('c1'))?.result,
       LinkActionResult.duplicate,
     );
-    expect(container.read(linkModeControllerProvider), isNull);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
   test('其他 InkError → failed，不误报 duplicate（ME-08）', () async {
     final (container, _) = _make(
       error: const LocalIOError(extra: {'db_code': '23503'}),
     );
-    container.read(linkModeControllerProvider.notifier).start('n1');
+    container.read(linkModeControllerProvider('c1').notifier).start('n1');
 
     await container
         .read(linkActionControllerProvider('c1').notifier)
@@ -144,12 +144,12 @@ void main() {
       container.read(linkActionControllerProvider('c1'))?.result,
       LinkActionResult.failed,
     );
-    expect(container.read(linkModeControllerProvider), isNull);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
   test('无 db_code 的 InkError → failed', () async {
     final (container, _) = _make(error: const LocalIOError());
-    container.read(linkModeControllerProvider.notifier).start('n1');
+    container.read(linkModeControllerProvider('c1').notifier).start('n1');
 
     await container
         .read(linkActionControllerProvider('c1').notifier)
@@ -180,11 +180,11 @@ void main() {
       (_, next) => events.add(next),
     );
 
-    container.read(linkModeControllerProvider.notifier).start('n1');
+    container.read(linkModeControllerProvider('c1').notifier).start('n1');
     await container
         .read(linkActionControllerProvider('c1').notifier)
         .linkTo('n2');
-    container.read(linkModeControllerProvider.notifier).start('n1');
+    container.read(linkModeControllerProvider('c1').notifier).start('n1');
     await container
         .read(linkActionControllerProvider('c1').notifier)
         .linkTo('n3');
@@ -199,7 +199,7 @@ void main() {
         _node('vid1', CanvasNodeType.video),
       ]);
       await _pump();
-      container.read(linkModeControllerProvider.notifier).start('img1');
+      container.read(linkModeControllerProvider('c1').notifier).start('img1');
 
       await container
           .read(linkActionControllerProvider('c1').notifier)
@@ -228,7 +228,7 @@ void main() {
         ],
       );
       await _pump();
-      container.read(linkModeControllerProvider.notifier).start('img1');
+      container.read(linkModeControllerProvider('c1').notifier).start('img1');
 
       await container
           .read(linkActionControllerProvider('c1').notifier)
@@ -243,7 +243,7 @@ void main() {
         _node('img2', CanvasNodeType.image),
       ]);
       await _pump();
-      container.read(linkModeControllerProvider.notifier).start('img1');
+      container.read(linkModeControllerProvider('c1').notifier).start('img1');
 
       await container
           .read(linkActionControllerProvider('c1').notifier)
@@ -258,7 +258,7 @@ void main() {
         _node('vid1', CanvasNodeType.video),
       ]);
       await _pump();
-      container.read(linkModeControllerProvider.notifier).start('t1');
+      container.read(linkModeControllerProvider('c1').notifier).start('t1');
 
       await container
           .read(linkActionControllerProvider('c1').notifier)
@@ -269,7 +269,7 @@ void main() {
 
     test('节点列表未就绪 → 安全回落 reference', () async {
       final (container, fake) = _make();
-      container.read(linkModeControllerProvider.notifier).start('n1');
+      container.read(linkModeControllerProvider('c1').notifier).start('n1');
 
       await container
           .read(linkActionControllerProvider('c1').notifier)

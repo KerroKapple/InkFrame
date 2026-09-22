@@ -14,8 +14,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/preferences.dart';
 import '../../../core/di/repositories.dart';
+import '../../shell/models/shell_state.dart';
+import '../../shell/providers/shell_controller.dart';
 import '../models/canvas_node.dart';
-import 'current_canvas_id.dart';
 
 /// 示例内容文案（UI 层从 ARB 构造传入）。
 typedef SampleSeed = ({
@@ -49,7 +50,7 @@ class CanvasBootstrapController {
     required SampleSeed seed,
   }) async {
     final uowFuture = _ref.read(unitOfWorkProvider.future);
-    final currentCanvasId = _ref.read(currentCanvasIdProvider.notifier);
+    final nav = _ref.read(shellControllerProvider.notifier);
     final prefs = _ref.read(preferencesServiceProvider);
     final uow = await uowFuture;
     final nodeSize = defaultNodeSize(CanvasNodeType.image);
@@ -78,7 +79,10 @@ class CanvasBootstrapController {
       );
       return (projectId: projectId, canvasId: canvasId);
     });
-    currentCanvasId.state = ids.canvasId;
+    nav.openCanvas(
+      ids.canvasId,
+      withProject: ProjectRef(id: ids.projectId, name: projectName),
+    );
     // 记住上次会话（fire-and-forget，服务内部吞盘错误）。
     unawaited(prefs.update(
       (p) => p.copyWith(

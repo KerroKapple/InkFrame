@@ -6,10 +6,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/di/current_screen.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../shell/models/shell_state.dart';
+import '../../shell/providers/shell_controller.dart';
 import '../controllers/studio_state.dart';
 import '../models/project_with_canvases.dart';
 import '../providers/workspace_projects_provider.dart';
@@ -264,8 +265,9 @@ class _SidebarFooter extends ConsumerWidget {
           _FooterIconButton(
             icon: Icons.settings_outlined,
             label: context.l10n.studioOpenSettings,
-            onTap: () => ref.read(currentScreenProvider.notifier).state =
-                AppScreen.settings,
+            onTap: () => ref
+                .read(shellControllerProvider.notifier)
+                .openOverlay(ShellOverlay.settings),
           ),
           const SizedBox(width: InkSpacing.md),
           // 回收站（LB-15/GAP-2）：CV-1 裁撤 ARCHIVE 死 stub 时预告的真入口。

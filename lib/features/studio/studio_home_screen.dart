@@ -1,11 +1,10 @@
 // StudioHomeScreen：Amber Noir 风格的首页。
 //
-// 布局：Column(chrome, Expanded(Row(LibrarySidebar 280, Expanded(Stack(main, fab)))))
+// 布局：Column(StudioProviderBanner, Expanded(Row(LibrarySidebar 280, Expanded(Stack(main, fab)))))
 // 状态：workspaceProjectsProvider 的 loading / error / empty / data 四态。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/di/current_screen.dart';
 import '../../core/di/database_restore.dart';
 import '../../core/di/logger.dart';
 import '../../core/di/project_archive.dart';
@@ -21,11 +20,11 @@ import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
 import '../../services/project_archive_service.dart';
 import '../canvas/providers/canvas_bootstrap_controller.dart';
-import '../gallery/providers/current_gallery_project.dart';
+import '../shell/models/shell_state.dart';
+import '../shell/providers/shell_controller.dart';
 import 'controllers/studio_projects_controller.dart';
 import 'providers/project_export_busy.dart';
 import 'providers/trashed_items_providers.dart';
-import 'controllers/studio_state.dart';
 import 'models/project_with_canvases.dart';
 import 'open_canvas.dart';
 import 'project_import_flow.dart';
@@ -33,7 +32,6 @@ import 'providers/workspace_projects_provider.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
 import 'widgets/studio_provider_banner.dart';
-import 'widgets/studio_top_chrome.dart';
 import '../generation/services/toast_service.dart';
 
 const String _logModule = 'studio.home';
@@ -44,21 +42,14 @@ class StudioHomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    final studioName =
-        ref.watch(currentStudioProvider) ?? context.l10n.studioDefaultName;
     return ColoredBox(
       color: colors.surfaceCanvas,
-      child: Column(
+      child: const Column(
         children: <Widget>[
-          StudioTopChrome(
-            studioName: studioName,
-            breadcrumbTail: context.l10n.studioBreadcrumbAll,
-            onOpenSettings: () =>
-                ref.read(currentScreenProvider.notifier).state =
-                    AppScreen.settings,
-          ),
-          const StudioProviderBanner(),
-          const Expanded(
+          // 顶栏 chrome（小 logo / 面包屑 / ⌘K / ⚙）已上移到外壳 ShellChrome：
+          // 保活之后每个已物化标签各带一份 chrome = 两套窗口控件（V3a）。
+          StudioProviderBanner(),
+          Expanded(
             child: Row(
               children: <Widget>[
                 LibrarySidebar(),
@@ -126,8 +117,8 @@ class _StudioMainArea extends ConsumerWidget {
                               onCreateSample: () =>
                                   _createSampleProject(context, ref),
                               onOpenShowcase: () => ref
-                                  .read(currentScreenProvider.notifier)
-                                  .state = AppScreen.showcase,
+                                  .read(shellControllerProvider.notifier)
+                                  .openOverlay(ShellOverlay.showcase),
                               onImport: importBusy
                                   ? null
                                   : () => runProjectImportFlow(context, ref),
@@ -302,7 +293,14 @@ class _StudioEmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    return Center(
+    // 外壳固定占 100（chrome 56 + 标签条 44）之后，960×600 最小窗口只剩 500 内容
+    // 高，而本卡片自然高约 540 ⇒ 短视口必须可滚，否则 RenderFlex 直接溢出（T7）。
+    // minHeight = maxHeight 保证视口够高时仍然垂直居中。
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints c) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: c.maxHeight),
+          child: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
         child: InkNoirCard(
@@ -366,6 +364,9 @@ class _StudioEmptyState extends StatelessWidget {
                 onPressed: onOpenShowcase,
               ),
             ],
+          ),
+        ),
+      ),
           ),
         ),
       ),
@@ -572,11 +573,11 @@ class _ProjectGrid extends ConsumerWidget {
                 }
               },
               onOpenGallery: () => ref
-                  .read(currentGalleryProjectProvider.notifier)
-                  .state = (id: p.id, name: p.name),
-              onOpenShowcase: () =>
-                  ref.read(currentScreenProvider.notifier).state =
-                      AppScreen.showcase,
+                  .read(shellControllerProvider.notifier)
+                  .openGallery(ProjectRef(id: p.id, name: p.name)),
+              onOpenShowcase: () => ref
+                  .read(shellControllerProvider.notifier)
+                  .openOverlay(ShellOverlay.showcase),
               onRename: () => _renameProject(context, ref, p),
               onExport: () => _exportProject(context, ref, p),
               onManageCanvases: () => showDialog<void>(

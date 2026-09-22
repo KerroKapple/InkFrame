@@ -9,9 +9,10 @@ import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
-import 'package:inkframe/features/gallery/providers/current_gallery_project.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_tile.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
@@ -150,17 +151,29 @@ void main() {
       ),
       findsOneWidget,
     );
-    // 两个 tile 的 caption 都带画布名
-    expect(find.text('Alpha'), findsNWidgets(2));
+    // 两个 tile 的 caption 都带画布名。
+    // T9 起工具条标题就是裸项目名（面包屑 galleryBreadcrumb 退役），它与画布名
+    // 同为 'Alpha' ⇒ 断言必须收窄到 tile 内，否则数到的是 3 个。
+    expect(
+      find.descendant(
+        of: find.byType(GalleryTile),
+        matching: find.text('Alpha'),
+      ),
+      findsNWidgets(2),
+    );
   });
 
-  testWidgets('返回按钮：清空 currentGalleryProjectProvider', (tester) async {
+  // T7：「返回」在标签模型下不存在了（标签条恒在），入口降级成工具条上的
+  // shellGoToStudio ghost 按钮——动作与断言一字未变，只换了触发件。
+  // 工具条不在 DragToMoveArea 里 ⇒ 不再需要 pump(400ms) 越过手势仲裁。
+  testWidgets('工具条「去 Studio」：goTab(studio)', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final container = ProviderContainer(overrides: overrides());
     addTearDown(container.dispose);
-    container.read(currentGalleryProjectProvider.notifier).state =
-        (id: 'p1', name: 'Alpha');
+    container
+        .read(shellControllerProvider.notifier)
+        .openGallery(const ProjectRef(id: 'p1', name: 'Alpha'));
 
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -175,10 +188,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.arrow_back));
-    // DragToMoveArea 带 onDoubleTap 竞争手势：单击需过 300ms 仲裁超时才落地
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(container.read(currentGalleryProjectProvider), isNull);
+    await tester.tap(find.text('Go to Studio'));
+    await tester.pump();
+    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
   });
 
   testWidgets('P1-1 回归：55 字画布名 + 最小窗口宽 → 筛选条不溢出', (tester) async {

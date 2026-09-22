@@ -39,7 +39,7 @@ class CanvasEmptyState extends ConsumerWidget {
       pickViewportCenteredNodePosition(
         random: random ?? Random(),
         transform: ref.read(canvasTransformControllerProvider(canvasId)).value,
-        viewportSize: ref.read(canvasViewportSizeProvider),
+        viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
         nodeSize: defaultNodeSize(type),
       );
 
@@ -76,7 +76,7 @@ class CanvasEmptyState extends ConsumerWidget {
         final size = constraints.biggest;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (context.mounted) {
-            ref.read(canvasViewportSizeProvider.notifier).setSize(size);
+            ref.read(canvasViewportSizeProvider(canvasId).notifier).setSize(size);
           }
         });
         return _body(context, ref);

@@ -14,7 +14,6 @@ import '../../../core/di/database.dart';
 import '../../../core/di/database_backup.dart';
 import '../../../core/di/database_restore.dart';
 import '../../../core/di/project_archive.dart';
-import '../../../core/di/current_screen.dart';
 import '../../../core/interfaces/database_backup_service.dart';
 import '../../../core/interfaces/database_restore_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
@@ -25,8 +24,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_card.dart';
 import '../../../theme/tokens.dart';
-import '../../canvas/providers/current_canvas_id.dart';
-import '../../gallery/providers/current_gallery_project.dart';
+import '../../shell/providers/shell_controller.dart';
 import '../../generation/services/toast_service.dart';
 
 class BackupSection extends ConsumerStatefulWidget {
@@ -199,9 +197,7 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
     final toast = ref.read(toastServiceProvider);
     final flow = ref.read(databaseRestoreFlowProvider);
     final navigator = Navigator.of(context, rootNavigator: true);
-    final screen = ref.read(currentScreenProvider.notifier);
-    final canvasId = ref.read(currentCanvasIdProvider.notifier);
-    final gallery = ref.read(currentGalleryProjectProvider.notifier);
+    final nav = ref.read(shellControllerProvider.notifier);
     final l10n = context.l10n;
     final doneMsg = l10n.restoreDone;
     final progressMsg = l10n.restoreInProgress;
@@ -267,16 +263,14 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
       final ctx = barrierCtx;
       if (ctx != null && ctx.mounted) {
         Navigator.of(ctx).pop();
-      } else {
+      } else if (navigator.canPop()) {
         navigator.pop();
       }
     }
 
     if (result.outcome == RestoreOutcome.restored) {
       // 会话重置：还原后的库里旧画布/画廊目标可能已不存在（评审 UX P2-2）。
-      canvasId.state = null;
-      gallery.state = null;
-      screen.state = AppScreen.studio;
+      nav.resetSession();
       toast.show(doneMsg, kind: ToastKind.success);
     } else {
       toast.show(l10nRestoreFailure(l10n, result.outcome),

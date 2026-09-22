@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inkframe/core/di/current_screen.dart';
 import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
@@ -14,7 +13,6 @@ import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 import 'package:inkframe/features/studio/widgets/project_card.dart';
-import 'package:inkframe/features/studio/widgets/studio_top_chrome.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
@@ -239,37 +237,6 @@ void main() {
     expect(find.text('Retry'), findsOneWidget);
     await tester.tap(find.text('Retry'));
     await tester.pump();
-  });
-
-  testWidgets('StudioHome 顶栏 Settings 入口：点击后 studioOpenSettingsIntent 计数 +1',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer(overrides: <Override>[
-      workspaceProjectsProvider.overrideWith(
-        (_) async => const <ProjectWithCanvases>[],
-      ),
-    ]);
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: container,
-      child: MaterialApp(
-        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const StudioHomeScreen(),
-      ),
-    ));
-    await tester.pumpAndSettle();
-
-    expect(container.read(currentScreenProvider), AppScreen.studio);
-    final settingsButton =
-        find.byKey(StudioTopChrome.settingsButtonKey);
-    expect(settingsButton, findsOneWidget);
-    await tester.tap(settingsButton, warnIfMissed: false);
-    await tester.pumpAndSettle();
-    expect(container.read(currentScreenProvider), AppScreen.settings);
   });
 
   testWidgets('StudioHome empty CTA 点击：打开 New Project Dialog 并校验空名',

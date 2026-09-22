@@ -133,8 +133,16 @@ _kCanvasShortcuts = <ShortcutActivator, Intent>{
 /// 导致按键根本进不到画布快捷键。改为持有显式 FocusNode 并在挂载后 post-frame
 /// 显式 requestFocus 抢回焦点。⌘K 未在本层映射，画布持焦时仍冒泡到祖先命令面板层。
 class CanvasShortcuts extends ConsumerStatefulWidget {
-  const CanvasShortcuts({super.key, required this.child});
+  const CanvasShortcuts({
+    super.key,
+    required this.isActive,
+    required this.child,
+  });
 
+  /// 画布页当前是否是外壳里被激活（可见）的那一层。
+  /// false 时本层交出焦点并拒绝再被聚焦——不可见的画布绝不吞
+  /// Delete / Backspace / Esc / ⌘A / ⌘0。
+  final bool isActive;
   final Widget child;
 
   @override
@@ -147,8 +155,26 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   @override
   void initState() {
     super.initState();
+    if (widget.isActive) _claimFocus();
+  }
+
+  @override
+  void didUpdateWidget(CanvasShortcuts oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      // 必须 post-frame：隐藏期间 canRequestFocus 被祖先拉成 false
+      // （focus_manager.dart:536），同帧 requestFocus() 是彻底的 no-op 且不排队；
+      // 要等这一帧的 Focus.didUpdateWidget 把开关拨回来。
+      // ExcludeFocus 文档（focus_scope.dart:924-926）明说重新可见不会自动复焦。
+      _claimFocus();
+    }
+    // 变 false 不必手动 unfocus：focus_manager.dart:583-594 在
+    // descendantsAreFocusable 置 false 时自己会 unfocus(previouslyFocusedChild)。
+  }
+
+  void _claimFocus() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _focusNode.requestFocus();
+      if (mounted && widget.isActive) _focusNode.requestFocus();
     });
   }
 
@@ -187,6 +213,8 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
         child: Focus(
           focusNode: _focusNode,
           skipTraversal: true,
+          canRequestFocus: widget.isActive,
+          descendantsAreFocusable: widget.isActive, // 连 Inspector 的 TextField 一起排除
           child: widget.child,
         ),
       ),
@@ -196,7 +224,7 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   void _deleteSelection() {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
-    final selected = ref.read(canvasSelectionControllerProvider);
+    final selected = ref.read(canvasSelectionControllerProvider(canvasId));
     if (selected.isEmpty) return;
     // fire-and-forget：删除自身带 undo/失败 snackbar，无需等待。
     deleteNodesWithUndo(context, ref, canvasId: canvasId, nodeIds: selected);
@@ -208,24 +236,26 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     final nodes = ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull;
     if (nodes == null) return;
     ref
-        .read(canvasSelectionControllerProvider.notifier)
+        .read(canvasSelectionControllerProvider(canvasId).notifier)
         .selectAll(nodes.map((n) => n.id));
   }
 
   void _escape() {
-    if (ref.read(linkModeControllerProvider) != null) {
-      ref.read(linkModeControllerProvider.notifier).cancel();
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    if (ref.read(linkModeControllerProvider(canvasId)) != null) {
+      ref.read(linkModeControllerProvider(canvasId).notifier).cancel();
       return;
     }
-    ref.read(canvasSelectionControllerProvider.notifier).clear();
-    ref.read(selectedEdgeControllerProvider.notifier).clear();
+    ref.read(canvasSelectionControllerProvider(canvasId).notifier).clear();
+    ref.read(selectedEdgeControllerProvider(canvasId).notifier).clear();
   }
 
   void _zoom(double factor) {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
     final controller = ref.read(canvasTransformControllerProvider(canvasId));
-    final size = ref.read(canvasViewportSizeProvider);
+    final size = ref.read(canvasViewportSizeProvider(canvasId));
     controller.value = zoomedTransform(
       current: controller.value,
       factor: factor,

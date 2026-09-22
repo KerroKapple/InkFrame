@@ -6,14 +6,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final selectedEdgeControllerProvider =
-    AutoDisposeNotifierProvider<SelectedEdgeController, String?>(
+    AutoDisposeNotifierProviderFamily<SelectedEdgeController, String?, String>(
   SelectedEdgeController.new,
   name: 'selectedEdgeControllerProvider',
 );
 
-class SelectedEdgeController extends AutoDisposeNotifier<String?> {
+class SelectedEdgeController extends AutoDisposeFamilyNotifier<String?, String> {
   @override
-  String? build() => null;
+  String? build(String canvasId) => null;
 
   void select(String id) {
     if (state == id) return;

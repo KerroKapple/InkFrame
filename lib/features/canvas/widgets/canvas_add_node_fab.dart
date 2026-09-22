@@ -33,7 +33,7 @@ class CanvasAddNodeFab extends ConsumerWidget {
       pickViewportCenteredNodePosition(
         random: random ?? Random(),
         transform: ref.read(canvasTransformControllerProvider(canvasId)).value,
-        viewportSize: ref.read(canvasViewportSizeProvider),
+        viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
         nodeSize: defaultNodeSize(type),
       );
 

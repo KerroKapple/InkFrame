@@ -26,7 +26,7 @@ void main() {
       expect(colors.fg1, const Color(0xFFFFFFFF));
     });
 
-    test('every variant exposes the 10 new design-token slots', () {
+    test('every variant exposes the 12 new design-token slots', () {
       for (final InkColors c in <InkColors>[
         InkColors.dark(),
         InkColors.light(),
@@ -34,8 +34,10 @@ void main() {
       ]) {
         expect(c.surfaceCanvas, isA<Color>());
         expect(c.surface4, isA<Color>());
+        expect(c.surface5, isA<Color>());
         expect(c.borderSubtle, isA<Color>());
         expect(c.borderHover, isA<Color>());
+        expect(c.borderStrong, isA<Color>());
         expect(c.fg4, isA<Color>());
         expect(c.accentHover, isA<Color>());
         expect(c.accentPressed, isA<Color>());
@@ -103,7 +105,46 @@ void main() {
       });
     }
 
-    test('every variant exposes all 15 semantic slots', () {
+    test('dark 的两个新槽位取值精确', () {
+      final c = InkColors.dark();
+      expect(c.surface5, const Color(0xFF36302A));
+      expect(c.borderStrong, const Color(0xFF0D0A08));
+    });
+
+    test('light 的 surface5 取值精确', () {
+      expect(InkColors.light().surface5, const Color(0xFFD9CDB6));
+    });
+
+    // 方向性：现有测试只断"槽位存在"，写反了照样绿。
+    test('surface5 的 ramp 方向不许写反：暗色/HC 更亮，浅色更暗', () {
+      for (final c in <InkColors>[InkColors.dark(), InkColors.highContrast()]) {
+        expect(c.surface5.computeLuminance(),
+            greaterThan(c.surface4.computeLuminance()));
+      }
+      expect(InkColors.light().surface5.computeLuminance(),
+          lessThan(InkColors.light().surface4.computeLuminance()));
+    });
+
+    // 防复制：有人图省事把 surface5 复制成 surface4，激活标签与非激活标签
+    // 视觉上不可区分，而所有功能测试照绿。
+    test('surface5 不得等于 surface4', () {
+      for (final c in <InkColors>[
+        InkColors.dark(), InkColors.light(), InkColors.highContrast(),
+      ]) {
+        expect(c.surface5, isNot(c.surface4));
+      }
+    });
+
+    // 激活标签的 label 直接画在 surface5 上，是新增的彩底前景组合。
+    test('选中标签文字在 surface5 上满足 WCAG AA', () {
+      for (final c in <InkColors>[InkColors.dark(), InkColors.light()]) {
+        expect(wcagContrast(c.surface5, c.fg1), greaterThanOrEqualTo(4.5));
+      }
+      final hc = InkColors.highContrast();
+      expect(wcagContrast(hc.surface5, hc.fg1), greaterThanOrEqualTo(7.0));
+    });
+
+    test('every variant exposes all 17 semantic slots', () {
       for (final InkColors c in <InkColors>[
         InkColors.dark(),
         InkColors.light(),
@@ -112,15 +153,19 @@ void main() {
         expect(c.surface1, isA<Color>());
         expect(c.surface2, isA<Color>());
         expect(c.surface3, isA<Color>());
+        expect(c.surface4, isA<Color>());
+        expect(c.surface5, isA<Color>());
         expect(c.fg1, isA<Color>());
         expect(c.fg2, isA<Color>());
         expect(c.fg3, isA<Color>());
+        expect(c.fg4, isA<Color>());
         expect(c.accent, isA<Color>());
         expect(c.brand, isA<Color>());
         expect(c.danger, isA<Color>());
         expect(c.warning, isA<Color>());
         expect(c.success, isA<Color>());
         expect(c.border, isA<Color>());
+        expect(c.borderStrong, isA<Color>());
         expect(c.focusRing, isA<Color>());
         expect(c.overlay, isA<Color>());
         expect(c.scrim, isA<Color>());

@@ -4,8 +4,8 @@
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
 // - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
-// - 锁屏后路由：currentCanvasId 优先；其次 currentGalleryProject（项目产物画廊）；
-//   否则按 currentScreenProvider 在 Studio / Settings / Showcase 切换
+// - 解锁后不再有"路由"：body 恒为 InkShell（持久标签外壳），哪个 surface 在台上
+//   由 ShellContentStack 的两级 IndexedStack 依 ShellState 决定，本文件零判据
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
 //   时以 StartupErrorView 替代白屏；loading/data 均照常进 _UnlockedShell
 // - 首帧闸门（ON-1，挂 DB-ready 之后）：onboardingCompleted=false → 弹首启向导并
@@ -17,7 +17,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'core/di/current_screen.dart';
 import 'core/di/database.dart';
 import 'core/di/database_backup.dart';
 import 'core/di/locale.dart';
@@ -25,17 +24,11 @@ import 'core/di/orphan_reaper.dart';
 import 'core/di/preferences.dart';
 import 'core/di/theme.dart';
 import 'core/di/video_backfill.dart';
-import 'features/canvas/providers/current_canvas_id.dart';
-import 'features/canvas/widgets/canvas_screen.dart';
 import 'features/command_palette/widgets/command_palette_shortcuts.dart';
-import 'features/gallery/providers/current_gallery_project.dart';
-import 'features/gallery/widgets/gallery_screen.dart';
 import 'features/generation/services/toast_service.dart';
-import 'features/settings/settings_screen.dart';
-import 'features/showcase/widgets/built_in_showcase_screen.dart';
+import 'features/shell/widgets/ink_shell.dart';
 import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
-import 'features/studio/studio_home_screen.dart';
 import 'features/studio/widgets/onboarding_dialog.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
@@ -150,24 +143,13 @@ class _UnlockedShellState extends ConsumerState<_UnlockedShell> {
     });
   }
 
+  // T6 的 if 链已在 T7 退役：渲染全部交给 InkShell（唯一根 Scaffold + 唯一
+  // chrome + 持久标签条 + 两级 IndexedStack）。本文件不再持有任何路由判据——
+  // "哪个 surface 在台上"这件事只在 ShellContentStack 一处决定。
+  //
+  // CommandPaletteShortcuts 必须留在 InkShell【之上】：ShellContentStack 的
+  // _shellFocus 在切换时无条件夺焦，若 ⌘K 绑定在它之下会被一并抢走。
   @override
-  Widget build(BuildContext context) {
-    final canvasId = ref.watch(currentCanvasIdProvider);
-    final gallery = ref.watch(currentGalleryProjectProvider);
-    final Widget body;
-    if (canvasId != null) {
-      body = const CanvasScreen();
-    } else if (gallery != null) {
-      body = Scaffold(
-        body: GalleryScreen(projectId: gallery.id, projectName: gallery.name),
-      );
-    } else {
-      body = switch (ref.watch(currentScreenProvider)) {
-        AppScreen.studio => const Scaffold(body: StudioHomeScreen()),
-        AppScreen.settings => const SettingsScreen(),
-        AppScreen.showcase => const Scaffold(body: BuiltInShowcaseScreen()),
-      };
-    }
-    return CommandPaletteShortcuts(child: body);
-  }
+  Widget build(BuildContext context) =>
+      const CommandPaletteShortcuts(child: InkShell());
 }

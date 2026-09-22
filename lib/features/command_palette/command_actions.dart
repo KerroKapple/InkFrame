@@ -3,14 +3,11 @@
 // 动作按当前路由上下文组装（canvas / gallery / settings / studio）；
 // label 经 context.l10n 解析后快照进 CommandAction，执行闭包在面板关闭后
 // 由调用方以 (context, ref) 触发，await 之后一律先查 context.mounted。
-import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/di/current_screen.dart';
-import '../../core/di/preferences.dart';
 import '../../core/errors/ink_error.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
@@ -19,11 +16,11 @@ import '../canvas/models/canvas_node.dart';
 import '../canvas/providers/canvas_edges_controller.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
 import '../canvas/providers/canvas_transform_controller.dart';
-import '../canvas/providers/current_canvas_id.dart';
 import '../canvas/util/node_position.dart';
 import '../export/util/export_order.dart';
 import '../export/widgets/export_video_dialog.dart';
-import '../gallery/providers/current_gallery_project.dart';
+import '../shell/models/shell_state.dart';
+import '../shell/providers/shell_controller.dart';
 import '../studio/project_import_flow.dart';
 
 /// 单个可执行命令：图标 + 已本地化 label + 执行闭包。
@@ -52,8 +49,25 @@ class CommandAction {
 ///   导入必须能从这里够到——2026-08-31 审计 P0-3）
 List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   final l = context.l10n;
-  final canvasId = ref.read(currentCanvasIdProvider);
-  if (canvasId != null) {
+  final s = ref.read(shellControllerProvider);
+  // fix round 1（M-4）：overlay 判断提到最前，与 app.dart 的 overlay-first
+  // 判序保持一致（R25）——浮层可以盖在画布或画廊之上（openOverlay 刻意保留
+  // canvasId/project），若 overlay 判断排在后面，"画布/画廊上开着 Settings
+  // 时按 ⌘K" 会拿到画布/画廊动作集而非当前真正可见的 Settings 动作集。
+  if (s.overlay != null) {
+    return switch (s.overlay!) {
+      ShellOverlay.settings => <CommandAction>[_backToStudio(l)],
+      ShellOverlay.showcase => <CommandAction>[
+          _backToStudio(l),
+          _openSettings(l),
+        ],
+    };
+  }
+  final canvasId = s.canvasId;
+  // fix round 2（R33）：同步 app.dart 的 tab==canvas 判据——goTab() 同样
+  // 保留 canvasId（标签保活语义），若这里只看 canvasId != null，回到
+  // Studio 后 ⌘K 仍会拿到对着当前不可见画布动刀的动作集（addNode/export）。
+  if (s.tab == ShellTab.canvas && canvasId != null) {
     // 画布打开期间 CanvasScreen 常驻 watch 该 provider，read 即为已加载态。
     final videoNodes = exportableVideoNodes(
       ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
@@ -91,21 +105,17 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
       _openSettings(l),
     ];
   }
-  if (ref.read(currentGalleryProjectProvider) != null) {
+  if (s.tab == ShellTab.gallery && s.project != null) {
     return <CommandAction>[_backToStudio(l), _openSettings(l)];
   }
-  return switch (ref.read(currentScreenProvider)) {
-    AppScreen.settings => <CommandAction>[_backToStudio(l)],
-    AppScreen.showcase => <CommandAction>[_backToStudio(l), _openSettings(l)],
-    // studio：内置示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
-    // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。2026-08-31 审计 P0：
-    // 导入项目此前在这里完全够不到，见 studio/project_import_flow.dart。
-    AppScreen.studio => <CommandAction>[
-        _importProject(l),
-        _openShowcase(l),
-        _openSettings(l),
-      ],
-  };
+  // studio：内置示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
+  // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。2026-08-31 审计 P0：
+  // 导入项目此前在这里完全够不到，见 studio/project_import_flow.dart。
+  return <CommandAction>[
+    _importProject(l),
+    _openShowcase(l),
+    _openSettings(l),
+  ];
 }
 
 Future<void> _addNode(
@@ -125,7 +135,7 @@ Future<void> _addNode(
             random: Random(),
             transform:
                 ref.read(canvasTransformControllerProvider(canvasId)).value,
-            viewportSize: ref.read(canvasViewportSizeProvider),
+            viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
             nodeSize: defaultNodeSize(type),
           ),
         );
@@ -148,8 +158,18 @@ void _openExport(BuildContext context, WidgetRef ref, String canvasId) {
     edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[],
   );
-  final projectId = videoNodes.isEmpty ? null : videoNodes.first.projectId;
-  if (projectId == null) return; // 面板打开到执行之间节点已变化：静默不弹
+  if (videoNodes.isEmpty) return; // 面板打开到执行之间节点已变化：静默不弹
+  // R86：projectId 走外壳的项目上下文，与 export_tab.dart 同源（spec §8.2 点名
+  // 要迁的【两个】写点之外的第三处，T10 漏下了）。
+  //
+  // 旧写法取 videoNodes.first.projectId，而启用判据（canExport）取的是
+  // exportableVideoNodes(...).first——**候选集相同、排序不同**：
+  // orderVideoNodesForExport 先按 narrative 链序、链外的再按 position.x 追加。
+  // 只要「链序第一个」与「原序第一个」不是同一节点、且前者 project_id 为空
+  // （存量行允许），⌘K 面板里就会出现「Export video」、点下去什么都不发生
+  // ——正是 spec 要消灭的「看着能点、点了没反应」，只是换到了命令面板这条入口。
+  final projectId = ref.read(shellControllerProvider).project?.id;
+  if (projectId == null) return; // 外壳尚无项目上下文：静默不弹
   showExportVideoDialog(context, projectId: projectId, videoNodes: videoNodes);
 }
 
@@ -157,16 +177,16 @@ CommandAction _backToStudio(AppLocalizations l) => CommandAction(
       id: 'backToStudio',
       icon: Icons.arrow_back,
       label: l.commandBackToStudio,
+      // T11 退掉了这里原有的 `clearLastCanvas: true` 写点（R26 的恢复决定
+      // 在 T11 落地后失效）。理由：标签模型下切到 Studio 标签【不等于关闭
+      // 画布】——画布还在保活宿主里活着，用户只是去看另一个标签。旧语义
+      // 「主动回首页 = 下次启动停在 Studio」绑的是互斥路由时代「回家即离开
+      // 画布」的前提，那个前提没有了。而且它与标签条上的 Studio 标签行为
+      // 不自洽（同一个动作，一条静默清记录、一条不清），也会在用户明确
+      // 打开 shellKeepLastCanvas 的情况下背着他把记录清掉。
+      // 现在「下次启动是否回到上次画布」的唯一真相源是该偏好开关。
       run: (context, ref) async {
-        ref.read(currentCanvasIdProvider.notifier).state = null;
-        ref.read(currentGalleryProjectProvider.notifier).state = null;
-        ref.read(currentScreenProvider.notifier).state = AppScreen.studio;
-        // 主动回首页 = 下次启动停留 Studio（与顶栏返回钮同语义，fire-and-forget）。
-        unawaited(
-          ref.read(preferencesServiceProvider).update(
-                (p) => p.copyWith(clearLastCanvas: true),
-              ),
-        );
+        ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
       },
     );
 
@@ -175,7 +195,9 @@ CommandAction _openShowcase(AppLocalizations l) => CommandAction(
       icon: Icons.photo_library_outlined,
       label: l.showcaseEntryLabel,
       run: (context, ref) async {
-        ref.read(currentScreenProvider.notifier).state = AppScreen.showcase;
+        ref
+            .read(shellControllerProvider.notifier)
+            .openOverlay(ShellOverlay.showcase);
       },
     );
 
@@ -191,8 +213,8 @@ CommandAction _openSettings(AppLocalizations l) => CommandAction(
       icon: Icons.settings_outlined,
       label: l.studioOpenSettings,
       run: (context, ref) async {
-        ref.read(currentCanvasIdProvider.notifier).state = null;
-        ref.read(currentGalleryProjectProvider.notifier).state = null;
-        ref.read(currentScreenProvider.notifier).state = AppScreen.settings;
+        ref
+            .read(shellControllerProvider.notifier)
+            .openOverlay(ShellOverlay.settings);
       },
     );

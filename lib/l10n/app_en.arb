@@ -217,6 +217,9 @@
   "settingsAboutUpdateOpenFailed": "Couldn't open the release page",
   "settingsAboutUpdateAutoCheckLabel": "Check for updates at startup",
 
+  "shellKeepLastCanvasTitle": "Restore last canvas on startup",
+  "shellKeepLastCanvasSubtitle": "Reopen the canvas you were last working on when InkFrame starts. Turning this off keeps the record — switch it back on to return to the same canvas.",
+
   "generationMissingKey": "API key is missing",
   "generationInvalidConfig": "Invalid configuration: {reason}",
   "@generationInvalidConfig": {
@@ -366,7 +369,6 @@
   "studioNewProject": "New Project",
   "studioLibrary": "LIBRARY",
   "studioLibraryProjects": "Projects",
-  "studioBreadcrumbAll": "All Projects",
   "studioEmptyTitle": "No projects yet",
   "studioEmptySubtitle": "Create your first project to start building storyboards.",
   "studioErrorTitle": "Failed to load projects",
@@ -452,12 +454,6 @@
   "canvasRenderQueue": "Render Queue",
   "canvasRenderQueueExpand": "Expand render queue",
   "canvasRenderQueueCollapse": "Collapse render queue",
-  "canvasBreadcrumbProject": "Project",
-  "canvasBreadcrumbCanvas": "Canvas",
-  "canvasBackToStudio": "Studio",
-  "@canvasBackToStudio": {
-    "description": "Canvas top chrome — labeled affordance to return to the Studio home"
-  },
   "canvasEmptyTitle": "This canvas is empty",
   "canvasEmptySubtitle": "Add your first node to start storyboarding.",
   "canvasEmptyAddImage": "Add image node",
@@ -535,14 +531,6 @@
 
   "commonRetry": "Retry",
   "galleryEntryLabel": "Gallery",
-  "galleryBreadcrumb": "{projectName} / Gallery",
-  "@galleryBreadcrumb": {
-    "description": "Gallery top chrome breadcrumb",
-    "placeholders": {
-      "projectName": { "type": "String" }
-    }
-  },
-  "galleryBackTooltip": "Back to Studio",
   "galleryEmptyTitle": "No generated assets yet",
   "galleryEmptySubtitle": "Images and videos generated on this project's canvases will appear here.",
   "galleryLoadFailed": "Failed to load gallery",
@@ -555,11 +543,18 @@
   "gallerySavedAsCharacter": "Character saved",
   "galleryKindImage": "Image",
   "galleryKindVideo": "Video",
+  "galleryFilterActiveChip": "Filters active",
+  "galleryItemCount": "{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}",
+  "@galleryItemCount": {
+    "description": "Gallery tool bar count of currently visible (post-filter) assets, shown next to the project name",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "showcaseEntryLabel": "Built-in samples",
   "showcaseTitle": "Built-in image samples",
   "showcaseSubtitle": "AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.",
-  "showcaseBackTooltip": "Back to Studio",
   "showcaseSquareTitle": "Mountain study",
   "showcaseSquareMeta": "1:1 · Ink wash",
   "showcaseWideTitle": "Storyboard establishing shot",
@@ -646,5 +641,18 @@
       "count": { "type": "int" }
     }
   },
-  "scriptImportFailed": "Couldn't import the script. Nothing was added to the canvas."
+  "scriptImportFailed": "Couldn't import the script. Nothing was added to the canvas.",
+
+  "shellTabStudio": "Studio",
+  "shellTabCanvas": "Canvas",
+  "shellTabSequence": "Sequence",
+  "shellTabGallery": "Gallery",
+  "shellTabExport": "Export",
+  "shellBreadcrumbNoProject": "No project",
+  "shellCloseOverlay": "Close",
+  "shellGoToStudio": "Go to Studio",
+  "shellCanvasEmptyTitle": "No canvas open",
+  "shellCanvasEmptyBody": "Pick a canvas in Studio and it opens right here.",
+  "shellSequenceEmptyBody": "Open a canvas first, then preview its narrative chain here.",
+  "shellExportEmptyBody": "Open a canvas first, then export its video results here."
 }

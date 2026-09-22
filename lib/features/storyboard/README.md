@@ -93,8 +93,14 @@ shot ──narrative──> image config ──sourceNodeId──> image result
 
 ## 入口
 
-画布顶栏「序列预览」按钮，画布上有 narrative 边才可用（可用性只 watch 边，
-拖动节点不重建顶栏）。
+外壳的「序列」标签（`features/shell/widgets/tabs/sequence_tab.dart`）。画布上有
+narrative 边才可用（可用性只 watch 边，拖动节点不重建标签体）；`canvasId == null`
+时是「去 Studio」引导空态。判据在 `features/shell/util/tab_availability.dart` 的
+`hasNarrativeEdges`（T7 从已删除的 `canvas_top_chrome.dart` 原样搬运）。
+
+**序列预览只活在对话框里**，不是常驻标签视图——`SequencePreviewContent` 从
+`initState` 持有 media_kit `Player` 到 `dispose` 且自动播放，抬成常驻视图就会在
+后台标签里一直播（见 [features/shell](../shell/README.md) 的不变量表）。
 
 ## 测试
 
@@ -103,7 +109,7 @@ shot ──narrative──> image config ──sourceNodeId──> image result
 - `script_import_dialog_test.dart`（6 例）：预览实时性、策略切换、成功/失败路径
 - `sequence_builder_test.dart`（14 例）：折叠、时长优先级、取最新产物、跳过规则
 - `sequence_preview_dialog_test.dart`（12 例）：handle 生命周期、推进语义、控件门控
-- `canvas_top_chrome_sequence_test.dart`（4 例）：入口可用性门控
+- `shell_tabs_empty_state_test.dart`（序列 4 例）：入口可用性门控（T7 从 `canvas_top_chrome_sequence_test.dart` 整体搬运）
 
 「失败零残留」用的 fake UoW 会**真回滚**（写入先落 staging，闭包整体成功才 commit）；
 真事务的回滚语义由 `test/storage/transaction_integration_test.dart`（真 PG）兜底。

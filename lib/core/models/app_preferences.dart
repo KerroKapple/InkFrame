@@ -22,6 +22,7 @@ class AppPreferences {
     this.updateCheckEnabled = true,
     this.lastUpdateCheckAtIso,
     this.onboardingCompleted = false,
+    this.shellKeepLastCanvas = true,
     this.canvasEdgeColor,
     this.canvasCardColor,
   });
@@ -58,6 +59,11 @@ class AppPreferences {
   /// 首启向导是否已完成/跳过（ON-1）。false → 冷启弹向导且该次跳过会话恢复。
   final bool onboardingCompleted;
 
+  /// 启动时恢复上次打开的画布（T11）。默认【开】——关掉只是这次不回去，
+  /// lastCanvasId/lastProjectId 记录照常保留，重新打开开关即回到同一张画布。
+  /// fromMap 缺省必须退 true：老用户的 preferences.json 里没有这个键。
+  final bool shellKeepLastCanvas;
+
   /// 画布连线 / 卡片自定义颜色（ARGB int）；null = 跟随主题默认。
   final int? canvasEdgeColor;
   final int? canvasCardColor;
@@ -78,6 +84,7 @@ class AppPreferences {
     bool? updateCheckEnabled,
     String? lastUpdateCheckAtIso,
     bool? onboardingCompleted,
+    bool? shellKeepLastCanvas,
     int? canvasEdgeColor,
     bool clearCanvasEdgeColor = false,
     int? canvasCardColor,
@@ -99,6 +106,7 @@ class AppPreferences {
       updateCheckEnabled: updateCheckEnabled ?? this.updateCheckEnabled,
       lastUpdateCheckAtIso: lastUpdateCheckAtIso ?? this.lastUpdateCheckAtIso,
       onboardingCompleted: onboardingCompleted ?? this.onboardingCompleted,
+      shellKeepLastCanvas: shellKeepLastCanvas ?? this.shellKeepLastCanvas,
       canvasEdgeColor: clearCanvasEdgeColor
           ? null
           : (canvasEdgeColor ?? this.canvasEdgeColor),
@@ -122,6 +130,7 @@ class AppPreferences {
         'update_check_enabled': updateCheckEnabled,
         'last_update_check_at': lastUpdateCheckAtIso,
         'onboarding_completed': onboardingCompleted,
+        'shell_keep_last_canvas': shellKeepLastCanvas,
         'canvas_edge_color': canvasEdgeColor,
         'canvas_card_color': canvasCardColor,
       };
@@ -141,6 +150,7 @@ class AppPreferences {
     final uce = m['update_check_enabled'];
     final luc = m['last_update_check_at'];
     final ob = m['onboarding_completed'];
+    final sklc = m['shell_keep_last_canvas'];
     final cec = m['canvas_edge_color'];
     final ccc = m['canvas_card_color'];
     return AppPreferences(
@@ -158,6 +168,7 @@ class AppPreferences {
       updateCheckEnabled: uce is bool ? uce : true,
       lastUpdateCheckAtIso: luc is String ? luc : null,
       onboardingCompleted: ob is bool ? ob : false,
+      shellKeepLastCanvas: sklc is bool ? sklc : true,
       canvasEdgeColor: cec is int ? cec : null,
       canvasCardColor: ccc is int ? ccc : null,
     );
@@ -180,6 +191,7 @@ class AppPreferences {
           other.updateCheckEnabled == updateCheckEnabled &&
           other.lastUpdateCheckAtIso == lastUpdateCheckAtIso &&
           other.onboardingCompleted == onboardingCompleted &&
+          other.shellKeepLastCanvas == shellKeepLastCanvas &&
           other.canvasEdgeColor == canvasEdgeColor &&
           other.canvasCardColor == canvasCardColor;
 
@@ -198,6 +210,7 @@ class AppPreferences {
         updateCheckEnabled,
         lastUpdateCheckAtIso,
         onboardingCompleted,
+        shellKeepLastCanvas,
         canvasEdgeColor,
         canvasCardColor,
       );

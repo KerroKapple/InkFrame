@@ -208,6 +208,9 @@
   "settingsAboutUpdateOpenFailed": "无法打开发布页",
   "settingsAboutUpdateAutoCheckLabel": "启动时自动检查更新",
 
+  "shellKeepLastCanvasTitle": "启动时恢复上次的画布",
+  "shellKeepLastCanvasSubtitle": "启动 InkFrame 时自动打开上次编辑的画布。关闭只是这次不回去，记录仍然保留——重新打开即可回到同一张画布。",
+
   "generationMissingKey": "API Key 未配置",
   "generationInvalidConfig": "配置无效：{reason}",
   "@generationInvalidConfig": {
@@ -341,7 +344,6 @@
   "studioNewProject": "新建项目",
   "studioLibrary": "项目库",
   "studioLibraryProjects": "项目",
-  "studioBreadcrumbAll": "全部项目",
   "studioEmptyTitle": "还没有项目",
   "studioEmptySubtitle": "新建一个项目，开始你的分镜创作。",
   "studioErrorTitle": "项目列表加载失败",
@@ -404,9 +406,6 @@
   "canvasRenderQueue": "渲染队列",
   "canvasRenderQueueExpand": "展开渲染队列",
   "canvasRenderQueueCollapse": "收起渲染队列",
-  "canvasBreadcrumbProject": "项目",
-  "canvasBreadcrumbCanvas": "画布",
-  "canvasBackToStudio": "工作室",
   "canvasEmptyTitle": "当前画布为空",
   "canvasEmptySubtitle": "添加第一个节点，开始分镜。",
   "canvasEmptyAddImage": "添加图片节点",
@@ -498,13 +497,6 @@
 
   "commonRetry": "重试",
   "galleryEntryLabel": "画廊",
-  "galleryBreadcrumb": "{projectName} / 画廊",
-  "@galleryBreadcrumb": {
-    "placeholders": {
-      "projectName": { "type": "String" }
-    }
-  },
-  "galleryBackTooltip": "返回工作室",
   "galleryEmptyTitle": "还没有生成内容",
   "galleryEmptySubtitle": "该项目画布上生成的图片和视频会显示在这里。",
   "galleryLoadFailed": "画廊加载失败",
@@ -517,11 +509,17 @@
   "gallerySavedAsCharacter": "已存为角色",
   "galleryKindImage": "图片",
   "galleryKindVideo": "视频",
+  "galleryFilterActiveChip": "筛选生效中",
+  "galleryItemCount": "{count, plural, =0{没有产物} other{{count} 个产物}}",
+  "@galleryItemCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "showcaseEntryLabel": "内置示例",
   "showcaseTitle": "内置图片示例",
   "showcaseSubtitle": "随应用打包的 AI 生成示例图，可离线预览；它们不是项目生成记录，也不需要 API Key。",
-  "showcaseBackTooltip": "返回工作室",
   "showcaseSquareTitle": "山水习作",
   "showcaseSquareMeta": "1:1 · 水墨",
   "showcaseWideTitle": "分镜建立镜头",
@@ -566,5 +564,18 @@
   "scriptImportShotCount": "{count, plural, other{{count} 镜}}",
   "scriptImportConfirm": "创建分镜",
   "scriptImportDone": "{count, plural, other{已添加 {count} 镜到画布}}",
-  "scriptImportFailed": "脚本导入失败，画布未做改动。"
+  "scriptImportFailed": "脚本导入失败，画布未做改动。",
+
+  "shellTabStudio": "工作室",
+  "shellTabCanvas": "画布",
+  "shellTabSequence": "序列",
+  "shellTabGallery": "画廊",
+  "shellTabExport": "导出",
+  "shellBreadcrumbNoProject": "未选择项目",
+  "shellCloseOverlay": "关闭",
+  "shellGoToStudio": "去工作室",
+  "shellCanvasEmptyTitle": "还没有打开画布",
+  "shellCanvasEmptyBody": "去工作室选一个画布，它就会在这里打开。",
+  "shellSequenceEmptyBody": "先打开一个画布，就能在这里预览它的叙事链。",
+  "shellExportEmptyBody": "先打开一个画布，就能在这里导出它的视频结果。"
 }

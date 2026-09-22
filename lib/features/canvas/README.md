@@ -31,7 +31,7 @@ util/       无副作用的几何/命中/预设工具
 - `canvas_base_style` / `lane_collapse_controller` / `characters_controller` / `playable_video_path` / `current_canvas_id` / `current_canvas_name` / `canvas_bootstrap_controller`
 
 ## widgets（关键）
-- `canvas_screen` — 整屏骨架：`canvas_top_chrome` + `canvas_view` + `canvas_render_queue`，外层包 `canvas_shortcuts`（删除/Esc/全选/缩放快捷键，PL-2）
+- `canvas_screen` — 整屏骨架：`canvas_tool_bar`（基底风格入口；窗口 chrome 与面包屑已上移到外壳 `ShellChrome`，T7）+ `canvas_view` + `canvas_render_queue`，外层包 `canvas_shortcuts`（删除/Esc/全选/缩放快捷键，PL-2；`isActive` 由外壳按标签可见性下传）
 - `canvas_view` / `edge_painter` — 画布视口与连线绘制
 - `node_card` / `video_node_body` — 节点卡片各形态
 - `node_inspector_router` — 按 (role, type) 分发：config → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`（前二者共用 `inspector_status_panel`）；result+image → `image_result_inspector`
