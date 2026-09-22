@@ -65,7 +65,7 @@ class WsMenuBar extends StatelessWidget {
             decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.control))),
             child: Row(
               children: <Widget>[
-                CustomPaint(size: const Size(12, 12), painter: _SearchGlyph(c.fg6)),
+                CustomPaint(size: const Size(12, 12), painter: WsSearchGlyph(c.fg6)),
                 const SizedBox(width: InkSpacing.s6),
                 Expanded(child: Text(WorkspaceFixture.searchPlaceholder, style: t.body.copyWith(color: c.fg6))),
                 Text('⌘K', style: t.monoSmall.copyWith(color: c.fg6)),
@@ -83,8 +83,8 @@ class WsMenuBar extends StatelessWidget {
 }
 
 /// 稿上的 12×12 放大镜：圆 r3.6@(5.2,5.2) + 斜柄 (8,8)→(10.6,10.6)，1.3 描边。
-class _SearchGlyph extends CustomPainter {
-  const _SearchGlyph(this.color);
+class WsSearchGlyph extends CustomPainter {
+  const WsSearchGlyph(this.color);
   final Color color;
 
   @override
@@ -98,5 +98,5 @@ class _SearchGlyph extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_SearchGlyph old) => old.color != color;
+  bool shouldRepaint(WsSearchGlyph old) => old.color != color;
 }

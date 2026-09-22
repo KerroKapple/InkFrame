@@ -40,7 +40,13 @@ class InkPalette {
   static const List<(Color, Color)> thumbPlaceholderGradients = <(Color, Color)>[
     (Color(0xFF3B3A36), Color(0xFF23221F)),
     (Color(0xFF34342F), Color(0xFF1F1E1B)),
-    (Color(0xFF2F2A22), Color(0xFF1C1A16)),
+    (Color(0xFF2F2A22), Color(0xFF17150F)),
+    // Screens 稿（画廊 / Studio）再多五档，同一组 160° 渐变。
+    (Color(0xFF2C2E2A), Color(0xFF1A1B18)),
+    (Color(0xFF37312A), Color(0xFF201C18)),
+    (Color(0xFF30302C), Color(0xFF1B1B19)),
+    (Color(0xFF2A2F2C), Color(0xFF181B19)),
+    (Color(0xFF333029), Color(0xFF1E1C17)),
   ];
 
   /// 画布卡片背景自定义色候选（暗色系中性偏色面，保证前景可读）。
@@ -272,6 +278,7 @@ class InkSpacing {
   static const double s12 = 12;
   static const double s14 = 14;
   static const double s18 = 18;
+  static const double s26 = 26; // 画廊筛选行的缩进
   static const double s28 = 28;
   // 光学微调小档（2/3/6）：覆盖 chip/inspector/toolbar 的非 8 倍数细间距
   static const double s2 = 2;

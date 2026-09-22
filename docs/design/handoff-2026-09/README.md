@@ -448,6 +448,9 @@ chrome --headless=new --disable-gpu --hide-scrollbars --force-device-scale-facto
   --window-size=2000,1250 --virtual-time-budget=15000 --screenshot=ref_raw.png "http://127.0.0.1:8765/InkFrame%20Workspace%20v2.html"
 # 3. 像素比对（容差 24/255，输出差异图 + 按 20px 行带的差异分布）
 powershell -File scripts/replica_diff.ps1 -A ref.png -B flutter.png -Out diff.png
+# 4. Screens 稿是多屏纵排：用 1700×2400 视口整页截，再按屏的左上角裁（画廊屏在 (48,1168)）
+powershell -File scripts/replica_crop.ps1 -In ref_tall.png -Out ref.png -X 48 -Y 1168
+# 5. 复刻哪一屏：--dart-define=INKFRAME_REPLICA_SCREEN=gallery（默认 workspace）
 ```
 
 `replica/` 存每屏的三张图：`*_reference_*.png`（稿）/ `*_flutter_*.png`（复刻）/ `*_diff.png`（红 = 差异像素）。
@@ -457,6 +460,7 @@ powershell -File scripts/replica_diff.ps1 -A ref.png -B flutter.png -Out diff.pn
 |---|---|---|
 | Workspace v2（静态复刻） | 0.97%（全部为字形抗锯齿） | 用户验收通过（2026-09-22） |
 | Workspace v2（S2 接线后，稿数据播种） | 5.85% | 差异 = 检查器分组未改、渲染队列无 job、泳道标题栏（Lanes 稿）、引用名带类型后缀（见 PR #235） |
+| 画廊（静态复刻，Screens 稿第 2 屏） | 2.31%（字形抗锯齿 + 血缘末行 1px 琥珀描边） | 待用户验收（2026-09-22）。文字密度比画布高，抗锯齿占比随之上去；布局逐像素对齐（筛选行 / 5 列网格 / 参数行 28 / 血缘行距 41） |
 | Workspace v2（S2b 检查器三组 / 队列 / 引用名改完） | 5.45% | 预期内偏离：景别 / 机位角度 / 运镜幅度 / 焦段 / 模型名 / fps 无数据模型（记 BOARD 债）、队列无 job、稿上运行态文字（自动保存 / 结果数 / 缩略图）。逐项见 PR #235 |
 
 画布标签自此是**基线**：`test/app/workspace_v2_canvas_golden_test.dart` 用同一份稿数据（`seedWorkspaceFixtureInto`）在 1600×1000 / zh 下渲染整个外壳并锁 golden，壳 chrome 任何改动都变红。基线只在 CI ubuntu 生成，Windows 截的 wired PNG 不能直接当基线（字体光栅化不同）。
