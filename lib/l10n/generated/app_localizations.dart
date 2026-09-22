@@ -2522,6 +2522,12 @@ abstract class AppLocalizations {
   /// **'Command palette'**
   String get commandPaletteTooltip;
 
+  /// No description provided for @commandPaletteEntryPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search projects, nodes, outputs…'**
+  String get commandPaletteEntryPlaceholder;
+
   /// No description provided for @commandPaletteSearchHint.
   ///
   /// In en, this message translates to:
@@ -2617,6 +2623,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t import the script. Nothing was added to the canvas.'**
   String get scriptImportFailed;
+
+  /// No description provided for @shellMenuFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get shellMenuFile;
+
+  /// No description provided for @shellMenuEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get shellMenuEdit;
+
+  /// No description provided for @shellMenuCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get shellMenuCanvas;
+
+  /// No description provided for @shellMenuNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Node'**
+  String get shellMenuNode;
+
+  /// No description provided for @shellMenuWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Window'**
+  String get shellMenuWindow;
+
+  /// No description provided for @shellMenuHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Help'**
+  String get shellMenuHelp;
 
   /// No description provided for @shellTabStudio.
   ///

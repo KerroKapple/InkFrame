@@ -1312,6 +1312,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commandPaletteTooltip => '命令面板';
 
   @override
+  String get commandPaletteEntryPlaceholder => '搜索项目、节点、产物…';
+
+  @override
   String get commandPaletteSearchHint => '输入命令…';
 
   @override
@@ -1372,6 +1375,24 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get scriptImportFailed => '脚本导入失败，画布未做改动。';
+
+  @override
+  String get shellMenuFile => 'File';
+
+  @override
+  String get shellMenuEdit => 'Edit';
+
+  @override
+  String get shellMenuCanvas => 'Canvas';
+
+  @override
+  String get shellMenuNode => 'Node';
+
+  @override
+  String get shellMenuWindow => 'Window';
+
+  @override
+  String get shellMenuHelp => 'Help';
 
   @override
   String get shellTabStudio => '工作室';

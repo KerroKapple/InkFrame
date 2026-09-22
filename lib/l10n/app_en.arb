@@ -601,6 +601,7 @@
   },
 
   "commandPaletteTooltip": "Command palette",
+  "commandPaletteEntryPlaceholder": "Search projects, nodes, outputs…",
   "@commandPaletteTooltip": {
     "description": "Tooltip / semantics label of the ⌘K chip that opens the command palette"
   },
@@ -643,6 +644,12 @@
   },
   "scriptImportFailed": "Couldn't import the script. Nothing was added to the canvas.",
 
+  "shellMenuFile": "File",
+  "shellMenuEdit": "Edit",
+  "shellMenuCanvas": "Canvas",
+  "shellMenuNode": "Node",
+  "shellMenuWindow": "Window",
+  "shellMenuHelp": "Help",
   "shellTabStudio": "Studio",
   "shellTabCanvas": "Canvas",
   "shellTabSequence": "Sequence",

@@ -28,8 +28,8 @@ class InkShell extends ConsumerWidget {
       backgroundColor: context.inkColors.surface0,
       body: Column(
         children: <Widget>[
-          const ShellChrome(), // 56：全树唯一 InkWindowChrome
-          const ShellTabBar(), // 44：在 DragToMoveArea 之外（见该文件头注）
+          const ShellChrome(), // 31：全树唯一 InkWindowChrome（菜单栏）
+          const ShellTabBar(), // 35：在 DragToMoveArea 之外（见该文件头注）；面包屑在这一行
           Expanded(child: ShellContentStack(tab: s.tab, overlay: s.overlay)),
         ],
       ),

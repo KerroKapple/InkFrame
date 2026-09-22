@@ -13,12 +13,12 @@ import 'package:inkframe/features/shell/widgets/shell_chrome.dart';
 import '../../_harness/shell_app.dart';
 
 void main() {
-  testWidgets('chrome 渲染 Ink/Frame logo + 面包屑 + ⌘K chip', (tester) async {
+  testWidgets('chrome 渲染 If·InkFrame logo + ⌘K 入口；面包屑在标签栏', (tester) async {
     final paths = await setupTempPaths(tester, 'ink_shell_chrome_content_');
     await pumpInkShell(tester, paths: paths);
 
-    expect(find.text('Ink'), findsOneWidget);
-    expect(find.text('Frame'), findsOneWidget);
+    expect(find.text('If'), findsOneWidget);
+    expect(find.text('InkFrame'), findsOneWidget);
     // 未选项目 ⇒ 面包屑第二段是 shellBreadcrumbNoProject。
     expect(find.text('No project'), findsOneWidget);
     // 非 macOS 平台（测试默认 android）显示 Ctrl 修饰键。

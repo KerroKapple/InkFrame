@@ -1367,6 +1367,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commandPaletteTooltip => 'Command palette';
 
   @override
+  String get commandPaletteEntryPlaceholder =>
+      'Search projects, nodes, outputs…';
+
+  @override
   String get commandPaletteSearchHint => 'Type a command…';
 
   @override
@@ -1431,6 +1435,24 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scriptImportFailed =>
       'Couldn\'t import the script. Nothing was added to the canvas.';
+
+  @override
+  String get shellMenuFile => 'File';
+
+  @override
+  String get shellMenuEdit => 'Edit';
+
+  @override
+  String get shellMenuCanvas => 'Canvas';
+
+  @override
+  String get shellMenuNode => 'Node';
+
+  @override
+  String get shellMenuWindow => 'Window';
+
+  @override
+  String get shellMenuHelp => 'Help';
 
   @override
   String get shellTabStudio => 'Studio';

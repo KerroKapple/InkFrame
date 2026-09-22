@@ -26,6 +26,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/components/ink_shell_tab_bar.dart';
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
+import 'shell_breadcrumb.dart';
 
 class ShellTabBar extends ConsumerWidget {
   const ShellTabBar({super.key});
@@ -55,6 +56,7 @@ class ShellTabBar extends ConsumerWidget {
     final AppLocalizations l = context.l10n;
     final ShellNavigator nav = ref.read(shellControllerProvider.notifier);
     return InkShellTabBar(
+      after: const ShellBreadcrumb(),
       items: <InkShellTabBarItem>[
         for (final ShellTab t in ShellTab.values)
           InkShellTabBarItem(

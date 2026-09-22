@@ -548,6 +548,7 @@
   "startupErrorOpenLogDir": "打开日志目录",
 
   "commandPaletteTooltip": "命令面板",
+  "commandPaletteEntryPlaceholder": "搜索项目、节点、产物…",
   "commandPaletteSearchHint": "输入命令…",
   "commandPaletteNoResults": "没有匹配的命令",
   "commandBackToStudio": "返回工作室",

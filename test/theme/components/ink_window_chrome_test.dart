@@ -2,12 +2,11 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/theme/components/ink_window_chrome.dart';
-import 'package:inkframe/theme/tokens.dart';
 
 import '../../_harness/test_app.dart';
 
 void main() {
-  testWidgets('InkWindowChrome height is 56', (tester) async {
+  testWidgets('InkWindowChrome 高 31（稿 30 + 1px 下沿）', (tester) async {
     await pumpInkApp(
       tester,
       const Scaffold(
@@ -15,7 +14,7 @@ void main() {
       ),
     );
     final size = tester.getSize(find.byType(InkWindowChrome));
-    expect(size.height, 56);
+    expect(size.height, InkWindowChrome.height);
     expect(find.text('Studio › Projects'), findsOneWidget);
   });
 
@@ -36,7 +35,7 @@ void main() {
     expect(find.byIcon(Icons.crop_square), findsNothing);
     // leading 左侧留出红绿灯区域
     final double leadingLeft = tester.getTopLeft(find.text('Ink/Frame')).dx;
-    expect(leadingLeft, greaterThanOrEqualTo(InkSpacing.macTrafficLightInset));
+    expect(leadingLeft, greaterThanOrEqualTo(InkWindowChrome.macTrafficLightInset));
     debugDefaultTargetPlatformOverride = null;
   });
 
@@ -56,7 +55,7 @@ void main() {
     expect(find.byIcon(Icons.crop_square), findsOneWidget);
     // 不额外缩进
     final double leadingLeft = tester.getTopLeft(find.text('Ink/Frame')).dx;
-    expect(leadingLeft, lessThan(InkSpacing.macTrafficLightInset));
+    expect(leadingLeft, lessThan(InkWindowChrome.macTrafficLightInset));
     debugDefaultTargetPlatformOverride = null;
   });
 }
