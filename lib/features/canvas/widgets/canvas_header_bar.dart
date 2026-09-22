@@ -22,6 +22,9 @@ class CanvasHeaderBar extends ConsumerWidget {
   /// 稿是 content-box：height 28 + border-bottom 1。
   static const double height = 29;
 
+  /// 画布名的宽度上限：稿上画布名与泳道列表共用左侧，超长名在这里省略，不挤缩放读数。
+  static const double nameMaxWidth = 240;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.inkColors;
@@ -41,44 +44,37 @@ class CanvasHeaderBar extends ConsumerWidget {
       ),
       child: Row(
         children: <Widget>[
-          // 画布名 + 泳道列表放在自己的子行里按内容分宽、超长各自省略——
-          // 不能把它们直接做成外层 Row 的 Flexible：那会和右侧的 Spacer 均分剩余宽度，
-          // 把缩放读数往左推（画布 golden 抓到过这一刀）。
-          Flexible(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Flexible(
-                  child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: t.bodyStrong.copyWith(color: c.fg1)),
-                ),
-                if (lanes.isNotEmpty) ...<Widget>[
-                  const SizedBox(width: InkSpacing.s12),
-                  Container(width: 1, height: 12, color: c.control),
-                  const SizedBox(width: InkSpacing.s12),
-                  Flexible(
-                    child: Text.rich(
-                      TextSpan(
-                        style: t.body.copyWith(color: c.fg5),
-                        children: <InlineSpan>[
-                          TextSpan(text: l.canvasHeaderLanes),
-                          for (int i = 0; i < lanes.length; i++) ...<InlineSpan>[
-                            if (i > 0) const TextSpan(text: ' · '),
-                            TextSpan(
-                              text: lanes[i].label.isEmpty ? l.laneUntitled : lanes[i].label,
-                              style: TextStyle(color: c.fg3),
-                            ),
-                          ],
-                        ],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          // 画布名不参与 flex（它一参与就会和右侧 Spacer 均分宽度，把缩放读数推离中线——
+          // 画布 golden 抓到过），只封一个上限：超长时在 [nameMaxWidth] 处单行省略。
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: nameMaxWidth),
+            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: t.bodyStrong.copyWith(color: c.fg1)),
           ),
+          if (lanes.isNotEmpty) ...<Widget>[
+            const SizedBox(width: InkSpacing.s12),
+            Container(width: 1, height: 12, color: c.control),
+            const SizedBox(width: InkSpacing.s12),
+            Flexible(
+              child: Text.rich(
+                TextSpan(
+                  style: t.body.copyWith(color: c.fg5),
+                  children: <InlineSpan>[
+                    TextSpan(text: l.canvasHeaderLanes),
+                    for (int i = 0; i < lanes.length; i++) ...<InlineSpan>[
+                      if (i > 0) const TextSpan(text: ' · '),
+                      TextSpan(
+                        text: lanes[i].label.isEmpty ? l.laneUntitled : lanes[i].label,
+                        style: TextStyle(color: c.fg3),
+                      ),
+                    ],
+                  ],
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
           const Spacer(),
           ValueListenableBuilder<Matrix4>(
             valueListenable: transform,
