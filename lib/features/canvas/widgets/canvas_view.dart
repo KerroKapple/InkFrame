@@ -778,8 +778,10 @@ class _CanvasStage extends ConsumerWidget {
     Set<String> collapsedIds,
     Size viewport,
   ) {
-    const double kTitleBarHeight = 32.0;
-    const double kTitleBarWidth = 200.0;
+    // 稿：标题栏 26px；横向固定 268 宽、左上角内缩 (12, 6)；竖向 min(道宽 − 24, 240)。
+    const double kTitleBarHeight = LaneTitleBar.height;
+    const double kTitleBarInset = 12.0;
+    const double kTitleBarWidth = 268.0;
     final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
     final rects = laneRects(
       lanes: laneSlices,
@@ -796,13 +798,13 @@ class _CanvasStage extends ConsumerWidget {
       final double top;
       final double? width;
       if (direction == LaneDirection.horizontal) {
-        left = 0;
-        top = rect.top;
-        width = viewport.width;
-      } else {
-        left = rect.left;
-        top = 0;
+        left = kTitleBarInset;
+        top = rect.top + InkSpacing.s6;
         width = kTitleBarWidth;
+      } else {
+        left = rect.left + kTitleBarInset;
+        top = InkSpacing.s6;
+        width = (lane.size - kTitleBarInset * 2).clamp(0.0, 240.0);
       }
       // 拖拽重排：记录拖拽偏移，pan end 时计算目标 lane 并 reorderLanes。
       var dragOffset = Offset.zero;

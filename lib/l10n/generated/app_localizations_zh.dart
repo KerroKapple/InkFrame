@@ -587,13 +587,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorInputsEmpty => '无输入连线';
 
   @override
-  String get inspectorRoleReference => '参考图';
+  String get inspectorRoleReference => '参考帧';
 
   @override
-  String get inspectorRoleFirstFrame => '首帧';
+  String get inspectorRoleFirstFrame => '起始帧';
 
   @override
-  String get inspectorRoleLastFrame => '尾帧';
+  String get inspectorRoleLastFrame => '结束帧';
 
   @override
   String get inspectorRemoveInput => '移除输入';

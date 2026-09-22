@@ -305,7 +305,7 @@ class _StatusRow extends ConsumerWidget {
 
     final String meta = switch (node.type) {
       CanvasNodeType.text => 'txt',
-      CanvasNodeType.shot => node.cameraName ?? '',
+      CanvasNodeType.shot => 'txt',
       _ => (node.typeConfig['provider_id'] as String?) ?? '',
     };
 

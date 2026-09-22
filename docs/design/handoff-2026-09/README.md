@@ -455,7 +455,8 @@ powershell -File scripts/replica_diff.ps1 -A ref.png -B flutter.png -Out diff.pn
 
 | 屏 | 差异像素 | 状态 |
 |---|---|---|
-| Workspace v2 | 0.97%（全部为字形抗锯齿） | 待用户验收 |
+| Workspace v2（静态复刻） | 0.97%（全部为字形抗锯齿） | 用户验收通过（2026-09-22） |
+| Workspace v2（接线后，稿数据播种） | 5.85% | 差异 = 检查器分组未改（S2b）、渲染队列无 job、泳道标题栏（V6 稿）、数据长度（见 PR #235） |
 
 ---
 
@@ -468,3 +469,8 @@ powershell -File scripts/replica_diff.ps1 -A ref.png -B flutter.png -Out diff.pn
 5. **序列视图**：工作量最大。建议先做只读的链序展示与监视器，再加裁切与标记，最后接交付导出。
 6. **交付导出**：按 PRD 的优先级，EDL 与剪映草稿为 P1，FCPXML 为 P2——设计稿默认推 FCPXML 是基于 Resolve 兼容性考虑，**若要严格遵循 PRD 排期，应把默认目标改为 EDL**，这一点需要产品决策。
 7. **画廊、设置浮层、命令面板搜索**：相对独立，可穿插进行。
+
+**接线后再截一张（B 路径第二步）**：真实 app 加两个编译期开关（`lib/features/workspace/dev/dev_capture.dart`）——
+`--dart-define=INKFRAME_SEED_FIXTURE=true` 在全新库里播种稿上那一屏；`--dart-define=INKFRAME_CAPTURE_OUT=…`
+把 app 固定在 1600×1000 逻辑像素自截图后走正常关窗退出。把 `LOCALAPPDATA` 指到临时目录（先放一份
+`onboarding_completed: true` 的 preferences.json）即可在干净库上复现。差异明显上升 = 数据长度撑破布局的信号，回设计侧调稿。
