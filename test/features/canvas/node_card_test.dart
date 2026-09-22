@@ -10,6 +10,7 @@ import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
+import 'package:inkframe/theme/tokens.dart';
 
 import '../../_harness/test_app.dart';
 
@@ -166,7 +167,8 @@ void main() {
       await pumpInkApp(tester, card(), overrides: overrides);
       await tester.pumpAndSettle();
       expect(find.text(en), findsOneWidget);
-      expect(find.text(type.name), findsNothing);
+      // 稿：标题行右侧有 10px 类型标签（image / video / shot），用的就是枚举名。
+      expect(find.text(type.name), findsOneWidget);
 
       await pumpInkApp(tester, card(),
           overrides: overrides, locale: const Locale('zh'));
@@ -175,17 +177,23 @@ void main() {
     });
   }
 
-  // 有全出血媒体的卡片默认态免边框（画面即轮廓）；无媒体保留 1px 边框；
-  // 选中态无论有无媒体都描边（可视选中反馈优先）。
-  group('卡片边框', () {
-    BoxDecoration cardDecoration(WidgetTester tester) {
-      final container = tester.widget<AnimatedContainer>(
+  // 稿：图区一律 1px outline（有无媒体都描），选中 accent；outline 画在盒子外一圈
+  //（圆角 s5 = 4 + 1），由此定位那只 DecoratedBox。
+  group('图区 outline', () {
+    Color outlineColor(WidgetTester tester) {
+      for (final DecoratedBox box in tester.widgetList<DecoratedBox>(
         find.descendant(
           of: find.byType(NodeCard),
-          matching: find.byType(AnimatedContainer),
+          matching: find.byType(DecoratedBox),
         ),
-      );
-      return container.decoration! as BoxDecoration;
+      )) {
+        final BoxDecoration d = box.decoration as BoxDecoration;
+        if (d.border != null &&
+            d.borderRadius == BorderRadius.circular(InkRadius.s5)) {
+          return (d.border! as Border).top.color;
+        }
+      }
+      throw StateError('outline DecoratedBox not found');
     }
 
     Future<void> pump(
@@ -223,20 +231,20 @@ void main() {
       typeConfig: <String, Object?>{'image_url': 'a.png'},
     );
 
-    testWidgets('有媒体 → 默认态无边框', (tester) async {
+    testWidgets('有媒体 → 默认态 outline 色', (tester) async {
       await pump(tester, mediaNode);
-      expect(cardDecoration(tester).border, isNull);
+      expect(outlineColor(tester), InkColors.dark().outline);
     });
 
-    testWidgets('无媒体 → 默认态保留边框', (tester) async {
+    testWidgets('无媒体 → 默认态 outline 色', (tester) async {
       const n = CanvasNode(id: 'c1', label: '', type: CanvasNodeType.image);
       await pump(tester, n);
-      expect(cardDecoration(tester).border, isNotNull);
+      expect(outlineColor(tester), InkColors.dark().outline);
     });
 
-    testWidgets('有媒体但选中 → 仍描边', (tester) async {
+    testWidgets('有媒体且选中 → accent', (tester) async {
       await pump(tester, mediaNode, selected: true);
-      expect(cardDecoration(tester).border, isNotNull);
+      expect(outlineColor(tester), InkColors.dark().accent);
     });
   });
 

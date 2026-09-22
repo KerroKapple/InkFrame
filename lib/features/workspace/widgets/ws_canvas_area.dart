@@ -7,7 +7,8 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../models/workspace_fixture.dart';
 import 'ws_node_card.dart';
-import 'ws_primitives.dart';
+import '../../../theme/components/ws_primitives.dart';
+import 'ws_tone.dart';
 
 class WsCanvasArea extends StatelessWidget {
   const WsCanvasArea({super.key});

@@ -4,7 +4,7 @@ import 'package:flutter/widgets.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../models/workspace_fixture.dart';
-import 'ws_primitives.dart';
+import '../../../theme/components/ws_primitives.dart';
 
 class WsInspector extends StatelessWidget {
   const WsInspector({super.key});

@@ -1,9 +1,12 @@
-// 连线几何单一真相源（CineFlow 式端口曲线）：
-//   锚点随泳道方向：横向 = 源右边中点出 / 靶左边中点入；
+// 连线几何单一真相源（Workspace v2 稿：端口在图区垂直中心，向外偏移 5px）：
+//   锚点随泳道方向：横向 = 源卡右缘出（y = 端口中心）/ 靶卡左侧端口外缘入；
 //                竖向 = 源下边中点出 / 靶上边中点入；
-//   路径 = 主轴控制柄三次贝塞尔（node-editor 经典 S 曲线）；
+//   路径 = 主轴控制柄三次贝塞尔（稿：控制点水平外推约 40px）；
 //   距离 = PathMetrics 均匀采样近似。
 // EdgePainter（绘制）与 hitTestEdge（命中）共同消费，防几何漂移。
+//
+// 【尺寸不读 node.size】节点卡片按稿固定 224 宽（kNodeCardSize），DB 里存量
+// 节点的 size 列仍是旧值；连线、落道判定一律以渲染尺寸为准。
 import 'dart:math' as math;
 import 'dart:ui';
 
@@ -11,31 +14,37 @@ import '../models/canvas_node.dart';
 import 'lane_geometry.dart';
 
 /// 端口圆点半径（绘制用；命中阈值独立于此）。
-const double kEdgePortRadius = 4.0;
+const double kEdgePortRadius = 5.0;
 
-/// 源节点出点：横向 = 右边中点；竖向 = 下边中点。
+/// 端口向外偏移（稿：left/right = -5px）。
+const double kEdgePortInset = 5.0;
+
+/// 源节点出点：横向 = 右缘端口中心；竖向 = 下边中点。
 Offset edgeSourceAnchor(
   CanvasNode n, {
   LaneDirection direction = LaneDirection.horizontal,
 }) =>
     direction == LaneDirection.horizontal
         ? Offset(
-            n.position.dx + n.size.width,
-            n.position.dy + n.size.height / 2,
+            n.position.dx + kNodeCardSize.width,
+            n.position.dy + kNodeCardPortY,
           )
         : Offset(
-            n.position.dx + n.size.width / 2,
-            n.position.dy + n.size.height,
+            n.position.dx + kNodeCardSize.width / 2,
+            n.position.dy + kNodeCardSize.height,
           );
 
-/// 靶节点入点：横向 = 左边中点；竖向 = 上边中点。
+/// 靶节点入点：横向 = 左侧端口外缘；竖向 = 上边中点。
 Offset edgeTargetAnchor(
   CanvasNode n, {
   LaneDirection direction = LaneDirection.horizontal,
 }) =>
     direction == LaneDirection.horizontal
-        ? Offset(n.position.dx, n.position.dy + n.size.height / 2)
-        : Offset(n.position.dx + n.size.width / 2, n.position.dy);
+        ? Offset(
+            n.position.dx - kEdgePortInset,
+            n.position.dy + kNodeCardPortY,
+          )
+        : Offset(n.position.dx + kNodeCardSize.width / 2, n.position.dy);
 
 /// 主轴控制柄长度：随主轴距离增长，夹在 [40, 160] 保持弧度稳定。
 double _handleLength(Offset a, Offset b, LaneDirection direction) {
@@ -61,7 +70,7 @@ Path edgePath(
         ..cubicTo(a.dx, a.dy + h, b.dx, b.dy - h, b.dx, b.dy));
 }
 
-/// 曲线中点（弧长 t=0.5）——UI 放删除按钮等锚定用。
+/// 曲线中点（弧长 t=0.5）——UI 放删除按钮 / 角色标注等锚定用。
 Offset edgePathMidpoint(
   Offset a,
   Offset b, {

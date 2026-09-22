@@ -548,6 +548,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get resultNodePending => 'Waiting for generation';
 
   @override
+  String get nodeStatusReady => 'Ready';
+
+  @override
+  String get nodeStatusDraft => 'Draft';
+
+  @override
+  String get nodeStatusDone => 'Done';
+
+  @override
+  String get nodeStatusPending => 'Pending';
+
+  @override
   String get resultNodeImageMissing => 'Image file missing';
 
   @override
@@ -1435,6 +1447,137 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scriptImportFailed =>
       'Couldn\'t import the script. Nothing was added to the canvas.';
+
+  @override
+  String get canvasToolSelect => 'Select';
+
+  @override
+  String get canvasToolPan => 'Pan';
+
+  @override
+  String get canvasToolLink => 'Link';
+
+  @override
+  String get canvasToolTextNode => 'Text node';
+
+  @override
+  String get canvasToolImageNode => 'Image node';
+
+  @override
+  String get canvasToolVideoNode => 'Video node';
+
+  @override
+  String get canvasToolLane => 'Lane';
+
+  @override
+  String get projectPanelCanvases => 'Canvases';
+
+  @override
+  String get projectPanelAssets => 'Assets';
+
+  @override
+  String get projectPanelCharacters => 'Characters';
+
+  @override
+  String get projectPanelFilterHint => 'Filter…';
+
+  @override
+  String get projectPanelCurrentNodes => 'Current canvas · nodes';
+
+  @override
+  String get canvasHeaderLanes => 'Lanes:';
+
+  @override
+  String get canvasZoomFit => 'Fit';
+
+  @override
+  String get promptBarBaseStyle => 'Base style';
+
+  @override
+  String get promptBarAttached => 'Attached';
+
+  @override
+  String promptBarChars(int count) {
+    return '$count chars';
+  }
+
+  @override
+  String get inspectorTabProperties => 'Properties';
+
+  @override
+  String get inspectorTabStatus => 'Status';
+
+  @override
+  String get inspectorTabHistory => 'History';
+
+  @override
+  String get inspectorNoSelection => 'Select a node to edit its parameters';
+
+  @override
+  String get inspectorHintFollowsSelection =>
+      'Parameters follow the selected node';
+
+  @override
+  String get renderQueueTabExportHistory => 'Export history';
+
+  @override
+  String get renderQueueColTask => 'Task';
+
+  @override
+  String get renderQueueColType => 'Type';
+
+  @override
+  String get renderQueueColProgress => 'Progress';
+
+  @override
+  String get renderQueueColElapsed => 'Elapsed';
+
+  @override
+  String get renderQueueColModel => 'Model';
+
+  @override
+  String get renderQueueClearDone => 'Clear finished';
+
+  @override
+  String get renderQueueStatusRunning => 'Rendering';
+
+  @override
+  String get renderQueueStatusDone => 'Done';
+
+  @override
+  String get renderQueueStatusFailed => 'Failed';
+
+  @override
+  String get renderQueueStatusCancelled => 'Cancelled';
+
+  @override
+  String statusBarNodesEdges(int nodes, int edges) {
+    return '$nodes nodes · $edges edges';
+  }
+
+  @override
+  String statusBarSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String statusBarStorage(String path) {
+    return 'Storage $path';
+  }
+
+  @override
+  String statusBarProjects(int count) {
+    return '$count projects';
+  }
+
+  @override
+  String get shellActionImportScript => 'Import script';
+
+  @override
+  String get shellActionSequencePreview => 'Sequence preview';
+
+  @override
+  String get shellActionExportVideo => 'Export video';
 
   @override
   String get shellMenuFile => 'File';

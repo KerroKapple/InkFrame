@@ -1,15 +1,10 @@
-// Workspace v2 复刻的基础件：面板标签条 / 按钮 / 底线字段 / 下拉 / 滑块 / 开关 / 方点。
+// Workspace v2 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 底线字段 / 下拉 / 滑块 / 开关 / 方点。
 // 尺寸全部来自稿的 CSS（docs/design/handoff-2026-09/InkFrame Workspace v2.html）。
+// 静态复刻（features/workspace）与真实画布（features/canvas）共用。
 import 'package:flutter/widgets.dart';
 
-import '../../../theme/app_theme.dart';
-import '../../../theme/tokens.dart';
-import '../models/workspace_fixture.dart';
-
-extension WsToneX on WsTone {
-  Color fg(InkColors c) => this == WsTone.accent ? c.accent : c.fg4;
-  Color strong(InkColors c) => this == WsTone.accent ? c.accent : c.fg5;
-}
+import '../app_theme.dart';
+import '../tokens.dart';
 
 /// 28px 面板标题条：选中项 surface3 底 + 1px accent 上边，其余 fg5；右侧可挂动作。
 class WsPanelTabs extends StatelessWidget {
@@ -43,32 +38,47 @@ class WsPanelTabs extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          for (int i = 0; i < tabs.length; i++)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
-              decoration: i == active
-                  ? BoxDecoration(
-                      color: c.surface3,
-                      border: Border(top: BorderSide(color: c.accent)),
-                    )
-                  : null,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  Text(
-                    tabs[i],
-                    style: i == active
-                        ? t.bodyStrong.copyWith(color: c.fg1)
-                        : t.body.copyWith(color: c.fg5),
-                  ),
-                  if (i == active && badge != null) ...<Widget>[
-                    const SizedBox(width: InkSpacing.sm),
-                    Text(badge!, style: t.monoSmall.copyWith(color: c.accent)),
+          // 面板窄于标签总宽（英文文案 / 窄屏）时从右侧裁掉，不报溢出。
+          Expanded(
+            child: ClipRect(
+              child: OverflowBox(
+                alignment: Alignment.centerLeft,
+                maxWidth: double.infinity,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    for (int i = 0; i < tabs.length; i++)
+                      Container(
+                        height: height - 1,
+                        padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+                        decoration: i == active
+                            ? BoxDecoration(
+                                color: c.surface3,
+                                border: Border(top: BorderSide(color: c.accent)),
+                              )
+                            : null,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              tabs[i],
+                              style: i == active
+                                  ? t.bodyStrong.copyWith(color: c.fg1)
+                                  : t.body.copyWith(color: c.fg5),
+                            ),
+                            if (i == active && badge != null) ...<Widget>[
+                              const SizedBox(width: InkSpacing.sm),
+                              Text(badge!, style: t.monoSmall.copyWith(color: c.accent)),
+                            ],
+                          ],
+                        ),
+                      ),
                   ],
-                ],
+                ),
               ),
             ),
-          const Spacer(),
+          ),
           ?trailing,
         ],
       ),

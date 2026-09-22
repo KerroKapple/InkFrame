@@ -290,7 +290,7 @@ void main() {
       expect(state.valueOrNull, hasLength(1));
     });
 
-    test('addNode 不传 size → 按类型取默认尺寸（media 类更大）', () async {
+    test('addNode 不传 size → 四类同取卡片渲染尺寸 kNodeCardSize', () async {
       await container
           .read(canvasNodesControllerProvider(canvasId).future);
       final ctrl = container
@@ -305,8 +305,8 @@ void main() {
       expect(video.size, defaultNodeSize(CanvasNodeType.video));
       expect(shot.size, defaultNodeSize(CanvasNodeType.shot));
       expect(text.size, defaultNodeSize(CanvasNodeType.text));
-      // media 类默认尺寸大于紧凑类
-      expect(image.size.width, greaterThan(text.size.width));
+      // Workspace v2 稿：所有类型同尺寸 224×172。
+      expect(image.size, kNodeCardSize);
       // 透传到 Repository.create
       expect(repo.createCalls.first['width'],
           defaultNodeSize(CanvasNodeType.image).width);

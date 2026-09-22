@@ -87,13 +87,15 @@ void main() {
     return ProviderScope.containerOf(tester.element(find.byType(NodeCard)));
   }
 
-  testWidgets('无活跃 job → 无进度条', (tester) async {
+  // 稿：节点无进度条，进度体现在状态行文字（进行中 accent + 百分比）。
+  testWidgets('无活跃 job → 状态行不出百分比 / Queued', (tester) async {
     const n = CanvasNode(id: 'n1', label: 'A', type: CanvasNodeType.image);
     await pump(tester, n);
-    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.textContaining('%'), findsNothing);
+    expect(find.text('Queued'), findsNothing);
   });
 
-  testWidgets('running job(有进度) → 进度条 value=进度', (tester) async {
+  testWidgets('running job(有进度) → 状态行「Generating… 50%」', (tester) async {
     const n = CanvasNode(id: 'n1', label: 'A', type: CanvasNodeType.image);
     final c = await pump(tester, n);
     c.read(jobsRegistryProvider.notifier).upsert(const JobState.running(
@@ -104,13 +106,10 @@ void main() {
           progress: 0.5,
         ));
     await tester.pump();
-    final bar = tester.widget<LinearProgressIndicator>(
-      find.byType(LinearProgressIndicator),
-    );
-    expect(bar.value, 0.5);
+    expect(find.text('Generating… 50%'), findsOneWidget);
   });
 
-  testWidgets('queued job → 进度条不确定(value=null)', (tester) async {
+  testWidgets('queued job → 状态行「Queued」', (tester) async {
     const n = CanvasNode(id: 'n1', label: 'A', type: CanvasNodeType.image);
     final c = await pump(tester, n);
     c.read(jobsRegistryProvider.notifier).upsert(const JobState.queued(
@@ -120,9 +119,6 @@ void main() {
           sourceNodeId: 'n1',
         ));
     await tester.pump();
-    final bar = tester.widget<LinearProgressIndicator>(
-      find.byType(LinearProgressIndicator),
-    );
-    expect(bar.value, isNull);
+    expect(find.text('Queued'), findsOneWidget);
   });
 }

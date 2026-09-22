@@ -1040,6 +1040,30 @@ abstract class AppLocalizations {
   /// **'Waiting for generation'**
   String get resultNodePending;
 
+  /// No description provided for @nodeStatusReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get nodeStatusReady;
+
+  /// No description provided for @nodeStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get nodeStatusDraft;
+
+  /// No description provided for @nodeStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get nodeStatusDone;
+
+  /// No description provided for @nodeStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get nodeStatusPending;
+
   /// No description provided for @resultNodeImageMissing.
   ///
   /// In en, this message translates to:
@@ -2623,6 +2647,246 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn\'t import the script. Nothing was added to the canvas.'**
   String get scriptImportFailed;
+
+  /// No description provided for @canvasToolSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get canvasToolSelect;
+
+  /// No description provided for @canvasToolPan.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan'**
+  String get canvasToolPan;
+
+  /// No description provided for @canvasToolLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get canvasToolLink;
+
+  /// No description provided for @canvasToolTextNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Text node'**
+  String get canvasToolTextNode;
+
+  /// No description provided for @canvasToolImageNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Image node'**
+  String get canvasToolImageNode;
+
+  /// No description provided for @canvasToolVideoNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Video node'**
+  String get canvasToolVideoNode;
+
+  /// No description provided for @canvasToolLane.
+  ///
+  /// In en, this message translates to:
+  /// **'Lane'**
+  String get canvasToolLane;
+
+  /// No description provided for @projectPanelCanvases.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvases'**
+  String get projectPanelCanvases;
+
+  /// No description provided for @projectPanelAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets'**
+  String get projectPanelAssets;
+
+  /// No description provided for @projectPanelCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Characters'**
+  String get projectPanelCharacters;
+
+  /// No description provided for @projectPanelFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter…'**
+  String get projectPanelFilterHint;
+
+  /// No description provided for @projectPanelCurrentNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Current canvas · nodes'**
+  String get projectPanelCurrentNodes;
+
+  /// No description provided for @canvasHeaderLanes.
+  ///
+  /// In en, this message translates to:
+  /// **'Lanes:'**
+  String get canvasHeaderLanes;
+
+  /// No description provided for @canvasZoomFit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit'**
+  String get canvasZoomFit;
+
+  /// No description provided for @promptBarBaseStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Base style'**
+  String get promptBarBaseStyle;
+
+  /// No description provided for @promptBarAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached'**
+  String get promptBarAttached;
+
+  /// No description provided for @promptBarChars.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} chars'**
+  String promptBarChars(int count);
+
+  /// No description provided for @inspectorTabProperties.
+  ///
+  /// In en, this message translates to:
+  /// **'Properties'**
+  String get inspectorTabProperties;
+
+  /// No description provided for @inspectorTabStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get inspectorTabStatus;
+
+  /// No description provided for @inspectorTabHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get inspectorTabHistory;
+
+  /// No description provided for @inspectorNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a node to edit its parameters'**
+  String get inspectorNoSelection;
+
+  /// No description provided for @inspectorHintFollowsSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Parameters follow the selected node'**
+  String get inspectorHintFollowsSelection;
+
+  /// No description provided for @renderQueueTabExportHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Export history'**
+  String get renderQueueTabExportHistory;
+
+  /// No description provided for @renderQueueColTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get renderQueueColTask;
+
+  /// No description provided for @renderQueueColType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get renderQueueColType;
+
+  /// No description provided for @renderQueueColProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get renderQueueColProgress;
+
+  /// No description provided for @renderQueueColElapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Elapsed'**
+  String get renderQueueColElapsed;
+
+  /// No description provided for @renderQueueColModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get renderQueueColModel;
+
+  /// No description provided for @renderQueueClearDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear finished'**
+  String get renderQueueClearDone;
+
+  /// No description provided for @renderQueueStatusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering'**
+  String get renderQueueStatusRunning;
+
+  /// No description provided for @renderQueueStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get renderQueueStatusDone;
+
+  /// No description provided for @renderQueueStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get renderQueueStatusFailed;
+
+  /// No description provided for @renderQueueStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get renderQueueStatusCancelled;
+
+  /// No description provided for @statusBarNodesEdges.
+  ///
+  /// In en, this message translates to:
+  /// **'{nodes} nodes · {edges} edges'**
+  String statusBarNodesEdges(int nodes, int edges);
+
+  /// No description provided for @statusBarSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String statusBarSelected(int count);
+
+  /// No description provided for @statusBarStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage {path}'**
+  String statusBarStorage(String path);
+
+  /// No description provided for @statusBarProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} projects'**
+  String statusBarProjects(int count);
+
+  /// No description provided for @shellActionImportScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Import script'**
+  String get shellActionImportScript;
+
+  /// No description provided for @shellActionSequencePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence preview'**
+  String get shellActionSequencePreview;
+
+  /// No description provided for @shellActionExportVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Export video'**
+  String get shellActionExportVideo;
 
   /// No description provided for @shellMenuFile.
   ///

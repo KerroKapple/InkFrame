@@ -520,6 +520,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get resultNodePending => '等待生成';
 
   @override
+  String get nodeStatusReady => '已就绪';
+
+  @override
+  String get nodeStatusDraft => '待填写';
+
+  @override
+  String get nodeStatusDone => '完成';
+
+  @override
+  String get nodeStatusPending => '等待中';
+
+  @override
   String get resultNodeImageMissing => '图片文件缺失';
 
   @override
@@ -1375,6 +1387,136 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get scriptImportFailed => '脚本导入失败，画布未做改动。';
+
+  @override
+  String get canvasToolSelect => '选择';
+
+  @override
+  String get canvasToolPan => '平移';
+
+  @override
+  String get canvasToolLink => '连线';
+
+  @override
+  String get canvasToolTextNode => '文本节点';
+
+  @override
+  String get canvasToolImageNode => '图像节点';
+
+  @override
+  String get canvasToolVideoNode => '视频节点';
+
+  @override
+  String get canvasToolLane => '泳道';
+
+  @override
+  String get projectPanelCanvases => '画布';
+
+  @override
+  String get projectPanelAssets => '资产';
+
+  @override
+  String get projectPanelCharacters => '角色';
+
+  @override
+  String get projectPanelFilterHint => '筛选…';
+
+  @override
+  String get projectPanelCurrentNodes => '当前画布 · 节点';
+
+  @override
+  String get canvasHeaderLanes => '泳道：';
+
+  @override
+  String get canvasZoomFit => '适应';
+
+  @override
+  String get promptBarBaseStyle => '基础风格';
+
+  @override
+  String get promptBarAttached => '已附加';
+
+  @override
+  String promptBarChars(int count) {
+    return '$count 字';
+  }
+
+  @override
+  String get inspectorTabProperties => '属性';
+
+  @override
+  String get inspectorTabStatus => '状态';
+
+  @override
+  String get inspectorTabHistory => '历史';
+
+  @override
+  String get inspectorNoSelection => '选中一个节点以编辑参数';
+
+  @override
+  String get inspectorHintFollowsSelection => '参数随选中节点切换';
+
+  @override
+  String get renderQueueTabExportHistory => '导出历史';
+
+  @override
+  String get renderQueueColTask => '任务';
+
+  @override
+  String get renderQueueColType => '类型';
+
+  @override
+  String get renderQueueColProgress => '进度';
+
+  @override
+  String get renderQueueColElapsed => '耗时';
+
+  @override
+  String get renderQueueColModel => '模型';
+
+  @override
+  String get renderQueueClearDone => '清除已完成';
+
+  @override
+  String get renderQueueStatusRunning => '渲染中';
+
+  @override
+  String get renderQueueStatusDone => '完成';
+
+  @override
+  String get renderQueueStatusFailed => '失败';
+
+  @override
+  String get renderQueueStatusCancelled => '已取消';
+
+  @override
+  String statusBarNodesEdges(int nodes, int edges) {
+    return '$nodes 节点 · $edges 边';
+  }
+
+  @override
+  String statusBarSelected(int count) {
+    return '选中 $count';
+  }
+
+  @override
+  String statusBarStorage(String path) {
+    return '存储 $path';
+  }
+
+  @override
+  String statusBarProjects(int count) {
+    return '$count 个项目';
+  }
+
+  @override
+  String get shellActionImportScript => '导入脚本';
+
+  @override
+  String get shellActionSequencePreview => '序列预览';
+
+  @override
+  String get shellActionExportVideo => '导出视频';
 
   @override
   String get shellMenuFile => '文件';

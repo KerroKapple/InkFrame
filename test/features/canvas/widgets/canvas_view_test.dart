@@ -20,6 +20,7 @@ import 'package:inkframe/features/canvas/providers/canvas_selection_controller.d
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/providers/selected_edge_controller.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
@@ -251,7 +252,7 @@ Future<ProviderContainer> _pump(
 }) async {
   await pumpInkApp(
     tester,
-    const Scaffold(body: CanvasView()),
+    const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
     overrides: <Override>[
       currentCanvasIdProvider.overrideWith((ref) => 'c1'),
       canvasNodesControllerProvider
@@ -276,11 +277,11 @@ void main() {
   testWidgets('点击节点 → 单选；再点另一节点 → 替换选择', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
 
-    await tester.tap(find.text('Node A'));
+    await tester.tap(find.byKey(const ValueKey('node-card-a')));
     await tester.pump();
     expect(container.read(canvasSelectionControllerProvider('c1')), {'a'});
 
-    await tester.tap(find.text('Node B'));
+    await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.pump();
     expect(container.read(canvasSelectionControllerProvider('c1')), {'b'});
   });
@@ -288,10 +289,10 @@ void main() {
   testWidgets('Shift 多选 → 两个节点都选中 + 计数 chip 显示', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
 
-    await tester.tap(find.text('Node A'));
+    await tester.tap(find.byKey(const ValueKey('node-card-a')));
     await tester.pump();
     await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
-    await tester.tap(find.text('Node B'));
+    await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
     await tester.pump();
 
@@ -309,7 +310,7 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Node B'));
+    await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.pumpAndSettle();
 
     expect(find.text('Link created'), findsOneWidget);
@@ -322,7 +323,7 @@ void main() {
     container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
 
-    await tester.tap(find.text('Node A'));
+    await tester.tap(find.byKey(const ValueKey('node-card-a')));
     await tester.pumpAndSettle();
 
     expect(find.text('Cannot link a node to itself'), findsOneWidget);
@@ -338,7 +339,7 @@ void main() {
     container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
 
-    await tester.tap(find.text('Node B'));
+    await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.pumpAndSettle();
 
     expect(find.text('Link already exists'), findsOneWidget);
@@ -354,7 +355,7 @@ void main() {
     container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
 
-    await tester.tap(find.text('Node B'));
+    await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.pumpAndSettle();
 
     expect(find.text('Failed to create link'), findsOneWidget);
@@ -364,7 +365,7 @@ void main() {
   testWidgets('拖拽落点 moveNode 失败 → SnackBar 提示（不再静默吞错）', (tester) async {
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasView()),
+      const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'c1'),
         canvasNodesControllerProvider
@@ -377,7 +378,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final gesture =
-        await tester.startGesture(tester.getCenter(find.text('Node A')));
+        await tester.startGesture(tester.getCenter(find.byKey(const ValueKey('node-card-a'))));
     await gesture.moveBy(const Offset(40, 0));
     await gesture.moveBy(const Offset(20, 10));
     await tester.pump();
@@ -391,7 +392,7 @@ void main() {
       (tester) async {
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasView()),
+      const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'c1'),
         canvasNodesControllerProvider
@@ -420,7 +421,7 @@ void main() {
       (tester) async {
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasView()),
+      const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'c1'),
         canvasNodesControllerProvider
@@ -442,7 +443,7 @@ void main() {
   testWidgets('边加载失败 → 非阻塞错误横幅，节点照常渲染；可关闭', (tester) async {
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasView()),
+      const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'c1'),
         canvasNodesControllerProvider
@@ -501,7 +502,7 @@ void main() {
     }) async {
       await pumpInkApp(
         tester,
-        const Scaffold(body: CanvasView()),
+        const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
         overrides: <Override>[
           currentCanvasIdProvider.overrideWith((ref) => 'c1'),
           canvasNodesControllerProvider.overrideWith(() => nodes),
@@ -523,9 +524,9 @@ void main() {
       await pumpWith(tester,
           nodes: fakeNodes, edges: _FakeEdgesController());
 
-      await tester.tap(find.text('Node A'));
+      await tester.tap(find.byKey(const ValueKey('node-card-a')));
       await tester.pump();
-      await tester.tap(find.byTooltip('Delete node'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
 
       expect(find.text('Node deleted'), findsOneWidget);
@@ -537,9 +538,9 @@ void main() {
       await pumpWith(tester,
           nodes: fakeNodes, edges: _FakeEdgesController());
 
-      await tester.tap(find.text('Node A'));
+      await tester.tap(find.byKey(const ValueKey('node-card-a')));
       await tester.pump();
-      await tester.tap(find.byTooltip('Delete node'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
       expect(find.byType(NodeCard), findsOneWidget); // 仅剩 B
 
@@ -556,9 +557,9 @@ void main() {
       await pumpWith(tester,
           nodes: fakeNodes, edges: _FakeEdgesController());
 
-      await tester.tap(find.text('Node A'));
+      await tester.tap(find.byKey(const ValueKey('node-card-a')));
       await tester.pump();
-      await tester.tap(find.byTooltip('Delete node'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
       expect(find.text('Undo'), findsOneWidget);
 
@@ -614,9 +615,9 @@ void main() {
         tester.element(find.byType(CanvasView)),
       );
 
-      await tester.tap(find.text('Node A'));
+      await tester.tap(find.byKey(const ValueKey('node-card-a')));
       await tester.pump();
-      await tester.tap(find.byTooltip('Delete node'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
 
       // 删后：节点 A 与级联边 e1 都不在。
@@ -640,9 +641,9 @@ void main() {
       await pumpWith(tester,
           nodes: fakeNodes, edges: _FakeEdgesController());
 
-      await tester.tap(find.text('Node A'));
+      await tester.tap(find.byKey(const ValueKey('node-card-a')));
       await tester.pump();
-      await tester.tap(find.byTooltip('Delete node'));
+      await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
 
       await tester.tap(find.text('Undo'));

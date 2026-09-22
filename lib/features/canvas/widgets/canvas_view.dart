@@ -39,13 +39,13 @@ import '../providers/lane_collapse_controller.dart';
 import '../util/lane_geometry.dart';
 import '../util/lane_pin_geometry.dart';
 import 'canvas_empty_state.dart';
+import 'canvas_grid_painter.dart';
 import 'edge_painter.dart';
 import 'lane_background.dart';
 import 'lane_edit_dialog.dart';
 import 'lane_title_bar.dart';
 import 'lane_toolbar.dart';
 import 'node_card.dart';
-import 'node_inspector_router.dart';
 import 'video_lightbox.dart';
 
 // InteractiveViewer 平移越界余量（画布外延展空间，非视觉 token）
@@ -364,13 +364,8 @@ class _CanvasBody extends ConsumerWidget {
       ],
     );
 
-    return Row(
-      children: [
-        Expanded(child: leftArea),
-        // Inspector：单选 config 节点时浮出，仅随选中态重建。
-        _InspectorSlot(canvasId: canvasId, nodes: nodes),
-      ],
-    );
+    // 节点 Inspector 已迁到右侧面板（canvas_inspector_panel.dart），本层只剩画布。
+    return leftArea;
   }
 }
 
@@ -534,6 +529,12 @@ class _CanvasStage extends ConsumerWidget {
               );
           return Stack(
             children: [
+              // 稿：24px 网格底（屏幕空间，不随缩放）。
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: CustomPaint(painter: CanvasGridPainter(colors.canvasGrid)),
+                ),
+              ),
               if (lanes.isNotEmpty)
                 Positioned.fill(
                   child: laneShifted(
@@ -576,6 +577,11 @@ class _CanvasStage extends ConsumerWidget {
                             final drag = ref.watch(nodeDragDeltaProvider);
                             final style =
                                 ref.watch(canvasStyleControllerProvider);
+                            final typo = context.inkTypography;
+                            final l = context.l10n;
+                            final selectedNodeIds = ref.watch(
+                              canvasSelectionControllerProvider(canvasId),
+                            );
                             // 锚点吃分道位移（与卡片渲染位置同源），缩放/平移
                             // 实时跟随。
                             return ValueListenableBuilder<Matrix4>(
@@ -589,11 +595,14 @@ class _CanvasStage extends ConsumerWidget {
                                     direction: direction,
                                     transform: m,
                                   ),
-                                  dataColor: style.edgeColor ?? colors.accent,
-                                  narrativeColor: colors.fg3,
-                                  generationSourceColor: colors.fg3,
-                                  selectedColor: colors.accent,
+                                  neutralColor: colors.fg6,
+                                  arrowColor: colors.fg5,
+                                  accentColor: style.edgeColor ?? colors.accent,
+                                  labelStyle: typo.micro,
+                                  firstFrameLabel: l.inspectorRoleFirstFrame,
+                                  lastFrameLabel: l.inspectorRoleLastFrame,
                                   direction: direction,
+                                  selectedNodeIds: selectedNodeIds,
                                   selectedEdgeId: selectedEdgeId,
                                   dragNodeId: drag?.nodeId,
                                   dragDelta: drag?.delta ?? Offset.zero,
@@ -1045,7 +1054,7 @@ class _NodeCardSlot extends ConsumerWidget {
           final center =
               node.position +
               totalDelta +
-              Offset(node.size.width / 2, node.size.height / 2);
+              Offset(kNodeCardSize.width / 2, kNodeCardSize.height / 2);
           final crossWorld = horizontal ? center.dy : center.dx;
           final crossScreen = crossToScreen(
             laneStart: laneStartOf(node.laneId, laneSlices),
@@ -1170,31 +1179,5 @@ class _SelectionCountSlot extends ConsumerWidget {
     );
     if (count < 2) return const SizedBox.shrink();
     return _SelectionCountChip(count: count);
-  }
-}
-
-/// Inspector 插槽：单选节点时浮出（config/result 分流交 NodeInspectorRouter）；
-/// 仅随选中态重建，不连带画布。
-class _InspectorSlot extends ConsumerWidget {
-  const _InspectorSlot({required this.canvasId, required this.nodes});
-
-  final String canvasId;
-  final List<CanvasNode> nodes;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selected = ref.watch(canvasSelectionControllerProvider(canvasId));
-    CanvasNode? target;
-    if (selected.length == 1) {
-      final id = selected.first;
-      for (final n in nodes) {
-        if (n.id == id) {
-          target = n;
-          break;
-        }
-      }
-    }
-    if (target == null) return const SizedBox.shrink();
-    return NodeInspectorRouter(key: ValueKey(target.id), node: target);
   }
 }
