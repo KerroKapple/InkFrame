@@ -1,10 +1,15 @@
-// ImageConfigInspector：单选 image config 节点时展示的参数面板。
+// ImageConfigInspector：单选 image config 节点时的参数面板（Workspace v2 稿的三组）。
 //
-// 纯 UI 层：本地仅持有表单控件状态（prompt 控制器 / 下拉选中值 / ignore-lane 开关）。
-// 持久化（含 prompt 防抖）与提交状态机全部委托
-// InspectorSubmitController(nodeId)；hasApiKey 经 inspectorHasApiKeyProvider
-// 缓存；四态渲染由 InspectorStatusBinding → InspectorStatusPanel 完成。
-
+//   模型     供应商 / 画质 / 画幅 / 批量 / 预估费用
+//   关键帧   入边（参考图 / 起始帧 / 结束帧 的连线 + 角色）/ 负向提示
+//   镜头运动 固定种子 / 忽略泳道风格
+// 之后是既有的预设 / 角色 / 最终提示词预览 / 生成状态四段。
+//
+// 提示词本身不在这里编辑——画布底部提示词条是唯一入口（稿）；本面板只读 node.promptText
+// 供预设「存当前」与预览拼接；预设点选写库后 invalidate 节点控制器，提示词条随之重载。
+// 稿上的「模型 / 帧率」两行在 provider 能力表里没有对应字段（只有 provider_id），不画。
+//
+// 纯 UI 层：持久化与提交状态机委托 InspectorSubmitController(nodeId)。
 
 import 'package:flutter/material.dart' hide AspectRatio;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +36,7 @@ import '../providers/canvas_nodes_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../providers/prompt_presets_controller.dart';
 import 'characters_section.dart';
+import 'inspector_rows.dart';
 import 'inspector_status_panel.dart';
 import 'node_inputs_section.dart';
 
@@ -55,7 +61,6 @@ String aspectRatioLabel(AspectRatio r) => switch (r) {
 };
 
 class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
-  final TextEditingController _promptCtrl = TextEditingController();
   final TextEditingController _seedCtrl = TextEditingController();
   final TextEditingController _negCtrl = TextEditingController();
   String? _providerId;
@@ -67,17 +72,17 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
   InspectorSubmitController get _submitCtrl =>
       ref.read(inspectorSubmitControllerProvider(widget.node.id).notifier);
 
-  /// 应用预设：填入 prompt + negative（节点级），并落盘。prefix/suffix 为画布级，
-  /// v1 不在此改动画布 base style（避免跨节点意外），仅带 prompt/negative。
-  void _applyPreset(PromptPreset preset) {
-    setState(() {
-      _promptCtrl.text = preset.prompt;
-      _negCtrl.text = preset.negative;
-    });
-    _submitCtrl.saveConfig(<String, Object?>{
+  String get _prompt => widget.node.promptText ?? '';
+
+  /// 应用预设：写 prompt + negative（节点级）并让节点控制器重载——提示词条按 node 重建。
+  Future<void> _applyPreset(PromptPreset preset) async {
+    setState(() => _negCtrl.text = preset.negative);
+    await _submitCtrl.saveConfig(<String, Object?>{
       'prompt': preset.prompt,
       'negative_prompt': preset.negative,
     });
+    final String? canvasId = widget.node.canvasId;
+    if (canvasId != null) ref.invalidate(canvasNodesControllerProvider(canvasId));
   }
 
   @override
@@ -123,14 +128,10 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
         : 1;
 
     _ignoreLane = widget.node.ignoreLaneStyle;
-
-    final savedPrompt = tc['prompt'];
-    if (savedPrompt is String) _promptCtrl.text = savedPrompt;
   }
 
   @override
   void dispose() {
-    _promptCtrl.dispose();
     _seedCtrl.dispose();
     _negCtrl.dispose();
     super.dispose();
@@ -152,13 +153,8 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
     return null;
   }
 
-  void _onPromptChanged(String value) {
-    setState(() {});
-    _submitCtrl.savePromptDebounced(value);
-  }
-
   ProviderCapabilities? _selectedCaps(List<ProviderCapabilities> all) {
-    if (_providerId == null) return null;
+    if (_providerId == null || all.isEmpty) return null;
     return all.firstWhere(
       (c) => c.providerId == _providerId,
       orElse: () => all.first,
@@ -166,7 +162,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
   }
 
   void _submit() {
-    final prompt = _promptCtrl.text.trim();
+    final prompt = _prompt.trim();
     if (prompt.isEmpty || _providerId == null) return;
     final selected = _selectedCaps(ref.read(providerCapabilitiesListProvider));
     final seed = int.tryParse(_seedCtrl.text.trim());
@@ -194,8 +190,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
   @override
   Widget build(BuildContext context) {
     final caps = ref.watch(providerCapabilitiesListProvider);
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
+    final l = context.l10n;
     final selected = _selectedCaps(caps);
     final submitState = ref.watch(
       inspectorSubmitControllerProvider(widget.node.id),
@@ -204,270 +199,247 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
         submitState is InspectorSubmitSubmitting ||
         submitState is InspectorSubmitRunning;
 
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.all(InkSpacing.lg),
-      decoration: BoxDecoration(
-        color: colors.surface1,
-        border: Border(left: BorderSide(color: colors.outline)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InspectorGroup(
+          title: l.inspectorGroupModel,
           children: [
-            Text(
-              context.l10n.inspectorTitle,
-              style: typo.sectionTitle.copyWith(color: colors.fg1),
-            ),
-            const SizedBox(height: InkSpacing.lg),
-            Text(
-              context.l10n.inspectorPromptLabel,
-              style: typo.meta.copyWith(color: colors.fg3),
-            ),
-            const SizedBox(height: InkSpacing.xs),
-            InkInput(
-              controller: _promptCtrl,
-              hintText: context.l10n.inspectorPromptHint,
-              minLines: 4,
-              maxLines: 8,
-              onChanged: _onPromptChanged,
-            ),
-            const SizedBox(height: InkSpacing.md),
-            Text(
-              context.l10n.inspectorProviderLabel,
-              style: typo.meta.copyWith(color: colors.fg3),
-            ),
-            const SizedBox(height: InkSpacing.xs),
-            DropdownButton<String>(
-              value: _providerId,
-              isExpanded: true,
-              items: [
-                for (final c in caps)
-                  DropdownMenuItem(
-                    value: c.providerId,
-                    child: Text(c.displayName ?? c.providerId),
-                  ),
-              ],
-              onChanged: busy
-                  ? null
-                  : (v) {
-                      if (v == null) return;
-                      final next = caps.firstWhere((c) => c.providerId == v);
-                      final newResolution = next.supportedResolutions.isNotEmpty
-                          ? next.supportedResolutions.first
-                          : null;
-                      final newAspect = next.supportedRatios.isNotEmpty
-                          ? next.supportedRatios.first
-                          : null;
-                      setState(() {
-                        _providerId = v;
-                        _resolution = newResolution;
-                        _aspect = newAspect;
-                        _batch = 1;
-                      });
-                      _submitCtrl.saveConfig(<String, Object?>{
-                        'provider_id': v,
-                        if (newResolution != null)
-                          'resolution': newResolution.name,
-                        if (newAspect != null) 'aspect_ratio': newAspect.name,
-                        'batch_size': 1,
-                      });
-                      // 记住上次使用（fire-and-forget，服务内部吞盘错误）。
-                      ref.read(preferencesServiceProvider).update(
-                            (p) => p.copyWith(lastImageProviderId: v),
-                          );
-                    },
-            ),
-            const SizedBox(height: InkSpacing.md),
-            Text(
-              context.l10n.inspectorResolutionLabel,
-              style: typo.meta.copyWith(color: colors.fg3),
-            ),
-            const SizedBox(height: InkSpacing.xs),
-            DropdownButton<Resolution>(
-              value: _resolution,
-              isExpanded: true,
-              items: [
-                if (selected != null)
-                  for (final r in selected.supportedResolutions)
-                    DropdownMenuItem(value: r, child: Text(r.name)),
-              ],
-              onChanged: busy
-                  ? null
-                  : (v) {
-                      if (v == null) return;
-                      setState(() => _resolution = v);
-                      _submitCtrl.saveConfig(<String, Object?>{
-                        'resolution': v.name,
-                      });
-                    },
-            ),
-            // 宽高比（provider 声明 supportedRatios 才显示）
-            if (selected != null && selected.supportedRatios.isNotEmpty) ...[
-              const SizedBox(height: InkSpacing.md),
-              Text(
-                context.l10n.inspectorAspectRatioLabel,
-                style: typo.meta.copyWith(color: colors.fg3),
-              ),
-              const SizedBox(height: InkSpacing.xs),
-              DropdownButton<AspectRatio>(
-                value: _aspect,
-                isExpanded: true,
+            InspectorRow(
+              label: l.inspectorProviderLabel,
+              child: InspectorDropdown<String>(
+                value: _providerId,
                 items: [
-                  for (final r in selected.supportedRatios)
+                  for (final c in caps)
                     DropdownMenuItem(
-                      value: r,
-                      child: Text(aspectRatioLabel(r)),
+                      value: c.providerId,
+                      child: Text(c.displayName ?? c.providerId),
                     ),
                 ],
                 onChanged: busy
                     ? null
                     : (v) {
                         if (v == null) return;
-                        setState(() => _aspect = v);
-                        _submitCtrl.saveConfig(<String, Object?>{
-                          'aspect_ratio': v.name,
+                        final next = caps.firstWhere((c) => c.providerId == v);
+                        final newResolution = next.supportedResolutions.isNotEmpty
+                            ? next.supportedResolutions.first
+                            : null;
+                        final newAspect = next.supportedRatios.isNotEmpty
+                            ? next.supportedRatios.first
+                            : null;
+                        setState(() {
+                          _providerId = v;
+                          _resolution = newResolution;
+                          _aspect = newAspect;
+                          _batch = 1;
                         });
+                        _submitCtrl.saveConfig(<String, Object?>{
+                          'provider_id': v,
+                          if (newResolution != null)
+                            'resolution': newResolution.name,
+                          if (newAspect != null) 'aspect_ratio': newAspect.name,
+                          'batch_size': 1,
+                        });
+                        // 记住上次使用（fire-and-forget，服务内部吞盘错误）。
+                        ref.read(preferencesServiceProvider).update(
+                              (p) => p.copyWith(lastImageProviderId: v),
+                            );
                       },
               ),
-            ],
-            // 负向提示词（provider supportsNegativePrompt 才显示）
-            if (selected != null && selected.supportsNegativePrompt) ...[
-              const SizedBox(height: InkSpacing.md),
-              Text(
-                context.l10n.inspectorNegativePromptLabel,
-                style: typo.meta.copyWith(color: colors.fg3),
-              ),
-              const SizedBox(height: InkSpacing.xs),
-              InkInput(
-                controller: _negCtrl,
-                hintText: context.l10n.inspectorNegativePromptHint,
-                minLines: 2,
-                maxLines: 4,
-                onChanged: (v) => _submitCtrl.saveConfig(<String, Object?>{
-                  'negative_prompt': v.trim(),
-                }),
-              ),
-            ],
-            // 随机种子（provider supportsSeed 才显示；留空 = 随机）
-            if (selected != null && selected.supportsSeed) ...[
-              const SizedBox(height: InkSpacing.md),
-              Text(
-                context.l10n.inspectorSeedLabel,
-                style: typo.meta.copyWith(color: colors.fg3),
-              ),
-              const SizedBox(height: InkSpacing.xs),
-              InkInput(
-                controller: _seedCtrl,
-                hintText: context.l10n.inspectorSeedHint,
-                onChanged: (v) => _submitCtrl.saveConfig(<String, Object?>{
-                  'seed': int.tryParse(v.trim()),
-                }),
-              ),
-            ],
-            // 批量数量（provider supportsBatch 且 maxBatchSize>1 才显示）
-            if (selected != null &&
-                selected.supportsBatch &&
-                selected.maxBatchSize > 1) ...[
-              const SizedBox(height: InkSpacing.md),
-              Text(
-                context.l10n.inspectorBatchLabel,
-                style: typo.meta.copyWith(color: colors.fg3),
-              ),
-              const SizedBox(height: InkSpacing.xs),
-              DropdownButton<int>(
-                value: _batch,
-                isExpanded: true,
+            ),
+            InspectorRow(
+              label: l.inspectorResolutionLabel,
+              child: InspectorDropdown<Resolution>(
+                value: _resolution,
                 items: [
-                  for (var i = 1; i <= selected.maxBatchSize; i++)
-                    DropdownMenuItem(value: i, child: Text('$i')),
+                  if (selected != null)
+                    for (final r in selected.supportedResolutions)
+                      DropdownMenuItem(value: r, child: Text(r.name)),
                 ],
                 onChanged: busy
                     ? null
                     : (v) {
                         if (v == null) return;
-                        setState(() => _batch = v);
+                        setState(() => _resolution = v);
                         _submitCtrl.saveConfig(<String, Object?>{
-                          'batch_size': v,
+                          'resolution': v.name,
                         });
                       },
               ),
-            ],
-            if (selected != null) ...[
-              const SizedBox(height: InkSpacing.md),
-              Text(
-                context.l10n.inspectorEstimatedCost(
+            ),
+            // 宽高比（provider 声明 supportedRatios 才显示）
+            if (selected != null && selected.supportedRatios.isNotEmpty)
+              InspectorRow(
+                label: l.inspectorAspectRatioLabel,
+                child: InspectorDropdown<AspectRatio>(
+                  value: _aspect,
+                  items: [
+                    for (final r in selected.supportedRatios)
+                      DropdownMenuItem(
+                        value: r,
+                        child: Text(aspectRatioLabel(r)),
+                      ),
+                  ],
+                  onChanged: busy
+                      ? null
+                      : (v) {
+                          if (v == null) return;
+                          setState(() => _aspect = v);
+                          _submitCtrl.saveConfig(<String, Object?>{
+                            'aspect_ratio': v.name,
+                          });
+                        },
+                ),
+              ),
+            // 批量数量（provider supportsBatch 且 maxBatchSize>1 才显示）
+            if (selected != null &&
+                selected.supportsBatch &&
+                selected.maxBatchSize > 1)
+              InspectorRow(
+                label: l.inspectorBatchLabel,
+                child: InspectorDropdown<int>(
+                  value: _batch,
+                  items: [
+                    for (var i = 1; i <= selected.maxBatchSize; i++)
+                      DropdownMenuItem(value: i, child: Text('$i')),
+                  ],
+                  onChanged: busy
+                      ? null
+                      : (v) {
+                          if (v == null) return;
+                          setState(() => _batch = v);
+                          _submitCtrl.saveConfig(<String, Object?>{
+                            'batch_size': v,
+                          });
+                        },
+                ),
+              ),
+            if (selected != null)
+              InspectorRow(
+                label: l.inspectorEstimatedCostLabel,
+                child: InspectorValue(
                   formatCostUsd(
                     estimateCostUsd(
                       selected.costModel,
                       resolution: _resolution,
                       batchSize: _batch ?? 1,
-                      promptChars: _promptCtrl.text.length,
+                      promptChars: _prompt.length,
                     ),
                   ),
+                  mono: true,
+                  accent: true,
                 ),
-                style: typo.meta.copyWith(color: colors.fg3),
               ),
-            ],
-            const SizedBox(height: InkSpacing.lg),
-            InspectorStatusBinding(
-              nodeId: widget.node.id,
-              providerId: _providerId,
-              promptEmpty: _promptCtrl.text.trim().isEmpty,
-              generateLabel: context.l10n.inspectorGenerate,
-              disabledEmptyPromptText:
-                  context.l10n.inspectorGenerateDisabledEmptyPrompt,
-              disabledNoKeyText: context.l10n.inspectorGenerateDisabledNoKey,
-              onSubmit: _submit,
-            ),
-            if (widget.node.canvasId != null) ...[
-              const SizedBox(height: InkSpacing.lg),
-              NodeInputsSection(targetNode: widget.node, selectedCaps: selected),
-              const SizedBox(height: InkSpacing.md),
-              _PresetsSection(
-                targetNode: widget.node,
-                onApply: _applyPreset,
-                readCurrent: () =>
-                    (prompt: _promptCtrl.text, negative: _negCtrl.text),
-              ),
-              const SizedBox(height: InkSpacing.md),
-              CharactersSection(
-                targetNode: widget.node,
-                selectedCaps: selected,
-                // image 维持原门：maxRefImages>0 且 imageToImage（CH-2 抽共享后参数化）。
-                requireImageToImageMode: true,
-              ),
-              const SizedBox(height: InkSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      context.l10n.inspectorIgnoreLaneStyle,
-                      style: typo.body.copyWith(color: colors.fg1),
-                    ),
-                  ),
-                  Switch(
-                    value: _ignoreLane,
-                    onChanged: (v) {
-                      setState(() => _ignoreLane = v);
-                      _submitCtrl.saveConfig(<String, Object?>{
-                        'ignore_lane_style': v,
-                      });
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: InkSpacing.md),
-              _PromptPreview(
-                node: widget.node,
-                canvasId: widget.node.canvasId!,
-                currentPrompt: _promptCtrl.text,
-                ignoreLane: _ignoreLane,
-              ),
-            ],
           ],
         ),
-      ),
+        InspectorGroup(
+          title: l.inspectorGroupKeyframes,
+          children: [
+            if (widget.node.canvasId != null)
+              NodeInputsSection(targetNode: widget.node, selectedCaps: selected),
+            // 负向提示词（provider supportsNegativePrompt 才显示）
+            if (selected != null && selected.supportsNegativePrompt)
+              InspectorRow(
+                label: l.inspectorNegativePromptLabel,
+                height: null,
+                child: InkInput(
+                  controller: _negCtrl,
+                  hintText: l.inspectorNegativePromptHint,
+                  minLines: 1,
+                  maxLines: 4,
+                  onChanged: (v) => _submitCtrl.saveConfig(<String, Object?>{
+                    'negative_prompt': v.trim(),
+                  }),
+                ),
+              ),
+          ],
+        ),
+        InspectorGroup(
+          title: l.inspectorGroupCamera,
+          children: [
+            // 随机种子（provider supportsSeed 才显示；留空 = 随机）
+            if (selected != null && selected.supportsSeed)
+              InspectorRow(
+                label: l.inspectorSeedLabel,
+                child: InkInput(
+                  controller: _seedCtrl,
+                  hintText: l.inspectorSeedHint,
+                  onChanged: (v) => _submitCtrl.saveConfig(<String, Object?>{
+                    'seed': int.tryParse(v.trim()),
+                  }),
+                ),
+              ),
+            if (widget.node.canvasId != null)
+              InspectorRow(
+                label: l.inspectorIgnoreLaneStyle,
+                child: InspectorToggleRow(
+                  value: _ignoreLane,
+                  onChanged: (v) {
+                    setState(() => _ignoreLane = v);
+                    _submitCtrl.saveConfig(<String, Object?>{
+                      'ignore_lane_style': v,
+                    });
+                  },
+                ),
+              ),
+          ],
+        ),
+        if (widget.node.canvasId != null) ...[
+          InspectorGroup(
+            title: l.inspectorPresetsLabel,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+                child: _PresetsSection(
+                  targetNode: widget.node,
+                  onApply: _applyPreset,
+                  readCurrent: () => (prompt: _prompt, negative: _negCtrl.text),
+                ),
+              ),
+            ],
+          ),
+          InspectorGroup(
+            title: l.inspectorCharactersLabel,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+                child: CharactersSection(
+                  targetNode: widget.node,
+                  selectedCaps: selected,
+                  // image 维持原门：maxRefImages>0 且 imageToImage（CH-2 抽共享后参数化）。
+                  requireImageToImageMode: true,
+                ),
+              ),
+            ],
+          ),
+          InspectorGroup(
+            title: l.inspectorPromptPreviewLabel,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+                child: _PromptPreview(
+                  node: widget.node,
+                  canvasId: widget.node.canvasId!,
+                  currentPrompt: _prompt,
+                  ignoreLane: _ignoreLane,
+                ),
+              ),
+            ],
+          ),
+        ],
+        Padding(
+          padding: const EdgeInsets.all(InkSpacing.s12),
+          child: InspectorStatusBinding(
+            nodeId: widget.node.id,
+            providerId: _providerId,
+            promptEmpty: _prompt.trim().isEmpty,
+            generateLabel: l.inspectorGenerate,
+            disabledEmptyPromptText: l.inspectorGenerateDisabledEmptyPrompt,
+            disabledNoKeyText: l.inspectorGenerateDisabledNoKey,
+            onSubmit: _submit,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -501,11 +473,6 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          context.l10n.inspectorPresetsLabel,
-          style: typo.meta.copyWith(color: colors.fg3),
-        ),
-        const SizedBox(height: InkSpacing.xs),
         // 加载失败 → 错误横幅（此前静默降级为空 = 误报"无预设"）。
         if (presetsAsync.hasError)
           InkErrorBanner(
@@ -514,7 +481,7 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
         else if (presets.isEmpty)
           Text(
             context.l10n.inspectorPresetsEmpty,
-            style: typo.meta.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg5),
           )
         else
           Wrap(
@@ -645,28 +612,9 @@ class _PromptPreview extends ConsumerWidget {
       ignoreLaneStyle: ignoreLane,
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.inspectorPromptPreviewLabel,
-          style: typo.meta.copyWith(color: colors.fg3),
-        ),
-        const SizedBox(height: InkSpacing.xs),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(InkSpacing.sm),
-          decoration: BoxDecoration(
-            color: colors.surface2,
-            borderRadius: BorderRadius.circular(InkRadius.md),
-            border: Border.all(color: colors.outline),
-          ),
-          child: Text(
-            preview.isEmpty ? '—' : preview,
-            style: typo.meta.copyWith(color: colors.fg2),
-          ),
-        ),
-      ],
+    return Text(
+      preview.isEmpty ? '—' : preview,
+      style: typo.meta.copyWith(color: colors.fg2),
     );
   }
 }

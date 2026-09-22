@@ -259,6 +259,16 @@ class _NodeCardState extends ConsumerState<NodeCard> {
 String nodeDisplayName(BuildContext context, CanvasNode node) =>
     node.label.isEmpty ? nodeTypeLabel(context, node.type) : node.label;
 
+/// 引用名（用户拍板）：别处引用一个节点时不重复它的类型——「镜头 01 · 图像」引用为「镜头 01」。
+/// 规则：label 以「 · <本地化类型名>」结尾时去掉该尾段；其余原样。
+String nodeRefName(BuildContext context, CanvasNode node) {
+  final String name = nodeDisplayName(context, node);
+  final String suffix = ' · ${nodeTypeLabel(context, node.type)}';
+  return name.endsWith(suffix) && name.length > suffix.length
+      ? name.substring(0, name.length - suffix.length)
+      : name;
+}
+
 String nodeTypeLabel(BuildContext context, CanvasNodeType type) => switch (type) {
       CanvasNodeType.image => context.l10n.canvasNodeImageType,
       CanvasNodeType.text => context.l10n.canvasNodeTextType,
@@ -414,7 +424,7 @@ class _VideoConfigBody extends ConsumerWidget {
         EdgeRole.lastFrame => l.inspectorRoleLastFrame,
         EdgeRole.reference => l.inspectorRoleReference,
       };
-      parts.add('$roleLabel ← ${nodeDisplayName(context, src)}');
+      parts.add('$roleLabel ← ${nodeRefName(context, src)}');
     }
     final CameraMovement? camera = _cameraOf(node);
     if (camera != null) parts.add(cameraMovementLabel(context, camera));

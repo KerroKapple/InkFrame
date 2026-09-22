@@ -1,17 +1,17 @@
 // CanvasRenderQueue：画布底部渲染队列 173px（稿 172 + 1px 上沿）。
 //
 // 三标签「渲染队列 N / 序列 / 导出历史」+ 右侧「清除已完成」| 24px 表头 | 28px 行。
-// 列宽 28 220 110 1fr 90 120 60，间距 12：序号 / 任务 / 类型 / 进度+状态 / 耗时 / 模型 / 动作。
+// 列宽 28 220 110 1fr 120 60，间距 12：序号 / 任务 / 类型 / 进度+状态 / 模型 / 动作。
 //
 // 数据 = jobsRegistry 中本画布的 job（活跃在前、终态在后，各自保持插入序）。
 //   任务名 = 源节点显示名（回退 provider displayName，不暴露 jobId）
 //   类型   = 源节点类型名（回退 '—'）
 //   进度   = JobState.progressValue；状态：队列中 / 渲染中 / 完成 / 失败（tooltip 带本地化错误）/ 已取消
-//   耗时   = JobState 没有起止时间 → '—'（缺后端字段，稿上有，先不造）
+//   耗时   = JobState 没有起止时间 → 不出这一列（用户拍板：四列改三列）
 //   模型   = providerId（JobState 只有 providerId，没有模型名）
-//   动作   = 可取消时「取消」；稿上的「定位」无对应动作，先不画
+//   动作   = 可取消时「取消」；终态且有源节点时「定位」（选中源节点）
 // 「序列 / 导出历史」标签在仓库里没有内容，只画标签不挂交互。
-// 「并发 2」在仓库里只是 ProviderCapabilities 的只读常量，稿上是可调项 → 不画。
+// 「并发 N」只读显示 JobQueueService 的全局并发上限（用户拍板）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,7 +24,9 @@ import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
 import '../models/canvas_node.dart';
+import '../../../services/job_queue_service.dart' show kDefaultGlobalConcurrency;
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/canvas_selection_controller.dart';
 import '../providers/current_canvas_id.dart';
 import 'node_card.dart';
 
@@ -34,7 +36,7 @@ class CanvasRenderQueue extends ConsumerWidget {
   /// 稿是 content-box：height 172 + border-top 1。
   static const double height = 173;
 
-  static const List<double?> _columns = <double?>[28, 220, 110, null, 90, 120, 60];
+  static const List<double?> _columns = <double?>[28, 220, 110, null, 120, 60];
 
   static const Key clearDoneKey = Key('canvas.renderQueue.clearDone');
 
@@ -69,11 +71,15 @@ class CanvasRenderQueue extends ConsumerWidget {
           WsPanelTabs(
             tabs: <String>[l.canvasRenderQueue, l.shellTabSequence, l.renderQueueTabExportHistory],
             badge: active.isEmpty ? null : '${active.length}',
-            trailing: terminal.isEmpty
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
-                    child: Semantics(
+            trailing: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+              child: Row(
+                children: <Widget>[
+                  Text(l.renderQueueConcurrency(kDefaultGlobalConcurrency),
+                      style: t.meta.copyWith(color: c.fg5)),
+                  if (terminal.isNotEmpty) ...<Widget>[
+                    const SizedBox(width: InkSpacing.s14),
+                    Semantics(
                       button: true,
                       label: l.renderQueueClearDone,
                       child: MouseRegion(
@@ -88,7 +94,10 @@ class CanvasRenderQueue extends ConsumerWidget {
                         ),
                       ),
                     ),
-                  ),
+                  ],
+                ],
+              ),
+            ),
           ),
           Container(
             height: 25, // content 24 + border-bottom 1
@@ -100,7 +109,6 @@ class CanvasRenderQueue extends ConsumerWidget {
                   l.renderQueueColTask,
                   l.renderQueueColType,
                   l.renderQueueColProgress,
-                  l.renderQueueColElapsed,
                   l.renderQueueColModel,
                   '',
                 ])
@@ -218,23 +226,21 @@ class _JobRow extends ConsumerWidget {
               ),
             ],
           ),
-          Text('—', style: t.mono.copyWith(color: c.fg4)),
           Text(job.providerId, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.body.copyWith(color: c.fg4)),
           if (job.isCancellable)
-            Semantics(
-              button: true,
-              label: l.canvasRenderQueueCancel,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () => _cancel(ref, job.jobId),
-                  child: Tooltip(
-                    message: l.canvasRenderQueueCancel,
-                    child: Text(l.commonCancel, style: t.meta.copyWith(color: c.fg5)),
-                  ),
-                ),
-              ),
+            _ActionText(
+              label: l.commonCancel,
+              tooltip: l.canvasRenderQueueCancel,
+              onTap: () => _cancel(ref, job.jobId),
+            )
+          else if (job.isTerminal && job.sourceNodeId != null)
+            // 定位 = 选中源节点（用户拍板：有 select 动作就接）。
+            _ActionText(
+              label: l.renderQueueLocate,
+              tooltip: l.renderQueueLocate,
+              onTap: () => ref
+                  .read(canvasSelectionControllerProvider(job.canvasId).notifier)
+                  .select(job.sourceNodeId!),
             )
           else
             const SizedBox.shrink(),
@@ -247,5 +253,34 @@ class _JobRow extends ConsumerWidget {
   Future<void> _cancel(WidgetRef ref, String jobId) async {
     final queue = await ref.read(jobQueueServiceProvider.future);
     await queue.cancel(jobId);
+  }
+}
+
+/// 动作列的 11px 文字键（取消 / 定位）。
+class _ActionText extends StatelessWidget {
+  const _ActionText({required this.label, required this.tooltip, required this.onTap});
+  final String label;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Tooltip(
+            message: tooltip,
+            child: Text(label, style: t.meta.copyWith(color: c.fg5)),
+          ),
+        ),
+      ),
+    );
   }
 }

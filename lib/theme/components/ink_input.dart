@@ -1,4 +1,4 @@
-// InkInput：文本输入框骨架（单行）。
+// InkInput：文本输入框骨架（Workspace v2 稿：无底色，只有 1px control 底线；多行时底线在末行下）。
 import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
@@ -31,16 +31,15 @@ class InkInput extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.inkColors;
+    final typo = context.inkTypography;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.surface2,
-        borderRadius: BorderRadius.circular(InkRadius.md),
-        border: Border.all(color: colors.outline),
+        border: Border(bottom: BorderSide(color: enabled ? colors.control : colors.borderSubtle)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(
-          horizontal: InkSpacing.md,
-          vertical: InkSpacing.sm,
+          horizontal: InkSpacing.sm,
+          vertical: InkSpacing.xs,
         ),
         child: TextField(
           controller: controller,
@@ -49,10 +48,11 @@ class InkInput extends StatelessWidget {
           minLines: minLines,
           maxLines: maxLines,
           enabled: enabled,
-          style: context.inkTypography.body.copyWith(color: colors.fg1),
+          cursorColor: colors.accent,
+          style: typo.body.copyWith(color: colors.fg2),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: context.inkTypography.body.copyWith(color: colors.fg3),
+            hintStyle: typo.body.copyWith(color: colors.fg6),
             isDense: true,
             border: InputBorder.none,
           ),

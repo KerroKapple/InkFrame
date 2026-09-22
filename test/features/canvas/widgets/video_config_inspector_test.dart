@@ -106,8 +106,8 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    // 钳制为 supportedCameras.first → 本地化"固定机位"
-    expect(find.text('固定机位'), findsOneWidget);
+    // 钳制为 supportedCameras.first → 本地化"固定"
+    expect(find.text('固定'), findsOneWidget);
   });
 
   testWidgets('prompt / duration / camera 控件渲染', (tester) async {
@@ -126,7 +126,6 @@ void main() {
       ],
     );
     await tester.pumpAndSettle();
-    expect(find.text('视频提示词'), findsOneWidget);
     expect(find.text('时长（秒）'), findsOneWidget);
     expect(find.text('运镜'), findsOneWidget);
   });
@@ -160,7 +159,7 @@ void main() {
     expect(find.text('10'), findsNothing);
   });
 
-  testWidgets('camera dropdown 显示本地化运镜名（"固定机位" 而非 "static_"）', (tester) async {
+  testWidgets('camera dropdown 显示本地化运镜名（"固定" 而非 "static_"）', (tester) async {
     const node = CanvasNode(
       id: 'n1',
       label: '',
@@ -180,8 +179,8 @@ void main() {
     await tester.tap(find.byType(DropdownButton<caps.CameraMovement>));
     await tester.pumpAndSettle();
 
-    expect(find.text('固定机位'), findsWidgets);
-    expect(find.text('推进'), findsWidgets);
+    expect(find.text('固定'), findsWidgets);
+    expect(find.text('推镜'), findsWidgets);
     // 不应直出枚举名
     expect(find.text('static_'), findsNothing);
     expect(find.text('pushIn'), findsNothing);

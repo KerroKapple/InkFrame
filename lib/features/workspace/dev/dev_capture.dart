@@ -22,6 +22,7 @@ import '../../../core/di/database.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/interfaces/unit_of_work.dart';
 import '../../../core/models/provider_capabilities.dart';
+import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
@@ -81,7 +82,8 @@ class _DevCaptureFrameState extends ConsumerState<DevCaptureFrame> {
   Widget build(BuildContext context) {
     if (kCaptureOut.isEmpty) return widget.child;
     return ColoredBox(
-      color: const Color(0xFF000000),
+      // 截图外的留白只是取景背景，不进 PNG；取深色底槽位，不另造颜色。
+      color: InkPalette.surface0Dark,
       child: FittedBox(
         alignment: Alignment.topLeft,
         child: RepaintBoundary(

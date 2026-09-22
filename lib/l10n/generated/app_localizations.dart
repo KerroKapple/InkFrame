@@ -2648,6 +2648,54 @@ abstract class AppLocalizations {
   /// **'Couldn\'t import the script. Nothing was added to the canvas.'**
   String get scriptImportFailed;
 
+  /// No description provided for @inspectorGroupModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get inspectorGroupModel;
+
+  /// No description provided for @inspectorGroupKeyframes.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyframes'**
+  String get inspectorGroupKeyframes;
+
+  /// No description provided for @inspectorGroupCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get inspectorGroupCamera;
+
+  /// No description provided for @inspectorGroupShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get inspectorGroupShot;
+
+  /// No description provided for @inspectorEstimatedCostLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Est. cost'**
+  String get inspectorEstimatedCostLabel;
+
+  /// No description provided for @inspectorCameraUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider has no camera-movement control'**
+  String get inspectorCameraUnsupported;
+
+  /// No description provided for @renderQueueConcurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Concurrency {count}'**
+  String renderQueueConcurrency(int count);
+
+  /// No description provided for @renderQueueLocate.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate'**
+  String get renderQueueLocate;
+
   /// No description provided for @canvasToolSelect.
   ///
   /// In en, this message translates to:

@@ -1449,6 +1449,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t import the script. Nothing was added to the canvas.';
 
   @override
+  String get inspectorGroupModel => 'Model';
+
+  @override
+  String get inspectorGroupKeyframes => 'Keyframes';
+
+  @override
+  String get inspectorGroupCamera => 'Camera';
+
+  @override
+  String get inspectorGroupShot => 'Shot';
+
+  @override
+  String get inspectorEstimatedCostLabel => 'Est. cost';
+
+  @override
+  String get inspectorCameraUnsupported =>
+      'This provider has no camera-movement control';
+
+  @override
+  String renderQueueConcurrency(int count) {
+    return 'Concurrency $count';
+  }
+
+  @override
+  String get renderQueueLocate => 'Locate';
+
+  @override
   String get canvasToolSelect => 'Select';
 
   @override

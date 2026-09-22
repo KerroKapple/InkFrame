@@ -160,12 +160,15 @@ void main() {
     presetRepo = FakePromptPresetRepo();
   });
 
-  Future<CanvasNode> seedConfigNode() async {
+  Future<CanvasNode> seedConfigNode({
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) async {
     final id = await nodeRepo.create(
       canvasId: _kCanvasId,
       type: 'image',
       nodeRole: 'config',
       label: 'cfg',
+      typeConfig: typeConfig,
     );
     return CanvasNode(
       id: id,
@@ -174,6 +177,7 @@ void main() {
       role: NodeRole.config,
       canvasId: _kCanvasId,
       projectId: _kProjectId,
+      typeConfig: typeConfig,
     );
   }
 
@@ -233,13 +237,9 @@ void main() {
 
   testWidgets('存为预设落库失败 → SnackBar 提示（不静默吞错）', (tester) async {
     presetRepo.failCreate = true;
-    final node = await seedConfigNode();
+    // 提示词来自节点 typeConfig（空 prompt 直接 return 不落库）。
+    final node = await seedConfigNode(typeConfig: <String, Object?>{'prompt': 'a cat'});
     await pump(tester, node);
-
-    // 输入 prompt（空 prompt 直接 return 不落库）
-    await tester.enterText(find.byType(TextField).first, 'a cat');
-    await tester.pump(const Duration(seconds: 1));
-    await tester.pumpAndSettle();
 
     await tester.ensureVisible(find.text('Save current as preset'));
     await tester.tap(find.text('Save current as preset'));
@@ -271,11 +271,7 @@ void main() {
     await tester.tap(find.text('Moody'));
     await tester.pumpAndSettle();
 
-    // prompt 字段已填入（negative 字段因 caps 不支持不渲染，但仍须落库）
-    expect(
-      find.widgetWithText(TextField, 'dark alley in rain'),
-      findsOneWidget,
-    );
+    // prompt 不再在面板里编辑（提示词条是唯一入口）：只验落库；negative 因 caps 不支持不渲染，但仍须落库。
     final row = await nodeRepo.findById(node.id);
     final tc = row!['type_config']! as Map<String, Object?>;
     expect(tc['prompt'], 'dark alley in rain');
@@ -288,8 +284,9 @@ void main() {
     await pump(tester, node);
 
     // _refCapableCaps.costModel = perCall(0.01)，batch=1 → \$0.01
-    await tester.ensureVisible(find.textContaining('Est. cost'));
-    expect(find.text(r'Est. cost $0.01'), findsOneWidget);
+    // 稿：标签「Est. cost」与值分两列。
+    await tester.ensureVisible(find.text('Est. cost'));
+    expect(find.text(r'$0.01'), findsOneWidget);
   });
 
   testWidgets('存为角色落库失败 → SnackBar 提示（不静默吞错）', (tester) async {

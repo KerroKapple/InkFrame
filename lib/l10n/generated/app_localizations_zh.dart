@@ -751,13 +751,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorVideoCameraLabel => '运镜';
 
   @override
-  String get cameraStatic => '固定机位';
+  String get cameraStatic => '固定';
 
   @override
-  String get cameraPushIn => '推进';
+  String get cameraPushIn => '推镜';
 
   @override
-  String get cameraPullOut => '拉远';
+  String get cameraPullOut => '拉镜';
 
   @override
   String get cameraPanLeft => '左摇';
@@ -766,10 +766,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraPanRight => '右摇';
 
   @override
-  String get cameraTiltUp => '上仰';
+  String get cameraTiltUp => '仰摇';
 
   @override
-  String get cameraTiltDown => '下俯';
+  String get cameraTiltDown => '俯摇';
 
   @override
   String get cameraOrbit => '环绕';
@@ -1387,6 +1387,32 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get scriptImportFailed => '脚本导入失败，画布未做改动。';
+
+  @override
+  String get inspectorGroupModel => '模型';
+
+  @override
+  String get inspectorGroupKeyframes => '关键帧';
+
+  @override
+  String get inspectorGroupCamera => '镜头运动';
+
+  @override
+  String get inspectorGroupShot => '分镜';
+
+  @override
+  String get inspectorEstimatedCostLabel => '预估费用';
+
+  @override
+  String get inspectorCameraUnsupported => '该供应商不支持运镜控制';
+
+  @override
+  String renderQueueConcurrency(int count) {
+    return '并发 $count';
+  }
+
+  @override
+  String get renderQueueLocate => '定位';
 
   @override
   String get canvasToolSelect => '选择';

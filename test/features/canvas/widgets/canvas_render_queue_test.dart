@@ -71,7 +71,7 @@ Widget _host(
 }
 
 void main() {
-  testWidgets('只显示当前画布的 job；表头四列在场', (tester) async {
+  testWidgets('只显示当前画布的 job；表头三列在场（耗时列无后端字段，已去）', (tester) async {
     await tester.pumpWidget(_host(
       const <JobState>[
         JobState.running(jobId: 'a', providerId: 'p1', canvasId: 'c1', progress: 0.45),
@@ -80,7 +80,7 @@ void main() {
       'c1',
     ));
     await tester.pump();
-    for (final String h in <String>['Task', 'Type', 'Progress', 'Elapsed', 'Model']) {
+    for (final String h in <String>['Task', 'Type', 'Progress', 'Model']) {
       expect(find.text(h), findsOneWidget);
     }
     // 无源节点 ⇒ 任务列回退 provider 名（无 displayName 时就是 id），模型列也是 id ⇒ 两处。
