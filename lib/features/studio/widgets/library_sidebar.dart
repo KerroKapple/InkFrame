@@ -135,7 +135,7 @@ class _SectionLabel extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: typo.caption.copyWith(
+        style: typo.meta.copyWith(
           color: colors.fg3,
           letterSpacing: 2,
         ),
@@ -201,7 +201,7 @@ class _TreeRowState extends State<_TreeRow> {
                 width: 14,
                 child: Text(
                   widget.twirl,
-                  style: typo.caption.copyWith(color: colors.fg4),
+                  style: typo.meta.copyWith(color: colors.fg4),
                 ),
               ),
               if (widget.icon != null) ...<Widget>[
@@ -219,7 +219,7 @@ class _TreeRowState extends State<_TreeRow> {
               if (widget.trailing != null)
                 Text(
                   widget.trailing!,
-                  style: typo.caption.copyWith(color: colors.fg4),
+                  style: typo.meta.copyWith(color: colors.fg4),
                 ),
             ],
           ),

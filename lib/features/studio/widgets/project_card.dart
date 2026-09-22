@@ -93,14 +93,14 @@ class StudioProjectCard extends StatelessWidget {
               children: <Widget>[
                 Text(
                   name,
-                  style: typo.headline.copyWith(color: colors.fg1),
+                  style: typo.dialogTitle.copyWith(color: colors.fg1),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: InkSpacing.xs),
                 Text(
                   metaLine,
-                  style: typo.caption.copyWith(
+                  style: typo.meta.copyWith(
                     color: colors.fg3,
                     letterSpacing: 1,
                   ),

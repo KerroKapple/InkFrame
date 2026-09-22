@@ -40,7 +40,7 @@ class TrashDialog extends ConsumerWidget {
                   padding: const EdgeInsets.all(InkSpacing.lg),
                   child: Text(
                     context.l10n.studioTrashEmpty,
-                    style: typo.caption.copyWith(color: colors.fg3),
+                    style: typo.meta.copyWith(color: colors.fg3),
                   ),
                 )
               : SingleChildScrollView(
@@ -114,7 +114,7 @@ class _TrashRow extends StatelessWidget {
                 ),
                 Text(
                   context.l10n.studioTrashDeletedAt(item.deletedAt.toLocal()),
-                  style: typo.caption.copyWith(color: colors.fg3),
+                  style: typo.meta.copyWith(color: colors.fg3),
                 ),
               ],
             ),

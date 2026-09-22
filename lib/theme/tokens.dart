@@ -1,12 +1,17 @@
-// 设计 token：三主题变体 + 间距/圆角/阴影/排版原值。
+// 设计 token：三主题变体 + 间距/圆角/阴影/动效原值。
 //
 // 这是整个应用唯一允许出现原始色值 / 数值的文件。所有 widget 与组件必须
 // 通过 InkSpacing / InkRadius / InkShadow / InkTypography / context.inkColors 消费。
 //
+// 色彩体系（docs/design/handoff-2026-09/README.md §Design Tokens）：
+//   - 中性灰是唯一体系：六档 surface + 六档描边 + 六档 fg，全部无色相偏移。
+//   - 强调色只有一个：琥珀。语义色（success / danger / audio*）只用于状态文字
+//     与小图标，不做容器底色。
+//   - dark 值直接取 README；light / highContrast 是同一语义的推导值，不自行调色。
+//
 // 三态变体：dark / light / highContrast。highContrast 是 A11y §20.1 基线的
-// 开关目标，前景色与背景色的对比度 ≥ 7:1（WCAG AAA 参考值），整体基线值由
-// 人工维护；彩底前景（onAccent/onDanger）的 AA ≥4.5 对比率由 tokens_test
-// 自动锁定。
+// 开关目标；彩底前景（onAccent × accent）与正文（fg2 × surface3）的 AA ≥4.5
+// 由 tokens_test 对三变体逐一锁定。
 import 'package:flutter/widgets.dart';
 
 /// 启动阶段（main 进入 runApp 前）唯一可暴露的原始色板常量入口。
@@ -17,8 +22,8 @@ import 'package:flutter/widgets.dart';
 class InkPalette {
   InkPalette._();
 
-  /// 启动时 window_manager 背景色；必须等于 `InkColors.dark().surfaceCanvas`。
-  static const Color surfaceCanvasDark = Color(0xFF0B0908);
+  /// 启动时 window_manager 背景色；必须等于 `InkColors.dark().surface0`。
+  static const Color surface0Dark = Color(0xFF141414);
 
   /// 画布连线自定义色候选（设置页色板；「主题默认」档另行呈现，不在列）。
   static const List<Color> canvasEdgeColorChoices = <Color>[
@@ -45,192 +50,187 @@ class InkPalette {
 @immutable
 class InkColors {
   const InkColors._({
-    required this.surfaceCanvas,
+    required this.surface0,
     required this.surface1,
     required this.surface2,
     required this.surface3,
     required this.surface4,
     required this.surface5,
+    required this.borderStrong,
+    required this.borderSubtle,
+    required this.outline,
+    required this.control,
+    required this.controlStrong,
+    required this.overlayBorder,
     required this.fg1,
     required this.fg2,
     required this.fg3,
     required this.fg4,
+    required this.fg5,
+    required this.fg6,
     required this.accent,
     required this.accentHover,
-    required this.accentPressed,
     required this.onAccent,
-    required this.brand,
-    required this.cta,
-    required this.ctaHover,
-    required this.danger,
-    required this.onDanger,
-    required this.warning,
+    required this.accentWash,
+    required this.accentWashBorder,
     required this.success,
-    required this.info,
-    required this.border,
-    required this.borderSubtle,
-    required this.borderHover,
-    required this.borderStrong,
-    required this.focusRing,
-    required this.overlay,
+    required this.danger,
+    required this.audioFill,
+    required this.audioBorder,
+    required this.audioFg,
     required this.scrim,
-    required this.inputFill,
   });
 
-  /// 深色主题（P0 默认）—— Amber Noir：电影暗室 + 琥珀金高光 + 哑光暖黑。
+  /// 深色主题（默认）——README dark 列原值。
   factory InkColors.dark() => const InkColors._(
-        surfaceCanvas: InkPalette.surfaceCanvasDark,
-        surface1: Color(0xFF100C0A),
-        surface2: Color(0xFF15110E),
-        surface3: Color(0xFF1C1814),
-        surface4: Color(0xFF2A2520),
-        // dark()：ramp 0B0908 → 100C0A → 15110E → 1C1814 → 2A2520，surface5 延续暖褐爬升。
-        surface5: Color(0xFF36302A),
-        fg1: Color(0xFFE8DFD0),
-        fg2: Color(0xFFB5A89A),
-        fg3: Color(0xFF8A7E70),
-        fg4: Color(0xFF5A5048),
+        surface0: InkPalette.surface0Dark,
+        surface1: Color(0xFF1A1A1A),
+        surface2: Color(0xFF1D1D1D),
+        surface3: Color(0xFF232323),
+        surface4: Color(0xFF262626),
+        surface5: Color(0xFF2E2E2E),
+        borderStrong: Color(0xFF0F0F0F),
+        borderSubtle: Color(0xFF1F1F1F),
+        outline: Color(0xFF2C2C2C),
+        control: Color(0xFF3A3A3A),
+        controlStrong: Color(0xFF3F3F3F),
+        overlayBorder: Color(0xFF4A4A4A),
+        fg1: Color(0xFFE8E8E8),
+        fg2: Color(0xFFD6D6D6),
+        fg3: Color(0xFFC8C8C8),
+        fg4: Color(0xFF9E9E9E),
+        fg5: Color(0xFF8A8A8A),
+        fg6: Color(0xFF6B6B6B),
         accent: Color(0xFFC9A85B),
-        accentHover: Color(0xFFD8B66B),
-        accentPressed: Color(0xFFB89A4F),
-        // 琥珀底前景 = 画布黑（accent 8.74 / cta 9.29）
-        onAccent: InkPalette.surfaceCanvasDark,
-        brand: Color(0xFFC9A85B),
-        cta: Color(0xFFE3A648),
-        ctaHover: Color(0xFFF0B556),
-        danger: Color(0xFFC8523A),
-        // danger 红偏暗，surfaceCanvas 只有 4.47 差 0.03；取纯黑过线（4.72）
-        onDanger: Color(0xFF000000),
-        warning: Color(0xFFD88B3A),
-        success: Color(0xFF5C8A4E),
-        info: Color(0xFF4B7A92),
-        border: Color(0xFF2A2522),
-        borderSubtle: Color(0xFF1C1814),
-        borderHover: Color(0xFF3C342A),
-        borderStrong: Color(0xFF0D0A08),
-        focusRing: Color(0xFFC9A85B),
-        overlay: Color(0xCC0B0908),
-        scrim: Color(0xB3000000),
-        inputFill: Color(0x0AFFFFFF),
-      );
-
-  /// 浅色主题—— Paper Ivory：暖白纸 + 琥珀金（与暗色形成对偶）。
-  factory InkColors.light() => const InkColors._(
-        surfaceCanvas: Color(0xFFF5EFE3),
-        surface1: Color(0xFFFAF5EB),
-        surface2: Color(0xFFFFFAF0),
-        surface3: Color(0xFFEFE7D5),
-        surface4: Color(0xFFE5DBC4),
-        // light()：这条 ramp 本身不单调（越活跃越压暗），surface5 是 E5DBC4 再压一档。
-        surface5: Color(0xFFD9CDB6),
-        fg1: Color(0xFF2A2520),
-        fg2: Color(0xFF5A5048),
-        fg3: Color(0xFF8A7E70),
-        fg4: Color(0xFFB5A89A),
-        accent: Color(0xFFA88340),
-        accentHover: Color(0xFFB89150),
-        accentPressed: Color(0xFF8C6A30),
-        // 中调琥珀上自家浅色 surfaceCanvas 仅 3.06、最深 fg1 仅 4.33，
-        // 借暗色画布黑过线（accent 5.66 / cta 6.75）
-        onAccent: InkPalette.surfaceCanvasDark,
-        brand: Color(0xFFA88340),
-        cta: Color(0xFFC68B2E),
-        ctaHover: Color(0xFFD89A3E),
+        accentHover: Color(0xFFD8B96C),
+        // 琥珀底上的文字必须是深色，禁止白色。
+        onAccent: Color(0xFF1D1D1D),
+        accentWash: Color(0xFF2A2318),
+        accentWashBorder: Color(0xFF6B5A38),
+        success: Color(0xFF7FB069),
         danger: Color(0xFFB04030),
-        // danger 红够深，纸白前景可读（5.06）
-        onDanger: Color(0xFFF5EFE3),
-        warning: Color(0xFFC07028),
-        success: Color(0xFF4C7240),
-        info: Color(0xFF3C6478),
-        border: Color(0xFFD5CAB0),
-        borderSubtle: Color(0xFFE5DBC4),
-        borderHover: Color(0xFFB89A6A),
-        // borderStrong 刻意不取 8A7E70——那是 fg3 的值，会被误读为文字。
-        borderStrong: Color(0xFF9A8B70),
-        focusRing: Color(0xFFA88340),
-        overlay: Color(0xCCF5EFE3),
-        scrim: Color(0x66000000),
-        inputFill: Color(0x0F2A2520),
+        audioFill: Color(0xFF22301F),
+        audioBorder: Color(0xFF3A5334),
+        audioFg: Color(0xFF8FB07E),
+        scrim: Color(0x8C0A0A0A),
       );
 
-  /// 高对比度变体（A11y §20.1）—— 纯黑底 + 高饱琥珀。
+  /// 浅色主题——同一语义、反向 ramp；accent 压暗保对比。
+  factory InkColors.light() => const InkColors._(
+        surface0: Color(0xFFE4E4E4),
+        surface1: Color(0xFFF4F4F4),
+        surface2: Color(0xFFF8F8F8),
+        surface3: Color(0xFFEFEFEF),
+        surface4: Color(0xFFFFFFFF),
+        // 比 surface3 更深：浅色主题的选中态靠压暗，不靠提亮。
+        surface5: Color(0xFFE2E2E2),
+        borderStrong: Color(0xFFC8C8C8),
+        borderSubtle: Color(0xFFE6E6E6),
+        outline: Color(0xFFD4D4D4),
+        control: Color(0xFFC4C4C4),
+        controlStrong: Color(0xFFB8B8B8),
+        overlayBorder: Color(0xFFA8A8A8),
+        fg1: Color(0xFF1A1A1A),
+        fg2: Color(0xFF2E2E2E),
+        fg3: Color(0xFF444444),
+        fg4: Color(0xFF5E5E5E),
+        fg5: Color(0xFF767676),
+        fg6: Color(0xFF8E8E8E),
+        accent: Color(0xFF8C6A30),
+        accentHover: Color(0xFF7A5C28),
+        onAccent: Color(0xFFFFFFFF),
+        accentWash: Color(0xFFF3ECDC),
+        accentWashBorder: Color(0xFFC9B689),
+        success: Color(0xFF3E7A34),
+        danger: Color(0xFFA03028),
+        audioFill: Color(0xFFE3EEDF),
+        audioBorder: Color(0xFFA9C49E),
+        audioFg: Color(0xFF3E6B34),
+        scrim: Color(0x8C0A0A0A),
+      );
+
+  /// 高对比度变体（A11y §20.1）——基于 dark：surface 塌到两档，描边纯白，
+  /// 前景纯白 / 纯黑。
   factory InkColors.highContrast() => const InkColors._(
-        surfaceCanvas: Color(0xFF000000),
+        surface0: Color(0xFF000000),
         surface1: Color(0xFF000000),
-        surface2: Color(0xFF0A0807),
-        surface3: Color(0xFF15110E),
-        surface4: Color(0xFF201A14),
-        // highContrast()：激活标签取更亮的暖褐。
-        surface5: Color(0xFF2B241C),
-        fg1: Color(0xFFFFFFFF),
-        fg2: Color(0xFFF0E8D8),
-        fg3: Color(0xFFDDD0B5),
-        fg4: Color(0xFFB5A890),
-        accent: Color(0xFFFFCB52),
-        accentHover: Color(0xFFFFD874),
-        accentPressed: Color(0xFFF0BA3C),
-        // 高饱琥珀 × 纯黑（13.92）
-        onAccent: Color(0xFF000000),
-        brand: Color(0xFFFFCB52),
-        cta: Color(0xFFFFCB52),
-        ctaHover: Color(0xFFFFD874),
-        danger: Color(0xFFFF6A4A),
-        // 高饱红 × 纯黑（7.41）
-        onDanger: Color(0xFF000000),
-        warning: Color(0xFFFFB04A),
-        success: Color(0xFF7AD06A),
-        info: Color(0xFF6BB5D0),
-        border: Color(0xFFFFFFFF),
-        borderSubtle: Color(0xFFA0998A),
-        borderHover: Color(0xFFFFFFFF),
-        // border 本来就是纯白，"强"分隔线不可能比纯白更强，
-        // 故 borderStrong 与 border 同值——这是刻意的，不是遗漏。
+        surface2: Color(0xFF000000),
+        surface3: Color(0xFF0A0A0A),
+        surface4: Color(0xFF0A0A0A),
+        surface5: Color(0xFF2A2A2A),
+        // HC 下分隔线不可能比纯白更强——六个描边槽同值是刻意的，不是遗漏。
         borderStrong: Color(0xFFFFFFFF),
-        focusRing: Color(0xFFFFCB52),
-        overlay: Color(0xEE000000),
-        scrim: Color(0xCC000000),
-        inputFill: Color(0x14FFFFFF),
+        borderSubtle: Color(0xFFFFFFFF),
+        outline: Color(0xFFFFFFFF),
+        control: Color(0xFFFFFFFF),
+        controlStrong: Color(0xFFFFFFFF),
+        overlayBorder: Color(0xFFFFFFFF),
+        fg1: Color(0xFFFFFFFF),
+        fg2: Color(0xFFFFFFFF),
+        fg3: Color(0xFFFFFFFF),
+        fg4: Color(0xFFD0D0D0),
+        fg5: Color(0xFFD0D0D0),
+        fg6: Color(0xFFD0D0D0),
+        accent: Color(0xFFFFD060),
+        accentHover: Color(0xFFFFE08A),
+        onAccent: Color(0xFF000000),
+        accentWash: Color(0xFF332A10),
+        accentWashBorder: Color(0xFFFFD060),
+        success: Color(0xFF6BFF6B),
+        danger: Color(0xFFFF6B6B),
+        audioFill: Color(0xFF0A1A0A),
+        audioBorder: Color(0xFF6BFF6B),
+        audioFg: Color(0xFF6BFF6B),
+        scrim: Color(0x8C0A0A0A),
       );
 
-  final Color surface1; // 画布底
-  final Color surface2; // 卡片
-  final Color surface3; // 抬升/悬浮
-  final Color fg1; // 主要文本
-  final Color fg2; // 次要文本
-  final Color fg3; // 辅助/占位文本
-  final Color accent; // 品牌强调
-  final Color brand; // 品牌主色
-  final Color danger; // 错误 / 危险
-  final Color warning; // 警告
-  final Color success; // 成功
-  final Color border; // 边框
-  final Color focusRing; // A11y 键盘焦点环
-  final Color overlay; // 遮罩背景
-  final Color scrim; // 全屏遮罩
-  final Color surfaceCanvas; // 画布最底层（surface-0）
-  final Color surface4; // 活跃控件（surface-4）
-  /// 最高抬升面：激活标签 chip 底 / 列表选中行底。
-  /// 只用于"激活 / 选中"的底，不做卡片底（那是 surface2/surface3）。
-  final Color surface5;
-  final Color fg4; // 极弱辅助文本（text-quaternary）
+  // ---- surface：越大越"抬升"（light 变体的 surface5 例外，见工厂注释）----
+  final Color surface0; // 窗口外底（仅画布模式 / 浮层遮罩下可见）
+  final Color surface1; // 中央工作区
+  final Color surface2; // 应用主体默认底
+  final Color surface3; // 侧栏 / 底栏面板
+  final Color surface4; // 菜单栏 / 状态栏 / 节点头部 / 浮层容器底
+  final Color surface5; // 选中行 / 激活标签底 / 次级按钮悬停
+
+  // ---- 描边 ----
+  final Color borderStrong; // 面板之间、标题栏下沿
+  final Color borderSubtle; // 列表行间
+  final Color outline; // 缩略图 / 图区默认描边
+  final Color control; // 输入底线 / 分组框 / 分隔竖线
+  final Color controlStrong; // 次级按钮边框
+  final Color overlayBorder; // 浮层边框
+
+  // ---- 前景 ----
+  final Color fg1; // 标题 / 选中项
+  final Color fg2; // 正文
+  final Color fg3; // 菜单项 / 未选中标签
+  final Color fg4; // 字段标签
+  final Color fg5; // 元信息
+  final Color fg6; // 占位 / 快捷键提示
+
+  // ---- 强调（唯一）----
+  final Color accent; // 选中 / 主操作 / 进行中；警告态与其同色，用「!」字符区分
   final Color accentHover;
-  final Color accentPressed;
-  final Color onAccent; // accent/brand/cta 琥珀底上的前景（AA ≥4.5）
-  final Color onDanger; // danger 彩底上的前景（AA ≥4.5）
-  final Color cta; // 品牌红 CTA
-  final Color ctaHover;
-  final Color info; // 语义信息蓝
-  final Color borderSubtle;
-  final Color borderHover;
-  /// 结构性强分隔线：chrome ↔ 标签条 ↔ 内容 三段之间的硬边界。
-  /// 只用于外壳级分区；组件内部细线继续用 borderSubtle。
-  final Color borderStrong;
-  final Color inputFill; // 输入框半透明底（暗色提亮 / 浅色压暗）
+  final Color onAccent; // 琥珀底上的文字（深色，禁止白色）
+  final Color accentWash; // 提示条底 / 选中 Provider 行
+  final Color accentWashBorder; // 提示条内次级按钮边
+
+  // ---- 语义（只做文字与小图标，不做容器底色）----
+  final Color success; // 已验证 ✓
+  final Color danger; // 失败 ✕ / 缺失标记 / 待补菱形——文字与小图标，不做容器底色
+
+  // ---- 序列 A1 音频轨 ----
+  final Color audioFill;
+  final Color audioBorder;
+  final Color audioFg;
+
+  /// 浮层遮罩 rgba(10,10,10,0.55)：模态 barrier 与缩略图上的渐变压暗共用。
+  final Color scrim;
 }
 
 /// 间距（8 的倍数主刻度 + 半阶档位）。
 ///
-/// 半阶档位（s10/s12/s14/s18/s28）覆盖 mockup 的光学微调值，
+/// 半阶档位（s10/s12/s14/s18/s28）覆盖设计稿的光学微调值，
 /// 禁止在 widget 内对 token 做加减算术拼间距。
 class InkSpacing {
   InkSpacing._();
@@ -254,20 +254,21 @@ class InkSpacing {
   static const double s6 = 6;
 }
 
-/// 圆角。
+/// 圆角。README 四档：2（缩略图内格）/ 3（按钮、输入、片段）/ 4（图区、分组框）/ 6（浮层）。
 class InkRadius {
   InkRadius._();
-  static const double xs = 2; // 细进度条 / 微裁切
-  static const double sm = 4;
+  static const double xs = 2; // 缩略图内格 / 细进度条
+  static const double s3 = 3; // 按钮 / 输入 / 片段
+  static const double sm = 4; // 图区 / 分组框
   static const double md = 8;
   static const double lg = 12;
   static const double xl = 16;
   static const double pill = 999;
   static const double bento = 10; // bento 卡片圆角
-  static const double bentoBtn = 6; // bento 按钮圆角
+  static const double bentoBtn = 6; // 浮层 / bento 按钮圆角
 }
 
-/// 阴影（随亮/暗主题固化——暗色场景下阴影几乎不可见，依赖 surface 提升传达层级）。
+/// 阴影。节点无阴影（改为 1px 描边）；浮层用 README 的 0 24px 64px rgba(0,0,0,0.6)。
 class InkShadow {
   InkShadow._();
 
@@ -281,17 +282,18 @@ class InkShadow {
 
   static const List<BoxShadow> overlay = <BoxShadow>[
     BoxShadow(
-      color: Color(0x66000000),
-      blurRadius: 24,
-      offset: Offset(0, 8),
+      color: Color(0x99000000),
+      blurRadius: 64,
+      offset: Offset(0, 24),
     ),
   ];
 
+  /// 画布底部提示词条：0 10px 30px rgba(0,0,0,0.5)。
   static const List<BoxShadow> elevated = <BoxShadow>[
     BoxShadow(
       color: Color(0x80000000),
-      blurRadius: 32,
-      offset: Offset(0, 12),
+      blurRadius: 30,
+      offset: Offset(0, 10),
     ),
   ];
 }

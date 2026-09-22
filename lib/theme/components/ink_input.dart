@@ -35,7 +35,7 @@ class InkInput extends StatelessWidget {
       decoration: BoxDecoration(
         color: colors.surface2,
         borderRadius: BorderRadius.circular(InkRadius.md),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: colors.outline),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(

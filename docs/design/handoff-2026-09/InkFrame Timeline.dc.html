@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html { background: #141414; }
+  body { margin: 0; background: #141414; -webkit-font-smoothing: antialiased; }
+  a { color: #C9A85B; text-decoration: none; } a:hover { color: #E0C27A; }
+</style>
+</helmet>
+
+<div data-screen-label="Sequence and Delivery" style="width: 1600px; height: 1000px; display: flex; flex-direction: column; background: #1D1D1D; color: #D6D6D6; font-family: 'Noto Sans SC', -apple-system, 'PingFang SC', sans-serif; font-size: 12px; overflow: hidden; border: 1px solid #0A0A0A; box-sizing: border-box;">
+
+  <!-- 菜单栏 -->
+  <div style="height: 30px; flex: 0 0 auto; display: flex; align-items: center; padding: 0 12px; background: #262626; border-bottom: 1px solid #0F0F0F;">
+    <div style="display: flex; align-items: center; gap: 8px; padding-right: 18px; margin-right: 6px; border-right: 1px solid #3A3A3A;">
+      <div style="width: 16px; height: 16px; border-radius: 3px; background: #C9A85B; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 10px; color: #1D1D1D;">If</div>
+      <span style="font-weight: 500; color: #E8E8E8;">InkFrame</span>
+    </div>
+    <div style="display: flex;">
+      <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">文件</div>
+      <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">编辑</div>
+      <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">序列</div>
+      <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">标记</div>
+      <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">窗口</div>
+      <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">帮助</div>
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px; border-bottom: 1px solid #3A3A3A; width: 260px; color: #7A7A7A;">
+      <span style="flex: 1;">搜索镜头、标记…</span><span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">⌘K</span>
+    </div>
+  </div>
+
+  <!-- 工作区标签 -->
+  <div style="height: 34px; flex: 0 0 auto; display: flex; align-items: stretch; border-bottom: 1px solid #0F0F0F;">
+    <div style="display: flex; align-items: stretch; padding-left: 12px;">
+      <div style="display: flex; align-items: center; padding: 0 16px; color: #9E9E9E;">Studio</div>
+      <div style="display: flex; align-items: center; padding: 0 16px; color: #9E9E9E;">画布</div>
+      <div style="display: flex; align-items: center; padding: 0 16px; color: #E8E8E8; font-weight: 500; border-bottom: 2px solid #C9A85B;">序列</div>
+      <div style="display: flex; align-items: center; padding: 0 16px; color: #9E9E9E;">画廊</div>
+    </div>
+    <div style="width: 1px; background: #3A3A3A; margin: 8px 6px;"></div>
+    <div style="display: flex; align-items: center; gap: 4px; padding: 0 8px;">
+      <span style="color: #6B6B6B;">山径破晓</span><span style="color: #6B6B6B;">›</span><span style="color: #6B6B6B;">画布 02 · 主线</span><span style="color: #6B6B6B;">›</span><span style="color: #E8E8E8;">叙事链 · 8 镜</span>
+      <span style="margin-left: 10px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #8A8A8A;">1920×1080 · 24fps · 00:00:42:12</span>
+    </div>
+    <div style="flex: 1;"></div>
+    <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px;">
+      <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">回到画布定位</div>
+      <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">导出 mp4</div>
+      <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; gap: 6px; background: #C9A85B; border-radius: 3px; color: #1D1D1D; font-weight: 500;">交付到 DaVinci Resolve</div>
+    </div>
+  </div>
+
+  <!-- 上半：镜头箱 | 监视器 | 交付 -->
+  <div style="flex: 1; min-height: 0; display: flex; border-bottom: 1px solid #0F0F0F;">
+
+    <div style="width: 320px; flex: 0 0 auto; display: flex; flex-direction: column; background: #232323; border-right: 1px solid #0F0F0F;">
+      <div style="height: 28px; flex: 0 0 auto; display: flex; align-items: stretch; background: #1D1D1D; border-bottom: 1px solid #0F0F0F;">
+        <div style="display: flex; align-items: center; padding: 0 12px; background: #232323; color: #E8E8E8; font-weight: 500; border-top: 1px solid #C9A85B;">叙事链</div>
+        <div style="display: flex; align-items: center; padding: 0 12px; color: #8A8A8A;">未入链 · 3</div>
+        <div style="flex: 1;"></div>
+      </div>
+      <div style="display: grid; grid-template-columns: 1fr 56px 40px; gap: 8px; height: 24px; align-items: center; padding: 0 12px; color: #6B6B6B; font-size: 11px; border-bottom: 1px solid #0F0F0F;"><span>镜头</span><span>片长</span><span>产物</span></div>
+      <div style="flex: 1; overflow: auto;">
+        <sc-for list="{{ shots }}" as="s" hint-placeholder-count="8">
+          <div style="display: grid; grid-template-columns: 1fr 56px 40px; gap: 8px; height: 32px; align-items: center; padding: 0 12px; background: {{ s.rowBg }}; border-bottom: 1px solid #1A1A1A;" style-hover="background: #2A2A2A;">
+            <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+              <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B; width: 20px;">{{ s.idx }}</span>
+              <div style="width: 28px; height: 16px; flex: 0 0 auto; border-radius: 2px; background: {{ s.thumb }};"></div>
+              <span style="color: {{ s.fg }}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ s.name }}</span>
+            </div>
+            <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #9E9E9E;">{{ s.dur }}</span>
+            <span style="font-size: 11px; color: {{ s.stateColor }};">{{ s.state }}</span>
+          </div>
+        </sc-for>
+      </div>
+      <div style="flex: 0 0 auto; padding: 10px 12px; border-top: 1px solid #0F0F0F; color: #6B6B6B; font-size: 11px; line-height: 1.5;">顺序即画布上的 narrative 边。这里拖动排序会改写连线；裁切写回镜头节点的入出点。</div>
+    </div>
+
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #1A1A1A;">
+      <div style="height: 28px; flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #1D1D1D; border-bottom: 1px solid #0F0F0F; color: #8A8A8A;">
+        <span style="color: #E8E8E8; font-weight: 500;">节目监视器</span>
+        <span style="width: 1px; height: 12px; background: #3A3A3A;"></span>
+        <span>镜头 03 · 图转视频</span>
+        <div style="flex: 1;"></div>
+        <span>安全框</span><span>适合</span>
+      </div>
+      <div style="flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; padding: 16px 24px 8px;">
+        <div style="position: relative; height: 100%; aspect-ratio: 16 / 9; max-width: 100%; background: linear-gradient(160deg, #2F2A22, #17150F); border-radius: 2px; outline: 1px solid #2C2C2C;">
+          <div style="position: absolute; inset: 10%; border: 1px dashed rgba(201,168,91,0.3);"></div>
+          <div style="position: absolute; left: 12px; right: 12px; bottom: 10px; display: flex; justify-content: space-between; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: rgba(232,232,232,0.75);">
+            <span>003 · 推镜 · 中景 · Kling 2.1</span><span>src 00:00:01:16 / 00:00:05:00</span>
+          </div>
+        </div>
+      </div>
+      <div style="flex: 0 0 auto; display: flex; flex-direction: column; gap: 8px; padding: 4px 24px 12px;">
+        <div style="position: relative; height: 3px; background: #3A3A3A; border-radius: 2px;">
+          <div style="position: absolute; left: 0; width: 27%; height: 100%; background: #6B6B6B; border-radius: 2px;"></div>
+          <div style="position: absolute; left: 27%; top: -5px; width: 2px; height: 13px; margin-left: -1px; background: #C9A85B;"></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 14px; color: #9E9E9E;">
+          <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #E8E8E8;">00:00:11:12</span>
+          <div style="flex: 1;"></div>
+          <span title="入点">I</span><span>◀◀</span><span>◀</span><span style="color: #E8E8E8; font-size: 14px;">▶</span><span>▶</span><span>▶▶</span><span title="出点">O</span>
+          <div style="flex: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px;">00:00:42:12</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="width: 320px; flex: 0 0 auto; display: flex; flex-direction: column; background: #232323; border-left: 1px solid #0F0F0F;">
+      <div style="height: 28px; flex: 0 0 auto; display: flex; align-items: stretch; background: #1D1D1D; border-bottom: 1px solid #0F0F0F;">
+        <div style="display: flex; align-items: center; padding: 0 12px; background: #232323; color: #E8E8E8; font-weight: 500; border-top: 1px solid #C9A85B;">交付</div>
+        <div style="display: flex; align-items: center; padding: 0 12px; color: #8A8A8A;">片段</div>
+        <div style="display: flex; align-items: center; padding: 0 12px; color: #8A8A8A;">历史</div>
+      </div>
+      <div style="flex: 1; overflow: auto;">
+
+        <div style="display: flex; flex-direction: column; gap: 10px; padding: 14px 12px 12px; border-bottom: 1px solid #0F0F0F;">
+          <div style="color: #9E9E9E;">目标软件</div>
+          <div style="display: flex; gap: 0; border: 1px solid #3A3A3A; border-radius: 3px; overflow: hidden;">
+            <sc-for list="{{ targets }}" as="t" hint-placeholder-count="4">
+              <div style="flex: 1; height: 26px; display: flex; align-items: center; justify-content: center; background: {{ t.bg }}; color: {{ t.fg }}; border-right: 1px solid #3A3A3A;">{{ t.name }}</div>
+            </sc-for>
+          </div>
+          <div style="font-size: 11px; color: #6B6B6B; line-height: 1.5;">Resolve 读取 FCPXML 1.10 最稳，EDL 作为兜底同时生成。</div>
+        </div>
+
+        <sc-for list="{{ delivery }}" as="g" hint-placeholder-count="3">
+          <div style="display: flex; flex-direction: column; border-bottom: 1px solid #0F0F0F;">
+            <div style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px; color: #C8C8C8; font-weight: 500;"><span style="font-size: 9px; color: #8A8A8A;">▼</span><span>{{ g.title }}</span></div>
+            <div style="display: flex; flex-direction: column; padding: 2px 0 8px;">
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+                <div style="display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 8px; min-height: 26px; padding: 0 12px;">
+                  <span style="color: #9E9E9E;">{{ r.label }}</span>
+                  <sc-if value="{{ r.isSelect }}" hint-placeholder-val="{{ true }}">
+                    <div style="height: 22px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #3A3A3A; color: #D6D6D6;"><span>{{ r.value }}</span><span style="font-size: 9px; color: #6B6B6B;">▼</span></div>
+                  </sc-if>
+                  <sc-if value="{{ r.isMono }}" hint-placeholder-val="{{ false }}">
+                    <div style="height: 22px; display: flex; align-items: center; border-bottom: 1px solid #3A3A3A; color: #D6D6D6; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.value }}</div>
+                  </sc-if>
+                  <sc-if value="{{ r.isToggle }}" hint-placeholder-val="{{ false }}">
+                    <div style="display: flex; align-items: center; gap: 8px;"><div style="width: 26px; height: 14px; border-radius: 7px; background: {{ r.toggleBg }}; position: relative;"><div style="position: absolute; top: 2px; left: {{ r.knob }}; width: 10px; height: 10px; border-radius: 50%; background: #E8E8E8;"></div></div><span style="color: #8A8A8A; font-size: 11px;">{{ r.value }}</span></div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-for>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; padding: 12px;">
+          <div style="display: flex; align-items: center; justify-content: space-between;"><span style="color: #9E9E9E;">交付前检查</span><span style="font-size: 11px; color: #C9A85B;">2 项待处理</span></div>
+          <sc-for list="{{ preflight }}" as="p" hint-placeholder-count="4">
+            <div style="display: flex; align-items: flex-start; gap: 8px; line-height: 1.45;">
+              <span style="width: 14px; flex: 0 0 auto; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: {{ p.color }};">{{ p.mark }}</span>
+              <span style="color: {{ p.fg }}; text-wrap: pretty;">{{ p.text }}</span>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+      <div style="flex: 0 0 auto; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; background: #1D1D1D; border-top: 1px solid #0F0F0F;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #8A8A8A;"><span>输出</span><span style="font-family: 'JetBrains Mono', Menlo, monospace;">~/InkFrame/exports/山径破晓_v03/</span></div>
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: #8A8A8A;"><span>包含</span><span>8 mp4 · 1 fcpxml · 1 edl · metadata.json</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 下半：序列 lens -->
+  <div style="height: 300px; flex: 0 0 auto; display: flex; flex-direction: column; background: #232323;">
+    <div style="height: 28px; flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 0 12px; background: #1D1D1D; border-bottom: 1px solid #0F0F0F; color: #8A8A8A;">
+      <span style="color: #E8E8E8; font-weight: 500;">序列</span>
+      <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #C9A85B;">00:00:11:12</span>
+      <span style="width: 1px; height: 12px; background: #3A3A3A;"></span>
+      <span>吸附</span><span style="color: #E8E8E8;">链接 V/A</span><span>标记 M</span>
+      <div style="flex: 1;"></div>
+      <span>总长 <span style="font-family: 'JetBrains Mono', Menlo, monospace; color: #D6D6D6;">00:00:42:12</span></span>
+      <span>8 镜 · 1 占位</span>
+    </div>
+
+    <div style="flex: 1; min-height: 0; display: flex;">
+      <!-- 轨道头 -->
+      <div style="width: 96px; flex: 0 0 auto; display: flex; flex-direction: column; background: #1D1D1D; border-right: 1px solid #0F0F0F;">
+        <div style="height: 26px; border-bottom: 1px solid #0F0F0F;"></div>
+        <div style="height: 22px; display: flex; align-items: center; padding: 0 10px; color: #8A8A8A; font-size: 11px; border-bottom: 1px solid #0F0F0F;">标记</div>
+        <div style="height: 96px; display: flex; flex-direction: column; justify-content: center; gap: 4px; padding: 0 10px; border-bottom: 1px solid #0F0F0F;"><span style="color: #E8E8E8; font-weight: 500;">V1</span><span style="font-size: 11px; color: #6B6B6B;">视频 · 8</span></div>
+        <div style="height: 34px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-bottom: 1px solid #0F0F0F;"><span style="color: #E8E8E8; font-weight: 500;">A1</span><span style="font-size: 11px; color: #6B6B6B;">模型音轨 · 2</span></div>
+      </div>
+
+      <!-- 轨道区 -->
+      <div style="flex: 1; min-width: 0; position: relative; overflow: hidden;">
+        <!-- 时间尺 -->
+        <div style="height: 26px; position: relative; border-bottom: 1px solid #0F0F0F; background: #1D1D1D;">
+          <sc-for list="{{ ticks }}" as="k" hint-placeholder-count="9">
+            <div style="position: absolute; left: {{ k.x }}; top: 0; height: 26px; display: flex; flex-direction: column; justify-content: flex-end;">
+              <span style="position: absolute; top: 5px; left: 4px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #7A7A7A; white-space: nowrap;">{{ k.tc }}</span>
+              <div style="width: 1px; height: 8px; background: #4A4A4A;"></div>
+            </div>
+          </sc-for>
+        </div>
+        <!-- 标记轨 -->
+        <div style="height: 22px; position: relative; border-bottom: 1px solid #0F0F0F;">
+          <sc-for list="{{ markers }}" as="m" hint-placeholder-count="3">
+            <div style="position: absolute; left: {{ m.x }}; top: 4px; display: flex; align-items: center; gap: 5px;">
+              <div style="width: 8px; height: 8px; transform: rotate(45deg); background: {{ m.color }};"></div>
+              <span style="font-size: 10px; color: #B8B8B8; white-space: nowrap;">{{ m.label }}</span>
+            </div>
+          </sc-for>
+        </div>
+        <!-- V1 -->
+        <div style="height: 96px; position: relative; border-bottom: 1px solid #0F0F0F; background: repeating-linear-gradient(90deg, transparent 0 169px, #1F1F1F 169px 170px);">
+          <sc-for list="{{ clips }}" as="c" hint-placeholder-count="8">
+            <div style="position: absolute; left: {{ c.x }}; top: 8px; width: {{ c.w }}; height: 80px; box-sizing: border-box; border-radius: 3px; background: {{ c.bg }}; outline: 1px {{ c.outlineStyle }} {{ c.outline }}; outline-offset: -1px; overflow: hidden; display: flex; flex-direction: column;">
+              <div style="flex: 1; display: flex; gap: 2px; padding: 3px; overflow: hidden;">
+                <div style="flex: 1; border-radius: 1px; background: {{ c.thumb }};"></div>
+                <div style="flex: 1; border-radius: 1px; background: {{ c.thumb }}; opacity: 0.85;"></div>
+                <div style="flex: 1; border-radius: 1px; background: {{ c.thumb }}; opacity: 0.7;"></div>
+              </div>
+              <div style="height: 20px; flex: 0 0 auto; display: flex; align-items: center; gap: 6px; padding: 0 6px; font-size: 10px; color: {{ c.fg }}; white-space: nowrap; overflow: hidden;">
+                <span style="font-family: 'JetBrains Mono', Menlo, monospace;">{{ c.idx }}</span><span style="overflow: hidden; text-overflow: ellipsis;">{{ c.name }}</span><div style="flex: 1;"></div><span style="font-family: 'JetBrains Mono', Menlo, monospace; color: #8A8A8A;">{{ c.dur }}</span>
+              </div>
+              <sc-if value="{{ c.trimmed }}" hint-placeholder-val="{{ false }}">
+                <div style="position: absolute; left: 0; top: 0; width: 4px; height: 100%; background: #C9A85B;"></div>
+                <div style="position: absolute; right: 0; top: 0; width: 4px; height: 100%; background: #C9A85B;"></div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <!-- A1 -->
+        <div style="height: 34px; position: relative; border-bottom: 1px solid #0F0F0F;">
+          <sc-for list="{{ audio }}" as="a" hint-placeholder-count="2">
+            <div style="position: absolute; left: {{ a.x }}; top: 6px; width: {{ a.w }}; height: 22px; box-sizing: border-box; border-radius: 2px; background: #22301F; outline: 1px solid #3A5334; outline-offset: -1px; display: flex; align-items: center; padding: 0 6px; font-size: 10px; color: #8FB07E; white-space: nowrap; overflow: hidden;">{{ a.name }}</div>
+          </sc-for>
+        </div>
+        <!-- 播放头 -->
+        <div style="position: absolute; left: 391px; top: 0; bottom: 0; width: 1px; background: #C9A85B; pointer-events: none;"></div>
+        <div style="position: absolute; left: 385px; top: 0; width: 13px; height: 9px; background: #C9A85B; clip-path: polygon(0 0, 100% 0, 50% 100%); pointer-events: none;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态栏 -->
+  <div style="height: 22px; flex: 0 0 auto; display: flex; align-items: center; gap: 16px; padding: 0 12px; background: #262626; border-top: 1px solid #0F0F0F; color: #8A8A8A; font-size: 11px;">
+    <span>山径破晓 · 叙事链 · 8 镜</span>
+    <span>选中 003 · 入 00:00:00:12 · 出 00:00:04:20</span>
+    <div style="flex: 1;"></div>
+    <span>上次交付 v02 · 2 小时前 · Resolve</span>
+    <span style="font-family: 'JetBrains Mono', Menlo, monospace;">v0.1.0-alpha.9</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1000},&quot;target&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Resolve&quot;,&quot;Premiere&quot;,&quot;Final Cut&quot;,&quot;剪映&quot;],&quot;default&quot;:&quot;Resolve&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;交付&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const accent = "#C9A85B";
+    const target = this.props.target ?? "Resolve";
+    const pxPerSec = 34; // 1 s = 34 px（42.5s 序列适配 ~1500px 轨道宽）
+    const T = (s) => `${Math.round(s * pxPerSec)}px`;
+    const tcShort = (s) => { const f = Math.round((s % 1) * 24); const t = Math.floor(s); return `${String(t).padStart(2,"0")}:${String(f).padStart(2,"0")}`; };
+    const tc = (s) => { const f = Math.round((s % 1) * 24); const t = Math.floor(s); return `00:00:${String(t).padStart(2,"0")}:${String(f).padStart(2,"0")}`; };
+
+    const thumbs = ["linear-gradient(160deg,#3B3A36,#23221F)","linear-gradient(160deg,#34342F,#1F1E1B)","linear-gradient(160deg,#2F2A22,#1C1A16)","linear-gradient(160deg,#2C2E2A,#1A1B18)","linear-gradient(160deg,#37312A,#201C18)","linear-gradient(160deg,#30302C,#1B1B19)","linear-gradient(160deg,#2A2F2C,#181B19)","#262626"];
+    const raw = [
+      { name: "山径入镜", dur: 5, state: "视频" },
+      { name: "松林逆光", dur: 4.5, state: "视频" },
+      { name: "图转视频 · 推镜", dur: 4.33, state: "视频", sel: true, trimmed: true },
+      { name: "背影渐清", dur: 5, state: "视频" },
+      { name: "破晓山脊", dur: 6, state: "视频" },
+      { name: "第一缕光", dur: 5, state: "视频" },
+      { name: "回望", dur: 8, state: "视频" },
+      { name: "收尾 · 空镜", dur: 4.67, state: "缺失", placeholder: true },
+    ];
+    let acc = 0;
+    const clips = raw.map((r, i) => {
+      const x = acc; acc += r.dur;
+      return {
+        idx: String(i + 1).padStart(3, "0"), name: r.name, dur: tc(r.dur), x: T(x), w: `${Math.round(r.dur * pxPerSec) - 3}px`,
+        bg: r.placeholder ? "transparent" : (r.sel ? "#33301F" : "#2A2A2A"),
+        outline: r.placeholder ? "#4A4A4A" : (r.sel ? accent : "#3A3A3A"),
+        outlineStyle: r.placeholder ? "dashed" : "solid",
+        thumb: r.placeholder ? "transparent" : thumbs[i], fg: r.placeholder ? "#6B6B6B" : "#D6D6D6", trimmed: !!r.trimmed,
+      };
+    });
+    const shots = raw.map((r, i) => ({
+      idx: String(i + 1).padStart(3, "0"), name: r.name, dur: tcShort(r.dur), thumb: r.placeholder ? "#2A2A2A" : thumbs[i],
+      state: r.state, stateColor: r.placeholder ? accent : "#8A8A8A", fg: r.placeholder ? "#8A8A8A" : (r.sel ? "#E8E8E8" : "#C8C8C8"), rowBg: r.sel ? "#2E2E2E" : "transparent",
+    }));
+    const ticks = []; for (let s = 0; s <= 42; s += 5) ticks.push({ x: T(s), tc: tc(s) });
+    return {
+      shots, clips, ticks,
+      markers: [
+        { x: T(0), label: "SC01 山径", color: "#8A8A8A" },
+        { x: T(18.83), label: "SC02 破晓 · 断点", color: accent },
+        { x: T(37.83), label: "待补 · 空镜", color: "#B04030" },
+      ],
+      audio: [
+        { x: T(9.5), w: `${Math.round(4.33 * pxPerSec) - 3}px`, name: "003 模型音轨" },
+        { x: T(24.83), w: `${Math.round(5 * pxPerSec) - 3}px`, name: "006 模型音轨" },
+      ],
+      targets: ["Resolve", "Premiere", "Final Cut", "剪映"].map(n => ({ name: n, bg: n === target ? "#3A3A3A" : "transparent", fg: n === target ? "#E8E8E8" : "#9E9E9E" })),
+      delivery: [
+        { title: "工程文件", rows: [
+          { label: "格式", value: target === "剪映" ? "剪映草稿 JSON" : (target === "Final Cut" ? "FCPXML 1.10" : "FCPXML 1.10 + EDL CMX3600"), isSelect: true },
+          { label: "帧率", value: "24 fps · 与序列一致", isSelect: true },
+          { label: "时间码起点", value: "01:00:00:00", isMono: true },
+          { label: "轨道", value: "V1 视频 · A1 音频分离", isSelect: true },
+        ]},
+        { title: "媒体", rows: [
+          { label: "手柄", value: "±12 帧（0.5 s）", isSelect: true },
+          { label: "命名", value: "{序号3位}_{镜头名}.mp4", isMono: true },
+          { label: "范围", value: "仅入出点 + 手柄", isSelect: true },
+          { label: "转码", value: "保持源 · 不重编码", isSelect: true },
+          { label: "相对路径", value: "开启（随文件夹搬迁）", isToggle: true, toggleBg: accent, knob: "14px" },
+        ]},
+        { title: "标记与元数据", rows: [
+          { label: "断点 → 标记", value: "导入为时间线标记", isToggle: true, toggleBg: accent, knob: "14px" },
+          { label: "镜头语言", value: "写入片段备注（景别·运镜）", isToggle: true, toggleBg: accent, knob: "14px" },
+          { label: "提示词", value: "写入 metadata.json", isToggle: true, toggleBg: "#3F3F3F", knob: "2px" },
+          { label: "占位镜头", value: "导出为空隙 + 标记", isSelect: true },
+        ]},
+      ],
+      preflight: [
+        { mark: "✓", color: "#7FB069", fg: "#9E9E9E", text: "8 镜帧率一致 24 fps，画幅 16:9" },
+        { mark: "✓", color: "#7FB069", fg: "#9E9E9E", text: "003 已裁切，手柄范围在源内" },
+        { mark: "!", color: accent, fg: "#D6D6D6", text: "008 收尾空镜无视频产物，将导出为 4:16 空隙并加标记" },
+        { mark: "!", color: accent, fg: "#D6D6D6", text: "002 源片长 5:00 大于片段 4:12，尾部手柄将截到源末端" },
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -49,7 +49,7 @@ class _CommandPaletteChipState extends ConsumerState<CommandPaletteChip> {
               ),
               child: Text(
                 commandPaletteShortcutLabel(),
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
             ),
           ),

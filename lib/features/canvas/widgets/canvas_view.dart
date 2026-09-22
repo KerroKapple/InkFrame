@@ -124,7 +124,7 @@ class _SelectionCountChip extends StatelessWidget {
             const SizedBox(width: InkSpacing.xs),
             Text(
               context.l10n.canvasSelectionCount(count),
-              style: typo.caption.copyWith(color: colors.fg1),
+              style: typo.meta.copyWith(color: colors.fg1),
             ),
           ],
         ),
@@ -150,7 +150,7 @@ class _LinkHintBanner extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.link, size: 16, color: colors.brand),
+            Icon(Icons.link, size: 16, color: colors.accent),
             const SizedBox(width: InkSpacing.sm),
             Flexible(
               child: Text(
@@ -238,7 +238,7 @@ class _LoadError extends StatelessWidget {
             const SizedBox(height: InkSpacing.sm),
             Text(
               message,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
               textAlign: TextAlign.center,
             ),
           ],
@@ -592,7 +592,7 @@ class _CanvasStage extends ConsumerWidget {
                                   dataColor: style.edgeColor ?? colors.accent,
                                   narrativeColor: colors.fg3,
                                   generationSourceColor: colors.fg3,
-                                  selectedColor: colors.brand,
+                                  selectedColor: colors.accent,
                                   direction: direction,
                                   selectedEdgeId: selectedEdgeId,
                                   dragNodeId: drag?.nodeId,

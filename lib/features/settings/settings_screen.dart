@@ -44,7 +44,7 @@ class SettingsScreen extends ConsumerWidget {
             leading: const SettingsBackButton(),
             title: Text(
               context.l10n.settingsTitle,
-              style: typo.headlineXs.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
             ),
           ),
           Expanded(

@@ -43,7 +43,7 @@ class StudioHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     return ColoredBox(
-      color: colors.surfaceCanvas,
+      color: colors.surface0,
       child: const Column(
         children: <Widget>[
           // 顶栏 chrome（小 logo / 面包屑 / ⌘K / ⚙）已上移到外壳 ShellChrome：
@@ -76,7 +76,7 @@ class _StudioMainArea extends ConsumerWidget {
       orElse: () => false,
     );
     return ColoredBox(
-      color: colors.surfaceCanvas,
+      color: colors.surface0,
       child: Stack(
         children: <Widget>[
           Padding(
@@ -93,7 +93,7 @@ class _StudioMainArea extends ConsumerWidget {
                   padding: const EdgeInsets.only(bottom: InkSpacing.lg),
                   child: Text(
                     context.l10n.studioRecentProjects,
-                    style: typo.displayMd.copyWith(
+                    style: typo.dialogTitle.copyWith(
                       color: colors.fg1,
                     ),
                   ),
@@ -327,7 +327,7 @@ class _StudioEmptyState extends StatelessWidget {
               const SizedBox(height: InkSpacing.lg),
               Text(
                 context.l10n.studioEmptyTitle,
-                style: typo.headline.copyWith(color: colors.fg1),
+                style: typo.dialogTitle.copyWith(color: colors.fg1),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: InkSpacing.sm),
@@ -460,12 +460,12 @@ class _NewProjectDialogState extends State<_NewProjectDialog> {
             children: <Widget>[
               Text(
                 widget.title ?? context.l10n.studioNewProjectDialogTitle,
-                style: typo.headline.copyWith(color: colors.fg1),
+                style: typo.dialogTitle.copyWith(color: colors.fg1),
               ),
               const SizedBox(height: InkSpacing.md),
               Text(
                 context.l10n.studioNewProjectNameLabel,
-                style: typo.caption.copyWith(
+                style: typo.meta.copyWith(
                   color: colors.fg3,
                   letterSpacing: 1.5,
                 ),
@@ -484,7 +484,7 @@ class _NewProjectDialogState extends State<_NewProjectDialog> {
                 const SizedBox(height: InkSpacing.sm),
                 Text(
                   error,
-                  style: typo.caption.copyWith(color: colors.danger),
+                  style: typo.meta.copyWith(color: colors.danger),
                 ),
               ],
               const SizedBox(height: InkSpacing.lg),
@@ -906,7 +906,7 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
                               const SizedBox(height: InkSpacing.md),
                               Text(
                                 context.l10n.studioTrash,
-                                style: typo.overline
+                                style: typo.meta
                                     .copyWith(color: colors.fg3),
                               ),
                               const SizedBox(height: InkSpacing.xs),
@@ -928,7 +928,7 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
                                           Text(
                                             context.l10n.studioTrashDeletedAt(
                                                 t.deletedAt.toLocal()),
-                                            style: typo.caption.copyWith(
+                                            style: typo.meta.copyWith(
                                                 color: colors.fg3),
                                           ),
                                         ],

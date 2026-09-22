@@ -30,7 +30,7 @@ class CanvasScreen extends ConsumerWidget {
     final canvasId = ref.watch(currentCanvasIdProvider);
     return CanvasJobListener(
       child: Scaffold(
-        backgroundColor: colors.surfaceCanvas,
+        backgroundColor: colors.surface0,
         floatingActionButton: canvasId == null
             ? null
             : CanvasAddNodeFab(canvasId: canvasId),

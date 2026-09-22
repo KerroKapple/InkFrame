@@ -55,7 +55,7 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
       decoration: BoxDecoration(
         color: colors.surface2,
         borderRadius: BorderRadius.circular(InkRadius.md),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: colors.outline),
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(InkRadius.md),
@@ -75,13 +75,13 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
                       GalleryItemKind.image => context.l10n.galleryKindImage,
                       GalleryItemKind.video => context.l10n.galleryKindVideo,
                     },
-                    style: typo.caption.copyWith(color: colors.fg2),
+                    style: typo.meta.copyWith(color: colors.fg2),
                   ),
                   const SizedBox(width: InkSpacing.sm),
                   Expanded(
                     child: Text(
                       item.canvasName,
-                      style: typo.caption.copyWith(color: colors.fg3),
+                      style: typo.meta.copyWith(color: colors.fg3),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.end,
@@ -226,7 +226,7 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
         padding: const EdgeInsets.all(InkSpacing.xs),
         child: Text(
           _fmtDuration(ms),
-          style: typo.caption.copyWith(color: colors.fg1),
+          style: typo.meta.copyWith(color: colors.fg1),
         ),
       ),
     );
@@ -246,7 +246,7 @@ class _GalleryTileState extends ConsumerState<GalleryTile> {
               const SizedBox(height: InkSpacing.xs),
               Text(
                 _fmtDuration(durationMs),
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
             ],
           ],

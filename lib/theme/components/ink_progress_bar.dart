@@ -26,7 +26,7 @@ class InkProgressBar extends StatelessWidget {
         child: LinearProgressIndicator(
           value: value?.clamp(0.0, 1.0),
           backgroundColor: colors.surface3,
-          valueColor: AlwaysStoppedAnimation<Color>(colors.cta),
+          valueColor: AlwaysStoppedAnimation<Color>(colors.accent),
         ),
       ),
     );

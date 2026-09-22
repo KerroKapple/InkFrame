@@ -39,7 +39,7 @@ class StudioProviderBanner extends ConsumerWidget {
           horizontal: InkSpacing.md, vertical: InkSpacing.s10),
         decoration: BoxDecoration(
           color: colors.surface2,
-          border: Border.all(color: colors.warning, width: 1),
+          border: Border.all(color: colors.accent, width: 1),
           borderRadius: BorderRadius.circular(InkRadius.md),
         ),
         child: Row(

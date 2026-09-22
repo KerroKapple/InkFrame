@@ -30,7 +30,7 @@ class InkWindowChrome extends StatelessWidget {
       child: DragToMoveArea(
         child: Container(
           decoration: BoxDecoration(
-            color: colors.surfaceCanvas,
+            color: colors.surface0,
             border: Border(
               bottom: BorderSide(color: colors.borderSubtle, width: 1),
             ),

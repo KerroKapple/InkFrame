@@ -28,12 +28,12 @@ class StoragePathSection extends ConsumerWidget {
       children: [
         Text(
           context.l10n.settingsStorageSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.xs),
         Text(
           context.l10n.settingsStorageReadOnlyHint,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.sm),
         InkCard(
@@ -45,7 +45,7 @@ class StoragePathSection extends ConsumerWidget {
                   children: <Widget>[
                     Text(
                       context.l10n.settingsStorageDatabasePathLabel,
-                      style: typo.caption.copyWith(color: colors.fg3),
+                      style: typo.meta.copyWith(color: colors.fg3),
                     ),
                     const SizedBox(height: InkSpacing.xs),
                     SelectableText(

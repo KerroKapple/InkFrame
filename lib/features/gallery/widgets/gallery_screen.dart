@@ -64,7 +64,7 @@ class GalleryScreen extends ConsumerWidget {
           );
     // Material 根：筛选条的 Dropdown/TextField 需要 Material 祖先（GA-3）。
     return Material(
-      color: colors.surfaceCanvas,
+      color: colors.surface0,
       child: Column(
         children: <Widget>[
           _GalleryToolBar(
@@ -149,7 +149,7 @@ class _GalleryToolBar extends ConsumerWidget {
           Flexible(
             child: Text(
               projectName,
-              style: typo.headlineXs.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -435,7 +435,7 @@ class _GalleryEmptyState extends StatelessWidget {
             const SizedBox(height: InkSpacing.lg),
             Text(
               context.l10n.galleryEmptyTitle,
-              style: typo.headline.copyWith(color: colors.fg1),
+              style: typo.dialogTitle.copyWith(color: colors.fg1),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: InkSpacing.sm),

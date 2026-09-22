@@ -25,7 +25,7 @@ class InkShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ShellState s = ref.watch(shellControllerProvider);
     return Scaffold(
-      backgroundColor: context.inkColors.surfaceCanvas,
+      backgroundColor: context.inkColors.surface0,
       body: Column(
         children: <Widget>[
           const ShellChrome(), // 56：全树唯一 InkWindowChrome

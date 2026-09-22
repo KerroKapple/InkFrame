@@ -953,7 +953,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutLegalese.
   ///
   /// In en, this message translates to:
-  /// **'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the Cormorant Garamond and JetBrains Mono fonts (SIL OFL 1.1).'**
+  /// **'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the JetBrains Mono font (SIL OFL 1.1).'**
   String get settingsAboutLegalese;
 
   /// No description provided for @settingsAboutUpdateCheckButton.

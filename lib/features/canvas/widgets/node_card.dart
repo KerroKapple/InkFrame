@@ -120,15 +120,15 @@ class _NodeCardState extends ConsumerState<NodeCard> {
         (node.imageUrl != null || node.thumbnailUrl != null);
     final Border? border;
     if (widget.isLinkSource) {
-      border = Border.all(color: colors.brand, width: 2.5);
+      border = Border.all(color: colors.accent, width: 2.5);
     } else if (widget.isLinkCandidate) {
-      border = Border.all(color: colors.brand, width: 2.0);
+      border = Border.all(color: colors.accent, width: 2.0);
     } else if (widget.selected) {
       border = Border.all(color: colors.accent, width: 2.0);
     } else if (hasMedia) {
       border = null;
     } else {
-      border = Border.all(color: colors.border);
+      border = Border.all(color: colors.outline);
     }
 
     final elevated = _dragging || widget.selected || widget.isLinkSource;
@@ -249,7 +249,7 @@ class _FloatingTitle extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [colors.overlay.withValues(alpha: 0), colors.overlay],
+          colors: [colors.scrim.withValues(alpha: 0), colors.scrim],
         ),
       ),
       child: Row(
@@ -259,7 +259,7 @@ class _FloatingTitle extends StatelessWidget {
           Expanded(
             child: Text(
               node.label.isEmpty ? _typeLabel(context, node.type) : node.label,
-              style: typo.caption.copyWith(color: colors.fg1),
+              style: typo.meta.copyWith(color: colors.fg1),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -314,7 +314,7 @@ class _LinkAnchor extends StatelessWidget {
       message: context.l10n.linkModeStart,
       child: Material(
         color: colors.surface1,
-        shape: CircleBorder(side: BorderSide(color: colors.brand, width: 1.5)),
+        shape: CircleBorder(side: BorderSide(color: colors.accent, width: 1.5)),
         elevation: 2,
         child: InkWell(
           customBorder: const CircleBorder(),
@@ -322,7 +322,7 @@ class _LinkAnchor extends StatelessWidget {
           child: SizedBox(
             width: 24,
             height: 24,
-            child: Icon(Icons.link, size: 14, color: colors.brand),
+            child: Icon(Icons.link, size: 14, color: colors.accent),
           ),
         ),
       ),
@@ -473,7 +473,7 @@ class _Placeholder extends StatelessWidget {
           const SizedBox(height: InkSpacing.xs),
           Text(
             text,
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

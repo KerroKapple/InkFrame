@@ -111,7 +111,7 @@ class _CollapsedRail extends ConsumerWidget {
         if (activeCount > 0)
           Text(
             '$activeCount',
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
           ),
       ],
     );
@@ -154,12 +154,12 @@ class _ExpandedPanel extends ConsumerWidget {
               Expanded(
                 child: Text(
                   l.canvasRenderQueue.toUpperCase(),
-                  style: typo.overline.copyWith(color: colors.fg3),
+                  style: typo.meta.copyWith(color: colors.fg3),
                 ),
               ),
               Text(
                 '$running · ${active.length}',
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
               const SizedBox(width: InkSpacing.xs),
               IconButton(
@@ -180,7 +180,7 @@ class _ExpandedPanel extends ConsumerWidget {
           if (active.isEmpty)
             Text(
               l.canvasRenderQueueEmpty,
-              style: typo.caption.copyWith(color: colors.fg4),
+              style: typo.meta.copyWith(color: colors.fg4),
             )
           else
             for (final job in active) ...<Widget>[
@@ -196,7 +196,7 @@ class _ExpandedPanel extends ConsumerWidget {
             const SizedBox(height: InkSpacing.s12),
             Text(
               l.canvasRenderQueueFailures.toUpperCase(),
-              style: typo.overline.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.s10),
             for (final job in recentFailures) ...<Widget>[
@@ -234,7 +234,7 @@ class _JobRow extends ConsumerWidget {
               width: 8,
               height: 8,
               decoration: BoxDecoration(
-                color: running ? colors.cta : colors.fg4,
+                color: running ? colors.accent : colors.fg4,
                 shape: BoxShape.circle,
               ),
             ),
@@ -250,7 +250,7 @@ class _JobRow extends ConsumerWidget {
               running
                   ? '${(percent * 100).round()}%'
                   : context.l10n.canvasRenderQueueStatusQueued,
-              style: typo.caption.copyWith(
+              style: typo.meta.copyWith(
                 color: running ? colors.fg3 : colors.fg4,
               ),
             ),
@@ -338,7 +338,7 @@ class _FailedRow extends StatelessWidget {
           padding: const EdgeInsets.only(left: InkSpacing.s28),
           child: Text(
             l10nError(context, error),
-            style: typo.caption.copyWith(color: colors.danger),
+            style: typo.meta.copyWith(color: colors.danger),
           ),
         ),
       ],

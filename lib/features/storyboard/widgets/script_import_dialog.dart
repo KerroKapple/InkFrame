@@ -158,7 +158,7 @@ class _Label extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
         text,
-        style: context.inkTypography.caption
+        style: context.inkTypography.meta
             .copyWith(color: context.inkColors.fg3),
       );
 }
@@ -192,7 +192,7 @@ class _Preview extends StatelessWidget {
               children: <Widget>[
                 Text(
                   l.scriptImportShotCount(drafts.length),
-                  style: typo.caption.copyWith(color: colors.fg2),
+                  style: typo.meta.copyWith(color: colors.fg2),
                 ),
                 const SizedBox(height: InkSpacing.xs),
                 Expanded(

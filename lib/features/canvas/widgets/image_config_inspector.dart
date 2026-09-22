@@ -209,7 +209,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
       padding: const EdgeInsets.all(InkSpacing.lg),
       decoration: BoxDecoration(
         color: colors.surface1,
-        border: Border(left: BorderSide(color: colors.border)),
+        border: Border(left: BorderSide(color: colors.outline)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -217,12 +217,12 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
           children: [
             Text(
               context.l10n.inspectorTitle,
-              style: typo.title.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
             ),
             const SizedBox(height: InkSpacing.lg),
             Text(
               context.l10n.inspectorPromptLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             InkInput(
@@ -235,7 +235,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
             const SizedBox(height: InkSpacing.md),
             Text(
               context.l10n.inspectorProviderLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             DropdownButton<String>(
@@ -281,7 +281,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
             const SizedBox(height: InkSpacing.md),
             Text(
               context.l10n.inspectorResolutionLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             DropdownButton<Resolution>(
@@ -307,7 +307,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
               const SizedBox(height: InkSpacing.md),
               Text(
                 context.l10n.inspectorAspectRatioLabel,
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
               const SizedBox(height: InkSpacing.xs),
               DropdownButton<AspectRatio>(
@@ -336,7 +336,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
               const SizedBox(height: InkSpacing.md),
               Text(
                 context.l10n.inspectorNegativePromptLabel,
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
               const SizedBox(height: InkSpacing.xs),
               InkInput(
@@ -354,7 +354,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
               const SizedBox(height: InkSpacing.md),
               Text(
                 context.l10n.inspectorSeedLabel,
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
               const SizedBox(height: InkSpacing.xs),
               InkInput(
@@ -372,7 +372,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
               const SizedBox(height: InkSpacing.md),
               Text(
                 context.l10n.inspectorBatchLabel,
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
               const SizedBox(height: InkSpacing.xs),
               DropdownButton<int>(
@@ -406,7 +406,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
                     ),
                   ),
                 ),
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
             ],
             const SizedBox(height: InkSpacing.lg),
@@ -503,7 +503,7 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
       children: [
         Text(
           context.l10n.inspectorPresetsLabel,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.xs),
         // 加载失败 → 错误横幅（此前静默降级为空 = 误报"无预设"）。
@@ -514,7 +514,7 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
         else if (presets.isEmpty)
           Text(
             context.l10n.inspectorPresetsEmpty,
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
           )
         else
           Wrap(
@@ -650,7 +650,7 @@ class _PromptPreview extends ConsumerWidget {
       children: [
         Text(
           context.l10n.inspectorPromptPreviewLabel,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.xs),
         Container(
@@ -659,11 +659,11 @@ class _PromptPreview extends ConsumerWidget {
           decoration: BoxDecoration(
             color: colors.surface2,
             borderRadius: BorderRadius.circular(InkRadius.md),
-            border: Border.all(color: colors.border),
+            border: Border.all(color: colors.outline),
           ),
           child: Text(
             preview.isEmpty ? '—' : preview,
-            style: typo.caption.copyWith(color: colors.fg2),
+            style: typo.meta.copyWith(color: colors.fg2),
           ),
         ),
       ],

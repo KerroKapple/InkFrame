@@ -65,7 +65,7 @@ class InkShellTabBar extends StatelessWidget {
       height: height,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          color: colors.surfaceCanvas,
+          color: colors.surface0,
           border: Border(
             bottom: BorderSide(color: colors.borderStrong, width: 1),
           ),

@@ -93,7 +93,7 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
             const ApiKeysSection(),
             Text(
               context.l10n.onboardingKeysConsoleHint,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
           ],
         );
@@ -103,7 +103,7 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
           children: <Widget>[
             Text(
               context.l10n.onboardingStepSampleTitle,
-              style: typo.title.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
             ),
             const SizedBox(height: InkSpacing.sm),
             Text(
@@ -138,12 +138,12 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
                   Expanded(
                     child: Text(
                       l10n.onboardingTitle,
-                      style: typo.headline.copyWith(color: colors.fg1),
+                      style: typo.dialogTitle.copyWith(color: colors.fg1),
                     ),
                   ),
                   Text(
                     l10n.onboardingStepIndicator(_step + 1, _stepCount),
-                    style: typo.caption.copyWith(color: colors.fg3),
+                    style: typo.meta.copyWith(color: colors.fg3),
                   ),
                 ],
               ),

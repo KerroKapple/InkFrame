@@ -115,7 +115,7 @@ class _CommandPaletteDialogState extends State<CommandPaletteDialog> {
                     padding: const EdgeInsets.all(InkSpacing.sm),
                     child: Text(
                       l.commandPaletteNoResults,
-                      style: typo.caption.copyWith(color: colors.fg3),
+                      style: typo.meta.copyWith(color: colors.fg3),
                     ),
                   )
                 else

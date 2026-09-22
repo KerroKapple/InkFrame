@@ -42,12 +42,12 @@ class ApiKeysSection extends ConsumerWidget {
       children: [
         Text(
           context.l10n.settingsApiKeysSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.xs),
         Text(
           context.l10n.settingsApiKeysHint,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.md),
         for (final entry in groups.entries)
@@ -164,7 +164,7 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
                     if (showMembers)
                       Text(
                         memberIds,
-                        style: typo.caption.copyWith(color: colors.fg3),
+                        style: typo.meta.copyWith(color: colors.fg3),
                       ),
                   ],
                 ),
@@ -226,7 +226,7 @@ class _StatusChip extends StatelessWidget {
         set
             ? context.l10n.settingsApiKeySet
             : context.l10n.settingsApiKeyNotSet,
-        style: typo.caption.copyWith(
+        style: typo.meta.copyWith(
           color: set ? colors.success : colors.fg3,
         ),
       ),

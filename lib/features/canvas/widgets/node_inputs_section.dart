@@ -51,7 +51,7 @@ class NodeInputsSection extends ConsumerWidget {
         children: [
           Text(
             context.l10n.inspectorInputsLabel,
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
           ),
           const SizedBox(height: InkSpacing.xs),
           InkErrorBanner(message: l10nAsyncError(context, loadError)),
@@ -78,14 +78,14 @@ class NodeInputsSection extends ConsumerWidget {
           maxRefs > 0
               ? context.l10n.inspectorInputsLabelCounted(refCount, maxRefs)
               : context.l10n.inspectorInputsLabel,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.xs),
         if (inputs.isEmpty)
           InkDashedSlot(
             child: Text(
               context.l10n.inspectorInputsEmpty,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
           )
         else ...[
@@ -102,7 +102,7 @@ class NodeInputsSection extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: InkSpacing.xs),
               child: Text(
                 context.l10n.inspectorInputsOverLimit(maxRefs),
-                style: typo.caption.copyWith(color: colors.warning),
+                style: typo.meta.copyWith(color: colors.accent),
               ),
             ),
         ],

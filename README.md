@@ -35,7 +35,7 @@ upload, no SaaS lock-in.
 - **🔒 Local-first by design** — projects live in an embedded PostgreSQL on your machine; keys go to the OS Keychain / Credential Manager, never a plaintext `.env`.
 - **🕸️ Node canvas** — compose shots visually: drop text / image / video nodes, wire them, and watch generation flow through the graph with live job progress.
 - **🔌 Multi-provider** — mix and match image/video models from different vendors in one project. Adding a new one is a single file (see [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md)).
-- **🖥️ One codebase, two desktops** — macOS + Windows from a single Dart/Flutter source, frameless "Amber Noir" UI.
+- **🖥️ One codebase, two desktops** — macOS + Windows from a single Dart/Flutter source, frameless neutral-gray desktop UI with a single amber accent.
 - **🧪 Quota-safe dev** — built-in fake providers run the whole app and exercise the canvas without burning a single API credit.
 
 ## 🔄 How it works

@@ -146,7 +146,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
       padding: const EdgeInsets.all(InkSpacing.lg),
       decoration: BoxDecoration(
         color: colors.surface1,
-        border: Border(left: BorderSide(color: colors.border)),
+        border: Border(left: BorderSide(color: colors.outline)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -154,12 +154,12 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
           children: [
             Text(
               context.l10n.inspectorTitle,
-              style: typo.title.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
             ),
             const SizedBox(height: InkSpacing.lg),
             Text(
               context.l10n.inspectorVideoPromptLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             InkInput(
@@ -172,7 +172,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             const SizedBox(height: InkSpacing.md),
             Text(
               context.l10n.inspectorProviderLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             DropdownButton<String>(
@@ -216,7 +216,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             const SizedBox(height: InkSpacing.md),
             Text(
               context.l10n.inspectorVideoDurationLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             DropdownButton<int>(
@@ -246,7 +246,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
               const SizedBox(height: InkSpacing.md),
               Text(
                 context.l10n.inspectorVideoCameraLabel,
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
               const SizedBox(height: InkSpacing.xs),
               DropdownButton<CameraMovement>(
@@ -273,7 +273,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             const SizedBox(height: InkSpacing.md),
             Text(
               context.l10n.inspectorVideoModeAuto,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             if (selected != null) ...[
               const SizedBox(height: InkSpacing.md),
@@ -286,7 +286,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                     ),
                   ),
                 ),
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
             ],
             const SizedBox(height: InkSpacing.lg),

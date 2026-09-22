@@ -188,7 +188,7 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
       padding: const EdgeInsets.all(InkSpacing.lg),
       decoration: BoxDecoration(
         color: colors.surface1,
-        border: Border(left: BorderSide(color: colors.border)),
+        border: Border(left: BorderSide(color: colors.outline)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -196,12 +196,12 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
           children: [
             Text(
               context.l10n.inspectorShotTitle,
-              style: typo.title.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
             ),
             const SizedBox(height: InkSpacing.lg),
             Text(
               context.l10n.inspectorShotNotesLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             InkInput(
@@ -214,7 +214,7 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
             const SizedBox(height: InkSpacing.lg),
             Text(
               context.l10n.inspectorShotDurationLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             DropdownButton<int?>(
@@ -244,7 +244,7 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
             const SizedBox(height: InkSpacing.md),
             Text(
               context.l10n.inspectorShotCameraLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
             const SizedBox(height: InkSpacing.xs),
             // 列**全量**枚举：shot 记的是意图，此刻还没选 provider。
@@ -272,7 +272,7 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
             const SizedBox(height: InkSpacing.xs),
             Text(
               context.l10n.inspectorShotParamHint,
-              style: typo.caption.copyWith(color: colors.fg4),
+              style: typo.meta.copyWith(color: colors.fg4),
             ),
             const SizedBox(height: InkSpacing.lg),
             FilledButton.icon(

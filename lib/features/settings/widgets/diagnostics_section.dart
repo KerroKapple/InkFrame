@@ -40,12 +40,12 @@ class _DiagnosticsSectionState extends ConsumerState<DiagnosticsSection> {
       children: [
         Text(
           context.l10n.settingsDiagnosticsSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.xs),
         Text(
           context.l10n.settingsDiagnosticsHint,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.sm),
         Wrap(

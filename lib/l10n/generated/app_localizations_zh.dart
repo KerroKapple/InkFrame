@@ -470,7 +470,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAboutLegalese =>
-      'InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 Cormorant Garamond 与 JetBrains Mono 字体（SIL OFL 1.1）。';
+      'InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 JetBrains Mono 字体（SIL OFL 1.1）。';
 
   @override
   String get settingsAboutUpdateCheckButton => '检查更新';

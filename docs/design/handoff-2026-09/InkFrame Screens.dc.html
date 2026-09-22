@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html { background: #141414; }
+  body { margin: 0; background: #141414; -webkit-font-smoothing: antialiased; }
+  a { color: #C9A85B; text-decoration: none; } a:hover { color: #E0C27A; }
+</style>
+</helmet>
+
+<div style="display: flex; flex-direction: column; gap: 48px; padding: 48px; background: #141414; font-family: 'Noto Sans SC', -apple-system, 'PingFang SC', sans-serif;">
+
+  <!-- ============ Studio 首页 ============ -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; letter-spacing: 0.8px; color: #C9A85B;">01</span>
+      <span style="font-size: 16px; font-weight: 500; color: #E8E8E8;">Studio 首页</span>
+      <span style="font-size: 12px; color: #7A7A7A;">项目库 · 无 Key 时的引导条 · 恢复上次会话</span>
+    </div>
+
+    <div data-screen-label="Studio Home" style="width: 1600px; height: 1000px; display: flex; flex-direction: column; background: #1D1D1D; color: #D6D6D6; font-size: 12px; overflow: hidden; border: 1px solid #0A0A0A; box-sizing: border-box;">
+      <div style="height: 30px; flex: 0 0 auto; display: flex; align-items: center; padding: 0 12px; background: #262626; border-bottom: 1px solid #0F0F0F;">
+        <div style="display: flex; align-items: center; gap: 8px; padding-right: 18px; margin-right: 6px; border-right: 1px solid #3A3A3A;">
+          <div style="width: 16px; height: 16px; border-radius: 3px; background: #C9A85B; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 10px; color: #1D1D1D;">If</div>
+          <span style="font-weight: 500; color: #E8E8E8;">InkFrame</span>
+        </div>
+        <div style="display: flex;">
+          <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">文件</div>
+          <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">编辑</div>
+          <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">窗口</div>
+          <div style="padding: 0 10px; height: 30px; display: flex; align-items: center; color: #C8C8C8;">帮助</div>
+        </div>
+        <div style="flex: 1;"></div>
+        <div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px; border-bottom: 1px solid #3A3A3A; width: 280px; color: #7A7A7A;">
+          <span style="flex: 1;">搜索项目、画布、镜头、产物…</span><span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">⌘K</span>
+        </div>
+      </div>
+
+      <div style="height: 34px; flex: 0 0 auto; display: flex; align-items: stretch; border-bottom: 1px solid #0F0F0F;">
+        <div style="display: flex; align-items: stretch; padding-left: 12px;">
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #E8E8E8; font-weight: 500; border-bottom: 2px solid #C9A85B;">Studio</div>
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #6B6B6B;">画布</div>
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #6B6B6B;">序列</div>
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #6B6B6B;">画廊</div>
+        </div>
+        <div style="flex: 1;"></div>
+        <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px;">
+          <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">导入项目包</div>
+          <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; background: #C9A85B; border-radius: 3px; color: #1D1D1D; font-weight: 500;">新建项目</div>
+        </div>
+      </div>
+
+      <div style="flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 10px 20px; background: #2A2318; border-bottom: 1px solid #0F0F0F;">
+        <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #C9A85B;">!</span>
+        <span style="color: #E8DFD0;">尚未配置任何 API Key，生成功能不可用。</span>
+        <span style="color: #8A8A8A;">Key 存入系统钥匙串，不进数据库。</span>
+        <div style="flex: 1;"></div>
+        <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #6B5A38; border-radius: 3px; color: #E8DFD0;">前往设置</div>
+        <span style="color: #8A8A8A;">✕</span>
+      </div>
+
+      <div style="flex: 1; min-height: 0; display: flex;">
+        <div style="width: 220px; flex: 0 0 auto; display: flex; flex-direction: column; background: #232323; border-right: 1px solid #0F0F0F;">
+          <div style="padding: 14px 12px 8px; color: #6B6B6B; font-size: 11px;">库</div>
+          <sc-for list="{{ libNav }}" as="n" hint-placeholder-count="4">
+            <div style="display: flex; align-items: center; gap: 10px; height: 28px; padding: 0 12px; background: {{ n.bg }}; color: {{ n.fg }};" style-hover="background: #2E2E2E;">
+              <div style="width: 12px; height: 10px; border: 1px solid {{ n.mark }}; border-radius: 1px;"></div>
+              <span style="flex: 1;">{{ n.name }}</span>
+              <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">{{ n.count }}</span>
+            </div>
+          </sc-for>
+          <div style="height: 1px; background: #0F0F0F; margin: 10px 0;"></div>
+          <div style="padding: 4px 12px 8px; color: #6B6B6B; font-size: 11px;">最近画布</div>
+          <sc-for list="{{ recentCanvases }}" as="c" hint-placeholder-count="4">
+            <div style="display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 12px; color: #C8C8C8;" style-hover="background: #2E2E2E;">
+              <div style="width: 20px; height: 12px; flex: 0 0 auto; border-radius: 1px; background: {{ c.thumb }};"></div>
+              <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ c.name }}</span>
+            </div>
+          </sc-for>
+          <div style="flex: 1;"></div>
+          <div style="display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 12px; border-top: 1px solid #0F0F0F; color: #9E9E9E;">
+            <div style="width: 12px; height: 12px; border: 1px solid #6B6B6B; border-radius: 50%;"></div><span style="flex: 1;">设置</span>
+          </div>
+        </div>
+
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #1A1A1A;">
+          <div style="height: 32px; flex: 0 0 auto; display: flex; align-items: center; gap: 14px; padding: 0 20px; border-bottom: 1px solid #0F0F0F; color: #8A8A8A;">
+            <span style="color: #E8E8E8; font-weight: 500;">全部项目</span>
+            <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px;">4</span>
+            <div style="flex: 1;"></div>
+            <span>排序：最近修改</span><span style="color: #E8E8E8;">网格</span><span>列表</span>
+          </div>
+
+          <div style="flex: 1; overflow: auto; padding: 20px;">
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 22px; padding: 14px 16px; border: 1px solid #3A3A3A; border-radius: 4px; background: #212121;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <span style="color: #9E9E9E; font-size: 11px;">上次离开时</span>
+                <span style="color: #E8E8E8;">山径破晓 · 画布 02 · 主线</span>
+                <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #6B6B6B;">2 小时前 · 6 节点</span>
+                <div style="flex: 1;"></div>
+                <div style="height: 26px; padding: 0 14px; display: flex; align-items: center; background: #C9A85B; border-radius: 3px; color: #1D1D1D; font-weight: 500;">继续创作</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 11px; color: #8A8A8A;"><span style="color: #7FB069;">✓</span><span>3 个渲染任务已在上次退出时保存进度，恢复后可继续。</span></div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;">
+              <sc-for list="{{ projects }}" as="p" hint-placeholder-count="4">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  <div style="position: relative; aspect-ratio: 16 / 10; border-radius: 4px; background: {{ p.cover }}; outline: 1px solid #2C2C2C; outline-offset: -1px;">
+                    <div style="position: absolute; right: 8px; top: 8px; display: flex; gap: 6px; font-size: 11px; color: rgba(232,232,232,0.8);"><span>⋯</span></div>
+                    <div style="position: absolute; left: 8px; bottom: 8px; display: flex; gap: 6px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: rgba(232,232,232,0.75);"><span>{{ p.canvases }} 画布</span><span>·</span><span>{{ p.shots }} 镜</span></div>
+                  </div>
+                  <div style="display: flex; flex-direction: column; gap: 3px;">
+                    <span style="color: #E8E8E8;">{{ p.name }}</span>
+                    <span style="font-size: 11px; color: #7A7A7A;">{{ p.meta }}</span>
+                  </div>
+                </div>
+              </sc-for>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="aspect-ratio: 16 / 10; border-radius: 4px; border: 1px dashed #3F3F3F; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: #6B6B6B;">
+                  <span style="font-size: 20px; line-height: 1;">+</span><span style="font-size: 11px;">新建项目</span>
+                </div>
+                <span style="font-size: 11px; color: #6B6B6B;">空白 / 短剧示例 / 单画布</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 22px; flex: 0 0 auto; display: flex; align-items: center; gap: 16px; padding: 0 12px; background: #262626; border-top: 1px solid #0F0F0F; color: #8A8A8A; font-size: 11px;">
+        <span>4 项目 · 11 画布</span><span>存储 42.3 GB · 可用 128 GB</span>
+        <div style="flex: 1;"></div>
+        <span>未配置 Key</span><span style="font-family: 'JetBrains Mono', Menlo, monospace;">v0.1.0-alpha.9</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 画廊 ============ -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; letter-spacing: 0.8px; color: #C9A85B;">02</span>
+      <span style="font-size: 16px; font-weight: 500; color: #E8E8E8;">画廊</span>
+      <span style="font-size: 12px; color: #7A7A7A;">跨画布产物 · 血缘当前线 · 存为角色回灌画布</span>
+    </div>
+
+    <div data-screen-label="Gallery" style="width: 1600px; height: 1000px; display: flex; flex-direction: column; background: #1D1D1D; color: #D6D6D6; font-size: 12px; overflow: hidden; border: 1px solid #0A0A0A; box-sizing: border-box;">
+      <div style="height: 30px; flex: 0 0 auto; display: flex; align-items: center; padding: 0 12px; background: #262626; border-bottom: 1px solid #0F0F0F;">
+        <div style="display: flex; align-items: center; gap: 8px; padding-right: 18px; margin-right: 6px; border-right: 1px solid #3A3A3A;">
+          <div style="width: 16px; height: 16px; border-radius: 3px; background: #C9A85B; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 10px; color: #1D1D1D;">If</div>
+          <span style="font-weight: 500; color: #E8E8E8;">InkFrame</span>
+        </div>
+        <div style="flex: 1;"></div>
+        <div style="display: flex; align-items: center; gap: 6px; height: 22px; padding: 0 10px; border-bottom: 1px solid #3A3A3A; width: 280px; color: #7A7A7A;">
+          <span style="flex: 1;">搜索产物、提示词、模型…</span><span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">⌘K</span>
+        </div>
+      </div>
+
+      <div style="height: 34px; flex: 0 0 auto; display: flex; align-items: stretch; border-bottom: 1px solid #0F0F0F;">
+        <div style="display: flex; align-items: stretch; padding-left: 12px;">
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #9E9E9E;">Studio</div>
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #9E9E9E;">画布</div>
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #9E9E9E;">序列</div>
+          <div style="display: flex; align-items: center; padding: 0 16px; color: #E8E8E8; font-weight: 500; border-bottom: 2px solid #C9A85B;">画廊</div>
+        </div>
+        <div style="width: 1px; background: #3A3A3A; margin: 8px 6px;"></div>
+        <div style="display: flex; align-items: center; gap: 4px; padding: 0 8px;">
+          <span style="color: #6B6B6B;">山径破晓</span><span style="color: #6B6B6B;">›</span><span style="color: #E8E8E8;">全部产物</span>
+          <span style="margin-left: 10px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #8A8A8A;">168 图 · 24 视频</span>
+        </div>
+        <div style="flex: 1;"></div>
+        <div style="display: flex; align-items: center; gap: 6px; padding: 0 12px;">
+          <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">已选 2 · 发送到画布</div>
+          <div style="height: 24px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">存为角色</div>
+        </div>
+      </div>
+
+      <div style="flex: 1; min-height: 0; display: flex;">
+        <div style="width: 220px; flex: 0 0 auto; display: flex; flex-direction: column; background: #232323; border-right: 1px solid #0F0F0F; overflow: auto;">
+          <sc-for list="{{ galleryFilters }}" as="f" hint-placeholder-count="4">
+            <div style="display: flex; flex-direction: column; border-bottom: 1px solid #0F0F0F;">
+              <div style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px; color: #C8C8C8; font-weight: 500;"><span style="font-size: 9px; color: #8A8A8A;">▼</span><span>{{ f.title }}</span></div>
+              <div style="display: flex; flex-direction: column; padding: 0 0 8px;">
+                <sc-for list="{{ f.items }}" as="i" hint-placeholder-count="4">
+                  <div style="display: flex; align-items: center; gap: 8px; height: 24px; padding: 0 12px 0 26px; color: {{ i.fg }}; background: {{ i.bg }};" style-hover="background: #2E2E2E;">
+                    <span style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ i.name }}</span>
+                    <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">{{ i.count }}</span>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; background: #1A1A1A;">
+          <div style="height: 32px; flex: 0 0 auto; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid #0F0F0F; color: #8A8A8A;">
+            <span style="color: #E8E8E8;">画布 02 · 主线</span><span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px;">42 项</span>
+            <div style="flex: 1;"></div>
+            <span>悬停自动播</span><span style="color: #E8E8E8;">中</span><span>大</span><span>特大</span>
+          </div>
+          <div style="flex: 1; overflow: auto; padding: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+              <sc-for list="{{ galleryItems }}" as="g" hint-placeholder-count="15">
+                <div style="display: flex; flex-direction: column; gap: 6px;">
+                  <div style="position: relative; aspect-ratio: 16 / 9; border-radius: 3px; background: {{ g.thumb }}; outline: 1px solid {{ g.outline }}; outline-offset: -1px;">
+                    <sc-if value="{{ g.isVideo }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; left: 8px; bottom: 6px; display: flex; align-items: center; gap: 5px; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: rgba(232,232,232,0.85);"><span>▶</span><span>{{ g.dur }}</span></div>
+                    </sc-if>
+                    <sc-if value="{{ g.selected }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; right: 6px; top: 6px; width: 14px; height: 14px; border-radius: 3px; background: #C9A85B; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #1D1D1D;">✓</div>
+                    </sc-if>
+                    <sc-if value="{{ g.isCurrent }}" hint-placeholder-val="{{ false }}">
+                      <div style="position: absolute; left: 6px; top: 6px; padding: 2px 6px; border-radius: 2px; background: rgba(201,168,91,0.9); font-size: 9px; color: #1D1D1D;">当前线</div>
+                    </sc-if>
+                  </div>
+                  <div style="display: flex; align-items: baseline; gap: 6px; overflow: hidden;">
+                    <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">{{ g.idx }}</span>
+                    <span style="font-size: 11px; color: #A8A8A8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ g.name }}</span>
+                  </div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="width: 320px; flex: 0 0 auto; display: flex; flex-direction: column; background: #232323; border-left: 1px solid #0F0F0F;">
+          <div style="height: 28px; flex: 0 0 auto; display: flex; align-items: stretch; background: #1D1D1D; border-bottom: 1px solid #0F0F0F;">
+            <div style="display: flex; align-items: center; padding: 0 12px; background: #232323; color: #E8E8E8; font-weight: 500; border-top: 1px solid #C9A85B;">信息</div>
+            <div style="display: flex; align-items: center; padding: 0 12px; color: #8A8A8A;">血缘</div>
+          </div>
+          <div style="flex: 1; overflow: auto;">
+            <div style="padding: 12px;">
+              <div style="aspect-ratio: 16 / 9; border-radius: 3px; background: linear-gradient(160deg, #2F2A22, #17150F); outline: 1px solid #2C2C2C; outline-offset: -1px;"></div>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 0 12px 12px;">
+              <span style="color: #E8E8E8;">镜头 03 · 图转视频</span>
+              <span style="font-size: 11px; color: #7A7A7A;">画布 02 · 主线 · 2 小时前</span>
+            </div>
+            <sc-for list="{{ galleryMeta }}" as="g" hint-placeholder-count="2">
+              <div style="display: flex; flex-direction: column; border-top: 1px solid #0F0F0F;">
+                <div style="height: 26px; display: flex; align-items: center; gap: 6px; padding: 0 12px; color: #C8C8C8; font-weight: 500;"><span style="font-size: 9px; color: #8A8A8A;">▼</span><span>{{ g.title }}</span></div>
+                <div style="display: flex; flex-direction: column; padding: 2px 0 10px;">
+                  <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="4">
+                    <div style="display: grid; grid-template-columns: 84px 1fr; align-items: baseline; gap: 8px; min-height: 24px; padding: 2px 12px;">
+                      <span style="color: #9E9E9E;">{{ r.label }}</span>
+                      <span style="color: #D6D6D6; line-height: 1.45; text-wrap: pretty;">{{ r.value }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+            <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-top: 1px solid #0F0F0F;">
+              <span style="color: #9E9E9E;">血缘 · 当前线</span>
+              <sc-for list="{{ lineage }}" as="l" hint-placeholder-count="4">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 40px; height: 24px; flex: 0 0 auto; border-radius: 2px; background: {{ l.thumb }}; outline: 1px solid {{ l.outline }}; outline-offset: -1px;"></div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                    <span style="font-size: 11px; color: {{ l.fg }}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ l.name }}</span>
+                    <span style="font-size: 10px; color: #6B6B6B;">{{ l.rel }}</span>
+                  </div>
+                  <sc-if value="{{ l.branches }}" hint-placeholder-val="{{ false }}">
+                    <span style="font-size: 10px; color: #8A8A8A;">{{ l.branchLabel }}</span>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="flex: 0 0 auto; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: #1D1D1D; border-top: 1px solid #0F0F0F;">
+            <div style="height: 26px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">在画布中定位</div>
+            <div style="flex: 1;"></div>
+            <div style="height: 26px; padding: 0 12px; display: flex; align-items: center; background: #C9A85B; border-radius: 3px; color: #1D1D1D; font-weight: 500;">派生新节点</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 22px; flex: 0 0 auto; display: flex; align-items: center; gap: 16px; padding: 0 12px; background: #262626; border-top: 1px solid #0F0F0F; color: #8A8A8A; font-size: 11px;">
+        <span>192 项 · 已选 2</span><span>空格预览 · ↑↓ 切换 · 双击放大</span>
+        <div style="flex: 1;"></div>
+        <span style="font-family: 'JetBrains Mono', Menlo, monospace;">v0.1.0-alpha.9</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 设置 ============ -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; letter-spacing: 0.8px; color: #C9A85B;">03</span>
+      <span style="font-size: 16px; font-weight: 500; color: #E8E8E8;">设置 · API 密钥</span>
+      <span style="font-size: 12px; color: #7A7A7A;">浮层形态 · 从任何界面进出都回到原处</span>
+    </div>
+
+    <div data-screen-label="Settings" style="width: 1600px; height: 1000px; position: relative; background: #1A1A1A; overflow: hidden; border: 1px solid #0A0A0A; box-sizing: border-box; color: #D6D6D6; font-size: 12px;">
+      <div style="position: absolute; inset: 0; background-image: linear-gradient(#1F1F1F 1px, transparent 1px), linear-gradient(90deg, #1F1F1F 1px, transparent 1px); background-size: 24px 24px; opacity: 0.5;"></div>
+      <div style="position: absolute; inset: 0; background: rgba(10,10,10,0.55);"></div>
+
+      <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 1120px; height: 740px; display: flex; flex-direction: column; background: #232323; border: 1px solid #3A3A3A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); overflow: hidden;">
+        <div style="height: 40px; flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: #1D1D1D; border-bottom: 1px solid #0F0F0F;">
+          <span style="color: #E8E8E8; font-weight: 500;">设置</span>
+          <div style="flex: 1;"></div>
+          <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">Esc</span>
+          <span style="color: #8A8A8A;">✕</span>
+        </div>
+
+        <div style="flex: 1; min-height: 0; display: flex;">
+          <div style="width: 200px; flex: 0 0 auto; display: flex; flex-direction: column; padding: 10px 0; background: #1F1F1F; border-right: 1px solid #0F0F0F;">
+            <sc-for list="{{ settingsNav }}" as="s" hint-placeholder-count="9">
+              <div style="display: flex; align-items: center; gap: 10px; height: 30px; padding: 0 16px; background: {{ s.bg }}; color: {{ s.fg }}; border-left: 2px solid {{ s.mark }};" style-hover="background: #2A2A2A;">{{ s.name }}</div>
+            </sc-for>
+          </div>
+
+          <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: auto;">
+            <div style="display: flex; flex-direction: column; gap: 6px; padding: 18px 22px 14px; border-bottom: 1px solid #0F0F0F;">
+              <span style="font-size: 15px; font-weight: 500; color: #E8E8E8;">API 密钥</span>
+              <span style="color: #8A8A8A; line-height: 1.5;">Key 存入 macOS 钥匙串 / Windows 凭据管理器，不进数据库、不随项目导出。验证结果缓存 1 小时。</span>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 168px 1fr 88px 96px; gap: 12px; align-items: center; height: 26px; padding: 0 22px; color: #6B6B6B; font-size: 11px; border-bottom: 1px solid #0F0F0F;">
+              <span>Provider</span><span>Key</span><span>区域</span><span>状态</span>
+            </div>
+            <sc-for list="{{ providers }}" as="p" hint-placeholder-count="6">
+              <div style="display: grid; grid-template-columns: 168px 1fr 88px 96px; gap: 12px; align-items: center; min-height: 40px; padding: 6px 22px; border-bottom: 1px solid #1F1F1F;">
+                <div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+                  <span style="color: #E8E8E8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ p.name }}</span>
+                  <span style="font-size: 10px; color: #6B6B6B;">{{ p.caps }}</span>
+                </div>
+                <div style="height: 24px; display: flex; align-items: center; border-bottom: 1px solid #3A3A3A; color: {{ p.keyFg }}; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px;">{{ p.key }}</div>
+                <span style="color: #9E9E9E; font-size: 11px;">{{ p.region }}</span>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                  <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: {{ p.stateColor }};">{{ p.mark }}</span>
+                  <span style="font-size: 11px; color: {{ p.stateColor }};">{{ p.state }}</span>
+                </div>
+              </div>
+            </sc-for>
+
+            <div style="display: flex; align-items: center; gap: 10px; padding: 14px 22px;">
+              <div style="height: 26px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">添加自定义 Provider</div>
+              <div style="height: 26px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">全部重新验证</div>
+              <div style="flex: 1;"></div>
+              <span style="font-size: 11px; color: #6B6B6B;">OpenAI 兼容端点写入 custom_providers.json</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin: 0 22px 22px; padding: 14px 16px; border: 1px solid #3A3A3A; border-radius: 4px; background: #1F1F1F;">
+              <span style="color: #C8C8C8; font-weight: 500;">并发与配额</span>
+              <sc-for list="{{ concurrency }}" as="c" hint-placeholder-count="3">
+                <div style="display: grid; grid-template-columns: 148px 1fr 72px; align-items: center; gap: 12px;">
+                  <span style="color: #9E9E9E;">{{ c.label }}</span>
+                  <div style="display: flex; align-items: center; gap: 8px;">
+                    <div style="flex: 1; height: 2px; background: #3F3F3F; position: relative;"><div style="position: absolute; left: 0; top: 0; height: 2px; width: {{ c.pct }}; background: #C9A85B;"></div><div style="position: absolute; left: {{ c.pct }}; top: -4px; width: 10px; height: 10px; margin-left: -5px; border-radius: 50%; background: #E8E8E8;"></div></div>
+                  </div>
+                  <span style="text-align: right; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #C9A85B;">{{ c.value }}</span>
+                </div>
+              </sc-for>
+              <span style="font-size: 11px; color: #6B6B6B; line-height: 1.5;">实际可调度数 = min(全局剩余槽位, 该 Provider 剩余槽位)。性能档位会改写全局上限。</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="height: 44px; flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #1D1D1D; border-top: 1px solid #0F0F0F;">
+          <span style="font-size: 11px; color: #6B6B6B;">改动即时生效并写入钥匙串</span>
+          <div style="flex: 1;"></div>
+          <div style="height: 26px; padding: 0 14px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">导出诊断包</div>
+          <div style="height: 26px; padding: 0 16px; display: flex; align-items: center; background: #C9A85B; border-radius: 3px; color: #1D1D1D; font-weight: 500;">完成</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 首启向导 + 命令面板 ============ -->
+  <div style="display: flex; flex-direction: column; gap: 12px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 12px; letter-spacing: 0.8px; color: #C9A85B;">04</span>
+      <span style="font-size: 16px; font-weight: 500; color: #E8E8E8;">首启向导 · 命令面板</span>
+      <span style="font-size: 12px; color: #7A7A7A;">三步走完即有可生成的示例项目 · ⌘K 跨实体搜索</span>
+    </div>
+
+    <div style="display: flex; gap: 24px; align-items: flex-start;">
+
+      <div data-screen-label="Onboarding" style="flex: 0 0 auto; width: 788px; height: 620px; position: relative; background: #1A1A1A; overflow: hidden; border: 1px solid #0A0A0A; box-sizing: border-box; color: #D6D6D6; font-size: 12px;">
+        <div style="position: absolute; inset: 0; background: rgba(10,10,10,0.5);"></div>
+        <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 640px; display: flex; flex-direction: column; background: #232323; border: 1px solid #3A3A3A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); overflow: hidden;">
+          <div style="display: flex; gap: 0; padding: 0 20px; background: #1D1D1D; border-bottom: 1px solid #0F0F0F;">
+            <sc-for list="{{ onboardSteps }}" as="s" hint-placeholder-count="3">
+              <div style="display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-bottom: 2px solid {{ s.mark }}; color: {{ s.fg }};">
+                <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: {{ s.idxColor }};">{{ s.idx }}</span><span>{{ s.name }}</span>
+              </div>
+            </sc-for>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 16px; padding: 24px 24px 20px;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <span style="font-size: 17px; font-weight: 500; color: #E8E8E8;">配置一个 API Key</span>
+              <span style="color: #9E9E9E; line-height: 1.55; text-wrap: pretty;">InkFrame 自带密钥（BYOK），不做差价。先配一个就能开始，其余随时在设置里补。</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 0; border: 1px solid #3A3A3A; border-radius: 4px; overflow: hidden;">
+              <sc-for list="{{ onboardProviders }}" as="p" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 12px; min-height: 46px; padding: 8px 14px; background: {{ p.bg }}; border-bottom: 1px solid #2C2C2C;">
+                  <div style="width: 14px; height: 14px; flex: 0 0 auto; border-radius: 50%; border: 1.5px solid {{ p.radio }}; box-sizing: border-box; display: flex; align-items: center; justify-content: center;">
+                    <sc-if value="{{ p.checked }}" hint-placeholder-val="{{ false }}"><div style="width: 6px; height: 6px; border-radius: 50%; background: #C9A85B;"></div></sc-if>
+                  </div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;">
+                    <span style="color: #E8E8E8;">{{ p.name }}</span>
+                    <span style="font-size: 11px; color: #7A7A7A;">{{ p.note }}</span>
+                  </div>
+                  <span style="font-size: 11px; color: #8A8A8A;">{{ p.region }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <span style="color: #9E9E9E;">API Key</span>
+              <div style="display: flex; align-items: center; gap: 10px;">
+                <div style="flex: 1; height: 26px; display: flex; align-items: center; border-bottom: 1px solid #3A3A3A; color: #D6D6D6; font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px;">AIza••••••••••••••••••••••••3f2a<span style="display: inline-block; width: 1px; height: 13px; background: #C9A85B; margin-left: 2px;"></span></div>
+                <div style="height: 26px; padding: 0 12px; display: flex; align-items: center; border: 1px solid #3F3F3F; border-radius: 3px; color: #D6D6D6;">验证</div>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px; font-size: 11px;"><span style="color: #7FB069; font-family: 'JetBrains Mono', Menlo, monospace;">✓</span><span style="color: #9E9E9E;">验证通过 · 已写入系统钥匙串</span></div>
+            </div>
+          </div>
+
+          <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: #1D1D1D; border-top: 1px solid #0F0F0F;">
+            <span style="font-size: 11px; color: #6B6B6B;">已检测：32 GB · 独显 · 推荐「极致」档</span>
+            <div style="flex: 1;"></div>
+            <div style="height: 26px; padding: 0 12px; display: flex; align-items: center; color: #9E9E9E;">跳过</div>
+            <div style="height: 26px; padding: 0 16px; display: flex; align-items: center; background: #C9A85B; border-radius: 3px; color: #1D1D1D; font-weight: 500;">下一步</div>
+          </div>
+        </div>
+      </div>
+
+      <div data-screen-label="Command Palette" style="flex: 0 0 auto; width: 788px; height: 620px; position: relative; background: #1A1A1A; overflow: hidden; border: 1px solid #0A0A0A; box-sizing: border-box; color: #D6D6D6; font-size: 12px;">
+        <div style="position: absolute; inset: 0; background-image: radial-gradient(#242424 1px, transparent 1px); background-size: 22px 22px;"></div>
+        <div style="position: absolute; inset: 0; background: rgba(10,10,10,0.5);"></div>
+        <div style="position: absolute; left: 50%; top: 64px; transform: translateX(-50%); width: 620px; display: flex; flex-direction: column; background: #262626; border: 1px solid #4A4A4A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.65); overflow: hidden;">
+          <div style="display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px; border-bottom: 1px solid #1F1F1F;">
+            <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 11px; color: #C9A85B;">⌘K</span>
+            <span style="flex: 1; color: #E8E8E8; font-size: 13px;">推镜<span style="display: inline-block; width: 1px; height: 15px; background: #C9A85B; margin-left: 2px; vertical-align: -2px;"></span></span>
+            <span style="font-size: 11px; color: #6B6B6B;">12 条结果</span>
+          </div>
+          <sc-for list="{{ paletteGroups }}" as="g" hint-placeholder-count="4">
+            <div style="display: flex; flex-direction: column;">
+              <div style="display: flex; align-items: center; height: 24px; padding: 0 16px; background: #212121; color: #7A7A7A; font-size: 10px; letter-spacing: 0.6px;">{{ g.title }}</div>
+              <sc-for list="{{ g.rows }}" as="r" hint-placeholder-count="3">
+                <div style="display: flex; align-items: center; gap: 12px; min-height: 34px; padding: 4px 16px; background: {{ r.bg }};" style-hover="background: #2E2E2E;">
+                  <div style="width: 28px; height: 18px; flex: 0 0 auto; border-radius: 2px; background: {{ r.thumb }};"></div>
+                  <div style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                    <span style="color: {{ r.fg }}; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.name }}</span>
+                    <span style="font-size: 10px; color: #6B6B6B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ r.path }}</span>
+                  </div>
+                  <span style="font-family: 'JetBrains Mono', Menlo, monospace; font-size: 10px; color: #6B6B6B;">{{ r.hint }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+          <div style="display: flex; align-items: center; gap: 14px; height: 32px; padding: 0 16px; background: #212121; border-top: 1px solid #1F1F1F; color: #6B6B6B; font-size: 10px;">
+            <span>↑↓ 移动</span><span>↵ 打开</span><span>⌘↵ 在画布中定位</span>
+            <div style="flex: 1;"></div>
+            <span>Esc 关闭</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{}">
+class Component extends DCLogic {
+  renderVals() {
+    const accent = "#C9A85B";
+    const sel = "#2E2E2E";
+    const T = {
+      a: "linear-gradient(160deg,#3B3A36,#23221F)", b: "linear-gradient(160deg,#34342F,#1F1E1B)",
+      c: "linear-gradient(160deg,#2F2A22,#17150F)", d: "linear-gradient(160deg,#2C2E2A,#1A1B18)",
+      e: "linear-gradient(160deg,#37312A,#201C18)", f: "linear-gradient(160deg,#30302C,#1B1B19)",
+      g: "linear-gradient(160deg,#2A2F2C,#181B19)", h: "linear-gradient(160deg,#333029,#1E1C17)",
+    };
+    const tk = Object.values(T);
+
+    const gNames = ["山径入镜","松林逆光","推镜 · 中景","背影渐清","破晓山脊","第一缕光","回望空镜","角色 · 行者","雾中石阶","树影","远山轮廓","逆光剪影","收尾空镜","晨光特写","侧脸"];
+
+    return {
+      libNav: [
+        { name: "全部项目", count: "4", bg: sel, fg: "#E8E8E8", mark: accent },
+        { name: "最近打开", count: "6", bg: "transparent", fg: "#C8C8C8", mark: "#6B6B6B" },
+        { name: "归档", count: "2", bg: "transparent", fg: "#C8C8C8", mark: "#6B6B6B" },
+        { name: "回收站", count: "7", bg: "transparent", fg: "#C8C8C8", mark: "#6B6B6B" },
+      ],
+      recentCanvases: [
+        { name: "画布 02 · 主线", thumb: T.c }, { name: "画布 01 · 概念", thumb: T.a },
+        { name: "画布 03 · 备选结尾", thumb: T.d }, { name: "角色测试 · 行者", thumb: T.e },
+      ],
+      projects: [
+        { name: "山径破晓", meta: "2 小时前 · 6 节点在渲染", canvases: 3, shots: 8, cover: T.c },
+        { name: "夜航船", meta: "昨天", canvases: 1, shots: 4, cover: T.b },
+        { name: "角色测试", meta: "3 天前", canvases: 5, shots: 12, cover: T.e },
+        { name: "短剧示例", meta: "示例项目 · 未修改", canvases: 1, shots: 3, cover: T.g },
+      ],
+
+      galleryFilters: [
+        { title: "范围", items: [
+          { name: "本项目全部", count: "192", bg: "transparent", fg: "#C8C8C8" },
+          { name: "画布 02 · 主线", count: "42", bg: sel, fg: "#E8E8E8" },
+          { name: "画布 01 · 概念", count: "88", bg: "transparent", fg: "#C8C8C8" },
+          { name: "画布 03 · 备选结尾", count: "24", bg: "transparent", fg: "#C8C8C8" },
+        ]},
+        { title: "类型", items: [
+          { name: "图像", count: "168", bg: "transparent", fg: "#C8C8C8" },
+          { name: "视频", count: "24", bg: "transparent", fg: "#C8C8C8" },
+          { name: "角色参考", count: "6", bg: "transparent", fg: "#C8C8C8" },
+        ]},
+        { title: "模型", items: [
+          { name: "flux-pro-1.1", count: "121", bg: "transparent", fg: "#C8C8C8" },
+          { name: "kling-2.1-pro", count: "24", bg: "transparent", fg: "#C8C8C8" },
+          { name: "gemini-image", count: "47", bg: "transparent", fg: "#C8C8C8" },
+        ]},
+        { title: "标记", items: [
+          { name: "当前线", count: "8", bg: "transparent", fg: "#C8C8C8" },
+          { name: "已入序列", count: "8", bg: "transparent", fg: "#C8C8C8" },
+          { name: "收藏", count: "14", bg: "transparent", fg: "#C8C8C8" },
+        ]},
+      ],
+      galleryItems: gNames.map((n, i) => ({
+        idx: String(i + 1).padStart(3, "0"), name: n, thumb: tk[i % tk.length],
+        outline: i === 2 ? accent : "#2C2C2C", isVideo: i === 2 || i === 5, dur: i === 2 ? "00:04:08" : "00:05:00",
+        selected: i === 2 || i === 7, isCurrent: i === 2,
+      })),
+      galleryMeta: [
+        { title: "生成参数", rows: [
+          { label: "模型", value: "kling-2.1-pro · fal.ai" },
+          { label: "画幅 / 帧率", value: "16:9 · 1920×1080 · 24 fps" },
+          { label: "片长", value: "00:00:05:00（已裁切为 00:00:04:08）" },
+          { label: "镜头语言", value: "中景 MS · 推镜 Dolly In · 35mm · 平视" },
+          { label: "关键帧", value: "起始帧 ← 镜头 01 · 结束帧 ← 镜头 02" },
+        ]},
+        { title: "提示词", rows: [
+          { label: "最终提示词", value: "水墨 · 晨雾中的山径，中景缓慢推镜，逆光从左上方穿过松林形成丁达尔光束，人物背影逐渐清晰。" },
+          { label: "基础风格", value: "水墨（项目基底前缀）" },
+          { label: "费用", value: "≈ 0.42 credits" },
+        ]},
+      ],
+      lineage: [
+        { name: "镜头 01 · 分镜描述", rel: "分镜文本", thumb: "#262626", outline: "#2C2C2C", fg: "#A8A8A8", branches: false, branchLabel: "" },
+        { name: "镜头 01 · 图像 #2", rel: "起始帧 · 从 4 个结果中选定", thumb: T.a, outline: "#2C2C2C", fg: "#A8A8A8", branches: true, branchLabel: "+3 分支" },
+        { name: "镜头 02 · 图像", rel: "结束帧", thumb: T.b, outline: "#2C2C2C", fg: "#A8A8A8", branches: false, branchLabel: "" },
+        { name: "镜头 03 · 图转视频", rel: "当前项 · 已入序列 003", thumb: T.c, outline: accent, fg: "#E8E8E8", branches: true, branchLabel: "+1 分支" },
+      ],
+
+      settingsNav: ["常规","API 密钥","快捷键","性能","节点布局","网络","存储","语言","关于"].map(n => ({
+        name: n, bg: n === "API 密钥" ? sel : "transparent", fg: n === "API 密钥" ? "#E8E8E8" : "#9E9E9E", mark: n === "API 密钥" ? accent : "transparent",
+      })),
+      providers: [
+        { name: "fal.ai", caps: "图像 · 视频 · 9 模型", key: "fal_••••••••••••7c1e", keyFg: "#D6D6D6", region: "全球", mark: "✓", state: "已验证", stateColor: "#7FB069" },
+        { name: "Google Gemini", caps: "图像 · gemini-image", key: "AIza••••••••••••3f2a", keyFg: "#D6D6D6", region: "全球", mark: "✓", state: "已验证", stateColor: "#7FB069" },
+        { name: "DashScope（阿里）", caps: "图像 · 视频 · Kling / Wanx", key: "sk-••••••••••••9b40", keyFg: "#D6D6D6", region: "中国", mark: "✓", state: "已验证", stateColor: "#7FB069" },
+        { name: "OpenAI", caps: "图像 · gpt-image-2", key: "sk-••••••••••••1d77", keyFg: "#D6D6D6", region: "全球", mark: "!", state: "余额不足", stateColor: accent },
+        { name: "Stability AI", caps: "图像 · Stable Image Core", key: "未配置", keyFg: "#6B6B6B", region: "全球", mark: "–", state: "未配置", stateColor: "#6B6B6B" },
+        { name: "本地 ComfyUI", caps: "自定义端点 · OpenAI 兼容", key: "http://127.0.0.1:8188", keyFg: "#D6D6D6", region: "本地", mark: "✕", state: "连接失败", stateColor: "#B04030" },
+      ],
+      concurrency: [
+        { label: "全局并发上限", value: "2", pct: "50%" },
+        { label: "fal.ai 并发", value: "2", pct: "40%" },
+        { label: "轮询超时", value: "30 min", pct: "100%" },
+      ],
+
+      onboardSteps: [
+        { idx: "01", name: "欢迎", fg: "#9E9E9E", mark: "transparent", idxColor: "#6B6B6B" },
+        { idx: "02", name: "配置密钥", fg: "#E8E8E8", mark: accent, idxColor: accent },
+        { idx: "03", name: "首个项目", fg: "#9E9E9E", mark: "transparent", idxColor: "#6B6B6B" },
+      ],
+      onboardProviders: [
+        { name: "Google Gemini", note: "全球可用，最快验证闭环", region: "全球", bg: "#2A2318", radio: accent, checked: true },
+        { name: "fal.ai", note: "图像与视频一站，模型最全", region: "全球", bg: "transparent", radio: "#6B6B6B", checked: false },
+        { name: "DashScope（阿里）", note: "国内直连，Kling 与 Wanx", region: "中国", bg: "transparent", radio: "#6B6B6B", checked: false },
+      ],
+      paletteGroups: [
+        { title: "镜头", rows: [
+          { name: "镜头 03 · 图转视频 · 推镜", path: "山径破晓 › 画布 02 › 序列 003", hint: "↵", thumb: T.c, bg: sel, fg: "#E8E8E8" },
+          { name: "镜头 06 · 第一缕光 · 推镜", path: "山径破晓 › 画布 02 › 序列 006", hint: "", thumb: T.f, bg: "transparent", fg: "#D6D6D6" },
+        ]},
+        { title: "产物", rows: [
+          { name: "推镜 · 中景 · 00:04:08", path: "画廊 › 视频 › kling-2.1-pro", hint: "", thumb: T.c, bg: "transparent", fg: "#D6D6D6" },
+          { name: "推镜测试 #4", path: "画廊 › 图像 › 已弃分支", hint: "", thumb: T.h, bg: "transparent", fg: "#D6D6D6" },
+        ]},
+        { title: "设置项", rows: [
+          { name: "运镜方式 · 默认值", path: "设置 › 节点布局 › 视频检查器", hint: "", thumb: "#262626", bg: "transparent", fg: "#D6D6D6" },
+        ]},
+        { title: "动作", rows: [
+          { name: "为选中镜头设置推镜", path: "画布 › 检查器 › 镜头运动", hint: "", thumb: "#262626", bg: "transparent", fg: "#D6D6D6" },
+          { name: "按运镜筛选画廊", path: "画廊 › 标记", hint: "", thumb: "#262626", bg: "transparent", fg: "#D6D6D6" },
+        ]},
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

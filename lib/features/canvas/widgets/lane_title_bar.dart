@@ -44,7 +44,7 @@ class LaneTitleBar extends StatelessWidget {
             Expanded(
               child: Text(
                 lane.label.isEmpty ? l10n.laneUntitled : lane.label,
-                style: typography.label.copyWith(color: colors.fg1),
+                style: typography.bodyStrong.copyWith(color: colors.fg1),
                 overflow: TextOverflow.ellipsis,
               ),
             ),

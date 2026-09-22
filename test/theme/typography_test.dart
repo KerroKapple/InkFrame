@@ -2,97 +2,78 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/theme/typography.dart';
 
+/// README §字体：界面通用 Noto Sans SC，回落 PingFang SC → Microsoft YaHei UI。
+const List<String> _sansChain = <String>[
+  'PingFang SC',
+  'Microsoft YaHei UI',
+];
+
 void main() {
-  group('InkTypography Amber Noir', () {
-    test('display uses CormorantGaramond Light 48pt', () {
-      final t = InkTypography.defaults();
-      expect(t.display.fontFamily, 'CormorantGaramond');
-      expect(t.display.fontWeight, FontWeight.w300);
-      expect(t.display.fontSize, 48);
+  group('InkTypography 无衬线样式集（README §字体）', () {
+    final t = InkTypography.defaults();
+
+    test('八个样式的字号 / 字重 / 行高', () {
+      expect((t.body.fontSize, t.body.fontWeight, t.body.height),
+          (12.0, FontWeight.w400, 1.45));
+      expect((t.bodyStrong.fontSize, t.bodyStrong.fontWeight),
+          (12.0, FontWeight.w500));
+      expect((t.meta.fontSize, t.meta.height), (11.0, 1.45));
+      expect((t.micro.fontSize, t.micro.height), (10.0, 1.3));
+      expect((t.sectionTitle.fontSize, t.sectionTitle.fontWeight,
+              t.sectionTitle.height),
+          (15.0, FontWeight.w500, 1.3));
+      expect((t.dialogTitle.fontSize, t.dialogTitle.fontWeight,
+              t.dialogTitle.height),
+          (17.0, FontWeight.w500, 1.3));
+      expect((t.mono.fontSize, t.mono.height), (11.0, 1.0));
+      expect((t.monoSmall.fontSize, t.monoSmall.height), (10.0, 1.0));
     });
 
-    test('headline uses CormorantGaramond Regular 22pt', () {
-      final t = InkTypography.defaults();
-      expect(t.headline.fontFamily, 'CormorantGaramond');
-      expect(t.headline.fontWeight, FontWeight.w400);
-      expect(t.headline.fontSize, 22);
-    });
-
-    test('caption uses JetBrainsMono 11pt', () {
-      final t = InkTypography.defaults();
-      expect(t.caption.fontFamily, 'JetBrainsMono');
-      expect(t.caption.fontSize, 11);
-    });
-
-    test('scaled(1.5) applies to headline too', () {
-      final t = InkTypography.defaults().scaled(1.5);
-      expect(t.headline.fontSize, 22 * 1.5);
-    });
-
-    test('display has CJK fallback', () {
-      final t = InkTypography.defaults();
-      expect(t.display.fontFamilyFallback, contains('PingFang SC'));
-    });
-
-    test('headline has CJK fallback', () {
-      final t = InkTypography.defaults();
-      expect(t.headline.fontFamilyFallback, contains('PingFang SC'));
-    });
-
-    test('caption has mono and CJK fallback', () {
-      final t = InkTypography.defaults();
-      expect(t.caption.fontFamilyFallback, contains('Menlo'));
-      expect(t.caption.fontFamilyFallback, contains('PingFang SC'));
-    });
-
-    test('scaled() preserves fontFamilyFallback on display', () {
-      final t = InkTypography.defaults().scaled(1.5);
-      expect(t.display.fontFamilyFallback, contains('PingFang SC'));
-    });
-  });
-
-  group('InkTypography 扩展档位（HI-24 / HI-25）', () {
-    test('headlineSm / headlineXs 为 Cormorant 18/16', () {
-      final t = InkTypography.defaults();
-      expect(t.headlineSm.fontFamily, 'CormorantGaramond');
-      expect(t.headlineSm.fontSize, 18);
-      expect(t.headlineXs.fontFamily, 'CormorantGaramond');
-      expect(t.headlineXs.fontSize, 16);
-    });
-
-    test('monoNano / monoMicro / overline 为 JetBrainsMono 档位', () {
-      final t = InkTypography.defaults();
-      expect(t.monoNano.fontFamily, 'JetBrainsMono');
-      expect(t.monoNano.fontSize, 9);
-      expect(t.monoNano.letterSpacing, 1.8);
-      expect(t.monoMicro.fontFamily, 'JetBrainsMono');
-      expect(t.monoMicro.fontSize, 10);
-      expect(t.overline.fontFamily, 'JetBrainsMono');
-      expect(t.overline.fontSize, 11);
-      expect(t.overline.letterSpacing, 1.8);
-    });
-
-    test('mono 档位带等宽 + CJK fallback', () {
-      final t = InkTypography.defaults();
-      for (final s in [t.monoNano, t.monoMicro, t.overline]) {
-        expect(s.fontFamilyFallback, contains('Menlo'));
-        expect(s.fontFamilyFallback, contains('PingFang SC'));
+    test('无衬线样式用 Noto Sans SC + 系统回落链', () {
+      for (final s in <TextStyle>[
+        t.body,
+        t.bodyStrong,
+        t.meta,
+        t.micro,
+        t.sectionTitle,
+        t.dialogTitle,
+      ]) {
+        expect(s.fontFamily, 'Noto Sans SC');
+        expect(s.fontFamilyFallback, _sansChain);
       }
     });
 
-    test('scaled(1.5) 覆盖全部新档位（a11y 缩放不丢失）', () {
-      final t = InkTypography.defaults().scaled(1.5);
-      expect(t.headlineSm.fontSize, 18 * 1.5);
-      expect(t.headlineXs.fontSize, 16 * 1.5);
-      expect(t.monoNano.fontSize, 9 * 1.5);
-      expect(t.monoMicro.fontSize, 10 * 1.5);
-      expect(t.overline.fontSize, 11 * 1.5);
+    test('等宽样式用 JetBrains Mono + Consolas / Menlo 回落', () {
+      for (final s in <TextStyle>[t.mono, t.monoSmall]) {
+        expect(s.fontFamily, 'JetBrainsMono');
+        expect(s.fontFamilyFallback, contains('Consolas'));
+        expect(s.fontFamilyFallback, contains('Menlo'));
+      }
     });
 
-    test('defaults(scale:) 同样作用于新档位', () {
-      final t = InkTypography.defaults(scale: 1.25);
-      expect(t.headlineSm.fontSize, 18 * 1.25);
-      expect(t.overline.fontSize, 11 * 1.25);
+    test('任何样式都不带 letterSpacing（旧 kicker 宽字距已废）', () {
+      for (final s in t.all) {
+        expect(s.letterSpacing, isNull, reason: s.toString());
+      }
+    });
+
+    test('scaled(1.5) 覆盖全部八档且保留回落链', () {
+      final s = InkTypography.defaults().scaled(1.5);
+      expect(s.body.fontSize, 12 * 1.5);
+      expect(s.bodyStrong.fontSize, 12 * 1.5);
+      expect(s.meta.fontSize, 11 * 1.5);
+      expect(s.micro.fontSize, 10 * 1.5);
+      expect(s.sectionTitle.fontSize, 15 * 1.5);
+      expect(s.dialogTitle.fontSize, 17 * 1.5);
+      expect(s.mono.fontSize, 11 * 1.5);
+      expect(s.monoSmall.fontSize, 10 * 1.5);
+      expect(s.body.fontFamilyFallback, _sansChain);
+    });
+
+    test('defaults(scale:) 与 scaled() 等价', () {
+      final a = InkTypography.defaults(scale: 1.25);
+      final b = InkTypography.defaults().scaled(1.25);
+      expect(a.dialogTitle.fontSize, b.dialogTitle.fontSize);
     });
   });
 }

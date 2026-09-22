@@ -44,7 +44,7 @@ void main() {
     expect(indicator.backgroundColor, colors.surface3);
     expect(
       (indicator.valueColor! as AlwaysStoppedAnimation<Color>).value,
-      colors.cta,
+      colors.accent,
     );
   });
 }

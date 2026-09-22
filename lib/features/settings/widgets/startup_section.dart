@@ -26,7 +26,7 @@ class StartupSection extends ConsumerWidget {
       children: <Widget>[
         Text(
           context.l10n.shellKeepLastCanvasTitle,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.sm),
         InkCard(

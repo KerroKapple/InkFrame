@@ -6,170 +6,200 @@ import 'package:inkframe/theme/typography.dart';
 
 import 'wcag.dart';
 
+/// 三变体统一遍历：任何"只测 dark"的断言都会让 light / hc 写反照绿。
+const List<(String, InkColors Function())> _variants =
+    <(String, InkColors Function())>[
+  ('dark', InkColors.dark),
+  ('light', InkColors.light),
+  ('highContrast', InkColors.highContrast),
+];
+
 void main() {
-  group('InkColors variants', () {
-    test('dark variant returns opaque dark surface1', () {
-      final colors = InkColors.dark();
-      expect(colors.surface1.a, 1.0); // 完全不透明
-      // 深色底色：亮度接近 0
-      expect(colors.surface1.computeLuminance(), lessThan(0.1));
-    });
-
-    test('light variant surface1 is high-luminance', () {
-      final colors = InkColors.light();
-      expect(colors.surface1.computeLuminance(), greaterThan(0.8));
-    });
-
-    test('highContrast uses pure black/white extremes', () {
-      final colors = InkColors.highContrast();
-      expect(colors.surface1, const Color(0xFF000000));
-      expect(colors.fg1, const Color(0xFFFFFFFF));
-    });
-
-    test('every variant exposes the 12 new design-token slots', () {
-      for (final InkColors c in <InkColors>[
-        InkColors.dark(),
-        InkColors.light(),
-        InkColors.highContrast(),
-      ]) {
-        expect(c.surfaceCanvas, isA<Color>());
-        expect(c.surface4, isA<Color>());
-        expect(c.surface5, isA<Color>());
-        expect(c.borderSubtle, isA<Color>());
-        expect(c.borderHover, isA<Color>());
-        expect(c.borderStrong, isA<Color>());
-        expect(c.fg4, isA<Color>());
-        expect(c.accentHover, isA<Color>());
-        expect(c.accentPressed, isA<Color>());
-        expect(c.info, isA<Color>());
-        expect(c.cta, isA<Color>());
-        expect(c.ctaHover, isA<Color>());
-      }
-    });
-
-    test('dark variant exact palette values (Amber Noir)', () {
+  group('InkColors 中性灰三变体', () {
+    test('dark：surface2 是不透明的深灰', () {
       final c = InkColors.dark();
-      expect(c.surfaceCanvas, const Color(0xFF0B0908));
-      expect(c.surface1, const Color(0xFF100C0A));
-      expect(c.surface2, const Color(0xFF15110E));
-      expect(c.surface3, const Color(0xFF1C1814));
-      expect(c.surface4, const Color(0xFF2A2520));
+      expect(c.surface2.a, 1.0);
+      expect(c.surface2.computeLuminance(), lessThan(0.1));
+    });
+
+    test('light：surface2 高亮度', () {
+      expect(InkColors.light().surface2.computeLuminance(), greaterThan(0.8));
+    });
+
+    test('highContrast：纯黑底 + 纯白字', () {
+      final c = InkColors.highContrast();
+      expect(c.surface0, const Color(0xFF000000));
+      expect(c.surface1, const Color(0xFF000000));
+      expect(c.surface2, const Color(0xFF000000));
+      expect(c.fg1, const Color(0xFFFFFFFF));
+    });
+
+    test('dark 变体精确取值（README §Design Tokens）', () {
+      final c = InkColors.dark();
+      expect(c.surface0, const Color(0xFF141414));
+      expect(c.surface1, const Color(0xFF1A1A1A));
+      expect(c.surface2, const Color(0xFF1D1D1D));
+      expect(c.surface3, const Color(0xFF232323));
+      expect(c.surface4, const Color(0xFF262626));
+      expect(c.surface5, const Color(0xFF2E2E2E));
+      expect(c.borderStrong, const Color(0xFF0F0F0F));
+      expect(c.borderSubtle, const Color(0xFF1F1F1F));
+      expect(c.outline, const Color(0xFF2C2C2C));
+      expect(c.control, const Color(0xFF3A3A3A));
+      expect(c.controlStrong, const Color(0xFF3F3F3F));
+      expect(c.overlayBorder, const Color(0xFF4A4A4A));
+      expect(c.fg1, const Color(0xFFE8E8E8));
+      expect(c.fg2, const Color(0xFFD6D6D6));
+      expect(c.fg3, const Color(0xFFC8C8C8));
+      expect(c.fg4, const Color(0xFF9E9E9E));
+      expect(c.fg5, const Color(0xFF8A8A8A));
+      expect(c.fg6, const Color(0xFF6B6B6B));
       expect(c.accent, const Color(0xFFC9A85B));
-      expect(c.accentHover, const Color(0xFFD8B66B));
-      expect(c.accentPressed, const Color(0xFFB89A4F));
-      expect(c.cta, const Color(0xFFE3A648));
-      expect(c.info, const Color(0xFF4B7A92));
-      expect(c.fg1, const Color(0xFFE8DFD0));
-      expect(c.fg2, const Color(0xFFB5A89A));
-      expect(c.fg3, const Color(0xFF8A7E70));
-      expect(c.fg4, const Color(0xFF5A5048));
+      expect(c.accentHover, const Color(0xFFD8B96C));
+      expect(c.onAccent, const Color(0xFF1D1D1D));
+      expect(c.accentWash, const Color(0xFF2A2318));
+      expect(c.accentWashBorder, const Color(0xFF6B5A38));
+      expect(c.success, const Color(0xFF7FB069));
+      expect(c.danger, const Color(0xFFB04030));
+      expect(c.audioFill, const Color(0xFF22301F));
+      expect(c.audioBorder, const Color(0xFF3A5334));
+      expect(c.audioFg, const Color(0xFF8FB07E));
     });
 
-    test('light variant exact palette values (Paper Ivory)', () {
+    test('light 变体精确取值', () {
       final c = InkColors.light();
-      expect(c.surfaceCanvas, const Color(0xFFF5EFE3));
-      expect(c.surface1, const Color(0xFFFAF5EB));
-      expect(c.accent, const Color(0xFFA88340));
-      expect(c.cta, const Color(0xFFC68B2E));
-      expect(c.fg1, const Color(0xFF2A2520));
+      expect(c.surface0, const Color(0xFFE4E4E4));
+      expect(c.surface1, const Color(0xFFF4F4F4));
+      expect(c.surface2, const Color(0xFFF8F8F8));
+      expect(c.surface3, const Color(0xFFEFEFEF));
+      expect(c.surface4, const Color(0xFFFFFFFF));
+      expect(c.surface5, const Color(0xFFE2E2E2));
+      expect(c.fg1, const Color(0xFF1A1A1A));
+      expect(c.fg6, const Color(0xFF8E8E8E));
+      expect(c.accent, const Color(0xFF8C6A30));
+      expect(c.onAccent, const Color(0xFFFFFFFF));
+      expect(c.accentWash, const Color(0xFFF3ECDC));
     });
 
-    // 语义 on-color token：selected chip 等组件绕过 ColorScheme 直接消费
-    // token，值本身必须锁 WCAG AA（cta 底历史上 light 只有 2.57:1）。
-    for (final (name, c) in [
-      ('dark', InkColors.dark()),
-      ('light', InkColors.light()),
-      ('highContrast', InkColors.highContrast()),
-    ]) {
-      test('$name: onAccent/onDanger 对全部彩底对比率 ≥4.5', () {
-        expect(
-          wcagContrast(c.accent, c.onAccent),
-          greaterThanOrEqualTo(4.5),
-          reason: '$name accent × onAccent',
-        );
-        expect(
-          wcagContrast(c.brand, c.onAccent),
-          greaterThanOrEqualTo(4.5),
-          reason: '$name brand × onAccent',
-        );
-        expect(
-          wcagContrast(c.cta, c.onAccent),
-          greaterThanOrEqualTo(4.5),
-          reason: '$name cta × onAccent',
-        );
-        expect(
-          wcagContrast(c.danger, c.onDanger),
-          greaterThanOrEqualTo(4.5),
-          reason: '$name danger × onDanger',
-        );
-      });
-    }
-
-    test('dark 的两个新槽位取值精确', () {
-      final c = InkColors.dark();
-      expect(c.surface5, const Color(0xFF36302A));
-      expect(c.borderStrong, const Color(0xFF0D0A08));
+    test('highContrast 变体精确取值', () {
+      final c = InkColors.highContrast();
+      expect(c.surface3, const Color(0xFF0A0A0A));
+      expect(c.surface4, const Color(0xFF0A0A0A));
+      expect(c.surface5, const Color(0xFF2A2A2A));
+      expect(c.fg4, const Color(0xFFD0D0D0));
+      expect(c.accent, const Color(0xFFFFD060));
+      expect(c.onAccent, const Color(0xFF000000));
     });
 
-    test('light 的 surface5 取值精确', () {
-      expect(InkColors.light().surface5, const Color(0xFFD9CDB6));
+    // HC 下分隔线不可能比纯白更强——六个描边槽同值是刻意的。
+    test('highContrast：六个描边槽全部纯白', () {
+      final c = InkColors.highContrast();
+      for (final Color b in <Color>[
+        c.borderStrong,
+        c.borderSubtle,
+        c.outline,
+        c.control,
+        c.controlStrong,
+        c.overlayBorder,
+      ]) {
+        expect(b, const Color(0xFFFFFFFF));
+      }
     });
 
-    // 方向性：现有测试只断"槽位存在"，写反了照样绿。
-    test('surface5 的 ramp 方向不许写反：暗色/HC 更亮，浅色更暗', () {
+    test('scrim 三变体都是半透明遮罩（README rgba(10,10,10,0.55)）', () {
+      for (final (name, make) in _variants) {
+        final c = make();
+        expect(c.scrim.a, lessThan(1.0), reason: '$name scrim 必须半透明');
+      }
+      expect(InkColors.dark().scrim, const Color(0x8C0A0A0A));
+    });
+
+    // 方向性：dark / hc 的选中态靠提亮，light 的选中态靠压暗。
+    test('surface5 方向：dark/hc 亮于 surface4，light 暗于 surface3', () {
       for (final c in <InkColors>[InkColors.dark(), InkColors.highContrast()]) {
-        expect(c.surface5.computeLuminance(),
-            greaterThan(c.surface4.computeLuminance()));
+        expect(
+          c.surface5.computeLuminance(),
+          greaterThan(c.surface4.computeLuminance()),
+        );
       }
-      expect(InkColors.light().surface5.computeLuminance(),
-          lessThan(InkColors.light().surface4.computeLuminance()));
+      final l = InkColors.light();
+      expect(
+        l.surface5.computeLuminance(),
+        lessThan(l.surface3.computeLuminance()),
+      );
     });
 
-    // 防复制：有人图省事把 surface5 复制成 surface4，激活标签与非激活标签
-    // 视觉上不可区分，而所有功能测试照绿。
-    test('surface5 不得等于 surface4', () {
-      for (final c in <InkColors>[
-        InkColors.dark(), InkColors.light(), InkColors.highContrast(),
-      ]) {
-        expect(c.surface5, isNot(c.surface4));
+    // 防复制：图省事把相邻槽位复制成同值，选中态 / 标题与正文视觉不可区分，
+    // 而所有功能测试照绿。
+    test('防复制：surface5 ≠ surface4（三变体），fg1 ≠ fg2（dark / light）', () {
+      for (final (name, make) in _variants) {
+        expect(make().surface5, isNot(make().surface4), reason: '$name');
       }
-    });
-
-    // 激活标签的 label 直接画在 surface5 上，是新增的彩底前景组合。
-    test('选中标签文字在 surface5 上满足 WCAG AA', () {
+      // highContrast 的 fg1–fg3 按任务书刻意全取纯白（层级靠字重与位置），
+      // 故 fg1 ≠ fg2 只对 dark / light 成立。
       for (final c in <InkColors>[InkColors.dark(), InkColors.light()]) {
-        expect(wcagContrast(c.surface5, c.fg1), greaterThanOrEqualTo(4.5));
+        expect(c.fg1, isNot(c.fg2));
       }
-      final hc = InkColors.highContrast();
-      expect(wcagContrast(hc.surface5, hc.fg1), greaterThanOrEqualTo(7.0));
     });
 
-    test('every variant exposes all 17 semantic slots', () {
-      for (final InkColors c in <InkColors>[
-        InkColors.dark(),
-        InkColors.light(),
-        InkColors.highContrast(),
-      ]) {
-        expect(c.surface1, isA<Color>());
-        expect(c.surface2, isA<Color>());
-        expect(c.surface3, isA<Color>());
-        expect(c.surface4, isA<Color>());
-        expect(c.surface5, isA<Color>());
-        expect(c.fg1, isA<Color>());
-        expect(c.fg2, isA<Color>());
-        expect(c.fg3, isA<Color>());
-        expect(c.fg4, isA<Color>());
-        expect(c.accent, isA<Color>());
-        expect(c.brand, isA<Color>());
-        expect(c.danger, isA<Color>());
-        expect(c.warning, isA<Color>());
-        expect(c.success, isA<Color>());
-        expect(c.border, isA<Color>());
-        expect(c.borderStrong, isA<Color>());
-        expect(c.focusRing, isA<Color>());
-        expect(c.overlay, isA<Color>());
-        expect(c.scrim, isA<Color>());
+    test('对比：fg2 × surface3 与 onAccent × accent 均 ≥ 4.5', () {
+      for (final (name, make) in _variants) {
+        final c = make();
+        expect(
+          wcagContrast(c.fg2, c.surface3),
+          greaterThanOrEqualTo(4.5),
+          reason: '$name fg2 × surface3',
+        );
+        expect(
+          wcagContrast(c.onAccent, c.accent),
+          greaterThanOrEqualTo(4.5),
+          reason: '$name onAccent × accent',
+        );
       }
+    });
+
+    test('每个变体暴露全部 29 个槽位（README 表 28 + scrim）', () {
+      for (final (_, make) in _variants) {
+        final c = make();
+        final List<Color> all = <Color>[
+          c.surface0,
+          c.surface1,
+          c.surface2,
+          c.surface3,
+          c.surface4,
+          c.surface5,
+          c.borderStrong,
+          c.borderSubtle,
+          c.outline,
+          c.control,
+          c.controlStrong,
+          c.overlayBorder,
+          c.fg1,
+          c.fg2,
+          c.fg3,
+          c.fg4,
+          c.fg5,
+          c.fg6,
+          c.accent,
+          c.accentHover,
+          c.onAccent,
+          c.accentWash,
+          c.accentWashBorder,
+          c.success,
+          c.danger,
+          c.audioFill,
+          c.audioBorder,
+          c.audioFg,
+          c.scrim,
+        ];
+        expect(all.length, 29);
+      }
+    });
+  });
+
+  group('InkPalette 启动常量与主题工厂一致', () {
+    test('surface0Dark == InkColors.dark().surface0', () {
+      expect(InkPalette.surface0Dark, InkColors.dark().surface0);
     });
   });
 
@@ -183,19 +213,6 @@ void main() {
       expect(InkSpacing.xxl, 48);
     });
 
-    test('radius tokens cover common UI needs', () {
-      expect(InkRadius.sm, 4);
-      expect(InkRadius.md, 8);
-      expect(InkRadius.lg, 12);
-      expect(InkRadius.xl, 16);
-      expect(InkRadius.pill, 999);
-    });
-
-    test('radius includes bento tokens', () {
-      expect(InkRadius.bento, 10);
-      expect(InkRadius.bentoBtn, 6);
-    });
-
     test('半阶间距档位（ME-17：消除 token 算术）', () {
       expect(InkSpacing.s10, 10);
       expect(InkSpacing.s12, 12);
@@ -204,56 +221,34 @@ void main() {
       expect(InkSpacing.s28, 28);
     });
 
-    test('radius xs 档位（细进度条裁切）', () {
+    test('radius 覆盖 README 四档 2 / 3 / 4 / 6', () {
       expect(InkRadius.xs, 2);
+      expect(InkRadius.s3, 3);
+      expect(InkRadius.sm, 4);
+      expect(InkRadius.bentoBtn, 6);
     });
   });
 
-  group('inputFill token（ME-18）', () {
-    test('三变体均暴露半透明 inputFill', () {
-      for (final InkColors c in <InkColors>[
-        InkColors.dark(),
-        InkColors.light(),
-        InkColors.highContrast(),
-      ]) {
-        expect(c.inputFill, isA<Color>());
-        expect(c.inputFill.a, lessThan(1.0)); // 必须半透明（与父面板层叠）
-      }
-    });
-
-    test('暗色用白色提亮，浅色用深色压暗（不再固定白 overlay）', () {
-      // 暗色：fill 比纯黑亮 → 基色是亮色
-      final dark = InkColors.dark().inputFill;
-      expect(dark.computeLuminance(), greaterThan(0.5));
-      // 浅色：fill 基色是暗色
-      final light = InkColors.light().inputFill;
-      expect(light.computeLuminance(), lessThan(0.5));
+  group('InkShadow', () {
+    test('浮层阴影取 README 值 0 24px 64px rgba(0,0,0,0.6)', () {
+      final BoxShadow s = InkShadow.overlay.single;
+      expect(s.offset, const Offset(0, 24));
+      expect(s.blurRadius, 64);
+      expect(s.color, const Color(0x99000000));
     });
   });
 
   group('InkTypography scaling', () {
-    test('defaults produce body fontSize 14', () {
-      final t = InkTypography.defaults();
-      expect(t.body.fontSize, 14);
+    test('defaults produce body fontSize 12', () {
+      expect(InkTypography.defaults().body.fontSize, 12);
     });
 
     test('scaled(1.25) multiplies every size', () {
       final t = InkTypography.defaults().scaled(1.25);
-      expect(t.body.fontSize, 14 * 1.25);
-      expect(t.title.fontSize, 18 * 1.25);
-      expect(t.display.fontSize, 48 * 1.25);
-    });
-
-    test('micro / nano 字号 10px / 9px', () {
-      final t = InkTypography.defaults();
-      expect(t.micro.fontSize, 10);
-      expect(t.nano.fontSize, 9);
-    });
-
-    test('scaled(1.5) applies to micro / nano too', () {
-      final t = InkTypography.defaults().scaled(1.5);
-      expect(t.micro.fontSize, 10 * 1.5);
-      expect(t.nano.fontSize, 9 * 1.5);
+      expect(t.body.fontSize, 12 * 1.25);
+      expect(t.sectionTitle.fontSize, 15 * 1.25);
+      expect(t.dialogTitle.fontSize, 17 * 1.25);
+      expect(t.micro.fontSize, 10 * 1.25);
     });
   });
 
@@ -261,14 +256,10 @@ void main() {
     testWidgets('context.inkColors returns the dark palette', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAppTheme(
-            variant: InkThemeVariant.dark,
-            textScale: 1,
-          ),
+          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
           home: Builder(
             builder: (ctx) {
               final c = ctx.inkColors;
-              // 断言语义槽位 = dark 工厂值
               expect(c.surface1, InkColors.dark().surface1);
               expect(c.fg1, InkColors.dark().fg1);
               return const SizedBox.shrink();
@@ -298,14 +289,13 @@ void main() {
     testWidgets('ColorScheme.primary is Amber accent', (tester) async {
       await tester.pumpWidget(
         MaterialApp(
-          theme: buildAppTheme(
-            variant: InkThemeVariant.dark,
-            textScale: 1,
-          ),
+          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
           home: Builder(
             builder: (ctx) {
-              final scheme = Theme.of(ctx).colorScheme;
-              expect(scheme.primary, const Color(0xFFC9A85B));
+              expect(
+                Theme.of(ctx).colorScheme.primary,
+                const Color(0xFFC9A85B),
+              );
               return const SizedBox.shrink();
             },
           ),
@@ -313,37 +303,27 @@ void main() {
       );
     });
 
-    // 彩色底上的前景 = 语义 on-color token（per-variant 取色）——一刀切
-    // surfaceCanvas 在 light 变体只有 3.06:1（历史 bug）。三变体逐一锁定。
-    for (final (variant, colors) in [
-      (InkThemeVariant.dark, InkColors.dark()),
-      (InkThemeVariant.light, InkColors.light()),
-      (InkThemeVariant.highContrast, InkColors.highContrast()),
-    ]) {
-      testWidgets('$variant: on-color 前景取 onAccent/onDanger 而非一刀切',
-          (tester) async {
-        await tester.pumpWidget(
-          MaterialApp(
-            theme: buildAppTheme(variant: variant, textScale: 1),
-            home: Builder(
-              builder: (ctx) {
-                final scheme = Theme.of(ctx).colorScheme;
-                expect(scheme.onPrimary, colors.onAccent);
-                expect(scheme.onSecondary, colors.onAccent);
-                expect(scheme.onError, colors.onDanger);
-                return const SizedBox.shrink();
-              },
-            ),
+    testWidgets('scaffoldBackgroundColor 取 surface2（应用主体默认底）',
+        (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
+          home: Builder(
+            builder: (ctx) {
+              expect(
+                Theme.of(ctx).scaffoldBackgroundColor,
+                InkColors.dark().surface2,
+              );
+              return const SizedBox.shrink();
+            },
           ),
-        );
-      });
-    }
+        ),
+      );
+    });
 
-    // 对比率锁定（WCAG AA ≥4.5:1）：只锁 on-color 相等不锁对比率的话，
-    // per-variant 换底色时回归测不出（历史 bug：light 一刀切 surfaceCanvas
-    // 只有 3.06:1）。三变体 × 三对色全量锁死。
+    // 彩底前景锁 AA：primary / secondary 都是琥珀，onPrimary 走 onAccent。
     for (final variant in InkThemeVariant.values) {
-      test('$variant: ColorScheme 三对 on-color 对比率 ≥4.5', () {
+      test('$variant: ColorScheme primary/secondary on-color 对比率 ≥4.5', () {
         final scheme =
             buildAppTheme(variant: variant, textScale: 1).colorScheme;
         expect(
@@ -355,11 +335,6 @@ void main() {
           wcagContrast(scheme.secondary, scheme.onSecondary),
           greaterThanOrEqualTo(4.5),
           reason: '$variant secondary/onSecondary',
-        );
-        expect(
-          wcagContrast(scheme.error, scheme.onError),
-          greaterThanOrEqualTo(4.5),
-          reason: '$variant error/onError',
         );
       });
     }
