@@ -459,6 +459,10 @@ powershell -File scripts/replica_diff.ps1 -A ref.png -B flutter.png -Out diff.pn
 | Workspace v2（S2 接线后，稿数据播种） | 5.85% | 差异 = 检查器分组未改、渲染队列无 job、泳道标题栏（Lanes 稿）、引用名带类型后缀（见 PR #235） |
 | Workspace v2（S2b 检查器三组 / 队列 / 引用名改完） | 5.45% | 预期内偏离：景别 / 机位角度 / 运镜幅度 / 焦段 / 模型名 / fps 无数据模型（记 BOARD 债）、队列无 job、稿上运行态文字（自动保存 / 结果数 / 缩略图）。逐项见 PR #235 |
 
+画布标签自此是**基线**：`test/app/workspace_v2_canvas_golden_test.dart` 用同一份稿数据（`seedWorkspaceFixtureInto`）在 1600×1000 / zh 下渲染整个外壳并锁 golden，壳 chrome 任何改动都变红。基线只在 CI ubuntu 生成，Windows 截的 wired PNG 不能直接当基线（字体光栅化不同）。
+
+后续屏顺序（用户 2026-09-22）：画廊 → Studio → 命令面板 → 设置浮层 → 序列 → 导出。
+
 ---
 
 ## 落地建议顺序
