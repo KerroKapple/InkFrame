@@ -12,6 +12,8 @@ import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
 import 'package:inkframe/features/gallery/providers/gallery_filter.dart';
 import 'package:inkframe/features/gallery/providers/gallery_selection.dart';
+import 'package:inkframe/features/gallery/providers/gallery_view.dart';
+import 'package:inkframe/features/gallery/util/gallery_meta.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_filter_panel.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_grid.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_info_panel.dart';
@@ -245,17 +247,27 @@ void main() {
   testWidgets('键盘：→ 移锚点，空格预览锚点', (tester) async {
     await seedAssets();
     await pump(tester);
-    await tester.tap(tileNamed('镜头 01 · 图像'));
+    // 两条产物 createdAt 可能同刻（Windows 毫秒钟）也可能不同（Linux 微秒钟），排序随之变——
+    // 按网格里的实际顺序取第一 / 第二项，不写死是哪个。
+    final List<GalleryItem> items = _read(tester, galleryFilteredItemsProvider('p1'));
+    final Map<String, GalleryItemMeta> meta = _read(tester, galleryMetaProvider('p1'));
+    String nameOf(int i) => meta[galleryItemKey(items[i])]!.label;
+    await tester.tap(tileNamed(nameOf(0)));
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
 
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
     await tester.pumpAndSettle();
-    expect(_read(tester, gallerySelectionProvider('p1')).anchor, contains('videos/v.mp4'));
+    expect(_read(tester, gallerySelectionProvider('p1')).anchor, galleryItemKey(items[1]));
     await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
     await tester.pumpAndSettle();
-    expect(_read(tester, gallerySelectionProvider('p1')).anchor, contains('images/a.png'));
+    expect(_read(tester, gallerySelectionProvider('p1')).anchor, galleryItemKey(items[0]));
 
+    // 空格预览：把锚点挪到图片项（视频预览要真 media_kit，测试环境进不去）。
+    final int imageAt = items.indexWhere((GalleryItem i) => i.kind == GalleryItemKind.image);
+    await tester.tap(tileNamed(nameOf(imageAt)));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsOneWidget);
