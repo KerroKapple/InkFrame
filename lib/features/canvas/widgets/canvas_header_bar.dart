@@ -41,7 +41,11 @@ class CanvasHeaderBar extends ConsumerWidget {
       ),
       child: Row(
         children: <Widget>[
-          Text(name, style: t.bodyStrong.copyWith(color: c.fg1)),
+          // 画布名超长时单行省略，泳道列表紧随其后（Flexible 让两段按内容分宽）。
+          Flexible(
+            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                style: t.bodyStrong.copyWith(color: c.fg1)),
+          ),
           if (lanes.isNotEmpty) ...<Widget>[
             const SizedBox(width: InkSpacing.s12),
             Container(width: 1, height: 12, color: c.control),

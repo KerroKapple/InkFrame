@@ -36,24 +36,26 @@ class ShellBreadcrumb extends ConsumerWidget {
     final TextStyle chev = typo.body.copyWith(color: colors.fg6);
 
     final bool hasCanvas = canvasId != null;
+    // 超长项目名 / 画布名单行省略（不缩放——缩小到读不清等于没显示）。
     final List<Widget> parts = <Widget>[
       Text(studioName, style: root),
       _chev(chev),
-      Text(project?.name ?? l.shellBreadcrumbNoProject,
-          style: hasCanvas ? mid : leaf),
+      Flexible(
+        child: Text(project?.name ?? l.shellBreadcrumbNoProject,
+            maxLines: 1, overflow: TextOverflow.ellipsis, style: hasCanvas ? mid : leaf),
+      ),
     ];
     if (hasCanvas) {
       final String canvasName = ref.watch(currentCanvasNameProvider).valueOrNull ??
           l.canvasDefaultName;
       parts
         ..add(_chev(chev))
-        ..add(Text(canvasName, style: leaf));
+        ..add(Flexible(
+          child: Text(canvasName, maxLines: 1, overflow: TextOverflow.ellipsis, style: leaf),
+        ));
     }
 
-    return FittedBox(
-      fit: BoxFit.scaleDown,
-      child: Row(mainAxisSize: MainAxisSize.min, children: parts),
-    );
+    return Row(mainAxisSize: MainAxisSize.min, children: parts);
   }
 
   Widget _chev(TextStyle s) => Padding(
