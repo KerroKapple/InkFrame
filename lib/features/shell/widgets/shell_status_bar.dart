@@ -20,6 +20,9 @@ import '../../canvas/providers/canvas_edges_controller.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
 import '../../canvas/providers/current_canvas_name.dart';
+import '../../gallery/models/gallery_selection.dart';
+import '../../gallery/providers/gallery_selection.dart';
+import '../../gallery/providers/gallery_view.dart';
 import '../../studio/models/project_with_canvases.dart';
 import '../../studio/providers/workspace_projects_provider.dart';
 import '../models/shell_state.dart';
@@ -51,6 +54,13 @@ class ShellStatusBar extends ConsumerWidget {
       left.add(l.statusBarNodesEdges(nodes, edges));
       final int selected = ref.watch(canvasSelectionControllerProvider(canvasId).select((Set<String> x) => x.length));
       if (selected > 0) left.add(l.statusBarSelected(selected));
+    } else if (s.tab == ShellTab.gallery && s.project != null) {
+      // 稿：192 项 · 已选 2   空格预览 · ↑↓ 切换 · 双击放大
+      final int count = ref.watch(galleryFilteredItemsProvider(s.project!.id)).length;
+      final int selected =
+          ref.watch(gallerySelectionProvider(s.project!.id).select((GallerySelection x) => x.count));
+      left.add(l.statusBarGallery(count, selected));
+      left.add(l.statusBarGalleryHint);
     } else if (s.tab == ShellTab.studio) {
       final int projects =
           (ref.watch(workspaceProjectsProvider).valueOrNull ?? const <ProjectWithCanvases>[]).length;

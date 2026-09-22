@@ -11,6 +11,8 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/providers/current_canvas_name.dart';
+import '../../gallery/models/gallery_item.dart';
+import '../../gallery/providers/gallery_controller.dart';
 import '../../studio/controllers/studio_state.dart';
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
@@ -45,7 +47,24 @@ class ShellBreadcrumb extends ConsumerWidget {
             maxLines: 1, overflow: TextOverflow.ellipsis, style: hasCanvas ? mid : leaf),
       ),
     ];
-    if (hasCanvas) {
+    final ShellTab tab = ref.watch(shellControllerProvider.select((ShellState s) => s.tab));
+    if (tab == ShellTab.gallery && project != null) {
+      // 稿：山径破晓 › 全部产物  168 图 · 24 视频（项目名退成中段，叶子是「全部产物」）。
+      parts[2] = Flexible(
+        child: Text(project.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: mid),
+      );
+      parts
+        ..add(_chev(chev))
+        ..add(Text(l.galleryBreadcrumbAll, style: leaf));
+      final List<GalleryItem>? items = ref.watch(galleryControllerProvider(project.id)).valueOrNull;
+      if (items != null) {
+        final int videos = items.where((GalleryItem i) => i.kind == GalleryItemKind.video).length;
+        parts
+          ..add(const SizedBox(width: InkSpacing.s10))
+          ..add(Text(l.galleryCounts(items.length - videos, videos),
+              style: typo.mono.copyWith(color: colors.fg5)));
+      }
+    } else if (hasCanvas) {
       final String canvasName = ref.watch(currentCanvasNameProvider).valueOrNull ??
           l.canvasDefaultName;
       parts

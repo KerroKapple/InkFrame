@@ -1215,7 +1215,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gallerySavedAsCharacter => '已存为角色';
 
   @override
-  String get galleryKindImage => '图片';
+  String get galleryKindImage => '图像';
 
   @override
   String get galleryKindVideo => '视频';
@@ -1597,4 +1597,143 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shellExportEmptyBody => '先打开一个画布，就能在这里导出它的视频结果。';
+
+  @override
+  String get galleryFilterGroupScope => '范围';
+
+  @override
+  String get galleryFilterGroupType => '类型';
+
+  @override
+  String get galleryFilterGroupModel => '模型';
+
+  @override
+  String get galleryFilterGroupMark => '标记';
+
+  @override
+  String get galleryFilterAllInProject => '本项目全部';
+
+  @override
+  String get galleryMarkCurrentLine => '当前线';
+
+  @override
+  String get galleryMarkInSequence => '已入序列';
+
+  @override
+  String get galleryThumbMedium => '中';
+
+  @override
+  String get galleryThumbLarge => '大';
+
+  @override
+  String get galleryThumbXLarge => '特大';
+
+  @override
+  String get galleryPanelInfo => '信息';
+
+  @override
+  String get galleryPanelLineage => '血缘';
+
+  @override
+  String get galleryGroupParams => '生成参数';
+
+  @override
+  String get galleryGroupPrompt => '提示词';
+
+  @override
+  String get galleryParamProvider => '服务商';
+
+  @override
+  String get galleryParamDuration => '片长';
+
+  @override
+  String get galleryParamCamera => '运镜方式';
+
+  @override
+  String get galleryParamKeyframes => '关键帧';
+
+  @override
+  String get galleryParamPrompt => '最终提示词';
+
+  @override
+  String get galleryParamBaseStyle => '基础风格';
+
+  @override
+  String galleryKeyframeRef(String role, String source) {
+    return '$role ← $source';
+  }
+
+  @override
+  String get galleryLineageTitle => '血缘 · 当前线';
+
+  @override
+  String get galleryLineageShotText => '分镜文本';
+
+  @override
+  String galleryLineageChosenOf(int count) {
+    return '从 $count 个结果中选定';
+  }
+
+  @override
+  String galleryLineageBranches(int count) {
+    return '+$count 分支';
+  }
+
+  @override
+  String get galleryLineageCurrent => '当前项';
+
+  @override
+  String galleryLineageInSequence(String index) {
+    return '已入序列 $index';
+  }
+
+  @override
+  String get galleryLocateInCanvas => '在画布中定位';
+
+  @override
+  String get galleryBreadcrumbAll => '全部产物';
+
+  @override
+  String galleryCounts(int images, int videos) {
+    return '$images 图 · $videos 视频';
+  }
+
+  @override
+  String galleryItemsShort(int count) {
+    return '$count 项';
+  }
+
+  @override
+  String statusBarGallery(int count, int selected) {
+    return '$count 项 · 已选 $selected';
+  }
+
+  @override
+  String get statusBarGalleryHint => '空格预览 · ↑↓ 切换 · 双击放大';
+
+  @override
+  String get galleryTimeJustNow => '刚刚';
+
+  @override
+  String galleryTimeMinutesAgo(int count) {
+    return '$count 分钟前';
+  }
+
+  @override
+  String galleryTimeHoursAgo(int count) {
+    return '$count 小时前';
+  }
+
+  @override
+  String galleryTimeDaysAgo(int count) {
+    return '$count 天前';
+  }
+
+  @override
+  String gallerySourceLine(String canvas, String time) {
+    return '$canvas · $time';
+  }
+
+  @override
+  String get galleryNoSelection => '选中一个产物查看信息';
 }

@@ -3043,6 +3043,240 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open a canvas first, then export its video results here.'**
   String get shellExportEmptyBody;
+
+  /// No description provided for @galleryFilterGroupScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope'**
+  String get galleryFilterGroupScope;
+
+  /// No description provided for @galleryFilterGroupType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get galleryFilterGroupType;
+
+  /// No description provided for @galleryFilterGroupModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get galleryFilterGroupModel;
+
+  /// No description provided for @galleryFilterGroupMark.
+  ///
+  /// In en, this message translates to:
+  /// **'Marks'**
+  String get galleryFilterGroupMark;
+
+  /// No description provided for @galleryFilterAllInProject.
+  ///
+  /// In en, this message translates to:
+  /// **'All in project'**
+  String get galleryFilterAllInProject;
+
+  /// No description provided for @galleryMarkCurrentLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Current line'**
+  String get galleryMarkCurrentLine;
+
+  /// No description provided for @galleryMarkInSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'In sequence'**
+  String get galleryMarkInSequence;
+
+  /// No description provided for @galleryThumbMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'M'**
+  String get galleryThumbMedium;
+
+  /// No description provided for @galleryThumbLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get galleryThumbLarge;
+
+  /// No description provided for @galleryThumbXLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'XL'**
+  String get galleryThumbXLarge;
+
+  /// No description provided for @galleryPanelInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get galleryPanelInfo;
+
+  /// No description provided for @galleryPanelLineage.
+  ///
+  /// In en, this message translates to:
+  /// **'Lineage'**
+  String get galleryPanelLineage;
+
+  /// No description provided for @galleryGroupParams.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation parameters'**
+  String get galleryGroupParams;
+
+  /// No description provided for @galleryGroupPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get galleryGroupPrompt;
+
+  /// No description provided for @galleryParamProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get galleryParamProvider;
+
+  /// No description provided for @galleryParamDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get galleryParamDuration;
+
+  /// No description provided for @galleryParamCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get galleryParamCamera;
+
+  /// No description provided for @galleryParamKeyframes.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyframes'**
+  String get galleryParamKeyframes;
+
+  /// No description provided for @galleryParamPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Final prompt'**
+  String get galleryParamPrompt;
+
+  /// No description provided for @galleryParamBaseStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Base style'**
+  String get galleryParamBaseStyle;
+
+  /// No description provided for @galleryKeyframeRef.
+  ///
+  /// In en, this message translates to:
+  /// **'{role} ← {source}'**
+  String galleryKeyframeRef(String role, String source);
+
+  /// No description provided for @galleryLineageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lineage · current line'**
+  String get galleryLineageTitle;
+
+  /// No description provided for @galleryLineageShotText.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot text'**
+  String get galleryLineageShotText;
+
+  /// No description provided for @galleryLineageChosenOf.
+  ///
+  /// In en, this message translates to:
+  /// **'chosen from {count} results'**
+  String galleryLineageChosenOf(int count);
+
+  /// No description provided for @galleryLineageBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} branches'**
+  String galleryLineageBranches(int count);
+
+  /// No description provided for @galleryLineageCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current item'**
+  String get galleryLineageCurrent;
+
+  /// No description provided for @galleryLineageInSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'in sequence {index}'**
+  String galleryLineageInSequence(String index);
+
+  /// No description provided for @galleryLocateInCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate in canvas'**
+  String get galleryLocateInCanvas;
+
+  /// No description provided for @galleryBreadcrumbAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All assets'**
+  String get galleryBreadcrumbAll;
+
+  /// No description provided for @galleryCounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{images} images · {videos} videos'**
+  String galleryCounts(int images, int videos);
+
+  /// No description provided for @galleryItemsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String galleryItemsShort(int count);
+
+  /// No description provided for @statusBarGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items · {selected} selected'**
+  String statusBarGallery(int count, int selected);
+
+  /// No description provided for @statusBarGalleryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Space to preview · ↑↓ to switch · double-click to enlarge'**
+  String get statusBarGalleryHint;
+
+  /// No description provided for @galleryTimeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get galleryTimeJustNow;
+
+  /// No description provided for @galleryTimeMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min ago'**
+  String galleryTimeMinutesAgo(int count);
+
+  /// No description provided for @galleryTimeHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h ago'**
+  String galleryTimeHoursAgo(int count);
+
+  /// No description provided for @galleryTimeDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d ago'**
+  String galleryTimeDaysAgo(int count);
+
+  /// No description provided for @gallerySourceLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{canvas} · {time}'**
+  String gallerySourceLine(String canvas, String time);
+
+  /// No description provided for @galleryNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an asset to see its details'**
+  String get galleryNoSelection;
 }
 
 class _AppLocalizationsDelegate

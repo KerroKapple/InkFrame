@@ -110,17 +110,17 @@ abstract final class GalleryFixture {
   static const List<String> sizes = <String>['中', '大', '特大'];
   static const int activeSize = 0;
 
-  static const List<String> _names = <String>[
+  static const List<String> names = <String>[
     '山径入镜', '松林逆光', '推镜 · 中景', '背影渐清', '破晓山脊', '第一缕光', '回望空镜', '角色 · 行者',
     '雾中石阶', '树影', '远山轮廓', '逆光剪影', '收尾空镜', '晨光特写', '侧脸',
   ];
 
   /// 稿：i===2 当前线 + 选中 + 视频（00:04:08）；i===5 视频（00:05:00）；i===7 选中。
   static List<GaItem> get items => <GaItem>[
-        for (int i = 0; i < _names.length; i++)
+        for (int i = 0; i < names.length; i++)
           GaItem(
             idx: (i + 1).toString().padLeft(3, '0'),
-            name: _names[i],
+            name: names[i],
             thumb: i % 8,
             isVideo: i == 2 || i == 5,
             dur: i == 2 ? '00:04:08' : '00:05:00',

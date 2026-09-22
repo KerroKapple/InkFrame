@@ -1662,4 +1662,144 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shellExportEmptyBody =>
       'Open a canvas first, then export its video results here.';
+
+  @override
+  String get galleryFilterGroupScope => 'Scope';
+
+  @override
+  String get galleryFilterGroupType => 'Type';
+
+  @override
+  String get galleryFilterGroupModel => 'Model';
+
+  @override
+  String get galleryFilterGroupMark => 'Marks';
+
+  @override
+  String get galleryFilterAllInProject => 'All in project';
+
+  @override
+  String get galleryMarkCurrentLine => 'Current line';
+
+  @override
+  String get galleryMarkInSequence => 'In sequence';
+
+  @override
+  String get galleryThumbMedium => 'M';
+
+  @override
+  String get galleryThumbLarge => 'L';
+
+  @override
+  String get galleryThumbXLarge => 'XL';
+
+  @override
+  String get galleryPanelInfo => 'Info';
+
+  @override
+  String get galleryPanelLineage => 'Lineage';
+
+  @override
+  String get galleryGroupParams => 'Generation parameters';
+
+  @override
+  String get galleryGroupPrompt => 'Prompt';
+
+  @override
+  String get galleryParamProvider => 'Provider';
+
+  @override
+  String get galleryParamDuration => 'Duration';
+
+  @override
+  String get galleryParamCamera => 'Camera';
+
+  @override
+  String get galleryParamKeyframes => 'Keyframes';
+
+  @override
+  String get galleryParamPrompt => 'Final prompt';
+
+  @override
+  String get galleryParamBaseStyle => 'Base style';
+
+  @override
+  String galleryKeyframeRef(String role, String source) {
+    return '$role ← $source';
+  }
+
+  @override
+  String get galleryLineageTitle => 'Lineage · current line';
+
+  @override
+  String get galleryLineageShotText => 'Shot text';
+
+  @override
+  String galleryLineageChosenOf(int count) {
+    return 'chosen from $count results';
+  }
+
+  @override
+  String galleryLineageBranches(int count) {
+    return '+$count branches';
+  }
+
+  @override
+  String get galleryLineageCurrent => 'Current item';
+
+  @override
+  String galleryLineageInSequence(String index) {
+    return 'in sequence $index';
+  }
+
+  @override
+  String get galleryLocateInCanvas => 'Locate in canvas';
+
+  @override
+  String get galleryBreadcrumbAll => 'All assets';
+
+  @override
+  String galleryCounts(int images, int videos) {
+    return '$images images · $videos videos';
+  }
+
+  @override
+  String galleryItemsShort(int count) {
+    return '$count items';
+  }
+
+  @override
+  String statusBarGallery(int count, int selected) {
+    return '$count items · $selected selected';
+  }
+
+  @override
+  String get statusBarGalleryHint =>
+      'Space to preview · ↑↓ to switch · double-click to enlarge';
+
+  @override
+  String get galleryTimeJustNow => 'just now';
+
+  @override
+  String galleryTimeMinutesAgo(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String galleryTimeHoursAgo(int count) {
+    return '$count h ago';
+  }
+
+  @override
+  String galleryTimeDaysAgo(int count) {
+    return '$count d ago';
+  }
+
+  @override
+  String gallerySourceLine(String canvas, String time) {
+    return '$canvas · $time';
+  }
+
+  @override
+  String get galleryNoSelection => 'Select an asset to see its details';
 }

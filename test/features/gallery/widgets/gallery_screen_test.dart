@@ -1,75 +1,67 @@
-// GalleryScreen widget 测试：空态 / 网格渲染（图+视频 tile）/ 返回 / 图片预览 Dialog。
+// GalleryScreen（稿接线版）：空态 / 数据态 / 筛选行 / 选中与信息面板 / 双击预览 / 键盘。
 import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
+import 'package:inkframe/features/gallery/providers/gallery_filter.dart';
+import 'package:inkframe/features/gallery/providers/gallery_selection.dart';
+import 'package:inkframe/features/gallery/widgets/gallery_filter_panel.dart';
+import 'package:inkframe/features/gallery/widgets/gallery_grid.dart';
+import 'package:inkframe/features/gallery/widgets/gallery_info_panel.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_tile.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
-import 'package:inkframe/l10n/generated/app_localizations.dart';
-import 'package:inkframe/theme/app_theme.dart';
 
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/test_app.dart';
 
-// 1x1 透明 PNG——让 image tile 走真实 Image.file 路径。
 const String _kPng1x1B64 =
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 class _FakeResolver implements FileResolverService {
-  @override
-  File resolveInProject({
-    required String projectId,
-    required String relativePath,
-  }) =>
-      throw UnimplementedError();
-
   _FakeResolver(this.dir);
   final Directory dir;
 
   @override
-  Directory canvasRoot({required String projectId, required String canvasId}) =>
-      dir;
+  File resolveInProject({required String projectId, required String relativePath}) => throw UnimplementedError();
 
   @override
-  File resolve({
-    required String projectId,
-    required String canvasId,
-    required String relativePath,
-  }) {
-    if (relativePath.contains('..')) {
-      throw PathSecurityError('parent traversal');
-    }
+  Directory canvasRoot({required String projectId, required String canvasId}) => dir;
+
+  @override
+  File resolve({required String projectId, required String canvasId, required String relativePath}) {
+    if (relativePath.contains('..')) throw PathSecurityError('parent traversal');
     return File('${dir.path}/$relativePath');
   }
 
   @override
-  String toRelative({
-    required String projectId,
-    required String canvasId,
-    required File source,
-  }) =>
-      source.path;
+  String toRelative({required String projectId, required String canvasId, required File source}) => source.path;
 }
+
+T _read<T>(WidgetTester tester, ProviderListenable<T> p) =>
+    ProviderScope.containerOf(tester.element(find.byType(GalleryScreen))).read(p);
 
 void main() {
   late Directory tempDir;
   late InMemoryCanvasRepository canvases;
   late InMemoryNodeRepository nodes;
+  late InMemoryEdgeRepository edges;
   late FakeBatchResultRepo batch;
 
   setUp(() {
     tempDir = Directory.systemTemp.createTempSync('ink_gallery_');
     canvases = InMemoryCanvasRepository();
     nodes = InMemoryNodeRepository();
+    edges = InMemoryEdgeRepository();
     batch = FakeBatchResultRepo();
   });
 
@@ -78,214 +70,169 @@ void main() {
   List<Override> overrides() => <Override>[
         canvasRepositoryProvider.overrideWith((_) async => canvases),
         nodeRepositoryProvider.overrideWith((_) async => nodes),
+        edgeRepositoryProvider.overrideWith((_) async => edges),
         batchResultRepositoryProvider.overrideWith((_) async => batch),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver(tempDir)),
       ];
 
+  /// 画布 Alpha：config「镜头 01 · 图像」→ result a.png；config「镜头 03 · 图转视频」→ result v.mp4。
   Future<void> seedAssets() async {
     final ca = await canvases.create(projectId: 'p1', name: 'Alpha');
+    final imgCfg = await nodes.create(
+      canvasId: ca,
+      type: 'image',
+      nodeRole: 'config',
+      label: '镜头 01 · 图像',
+      typeConfig: <String, Object?>{'provider_id': 'gemini-image', 'prompt': 'a cat'},
+    );
     await nodes.create(
       canvasId: ca,
       type: 'image',
       nodeRole: 'result',
+      sourceNodeId: imgCfg,
       typeConfig: <String, Object?>{'image_url': 'images/a.png'},
+    );
+    final vidCfg = await nodes.create(
+      canvasId: ca,
+      type: 'video',
+      nodeRole: 'config',
+      label: '镜头 03 · 图转视频',
+      typeConfig: <String, Object?>{'provider_id': 'kling-v3'},
     );
     await nodes.create(
       canvasId: ca,
       type: 'video',
       nodeRole: 'result',
-      typeConfig: <String, Object?>{
-        'video_url': 'videos/v.mp4',
-        'duration_ms': 65000,
-      },
+      sourceNodeId: vidCfg,
+      typeConfig: <String, Object?>{'video_url': 'videos/v.mp4', 'duration_ms': 65000},
     );
     Directory('${tempDir.path}/images').createSync(recursive: true);
-    File('${tempDir.path}/images/a.png')
-        .writeAsBytesSync(base64Decode(_kPng1x1B64));
+    File('${tempDir.path}/images/a.png').writeAsBytesSync(base64Decode(_kPng1x1B64));
   }
 
-  testWidgets('空态：无产物 → empty 文案', (tester) async {
+  Future<void> pump(WidgetTester tester) async {
     await pumpInkApp(
       tester,
       const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-      surfaceSize: const Size(1280, 800),
+      surfaceSize: const Size(1400, 900),
       overrides: overrides(),
     );
     await tester.pumpAndSettle();
+  }
 
+  Finder tileNamed(String name) => find.ancestor(of: find.text(name), matching: find.byType(GalleryTile));
+
+  testWidgets('空态：无产物 → empty 文案', (tester) async {
+    await pump(tester);
     expect(find.text('No generated assets yet'), findsOneWidget);
-    expect(
-      find.text(
-        "Images and videos generated on this project's canvases will appear here.",
-      ),
-      findsOneWidget,
-    );
+    expect(find.text("Images and videos generated on this project's canvases will appear here."), findsOneWidget);
   });
 
-  testWidgets('数据态：image tile 渲染 Image，video tile 图标+时长，caption 带类型/画布名',
-      (tester) async {
+  testWidgets('数据态：图片 tile 渲染 Image，视频 tile ▶ + 00:01:05，说明行是「序号 源节点名」', (tester) async {
     await seedAssets();
-    await pumpInkApp(
-      tester,
-      const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-      surfaceSize: const Size(1280, 800),
-      overrides: overrides(),
-    );
-    await tester.pumpAndSettle();
+    await pump(tester);
 
     expect(find.byType(Image), findsOneWidget);
-    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
-    expect(find.text('01:05'), findsOneWidget);
-    // GA-3 起筛选条也有同名分段文案——断言收窄到 tile 内的 caption。
-    expect(
-      find.descendant(
-        of: find.byType(GalleryTile),
-        matching: find.text('Image'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: find.byType(GalleryTile),
-        matching: find.text('Video'),
-      ),
-      findsOneWidget,
-    );
-    // 两个 tile 的 caption 都带画布名。
-    // T9 起工具条标题就是裸项目名（面包屑 galleryBreadcrumb 退役），它与画布名
-    // 同为 'Alpha' ⇒ 断言必须收窄到 tile 内，否则数到的是 3 个。
-    expect(
-      find.descendant(
-        of: find.byType(GalleryTile),
-        matching: find.text('Alpha'),
-      ),
-      findsNWidgets(2),
-    );
+    expect(find.text('00:01:05'), findsOneWidget);
+    expect(find.descendant(of: find.byType(GalleryTile), matching: find.text('镜头 01 · 图像')), findsOneWidget);
+    expect(find.descendant(of: find.byType(GalleryTile), matching: find.text('镜头 03 · 图转视频')), findsOneWidget);
+    expect(find.text('001'), findsOneWidget);
+    expect(find.text('002'), findsOneWidget);
+    // 左栏四组的标题与计数。
+    expect(find.text('Scope'), findsOneWidget);
+    expect(find.text('Type'), findsOneWidget);
+    expect(find.text('Model'), findsOneWidget);
+    expect(find.text('Marks'), findsOneWidget);
+    expect(find.text('All in project'), findsWidgets);
+    // 工具行「2 items」；右栏未选中时提示。
+    expect(find.text('2 items'), findsOneWidget);
+    expect(find.text('Select an asset to see its details'), findsOneWidget);
   });
 
-  // T7：「返回」在标签模型下不存在了（标签条恒在），入口降级成工具条上的
-  // shellGoToStudio ghost 按钮——动作与断言一字未变，只换了触发件。
-  // 工具条不在 DragToMoveArea 里 ⇒ 不再需要 pump(400ms) 越过手势仲裁。
-  testWidgets('工具条「去 Studio」：goTab(studio)', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1280, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer(overrides: overrides());
-    addTearDown(container.dispose);
-    container
-        .read(shellControllerProvider.notifier)
-        .openGallery(const ProjectRef(id: 'p1', name: 'Alpha'));
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('Go to Studio'));
-    await tester.pump();
-    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
-  });
-
-  testWidgets('P1-1 回归：55 字画布名 + 最小窗口宽 → 筛选条不溢出', (tester) async {
-    final ca = await canvases.create(
-      projectId: 'p1',
-      name: 'A very long canvas name that keeps going and going yes!',
-    );
-    await nodes.create(
-      canvasId: ca,
-      type: 'image',
-      nodeRole: 'result',
-      typeConfig: <String, Object?>{'image_url': 'images/a.png'},
-    );
-
-    // 溢出会作为 FlutterError 直接判失败——pump 绿即回归钉死。
-    await pumpInkApp(
-      tester,
-      const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-      surfaceSize: const Size(960, 700),
-      overrides: overrides(),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byType(DropdownButton<String?>), findsOneWidget);
-  });
-
-  testWidgets('GA-3 画布下拉：选画布过滤 + 选中值失配回落 All（P2-1 回归）', (tester) async {
-    final ca = await canvases.create(projectId: 'p1', name: 'Alpha');
-    final cb = await canvases.create(projectId: 'p1', name: 'Beta');
-    for (final c in <String>[ca, cb]) {
-      await nodes.create(
-        canvasId: c,
-        type: 'video',
-        nodeRole: 'result',
-        typeConfig: <String, Object?>{'video_url': 'videos/$c.mp4'},
-      );
-    }
-    await pumpInkApp(
-      tester,
-      const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-      surfaceSize: const Size(1280, 800),
-      overrides: overrides(),
-    );
-    await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.videocam_outlined), findsNWidgets(2));
-
-    await tester.tap(find.byType(DropdownButton<String?>));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Beta').last);
-    await tester.pumpAndSettle();
-    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
-  });
-
-  testWidgets('GA-3 筛选：类型分段过滤 + 搜索无命中 → 清除筛选恢复', (tester) async {
+  testWidgets('筛选行：点「Video」只留视频；再点取消；画布行按画布过滤', (tester) async {
     await seedAssets();
-    await pumpInkApp(
-      tester,
-      const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-      surfaceSize: const Size(1280, 800),
-      overrides: overrides(),
+    final cb = await canvases.create(projectId: 'p1', name: 'Beta');
+    await nodes.create(
+      canvasId: cb,
+      type: 'video',
+      nodeRole: 'result',
+      typeConfig: <String, Object?>{'video_url': 'videos/b.mp4', 'duration_ms': 1000},
     );
-    await tester.pumpAndSettle();
+    await pump(tester);
+    expect(find.byType(GalleryTile), findsNWidgets(3));
 
-    // 点「Video」分段 → image tile 消失、video tile 保留。
-    await tester.tap(
-      find.descendant(
-        of: find.byType(SegmentedButton<GalleryItemKind?>),
-        matching: find.text('Video'),
-      ),
-    );
+    await tester.tap(find.byKey(GalleryFilterPanel.rowKey('type', 'video')));
     await tester.pumpAndSettle();
+    expect(find.byType(GalleryTile), findsNWidgets(2));
     expect(find.byType(Image), findsNothing);
-    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+    expect(_read(tester, galleryFilterProvider('p1')).kind, GalleryItemKind.video);
 
-    // 搜索无命中 → no-match 态 + 清除筛选恢复全部。
-    await tester.enterText(find.byType(TextField), 'zzz');
+    await tester.tap(find.byKey(GalleryFilterPanel.rowKey('type', 'video')));
+    await tester.pumpAndSettle();
+    expect(find.byType(GalleryTile), findsNWidgets(3), reason: '再点已选中的行 = 取消');
+
+    await tester.tap(find.byKey(GalleryFilterPanel.rowKey('scope', cb)));
+    await tester.pumpAndSettle();
+    expect(find.byType(GalleryTile), findsOneWidget);
+    expect(find.text('Beta'), findsWidgets, reason: '工具行范围名跟着变');
+  });
+
+  testWidgets('筛选零命中 → no-match 态 + 清除筛选恢复', (tester) async {
+    await seedAssets();
+    await pump(tester);
+    // 「模型」组只有 gemini / kling；先选 kling（只剩视频），再叠加「Image」类型 → 零命中。
+    await tester.tap(find.byKey(GalleryFilterPanel.rowKey('model', 'kling-v3')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(GalleryFilterPanel.rowKey('type', 'image')));
     await tester.pumpAndSettle();
     expect(find.text('No results match the current filters'), findsOneWidget);
 
     await tester.tap(find.text('Clear filters'));
     await tester.pumpAndSettle();
-    expect(find.byType(Image), findsOneWidget);
-    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+    expect(find.byType(GalleryTile), findsNWidgets(2));
+    expect(_read(tester, galleryFilterProvider('p1')).isActive, isFalse);
   });
 
-  testWidgets('点击 image tile → 打开预览 Dialog，可关闭', (tester) async {
+  testWidgets('单击 tile → 选中 + 右栏显示名称 / 服务商 / 血缘；Ctrl+单击追加', (tester) async {
     await seedAssets();
-    await pumpInkApp(
-      tester,
-      const GalleryScreen(projectId: 'p1', projectName: 'Alpha'),
-      surfaceSize: const Size(1280, 800),
-      overrides: overrides(),
-    );
-    await tester.pumpAndSettle();
+    await pump(tester);
 
-    await tester.tap(find.byType(Image));
+    await tester.tap(tileNamed('镜头 03 · 图转视频'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(_read(tester, gallerySelectionProvider('p1')).count, 1);
+    expect(find.text('✓'), findsOneWidget);
+    // 右栏：名称、服务商行、片长行、血缘标题 + 当前项行。
+    // 名称出现在标题行 + 血缘「当前项」行。
+    expect(find.descendant(of: find.byType(GalleryInfoPanel), matching: find.text('镜头 03 · 图转视频')), findsNWidgets(2));
+    expect(find.text('Provider'), findsOneWidget);
+    expect(find.text('Duration'), findsOneWidget);
+    expect(find.descendant(of: find.byType(GalleryInfoPanel), matching: find.text('00:01:05')), findsOneWidget);
+    expect(find.text('Lineage · current line'), findsOneWidget);
+    expect(find.textContaining('Current item'), findsOneWidget);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.tap(tileNamed('镜头 01 · 图像'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    await tester.pumpAndSettle();
+    expect(_read(tester, gallerySelectionProvider('p1')).count, 2);
+    expect(find.text('✓'), findsNWidgets(2));
+
+    // 「血缘」标签只剩血缘块。
+    await tester.tap(find.byKey(GalleryInfoPanel.lineageTabKey));
+    await tester.pumpAndSettle();
+    expect(find.text('Provider'), findsNothing);
+    expect(find.text('Lineage · current line'), findsOneWidget);
+  });
+
+  testWidgets('双击图片 tile → 打开预览 Dialog，可关闭', (tester) async {
+    await seedAssets();
+    await pump(tester);
+
+    await tester.tap(tileNamed('镜头 01 · 图像'));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(tileNamed('镜头 01 · 图像'));
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsOneWidget);
     expect(find.byType(Image), findsNWidgets(2));
@@ -293,5 +240,48 @@ void main() {
     await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
     expect(find.byType(Dialog), findsNothing);
+  });
+
+  testWidgets('键盘：→ 移锚点，空格预览锚点', (tester) async {
+    await seedAssets();
+    await pump(tester);
+    await tester.tap(tileNamed('镜头 01 · 图像'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pumpAndSettle();
+    expect(_read(tester, gallerySelectionProvider('p1')).anchor, contains('videos/v.mp4'));
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(_read(tester, gallerySelectionProvider('p1')).anchor, contains('images/a.png'));
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.space);
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsOneWidget);
+  });
+
+  testWidgets('缩略图尺寸档：特大 → 3 列', (tester) async {
+    await seedAssets();
+    await pump(tester);
+    await tester.tap(find.byKey(GalleryGrid.sizeKey(GalleryThumbSize.xlarge)));
+    await tester.pumpAndSettle();
+    final GridView grid = tester.widget<GridView>(find.byType(GridView));
+    expect((grid.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount).crossAxisCount, 3);
+  });
+
+  testWidgets('「在画布中定位」→ 打开画布并选中节点', (tester) async {
+    await seedAssets();
+    await pump(tester);
+    await tester.tap(tileNamed('镜头 01 · 图像'));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(GalleryInfoPanel.locateKey));
+    await tester.pumpAndSettle();
+    final ShellState s = _read(tester, shellControllerProvider);
+    expect(s.tab, ShellTab.canvas);
+    expect(s.canvasId, isNotNull);
+    expect(s.project?.id, 'p1');
   });
 }

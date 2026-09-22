@@ -1,55 +1,39 @@
-// GalleryTile 视频二切片（GA-1/2）：缩略图渲染/回退、时长与播放角标、
-// 点击缺失视频 → broken 态。播放成功路径只验接线（media_kit 不进单测环境）。
+// GalleryTile：稿的网格单元——图区 / ▶ 时长 / 选中勾 / 当前线徽标 / 序号 + 名称，
+// 交互全部回调给上层（onTap 带 ⌘/Ctrl 切换位、onPreview 双击）。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
+import 'package:inkframe/features/gallery/util/gallery_meta.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_tile.dart';
 
-import 'package:inkframe/core/di/character_assets.dart';
-import 'package:inkframe/core/di/repositories.dart';
-
-import '../../../_harness/fake_character.dart';
 import '../../../_harness/test_app.dart';
 
-/// 指向真实临时目录的 resolver（canvas 双参根）。
 class _TempResolver implements FileResolverService {
   _TempResolver(this.root);
   final String root;
 
   @override
-  File resolve({
-    required String projectId,
-    required String canvasId,
-    required String relativePath,
-  }) =>
+  File resolve({required String projectId, required String canvasId, required String relativePath}) =>
       File('$root/$projectId/canvases/$canvasId/$relativePath');
 
   @override
-  File resolveInProject({
-    required String projectId,
-    required String relativePath,
-  }) =>
+  File resolveInProject({required String projectId, required String relativePath}) =>
       throw UnimplementedError();
 
   @override
-  String toRelative({
-    required String projectId,
-    required String canvasId,
-    required File source,
-  }) =>
+  String toRelative({required String projectId, required String canvasId, required File source}) =>
       throw UnimplementedError();
 
   @override
-  Directory canvasRoot({required String projectId, required String canvasId}) =>
-      throw UnimplementedError();
+  Directory canvasRoot({required String projectId, required String canvasId}) => throw UnimplementedError();
 }
 
-// 1x1 透明 PNG（真图字节,Image.file 可解码）。
 const List<int> _kPngBytes = <int>[
   0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D,
   0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
@@ -87,238 +71,118 @@ Future<Directory> _root(WidgetTester tester) async {
   return root;
 }
 
-Future<void> _pumpTile(
+class _Calls {
+  final List<bool> taps = <bool>[];
+  int previews = 0;
+}
+
+Future<_Calls> _pumpTile(
   WidgetTester tester, {
   required GalleryItem item,
   required String root,
-  List<Override> extraOverrides = const <Override>[],
-}) =>
-    pumpInkApp(
-      tester,
-      Scaffold(
-        body: Center(
-          child: SizedBox(
-            width: 220,
-            height: 220,
-            child: GalleryTile(projectId: 'p1', item: item),
+  GalleryItemMeta meta = const GalleryItemMeta(label: '镜头 01 · 图像'),
+  bool selected = false,
+}) async {
+  final _Calls calls = _Calls();
+  await pumpInkApp(
+    tester,
+    Scaffold(
+      body: Center(
+        child: SizedBox(
+          width: 220,
+          child: GalleryTile(
+            projectId: 'p1',
+            item: item,
+            meta: meta,
+            index: 3,
+            selected: selected,
+            onTap: calls.taps.add,
+            onPreview: () => calls.previews++,
           ),
         ),
       ),
-      overrides: <Override>[
-        fileResolverServiceProvider.overrideWithValue(_TempResolver(root)),
-        ...extraOverrides,
-      ],
-    );
+    ),
+    overrides: <Override>[fileResolverServiceProvider.overrideWithValue(_TempResolver(root))],
+  );
+  return calls;
+}
 
 void main() {
-  testWidgets('有缩略图且文件存在 → Image.file 渲染 + 播放角标 + mm:ss 时长角标',
-      (tester) async {
-    final root = await _root(tester);
-    File('${root.path}/p1/canvases/c1/thumbnails/v.jpg')
-      ..parent.createSync(recursive: true)
-      ..writeAsBytesSync(_kPngBytes);
-
-    await _pumpTile(
-      tester,
-      item: _video(thumb: 'thumbnails/v.jpg'),
-      root: root.path,
-    );
-    await tester.pump();
-
-    expect(find.byType(Image), findsOneWidget);
-    expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
-    expect(find.text('01:05'), findsOneWidget);
-  });
-
-  testWidgets('缩略图路径在但文件缺失 → errorBuilder 回退图标占位', (tester) async {
-    final root = await _root(tester);
-
-    await _pumpTile(
-      tester,
-      item: _video(thumb: 'thumbnails/gone.jpg'),
-      root: root.path,
-    );
-    await tester.runAsync(
-      () => Future<void>.delayed(const Duration(milliseconds: 50)),
-    );
-    await tester.pump();
-    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
-    // 评审 F1/F5 钉死：errorBuilder 整体接管,播放角标不残留、时长只显一份。
-    expect(find.byIcon(Icons.play_circle_outline), findsNothing,
-        reason: '缩略图失败时播放角标不得叠在占位图上');
-    expect(find.text('01:05'), findsOneWidget,
-        reason: '时长只显占位图内一份,不得双份');
-  });
-
-  testWidgets('item 变更复位 broken 态（GridView Element 复用防串位,评审 F2）',
-      (tester) async {
-    final root = await _root(tester);
-    File('${root.path}/p1/canvases/c1/thumbnails/v.jpg')
-      ..parent.createSync(recursive: true)
-      ..writeAsBytesSync(_kPngBytes);
-
-    await _pumpTile(
-      tester,
-      item: _video(thumb: 'thumbnails/v.jpg'),
-      root: root.path,
-    );
-    await tester.pump();
-    await tester.tap(find.byIcon(Icons.play_circle_outline));
-    await tester.pump();
-    expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
-
-    // 同位置换 item（无 key 的 Element 复用路径）→ didUpdateWidget 复位。
-    await _pumpTile(
-      tester,
-      item: _video(thumb: 'thumbnails/v.jpg').copyWith(
-        relativePath: 'videos/other.mp4',
-        nodeId: 'n2',
-      ),
-      root: root.path,
-    );
-    await tester.pump();
-
-    expect(find.byIcon(Icons.broken_image_outlined), findsNothing,
-        reason: '换 item 后 broken 态不得串位残留');
-    expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
-  });
-
-  testWidgets('无缩略图 → 原图标+时长占位（首切片回退不变）', (tester) async {
-    final root = await _root(tester);
-
-    await _pumpTile(tester, item: _video(), root: root.path);
-
-    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
-    expect(find.text('01:05'), findsOneWidget);
-  });
-
-  testWidgets('GA-4 存为角色：菜单仅 image 项;命名确认 → createFromImage + 成功提示',
-      (tester) async {
+  testWidgets('图片：Image.file 缩略解码（ResizeImage）+ 序号 003 + 名称', (tester) async {
     final root = await _root(tester);
     File('${root.path}/p1/canvases/c1/images/a.png')
       ..parent.createSync(recursive: true)
       ..writeAsBytesSync(_kPngBytes);
-    final repo = FakeCharacterRepo();
-    final assets = FakeCharacterAssetService();
-
-    await _pumpTile(
-      tester,
-      item: _image(),
-      root: root.path,
-      extraOverrides: <Override>[
-        characterRepositoryProvider.overrideWith((_) async => repo),
-        characterAssetServiceProvider.overrideWithValue(assets),
-      ],
-    );
-    await tester.pump();
-
-    await tester.tap(find.byIcon(Icons.more_vert));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Save as character'));
-    await tester.pumpAndSettle();
-
-    await tester.enterText(find.byType(TextField), 'Hero');
-    await tester.pump();
-    await tester.tap(find.text('Save')); // 对话框确认键（inspectorCharactersSave）
-    await tester.pumpAndSettle();
-
-    expect(repo.rows, hasLength(1), reason: '角色记录已建');
-    expect(assets.imported, hasLength(1), reason: '参考图已导入');
-    expect(find.text('Character saved'), findsOneWidget);
-  });
-
-  testWidgets('GA-4 失败路径：源文件缺失 → 失败提示,不逃逸不建记录（P1-2 回归）',
-      (tester) async {
-    final root = await _root(tester);
-    // 不落盘 images/a.png——existsSync 守卫应直接失败提示。
-    final repo = FakeCharacterRepo();
-
-    await _pumpTile(
-      tester,
-      item: _image(),
-      root: root.path,
-      extraOverrides: <Override>[
-        characterRepositoryProvider.overrideWith((_) async => repo),
-        characterAssetServiceProvider
-            .overrideWithValue(FakeCharacterAssetService()),
-      ],
-    );
-    await tester.pump();
-
-    await tester.tap(find.byIcon(Icons.more_vert));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Save as character'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'Hero');
-    await tester.pump();
-    await tester.tap(find.text('Save'));
-    await tester.pumpAndSettle();
-
-    expect(repo.rows, isEmpty, reason: '零角色记录');
-    expect(find.text('Character saved'), findsNothing);
-    expect(tester.takeException(), isNull, reason: '不逃逸为崩溃');
-  });
-
-  testWidgets('GA-4 视频项无「存为角色」菜单', (tester) async {
-    final root = await _root(tester);
-
-    await _pumpTile(tester, item: _video(), root: root.path);
-
-    expect(find.byIcon(Icons.more_vert), findsNothing);
-  });
-
-  testWidgets('点击视频但文件缺失 → broken 态,不开 lightbox', (tester) async {
-    final root = await _root(tester);
-    File('${root.path}/p1/canvases/c1/thumbnails/v.jpg')
-      ..parent.createSync(recursive: true)
-      ..writeAsBytesSync(_kPngBytes);
-
-    await _pumpTile(
-      tester,
-      item: _video(thumb: 'thumbnails/v.jpg'),
-      root: root.path,
-    );
-    await tester.pump();
-
-    await tester.tap(find.byIcon(Icons.play_circle_outline));
-    await tester.pump();
-
-    expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget,
-        reason: '视频文件缺失 → broken 态');
-    expect(find.byType(Dialog), findsNothing);
-  });
-
-  // LB-23：画廊 tile 必须 cacheWidth 缩略解码（220px tile 全解码原图 = 内存炸点）。
-  // ResizeImage 解包模式同 generation_render_node_e2e_test.dart（ME-26 先例）。
-  testWidgets('LB-23 图片 tile 缩略解码（ResizeImage）', (tester) async {
-    final root = await _root(tester);
-    File('${root.path}/p1/canvases/c1/images/a.png')
-      ..parent.createSync(recursive: true)
-      ..writeAsBytesSync(_kPngBytes);
-
     await _pumpTile(tester, item: _image(), root: root.path);
     await tester.pump();
 
-    final img = tester.widget<Image>(find.byType(Image));
-    expect(img.image, isA<ResizeImage>(),
-        reason: 'gallery tile 未设 cacheWidth——原图全解码');
+    final Image img = tester.widget<Image>(find.byType(Image));
+    expect(img.image, isA<ResizeImage>(), reason: 'LB-23：按 tile 上限缩略解码');
+    expect(find.text('003'), findsOneWidget);
+    expect(find.text('镜头 01 · 图像'), findsOneWidget);
   });
 
-  testWidgets('LB-23 视频缩略图缩略解码（ResizeImage）', (tester) async {
+  testWidgets('视频：有缩略图 → Image + ▶ + 00:01:05；无缩略图 → 占位图标', (tester) async {
     final root = await _root(tester);
-    File('${root.path}/p1/canvases/c1/thumbnails/v.jpg')
+    File('${root.path}/p1/canvases/c1/thumbs/v.png')
       ..parent.createSync(recursive: true)
       ..writeAsBytesSync(_kPngBytes);
+    await _pumpTile(tester, item: _video(thumb: 'thumbs/v.png'), root: root.path);
+    await tester.pump();
+    expect(find.byType(Image), findsOneWidget);
+    expect(find.text('▶'), findsOneWidget);
+    expect(find.text('00:01:05'), findsOneWidget);
 
-    await _pumpTile(
-      tester,
-      item: _video(thumb: 'thumbnails/v.jpg'),
-      root: root.path,
-    );
+    await _pumpTile(tester, item: _video(), root: root.path);
+    await tester.pump();
+    expect(find.byType(Image), findsNothing);
+    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
+    expect(find.text('00:01:05'), findsOneWidget);
+  });
+
+  testWidgets('缩略图路径在但文件缺失 → errorBuilder 回退 broken 图标', (tester) async {
+    final root = await _root(tester);
+    await _pumpTile(tester, item: _video(thumb: 'thumbs/missing.png'), root: root.path);
+    // 文件读取在真实异步里失败，pumpAndSettle 等不到；runAsync 放一小段真实时间再 pump。
+    await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+    await tester.pump();
+    expect(find.byIcon(Icons.broken_image_outlined), findsOneWidget);
+  });
+
+  testWidgets('选中 → 右上 ✓；在当前线上 → 「当前线」徽标；名称为空回落到类型名', (tester) async {
+    final root = await _root(tester);
+    await _pumpTile(tester, item: _image(), root: root.path, selected: true,
+        meta: const GalleryItemMeta(label: '', onNarrativeChain: true));
+    await tester.pump();
+    expect(find.text('✓'), findsOneWidget);
+    expect(find.text('Current line'), findsOneWidget);
+    expect(find.text('Image'), findsOneWidget, reason: 'label 空 → 类型名');
+
+    await _pumpTile(tester, item: _image(), root: root.path);
+    await tester.pump();
+    expect(find.text('✓'), findsNothing);
+    expect(find.text('Current line'), findsNothing);
+  });
+
+  testWidgets('单击 → onTap(false)；Ctrl+单击 → onTap(true)；双击 → onPreview', (tester) async {
+    final root = await _root(tester);
+    final _Calls calls = await _pumpTile(tester, item: _image(), root: root.path);
     await tester.pump();
 
-    final img = tester.widget<Image>(find.byType(Image));
-    expect(img.image, isA<ResizeImage>(),
-        reason: '视频缩略图未设 cacheWidth——原图全解码');
+    await tester.tap(find.byType(GalleryTile));
+    await tester.pump(const Duration(milliseconds: 400)); // 越过双击等待
+    expect(calls.taps, <bool>[false]);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
+    await tester.tap(find.byType(GalleryTile));
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.controlLeft);
+    expect(calls.taps, <bool>[false, true]);
+
+    await tester.tap(find.byType(GalleryTile));
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.tap(find.byType(GalleryTile));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(calls.previews, 1);
   });
 }

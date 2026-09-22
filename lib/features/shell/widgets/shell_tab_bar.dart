@@ -33,6 +33,9 @@ import '../../../theme/components/ws_primitives.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_transform_controller.dart';
 import '../../canvas/util/node_position.dart';
+import '../../gallery/models/gallery_item.dart';
+import '../../gallery/providers/gallery_view.dart';
+import '../../gallery/widgets/gallery_actions.dart';
 import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
@@ -70,6 +73,14 @@ class ShellTabBar extends ConsumerWidget {
     final ShellNavigator nav = ref.read(shellControllerProvider.notifier);
     final String? canvasId = s.canvasId;
     final bool showActions = s.tab == ShellTab.canvas && canvasId != null;
+    final ProjectRef? project = s.project;
+    if (s.tab == ShellTab.gallery && project != null) {
+      return InkShellTabBar(
+        after: const ShellBreadcrumb(),
+        actions: <Widget>[_GallerySaveAsCharacter(project: project)],
+        items: _items(l, s, nav),
+      );
+    }
     return InkShellTabBar(
       after: const ShellBreadcrumb(),
       actions: !showActions
@@ -104,7 +115,12 @@ class ShellTabBar extends ConsumerWidget {
                 child: WsPrimaryButton(l.shellActionExportVideo),
               ),
             ],
-      items: <InkShellTabBarItem>[
+      items: _items(l, s, nav),
+    );
+  }
+
+  static List<InkShellTabBarItem> _items(AppLocalizations l, ShellState s, ShellNavigator nav) =>
+      <InkShellTabBarItem>[
         for (final ShellTab t in ShellTab.values)
           InkShellTabBarItem(
             key: keyOf(t),
@@ -113,7 +129,51 @@ class ShellTabBar extends ConsumerWidget {
             selected: t == s.tab,
             onTap: () => nav.goTab(t),
           ),
-      ],
+      ];
+}
+
+/// 画廊标签的「存为角色」：作用于选中集的锚点，且锚点得是图片（GA-4 只收图片）。
+/// 稿上旁边的「已选 N · 发送到画布」没有后端，不画。
+class _GallerySaveAsCharacter extends ConsumerStatefulWidget {
+  const _GallerySaveAsCharacter({required this.project});
+  final ProjectRef project;
+
+  static const Key key_ = Key('shellAction-gallerySaveAsCharacter');
+
+  @override
+  ConsumerState<_GallerySaveAsCharacter> createState() => _GallerySaveAsCharacterState();
+}
+
+class _GallerySaveAsCharacterState extends ConsumerState<_GallerySaveAsCharacter> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = context.l10n;
+    final GalleryItem? anchor = ref.watch(galleryAnchorItemProvider(widget.project.id));
+    final bool enabled = !_busy && anchor != null && anchor.kind == GalleryItemKind.image;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: l.gallerySaveAsCharacter,
+      child: MouseRegion(
+        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        child: GestureDetector(
+          key: _GallerySaveAsCharacter.key_,
+          behavior: HitTestBehavior.opaque,
+          onTap: !enabled
+              ? null
+              : () async {
+                  setState(() => _busy = true);
+                  try {
+                    await gallerySaveAsCharacter(context, ref, projectId: widget.project.id, item: anchor);
+                  } finally {
+                    if (mounted) setState(() => _busy = false);
+                  }
+                },
+          child: Opacity(opacity: enabled ? 1 : 0.5, child: WsSecondaryButton(l.gallerySaveAsCharacter)),
+        ),
+      ),
     );
   }
 }
