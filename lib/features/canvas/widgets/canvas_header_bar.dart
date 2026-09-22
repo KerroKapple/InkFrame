@@ -41,35 +41,44 @@ class CanvasHeaderBar extends ConsumerWidget {
       ),
       child: Row(
         children: <Widget>[
-          // 画布名超长时单行省略，泳道列表紧随其后（Flexible 让两段按内容分宽）。
+          // 画布名 + 泳道列表放在自己的子行里按内容分宽、超长各自省略——
+          // 不能把它们直接做成外层 Row 的 Flexible：那会和右侧的 Spacer 均分剩余宽度，
+          // 把缩放读数往左推（画布 golden 抓到过这一刀）。
           Flexible(
-            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: t.bodyStrong.copyWith(color: c.fg1)),
-          ),
-          if (lanes.isNotEmpty) ...<Widget>[
-            const SizedBox(width: InkSpacing.s12),
-            Container(width: 1, height: 12, color: c.control),
-            const SizedBox(width: InkSpacing.s12),
-            Flexible(
-              child: Text.rich(
-                TextSpan(
-                  style: t.body.copyWith(color: c.fg5),
-                  children: <InlineSpan>[
-                    TextSpan(text: l.canvasHeaderLanes),
-                    for (int i = 0; i < lanes.length; i++) ...<InlineSpan>[
-                      if (i > 0) const TextSpan(text: ' · '),
-                      TextSpan(
-                        text: lanes[i].label.isEmpty ? l.laneUntitled : lanes[i].label,
-                        style: TextStyle(color: c.fg3),
-                      ),
-                    ],
-                  ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Flexible(
+                  child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: t.bodyStrong.copyWith(color: c.fg1)),
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+                if (lanes.isNotEmpty) ...<Widget>[
+                  const SizedBox(width: InkSpacing.s12),
+                  Container(width: 1, height: 12, color: c.control),
+                  const SizedBox(width: InkSpacing.s12),
+                  Flexible(
+                    child: Text.rich(
+                      TextSpan(
+                        style: t.body.copyWith(color: c.fg5),
+                        children: <InlineSpan>[
+                          TextSpan(text: l.canvasHeaderLanes),
+                          for (int i = 0; i < lanes.length; i++) ...<InlineSpan>[
+                            if (i > 0) const TextSpan(text: ' · '),
+                            TextSpan(
+                              text: lanes[i].label.isEmpty ? l.laneUntitled : lanes[i].label,
+                              style: TextStyle(color: c.fg3),
+                            ),
+                          ],
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ],
+          ),
           const Spacer(),
           ValueListenableBuilder<Matrix4>(
             valueListenable: transform,
