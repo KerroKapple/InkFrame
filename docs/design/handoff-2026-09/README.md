@@ -432,9 +432,30 @@ Key 输入：无底色 + 1px 底线 + 等宽掩码 + 右侧「验证」按钮；
 
 `.dc.html` 文件用浏览器直接打开即可查看，无需构建步骤。
 
-> 入库说明：仓库内只保留 README、`PROMPT_visual_rebuild.md`（实施任务书）与七个 `.dc.html`；
-> 原包里的 `support.js` 是设计工具的运行时，未入库。缺了它 `.dc.html` 可能打不开——README 才是主要阅读对象，
-> 需要看稿时从原包 `UIUX设计需求.zip` 取。
+> 入库说明（2026-09-22）：仓库内保留 README、`PROMPT_visual_rebuild.md`（实施任务书）与七个 **standalone**
+> `.html`（自带运行时与字体，浏览器直接打开；来自 `UIUX设计需求).zip`）。原始 `.dc.html` 依赖 `support.js`，未入库。
+
+### 静态复刻验收（B 路径）
+
+每一屏先在 Flutter 里做**不接数据**的静态复刻，与稿并排比到只剩字形差异，再接 provider。工具链：
+
+```bash
+# 1. 复刻页自截图（1600×1000 逻辑像素，与显示器 DPI 无关）
+flutter build windows --debug -t lib/replica_main.dart \
+  --dart-define=INKFRAME_REPLICA_OUT=D:/tmp/flutter.png && build/windows/x64/runner/Debug/inkframe.exe
+# 2. 稿的基准图：headless Chromium 开 2000×1250 视口渲染 standalone，裁左上 1600×1000
+chrome --headless=new --disable-gpu --hide-scrollbars --force-device-scale-factor=1 \
+  --window-size=2000,1250 --virtual-time-budget=15000 --screenshot=ref_raw.png "http://127.0.0.1:8765/InkFrame%20Workspace%20v2.html"
+# 3. 像素比对（容差 24/255，输出差异图 + 按 20px 行带的差异分布）
+powershell -File scripts/replica_diff.ps1 -A ref.png -B flutter.png -Out diff.png
+```
+
+`replica/` 存每屏的三张图：`*_reference_*.png`（稿）/ `*_flutter_*.png`（复刻）/ `*_diff.png`（红 = 差异像素）。
+读稿的两个坑：CSS 是 **content-box**（`height:30px; border-bottom:1px` 实占 31）；节点图区用的是 **outline**（画在盒子外一圈，不占布局）。
+
+| 屏 | 差异像素 | 状态 |
+|---|---|---|
+| Workspace v2 | 0.97%（全部为字形抗锯齿） | 待用户验收 |
 
 ---
 

@@ -133,7 +133,7 @@ void main() {
     // 而所有功能测试照绿。
     test('防复制：surface5 ≠ surface4（三变体），fg1 ≠ fg2（dark / light）', () {
       for (final (name, make) in _variants) {
-        expect(make().surface5, isNot(make().surface4), reason: '$name');
+        expect(make().surface5, isNot(make().surface4), reason: name);
       }
       // highContrast 的 fg1–fg3 按任务书刻意全取纯白（层级靠字重与位置），
       // 故 fg1 ≠ fg2 只对 dark / light 成立。
@@ -158,7 +158,7 @@ void main() {
       }
     });
 
-    test('每个变体暴露全部 29 个槽位（README 表 28 + scrim）', () {
+    test('每个变体暴露全部 32 个槽位（README 表 28 + scrim + 画布专用 3）', () {
       for (final (_, make) in _variants) {
         final c = make();
         final List<Color> all = <Color>[
@@ -191,8 +191,11 @@ void main() {
           c.audioBorder,
           c.audioFg,
           c.scrim,
+          c.canvasGrid,
+          c.laneDivider,
+          c.thumbFill,
         ];
-        expect(all.length, 29);
+        expect(all.length, 32);
       }
     });
   });

@@ -17,6 +17,7 @@ const String _sans = 'Noto Sans SC';
 const List<String> _sansFallback = <String>[
   'PingFang SC',
   'Microsoft YaHei UI',
+  'Segoe UI Symbol', // ⌘ ↵ › 等符号：CJK 字体缺字时的最后一跳（Windows）
 ];
 
 const String _mono = 'JetBrainsMono';
@@ -25,6 +26,7 @@ const List<String> _monoFallback = <String>[
   'Menlo',
   'PingFang SC',
   'Microsoft YaHei UI',
+  'Segoe UI Symbol',
 ];
 
 @immutable

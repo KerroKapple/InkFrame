@@ -35,6 +35,14 @@ class InkPalette {
     Color(0xFFE8D57C), // 芥黄
   ];
 
+  /// Workspace v2 稿上三种 160° 渐变缩略图占位（README §Assets：实现时换真实缩略图）。
+  /// 只供静态复刻用；接线后随 WorkspaceFixture 一起删除。
+  static const List<(Color, Color)> thumbPlaceholderGradients = <(Color, Color)>[
+    (Color(0xFF3B3A36), Color(0xFF23221F)),
+    (Color(0xFF34342F), Color(0xFF1F1E1B)),
+    (Color(0xFF2F2A22), Color(0xFF1C1A16)),
+  ];
+
   /// 画布卡片背景自定义色候选（暗色系中性偏色面，保证前景可读）。
   static const List<Color> canvasCardColorChoices = <Color>[
     Color(0xFF2A2320), // 暖炭
@@ -79,6 +87,9 @@ class InkColors {
     required this.audioBorder,
     required this.audioFg,
     required this.scrim,
+    required this.canvasGrid,
+    required this.laneDivider,
+    required this.thumbFill,
   });
 
   /// 深色主题（默认）——README dark 列原值。
@@ -113,6 +124,9 @@ class InkColors {
         audioBorder: Color(0xFF3A5334),
         audioFg: Color(0xFF8FB07E),
         scrim: Color(0x8C0A0A0A),
+        canvasGrid: Color(0xFF222222),
+        laneDivider: Color(0xFF2A2A2A),
+        thumbFill: Color(0xFF202020),
       );
 
   /// 浅色主题——同一语义、反向 ramp；accent 压暗保对比。
@@ -147,6 +161,9 @@ class InkColors {
         audioBorder: Color(0xFFA9C49E),
         audioFg: Color(0xFF3E6B34),
         scrim: Color(0x8C0A0A0A),
+        canvasGrid: Color(0xFFECECEC),
+        laneDivider: Color(0xFFDADADA),
+        thumbFill: Color(0xFFF0F0F0),
       );
 
   /// 高对比度变体（A11y §20.1）——基于 dark：surface 塌到两档，描边纯白，
@@ -182,6 +199,9 @@ class InkColors {
         audioBorder: Color(0xFF6BFF6B),
         audioFg: Color(0xFF6BFF6B),
         scrim: Color(0x8C0A0A0A),
+        canvasGrid: Color(0xFF1A1A1A),
+        laneDivider: Color(0xFFFFFFFF),
+        thumbFill: Color(0xFF0A0A0A),
       );
 
   // ---- surface：越大越"抬升"（light 变体的 surface5 例外，见工厂注释）----
@@ -226,6 +246,11 @@ class InkColors {
 
   /// 浮层遮罩 rgba(10,10,10,0.55)：模态 barrier 与缩略图上的渐变压暗共用。
   final Color scrim;
+
+  // ---- 画布专用（Workspace v2 稿：24px 网格线 / 泳道上下边 / 空图区底）----
+  final Color canvasGrid;
+  final Color laneDivider;
+  final Color thumbFill;
 }
 
 /// 间距（8 的倍数主刻度 + 半阶档位）。
@@ -257,9 +282,11 @@ class InkSpacing {
 /// 圆角。README 四档：2（缩略图内格）/ 3（按钮、输入、片段）/ 4（图区、分组框）/ 6（浮层）。
 class InkRadius {
   InkRadius._();
+  static const double s1 = 1; // 方点 / 缩略图占位框
   static const double xs = 2; // 缩略图内格 / 细进度条
   static const double s3 = 3; // 按钮 / 输入 / 片段
   static const double sm = 4; // 图区 / 分组框
+  static const double s5 = 5; // 图区 outline：画在 4px 圆角盒子外一圈时的外径
   static const double md = 8;
   static const double lg = 12;
   static const double xl = 16;

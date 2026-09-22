@@ -6,6 +6,7 @@ import 'package:inkframe/theme/typography.dart';
 const List<String> _sansChain = <String>[
   'PingFang SC',
   'Microsoft YaHei UI',
+  'Segoe UI Symbol',
 ];
 
 void main() {
