@@ -244,10 +244,11 @@ lib/
 │   │   ├── providers/                 # ExportController (canvas→project path conversion)
 │   │   ├── util/                      # Output-name pre-validation + export_order.dart (EX-1′ narrative-chain default order)
 │   │   └── widgets/
-│   ├── gallery/                       # Project-wide generated-asset gallery (read-only)
-│   │   ├── models/
-│   │   ├── providers/
-│   │   └── widgets/
+│   ├── gallery/                       # Project-wide generated-asset gallery (Screens 稿第 2 屏：筛选 220 | 网格 | 信息 320)
+│   │   ├── models/                    # gallery_item (freezed) + gallery_graph / gallery_selection (hand-written)
+│   │   ├── providers/                 # gallery_graph_provider (sole DB read) → gallery_controller (items) → gallery_view (meta / filtered / anchor); gallery_filter + gallery_selection are keepAlive per project
+│   │   ├── util/                      # gallery_meta.dart (pure: meta / lineage / narrative-chain marks) + gallery_time.dart
+│   │   └── widgets/                   # gallery_screen / gallery_filter_panel / gallery_grid + gallery_tile / gallery_info_panel / gallery_actions (save-as-character, locate-in-canvas)
 │   ├── generation/                    # Generation flow UI + state (no widgets/ — panel retired in #164)
 │   │   ├── generation_controller.dart
 │   │   ├── models/
