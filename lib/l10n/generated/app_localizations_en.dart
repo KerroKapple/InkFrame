@@ -1802,4 +1802,78 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get galleryNoSelection => 'Select an asset to see its details';
+
+  @override
+  String get studioLibraryHeading => 'Library';
+
+  @override
+  String get studioLibraryAllProjects => 'All projects';
+
+  @override
+  String get studioSettings => 'Settings';
+
+  @override
+  String get studioNoKeyBannerHint =>
+      'Keys go to the system keychain, never the database.';
+
+  @override
+  String get studioNoKeyBannerDismiss => 'Dismiss';
+
+  @override
+  String get studioSortRecent => 'Sort: recently modified';
+
+  @override
+  String get studioViewGrid => 'Grid';
+
+  @override
+  String get studioResumeLabel => 'Last time';
+
+  @override
+  String studioResumeName(String project, String canvas) {
+    return '$project · $canvas';
+  }
+
+  @override
+  String get studioResumeAction => 'Continue';
+
+  @override
+  String studioCardCanvasBadge(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count canvases',
+      one: '1 canvas',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String studioCardRendering(int count) {
+    return '$count nodes rendering';
+  }
+
+  @override
+  String studioCardMeta(String time, String rendering) {
+    return '$time · $rendering';
+  }
+
+  @override
+  String get studioNewProjectHintBlank => 'Blank';
+
+  @override
+  String get studioNewProjectHintSample => 'Sample';
+
+  @override
+  String get studioImportPackage => 'Import package';
+
+  @override
+  String statusBarProjectsCanvases(int projects, int canvases) {
+    return '$projects projects · $canvases canvases';
+  }
+
+  @override
+  String get statusBarKeyMissing => 'No key configured';
+
+  @override
+  String get statusBarKeyConfigured => 'Key configured';
 }

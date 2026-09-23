@@ -13,16 +13,22 @@ import 'package:inkframe/features/shell/widgets/shell_chrome.dart';
 import '../../_harness/shell_app.dart';
 
 void main() {
-  testWidgets('chrome 渲染 If·InkFrame logo + ⌘K 入口；面包屑在标签栏', (tester) async {
+  testWidgets('chrome 渲染 If·InkFrame logo + ⌘K 入口；面包屑在标签栏（Studio 标签按稿不出面包屑）',
+      (tester) async {
     final paths = await setupTempPaths(tester, 'ink_shell_chrome_content_');
     await pumpInkShell(tester, paths: paths);
 
     expect(find.text('If'), findsOneWidget);
     expect(find.text('InkFrame'), findsOneWidget);
-    // 未选项目 ⇒ 面包屑第二段是 shellBreadcrumbNoProject。
-    expect(find.text('No project'), findsOneWidget);
+    // Screens 稿：Studio 标签栏右侧是「导入项目包 / 新建项目」，没有面包屑。
+    expect(find.text('No project'), findsNothing);
+    expect(find.text('Import package'), findsOneWidget);
     // 非 macOS 平台（测试默认 android）显示 Ctrl 修饰键。
     expect(find.text('Ctrl K'), findsOneWidget);
+
+    // 切到序列标签（无项目）⇒ 面包屑第二段是 shellBreadcrumbNoProject。
+    await tapShellTab(tester, ShellTab.sequence);
+    expect(find.text('No project'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 
   testWidgets('面包屑带项目名；canvasId 为 null 时不出画布段', (tester) async {
@@ -30,7 +36,7 @@ void main() {
     await pumpInkShell(
       tester,
       paths: paths,
-      initial: const ShellState(project: ProjectRef(id: 'p1', name: 'Alpha')),
+      initial: const ShellState(tab: ShellTab.sequence, project: ProjectRef(id: 'p1', name: 'Alpha')),
     );
 
     expect(find.text('Alpha'), findsOneWidget);

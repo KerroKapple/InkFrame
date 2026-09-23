@@ -976,10 +976,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioOpenCanvasFailed => '打开画布失败';
 
   @override
-  String get studioNoKeyBannerText => '尚未配置任何服务商 API Key——配置后才能生成。';
+  String get studioNoKeyBannerText => '尚未配置任何 API Key，生成功能不可用。';
 
   @override
-  String get studioNoKeyBannerAction => '前往设置配置';
+  String get studioNoKeyBannerAction => '前往设置';
 
   @override
   String get studioCreateSampleProject => '创建示例项目';
@@ -1736,4 +1736,71 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get galleryNoSelection => '选中一个产物查看信息';
+
+  @override
+  String get studioLibraryHeading => '库';
+
+  @override
+  String get studioLibraryAllProjects => '全部项目';
+
+  @override
+  String get studioSettings => '设置';
+
+  @override
+  String get studioNoKeyBannerHint => 'Key 存入系统钥匙串，不进数据库。';
+
+  @override
+  String get studioNoKeyBannerDismiss => '关闭';
+
+  @override
+  String get studioSortRecent => '排序：最近修改';
+
+  @override
+  String get studioViewGrid => '网格';
+
+  @override
+  String get studioResumeLabel => '上次离开时';
+
+  @override
+  String studioResumeName(String project, String canvas) {
+    return '$project · $canvas';
+  }
+
+  @override
+  String get studioResumeAction => '继续创作';
+
+  @override
+  String studioCardCanvasBadge(int count) {
+    return '$count 画布';
+  }
+
+  @override
+  String studioCardRendering(int count) {
+    return '$count 节点在渲染';
+  }
+
+  @override
+  String studioCardMeta(String time, String rendering) {
+    return '$time · $rendering';
+  }
+
+  @override
+  String get studioNewProjectHintBlank => '空白';
+
+  @override
+  String get studioNewProjectHintSample => '短剧示例';
+
+  @override
+  String get studioImportPackage => '导入项目包';
+
+  @override
+  String statusBarProjectsCanvases(int projects, int canvases) {
+    return '$projects 项目 · $canvases 画布';
+  }
+
+  @override
+  String get statusBarKeyMissing => '未配置 Key';
+
+  @override
+  String get statusBarKeyConfigured => '已配置 Key';
 }

@@ -20,9 +20,11 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../../core/di/database.dart';
 import '../../../core/di/file_resolver.dart';
+import '../../../core/di/preferences.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/interfaces/unit_of_work.dart';
+import '../../../core/models/app_preferences.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_edge.dart';
@@ -37,6 +39,7 @@ import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
 import '../../studio/providers/workspace_projects_provider.dart';
 import '../models/gallery_fixture.dart';
+import '../models/studio_fixture.dart';
 import '../models/workspace_fixture.dart';
 
 const String kCaptureOut = String.fromEnvironment('INKFRAME_CAPTURE_OUT');
@@ -77,6 +80,7 @@ class _DevCaptureFrameState extends ConsumerState<DevCaptureFrame> {
     if (kSeedFixture) {
       final WorkspaceFixtureIds ids = await seedWorkspaceFixture(ref);
       if (kCaptureScreen == 'gallery') await seedGalleryFixture(ref, ids);
+      if (kCaptureScreen == 'studio') await seedStudioFixture(ref, ids);
     }
     if (kCaptureOut.isNotEmpty) {
       await Future<void>.delayed(const Duration(milliseconds: kCaptureDelayMs));
@@ -215,6 +219,30 @@ Future<Uint8List> _gradientPng((Color, Color) g) async {
   final ui.Image img = await rec.endRecording().toImage(size.width.toInt(), size.height.toInt());
   final ByteData? bytes = await img.toByteData(format: ui.ImageByteFormat.png);
   return bytes!.buffer.asUint8List();
+}
+
+/// Studio 稿那一屏：再建三个项目（稿上的名字与画布数），把「上次离开时」指到画布 02，
+/// 山径破晓摸一下让它排到最前（排序 = 最近修改），然后切到 Studio 标签。
+/// 无 Key 引导条靠临时数据根本来就没配 Key。
+Future<void> seedStudioFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
+  final UnitOfWork uow = await ref.read(unitOfWorkProvider.future);
+  for (final StProject p in StudioFixture.projects.skip(1)) {
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    await uow.run((RepositoryScope s) async {
+      final String id = await s.projects.create(name: p.name);
+      for (int i = 0; i < p.canvases; i++) {
+        await s.canvas.create(projectId: id, name: '画布 ${(i + 1).toString().padLeft(2, '0')}');
+      }
+    });
+  }
+  await Future<void>.delayed(const Duration(milliseconds: 5));
+  await uow.run((RepositoryScope s) =>
+      s.projects.update(ids.projectId, <String, Object?>{'name': WorkspaceFixture.breadcrumb[1]}));
+  await ref.read(preferencesServiceProvider).update(
+        (AppPreferences p) => p.copyWith(lastCanvasId: ids.canvasId, lastProjectId: ids.projectId),
+      );
+  ref.invalidate(workspaceProjectsProvider);
+  ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
 }
 
 /// 把 WorkspaceFixture 那一屏写进库并打开画布 02。节点位置 / 名称 / 类型 / 边角色都取稿上原文。

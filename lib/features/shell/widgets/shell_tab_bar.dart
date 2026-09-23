@@ -36,7 +36,12 @@ import '../../canvas/util/node_position.dart';
 import '../../gallery/models/gallery_item.dart';
 import '../../gallery/providers/gallery_view.dart';
 import '../../gallery/widgets/gallery_actions.dart';
+import '../../../core/di/database_restore.dart';
+import '../../../core/di/project_archive.dart';
 import '../../storyboard/widgets/script_import_dialog.dart';
+import '../../studio/project_import_flow.dart';
+import '../../studio/providers/project_export_busy.dart';
+import '../../studio/studio_home_screen.dart' show showStudioNewProjectDialog;
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
 import 'shell_breadcrumb.dart';
@@ -65,6 +70,8 @@ class ShellTabBar extends ConsumerWidget {
   static const Key importScriptKey = Key('shellAction-importScript');
   static const Key sequencePreviewKey = Key('shellAction-sequencePreview');
   static const Key exportVideoKey = Key('shellAction-exportVideo');
+  static const Key importPackageKey = Key('shellAction-importPackage');
+  static const Key newProjectKey = Key('shellAction-newProject');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -74,6 +81,29 @@ class ShellTabBar extends ConsumerWidget {
     final String? canvasId = s.canvasId;
     final bool showActions = s.tab == ShellTab.canvas && canvasId != null;
     final ProjectRef? project = s.project;
+    if (s.tab == ShellTab.studio) {
+      // 稿：Studio 标签无面包屑；右侧「导入项目包」（次级）+「新建项目」（主）。
+      final bool importBusy = ref.watch(projectImportBusyProvider) ||
+          ref.watch(databaseRestoreBusyProvider) ||
+          ref.watch(projectExportBusyProvider);
+      return InkShellTabBar(
+        actions: <Widget>[
+          _Action(
+            key: importPackageKey,
+            label: l.studioImportPackage,
+            onTap: importBusy ? () {} : () => runProjectImportFlow(context, ref),
+            child: Opacity(opacity: importBusy ? 0.5 : 1, child: WsSecondaryButton(l.studioImportPackage)),
+          ),
+          _Action(
+            key: newProjectKey,
+            label: l.studioNewProject,
+            onTap: () => showStudioNewProjectDialog(context, ref),
+            child: WsPrimaryButton(l.studioNewProject, bordered: false),
+          ),
+        ],
+        items: _items(l, s, nav),
+      );
+    }
     if (s.tab == ShellTab.gallery && project != null) {
       return InkShellTabBar(
         after: const ShellBreadcrumb(),

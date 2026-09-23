@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/package_info.dart';
 import '../../../core/di/paths.dart';
+import '../../../core/di/secure_storage.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -62,10 +63,17 @@ class ShellStatusBar extends ConsumerWidget {
       left.add(l.statusBarGallery(count, selected));
       left.add(l.statusBarGalleryHint);
     } else if (s.tab == ShellTab.studio) {
-      final int projects =
-          (ref.watch(workspaceProjectsProvider).valueOrNull ?? const <ProjectWithCanvases>[]).length;
-      left.add(l.statusBarProjects(projects));
+      // 稿：4 项目 · 11 画布 | 存储 42.3 GB · 可用 128 GB（无字段，不画）| 未配置 Key | 版本
+      final List<ProjectWithCanvases> projects =
+          ref.watch(workspaceProjectsProvider).valueOrNull ?? const <ProjectWithCanvases>[];
+      int canvases = 0;
+      for (final ProjectWithCanvases p in projects) {
+        canvases += p.canvases.length;
+      }
+      left.add(l.statusBarProjectsCanvases(projects.length, canvases));
     }
+    final bool? keyConfigured =
+        s.tab == ShellTab.studio ? ref.watch(anyProviderKeyConfiguredProvider).valueOrNull : null;
 
     final String storage = ref.watch(appPathsProvider).projects.path;
     final String version = ref.watch(packageInfoProvider).valueOrNull?.version ?? '';
@@ -84,6 +92,10 @@ class ShellStatusBar extends ConsumerWidget {
             Flexible(child: Text(left[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
           ],
           const Spacer(),
+          if (keyConfigured != null) ...<Widget>[
+            Text(keyConfigured ? l.statusBarKeyConfigured : l.statusBarKeyMissing, style: style),
+            const SizedBox(width: InkSpacing.md),
+          ],
           Flexible(
             child: Text(l.statusBarStorage(storage), maxLines: 1, overflow: TextOverflow.ellipsis, style: style),
           ),

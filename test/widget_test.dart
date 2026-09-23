@@ -57,6 +57,6 @@ void main() {
     await tester.pump();
     await tester.pump();
     // 解锁态首屏为 StudioHomeScreen，顶部 chrome 中显示 LIBRARY section
-    expect(find.text('LIBRARY'), findsOneWidget);
+    expect(find.text('Library'), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 10)));
 }

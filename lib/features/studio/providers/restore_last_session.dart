@@ -7,6 +7,9 @@
 // 是否恢复由偏好开关 shellKeepLastCanvas 单独控制（默认开），且它是这件事
 // 的【唯一真相源】——lib 里不再有第二处「悄悄清掉会话记录」的写点
 // （T11 退掉了 ⌘K「Back to Studio」里那处 clearLastCanvas）。
+//
+// 「有没有可恢复的上次会话」这个判据与 Studio 首页的「上次离开时」恢复条共用
+// util/last_session.dart 的 hasRestorableLastSession，不各写一份。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/preferences.dart';
@@ -14,17 +17,15 @@ import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
+import '../util/last_session.dart';
 
 final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   final prefs = ref.read(preferencesServiceProvider);
   final saved = prefs.current;
-  final canvasId = saved.lastCanvasId;
-  final projectId = saved.lastProjectId;
-  if (canvasId == null || projectId == null) return;
   // T11：开关关掉 = 这次不回去，但【不清记录】——用户可能只是这次想从
   // Studio 开始，重新打开开关还应当回到同一张画布。
   //
-  // 【这四行的位置是 load-bearing 的，不只是它的存在】：必须在库查询之前。
+  // 【这个守卫的位置是 load-bearing 的，不只是它的存在】：必须在库查询之前。
   // 挪到下面 `if (!valid)` 之后，「开关关着 + 上次画布恰好已被软删」这一格
   // 就会先判无效、走 clearLastCanvas，把记录静默清掉——开关说"保留"，
   // 应用却没保留，而且用户重新打开开关也回不去了。
@@ -33,7 +34,9 @@ final restoreLastSessionProvider = FutureProvider<void>((ref) async {
   // 实跑变异（把本守卫挪到 `if (!valid)` 之后）→ 该例红
   // `Expected: 'cv1' / Actual: <null>`，而喂有效记录的那例仍绿
   // （两例钉的是不同格子，有效记录那一格对位置零鉴别力）。
-  if (!saved.shellKeepLastCanvas) return;
+  if (!hasRestorableLastSession(saved)) return;
+  final String canvasId = saved.lastCanvasId!;
+  final String projectId = saved.lastProjectId!;
 
   final bool valid;
   // fix round 1（M-5）：name 的类型窄化放在 try 内、用 `as String?` 安全转型

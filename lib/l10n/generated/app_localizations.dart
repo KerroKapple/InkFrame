@@ -3277,6 +3277,120 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select an asset to see its details'**
   String get galleryNoSelection;
+
+  /// No description provided for @studioLibraryHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get studioLibraryHeading;
+
+  /// No description provided for @studioLibraryAllProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get studioLibraryAllProjects;
+
+  /// No description provided for @studioSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get studioSettings;
+
+  /// No description provided for @studioNoKeyBannerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys go to the system keychain, never the database.'**
+  String get studioNoKeyBannerHint;
+
+  /// No description provided for @studioNoKeyBannerDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get studioNoKeyBannerDismiss;
+
+  /// No description provided for @studioSortRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort: recently modified'**
+  String get studioSortRecent;
+
+  /// No description provided for @studioViewGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get studioViewGrid;
+
+  /// No description provided for @studioResumeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last time'**
+  String get studioResumeLabel;
+
+  /// No description provided for @studioResumeName.
+  ///
+  /// In en, this message translates to:
+  /// **'{project} · {canvas}'**
+  String studioResumeName(String project, String canvas);
+
+  /// No description provided for @studioResumeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get studioResumeAction;
+
+  /// No description provided for @studioCardCanvasBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 canvas} other{{count} canvases}}'**
+  String studioCardCanvasBadge(int count);
+
+  /// No description provided for @studioCardRendering.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} nodes rendering'**
+  String studioCardRendering(int count);
+
+  /// No description provided for @studioCardMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} · {rendering}'**
+  String studioCardMeta(String time, String rendering);
+
+  /// No description provided for @studioNewProjectHintBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'Blank'**
+  String get studioNewProjectHintBlank;
+
+  /// No description provided for @studioNewProjectHintSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample'**
+  String get studioNewProjectHintSample;
+
+  /// No description provided for @studioImportPackage.
+  ///
+  /// In en, this message translates to:
+  /// **'Import package'**
+  String get studioImportPackage;
+
+  /// No description provided for @statusBarProjectsCanvases.
+  ///
+  /// In en, this message translates to:
+  /// **'{projects} projects · {canvases} canvases'**
+  String statusBarProjectsCanvases(int projects, int canvases);
+
+  /// No description provided for @statusBarKeyMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No key configured'**
+  String get statusBarKeyMissing;
+
+  /// No description provided for @statusBarKeyConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Key configured'**
+  String get statusBarKeyConfigured;
 }
 
 class _AppLocalizationsDelegate

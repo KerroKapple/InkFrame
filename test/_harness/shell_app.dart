@@ -71,6 +71,8 @@ List<Override> sealedShellOverrides({required AppPaths paths}) => <Override>[
       pgMigratedPoolProvider.overrideWith((ref) => Completer<Pool<void>>().future),
       workspaceProjectsProvider
           .overrideWith((_) async => const <ProjectWithCanvases>[]),
+      projectRepositoryProvider
+          .overrideWith((_) async => InMemoryProjectRepository()),
       canvasRepositoryProvider
           .overrideWith((_) async => InMemoryCanvasRepository()),
       nodeRepositoryProvider.overrideWith((_) async => InMemoryNodeRepository()),

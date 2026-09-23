@@ -2,17 +2,23 @@
 //
 // 布局：Column(StudioProviderBanner, Expanded(Row(LibrarySidebar 280, Expanded(Stack(main, fab)))))
 // 状态：workspaceProjectsProvider 的 loading / error / empty / data 四态。
+import 'dart:ui' show PathMetric;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/di/database_restore.dart';
 import '../../core/di/logger.dart';
+import '../../core/di/preferences.dart';
 import '../../core/di/project_archive.dart';
 import '../../core/di/repositories.dart';
 import '../../core/errors/ink_error.dart';
+import '../../core/models/app_preferences.dart';
+import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/components/ink_error_banner.dart';
+import '../../theme/components/ws_primitives.dart';
 import '../../theme/primitives/ink_amber_button.dart';
 import '../../theme/primitives/ink_compact_text_field.dart';
 import '../../theme/primitives/ink_ghost_button.dart';
@@ -20,6 +26,10 @@ import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
 import '../../services/project_archive_service.dart';
 import '../canvas/providers/canvas_bootstrap_controller.dart';
+import '../gallery/util/gallery_time.dart';
+import '../generation/models/job_state.dart';
+import '../generation/providers/jobs_registry.dart';
+import '../settings/providers/shell_keep_last_canvas_controller.dart';
 import '../shell/models/shell_state.dart';
 import '../shell/providers/shell_controller.dart';
 import 'controllers/studio_projects_controller.dart';
@@ -29,6 +39,7 @@ import 'models/project_with_canvases.dart';
 import 'open_canvas.dart';
 import 'project_import_flow.dart';
 import 'providers/workspace_projects_provider.dart';
+import 'util/last_session.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
 import 'widgets/studio_provider_banner.dart';
@@ -43,14 +54,14 @@ class StudioHomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     return ColoredBox(
-      color: colors.surface0,
+      color: colors.surface1,
       child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          // 顶栏 chrome（小 logo / 面包屑 / ⌘K / ⚙）已上移到外壳 ShellChrome：
-          // 保活之后每个已物化标签各带一份 chrome = 两套窗口控件（V3a）。
           StudioProviderBanner(),
           Expanded(
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
                 LibrarySidebar(),
                 Expanded(child: _StudioMainArea()),
@@ -63,169 +74,215 @@ class StudioHomeScreen extends ConsumerWidget {
   }
 }
 
+/// 项目区（Screens 稿第 1 屏）：32px 工具行（全部项目 N | 排序：最近修改 | 网格）+ padding 20 的内容：
+/// 「上次离开时」恢复条 + 4 列项目网格（末位虚线「新建项目」格）。
+/// 稿上的「列表」视图无对应实现，不画；「排序：最近修改」是唯一排序，只作标签。
 class _StudioMainArea extends ConsumerWidget {
   const _StudioMainArea();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    final l = context.l10n;
     final projectsAsync = ref.watch(workspaceProjectsProvider);
-    final showFab = projectsAsync.maybeWhen(
-      data: (p) => p.isNotEmpty,
-      orElse: () => false,
-    );
-    return ColoredBox(
-      color: colors.surface0,
-      child: Stack(
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(
-              InkSpacing.xl,
-              InkSpacing.s28,
-              InkSpacing.xl,
-              InkSpacing.xl,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.only(bottom: InkSpacing.lg),
-                  child: Text(
-                    context.l10n.studioRecentProjects,
-                    style: typo.dialogTitle.copyWith(
-                      color: colors.fg1,
-                    ),
-                  ),
-                ),
-                Expanded(
-                  child: projectsAsync.when(
-                    loading: () => const _StudioLoadingState(),
-                    error: (e, _) => _StudioErrorState(
-                      onRetry: () =>
-                          ref.invalidate(workspaceProjectsProvider),
-                    ),
-                    data: (projects) {
-                      final importBusy =
-                          ref.watch(projectImportBusyProvider) ||
-                              ref.watch(databaseRestoreBusyProvider) ||
-                              ref.watch(projectExportBusyProvider);
-                      return projects.isEmpty
-                          ? _StudioEmptyState(
-                              onCreate: () => _showNewProjectDialog(
-                                  context, ref, const []),
-                              onCreateSample: () =>
-                                  _createSampleProject(context, ref),
-                              onOpenShowcase: () => ref
-                                  .read(shellControllerProvider.notifier)
-                                  .openOverlay(ShellOverlay.showcase),
-                              onImport: importBusy
-                                  ? null
-                                  : () => runProjectImportFlow(context, ref),
-                            )
-                          : _ProjectGrid(projects: projects);
-                    },
-                  ),
-                ),
+    final int? count = projectsAsync.valueOrNull?.length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Container(
+          height: 33, // content 32 + border-bottom 1
+          padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s20),
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.borderStrong))),
+          child: Row(
+            children: <Widget>[
+              Text(l.studioLibraryAllProjects, style: t.bodyStrong.copyWith(color: c.fg1)),
+              if (count != null) ...<Widget>[
+                const SizedBox(width: InkSpacing.s14),
+                Text('$count', style: t.mono.copyWith(color: c.fg5)),
               ],
+              const Spacer(),
+              Text(l.studioSortRecent, style: t.body.copyWith(color: c.fg5)),
+              const SizedBox(width: InkSpacing.s14),
+              Text(l.studioViewGrid, style: t.body.copyWith(color: c.fg1)),
+            ],
+          ),
+        ),
+        Expanded(
+          child: projectsAsync.when(
+            loading: () => const _StudioLoadingState(),
+            error: (e, _) => _StudioErrorState(
+              onRetry: () => ref.invalidate(workspaceProjectsProvider),
+            ),
+            data: (projects) {
+              final importBusy = ref.watch(projectImportBusyProvider) ||
+                  ref.watch(databaseRestoreBusyProvider) ||
+                  ref.watch(projectExportBusyProvider);
+              if (projects.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(InkSpacing.s20),
+                  child: _StudioEmptyState(
+                    onCreate: () => showStudioNewProjectDialog(context, ref),
+                    onCreateSample: () => createStudioSampleProject(context, ref),
+                    onOpenShowcase: () =>
+                        ref.read(shellControllerProvider.notifier).openOverlay(ShellOverlay.showcase),
+                    onImport: importBusy ? null : () => runProjectImportFlow(context, ref),
+                  ),
+                );
+              }
+              return SingleChildScrollView(
+                padding: const EdgeInsets.all(InkSpacing.s20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    _ResumeBar(projects: projects),
+                    _ProjectGrid(projects: projects),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 「上次离开时」恢复条：只在 hasRestorableLastSession（与启动恢复守卫同一谓词）为真、
+/// 且记录仍指向列表里存在的项目 / 画布时显示；开关关掉整条不出现，不是空态。
+/// 稿上的第二行「3 个渲染任务已在上次退出时保存进度」没有对应数据，不画。
+class _ResumeBar extends ConsumerWidget {
+  const _ResumeBar({required this.projects});
+  final List<ProjectWithCanvases> projects;
+
+  static const Key resumeKey = Key('studio.resume.continue');
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 开关经 controller 订阅（设置里改了立刻生效）；id 从当前偏好读。
+    final bool keep = ref.watch(shellKeepLastCanvasControllerProvider);
+    final AppPreferences prefs = ref.read(preferencesServiceProvider).current;
+    if (!keep || !hasRestorableLastSession(prefs)) return const SizedBox.shrink();
+    ProjectWithCanvases? project;
+    CanvasRef? canvas;
+    for (final ProjectWithCanvases p in projects) {
+      if (p.id != prefs.lastProjectId) continue;
+      project = p;
+      for (final CanvasRef cv in p.canvases) {
+        if (cv.id == prefs.lastCanvasId) canvas = cv;
+      }
+    }
+    if (project == null || canvas == null) return const SizedBox.shrink();
+
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    final l = context.l10n;
+    final ProjectRef pref = ProjectRef(id: project.id, name: project.name);
+    final String canvasId = canvas.id;
+    return Container(
+      margin: const EdgeInsets.only(bottom: InkSpacing.s22),
+      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.md, vertical: InkSpacing.s14),
+      decoration: BoxDecoration(
+        color: c.surface3,
+        border: Border.all(color: c.control),
+        borderRadius: BorderRadius.circular(InkRadius.sm),
+      ),
+      child: Row(
+        children: <Widget>[
+          Text(l.studioResumeLabel, style: t.meta.copyWith(color: c.fg4)),
+          const SizedBox(width: InkSpacing.s10),
+          Flexible(
+            child: Text(
+              l.studioResumeName(project.name, canvas.name.isEmpty ? l.canvasDefaultName : canvas.name),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: t.body.copyWith(color: c.fg1),
             ),
           ),
-          if (showFab)
-            Positioned(
-              right: InkSpacing.xl,
-              bottom: InkSpacing.xl,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // LB-12：项目包导入（导入中/还原中/导出中互斥禁用，拍板 9）。
-                  InkGhostButton(
-                    label: context.l10n.studioImportProject,
-                    icon: Icons.unarchive_outlined,
-                    onPressed: ref.watch(projectImportBusyProvider) ||
-                            ref.watch(databaseRestoreBusyProvider) ||
-                            ref.watch(projectExportBusyProvider)
-                        ? null
-                        : () => runProjectImportFlow(context, ref),
-                  ),
-                  const SizedBox(width: InkSpacing.sm),
-                  InkAmberButton(
-                    label: context.l10n.studioNewProject,
-                    icon: Icons.add,
-                    onPressed: () => _showNewProjectDialog(
-                      context,
-                      ref,
-                      projectsAsync.maybeWhen(
-                        data: (p) => p,
-                        orElse: () => const <ProjectWithCanvases>[],
-                      ),
-                    ),
-                  ),
-                ],
+          const SizedBox(width: InkSpacing.s10),
+          Text(
+            galleryTimeAgo(l, project.updatedAt, DateTime.now().toUtc()),
+            style: t.mono.copyWith(color: c.fg6),
+          ),
+          const Spacer(),
+          Semantics(
+            button: true,
+            label: l.studioResumeAction,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                key: resumeKey,
+                behavior: HitTestBehavior.opaque,
+                onTap: () => ref.read(shellControllerProvider.notifier).openCanvas(canvasId, withProject: pref),
+                child: WsPrimaryButton(
+                  l.studioResumeAction,
+                  height: 26,
+                  bordered: false,
+                  horizontalPadding: InkSpacing.s14,
+                ),
               ),
             ),
+          ),
         ],
       ),
     );
   }
+}
 
-  /// ON-2：示例项目入口。createSample 内部会切 currentCanvasId 直达画布。
-  Future<void> _createSampleProject(BuildContext context, WidgetRef ref) async {
-    final l10n = context.l10n;
-    final failedMsg = l10n.studioCreateSampleFailed;
-    final bootstrap = ref.read(canvasBootstrapControllerProvider);
-    try {
-      await bootstrap.createSample(
-        projectName: l10n.canvasSampleProjectName,
-        canvasName: l10n.canvasSampleCanvasName,
-        seed: (
-          laneLabel: l10n.canvasSampleLaneLabel,
-          laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
-          nodeLabel: l10n.canvasSampleNodeLabel,
-          nodePrompt: l10n.canvasSampleNodePrompt,
-        ),
-      );
-    } on InkError catch (e, st) {
-      // 捕获集 = createSample 真实抛出集：仓储链路只抛 InkError（铁律）。
-      ref.read(loggerProvider).error(
-            _logModule,
-            'create sample project failed',
-            cause: e,
-            stackTrace: st,
-          );
-      if (context.mounted) {
-        ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
-      }
+/// 示例项目：建项目 + 画布并切到画布（ON-2）。
+Future<void> createStudioSampleProject(BuildContext context, WidgetRef ref) async {
+  final l10n = context.l10n;
+  final failedMsg = l10n.studioCreateSampleFailed;
+  final bootstrap = ref.read(canvasBootstrapControllerProvider);
+  try {
+    await bootstrap.createSample(
+      projectName: l10n.canvasSampleProjectName,
+      canvasName: l10n.canvasSampleCanvasName,
+      seed: (
+        laneLabel: l10n.canvasSampleLaneLabel,
+        laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
+        nodeLabel: l10n.canvasSampleNodeLabel,
+        nodePrompt: l10n.canvasSampleNodePrompt,
+      ),
+    );
+  } on InkError catch (e, st) {
+    ref.read(loggerProvider).error(
+          _logModule,
+          'create sample project failed',
+          cause: e,
+          stackTrace: st,
+        );
+    if (context.mounted) {
+      ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
     }
   }
+}
 
-  Future<void> _showNewProjectDialog(
-    BuildContext context,
-    WidgetRef ref,
-    List<ProjectWithCanvases> existing,
-  ) async {
-    final existingNames =
-        existing.map((p) => p.name.trim().toLowerCase()).toSet();
-    final firstCanvasName = context.l10n.canvasDefaultName;
-    final name = await showDialog<String>(
-      context: context,
-      barrierColor: context.inkColors.scrim,
-      builder: (_) => _NewProjectDialog(existingNames: existingNames),
+/// 新建项目对话框 → 建项目（含首个画布）。标签栏「新建项目」与网格末位的虚线格共用。
+Future<void> showStudioNewProjectDialog(BuildContext context, WidgetRef ref) async {
+  final List<ProjectWithCanvases> existing =
+      ref.read(workspaceProjectsProvider).valueOrNull ?? const <ProjectWithCanvases>[];
+  final existingNames = existing.map((p) => p.name.trim().toLowerCase()).toSet();
+  final firstCanvasName = context.l10n.canvasDefaultName;
+  final name = await showDialog<String>(
+    context: context,
+    barrierColor: context.inkColors.scrim,
+    builder: (_) => _NewProjectDialog(existingNames: existingNames),
+  );
+  if (name == null || name.isEmpty) return;
+  try {
+    await ref.read(studioProjectsControllerProvider).createProject(
+          name: name,
+          firstCanvasName: firstCanvasName,
+        );
+  } on InkError {
+    if (!context.mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.studioNewProjectFailed),
+        duration: const Duration(seconds: 3),
+      ),
     );
-    if (name == null || name.isEmpty) return;
-    try {
-      await ref.read(studioProjectsControllerProvider).createProject(
-            name: name,
-            firstCanvasName: firstCanvasName,
-          );
-    } on InkError {
-      if (!context.mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.studioNewProjectFailed),
-          duration: const Duration(seconds: 3),
-        ),
-      );
-    }
   }
 }
 
@@ -511,90 +568,91 @@ class _NewProjectDialogState extends State<_NewProjectDialog> {
   }
 }
 
+/// 项目网格：4 列、gap 16（稿），末位虚线「新建项目」格 + 下方「空白 / 短剧示例」两个入口。
+/// 卡片元信息 = 最近修改时间 [+ N 节点在渲染]（渲染数从 jobsRegistry 按项目的画布聚合）。
 class _ProjectGrid extends ConsumerWidget {
   const _ProjectGrid({required this.projects});
 
   final List<ProjectWithCanvases> projects;
 
+  static const Key newProjectCardKey = Key('studio.grid.newProject');
+  static const Key newProjectSampleKey = Key('studio.grid.newProject.sample');
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final l = context.l10n;
+    final List<JobState> jobs = ref.watch(jobsRegistryProvider);
+    final DateTime now = DateTime.now().toUtc();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final cols = constraints.maxWidth >= 1280 ? 4 : 3;
-        return GridView.builder(
-          padding: EdgeInsets.zero,
-          itemCount: projects.length,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: cols,
-            crossAxisSpacing: InkSpacing.lg,
-            mainAxisSpacing: InkSpacing.lg,
-            childAspectRatio: 16 / 14.5,
-          ),
-          itemBuilder: (_, i) {
-            final p = projects[i];
-            return StudioProjectCard(
-              name: p.name,
-              metaLine: context.l10n.studioProjectMetaLine(
-                p.createdAt,
-                p.canvases.length,
-              ),
-              onTap: () async {
-                final defaultName = context.l10n.canvasDefaultName;
-                final failedMsg = context.l10n.studioOpenCanvasFailed;
-                try {
-                  await openProjectCanvas(
-                    ref.read,
-                    p,
-                    createCanvas: (projectId) async {
-                      final repo =
-                          await ref.read(canvasRepositoryProvider.future);
-                      return repo.create(
-                        projectId: projectId,
-                        name: defaultName,
+        const int cols = 4;
+        final double w = (constraints.maxWidth - InkSpacing.md * (cols - 1)) / cols;
+        return Wrap(
+          spacing: InkSpacing.md,
+          runSpacing: InkSpacing.md,
+          children: <Widget>[
+            for (final ProjectWithCanvases p in projects)
+              SizedBox(
+                width: w,
+                child: StudioProjectCard(
+                  name: p.name,
+                  metaLine: _metaLine(l, p, jobs, now),
+                  canvasCount: p.canvases.length,
+                  onTap: () async {
+                    final defaultName = context.l10n.canvasDefaultName;
+                    final failedMsg = context.l10n.studioOpenCanvasFailed;
+                    try {
+                      await openProjectCanvas(
+                        ref.read,
+                        p,
+                        createCanvas: (projectId) async {
+                          final repo = await ref.read(canvasRepositoryProvider.future);
+                          return repo.create(projectId: projectId, name: defaultName);
+                        },
                       );
-                    },
-                  );
-                } on InkError catch (e, st) {
-                  // 捕获集 = try 体真实抛出集：仓储/打开链路只抛 InkError
-                  // （guard 翻译边界），不捕宽泛 Exception（铁律）。
-                  ref.read(loggerProvider).error(
-                        _logModule,
-                        'open project canvas failed',
-                        extra: {'project_id': p.id},
-                        cause: e,
-                        stackTrace: st,
-                      );
-                  if (context.mounted) {
-                    ref.read(toastServiceProvider).show(
-                          failedMsg,
-                          kind: ToastKind.error,
-                        );
-                  }
-                }
-              },
-              onOpenGallery: () => ref
-                  .read(shellControllerProvider.notifier)
-                  .openGallery(ProjectRef(id: p.id, name: p.name)),
-              onOpenShowcase: () => ref
-                  .read(shellControllerProvider.notifier)
-                  .openOverlay(ShellOverlay.showcase),
-              onRename: () => _renameProject(context, ref, p),
-              onExport: () => _exportProject(context, ref, p),
-              onManageCanvases: () => showDialog<void>(
-                context: context,
-                barrierColor: context.inkColors.scrim,
-                builder: (_) => _ManageCanvasesDialog(project: p),
+                    } on InkError catch (e, st) {
+                      ref.read(loggerProvider).error(
+                            _logModule,
+                            'open project canvas failed',
+                            extra: {'project_id': p.id},
+                            cause: e,
+                            stackTrace: st,
+                          );
+                      if (context.mounted) {
+                        ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
+                      }
+                    }
+                  },
+                  onOpenGallery: () => ref
+                      .read(shellControllerProvider.notifier)
+                      .openGallery(ProjectRef(id: p.id, name: p.name)),
+                  onOpenShowcase: () =>
+                      ref.read(shellControllerProvider.notifier).openOverlay(ShellOverlay.showcase),
+                  onRename: () => _renameProject(context, ref, p),
+                  onExport: () => _exportProject(context, ref, p),
+                  onManageCanvases: () => showDialog<void>(
+                    context: context,
+                    barrierColor: context.inkColors.scrim,
+                    builder: (_) => _ManageCanvasesDialog(project: p),
+                  ),
+                  onDelete: () => _deleteProject(context, ref, p),
+                ),
               ),
-              onDelete: () => _deleteProject(context, ref, p),
-            );
-          },
+            SizedBox(width: w, child: const _NewProjectCard()),
+          ],
         );
       },
     );
   }
 
-  /// 导出整项目 zip（LB-11）：选保存位置 → ProjectArchiveService → 成败 toast。
-  /// busy 期间重复触发直接忽略（防两个导出写同一 .partial）。
+  /// 「2 小时前」，有在跑的任务时追加「· N 节点在渲染」（按项目的画布聚合）。
+  static String _metaLine(AppLocalizations l, ProjectWithCanvases p, List<JobState> jobs, DateTime now) {
+    final Set<String> canvasIds = <String>{for (final CanvasRef c in p.canvases) c.id};
+    final int rendering = jobs.where((JobState j) => !j.isTerminal && canvasIds.contains(j.canvasId)).length;
+    final String time = galleryTimeAgo(l, p.updatedAt, now);
+    return rendering == 0 ? time : l.studioCardMeta(time, l.studioCardRendering(rendering));
+  }
+
   Future<void> _exportProject(
     BuildContext context,
     WidgetRef ref,
@@ -956,4 +1014,117 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
       ],
     );
   }
+}
+
+/// 稿：16:10 虚线框（controlStrong）圆角 4，居中「+」+「新建项目」；下方 11px「空白 / 短剧示例」。
+/// 「单画布」没有对应流程，不画。
+class _NewProjectCard extends ConsumerWidget {
+  const _NewProjectCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Semantics(
+          button: true,
+          label: l.studioNewProject,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              key: _ProjectGrid.newProjectCardKey,
+              behavior: HitTestBehavior.opaque,
+              onTap: () => showStudioNewProjectDialog(context, ref),
+              child: AspectRatio(
+                aspectRatio: 16 / 10,
+                child: CustomPaint(
+                  painter: _DashedBorderPainter(color: c.controlStrong, radius: InkRadius.sm),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text('+', style: t.dialogTitle.copyWith(color: c.fg6, height: 1.0)),
+                        const SizedBox(height: InkSpacing.s6),
+                        Text(l.studioNewProject, style: t.meta.copyWith(color: c.fg6)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: InkSpacing.sm),
+        Row(
+          children: <Widget>[
+            _HintLink(label: l.studioNewProjectHintBlank, onTap: () => showStudioNewProjectDialog(context, ref)),
+            Text(' / ', style: t.meta.copyWith(color: c.fg6)),
+            _HintLink(
+              key: _ProjectGrid.newProjectSampleKey,
+              label: l.studioNewProjectHintSample,
+              onTap: () => createStudioSampleProject(context, ref),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _HintLink extends StatelessWidget {
+  const _HintLink({super.key, required this.label, required this.onTap});
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    return Semantics(
+      button: true,
+      label: label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Text(label, style: t.meta.copyWith(color: c.fg6)),
+        ),
+      ),
+    );
+  }
+}
+
+/// 1px 虚线圆角框（稿 border: 1px dashed；Flutter 没有原生虚线边框）。
+class _DashedBorderPainter extends CustomPainter {
+  const _DashedBorderPainter({required this.color, required this.radius});
+  final Color color;
+  final double radius;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint p = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final Path path = Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        const Offset(0.5, 0.5) & Size(size.width - 1, size.height - 1),
+        Radius.circular(radius),
+      ));
+    const double dash = 3;
+    for (final PathMetric m in path.computeMetrics()) {
+      double d = 0;
+      while (d < m.length) {
+        canvas.drawPath(m.extractPath(d, d + dash), p);
+        d += dash * 2;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DashedBorderPainter old) => old.color != color || old.radius != radius;
 }

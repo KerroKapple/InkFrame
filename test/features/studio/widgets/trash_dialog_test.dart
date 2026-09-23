@@ -138,7 +138,7 @@ void main() {
       ],
     );
 
-    await tester.tap(find.byIcon(Icons.delete_outline));
+    await tester.tap(find.byKey(LibrarySidebar.trashKey));
     await tester.pumpAndSettle();
 
     expect(find.byType(TrashDialog), findsOneWidget);
