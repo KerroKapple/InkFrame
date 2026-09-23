@@ -13,11 +13,12 @@ import 'package:flutter/services.dart' show ByteData;
 import 'package:flutter/rendering.dart';
 
 import 'features/workspace/gallery_v2_screen.dart';
+import 'features/workspace/studio_v2_screen.dart';
 import 'features/workspace/workspace_v2_screen.dart';
 import 'theme/app_theme.dart';
 
 const String _kOut = String.fromEnvironment('INKFRAME_REPLICA_OUT');
-/// 复刻哪一屏：workspace（默认）/ gallery。
+/// 复刻哪一屏：workspace（默认）/ gallery / studio。
 const String _kScreen = String.fromEnvironment('INKFRAME_REPLICA_SCREEN', defaultValue: 'workspace');
 
 void main() {
@@ -78,7 +79,11 @@ class _ReplicaHostState extends State<_ReplicaHost> {
           scrollDirection: Axis.horizontal,
           child: RepaintBoundary(
             key: _boundary,
-            child: _kScreen == 'gallery' ? const GalleryV2Screen() : const WorkspaceV2Screen(),
+            child: switch (_kScreen) {
+              'gallery' => const GalleryV2Screen(),
+              'studio' => const StudioV2Screen(),
+              _ => const WorkspaceV2Screen(),
+            },
           ),
         ),
       ),

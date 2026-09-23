@@ -278,6 +278,8 @@ class InkSpacing {
   static const double s12 = 12;
   static const double s14 = 14;
   static const double s18 = 18;
+  static const double s20 = 20; // Studio 项目区内边距 / 引导条左右
+  static const double s22 = 22; // Studio 恢复条到网格
   static const double s26 = 26; // 画廊筛选行的缩进
   static const double s28 = 28;
   // 光学微调小档（2/3/6）：覆盖 chip/inspector/toolbar 的非 8 倍数细间距
