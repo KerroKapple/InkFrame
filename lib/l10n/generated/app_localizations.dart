@@ -3391,6 +3391,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Key configured'**
   String get statusBarKeyConfigured;
+
+  /// No description provided for @commandPaletteGroupShots.
+  ///
+  /// In en, this message translates to:
+  /// **'Shots · current canvas'**
+  String get commandPaletteGroupShots;
+
+  /// No description provided for @commandPaletteGroupArtifacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Artifacts'**
+  String get commandPaletteGroupArtifacts;
+
+  /// No description provided for @commandPaletteGroupActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get commandPaletteGroupActions;
+
+  /// No description provided for @commandPaletteResultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} results'**
+  String commandPaletteResultCount(int count);
+
+  /// No description provided for @commandPaletteHintMove.
+  ///
+  /// In en, this message translates to:
+  /// **'↑↓ move'**
+  String get commandPaletteHintMove;
+
+  /// No description provided for @commandPaletteHintOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'↵ open'**
+  String get commandPaletteHintOpen;
+
+  /// No description provided for @commandPaletteHintLocate.
+  ///
+  /// In en, this message translates to:
+  /// **'{key} locate in canvas'**
+  String commandPaletteHintLocate(String key);
+
+  /// No description provided for @commandPaletteHintClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Esc close'**
+  String get commandPaletteHintClose;
+
+  /// No description provided for @commandPaletteShotPath.
+  ///
+  /// In en, this message translates to:
+  /// **'{project} › {canvas} › {type}'**
+  String commandPaletteShotPath(String project, String canvas, String type);
+
+  /// No description provided for @commandPaletteArtifactPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery › {kind} › {provider}'**
+  String commandPaletteArtifactPath(String kind, String provider);
 }
 
 class _AppLocalizationsDelegate

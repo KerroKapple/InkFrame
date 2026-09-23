@@ -716,5 +716,19 @@
   "statusBarProjectsCanvases": "{projects} 项目 · {canvases} 画布",
   "@statusBarProjectsCanvases": { "placeholders": { "projects": { "type": "int" }, "canvases": { "type": "int" } } },
   "statusBarKeyMissing": "未配置 Key",
-  "statusBarKeyConfigured": "已配置 Key"
+  "statusBarKeyConfigured": "已配置 Key",
+  "commandPaletteGroupShots": "镜头 · 当前画布",
+  "commandPaletteGroupArtifacts": "产物",
+  "commandPaletteGroupActions": "动作",
+  "commandPaletteResultCount": "{count} 条结果",
+  "@commandPaletteResultCount": { "placeholders": { "count": { "type": "int" } } },
+  "commandPaletteHintMove": "↑↓ 移动",
+  "commandPaletteHintOpen": "↵ 打开",
+  "commandPaletteHintLocate": "{key} 在画布中定位",
+  "@commandPaletteHintLocate": { "placeholders": { "key": { "type": "String" } } },
+  "commandPaletteHintClose": "Esc 关闭",
+  "commandPaletteShotPath": "{project} › {canvas} › {type}",
+  "@commandPaletteShotPath": { "placeholders": { "project": { "type": "String" }, "canvas": { "type": "String" }, "type": { "type": "String" } } },
+  "commandPaletteArtifactPath": "画廊 › {kind} › {provider}",
+  "@commandPaletteArtifactPath": { "placeholders": { "kind": { "type": "String" }, "provider": { "type": "String" } } }
 }

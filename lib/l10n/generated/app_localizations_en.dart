@@ -1876,4 +1876,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get statusBarKeyConfigured => 'Key configured';
+
+  @override
+  String get commandPaletteGroupShots => 'Shots · current canvas';
+
+  @override
+  String get commandPaletteGroupArtifacts => 'Artifacts';
+
+  @override
+  String get commandPaletteGroupActions => 'Actions';
+
+  @override
+  String commandPaletteResultCount(int count) {
+    return '$count results';
+  }
+
+  @override
+  String get commandPaletteHintMove => '↑↓ move';
+
+  @override
+  String get commandPaletteHintOpen => '↵ open';
+
+  @override
+  String commandPaletteHintLocate(String key) {
+    return '$key locate in canvas';
+  }
+
+  @override
+  String get commandPaletteHintClose => 'Esc close';
+
+  @override
+  String commandPaletteShotPath(String project, String canvas, String type) {
+    return '$project › $canvas › $type';
+  }
+
+  @override
+  String commandPaletteArtifactPath(String kind, String provider) {
+    return 'Gallery › $kind › $provider';
+  }
 }

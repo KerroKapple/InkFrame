@@ -793,5 +793,19 @@
   "statusBarProjectsCanvases": "{projects} projects · {canvases} canvases",
   "@statusBarProjectsCanvases": { "placeholders": { "projects": { "type": "int" }, "canvases": { "type": "int" } } },
   "statusBarKeyMissing": "No key configured",
-  "statusBarKeyConfigured": "Key configured"
+  "statusBarKeyConfigured": "Key configured",
+  "commandPaletteGroupShots": "Shots · current canvas",
+  "commandPaletteGroupArtifacts": "Artifacts",
+  "commandPaletteGroupActions": "Actions",
+  "commandPaletteResultCount": "{count} results",
+  "@commandPaletteResultCount": { "placeholders": { "count": { "type": "int" } } },
+  "commandPaletteHintMove": "↑↓ move",
+  "commandPaletteHintOpen": "↵ open",
+  "commandPaletteHintLocate": "{key} locate in canvas",
+  "@commandPaletteHintLocate": { "placeholders": { "key": { "type": "String" } } },
+  "commandPaletteHintClose": "Esc close",
+  "commandPaletteShotPath": "{project} › {canvas} › {type}",
+  "@commandPaletteShotPath": { "placeholders": { "project": { "type": "String" }, "canvas": { "type": "String" }, "type": { "type": "String" } } },
+  "commandPaletteArtifactPath": "Gallery › {kind} › {provider}",
+  "@commandPaletteArtifactPath": { "placeholders": { "kind": { "type": "String" }, "provider": { "type": "String" } } }
 }

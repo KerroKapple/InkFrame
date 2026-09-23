@@ -1803,4 +1803,42 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get statusBarKeyConfigured => '已配置 Key';
+
+  @override
+  String get commandPaletteGroupShots => '镜头 · 当前画布';
+
+  @override
+  String get commandPaletteGroupArtifacts => '产物';
+
+  @override
+  String get commandPaletteGroupActions => '动作';
+
+  @override
+  String commandPaletteResultCount(int count) {
+    return '$count 条结果';
+  }
+
+  @override
+  String get commandPaletteHintMove => '↑↓ 移动';
+
+  @override
+  String get commandPaletteHintOpen => '↵ 打开';
+
+  @override
+  String commandPaletteHintLocate(String key) {
+    return '$key 在画布中定位';
+  }
+
+  @override
+  String get commandPaletteHintClose => 'Esc 关闭';
+
+  @override
+  String commandPaletteShotPath(String project, String canvas, String type) {
+    return '$project › $canvas › $type';
+  }
+
+  @override
+  String commandPaletteArtifactPath(String kind, String provider) {
+    return '画廊 › $kind › $provider';
+  }
 }

@@ -237,7 +237,9 @@ lib/
 │   │   ├── providers/                 # Riverpod ViewModels
 │   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart
 │   │   └── widgets/
-│   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps _UnlockedShell)
+│   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps InkShell). Screens 稿第 4 屏右：跨实体搜索，三组「镜头 · 当前画布 / 产物 / 动作」
+│   │   ├── palette_entry.dart         # PaletteEntry / PaletteChoice（hand-written value objects; run = ↵ 打开, locate = ⌘↵ 在画布中定位）
+│   │   ├── palette_search.dart        # buildPaletteEntries — 镜头组只搜当前画布已加载节点（不为搜索读库）、产物组复用 galleryController、动作组 = buildCommandActions
 │   │   ├── command_actions.dart       # CommandAction + context-aware hardwired action list (≤6)
 │   │   └── widgets/                   # palette dialog / top-chrome chip / app-level shortcuts wrapper
 │   ├── export/                        # Video export UI (concat dialog; entry in canvas top chrome)
