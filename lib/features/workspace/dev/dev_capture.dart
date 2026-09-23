@@ -35,6 +35,7 @@ import '../../gallery/models/gallery_selection.dart';
 import '../../gallery/providers/gallery_filter.dart';
 import '../../gallery/providers/gallery_selection.dart';
 import '../../gallery/util/gallery_meta.dart';
+import '../../settings/providers/shell_keep_last_canvas_controller.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
 import '../../studio/providers/workspace_projects_provider.dart';
@@ -226,7 +227,8 @@ Future<Uint8List> _gradientPng((Color, Color) g) async {
 /// 无 Key 引导条靠临时数据根本来就没配 Key。
 Future<void> seedStudioFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
   final UnitOfWork uow = await ref.read(unitOfWorkProvider.future);
-  for (final StProject p in StudioFixture.projects.skip(1)) {
+  // 倒着建：列表按最近修改倒序，稿上 夜航船 / 角色测试 / 短剧示例 就是这个顺序。
+  for (final StProject p in StudioFixture.projects.skip(1).toList().reversed) {
     await Future<void>.delayed(const Duration(milliseconds: 5));
     await uow.run((RepositoryScope s) async {
       final String id = await s.projects.create(name: p.name);
@@ -238,9 +240,15 @@ Future<void> seedStudioFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
   await Future<void>.delayed(const Duration(milliseconds: 5));
   await uow.run((RepositoryScope s) =>
       s.projects.update(ids.projectId, <String, Object?>{'name': WorkspaceFixture.breadcrumb[1]}));
+  // 恢复条要开关打开 + 有记录；临时数据根的 preferences.json 可能把开关关着，这里显式打开。
   await ref.read(preferencesServiceProvider).update(
-        (AppPreferences p) => p.copyWith(lastCanvasId: ids.canvasId, lastProjectId: ids.projectId),
+        (AppPreferences p) => p.copyWith(
+          lastCanvasId: ids.canvasId,
+          lastProjectId: ids.projectId,
+          shellKeepLastCanvas: true,
+        ),
       );
+  ref.invalidate(shellKeepLastCanvasControllerProvider);
   ref.invalidate(workspaceProjectsProvider);
   ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
 }

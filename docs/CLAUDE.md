@@ -272,14 +272,15 @@ lib/
 │   │   ├── providers/                 # script_import_controller.dart (ShotDrafts → shot chain in ONE transaction; failure leaves no residue)
 │   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist) + script_splitter.dart (SB-1 rule-based, no LLM); both pure
 │   │   └── widgets/                   # script_import_dialog.dart (paste + strategy + live preview) + sequence_preview_dialog.dart (playback + advance only)
-│   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
-│       ├── studio_home_screen.dart
+│   └── studio/                        # Project / workspace shell (Screens 稿第 1 屏：库 220 | 工具行 + 恢复条 + 4 列项目网格；first-run onboarding dialog; ON-1/ON-2)
+│       ├── studio_home_screen.dart    # + showStudioNewProjectDialog / createStudioSampleProject（标签栏「新建项目」与网格虚线格共用）
 │       ├── open_canvas.dart           # Open/create a canvas from Studio
-│       ├── project_import_flow.dart   # runProjectImportFlow — LB-12 archive import, one path shared by FAB / zero-project empty state / ⌘K (audit 2026-08-31 P0-3)
+│       ├── project_import_flow.dart   # runProjectImportFlow — LB-12 archive import, one path shared by shell tab-bar「导入项目包」/ zero-project empty state / ⌘K (audit 2026-08-31 P0-3)
 │       ├── controllers/
-│       ├── models/
-│       ├── providers/
-│       └── widgets/
+│       ├── models/                    # project_with_canvases (createdAt + updatedAt; list sorted by updatedAt desc)
+│       ├── providers/                 # workspace_projects_provider / restore_last_session (startup guard) / trashed_items_providers
+│       ├── util/                      # last_session.dart — hasRestorableLastSession，启动守卫与首页恢复条共用的唯一判据
+│       └── widgets/                   # library_sidebar / project_card / studio_provider_banner (无 Key 引导条) / onboarding_dialog / trash_dialog
 ├── providers/                         # AI provider adapters (see docs/PROVIDER-API.md)
 │   ├── provider_registry.dart         # providerId → factory mapping
 │   ├── rate_limiter.dart              # Per-provider token bucket
