@@ -237,6 +237,44 @@ Flutter 侧对应 `lib/theme/typography.dart`；若其中没有等宽字体族�
 
 **状态栏**：叙事链摘要 / 选中片段的入出点 / 上次交付记录（「v02 · 2 小时前 · Resolve」）。
 
+**接线约束（2026-09-25 拍板）**：
+- 监视器的 Player 切走标签后暂停，切回来不自动续播（原「`SequencePreviewContent` 只活在对话框里」的不变量由此放开：可以常驻在序列标签，但不可见时必须停）。
+- 交付 / 导出的门控看 `ShellState.project`，不再从节点数据摸 `projectId`（BOARD 那条「门控错位」债一并收口）。
+- 交付格式按 PRD 默认 EDL CMX3600（P1）；Final Cut 一格标「FCPXML 待支持」；产出清单不含 fcpxml。稿 `InkFrame Timeline.html` 2026-09-25 版已按此改，静态复刻只认这一版。
+- 开工前先出字段盘点表（下表）；没有后端的部分多，拆成两个 PR。
+
+**字段盘点（稿 2026-09-25 版 vs 仓库现状）**：
+
+| 区域 | 稿上元素 | 后端 | 说明 |
+|---|---|---|---|
+| 顶栏 | 面包屑 项目 › 画布 › 叙事链 · N 镜 | ✓ | `ShellState.project` + 画布名 + 链成员数（`orderByNarrativeChain`） |
+| 顶栏 | `1920×1080 · 24fps · 00:00:42:12` | 部分 | 总长 ✓（`SequenceShot.durationMs` 求和）；画幅只有图像有（PNG 头），视频无；fps 无字段 |
+| 顶栏 | 回到画布定位 / 导出 mp4 | ✓ | 选中节点 + 既有导出对话框（`orderVideoNodesForExport`） |
+| 顶栏 | 交付到 DaVinci Resolve | ✗ | 无 EDL 写出器 |
+| 叙事链面板 | 序号 / 缩略图 / 名称 / 片长 MM:SS / 产物（视频 · 缺失） | ✓ | `buildSequence`：kind image / video / none，缩略图 `latestResultFor` |
+| 叙事链面板 | 未入链 · N | ✓ | 有产物但不在 narrative 边上的 config 节点数（画廊「已入序列」同判据） |
+| 叙事链面板 | 拖动排序改写连线 | 可做 | 边仓储有增删；属新逻辑，不在第一刀 |
+| 监视器 | 画面 / 播放 / 播放条 / 当前时间码 / 总长 | ✓ | `SequencePreviewContent` 的 `VideoPlayerHandle`（按镜切源、进度回调） |
+| 监视器 | 叠加「003 · 推镜 · 中景 · Kling 2.1」 | 部分 | 序号 ✓、运镜 ✓（`camera`）、Provider 显示名 ✓；景别 / 模型名无字段（BOARD 既有债） |
+| 监视器 | `src 时间码 / 总长`、I / O 入出点、安全框 | ✗ | 节点没有入出点字段；安全框只是叠加，可画但无数据 |
+| 序列区 | 时间尺 / V1 片段（序号 · 名称 · 时长）/ 占位片段虚线 / 播放头 | ✓ | 全部从 `SequenceShot` + 播放进度推；比例 34px/s 是 UI 常量 |
+| 序列区 | 片段三格缩略图条 | 部分 | 每镜只有一张缩略图，三格同图或只画一格 |
+| 序列区 | 已裁切片段两端 4px 琥珀条 / 拖两端裁切 | ✗ | 无入出点字段 |
+| 序列区 | 标记轨（场次 / 断点 / 待补）、M 键打标记、标记拖动 | ✗ | 无标记模型 |
+| 序列区 | A1「模型音轨」 | ✗ | 视频产物无音轨元数据 |
+| 序列区 | 吸附 / 链接 V/A | ✗ | 无对应状态 |
+| 交付面板 | 目标软件四段（Resolve / Premiere / Final Cut / 剪映） | ✗ | 无交付设置模型；剪映草稿 JSON 亦无写出器 |
+| 交付面板 | 工程文件：格式 / 帧率 / 时间码起点 / 轨道 | ✗ | EDL CMX3600 写出器待做；fps 无字段 |
+| 交付面板 | 媒体：手柄 / 命名 / 范围 / 转码 / 相对路径 | ✗ | 现有导出只做 mp4 流拷贝拼接，不切片、不重命名 |
+| 交付面板 | 标记与元数据四项 | ✗ | 无标记 / 备注 / metadata.json |
+| 交付面板 | 交付前检查（fps 一致 / 裁切在源内 / 占位 / 源长） | 部分 | 「占位镜头无产物」可从 `kind == none` 推；其余依赖无字段 |
+| 交付面板 | 输出目录 / 产出清单 | 部分 | 目录 ✓（`exports/`）；清单只有 mp4 |
+| 交付面板 | 片段 / 历史 两个页签 | ✗ | 无交付历史记录 |
+| 状态栏 | 叙事链摘要 | ✓ | 同顶栏 |
+| 状态栏 | 选中片段入 / 出点、上次交付 v02 | ✗ | 无字段 |
+
+**拆分建议**：PR A「序列 lens」只接 ✓ 与「部分」——叙事链面板、监视器（含 Player 暂停纪律）、时间尺 + V1 + 占位 + 播放头、顶栏两枚既有动作、状态栏摘要；✗ 的元素不画。PR B「交付」= EDL CMX3600 写出器 + 交付设置（按项目持久化）+ 交付前检查 + 交付面板本体，先做 EDL 一条线，剪映 / FCPXML 另记。
+
 ---
 
 ### 3. Studio 首页（`InkFrame Screens.dc.html` 第 1 屏）
@@ -292,6 +330,12 @@ Flutter 侧对应 `lib/theme/typography.dart`；若其中没有等宽字体族�
 - 打开浮层不写路由：不清 canvasId、不切标签。验收 = 画布上缩放 + 选中几个节点 → 开设置再关 → 视口与选中集与打开前一致（#234 保证过，浮层形态下重验）。
 - `shellKeepLastCanvas` 开关放「常规」页语言选项下面，文案「启动时打开上次的画布」。**稿上没有这一行，是新增元素**，按稿的分组行样式补。
 - Studio 无 Key 引导条的「前往设置」自动跟上浮层，接线后点一下确认打开的是浮层。
+
+**偏离记录（结构层，2026-09-25）**：视觉重做原则上不动 #234 的结构层，这一屏动了一处——`ShellContentStack` 的**外层** IndexedStack 换成 Stack。原因：浮层形态要求底下的原界面遮暗可见，IndexedStack 对非 index 子一律不画，做不出来。换掉之后 IndexedStack 以前替外壳做的两件事改由显式代码承担，并各有**单点靶子**（`test/features/shell/shell_overlay_guard_test.dart`，2026-09-25 变异实测）：
+- 点穿 → `ShellOverlayLayer` 的 `ModalBarrier`。**注意 `app_routing_test` 的 `hittable: false` 三处不是它的靶子**：变异成 `IgnorePointer(ColoredBox)` 后三处仍绿——`hitTestable()` 在标签体中心点命中，而对话框恰好也居中，挡住它的是对话框不是遮罩。靶子是「对话框之外的点」：画廊筛选行在左侧 220 列，点它筛选不得生效。
+- 失焦 → `ShellContentStack` 的 `ExcludeFocus(excluding: overlay != null)`。变异成 `excluding: false` 后 shell / settings / routing 全绿——画布自己有 `isActive` 守卫（`shell_focus_test` 的 Delete 断言是三重纵深，单摘这一层测不出）。空态 CTA 的 InkWell 本身不可聚焦也测不出。靶子是画廊网格的键盘导航焦点节点（`gallery-grid`）：浮层开着时 `canRequestFocus` 为 false、`requestFocus()` 落空。
+- 内层五槽 IndexedStack 不动，切标签仍是离台。`expectShellSurface` 的「在台通道」对浮层场景不再有鉴别力（标签体现在本来就在台），浮层场景的鉴别力在上面两条靶子；「在树通道」的 `mounted: false`（浮层不保活）不受影响。
+- T8 记录的三重变异配方里「两处 IndexedStack 都换 Stack」那一条，外层已经是 Stack：配方现在是 `CanvasTab(isVisible: true)` + `_shellFocus` no-op + 内层换 Stack + 本条 `ExcludeFocus` 摘掉，四处同时才红。
 
 ---
 

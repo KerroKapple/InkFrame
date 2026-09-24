@@ -17,9 +17,6 @@ import '../providers/shell_keep_last_canvas_controller.dart';
 class StartupSection extends ConsumerWidget {
   const StartupSection({super.key});
 
-  /// 稿：分组框里的行标签列宽。
-  static const double labelWidth = 148;
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.inkColors;
@@ -36,10 +33,10 @@ class StartupSection extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
+          // 标签占满剩余宽度、开关靠右（用户 2026-09-25）：148 的标签列在英文下会折行，不放宽列。
           Row(
             children: <Widget>[
-              SizedBox(
-                width: labelWidth,
+              Expanded(
                 child: Text(context.l10n.shellKeepLastCanvasTitle, style: t.body.copyWith(color: c.fg4)),
               ),
               const SizedBox(width: InkSpacing.s12),
