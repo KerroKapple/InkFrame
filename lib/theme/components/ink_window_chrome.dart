@@ -1,6 +1,8 @@
-// 无边框窗口的自定义标题栏：左/中/右三槽。
-// 窗口控制按钮按平台惯例：macOS 用原生红绿灯（leading 让位），其余平台自绘右侧三键。
-// 高度固定 56，整条 chrome 提供 DragToMoveArea。
+// 无边框窗口的菜单栏（Workspace v2 稿：30px + 1px 下沿 = 31）：左 / 中 / 右三槽。
+// 窗口控制按钮按平台惯例：macOS 用原生红绿灯（leading 让位 78），其余平台自绘右侧三键 46×30。
+//
+// DragToMoveArea 只包 leading + center（Logo、菜单项与空白区）；trailing（⌘K 入口等）
+// 与窗口三键在拖拽区之外——它们是可点控件，不该吃 kDoubleTapTimeout 的 300ms 仲裁。
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -21,36 +23,47 @@ class InkWindowChrome extends StatelessWidget {
   final Widget? center;
   final Widget? trailing;
 
+  /// 稿是 content-box：height 30 + border-bottom 1。
+  static const double height = 31;
+
+  /// macOS 红绿灯让位（README §4）。
+  static const double macTrafficLightInset = 78;
+
   @override
   Widget build(BuildContext context) {
     final InkColors colors = context.inkColors;
     final bool isMac = defaultTargetPlatform == TargetPlatform.macOS;
     return SizedBox(
-      height: 56,
-      child: DragToMoveArea(
-        child: Container(
-          decoration: BoxDecoration(
-            color: colors.surfaceCanvas,
-            border: Border(
-              bottom: BorderSide(color: colors.borderSubtle, width: 1),
-            ),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: InkSpacing.lg),
-          child: Row(
-            children: <Widget>[
-              if (isMac)
-                const SizedBox(width: InkSpacing.macTrafficLightInset),
-              ?leading,
-              Expanded(
-                child: Center(child: center ?? const SizedBox.shrink()),
+      height: height,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: colors.surface4,
+          border: Border(bottom: BorderSide(color: colors.borderStrong)),
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: DragToMoveArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: InkSpacing.s12),
+                  child: Row(
+                    children: <Widget>[
+                      if (isMac) const SizedBox(width: macTrafficLightInset),
+                      ?leading,
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: center ?? const SizedBox.shrink(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              ?trailing,
-              if (!isMac) ...<Widget>[
-                const SizedBox(width: InkSpacing.md),
-                const _WindowButtons(),
-              ],
-            ],
-          ),
+            ),
+            ?trailing,
+            if (!isMac) const _WindowButtons() else const SizedBox(width: InkSpacing.s12),
+          ],
         ),
       ),
     );
@@ -84,7 +97,6 @@ class _WindowButtons extends StatelessWidget {
           icon: Icons.close,
           semanticLabel: context.l10n.windowClose,
           onPressed: () => windowManager.close(),
-          danger: true,
         ),
       ],
     );
@@ -96,12 +108,10 @@ class _WinIconButton extends StatefulWidget {
     required this.icon,
     required this.semanticLabel,
     required this.onPressed,
-    this.danger = false,
   });
   final IconData icon;
   final String semanticLabel;
   final VoidCallback onPressed;
-  final bool danger;
 
   @override
   State<_WinIconButton> createState() => _WinIconButtonState();
@@ -112,9 +122,6 @@ class _WinIconButtonState extends State<_WinIconButton> {
   @override
   Widget build(BuildContext context) {
     final InkColors colors = context.inkColors;
-    final Color bg = _hover
-        ? (widget.danger ? colors.danger : colors.surface3)
-        : Colors.transparent;
     return Semantics(
       button: true,
       enabled: true,
@@ -127,11 +134,12 @@ class _WinIconButtonState extends State<_WinIconButton> {
           onTap: widget.onPressed,
           child: AnimatedContainer(
             duration: InkMotion.fast,
-            width: 40,
-            height: 32,
-            color: bg,
+            width: 46,
+            height: 30,
+            // 语义色不做容器底色：关闭键悬停同样用 surface5。
+            color: _hover ? colors.surface5 : Colors.transparent,
             child: Center(
-              child: Icon(widget.icon, size: 14, color: colors.fg2),
+              child: Icon(widget.icon, size: 14, color: colors.fg3),
             ),
           ),
         ),

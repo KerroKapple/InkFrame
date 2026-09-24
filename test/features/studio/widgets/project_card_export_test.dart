@@ -88,7 +88,7 @@ void main() {
   }
 
   Future<void> tapExport(WidgetTester tester) async {
-    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.tap(find.byTooltip('Project options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Export project…'));
     await tester.pumpAndSettle();

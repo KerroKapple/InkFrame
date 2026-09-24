@@ -16,9 +16,10 @@ void main() {
     size: Size(200, 100),
   );
 
-  test('源出点 = 右边中点，靶入点 = 左边中点', () {
-    expect(edgeSourceAnchor(node), const Offset(300, 250));
-    expect(edgeTargetAnchor(node), const Offset(100, 250));
+  test('源出点 = 右缘端口，靶入点 = 左侧端口外缘', () {
+    // 稿：出点 = 右缘 + 端口中心 y（kNodeCardPortY），入点 = 左侧端口外缘（-5）；不读 node.size。
+    expect(edgeSourceAnchor(node), const Offset(100 + 224, 200 + 87));
+    expect(edgeTargetAnchor(node), const Offset(100 - 5, 200 + 87));
   });
 
   test('edgePath 起止于两锚点', () {
@@ -65,8 +66,8 @@ void main() {
     const v = LaneDirection.vertical;
 
     test('源出点 = 下边中点，靶入点 = 上边中点', () {
-      expect(edgeSourceAnchor(node, direction: v), const Offset(200, 300));
-      expect(edgeTargetAnchor(node, direction: v), const Offset(200, 200));
+      expect(edgeSourceAnchor(node, direction: v), const Offset(100 + 112, 200 + 172));
+      expect(edgeTargetAnchor(node, direction: v), const Offset(100 + 112, 200));
     });
 
     test('末端切线为 +y 方向（箭头恒竖直入端口），回连亦然', () {

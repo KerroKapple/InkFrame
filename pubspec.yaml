@@ -90,17 +90,7 @@ flutter:
     - assets/showcase/
 
   fonts:
-    - family: CormorantGaramond
-      fonts:
-        - asset: assets/fonts/CormorantGaramond-Light.ttf
-          weight: 300
-        - asset: assets/fonts/CormorantGaramond-Regular.ttf
-          weight: 400
-        - asset: assets/fonts/CormorantGaramond-Medium.ttf
-          weight: 500
-        - asset: assets/fonts/CormorantGaramond-Italic.ttf
-          weight: 400
-          style: italic
+    # 界面无衬线字体（Noto Sans SC）不打包，走 typography.dart 的系统回落链。
     - family: JetBrainsMono
       fonts:
         - asset: assets/fonts/JetBrainsMono-Regular.ttf

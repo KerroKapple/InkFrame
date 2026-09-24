@@ -1,8 +1,8 @@
-// NodeInputsSection：config 节点的入边（data edge）列表 + role 切换。
-// image / video inspector 共享。role 选项按当前 provider 能力过滤
-// （supportsFirstFrame / supportsLastFrame），reference 恒可选；
+// NodeInputsSection：config 节点的入边（data edge）列表（Workspace v2 稿的「关键帧」组）。
+// image / video inspector 共享。每行 = `96px 角色下拉 | 源节点名 + 断开`：角色选项按当前
+// provider 能力过滤（supportsFirstFrame / supportsLastFrame），reference 恒可选；
 // 已存 role 即使不在允许集也保留展示（钳制语义，防 DropdownButton 断言）。
-// maxRefImages > 0 时标签带 n/max 计数，超限给忽略警告（截断发生在 provider）。
+// maxRefImages > 0 时组内首行带 n/max 计数，超限给忽略警告（截断发生在 provider）。
 
 import 'dart:io';
 
@@ -21,9 +21,11 @@ import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
+import 'inspector_rows.dart';
 
-/// 入边行缩略图边长（正方形裁切）。
-const double _kThumbSize = 28;
+/// 入边行缩略图（稿：40×24）。
+const double _kThumbW = 40;
+const double _kThumbH = 24;
 
 class NodeInputsSection extends ConsumerWidget {
   const NodeInputsSection({
@@ -46,16 +48,19 @@ class NodeInputsSection extends ConsumerWidget {
     // 入边/节点任一加载失败 → 错误横幅（此前静默降级为空 = 误报"无入边"）。
     final loadError = edgesAsync.error ?? nodesAsync.error;
     if (loadError != null) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            context.l10n.inspectorInputsLabel,
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-          const SizedBox(height: InkSpacing.xs),
-          InkErrorBanner(message: l10nAsyncError(context, loadError)),
-        ],
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              context.l10n.inspectorInputsLabel,
+              style: typo.meta.copyWith(color: colors.fg5),
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            InkErrorBanner(message: l10nAsyncError(context, loadError)),
+          ],
+        ),
       );
     }
     final edges = edgesAsync.valueOrNull ?? const <CanvasEdge>[];
@@ -72,20 +77,25 @@ class NodeInputsSection extends ConsumerWidget {
     final maxRefs = selectedCaps?.maxRefImages ?? 0;
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          maxRefs > 0
-              ? context.l10n.inspectorInputsLabelCounted(refCount, maxRefs)
-              : context.l10n.inspectorInputsLabel,
-          style: typo.caption.copyWith(color: colors.fg3),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(InkSpacing.s12, 0, InkSpacing.s12, InkSpacing.xs),
+          child: Text(
+            maxRefs > 0
+                ? context.l10n.inspectorInputsLabelCounted(refCount, maxRefs)
+                : context.l10n.inspectorInputsLabel,
+            style: typo.meta.copyWith(color: colors.fg5),
+          ),
         ),
-        const SizedBox(height: InkSpacing.xs),
         if (inputs.isEmpty)
-          InkDashedSlot(
-            child: Text(
-              context.l10n.inspectorInputsEmpty,
-              style: typo.caption.copyWith(color: colors.fg3),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+            child: InkDashedSlot(
+              child: Text(
+                context.l10n.inspectorInputsEmpty,
+                style: typo.meta.copyWith(color: colors.fg5),
+              ),
             ),
           )
         else ...[
@@ -99,10 +109,10 @@ class NodeInputsSection extends ConsumerWidget {
             ),
           if (maxRefs > 0 && refCount > maxRefs)
             Padding(
-              padding: const EdgeInsets.only(bottom: InkSpacing.xs),
+              padding: const EdgeInsets.fromLTRB(InkSpacing.s12, 0, InkSpacing.s12, InkSpacing.xs),
               child: Text(
                 context.l10n.inspectorInputsOverLimit(maxRefs),
-                style: typo.caption.copyWith(color: colors.warning),
+                style: typo.meta.copyWith(color: colors.accent),
               ),
             ),
         ],
@@ -171,60 +181,80 @@ class _InputRow extends ConsumerWidget {
         ? source!.label
         : (source?.id ?? edge.sourceNodeId);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: InkSpacing.xs),
-      child: Row(
-        children: [
-          if (thumbPath != null) ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(InkRadius.sm),
-              child: Image.file(
-                File(thumbPath!),
-                width: _kThumbSize,
-                height: _kThumbSize,
-                fit: BoxFit.cover,
-                // LB-23：微缩略图按显示尺寸缩略解码。
-                cacheWidth:
-                    (_kThumbSize * MediaQuery.devicePixelRatioOf(context))
-                        .round(),
-                // 缺文件/坏图占位，不崩 UI。
-                errorBuilder: (_, _, _) =>
-                    Icon(Icons.image_outlined, size: 16, color: colors.fg3),
+    return SizedBox(
+      height: 26,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+        child: Row(
+          children: [
+            // 角色列（96px）：稿上的行标签就是角色名，这里是可改的下拉。
+            SizedBox(
+              width: 96,
+              child: InspectorDropdown<EdgeRole>(
+                value: edge.role,
+                items: [
+                  for (final r in roleOptions)
+                    DropdownMenuItem(value: r, child: Text(_roleLabel(context, r))),
+                ],
+                onChanged: (v) {
+                  if (v == null || v == edge.role) return;
+                  ctrl.updateRole(edge.id, v).catchError((Object _) {
+                    // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染
+                  });
+                },
               ),
             ),
-            const SizedBox(width: InkSpacing.xs),
-          ],
-          Expanded(
-            child: Text(
-              sourceLabel,
-              style: typo.body.copyWith(color: colors.fg1),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: InkSpacing.xs),
-          DropdownButton<EdgeRole>(
-            value: edge.role,
-            isDense: true,
-            items: [
-              for (final r in roleOptions)
-                DropdownMenuItem(value: r, child: Text(_roleLabel(context, r))),
+            const SizedBox(width: InkSpacing.sm),
+            if (thumbPath != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(InkRadius.xs),
+                child: Image.file(
+                  File(thumbPath!),
+                  width: _kThumbW,
+                  height: _kThumbH,
+                  fit: BoxFit.cover,
+                  // LB-23：微缩略图按显示尺寸缩略解码。
+                  cacheWidth:
+                      (_kThumbW * MediaQuery.devicePixelRatioOf(context)).round(),
+                  // 缺文件/坏图占位，不崩 UI。
+                  errorBuilder: (_, _, _) =>
+                      Icon(Icons.image_outlined, size: 16, color: colors.fg5),
+                ),
+              ),
+              const SizedBox(width: InkSpacing.sm),
             ],
-            onChanged: (v) {
-              if (v == null || v == edge.role) return;
-              ctrl.updateRole(edge.id, v).catchError((Object _) {
-                // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染
-              });
-            },
-          ),
-          IconButton(
-            tooltip: context.l10n.inspectorRemoveInput,
-            icon: Icon(Icons.link_off, size: 16, color: colors.danger),
-            onPressed: () {
-              // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染。
-              ctrl.removeEdge(edge.id).catchError((Object _) => null);
-            },
-          ),
-        ],
+            Expanded(
+              child: Text(
+                sourceLabel,
+                style: typo.mono.copyWith(color: colors.fg2),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Tooltip(
+              message: context.l10n.inspectorRemoveInput,
+              child: Semantics(
+                button: true,
+                label: context.l10n.inspectorRemoveInput,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染。
+                      ctrl.removeEdge(edge.id).catchError((Object _) => null);
+                    },
+                    child: SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: Icon(Icons.link_off, size: 12, color: colors.danger),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

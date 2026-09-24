@@ -139,7 +139,7 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
       children: [
         Text(
           context.l10n.inspectorCharactersLabel,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.xs),
         if (!_supportsRefs)
@@ -147,7 +147,7 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
             padding: const EdgeInsets.only(bottom: InkSpacing.xs),
             child: Text(
               context.l10n.inspectorCharactersUnsupported,
-              style: typo.caption.copyWith(color: colors.warning),
+              style: typo.meta.copyWith(color: colors.accent),
             ),
           ),
         // 加载失败 → 错误横幅（此前静默降级为空 = 误报"无角色"）。
@@ -160,7 +160,7 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
             onPressed: _importFromFile,
             child: Text(
               context.l10n.inspectorCharactersEmpty,
-              style: typo.caption.copyWith(color: colors.fg3),
+              style: typo.meta.copyWith(color: colors.fg3),
             ),
           )
         else
@@ -349,7 +349,7 @@ class CharacterChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? colors.accent : colors.surface2,
           borderRadius: BorderRadius.circular(InkRadius.sm),
-          border: Border.all(color: selected ? colors.accent : colors.border),
+          border: Border.all(color: selected ? colors.accent : colors.outline),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -382,7 +382,7 @@ class CharacterChip extends StatelessWidget {
             ],
             Text(
               label,
-              style: typo.caption.copyWith(
+              style: typo.meta.copyWith(
                 color: selected ? colors.onAccent : colors.fg1,
               ),
             ),

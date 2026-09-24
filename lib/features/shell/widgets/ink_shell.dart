@@ -16,6 +16,7 @@ import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
 import 'shell_chrome.dart';
 import 'shell_content_stack.dart';
+import 'shell_status_bar.dart';
 import 'shell_tab_bar.dart';
 
 class InkShell extends ConsumerWidget {
@@ -25,12 +26,13 @@ class InkShell extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ShellState s = ref.watch(shellControllerProvider);
     return Scaffold(
-      backgroundColor: context.inkColors.surfaceCanvas,
+      backgroundColor: context.inkColors.surface0,
       body: Column(
         children: <Widget>[
-          const ShellChrome(), // 56：全树唯一 InkWindowChrome
-          const ShellTabBar(), // 44：在 DragToMoveArea 之外（见该文件头注）
+          const ShellChrome(), // 31：全树唯一 InkWindowChrome（菜单栏）
+          const ShellTabBar(), // 35：在 DragToMoveArea 之外（见该文件头注）；面包屑在这一行
           Expanded(child: ShellContentStack(tab: s.tab, overlay: s.overlay)),
+          const ShellStatusBar(), // 23：壳级状态栏，内容随当前标签
         ],
       ),
     );

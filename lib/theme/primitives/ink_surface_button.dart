@@ -79,7 +79,7 @@ class _InkSurfaceButtonState extends State<InkSurfaceButton> {
             ],
             Text(
               widget.label,
-              style: typo.caption.copyWith(color: colors.fg1),
+              style: typo.meta.copyWith(color: colors.fg1),
             ),
           ],
         ),

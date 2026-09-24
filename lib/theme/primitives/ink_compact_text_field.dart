@@ -67,10 +67,11 @@ class _InkCompactTextFieldState extends State<InkCompactTextField> {
         vertical: InkSpacing.sm,
       ),
       decoration: BoxDecoration(
-        color: colors.inputFill,
+        // README：输入框无底色，只有描边。
+        color: const Color(0x00000000),
         borderRadius: BorderRadius.circular(InkRadius.md),
         border: Border.all(
-          color: _focused ? colors.borderHover : Colors.transparent,
+          color: _focused ? colors.control : Colors.transparent,
           width: 1,
         ),
       ),

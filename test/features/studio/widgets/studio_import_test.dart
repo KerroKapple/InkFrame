@@ -1,4 +1,5 @@
-// Studio 导入入口 widget 测试（LB-12）：picker→service→outcome 文案/选中/互斥。
+// LB-12 导入流：入口有两处——标签栏「导入项目包」（有项目时，在壳里）与零项目空态的「Import project…」。
+// 两处走同一条 runProjectImportFlow（审计 2026-08-31 P0-3），同一把 busy 互斥锁。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -9,6 +10,8 @@ import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/project_archive.dart';
 import 'package:inkframe/core/interfaces/project_import_service.dart';
 import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/widgets/shell_tab_bar.dart';
 import 'package:inkframe/features/studio/controllers/studio_state.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -17,6 +20,7 @@ import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/primitives/ink_ghost_button.dart';
 
+import '../../../_harness/shell_app.dart';
 import '../../../helpers/recording_logger.dart';
 
 class _FakeImportService implements ProjectImportService {
@@ -63,22 +67,34 @@ void main() {
     toast = _RecordingToast();
   });
 
-  Future<ProviderContainer> pump(
-    WidgetTester tester, {
-    String? pickedPath,
-    List<ProjectWithCanvases> projects = const [],
-  }) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer(
-      overrides: [
+  List<Override> overrides({String? pickedPath, List<ProjectWithCanvases> projects = const []}) => [
         workspaceProjectsProvider.overrideWith((_) async => projects),
         openFilePickerProvider.overrideWithValue(() async => pickedPath),
         projectImportServiceProvider.overrideWith((ref) async => service),
         toastServiceProvider.overrideWithValue(toast),
         loggerProvider.overrideWithValue(RecordingLogger()),
-      ],
+      ];
+
+  /// 有项目：入口在壳的标签栏「导入项目包」——整壳里跑。
+  Future<ProviderContainer> pumpShell(WidgetTester tester, {String? pickedPath}) async {
+    final paths = await setupTempPaths(tester, 'ink_studio_import_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(),
+      extraOverrides: overrides(pickedPath: pickedPath, projects: _oneProject),
     );
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
+    return readShellContainer(tester);
+  }
+
+  /// 零项目：空态卡片里的「Import project…」，只 pump Studio 屏。
+  Future<ProviderContainer> pumpStudio(WidgetTester tester, {String? pickedPath}) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final container = ProviderContainer(overrides: overrides(pickedPath: pickedPath));
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -95,56 +111,63 @@ void main() {
     return container;
   }
 
-  testWidgets('导入成功：service 收 path、barrier 在途、选中新项目、成功 toast',
-      (tester) async {
-    service.gate = Completer<void>();
-    final container = await pump(tester, pickedPath: 'C:/tmp/p.zip', projects: _oneProject);
-
-    await tester.tap(find.text('Import project…'));
+  Future<void> tapImportPackage(WidgetTester tester) async {
+    await tester.tap(find.byKey(ShellTabBar.importPackageKey));
     await tester.pump();
+  }
+
+  testWidgets('标签栏导入成功：service 收 path、barrier 在途、选中新项目、成功 toast', (tester) async {
+    service.gate = Completer<void>();
+    final container = await pumpShell(tester, pickedPath: 'C:/tmp/p.zip');
+
+    await tapImportPackage(tester);
     expect(find.text('Importing…'), findsOneWidget); // barrier 模态在途。
 
     service.gate!.complete();
-    await tester.pumpAndSettle();
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
 
     expect(service.paths, <String>['C:/tmp/p.zip']);
     expect(find.text('Importing…'), findsNothing);
     expect(toast.shown.single.message, 'Project imported');
     expect(container.read(selectedProjectIdProvider), 'new-proj');
     expect(container.read(projectImportBusyProvider), isFalse);
-  });
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('picker 取消 → 零调用零 toast', (tester) async {
-    await pump(tester, pickedPath: null, projects: _oneProject);
-    await tester.tap(find.text('Import project…'));
-    await tester.pumpAndSettle();
+    await pumpShell(tester, pickedPath: null);
+    await tapImportPackage(tester);
+    await tester.pump();
     expect(service.paths, isEmpty);
     expect(toast.shown, isEmpty);
-  });
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
-  testWidgets('outcome 文案：failedFormat / failedCorrupt', (tester) async {
+  testWidgets('outcome 文案：failedFormat', (tester) async {
     service.outcome = ImportOutcome.failedFormat;
-    await pump(tester, pickedPath: 'C:/tmp/p.zip', projects: _oneProject);
-    await tester.tap(find.text('Import project…'));
-    await tester.pumpAndSettle();
+    await pumpShell(tester, pickedPath: 'C:/tmp/p.zip');
+    await tapImportPackage(tester);
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
     expect(toast.shown.single.message, 'Not an InkFrame project archive');
     expect(toast.shown.single.kind, ToastKind.error);
-  });
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
-  testWidgets('还原 busy 时导入禁用（三大重操作互斥）', (tester) async {
-    final container = await pump(tester, pickedPath: 'C:/tmp/p.zip', projects: _oneProject);
+  testWidgets('还原 busy 时标签栏导入禁用（三大重操作互斥）', (tester) async {
+    final container = await pumpShell(tester, pickedPath: 'C:/tmp/p.zip');
     container.read(databaseRestoreBusyProvider.notifier).state = true;
-    await tester.pumpAndSettle();
+    await tester.pump();
 
-    await tester.tap(find.text('Import project…'), warnIfMissed: false);
-    await tester.pumpAndSettle();
+    await tapImportPackage(tester);
+    await tester.pump();
     expect(service.paths, isEmpty);
-  });
+  }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('零项目空态也能看到并使用 Import project（回归 2026-08-31 审计 P0）',
       (tester) async {
     service.gate = Completer<void>();
-    final container = await pump(tester, pickedPath: 'C:/tmp/p.zip');
+    final container = await pumpStudio(tester, pickedPath: 'C:/tmp/p.zip');
 
     expect(find.text('Import project…'), findsOneWidget);
     await tester.tap(find.text('Import project…'));
@@ -159,11 +182,9 @@ void main() {
     expect(container.read(selectedProjectIdProvider), 'new-proj');
   });
 
-  testWidgets('零项目空态：还原 busy 时导入按钮同样禁用（与 FAB 同一把互斥锁）',
+  testWidgets('零项目空态：还原 busy 时导入按钮同样禁用（与标签栏同一把互斥锁）',
       (tester) async {
-    // 空态下 FAB 整行不渲染,故上面那条 busy 用例够不到这个按钮——两处各有一份
-    // busy 表达式,只测 FAB 那份等于没测空态那份(PLAYBOOK §5.3 规则漂移)。
-    final container = await pump(tester, pickedPath: 'C:/tmp/p.zip');
+    final container = await pumpStudio(tester, pickedPath: 'C:/tmp/p.zip');
     container.read(databaseRestoreBusyProvider.notifier).state = true;
     await tester.pumpAndSettle();
 

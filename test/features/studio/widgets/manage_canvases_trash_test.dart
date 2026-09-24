@@ -48,14 +48,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // 项目卡菜单 → 管理画布。
-    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.tap(find.byTooltip('Project options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Manage canvases'));
     await tester.pumpAndSettle();
 
     // 活画布 + 已删区（Trash 标题 + 软删画布 + 删除时间）。
     expect(find.text('LiveCanvas'), findsOneWidget);
-    expect(find.text('Trash'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Trash')), findsOneWidget);
     expect(find.text('DeadCanvas'), findsOneWidget);
     expect(find.textContaining('Deleted '), findsOneWidget);
 
@@ -63,7 +63,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // 已删区消失（真恢复→重取回空），行迁回活列表。
-    expect(find.text('Trash'), findsNothing);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Trash')), findsNothing);
     expect(find.text('DeadCanvas'), findsOneWidget);
     expect(find.byIcon(Icons.edit_outlined), findsNWidgets(2));
     // 仓储确认 deleted_at 已清。
@@ -82,7 +82,7 @@ void main() {
     await tester.tap(find.text('Delete')); // 确认框。
     await tester.pumpAndSettle();
 
-    expect(find.text('Trash'), findsOneWidget);
+    expect(find.descendant(of: find.byType(Dialog), matching: find.text('Trash')), findsOneWidget);
     final trashSectionRow = find.ancestor(
       of: find.text('LiveCanvas'),
       matching: find.byType(Row),

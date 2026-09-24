@@ -49,7 +49,7 @@ class _InkGhostButtonState extends State<InkGhostButton> {
               color: _hover ? colors.surface3 : Colors.transparent,
               borderRadius: BorderRadius.circular(InkRadius.sm),
               border: Border.all(
-                color: _hover ? colors.border : Colors.transparent,
+                color: _hover ? colors.outline : Colors.transparent,
                 width: 1,
               ),
             ),

@@ -1,211 +1,166 @@
-// CanvasRenderQueue：画布右侧可折叠面板 —
-// 标题 + 当前画布活跃任务进度行（带取消） + 最近失败区（本地化错误文案）。
-// 折叠：无活跃任务且无最近失败 → 自动收起为细栏；点标题/细栏图标手动覆盖
-// （会话级记忆，见 renderQueueExpandedOverrideProvider）。
+// CanvasRenderQueue：画布底部渲染队列 173px（稿 172 + 1px 上沿）。
+//
+// 三标签「渲染队列 N / 序列 / 导出历史」+ 右侧「清除已完成」| 24px 表头 | 28px 行。
+// 列宽 28 220 110 1fr 120 60，间距 12：序号 / 任务 / 类型 / 进度+状态 / 模型 / 动作。
+//
+// 数据 = jobsRegistry 中本画布的 job（活跃在前、终态在后，各自保持插入序）。
+//   任务名 = 源节点显示名（回退 provider displayName，不暴露 jobId）
+//   类型   = 源节点类型名（回退 '—'）
+//   进度   = JobState.progressValue；状态：队列中 / 渲染中 / 完成 / 失败（tooltip 带本地化错误）/ 已取消
+//   耗时   = JobState 没有起止时间 → 不出这一列（用户拍板：四列改三列）
+//   模型   = providerId（JobState 只有 providerId，没有模型名）
+//   动作   = 可取消时「取消」；终态且有源节点时「定位」（选中源节点）
+// 「序列 / 导出历史」标签在仓库里没有内容，只画标签不挂交互。
+// 「并发 N」只读显示 JobQueueService 的全局并发上限（用户拍板）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/job_queue.dart';
 import '../../../core/di/providers.dart';
-import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ink_progress_bar.dart';
+import '../../../theme/components/ws_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
+import '../models/canvas_node.dart';
+import '../../../services/job_queue_service.dart' show kDefaultGlobalConcurrency;
+import '../providers/canvas_nodes_controller.dart';
+import '../providers/canvas_selection_controller.dart';
 import '../providers/current_canvas_id.dart';
-import '../providers/render_queue_expanded.dart';
+import 'node_card.dart';
 
 class CanvasRenderQueue extends ConsumerWidget {
   const CanvasRenderQueue({super.key});
 
-  // 最近失败区展示条数上限——取插入序最新 N 条，防止长会话堆积。
-  static const int _kMaxRecentFailures = 3;
+  /// 稿是 content-box：height 172 + border-top 1。
+  static const double height = 173;
 
-  static const double _kExpandedWidth = 320;
-  static const double _kRailWidth = InkSpacing.xxl;
+  static const List<double?> _columns = <double?>[28, 220, 110, null, 120, 60];
 
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-
-    final canvasId = ref.watch(currentCanvasIdProvider);
-    final scoped = canvasId == null
-        ? const <JobState>[]
-        : ref
-            .watch(jobsRegistryProvider)
-            .where((s) => s.canvasId == canvasId)
-            .toList();
-    final active = scoped.where((s) => !s.isTerminal).toList();
-    final failures = scoped.whereType<JobFailed>().toList();
-    final recentFailures = failures.length <= _kMaxRecentFailures
-        ? failures
-        : failures.sublist(failures.length - _kMaxRecentFailures);
-    final running = active.whereType<JobRunning>().length;
-
-    final override = ref.watch(renderQueueExpandedOverrideProvider);
-    final expanded =
-        override ?? (active.isNotEmpty || recentFailures.isNotEmpty);
-
-    return AnimatedContainer(
-      duration: InkMotion.fast,
-      width: expanded ? _kExpandedWidth : _kRailWidth,
-      decoration: BoxDecoration(
-        color: colors.surface1,
-        border: Border(
-          left: BorderSide(color: colors.borderSubtle),
-          top: BorderSide(color: colors.borderSubtle),
-        ),
-      ),
-      // 动画过程宽度连续变化——面板内容恒按展开宽排版，超出部分裁掉，
-      // 避免中间帧 Row 溢出。
-      child: ClipRect(
-        child: OverflowBox(
-          alignment: Alignment.topLeft,
-          minWidth: expanded ? _kExpandedWidth : _kRailWidth,
-          maxWidth: expanded ? _kExpandedWidth : _kRailWidth,
-          child: expanded
-              ? _ExpandedPanel(
-                  active: active,
-                  recentFailures: recentFailures,
-                  running: running,
-                )
-              : _CollapsedRail(activeCount: active.length),
-        ),
-      ),
-    );
-  }
-}
-
-/// 收起态细栏：展开按钮 + 活跃任务数角标。
-class _CollapsedRail extends ConsumerWidget {
-  const _CollapsedRail({required this.activeCount});
-
-  final int activeCount;
+  static const Key clearDoneKey = Key('canvas.renderQueue.clearDone');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-    return Column(
-      children: <Widget>[
-        const SizedBox(height: InkSpacing.xs),
-        IconButton(
-          tooltip: context.l10n.canvasRenderQueueExpand,
-          onPressed: () => ref
-              .read(renderQueueExpandedOverrideProvider.notifier)
-              .state = true,
-          icon: const Icon(Icons.pending_actions_outlined),
-          iconSize: InkSpacing.lg,
-          color: colors.fg3,
-          hoverColor: colors.surface3,
-          padding: EdgeInsets.zero,
-          visualDensity: VisualDensity.compact,
-          // 细栏净宽 = _kRailWidth - 1px 左边框，默认 48 最小点击域会溢出。
-          constraints: const BoxConstraints(
-            minWidth: InkSpacing.xl,
-            minHeight: InkSpacing.xxl,
-          ),
-        ),
-        if (activeCount > 0)
-          Text(
-            '$activeCount',
-            style: typo.caption.copyWith(color: colors.fg3),
-          ),
-      ],
-    );
-  }
-}
-
-/// 展开态面板：标题行（点击收起）+ 活跃任务 + 最近失败。
-class _ExpandedPanel extends ConsumerWidget {
-  const _ExpandedPanel({
-    required this.active,
-    required this.recentFailures,
-    required this.running,
-  });
-
-  final List<JobState> active;
-  final List<JobFailed> recentFailures;
-  final int running;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
+    final c = context.inkColors;
+    final t = context.inkTypography;
     final l = context.l10n;
-    final displayNames = ref.watch(providerDisplayNamesProvider);
 
-    // 活跃任务数不设上限，面板高度可能超出视口 → 面板内自滚。
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(
-        InkSpacing.md,
-        InkSpacing.xs,
-        InkSpacing.md,
-        InkSpacing.md,
+    final String? canvasId = ref.watch(currentCanvasIdProvider);
+    final List<JobState> scoped = canvasId == null
+        ? const <JobState>[]
+        : ref.watch(jobsRegistryProvider).where((s) => s.canvasId == canvasId).toList();
+    final List<JobState> active = scoped.where((s) => !s.isTerminal).toList();
+    final List<JobState> terminal = scoped.where((s) => s.isTerminal).toList();
+    final List<JobState> rows = <JobState>[...active, ...terminal];
+    final List<CanvasNode> nodes = canvasId == null
+        ? const <CanvasNode>[]
+        : (ref.watch(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[]);
+    final Map<String, CanvasNode> byId = <String, CanvasNode>{for (final n in nodes) n.id: n};
+    final Map<String, String> displayNames = ref.watch(providerDisplayNamesProvider);
+
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        color: c.surface3,
+        border: Border(top: BorderSide(color: c.borderStrong)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  l.canvasRenderQueue.toUpperCase(),
-                  style: typo.overline.copyWith(color: colors.fg3),
-                ),
+          WsPanelTabs(
+            tabs: <String>[l.canvasRenderQueue, l.shellTabSequence, l.renderQueueTabExportHistory],
+            badge: active.isEmpty ? null : '${active.length}',
+            trailing: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+              child: Row(
+                children: <Widget>[
+                  Text(l.renderQueueConcurrency(kDefaultGlobalConcurrency),
+                      style: t.meta.copyWith(color: c.fg5)),
+                  if (terminal.isNotEmpty) ...<Widget>[
+                    const SizedBox(width: InkSpacing.s14),
+                    Semantics(
+                      button: true,
+                      label: l.renderQueueClearDone,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.click,
+                        child: GestureDetector(
+                          key: clearDoneKey,
+                          behavior: HitTestBehavior.opaque,
+                          onTap: () => ref.read(jobsRegistryProvider.notifier).clearTerminated(),
+                          child: Center(
+                            child: Text(l.renderQueueClearDone, style: t.meta.copyWith(color: c.fg5)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              Text(
-                '$running · ${active.length}',
-                style: typo.caption.copyWith(color: colors.fg3),
-              ),
-              const SizedBox(width: InkSpacing.xs),
-              IconButton(
-                tooltip: l.canvasRenderQueueCollapse,
-                onPressed: () => ref
-                    .read(renderQueueExpandedOverrideProvider.notifier)
-                    .state = false,
-                icon: const Icon(Icons.chevron_right),
-                iconSize: InkSpacing.md,
-                color: colors.fg3,
-                hoverColor: colors.surface3,
-                padding: EdgeInsets.zero,
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-          const SizedBox(height: InkSpacing.s10),
-          if (active.isEmpty)
-            Text(
-              l.canvasRenderQueueEmpty,
-              style: typo.caption.copyWith(color: colors.fg4),
-            )
-          else
-            for (final job in active) ...<Widget>[
-              _JobRow(
-                job: job,
-                // 行标题用 provider displayName（与 Inspector 下拉一致），
-                // 不暴露 jobId(UUID) 给用户。
-                name: displayNames[job.providerId] ?? job.providerId,
-              ),
-              const SizedBox(height: InkSpacing.sm),
-            ],
-          if (recentFailures.isNotEmpty) ...<Widget>[
-            const SizedBox(height: InkSpacing.s12),
-            Text(
-              l.canvasRenderQueueFailures.toUpperCase(),
-              style: typo.overline.copyWith(color: colors.fg3),
             ),
-            const SizedBox(height: InkSpacing.s10),
-            for (final job in recentFailures) ...<Widget>[
-              _FailedRow(
-                name: displayNames[job.providerId] ?? job.providerId,
-                error: job.error,
-              ),
-              const SizedBox(height: InkSpacing.sm),
-            ],
+          ),
+          Container(
+            height: 25, // content 24 + border-bottom 1
+            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.borderStrong))),
+            child: _GridRow(
+              cells: <Widget>[
+                for (final String h in <String>[
+                  '',
+                  l.renderQueueColTask,
+                  l.renderQueueColType,
+                  l.renderQueueColProgress,
+                  l.renderQueueColModel,
+                  '',
+                ])
+                  Text(h, style: t.meta.copyWith(color: c.fg6)),
+              ],
+            ),
+          ),
+          Expanded(
+            child: rows.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.all(InkSpacing.s12),
+                    child: Text(l.canvasRenderQueueEmpty, style: t.meta.copyWith(color: c.fg6)),
+                  )
+                : ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: rows.length,
+                    itemBuilder: (BuildContext context, int i) {
+                      final JobState job = rows[i];
+                      final CanvasNode? src = job.sourceNodeId == null ? null : byId[job.sourceNodeId!];
+                      return _JobRow(
+                        index: i + 1,
+                        job: job,
+                        name: src != null
+                            ? nodeDisplayName(context, src)
+                            : (displayNames[job.providerId] ?? job.providerId),
+                        kind: src?.type.name ?? '—',
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _GridRow extends StatelessWidget {
+  const _GridRow({required this.cells});
+  final List<Widget> cells;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+      child: Row(
+        children: <Widget>[
+          for (int i = 0; i < cells.length; i++) ...<Widget>[
+            if (i > 0) const SizedBox(width: InkSpacing.s12),
+            if (CanvasRenderQueue._columns[i] == null)
+              Expanded(child: cells[i])
+            else
+              SizedBox(width: CanvasRenderQueue._columns[i], child: cells[i]),
           ],
         ],
       ),
@@ -214,61 +169,83 @@ class _ExpandedPanel extends ConsumerWidget {
 }
 
 class _JobRow extends ConsumerWidget {
-  const _JobRow({required this.job, required this.name});
+  const _JobRow({required this.index, required this.job, required this.name, required this.kind});
 
+  final int index;
   final JobState job;
   final String name;
+  final String kind;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-    final running = job is JobRunning;
-    final percent = job.progressValue; // 0..1
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: running ? colors.cta : colors.fg4,
-                shape: BoxShape.circle,
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    final l = context.l10n;
+    final bool running = job is JobRunning;
+    final (String status, Color statusColor, String? tooltip) = switch (job) {
+      JobQueued() || JobSubmitting() => (l.canvasRenderQueueStatusQueued, c.fg4, null),
+      JobRunning() => (l.renderQueueStatusRunning, c.accent, null),
+      JobSucceeded() => (l.renderQueueStatusDone, c.fg4, null),
+      JobFailed(:final error) => (l.renderQueueStatusFailed, c.danger, l10nError(context, error)),
+      JobCancelled() => (l.renderQueueStatusCancelled, c.fg4, null),
+    };
+    final double fraction = switch (job) {
+      JobSucceeded() => 1,
+      JobRunning() => job.progressValue,
+      _ => 0,
+    };
+    final Widget statusText = Text(status, maxLines: 1, overflow: TextOverflow.ellipsis,
+        style: t.meta.copyWith(color: statusColor));
+
+    return Container(
+      height: 29, // content 28 + border-bottom 1
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.surface1))),
+      child: _GridRow(
+        cells: <Widget>[
+          Text(index.toString().padLeft(2, '0'), style: t.monoSmall.copyWith(color: c.fg6)),
+          Text(name, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.body.copyWith(color: c.fg2)),
+          Text(kind, style: t.body.copyWith(color: c.fg4)),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Container(
+                  height: 4,
+                  decoration: BoxDecoration(color: c.control, borderRadius: BorderRadius.circular(InkRadius.xs)),
+                  clipBehavior: Clip.antiAlias,
+                  child: FractionallySizedBox(
+                    alignment: Alignment.centerLeft,
+                    widthFactor: fraction.clamp(0.0, 1.0),
+                    child: ColoredBox(color: running ? c.accent : c.fg6),
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(width: InkSpacing.s10),
-            Expanded(
-              child: Text(
-                name,
-                style: typo.body.copyWith(color: colors.fg1),
-                overflow: TextOverflow.ellipsis,
+              const SizedBox(width: InkSpacing.s10),
+              SizedBox(
+                width: 64,
+                child: tooltip == null ? statusText : Tooltip(message: tooltip, child: statusText),
               ),
-            ),
-            Text(
-              running
-                  ? '${(percent * 100).round()}%'
-                  : context.l10n.canvasRenderQueueStatusQueued,
-              style: typo.caption.copyWith(
-                color: running ? colors.fg3 : colors.fg4,
-              ),
-            ),
-            if (job.isCancellable) ...<Widget>[
-              const SizedBox(width: InkSpacing.sm),
-              _CancelButton(onCancel: () => _cancel(ref, job.jobId)),
             ],
-          ],
-        ),
-        if (running) ...<Widget>[
-          const SizedBox(height: InkSpacing.xs),
-          Padding(
-            // 与状态点（8px）+ 间隙（10px）对齐
-            padding: const EdgeInsets.only(left: InkSpacing.s18),
-            child: InkProgressBar(value: percent),
           ),
+          Text(job.providerId, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.body.copyWith(color: c.fg4)),
+          if (job.isCancellable)
+            _ActionText(
+              label: l.commonCancel,
+              tooltip: l.canvasRenderQueueCancel,
+              onTap: () => _cancel(ref, job.jobId),
+            )
+          else if (job.isTerminal && job.sourceNodeId != null)
+            // 定位 = 选中源节点（用户拍板：有 select 动作就接）。
+            _ActionText(
+              label: l.renderQueueLocate,
+              tooltip: l.renderQueueLocate,
+              onTap: () => ref
+                  .read(canvasSelectionControllerProvider(job.canvasId).notifier)
+                  .select(job.sourceNodeId!),
+            )
+          else
+            const SizedBox.shrink(),
         ],
-      ],
+      ),
     );
   }
 
@@ -279,69 +256,31 @@ class _JobRow extends ConsumerWidget {
   }
 }
 
-/// 单任务取消控件：小号 icon 按钮，tap 区 ≥ InkSpacing.xxl（48，Material 最小可交互）。
-class _CancelButton extends StatelessWidget {
-  const _CancelButton({required this.onCancel});
-
-  final VoidCallback onCancel;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    return IconButton(
-      tooltip: context.l10n.canvasRenderQueueCancel,
-      onPressed: onCancel,
-      icon: const Icon(Icons.close),
-      iconSize: InkSpacing.md,
-      color: colors.fg3,
-      hoverColor: colors.surface3,
-      padding: EdgeInsets.zero,
-      visualDensity: VisualDensity.compact,
-      constraints: const BoxConstraints(
-        minWidth: InkSpacing.xxl,
-        minHeight: InkSpacing.xxl,
-      ),
-    );
-  }
-}
-
-/// 最近失败行：provider 名 + 本地化错误文案（走统一的 l10nError）。
-class _FailedRow extends StatelessWidget {
-  const _FailedRow({required this.name, required this.error});
-
-  final String name;
-  final InkError error;
+/// 动作列的 11px 文字键（取消 / 定位）。
+class _ActionText extends StatelessWidget {
+  const _ActionText({required this.label, required this.tooltip, required this.onTap});
+  final String label;
+  final String tooltip;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Icon(Icons.error_outline, size: InkSpacing.md, color: colors.danger),
-            const SizedBox(width: InkSpacing.s10),
-            Expanded(
-              child: Text(
-                name,
-                style: typo.body.copyWith(color: colors.fg2),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: InkSpacing.xs),
-        Padding(
-          // 与错误图标（16px）+ 间隙（10px）对齐
-          padding: const EdgeInsets.only(left: InkSpacing.s28),
-          child: Text(
-            l10nError(context, error),
-            style: typo.caption.copyWith(color: colors.danger),
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    return Semantics(
+      button: true,
+      label: tooltip,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Tooltip(
+            message: tooltip,
+            child: Text(label, style: t.meta.copyWith(color: c.fg5)),
           ),
         ),
-      ],
+      ),
     );
   }
 }

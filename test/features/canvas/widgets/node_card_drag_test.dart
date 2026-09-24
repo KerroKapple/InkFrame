@@ -1,5 +1,5 @@
 // NodeCard 拖拽：
-//   1) 视觉态：onPanStart → onPanEnd 之间 AnimatedScale 1.0 → 1.02；
+//   1) 稿上拖拽无缩放动画（卡片无外框无阴影）；
 //   2) HI-13 落点提交：拖拽中位移只在卡片内部 Transform.translate 局部累积
 //      （不每帧推 controller），onPanEnd 一次性回调 onDragEnd(累计位移)。
 import 'dart:io';
@@ -72,30 +72,6 @@ void main() {
     );
     await tester.pumpAndSettle();
   }
-
-  testWidgets('pan 开始 → AnimatedScale 切到 1.02；pan 结束 → 回到 1.0',
-      (tester) async {
-    const n = CanvasNode(
-      id: 'n1',
-      label: 'Drag me',
-      type: CanvasNodeType.image,
-    );
-    await pumpCard(tester, node: n, onDragEnd: (_) {});
-
-    AnimatedScale scaleWidget() => tester
-        .widget<AnimatedScale>(find.byType(AnimatedScale).first);
-    expect(scaleWidget().scale, 1.0);
-
-    final gesture =
-        await tester.startGesture(tester.getCenter(find.text('Drag me')));
-    await gesture.moveBy(const Offset(30, 40));
-    await tester.pump();
-    expect(scaleWidget().scale, 1.02);
-
-    await gesture.up();
-    await tester.pumpAndSettle();
-    expect(scaleWidget().scale, 1.0);
-  });
 
   testWidgets('拖拽中位移局部累积（Transform），onDragEnd 仅在落点回调一次',
       (tester) async {

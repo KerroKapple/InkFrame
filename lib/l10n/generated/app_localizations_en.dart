@@ -182,11 +182,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
-  String get settingsApiKeysSection => 'API Keys';
+  String get settingsApiKeysSection => 'API keys';
 
   @override
   String get settingsApiKeysHint =>
-      'Keys are stored in your system keychain. Nothing is sent off-device.';
+      'Keys live in the macOS Keychain / Windows Credential Manager — never in the database, never exported with a project.';
 
   @override
   String get settingsApiKeyPlaceholder => 'sk-...';
@@ -228,7 +228,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCustomProvidersEmpty => 'No custom providers yet';
 
   @override
-  String get settingsCustomProvidersAdd => 'Add provider';
+  String get settingsCustomProvidersAdd => 'Add custom provider…';
 
   @override
   String get settingsCustomProvidersRestartNotice =>
@@ -497,7 +497,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsAboutLegalese =>
-      'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the Cormorant Garamond and JetBrains Mono fonts (SIL OFL 1.1).';
+      'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the JetBrains Mono font (SIL OFL 1.1).';
 
   @override
   String get settingsAboutUpdateCheckButton => 'Check for updates';
@@ -527,7 +527,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check for updates at startup';
 
   @override
-  String get shellKeepLastCanvasTitle => 'Restore last canvas on startup';
+  String get shellKeepLastCanvasTitle => 'Open last canvas on startup';
 
   @override
   String get shellKeepLastCanvasSubtitle =>
@@ -546,6 +546,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get resultNodePending => 'Waiting for generation';
+
+  @override
+  String get nodeStatusReady => 'Ready';
+
+  @override
+  String get nodeStatusDraft => 'Draft';
+
+  @override
+  String get nodeStatusDone => 'Done';
+
+  @override
+  String get nodeStatusPending => 'Pending';
 
   @override
   String get resultNodeImageMissing => 'Image file missing';
@@ -1367,6 +1379,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get commandPaletteTooltip => 'Command palette';
 
   @override
+  String get commandPaletteEntryPlaceholder =>
+      'Search projects, nodes, outputs…';
+
+  @override
   String get commandPaletteSearchHint => 'Type a command…';
 
   @override
@@ -1433,6 +1449,182 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t import the script. Nothing was added to the canvas.';
 
   @override
+  String get inspectorGroupModel => 'Model';
+
+  @override
+  String get inspectorGroupKeyframes => 'Keyframes';
+
+  @override
+  String get inspectorGroupCamera => 'Camera';
+
+  @override
+  String get inspectorGroupShot => 'Shot';
+
+  @override
+  String get inspectorEstimatedCostLabel => 'Est. cost';
+
+  @override
+  String get inspectorCameraUnsupported =>
+      'This provider has no camera-movement control';
+
+  @override
+  String renderQueueConcurrency(int count) {
+    return 'Concurrency $count';
+  }
+
+  @override
+  String get renderQueueLocate => 'Locate';
+
+  @override
+  String get canvasToolSelect => 'Select';
+
+  @override
+  String get canvasToolPan => 'Pan';
+
+  @override
+  String get canvasToolLink => 'Link';
+
+  @override
+  String get canvasToolTextNode => 'Text node';
+
+  @override
+  String get canvasToolImageNode => 'Image node';
+
+  @override
+  String get canvasToolVideoNode => 'Video node';
+
+  @override
+  String get canvasToolLane => 'Lane';
+
+  @override
+  String get projectPanelCanvases => 'Canvases';
+
+  @override
+  String get projectPanelAssets => 'Assets';
+
+  @override
+  String get projectPanelCharacters => 'Characters';
+
+  @override
+  String get projectPanelFilterHint => 'Filter…';
+
+  @override
+  String get projectPanelCurrentNodes => 'Current canvas · nodes';
+
+  @override
+  String get canvasHeaderLanes => 'Lanes:';
+
+  @override
+  String get canvasZoomFit => 'Fit';
+
+  @override
+  String get promptBarBaseStyle => 'Base style';
+
+  @override
+  String get promptBarAttached => 'Attached';
+
+  @override
+  String promptBarChars(int count) {
+    return '$count chars';
+  }
+
+  @override
+  String get inspectorTabProperties => 'Properties';
+
+  @override
+  String get inspectorTabStatus => 'Status';
+
+  @override
+  String get inspectorTabHistory => 'History';
+
+  @override
+  String get inspectorNoSelection => 'Select a node to edit its parameters';
+
+  @override
+  String get inspectorHintFollowsSelection =>
+      'Parameters follow the selected node';
+
+  @override
+  String get renderQueueTabExportHistory => 'Export history';
+
+  @override
+  String get renderQueueColTask => 'Task';
+
+  @override
+  String get renderQueueColType => 'Type';
+
+  @override
+  String get renderQueueColProgress => 'Progress';
+
+  @override
+  String get renderQueueColElapsed => 'Elapsed';
+
+  @override
+  String get renderQueueColModel => 'Model';
+
+  @override
+  String get renderQueueClearDone => 'Clear finished';
+
+  @override
+  String get renderQueueStatusRunning => 'Rendering';
+
+  @override
+  String get renderQueueStatusDone => 'Done';
+
+  @override
+  String get renderQueueStatusFailed => 'Failed';
+
+  @override
+  String get renderQueueStatusCancelled => 'Cancelled';
+
+  @override
+  String statusBarNodesEdges(int nodes, int edges) {
+    return '$nodes nodes · $edges edges';
+  }
+
+  @override
+  String statusBarSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String statusBarStorage(String path) {
+    return 'Storage $path';
+  }
+
+  @override
+  String statusBarProjects(int count) {
+    return '$count projects';
+  }
+
+  @override
+  String get shellActionImportScript => 'Import script';
+
+  @override
+  String get shellActionSequencePreview => 'Sequence preview';
+
+  @override
+  String get shellActionExportVideo => 'Export video';
+
+  @override
+  String get shellMenuFile => 'File';
+
+  @override
+  String get shellMenuEdit => 'Edit';
+
+  @override
+  String get shellMenuCanvas => 'Canvas';
+
+  @override
+  String get shellMenuNode => 'Node';
+
+  @override
+  String get shellMenuWindow => 'Window';
+
+  @override
+  String get shellMenuHelp => 'Help';
+
+  @override
   String get shellTabStudio => 'Studio';
 
   @override
@@ -1470,4 +1662,289 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get shellExportEmptyBody =>
       'Open a canvas first, then export its video results here.';
+
+  @override
+  String get galleryFilterGroupScope => 'Scope';
+
+  @override
+  String get galleryFilterGroupType => 'Type';
+
+  @override
+  String get galleryFilterGroupModel => 'Model';
+
+  @override
+  String get galleryFilterGroupMark => 'Marks';
+
+  @override
+  String get galleryFilterAllInProject => 'All in project';
+
+  @override
+  String get galleryMarkCurrentLine => 'Current line';
+
+  @override
+  String get galleryMarkInSequence => 'In sequence';
+
+  @override
+  String get galleryThumbMedium => 'M';
+
+  @override
+  String get galleryThumbLarge => 'L';
+
+  @override
+  String get galleryThumbXLarge => 'XL';
+
+  @override
+  String get galleryPanelInfo => 'Info';
+
+  @override
+  String get galleryPanelLineage => 'Lineage';
+
+  @override
+  String get galleryGroupParams => 'Generation parameters';
+
+  @override
+  String get galleryGroupPrompt => 'Prompt';
+
+  @override
+  String get galleryParamProvider => 'Provider';
+
+  @override
+  String get galleryParamDuration => 'Duration';
+
+  @override
+  String get galleryParamCamera => 'Camera';
+
+  @override
+  String get galleryParamKeyframes => 'Keyframes';
+
+  @override
+  String get galleryParamPrompt => 'Final prompt';
+
+  @override
+  String get galleryParamBaseStyle => 'Base style';
+
+  @override
+  String galleryKeyframeRef(String role, String source) {
+    return '$role ← $source';
+  }
+
+  @override
+  String get galleryLineageTitle => 'Lineage · current line';
+
+  @override
+  String get galleryLineageShotText => 'Shot text';
+
+  @override
+  String galleryLineageChosenOf(int count) {
+    return 'chosen from $count results';
+  }
+
+  @override
+  String galleryLineageBranches(int count) {
+    return '+$count branches';
+  }
+
+  @override
+  String get galleryLineageCurrent => 'Current item';
+
+  @override
+  String galleryLineageInSequence(String index) {
+    return 'in sequence $index';
+  }
+
+  @override
+  String get galleryLocateInCanvas => 'Locate in canvas';
+
+  @override
+  String get galleryBreadcrumbAll => 'All assets';
+
+  @override
+  String galleryCounts(int images, int videos) {
+    return '$images images · $videos videos';
+  }
+
+  @override
+  String galleryItemsShort(int count) {
+    return '$count items';
+  }
+
+  @override
+  String statusBarGallery(int count, int selected) {
+    return '$count items · $selected selected';
+  }
+
+  @override
+  String get statusBarGalleryHint =>
+      'Space to preview · ↑↓ to switch · double-click to enlarge';
+
+  @override
+  String get galleryTimeJustNow => 'just now';
+
+  @override
+  String galleryTimeMinutesAgo(int count) {
+    return '$count min ago';
+  }
+
+  @override
+  String galleryTimeHoursAgo(int count) {
+    return '$count h ago';
+  }
+
+  @override
+  String galleryTimeDaysAgo(int count) {
+    return '$count d ago';
+  }
+
+  @override
+  String gallerySourceLine(String canvas, String time) {
+    return '$canvas · $time';
+  }
+
+  @override
+  String get galleryNoSelection => 'Select an asset to see its details';
+
+  @override
+  String get studioLibraryHeading => 'Library';
+
+  @override
+  String get studioLibraryAllProjects => 'All projects';
+
+  @override
+  String get studioSettings => 'Settings';
+
+  @override
+  String get studioNoKeyBannerHint =>
+      'Keys go to the system keychain, never the database.';
+
+  @override
+  String get studioNoKeyBannerDismiss => 'Dismiss';
+
+  @override
+  String get studioSortRecent => 'Sort: recently modified';
+
+  @override
+  String get studioViewGrid => 'Grid';
+
+  @override
+  String get studioResumeLabel => 'Last time';
+
+  @override
+  String studioResumeName(String project, String canvas) {
+    return '$project · $canvas';
+  }
+
+  @override
+  String get studioResumeAction => 'Continue';
+
+  @override
+  String studioCardCanvasBadge(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count canvases',
+      one: '1 canvas',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String studioCardRendering(int count) {
+    return '$count nodes rendering';
+  }
+
+  @override
+  String studioCardMeta(String time, String rendering) {
+    return '$time · $rendering';
+  }
+
+  @override
+  String get studioNewProjectHintBlank => 'Blank';
+
+  @override
+  String get studioNewProjectHintSample => 'Sample';
+
+  @override
+  String get studioImportPackage => 'Import package';
+
+  @override
+  String statusBarProjectsCanvases(int projects, int canvases) {
+    return '$projects projects · $canvases canvases';
+  }
+
+  @override
+  String get statusBarKeyMissing => 'No key configured';
+
+  @override
+  String get statusBarKeyConfigured => 'Key configured';
+
+  @override
+  String get commandPaletteGroupShots => 'Shots · current canvas';
+
+  @override
+  String get commandPaletteGroupArtifacts => 'Artifacts';
+
+  @override
+  String get commandPaletteGroupActions => 'Actions';
+
+  @override
+  String commandPaletteResultCount(int count) {
+    return '$count results';
+  }
+
+  @override
+  String get commandPaletteHintMove => '↑↓ move';
+
+  @override
+  String get commandPaletteHintOpen => '↵ open';
+
+  @override
+  String commandPaletteHintLocate(String key) {
+    return '$key locate in canvas';
+  }
+
+  @override
+  String get commandPaletteHintClose => 'Esc close';
+
+  @override
+  String commandPaletteShotPath(String project, String canvas, String type) {
+    return '$project › $canvas › $type';
+  }
+
+  @override
+  String get settingsNavGeneral => 'General';
+
+  @override
+  String get settingsNavNodeLayout => 'Node layout';
+
+  @override
+  String get settingsColumnProvider => 'Provider';
+
+  @override
+  String get settingsColumnKey => 'Key';
+
+  @override
+  String get settingsColumnStatus => 'Status';
+
+  @override
+  String get settingsFooterNote =>
+      'Changes apply immediately and are written to the keychain';
+
+  @override
+  String get settingsDone => 'Done';
+
+  @override
+  String get settingsEscHint => 'Esc';
+
+  @override
+  String get settingsCloseTooltip => 'Close settings';
+
+  @override
+  String commandPaletteSequenceSegment(String index) {
+    return 'Sequence $index';
+  }
+
+  @override
+  String commandPaletteArtifactPath(String kind, String provider) {
+    return 'Gallery › $kind › $provider';
+  }
 }

@@ -5,12 +5,13 @@
 // 用例直接 pump 它）。
 //
 // 另一半职责：脏刷新。isVisible 由 false → true 且 galleryDirtyProvider 为真
-// 时，invalidate 一次 galleryControllerProvider(projectId) 再清脏。
+// 时，invalidate 一次 galleryGraphProvider(projectId) 再清脏。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../l10n/l10n_x.dart';
 import '../../../gallery/providers/gallery_controller.dart';
+import '../../../gallery/providers/gallery_graph_provider.dart';
 import '../../../gallery/widgets/gallery_screen.dart';
 import '../../models/shell_state.dart';
 import '../../providers/active_project.dart';
@@ -55,6 +56,8 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
       if (!ref.read(galleryDirtyProvider)) return;
       final ProjectRef? project = ref.read(activeProjectProvider);
       if (project != null) {
+        // 图是唯一读库入口；controller 也显式失效——它可能被测试 / 未来实现替换成不 watch 图的版本。
+        ref.invalidate(galleryGraphProvider(project.id));
         ref.invalidate(galleryControllerProvider(project.id));
       }
       // 【F4：project == null 时脏标记被无刷新地丢掉，这是安全的】

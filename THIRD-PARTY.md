@@ -64,7 +64,6 @@ Two font families are packaged as application assets (`assets/fonts/`).
 
 | Family | Copyright | License | OFL text |
 |---|---|---|---|
-| Cormorant Garamond | Copyright 2015 The Cormorant Project Authors (github.com/CatharsisFonts/Cormorant) | SIL OFL 1.1 | `assets/fonts/OFL-CormorantGaramond.txt` |
 | JetBrains Mono | Copyright 2020 The JetBrains Mono Project Authors (github.com/JetBrains/JetBrainsMono) | SIL OFL 1.1 | `assets/fonts/OFL-JetBrainsMono.txt` |
 
 Neither bundled TTF declares a Reserved Font Name in its `name` table. Full OFL

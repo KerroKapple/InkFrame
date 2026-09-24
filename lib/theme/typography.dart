@@ -4,182 +4,107 @@
 // 后注入，不直接依赖 MediaQuery.textScaler——保证 golden test 可控。
 // 禁止 widget 内 copyWith(fontSize:) 钉死字号——会绕过 a11y 缩放。
 //
-// Amber Noir 字体方案：
-//   - display / headline / headlineSm / headlineXs：CormorantGaramond（衬线，氛围标题）
-//   - caption / overline / monoMicro / monoNano：JetBrainsMono（等宽，标签 / 元数据）
-//   - 其余：系统默认无衬线（body / title / label / micro / nano）
-//   - code：等宽 fallback（保留旧字段供代码块复用）
+// 字体方案（docs/design/handoff-2026-09/README.md §字体）：
+//   - 界面全无衬线：Noto Sans SC，**不打包**，回落 PingFang SC → Microsoft YaHei UI
+//     → 平台默认无衬线（Flutter 回落链穷尽后隐式落到系统默认；**不写 'sans-serif'**
+//     ——它是 Skia 通用族名，会在 widget test 里解析成真实系统字体，让度量随机器漂）。
+//     字形与设计稿的差异属预期。
+//   - 等宽只给数值 / 时间码 / 路径 / ID：JetBrains Mono（打包），回落 Consolas / Menlo。
+//   - 正文 12 是桌面工具常规密度，不再往下压：11 只给元信息，10 只给徽标与时间码。
 import 'package:flutter/widgets.dart';
 
-const List<String> _serifFallback = <String>[
+const String _sans = 'Noto Sans SC';
+const List<String> _sansFallback = <String>[
   'PingFang SC',
-  'Microsoft YaHei',
-  'Noto Serif CJK SC',
-  'Noto Sans CJK SC',
+  'Microsoft YaHei UI',
+  'Segoe UI Symbol', // ⌘ ↵ › 等符号：CJK 字体缺字时的最后一跳（Windows）
 ];
 
+const String _mono = 'JetBrainsMono';
 const List<String> _monoFallback = <String>[
-  'Menlo',
   'Consolas',
+  'Menlo',
   'PingFang SC',
-  'Microsoft YaHei',
+  'Microsoft YaHei UI',
+  'Segoe UI Symbol',
 ];
 
 @immutable
 class InkTypography {
   const InkTypography({
-    required this.display,
-    required this.displayMd,
-    required this.headline,
-    required this.headlineSm,
-    required this.headlineXs,
-    required this.title,
     required this.body,
-    required this.label,
-    required this.caption,
-    required this.overline,
+    required this.bodyStrong,
+    required this.meta,
     required this.micro,
-    required this.nano,
-    required this.monoMicro,
-    required this.monoNano,
-    required this.code,
+    required this.sectionTitle,
+    required this.dialogTitle,
+    required this.mono,
+    required this.monoSmall,
   });
 
   factory InkTypography.defaults({double scale = 1.0}) => InkTypography(
-        display: TextStyle(
-          fontFamily: 'CormorantGaramond',
-          fontFamilyFallback: _serifFallback,
-          fontSize: 48 * scale,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 0.5,
-          height: 1.15,
-        ),
-        displayMd: TextStyle(
-          fontFamily: 'CormorantGaramond',
-          fontFamilyFallback: _serifFallback,
-          fontSize: 32 * scale,
-          fontWeight: FontWeight.w300,
-          letterSpacing: 0.5,
-          height: 1.15,
-        ),
-        headline: TextStyle(
-          fontFamily: 'CormorantGaramond',
-          fontFamilyFallback: _serifFallback,
-          fontSize: 22 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.25,
-        ),
-        headlineSm: TextStyle(
-          fontFamily: 'CormorantGaramond',
-          fontFamilyFallback: _serifFallback,
-          fontSize: 18 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.25,
-        ),
-        headlineXs: TextStyle(
-          fontFamily: 'CormorantGaramond',
-          fontFamilyFallback: _serifFallback,
-          fontSize: 16 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.25,
-        ),
-        title: TextStyle(
-          fontSize: 18 * scale,
-          fontWeight: FontWeight.w600,
-          height: 1.3,
-        ),
-        body: TextStyle(
-          fontSize: 14 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.45,
-        ),
-        label: TextStyle(
-          fontSize: 13 * scale,
-          fontWeight: FontWeight.w500,
-          height: 1.4,
-        ),
-        caption: TextStyle(
-          fontFamily: 'JetBrainsMono',
-          fontFamilyFallback: _monoFallback,
-          fontSize: 11 * scale,
-          fontWeight: FontWeight.w400,
-          letterSpacing: 1.5,
-          height: 1.35,
-        ),
-        overline: TextStyle(
-          fontFamily: 'JetBrainsMono',
-          fontFamilyFallback: _monoFallback,
-          fontSize: 11 * scale,
-          fontWeight: FontWeight.w400,
-          letterSpacing: 1.8,
-          height: 1.35,
-        ),
-        micro: TextStyle(
-          fontSize: 10 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.3,
-        ),
-        nano: TextStyle(
-          fontSize: 9 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.25,
-        ),
-        monoMicro: TextStyle(
-          fontFamily: 'JetBrainsMono',
-          fontFamilyFallback: _monoFallback,
-          fontSize: 10 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.3,
-        ),
-        monoNano: TextStyle(
-          fontFamily: 'JetBrainsMono',
-          fontFamilyFallback: _monoFallback,
-          fontSize: 9 * scale,
-          fontWeight: FontWeight.w400,
-          letterSpacing: 1.8,
-          height: 1.25,
-        ),
-        code: TextStyle(
-          fontSize: 13 * scale,
-          fontWeight: FontWeight.w400,
-          height: 1.45,
-          fontFamily: 'monospace',
-          fontFamilyFallback: const <String>['Menlo', 'Consolas', 'Monaco'],
-        ),
+        body: _sansStyle(12, FontWeight.w400, 1.45, scale),
+        bodyStrong: _sansStyle(12, FontWeight.w500, 1.45, scale),
+        meta: _sansStyle(11, FontWeight.w400, 1.45, scale),
+        micro: _sansStyle(10, FontWeight.w400, 1.3, scale),
+        sectionTitle: _sansStyle(15, FontWeight.w500, 1.3, scale),
+        dialogTitle: _sansStyle(17, FontWeight.w500, 1.3, scale),
+        mono: _monoStyle(11, scale),
+        monoSmall: _monoStyle(10, scale),
       );
 
-  final TextStyle display;
-  final TextStyle displayMd; // 衬线 32（studio 区段大标题，介于 display48 / headline22）
-  final TextStyle headline;
-  final TextStyle headlineSm; // 衬线 18（节点卡标题 / 顶栏 logo）
-  final TextStyle headlineXs; // 衬线 16（画布顶栏 logo）
-  final TextStyle title;
-  final TextStyle body;
-  final TextStyle label;
-  final TextStyle caption;
-  final TextStyle overline; // 等宽 kicker（分节标题，宽字距）
-  final TextStyle micro;
-  final TextStyle nano;
-  final TextStyle monoMicro; // 等宽 10（ID / 分辨率元数据）
-  final TextStyle monoNano; // 等宽 9（类型标签，宽字距）
-  final TextStyle code;
+  final TextStyle body; // 12/400 正文
+  final TextStyle bodyStrong; // 12/500 面板标题 / 选中标签 / 节点名
+  final TextStyle meta; // 11/400 元信息、辅助说明
+  final TextStyle micro; // 10/400 徽标、极小标签
+  final TextStyle sectionTitle; // 15/500 区块标题
+  final TextStyle dialogTitle; // 17/500 对话框主标题
+  final TextStyle mono; // 11 等宽：数值 / 时间码 / 路径 / ID
+  final TextStyle monoSmall; // 10 等宽：徽标内数值 / 序号
+
+  /// 全部八档（测试遍历用）。
+  List<TextStyle> get all => <TextStyle>[
+        body,
+        bodyStrong,
+        meta,
+        micro,
+        sectionTitle,
+        dialogTitle,
+        mono,
+        monoSmall,
+      ];
 
   InkTypography scaled(double scale) => InkTypography(
-        display: _scale(display, 48, scale),
-        displayMd: _scale(displayMd, 32, scale),
-        headline: _scale(headline, 22, scale),
-        headlineSm: _scale(headlineSm, 18, scale),
-        headlineXs: _scale(headlineXs, 16, scale),
-        title: _scale(title, 18, scale),
-        body: _scale(body, 14, scale),
-        label: _scale(label, 13, scale),
-        caption: _scale(caption, 11, scale),
-        overline: _scale(overline, 11, scale),
+        body: _scale(body, 12, scale),
+        bodyStrong: _scale(bodyStrong, 12, scale),
+        meta: _scale(meta, 11, scale),
         micro: _scale(micro, 10, scale),
-        nano: _scale(nano, 9, scale),
-        monoMicro: _scale(monoMicro, 10, scale),
-        monoNano: _scale(monoNano, 9, scale),
-        code: _scale(code, 13, scale),
+        sectionTitle: _scale(sectionTitle, 15, scale),
+        dialogTitle: _scale(dialogTitle, 17, scale),
+        mono: _scale(mono, 11, scale),
+        monoSmall: _scale(monoSmall, 10, scale),
+      );
+
+  static TextStyle _sansStyle(
+    double size,
+    FontWeight weight,
+    double height,
+    double scale,
+  ) =>
+      TextStyle(
+        fontFamily: _sans,
+        fontFamilyFallback: _sansFallback,
+        fontSize: size * scale,
+        fontWeight: weight,
+        height: height,
+      );
+
+  static TextStyle _monoStyle(double size, double scale) => TextStyle(
+        fontFamily: _mono,
+        fontFamilyFallback: _monoFallback,
+        fontSize: size * scale,
+        fontWeight: FontWeight.w400,
+        height: 1.0,
       );
 
   static TextStyle _scale(TextStyle s, double base, double scale) =>

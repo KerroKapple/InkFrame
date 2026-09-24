@@ -1,20 +1,27 @@
-// CanvasScreen：Amber Noir 画布壳——工具条 + 中央 CanvasView + 右 RenderQueue。
-// 顶栏 chrome（小 logo / 面包屑 / ⌘K）已上移到外壳 ShellChrome，全树唯一。
-// 节点 Inspector 由 CanvasView 在单选 config 节点时就地浮出（见 canvas_view.dart），此处无占位面板。
-// 左工具栏已随 CV-1 裁撤（8 个图标全为无功能 stub，D-7 d4=B）；
-// select/pan 等工具实装时再回（CV-4）。
+// CanvasScreen：画布标签体（Workspace v2 稿）。
 //
-// 仅视觉编排；CanvasView 内部的节点编辑 / 边逻辑保持不变。
+// 主体三栏：工具条 37 | 项目面板 241 | 画布区（29px 画布头 + 舞台 + 浮层）| 检查器 301；
+// 底部渲染队列 173。状态栏在外壳（ShellStatusBar），菜单栏 / 标签栏也在外壳。
+//
+// 画布区浮层（稿）：右下缩放条（bottom 56）、底部居中提示词条（bottom 16）、右下 32×32 FAB。
+// 节点 Inspector 不再浮在画布里，改住右侧面板。
+//
+// 【Scaffold 保留】它因为有外壳根 Scaffold 作祖先而变成 nested，_isRoot 返回 false ⇒
+// 自动排除出 SnackBar 广播（V3b）。FAB 不再用 Scaffold.floatingActionButton（稿的位置在画布区内）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../theme/app_theme.dart';
 import '../providers/current_canvas_id.dart';
 import 'canvas_add_node_fab.dart';
+import 'canvas_header_bar.dart';
+import 'canvas_inspector_panel.dart';
 import 'canvas_job_listener.dart';
+import 'canvas_project_panel.dart';
+import 'canvas_prompt_bar.dart';
 import 'canvas_render_queue.dart';
 import 'canvas_shortcuts.dart';
-import 'canvas_tool_bar.dart';
+import 'canvas_tool_rail.dart';
 import 'canvas_view.dart';
 
 class CanvasScreen extends ConsumerWidget {
@@ -27,33 +34,53 @@ class CanvasScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    final canvasId = ref.watch(currentCanvasIdProvider);
+    final String? canvasId = ref.watch(currentCanvasIdProvider);
     return CanvasJobListener(
       child: Scaffold(
-        backgroundColor: colors.surfaceCanvas,
-        floatingActionButton: canvasId == null
-            ? null
-            : CanvasAddNodeFab(canvasId: canvasId),
+        backgroundColor: colors.surface2,
         body: Column(
           children: <Widget>[
-            const CanvasToolBar(),
-            // 右栏：渲染队列。节点 Inspector 由 CanvasView 在单选 config 节点时
-            // 就地浮出，不再用占位 mock 面板。
-            // PL-2：画布快捷键层包裹整行（含 Inspector），autofocus 使按键即时生效；
-            // 焦点在 Inspector 文本框时删除/全选让位文本编辑（见 CanvasShortcuts）。
             Expanded(
+              // PL-2：画布快捷键层包裹整行（含 Inspector），autofocus 使按键即时生效；
+              // 焦点在 Inspector 文本框时删除/全选让位文本编辑（见 CanvasShortcuts）。
               child: CanvasShortcuts(
                 isActive: isVisible,
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    Expanded(child: CanvasView()),
-                    // 渲染队列自持宽度（展开 320 / 收起细栏，可折叠）。
-                    CanvasRenderQueue(),
+                    if (canvasId != null) CanvasToolRail(canvasId: canvasId),
+                    if (canvasId != null) CanvasProjectPanel(canvasId: canvasId),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: <Widget>[
+                          if (canvasId != null) CanvasHeaderBar(canvasId: canvasId),
+                          Expanded(
+                            child: Stack(
+                              children: <Widget>[
+                                const Positioned.fill(child: CanvasView()),
+                                if (canvasId != null) ...<Widget>[
+                                  Positioned(right: 12, bottom: 56, child: CanvasZoomBar(canvasId: canvasId)),
+                                  Positioned(
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 16,
+                                    child: Center(child: CanvasPromptBar(canvasId: canvasId)),
+                                  ),
+                                  Positioned(right: 12, bottom: 12, child: CanvasAddNodeFab(canvasId: canvasId)),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (canvasId != null) CanvasInspectorPanel(canvasId: canvasId),
                   ],
                 ),
               ),
             ),
+            const CanvasRenderQueue(),
           ],
         ),
       ),

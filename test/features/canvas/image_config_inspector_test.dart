@@ -117,7 +117,7 @@ void main() {
     type: CanvasNodeType.image,
   );
 
-  testWidgets('渲染标题 / prompt 输入 / Provider 下拉', (tester) async {
+  testWidgets('渲染三组标题 / Provider 下拉', (tester) async {
     await pumpInkApp(
       tester,
       const Scaffold(body: ImageConfigInspector(node: configNode)),
@@ -125,8 +125,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Config'), findsOneWidget);
-    expect(find.text('Prompt'), findsOneWidget);
+    // 稿的三组：模型 / 关键帧 / 镜头运动；提示词不在面板里（提示词条是唯一入口）。
+    expect(find.text('Model'), findsOneWidget);
+    expect(find.text('Keyframes'), findsOneWidget);
+    expect(find.text('Camera'), findsOneWidget);
+    expect(find.text('Provider'), findsOneWidget);
     expect(find.text('test-provider'), findsOneWidget);
   });
 
@@ -181,39 +184,27 @@ void main() {
     expect(btn.onPressed, isNull);
   });
 
-  testWidgets('输入 prompt + 有 Key → Generate 启用（S3b 接 wire）',
+  testWidgets('节点有 prompt + 有 Key → Generate 启用（S3b 接 wire）',
       (tester) async {
     final secure = _FakeSecure();
     await secure.store('provider.test-provider.api_key', 'sk-xxx');
+    // 提示词来自节点 typeConfig（提示词条是唯一编辑入口，面板只读它）。
+    const nodeWithPrompt = CanvasNode(
+      id: 'cfg1',
+      label: 'Test',
+      type: CanvasNodeType.image,
+      typeConfig: <String, Object?>{'prompt': 'a cat'},
+    );
     await pumpInkApp(
       tester,
-      const Scaffold(body: ImageConfigInspector(node: configNode)),
+      const Scaffold(body: ImageConfigInspector(node: nodeWithPrompt)),
       overrides: overridesWith(secure: secure),
     );
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'a cat');
     await tester.pumpAndSettle();
 
     final btn = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(btn.onPressed, isNotNull,
         reason: 'S3b 已接 wire：prompt 非空 + Key 存在时应启用');
-  });
-
-  testWidgets('水化 typeConfig.prompt 到 TextField', (tester) async {
-    const nodeWithPrompt = CanvasNode(
-      id: 'cfg2',
-      label: 'Test',
-      type: CanvasNodeType.image,
-      typeConfig: <String, Object?>{'prompt': 'existing prompt'},
-    );
-    await pumpInkApp(
-      tester,
-      const Scaffold(body: ImageConfigInspector(node: nodeWithPrompt)),
-      overrides: overridesWith(),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('existing prompt'), findsOneWidget);
   });
 
   testWidgets('能力齐全 provider → 显示 宽高比 / 负向 / 种子 / 批量 控件',

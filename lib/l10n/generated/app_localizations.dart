@@ -413,13 +413,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsApiKeysSection.
   ///
   /// In en, this message translates to:
-  /// **'API Keys'**
+  /// **'API keys'**
   String get settingsApiKeysSection;
 
   /// No description provided for @settingsApiKeysHint.
   ///
   /// In en, this message translates to:
-  /// **'Keys are stored in your system keychain. Nothing is sent off-device.'**
+  /// **'Keys live in the macOS Keychain / Windows Credential Manager — never in the database, never exported with a project.'**
   String get settingsApiKeysHint;
 
   /// No description provided for @settingsApiKeyPlaceholder.
@@ -497,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsCustomProvidersAdd.
   ///
   /// In en, this message translates to:
-  /// **'Add provider'**
+  /// **'Add custom provider…'**
   String get settingsCustomProvidersAdd;
 
   /// No description provided for @settingsCustomProvidersRestartNotice.
@@ -953,7 +953,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutLegalese.
   ///
   /// In en, this message translates to:
-  /// **'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the Cormorant Garamond and JetBrains Mono fonts (SIL OFL 1.1).'**
+  /// **'InkFrame is released under the MIT license. Bundled components keep their own licenses: libmpv and FFmpeg (LGPL-2.1), PostgreSQL (PostgreSQL License), and the JetBrains Mono font (SIL OFL 1.1).'**
   String get settingsAboutLegalese;
 
   /// No description provided for @settingsAboutUpdateCheckButton.
@@ -1007,7 +1007,7 @@ abstract class AppLocalizations {
   /// No description provided for @shellKeepLastCanvasTitle.
   ///
   /// In en, this message translates to:
-  /// **'Restore last canvas on startup'**
+  /// **'Open last canvas on startup'**
   String get shellKeepLastCanvasTitle;
 
   /// No description provided for @shellKeepLastCanvasSubtitle.
@@ -1039,6 +1039,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Waiting for generation'**
   String get resultNodePending;
+
+  /// No description provided for @nodeStatusReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get nodeStatusReady;
+
+  /// No description provided for @nodeStatusDraft.
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get nodeStatusDraft;
+
+  /// No description provided for @nodeStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get nodeStatusDone;
+
+  /// No description provided for @nodeStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get nodeStatusPending;
 
   /// No description provided for @resultNodeImageMissing.
   ///
@@ -2522,6 +2546,12 @@ abstract class AppLocalizations {
   /// **'Command palette'**
   String get commandPaletteTooltip;
 
+  /// No description provided for @commandPaletteEntryPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Search projects, nodes, outputs…'**
+  String get commandPaletteEntryPlaceholder;
+
   /// No description provided for @commandPaletteSearchHint.
   ///
   /// In en, this message translates to:
@@ -2618,6 +2648,330 @@ abstract class AppLocalizations {
   /// **'Couldn\'t import the script. Nothing was added to the canvas.'**
   String get scriptImportFailed;
 
+  /// No description provided for @inspectorGroupModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get inspectorGroupModel;
+
+  /// No description provided for @inspectorGroupKeyframes.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyframes'**
+  String get inspectorGroupKeyframes;
+
+  /// No description provided for @inspectorGroupCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get inspectorGroupCamera;
+
+  /// No description provided for @inspectorGroupShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get inspectorGroupShot;
+
+  /// No description provided for @inspectorEstimatedCostLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Est. cost'**
+  String get inspectorEstimatedCostLabel;
+
+  /// No description provided for @inspectorCameraUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider has no camera-movement control'**
+  String get inspectorCameraUnsupported;
+
+  /// No description provided for @renderQueueConcurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Concurrency {count}'**
+  String renderQueueConcurrency(int count);
+
+  /// No description provided for @renderQueueLocate.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate'**
+  String get renderQueueLocate;
+
+  /// No description provided for @canvasToolSelect.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get canvasToolSelect;
+
+  /// No description provided for @canvasToolPan.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan'**
+  String get canvasToolPan;
+
+  /// No description provided for @canvasToolLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Link'**
+  String get canvasToolLink;
+
+  /// No description provided for @canvasToolTextNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Text node'**
+  String get canvasToolTextNode;
+
+  /// No description provided for @canvasToolImageNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Image node'**
+  String get canvasToolImageNode;
+
+  /// No description provided for @canvasToolVideoNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Video node'**
+  String get canvasToolVideoNode;
+
+  /// No description provided for @canvasToolLane.
+  ///
+  /// In en, this message translates to:
+  /// **'Lane'**
+  String get canvasToolLane;
+
+  /// No description provided for @projectPanelCanvases.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvases'**
+  String get projectPanelCanvases;
+
+  /// No description provided for @projectPanelAssets.
+  ///
+  /// In en, this message translates to:
+  /// **'Assets'**
+  String get projectPanelAssets;
+
+  /// No description provided for @projectPanelCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Characters'**
+  String get projectPanelCharacters;
+
+  /// No description provided for @projectPanelFilterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter…'**
+  String get projectPanelFilterHint;
+
+  /// No description provided for @projectPanelCurrentNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Current canvas · nodes'**
+  String get projectPanelCurrentNodes;
+
+  /// No description provided for @canvasHeaderLanes.
+  ///
+  /// In en, this message translates to:
+  /// **'Lanes:'**
+  String get canvasHeaderLanes;
+
+  /// No description provided for @canvasZoomFit.
+  ///
+  /// In en, this message translates to:
+  /// **'Fit'**
+  String get canvasZoomFit;
+
+  /// No description provided for @promptBarBaseStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Base style'**
+  String get promptBarBaseStyle;
+
+  /// No description provided for @promptBarAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'Attached'**
+  String get promptBarAttached;
+
+  /// No description provided for @promptBarChars.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} chars'**
+  String promptBarChars(int count);
+
+  /// No description provided for @inspectorTabProperties.
+  ///
+  /// In en, this message translates to:
+  /// **'Properties'**
+  String get inspectorTabProperties;
+
+  /// No description provided for @inspectorTabStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get inspectorTabStatus;
+
+  /// No description provided for @inspectorTabHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get inspectorTabHistory;
+
+  /// No description provided for @inspectorNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select a node to edit its parameters'**
+  String get inspectorNoSelection;
+
+  /// No description provided for @inspectorHintFollowsSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Parameters follow the selected node'**
+  String get inspectorHintFollowsSelection;
+
+  /// No description provided for @renderQueueTabExportHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Export history'**
+  String get renderQueueTabExportHistory;
+
+  /// No description provided for @renderQueueColTask.
+  ///
+  /// In en, this message translates to:
+  /// **'Task'**
+  String get renderQueueColTask;
+
+  /// No description provided for @renderQueueColType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get renderQueueColType;
+
+  /// No description provided for @renderQueueColProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Progress'**
+  String get renderQueueColProgress;
+
+  /// No description provided for @renderQueueColElapsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Elapsed'**
+  String get renderQueueColElapsed;
+
+  /// No description provided for @renderQueueColModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get renderQueueColModel;
+
+  /// No description provided for @renderQueueClearDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear finished'**
+  String get renderQueueClearDone;
+
+  /// No description provided for @renderQueueStatusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering'**
+  String get renderQueueStatusRunning;
+
+  /// No description provided for @renderQueueStatusDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get renderQueueStatusDone;
+
+  /// No description provided for @renderQueueStatusFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get renderQueueStatusFailed;
+
+  /// No description provided for @renderQueueStatusCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancelled'**
+  String get renderQueueStatusCancelled;
+
+  /// No description provided for @statusBarNodesEdges.
+  ///
+  /// In en, this message translates to:
+  /// **'{nodes} nodes · {edges} edges'**
+  String statusBarNodesEdges(int nodes, int edges);
+
+  /// No description provided for @statusBarSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String statusBarSelected(int count);
+
+  /// No description provided for @statusBarStorage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage {path}'**
+  String statusBarStorage(String path);
+
+  /// No description provided for @statusBarProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} projects'**
+  String statusBarProjects(int count);
+
+  /// No description provided for @shellActionImportScript.
+  ///
+  /// In en, this message translates to:
+  /// **'Import script'**
+  String get shellActionImportScript;
+
+  /// No description provided for @shellActionSequencePreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence preview'**
+  String get shellActionSequencePreview;
+
+  /// No description provided for @shellActionExportVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Export video'**
+  String get shellActionExportVideo;
+
+  /// No description provided for @shellMenuFile.
+  ///
+  /// In en, this message translates to:
+  /// **'File'**
+  String get shellMenuFile;
+
+  /// No description provided for @shellMenuEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get shellMenuEdit;
+
+  /// No description provided for @shellMenuCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Canvas'**
+  String get shellMenuCanvas;
+
+  /// No description provided for @shellMenuNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Node'**
+  String get shellMenuNode;
+
+  /// No description provided for @shellMenuWindow.
+  ///
+  /// In en, this message translates to:
+  /// **'Window'**
+  String get shellMenuWindow;
+
+  /// No description provided for @shellMenuHelp.
+  ///
+  /// In en, this message translates to:
+  /// **'Help'**
+  String get shellMenuHelp;
+
   /// No description provided for @shellTabStudio.
   ///
   /// In en, this message translates to:
@@ -2689,6 +3043,474 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open a canvas first, then export its video results here.'**
   String get shellExportEmptyBody;
+
+  /// No description provided for @galleryFilterGroupScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope'**
+  String get galleryFilterGroupScope;
+
+  /// No description provided for @galleryFilterGroupType.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get galleryFilterGroupType;
+
+  /// No description provided for @galleryFilterGroupModel.
+  ///
+  /// In en, this message translates to:
+  /// **'Model'**
+  String get galleryFilterGroupModel;
+
+  /// No description provided for @galleryFilterGroupMark.
+  ///
+  /// In en, this message translates to:
+  /// **'Marks'**
+  String get galleryFilterGroupMark;
+
+  /// No description provided for @galleryFilterAllInProject.
+  ///
+  /// In en, this message translates to:
+  /// **'All in project'**
+  String get galleryFilterAllInProject;
+
+  /// No description provided for @galleryMarkCurrentLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Current line'**
+  String get galleryMarkCurrentLine;
+
+  /// No description provided for @galleryMarkInSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'In sequence'**
+  String get galleryMarkInSequence;
+
+  /// No description provided for @galleryThumbMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'M'**
+  String get galleryThumbMedium;
+
+  /// No description provided for @galleryThumbLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'L'**
+  String get galleryThumbLarge;
+
+  /// No description provided for @galleryThumbXLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'XL'**
+  String get galleryThumbXLarge;
+
+  /// No description provided for @galleryPanelInfo.
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get galleryPanelInfo;
+
+  /// No description provided for @galleryPanelLineage.
+  ///
+  /// In en, this message translates to:
+  /// **'Lineage'**
+  String get galleryPanelLineage;
+
+  /// No description provided for @galleryGroupParams.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation parameters'**
+  String get galleryGroupParams;
+
+  /// No description provided for @galleryGroupPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get galleryGroupPrompt;
+
+  /// No description provided for @galleryParamProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get galleryParamProvider;
+
+  /// No description provided for @galleryParamDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration'**
+  String get galleryParamDuration;
+
+  /// No description provided for @galleryParamCamera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get galleryParamCamera;
+
+  /// No description provided for @galleryParamKeyframes.
+  ///
+  /// In en, this message translates to:
+  /// **'Keyframes'**
+  String get galleryParamKeyframes;
+
+  /// No description provided for @galleryParamPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Final prompt'**
+  String get galleryParamPrompt;
+
+  /// No description provided for @galleryParamBaseStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Base style'**
+  String get galleryParamBaseStyle;
+
+  /// No description provided for @galleryKeyframeRef.
+  ///
+  /// In en, this message translates to:
+  /// **'{role} ← {source}'**
+  String galleryKeyframeRef(String role, String source);
+
+  /// No description provided for @galleryLineageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Lineage · current line'**
+  String get galleryLineageTitle;
+
+  /// No description provided for @galleryLineageShotText.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot text'**
+  String get galleryLineageShotText;
+
+  /// No description provided for @galleryLineageChosenOf.
+  ///
+  /// In en, this message translates to:
+  /// **'chosen from {count} results'**
+  String galleryLineageChosenOf(int count);
+
+  /// No description provided for @galleryLineageBranches.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} branches'**
+  String galleryLineageBranches(int count);
+
+  /// No description provided for @galleryLineageCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current item'**
+  String get galleryLineageCurrent;
+
+  /// No description provided for @galleryLineageInSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'in sequence {index}'**
+  String galleryLineageInSequence(String index);
+
+  /// No description provided for @galleryLocateInCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate in canvas'**
+  String get galleryLocateInCanvas;
+
+  /// No description provided for @galleryBreadcrumbAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All assets'**
+  String get galleryBreadcrumbAll;
+
+  /// No description provided for @galleryCounts.
+  ///
+  /// In en, this message translates to:
+  /// **'{images} images · {videos} videos'**
+  String galleryCounts(int images, int videos);
+
+  /// No description provided for @galleryItemsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items'**
+  String galleryItemsShort(int count);
+
+  /// No description provided for @statusBarGallery.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} items · {selected} selected'**
+  String statusBarGallery(int count, int selected);
+
+  /// No description provided for @statusBarGalleryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Space to preview · ↑↓ to switch · double-click to enlarge'**
+  String get statusBarGalleryHint;
+
+  /// No description provided for @galleryTimeJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'just now'**
+  String get galleryTimeJustNow;
+
+  /// No description provided for @galleryTimeMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} min ago'**
+  String galleryTimeMinutesAgo(int count);
+
+  /// No description provided for @galleryTimeHoursAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} h ago'**
+  String galleryTimeHoursAgo(int count);
+
+  /// No description provided for @galleryTimeDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} d ago'**
+  String galleryTimeDaysAgo(int count);
+
+  /// No description provided for @gallerySourceLine.
+  ///
+  /// In en, this message translates to:
+  /// **'{canvas} · {time}'**
+  String gallerySourceLine(String canvas, String time);
+
+  /// No description provided for @galleryNoSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an asset to see its details'**
+  String get galleryNoSelection;
+
+  /// No description provided for @studioLibraryHeading.
+  ///
+  /// In en, this message translates to:
+  /// **'Library'**
+  String get studioLibraryHeading;
+
+  /// No description provided for @studioLibraryAllProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get studioLibraryAllProjects;
+
+  /// No description provided for @studioSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get studioSettings;
+
+  /// No description provided for @studioNoKeyBannerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Keys go to the system keychain, never the database.'**
+  String get studioNoKeyBannerHint;
+
+  /// No description provided for @studioNoKeyBannerDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get studioNoKeyBannerDismiss;
+
+  /// No description provided for @studioSortRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort: recently modified'**
+  String get studioSortRecent;
+
+  /// No description provided for @studioViewGrid.
+  ///
+  /// In en, this message translates to:
+  /// **'Grid'**
+  String get studioViewGrid;
+
+  /// No description provided for @studioResumeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last time'**
+  String get studioResumeLabel;
+
+  /// No description provided for @studioResumeName.
+  ///
+  /// In en, this message translates to:
+  /// **'{project} · {canvas}'**
+  String studioResumeName(String project, String canvas);
+
+  /// No description provided for @studioResumeAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Continue'**
+  String get studioResumeAction;
+
+  /// No description provided for @studioCardCanvasBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 canvas} other{{count} canvases}}'**
+  String studioCardCanvasBadge(int count);
+
+  /// No description provided for @studioCardRendering.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} nodes rendering'**
+  String studioCardRendering(int count);
+
+  /// No description provided for @studioCardMeta.
+  ///
+  /// In en, this message translates to:
+  /// **'{time} · {rendering}'**
+  String studioCardMeta(String time, String rendering);
+
+  /// No description provided for @studioNewProjectHintBlank.
+  ///
+  /// In en, this message translates to:
+  /// **'Blank'**
+  String get studioNewProjectHintBlank;
+
+  /// No description provided for @studioNewProjectHintSample.
+  ///
+  /// In en, this message translates to:
+  /// **'Sample'**
+  String get studioNewProjectHintSample;
+
+  /// No description provided for @studioImportPackage.
+  ///
+  /// In en, this message translates to:
+  /// **'Import package'**
+  String get studioImportPackage;
+
+  /// No description provided for @statusBarProjectsCanvases.
+  ///
+  /// In en, this message translates to:
+  /// **'{projects} projects · {canvases} canvases'**
+  String statusBarProjectsCanvases(int projects, int canvases);
+
+  /// No description provided for @statusBarKeyMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No key configured'**
+  String get statusBarKeyMissing;
+
+  /// No description provided for @statusBarKeyConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Key configured'**
+  String get statusBarKeyConfigured;
+
+  /// No description provided for @commandPaletteGroupShots.
+  ///
+  /// In en, this message translates to:
+  /// **'Shots · current canvas'**
+  String get commandPaletteGroupShots;
+
+  /// No description provided for @commandPaletteGroupArtifacts.
+  ///
+  /// In en, this message translates to:
+  /// **'Artifacts'**
+  String get commandPaletteGroupArtifacts;
+
+  /// No description provided for @commandPaletteGroupActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get commandPaletteGroupActions;
+
+  /// No description provided for @commandPaletteResultCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} results'**
+  String commandPaletteResultCount(int count);
+
+  /// No description provided for @commandPaletteHintMove.
+  ///
+  /// In en, this message translates to:
+  /// **'↑↓ move'**
+  String get commandPaletteHintMove;
+
+  /// No description provided for @commandPaletteHintOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'↵ open'**
+  String get commandPaletteHintOpen;
+
+  /// No description provided for @commandPaletteHintLocate.
+  ///
+  /// In en, this message translates to:
+  /// **'{key} locate in canvas'**
+  String commandPaletteHintLocate(String key);
+
+  /// No description provided for @commandPaletteHintClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Esc close'**
+  String get commandPaletteHintClose;
+
+  /// No description provided for @commandPaletteShotPath.
+  ///
+  /// In en, this message translates to:
+  /// **'{project} › {canvas} › {type}'**
+  String commandPaletteShotPath(String project, String canvas, String type);
+
+  /// No description provided for @settingsNavGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsNavGeneral;
+
+  /// No description provided for @settingsNavNodeLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Node layout'**
+  String get settingsNavNodeLayout;
+
+  /// No description provided for @settingsColumnProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get settingsColumnProvider;
+
+  /// No description provided for @settingsColumnKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Key'**
+  String get settingsColumnKey;
+
+  /// No description provided for @settingsColumnStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get settingsColumnStatus;
+
+  /// No description provided for @settingsFooterNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply immediately and are written to the keychain'**
+  String get settingsFooterNote;
+
+  /// No description provided for @settingsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get settingsDone;
+
+  /// No description provided for @settingsEscHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Esc'**
+  String get settingsEscHint;
+
+  /// No description provided for @settingsCloseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Close settings'**
+  String get settingsCloseTooltip;
+
+  /// No description provided for @commandPaletteSequenceSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence {index}'**
+  String commandPaletteSequenceSegment(String index);
+
+  /// No description provided for @commandPaletteArtifactPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Gallery › {kind} › {provider}'**
+  String commandPaletteArtifactPath(String kind, String provider);
 }
 
 class _AppLocalizationsDelegate

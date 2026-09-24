@@ -1,3 +1,5 @@
+// CanvasRenderQueue（Workspace v2 稿的底部表格）：本画布 job 逐行渲染、取消、清除已完成、
+// 失败行带本地化错误 tooltip。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,6 +7,8 @@ import 'package:inkframe/core/di/job_queue.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
 import 'package:inkframe/core/models/generation_task.dart';
+import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_render_queue.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
@@ -17,6 +21,14 @@ class _SeedableJobsRegistry extends JobsRegistry {
 
   @override
   List<JobState> build() => List<JobState>.unmodifiable(_seed);
+}
+
+class _NodesController extends CanvasNodesController {
+  _NodesController(this._nodes);
+  final List<CanvasNode> _nodes;
+
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => _nodes;
 }
 
 /// 只捕获 cancel(jobId) 调用的假 JobQueueService。
@@ -40,12 +52,14 @@ class _CapturingQueue implements JobQueueService {
 Widget _host(
   List<JobState> jobs,
   String canvasId, {
+  List<CanvasNode> nodes = const <CanvasNode>[],
   List<Override> extra = const <Override>[],
 }) {
   return ProviderScope(
     overrides: <Override>[
       currentCanvasIdProvider.overrideWith((ref) => canvasId),
       jobsRegistryProvider.overrideWith(() => _SeedableJobsRegistry(jobs)),
+      canvasNodesControllerProvider.overrideWith(() => _NodesController(nodes)),
       ...extra,
     ],
     child: const MaterialApp(
@@ -57,80 +71,57 @@ Widget _host(
 }
 
 void main() {
-  testWidgets('只显示当前画布的活跃任务，无假数据', (tester) async {
-    await tester.pumpWidget(_host([
-      const JobState.running(jobId: 'a', providerId: 'p', canvasId: 'c1', progress: 0.45),
-      const JobState.running(jobId: 'b', providerId: 'p', canvasId: 'c2', progress: 0.9),
-      const JobState.succeeded(jobId: 'd', providerId: 'p', canvasId: 'c1', artifactPath: 'x'),
-    ], 'c1'));
+  testWidgets('只显示当前画布的 job；表头三列在场（耗时列无后端字段，已去）', (tester) async {
+    await tester.pumpWidget(_host(
+      const <JobState>[
+        JobState.running(jobId: 'a', providerId: 'p1', canvasId: 'c1', progress: 0.45),
+        JobState.running(jobId: 'b', providerId: 'p2', canvasId: 'c2', progress: 0.9),
+      ],
+      'c1',
+    ));
     await tester.pump();
-    expect(find.text('Watch Closeup'), findsNothing);
-    expect(find.text('Harbor Docks'), findsNothing);
-    expect(find.textContaining('45'), findsOneWidget);
-    expect(find.textContaining('90'), findsNothing);
+    for (final String h in <String>['Task', 'Type', 'Progress', 'Model']) {
+      expect(find.text(h), findsOneWidget);
+    }
+    // 无源节点 ⇒ 任务列回退 provider 名（无 displayName 时就是 id），模型列也是 id ⇒ 两处。
+    expect(find.text('p1'), findsNWidgets(2));
+    expect(find.text('p2'), findsNothing, reason: 'c2 的 job 不出现');
+    expect(find.text('Rendering'), findsOneWidget);
   });
 
-  testWidgets('任务行标题显示 provider displayName 而非 jobId(UUID)', (tester) async {
-    await tester.pumpWidget(_host([
-      const JobState.running(
-        jobId: 'a1b2c3d4-uuid',
-        providerId: 'gemini-image',
-        canvasId: 'c1',
-        progress: 0.3,
-      ),
-    ], 'c1'));
+  testWidgets('任务列 = 源节点显示名与类型；无源节点时回退 provider displayName', (tester) async {
+    await tester.pumpWidget(_host(
+      const <JobState>[
+        JobState.queued(jobId: 'j1', providerId: 'gemini-image', canvasId: 'c1', sourceNodeId: 'n1'),
+        JobState.queued(jobId: 'j2', providerId: 'gemini-image', canvasId: 'c1'),
+      ],
+      'c1',
+      nodes: const <CanvasNode>[
+        CanvasNode(id: 'n1', label: 'Harbor Docks', type: CanvasNodeType.image, canvasId: 'c1'),
+      ],
+    ));
     await tester.pump();
-    // FIX-013 x FIX-010：行标题取 displayName（未声明时回退 providerId）。
+    expect(find.text('Harbor Docks'), findsOneWidget);
+    expect(find.text('image'), findsOneWidget);
     expect(find.text('Gemini Image'), findsOneWidget);
-    expect(find.text('a1b2c3d4-uuid'), findsNothing);
+    expect(find.text('j1'), findsNothing, reason: '不暴露 jobId');
+    expect(find.text('Queued'), findsNWidgets(2));
   });
 
-  testWidgets('当前画布无任务无失败 → 自动收起为细栏', (tester) async {
-    await tester.pumpWidget(_host(const [], 'c1'));
+  testWidgets('无 job → 空态文案；标签角标不出', (tester) async {
+    await tester.pumpWidget(_host(const <JobState>[], 'c1'));
     await tester.pump();
-    // 收起态：不渲染面板内容，只留展开入口。
-    expect(find.text('No active renders'), findsNothing);
-    expect(find.byTooltip('Expand render queue'), findsOneWidget);
-  });
-
-  testWidgets('收起态点展开 → 面板出现；点收起 → 回细栏（手动覆盖）', (tester) async {
-    await tester.pumpWidget(_host(const [], 'c1'));
-    await tester.pump();
-
-    await tester.tap(find.byTooltip('Expand render queue'));
-    await tester.pumpAndSettle();
     expect(find.text('No active renders'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Collapse render queue'));
-    await tester.pumpAndSettle();
-    expect(find.text('No active renders'), findsNothing);
-    expect(find.byTooltip('Expand render queue'), findsOneWidget);
   });
 
-  testWidgets('有活跃任务 → 自动展开', (tester) async {
-    await tester.pumpWidget(_host(const [
-      JobState.running(jobId: 'a', providerId: 'p', canvasId: 'c1', progress: 0.45),
-    ], 'c1'));
-    await tester.pump();
-    expect(find.textContaining('45'), findsOneWidget);
-    expect(find.byTooltip('Collapse render queue'), findsOneWidget);
-  });
-
-  testWidgets('点击取消控件调用 jobQueueService.cancel(jobId)', (tester) async {
+  testWidgets('点击「取消」调用 jobQueueService.cancel(jobId)', (tester) async {
     final queue = _CapturingQueue();
     await tester.pumpWidget(_host(
       const <JobState>[
-        JobState.running(
-          jobId: 'job-x',
-          providerId: 'gemini-image',
-          canvasId: 'c1',
-          progress: 0.5,
-        ),
+        JobState.running(jobId: 'job-x', providerId: 'gemini-image', canvasId: 'c1', progress: 0.5),
       ],
       'c1',
-      extra: <Override>[
-        jobQueueServiceProvider.overrideWith((ref) async => queue),
-      ],
+      extra: <Override>[jobQueueServiceProvider.overrideWith((ref) async => queue)],
     ));
     await tester.pump();
 
@@ -141,28 +132,22 @@ void main() {
     expect(queue.cancelledJobId, 'job-x');
   });
 
-  testWidgets('取消控件对 queued 显示、对终态任务不显示', (tester) async {
+  testWidgets('取消只对可取消的 job 出现；终态行照常列出但无取消', (tester) async {
     await tester.pumpWidget(_host(
       const <JobState>[
         JobState.queued(jobId: 'q', providerId: 'p', canvasId: 'c1'),
-        JobState.succeeded(
-          jobId: 's',
-          providerId: 'p',
-          canvasId: 'c1',
-          artifactPath: 'x',
-        ),
+        JobState.succeeded(jobId: 's', providerId: 'p', canvasId: 'c1', artifactPath: 'x'),
       ],
       'c1',
-      extra: <Override>[
-        jobQueueServiceProvider.overrideWith((ref) async => _CapturingQueue()),
-      ],
+      extra: <Override>[jobQueueServiceProvider.overrideWith((ref) async => _CapturingQueue())],
     ));
     await tester.pump();
-    // queued 行有取消；succeeded 终态被 active 过滤掉 → 只剩一个取消控件。
     expect(find.byTooltip('Cancel job'), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
+    expect(find.text('Queued'), findsOneWidget);
   });
 
-  testWidgets('失败任务在最近失败区渲染本地化错误文案（走 l10nError）', (tester) async {
+  testWidgets('失败行：状态「Failed」+ tooltip 带本地化错误（走 l10nError）', (tester) async {
     await tester.pumpWidget(_host(
       const <JobState>[
         JobState.failed(
@@ -176,14 +161,12 @@ void main() {
     ));
     await tester.pump();
 
-    expect(find.text('RECENT FAILURES'), findsOneWidget);
-    // l10nError(networkTimeout) 的英文文案。
-    expect(find.text('Network timed out. Please retry.'), findsOneWidget);
-    // 失败任务不进入活跃列表 → 无取消控件。
+    expect(find.text('Failed'), findsOneWidget);
+    expect(find.byTooltip('Network timed out. Please retry.'), findsOneWidget);
     expect(find.byTooltip('Cancel job'), findsNothing);
   });
 
-  testWidgets('已取消任务不进入最近失败区（cancelled ≠ failure）', (tester) async {
+  testWidgets('已取消 job 状态「Cancelled」，不是失败', (tester) async {
     await tester.pumpWidget(_host(
       const <JobState>[
         JobState.cancelled(jobId: 'c', providerId: 'gemini-image', canvasId: 'c1'),
@@ -191,12 +174,11 @@ void main() {
       'c1',
     ));
     await tester.pump();
-    // cancelled 是终态但非 JobFailed → 无失败区、无活跃 → 自动收起。
-    expect(find.text('RECENT FAILURES'), findsNothing);
-    expect(find.byTooltip('Expand render queue'), findsOneWidget);
+    expect(find.text('Cancelled'), findsOneWidget);
+    expect(find.text('Failed'), findsNothing);
   });
 
-  testWidgets('跨画布失败隔离：c2 的失败不出现在 c1 的最近失败区', (tester) async {
+  testWidgets('跨画布隔离：c2 的失败不出现在 c1', (tester) async {
     await tester.pumpWidget(_host(
       const <JobState>[
         JobState.failed(
@@ -209,29 +191,27 @@ void main() {
       'c1',
     ));
     await tester.pump();
-    // 当前画布 c1 无任何任务 → 无最近失败区，自动收起。
-    expect(find.text('RECENT FAILURES'), findsNothing);
-    expect(find.text('Network timed out. Please retry.'), findsNothing);
-    expect(find.byTooltip('Expand render queue'), findsOneWidget);
+    expect(find.text('Failed'), findsNothing);
+    expect(find.text('No active renders'), findsOneWidget);
   });
 
-  testWidgets('最近失败区最多展示最近 3 条（sublist(len-3) 边界）', (tester) async {
+  testWidgets('有终态 job 时出「Clear finished」，点击后清掉终态、保留活跃', (tester) async {
     await tester.pumpWidget(_host(
       const <JobState>[
-        JobState.failed(jobId: 'f1', providerId: 'p', canvasId: 'c1', error: NetworkError(code: InkErrorCode.networkTimeout)),
-        JobState.failed(jobId: 'f2', providerId: 'p', canvasId: 'c1', error: NetworkError(code: InkErrorCode.networkOffline)),
-        JobState.failed(jobId: 'f3', providerId: 'p', canvasId: 'c1', error: ProviderError(code: InkErrorCode.invalidKey)),
-        JobState.failed(jobId: 'f4', providerId: 'p', canvasId: 'c1', error: DownloadError()),
+        JobState.running(jobId: 'r', providerId: 'p', canvasId: 'c1', progress: 0.2),
+        JobState.succeeded(jobId: 's', providerId: 'p', canvasId: 'c1', artifactPath: 'x'),
       ],
       'c1',
     ));
     await tester.pump();
+    expect(find.byKey(CanvasRenderQueue.clearDoneKey), findsOneWidget);
+    expect(find.text('Done'), findsOneWidget);
 
-    expect(find.text('RECENT FAILURES'), findsOneWidget);
-    // 4 条失败按插入序取最新 3 条（f2/f3/f4）；最旧的 f1 被截掉。
-    expect(find.text('Network timed out. Please retry.'), findsNothing); // f1 (最旧) 被截
-    expect(find.text("Couldn't reach the provider. Check your network connection, then retry."), findsOneWidget); // f2
-    expect(find.text('API key was rejected by the provider. Update it in Settings → API Keys.'), findsOneWidget); // f3
-    expect(find.text("The generated file couldn't be downloaded. Check your connection and retry."), findsOneWidget); // f4
+    await tester.tap(find.byKey(CanvasRenderQueue.clearDoneKey));
+    await tester.pump();
+
+    expect(find.text('Done'), findsNothing);
+    expect(find.text('Rendering'), findsOneWidget);
+    expect(find.byKey(CanvasRenderQueue.clearDoneKey), findsNothing);
   });
 }

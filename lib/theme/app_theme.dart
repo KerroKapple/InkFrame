@@ -64,18 +64,20 @@ ThemeData buildAppTheme({
   return ThemeData(
     useMaterial3: true,
     brightness: brightness,
-    scaffoldBackgroundColor: colors.surface1,
+    // surface2 = 应用主体默认底（README）；工作区 / 面板各自显式取 surface1 / surface3。
+    scaffoldBackgroundColor: colors.surface2,
     colorScheme: ColorScheme(
       brightness: brightness,
+      // 强调色只有一个：primary 与 secondary 同为琥珀，前景走 onAccent
+      //（per-variant 锁 WCAG AA ≥4.5，tokens_test）。
       primary: colors.accent,
-      // 彩色底上的前景 per-variant 取语义 on-color token（WCAG AA ≥4.5，
-      // tokens_test 对比率锁定）：一刀切 surfaceCanvas 在 light 变体
-      // 只有 3.06:1（历史回归）。
       onPrimary: colors.onAccent,
-      secondary: colors.brand,
+      secondary: colors.accent,
       onSecondary: colors.onAccent,
+      // danger 只做文字与小图标、不做容器底色，故 onError 没有真实消费者；
+      // 取 fg1 只为满足 ColorScheme 必填。
       error: colors.danger,
-      onError: colors.onDanger,
+      onError: colors.fg1,
       surface: colors.surface2,
       onSurface: colors.fg1,
     ),

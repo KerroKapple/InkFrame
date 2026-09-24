@@ -90,7 +90,7 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                 const SizedBox(height: InkSpacing.md),
                 Text(
                   context.l10n.startupErrorTitle,
-                  style: typo.headline.copyWith(color: colors.fg1),
+                  style: typo.dialogTitle.copyWith(color: colors.fg1),
                 ),
                 const SizedBox(height: InkSpacing.sm),
                 Text(
@@ -103,13 +103,13 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                 const SizedBox(height: InkSpacing.md),
                 Text(
                   context.l10n.startupErrorLogPathLabel,
-                  style: typo.overline.copyWith(color: colors.fg3),
+                  style: typo.meta.copyWith(color: colors.fg3),
                 ),
                 const SizedBox(height: InkSpacing.xs),
                 // 可选中即可复制——即便「打开目录」在某些环境不可用，用户仍能拿到路径。
                 SelectableText(
                   logsPath,
-                  style: typo.monoMicro.copyWith(color: colors.fg2),
+                  style: typo.monoSmall.copyWith(color: colors.fg2),
                 ),
                 const SizedBox(height: InkSpacing.lg),
                 Wrap(

@@ -103,7 +103,7 @@ class CanvasEmptyState extends ConsumerWidget {
               const SizedBox(height: InkSpacing.lg),
               Text(
                 l.canvasEmptyTitle,
-                style: typo.headline.copyWith(color: colors.fg1),
+                style: typo.dialogTitle.copyWith(color: colors.fg1),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: InkSpacing.sm),
@@ -185,7 +185,7 @@ class _Illustration extends StatelessWidget {
             decoration: BoxDecoration(
               color: colors.surface3,
               shape: BoxShape.circle,
-              border: Border.all(color: colors.border),
+              border: Border.all(color: colors.outline),
             ),
             child: Icon(Icons.add, color: colors.accent, size: 28),
           ),

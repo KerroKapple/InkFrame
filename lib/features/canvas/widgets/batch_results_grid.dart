@@ -60,7 +60,7 @@ class BatchResultsGrid extends ConsumerWidget {
       children: [
         Text(
           context.l10n.batchResultsLabel,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.xs),
         body,
@@ -83,7 +83,7 @@ class _BatchSlotTile extends ConsumerWidget {
         color: colors.surface2,
         borderRadius: BorderRadius.circular(InkRadius.sm),
         border: Border.all(
-          color: slot.promoted ? colors.accent : colors.border,
+          color: slot.promoted ? colors.accent : colors.outline,
         ),
       ),
       child: ClipRRect(
@@ -153,7 +153,7 @@ class _BatchSlotTile extends ConsumerWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
-              style: typo.caption.copyWith(color: colors.danger),
+              style: typo.meta.copyWith(color: colors.danger),
             ),
           ),
         ],

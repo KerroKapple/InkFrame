@@ -30,8 +30,8 @@ class _InkNoirCardState extends State<InkNoirCard> {
     final borderColor = widget.selected
         ? colors.accent
         : _hover
-            ? colors.borderHover
-            : colors.border;
+            ? colors.control
+            : colors.outline;
     final card = AnimatedContainer(
       duration: InkMotion.fast,
       padding: widget.padding,

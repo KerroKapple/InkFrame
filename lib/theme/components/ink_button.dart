@@ -24,21 +24,22 @@ class InkButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final bool enabled = onPressed != null;
-    // 彩色底（brand/danger）上的前景用语义 on-color token
-    //（per-variant 保 WCAG AA 对比率）；禁用态统一压灰。
+    // 唯一彩底是琥珀（primary），前景走 onAccent（per-variant 锁 WCAG AA）。
+    // danger 只做文字与小图标、不做容器底色：危险按钮 = 透明底 + 红字 + 次级边框。
+    // 禁用态统一压灰。
     final (Color bg, Color fg, Color? border) = switch (variant) {
       InkButtonVariant.primary => enabled
-          ? (colors.brand, colors.onAccent, null)
-          : (colors.surface3, colors.fg4, colors.border),
+          ? (colors.accent, colors.onAccent, null)
+          : (colors.surface3, colors.fg4, colors.outline),
       InkButtonVariant.secondary => enabled
-          ? (colors.surface3, colors.fg1, colors.border)
-          : (colors.surface3, colors.fg4, colors.border),
+          ? (colors.surface3, colors.fg1, colors.controlStrong)
+          : (colors.surface3, colors.fg4, colors.outline),
       InkButtonVariant.ghost => enabled
-          ? (const Color(0x00000000), colors.fg1, colors.border)
-          : (const Color(0x00000000), colors.fg4, colors.border),
+          ? (const Color(0x00000000), colors.fg1, colors.outline)
+          : (const Color(0x00000000), colors.fg4, colors.outline),
       InkButtonVariant.danger => enabled
-          ? (colors.danger, colors.onDanger, null)
-          : (colors.surface3, colors.fg4, colors.border),
+          ? (const Color(0x00000000), colors.danger, colors.controlStrong)
+          : (colors.surface3, colors.fg4, colors.outline),
     };
 
     return Semantics(
@@ -74,7 +75,7 @@ class InkButton extends StatelessWidget {
                     ],
                     Text(
                       label,
-                      style: context.inkTypography.label.copyWith(color: fg),
+                      style: context.inkTypography.bodyStrong.copyWith(color: fg),
                     ),
                   ],
                 ),

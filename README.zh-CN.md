@@ -34,7 +34,7 @@ InkFrame 是一个面向 AI 影视创作的桌面工作站。节点画布让你�
 - **🔒 本地优先** —— 工程数据存在本机的嵌入式 PostgreSQL；Key 落到系统 Keychain / 凭据管理器，绝不是明文 `.env`。
 - **🕸️ 节点画布** —— 可视化编排镜头：拖入文本 / 图片 / 视频节点，连线，看着生成沿着图流动并实时显示任务进度。
 - **🔌 多 Provider** —— 在同一个工程里混搭不同厂商的图像/视频模型。新增一个 provider 只需写一个文件（见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md)）。
-- **🖥️ 一份代码，两个桌面** —— 单份 Dart/Flutter 源码同时跑 macOS + Windows，无边框 "Amber Noir" UI。
+- **🖥️ 一份代码，两个桌面** —— 单份 Dart/Flutter 源码同时跑 macOS + Windows，无边框中性灰桌面 UI，单一琥珀强调色。
 - **🧪 不烧配额的开发体验** —— 内置 fake provider，可在不消耗任何 API 配额的情况下跑完整应用、调试画布。
 
 ## 🔄 工作原理

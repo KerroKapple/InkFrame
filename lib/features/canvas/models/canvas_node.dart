@@ -183,14 +183,15 @@ class CanvasNode {
 
 enum CanvasNodeType { image, text, video, shot }
 
-/// 各类型新建节点的默认尺寸——media 类放大容纳预览，text/shot 保持紧凑。
-/// 仅作用于新建（addNode 未显式传 size）；已存节点尺寸以 DB 行为准。
-Size defaultNodeSize(CanvasNodeType type) => switch (type) {
-      CanvasNodeType.image => const Size(260, 220),
-      CanvasNodeType.video => const Size(280, 220),
-      CanvasNodeType.shot => const Size(240, 200),
-      CanvasNodeType.text => const Size(220, 160),
-    };
+/// 节点卡片渲染尺寸（Workspace v2 稿）：224 宽；18 标题 + 6 + 126 图区（16:9）+ 6 + 16 状态行 = 172。
+/// 所有类型同尺寸；DB 的 size 列不再驱动渲染（存量值忽略），连线锚点见 util/edge_geometry.dart。
+const Size kNodeCardSize = Size(224, 172);
+
+/// 端口在图区垂直中心：18 + 6 + 63。
+const double kNodeCardPortY = 87;
+
+/// 新建节点写入 DB 的尺寸（addNode 未显式传 size）= 渲染尺寸。
+Size defaultNodeSize(CanvasNodeType type) => kNodeCardSize;
 
 extension CanvasNodeMapping on CanvasNode {
   /// 从 NodeRepository.listByCanvas 返回的单行 Map 构造 UI 模型。

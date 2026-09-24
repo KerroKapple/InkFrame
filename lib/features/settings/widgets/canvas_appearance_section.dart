@@ -26,7 +26,7 @@ class CanvasAppearanceSection extends ConsumerWidget {
       children: <Widget>[
         Text(
           context.l10n.settingsCanvasSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.sm),
         _ColorRow(
@@ -121,7 +121,7 @@ class _Swatch extends StatelessWidget {
             color: color,
             shape: BoxShape.circle,
             border: Border.all(
-              color: selected ? colors.brand : colors.border,
+              color: selected ? colors.accent : colors.outline,
               width: selected ? 2.5 : 1.0,
             ),
           ),

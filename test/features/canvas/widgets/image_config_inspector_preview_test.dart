@@ -13,6 +13,7 @@ import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
+import 'package:inkframe/features/canvas/widgets/inspector_rows.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
@@ -133,6 +134,7 @@ final _kLaneRow = <String, Object?>{
   'size': 400.0,
 };
 
+// 提示词来自节点 typeConfig（提示词条是唯一编辑入口，面板只读它拼预览）。
 const _kConfigNode = CanvasNode(
   id: _kNodeId,
   label: 'Test node',
@@ -140,6 +142,7 @@ const _kConfigNode = CanvasNode(
   role: NodeRole.config,
   canvasId: _kCanvasId,
   laneId: _kLaneId,
+  typeConfig: <String, Object?>{'prompt': 'cat'},
 );
 
 // ── 辅助 ─────────────────────────────────────────────────────────────────────
@@ -339,12 +342,7 @@ void main() {
   testWidgets('输入 prompt 后预览包含 base 前缀和泳道风格', (tester) async {
     await pump(tester);
 
-    // 在 prompt 输入框输入文字
-    final promptField = find.byType(TextField).first;
-    await tester.tap(promptField);
-    await tester.enterText(promptField, 'cat');
-    // 让防抖 Timer 触发，让假 repo 完成保存
-    await tester.pump(const Duration(seconds: 1));
+    // 提示词已在节点 typeConfig 里（提示词条是唯一编辑入口，面板只读）
     await tester.pumpAndSettle();
 
     // 预览区包含 cinematic（base 前缀）和 warm（泳道风格）
@@ -355,17 +353,16 @@ void main() {
   testWidgets('勾选 ignore-lane 后预览不包含泳道风格', (tester) async {
     await pump(tester);
 
-    // 输入 prompt
-    final promptField = find.byType(TextField).first;
-    await tester.tap(promptField);
-    await tester.enterText(promptField, 'cat');
-    await tester.pump(const Duration(seconds: 1));
     await tester.pumpAndSettle();
 
     // 开启 ignore-lane 开关
-    final switchWidget = find.byType(Switch);
-    expect(switchWidget, findsOneWidget);
-    await tester.tap(switchWidget);
+    // 稿：26×14 胶囊开关（InspectorToggleRow），不是 Material Switch。
+    // 行的中心落在说明文字上，要点胶囊本体（行内唯一的 GestureDetector）。
+    final row = find.byType(InspectorToggleRow);
+    expect(row, findsOneWidget);
+    final capsule = find.descendant(of: row, matching: find.byType(GestureDetector));
+    await tester.ensureVisible(capsule);
+    await tester.tap(capsule);
     await tester.pumpAndSettle();
 
     // warm 应从预览消失；cinematic（base）仍在

@@ -30,6 +30,7 @@ import 'features/shell/widgets/ink_shell.dart';
 import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
 import 'features/studio/widgets/onboarding_dialog.dart';
+import 'features/workspace/dev/dev_capture.dart';
 import 'l10n/generated/app_localizations.dart';
 import 'l10n/l10n_x.dart';
 import 'theme/app_theme.dart';
@@ -90,6 +91,10 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
       supportedLocales: AppLocalizations.supportedLocales,
       home: const _StartupGate(),
       debugShowCheckedModeBanner: false,
+      // 开发验收截图 / 稿数据播种（两个 --dart-define 都不设时原样返回 child，零行为差异）。
+      builder: DevCaptureFrame.enabled
+          ? (BuildContext context, Widget? child) => DevCaptureFrame(child: child!)
+          : null,
     );
   }
 }
