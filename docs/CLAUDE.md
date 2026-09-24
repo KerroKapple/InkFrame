@@ -256,15 +256,15 @@ lib/
 │   │   ├── models/
 │   │   ├── providers/
 │   │   └── services/
-│   ├── settings/                      # Settings surfaces
-│   │   ├── settings_screen.dart
+│   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
+│   │   ├── settings_screen.dart       # SettingsScreen (dialog frame + nav + page bodies + footer 完成/导出诊断包); pages = 常规 / API 密钥 / 节点布局 / 存储 / 关于
 │   │   ├── providers/
 │   │   └── widgets/
 │   ├── shell/                         # Persistent-tab app shell — the sole host after unlock; lib/app.dart's body is just InkShell (no routing predicates left there). See lib/features/shell/README.md for the invariants
 │   │   ├── models/                    # shell_state.dart (ShellTab / ShellOverlay / ProjectRef / ShellState — hand-written value object, 7 named transitions, no copyWith)
 │   │   ├── providers/                 # shell_controller.dart (ShellNavigator Notifier + shellControllerProvider — sole write entry point) + active_project.dart (activeProjectProvider — read-only projection of ShellState.project) + gallery_dirty.dart (galleryDirtyProvider — any job reaching JobSucceeded marks the gallery dirty; the gallery tab refreshes once on the invisible→visible edge, then clears. NOT live refresh: a gallery the user is already looking at stays put until they switch away and back)
 │   │   ├── util/                      # tab_availability.dart (hasNarrativeEdges / canExportVideo — pure predicates moved verbatim out of the deleted canvas_top_chrome.dart)
-│   │   └── widgets/                   # ink_shell.dart (sole root Scaffold + chrome + tab bar) / shell_content_stack.dart (two-level IndexedStack + fallback focus) / shell_keep_alive_host.dart (five lazily-materialized, then permanent tab slots) / shell_chrome.dart (the tree's only InkWindowChrome) / shell_breadcrumb.dart / shell_empty_state.dart / shell_overlay_layer.dart (settings + showcase overlays; NOT kept alive) / shell_tab_bar.dart (wires ShellState into the theme-layer InkShellTabBar — that component knows nothing about ShellTab, see test/quality/no_reverse_layer_import_test.dart) + tabs/ (studio / canvas / sequence / gallery / export bodies)
+│   │   └── widgets/                   # ink_shell.dart (sole root Scaffold + chrome + tab bar) / shell_content_stack.dart (outer Stack: tab host under an ExcludeFocus + overlay on top; inner five-slot IndexedStack; fallback focus) / shell_keep_alive_host.dart (five lazily-materialized, then permanent tab slots) / shell_chrome.dart (the tree's only InkWindowChrome) / shell_breadcrumb.dart / shell_empty_state.dart / shell_overlay_layer.dart (ModalBarrier scrim + settings / showcase overlays; NOT kept alive; the barrier is what stops click-through) / shell_tab_bar.dart (wires ShellState into the theme-layer InkShellTabBar — that component knows nothing about ShellTab, see test/quality/no_reverse_layer_import_test.dart) + tabs/ (studio / canvas / sequence / gallery / export bodies)
 │   ├── showcase/                      # Bundled Codex image samples (local preview; no project records/API key)
 │   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
