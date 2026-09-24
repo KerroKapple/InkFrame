@@ -90,7 +90,20 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
+            // 设置浮层里页头由页面自己画（settings_screen.dart），Key 表本身不带标题；
+            // 向导里没有页头，标题 + 说明在这里补。
+            Text(
+              context.l10n.settingsApiKeysSection,
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
+            ),
+            const SizedBox(height: InkSpacing.xs),
+            Text(
+              context.l10n.settingsApiKeysHint,
+              style: typo.meta.copyWith(color: colors.fg3),
+            ),
+            const SizedBox(height: InkSpacing.md),
             const ApiKeysSection(),
+            const SizedBox(height: InkSpacing.sm),
             Text(
               context.l10n.onboardingKeysConsoleHint,
               style: typo.meta.copyWith(color: colors.fg3),

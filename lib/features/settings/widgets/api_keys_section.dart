@@ -1,11 +1,15 @@
-// ApiKeysSection — 设置页内"API Keys"分节。
+// ApiKeysSection — 设置「API 密钥」页的 Key 表（Screens 稿第 3 屏）。
 //
 // 按 SecureStorageKeys.scopeOf 折叠家族。DashScope 的 6 款 Provider 合并为
 // 一行，共用一把 Key；Gemini 独占一行。
 //
+// 表列照稿：Provider（名称 + 10px 成员说明）| Key（等宽输入，只有 1px 底线）| 状态。
+// 稿上的「区域」列与「✓ 已验证 / ! 余额不足 / ✕ 连接失败」没有对应字段——
+// 安全存储只回答「有没有这把 Key」，所以状态只有 ✓ 已配置 / – 未配置 两态；
+// 掩码尾 4 位也不画（控制器不回读密钥原文）。保存 / 清除按钮是稿上没有、接线必需的。
+//
 // 存取/验证状态全部由 ApiKeyScopeController（family by providerId）承载，
 // 本组件只持有输入框 controller 并渲染 AsyncValue。
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -24,37 +28,65 @@ import '../providers/api_key_scope_controller.dart';
 class ApiKeysSection extends ConsumerWidget {
   const ApiKeysSection({super.key});
 
+  /// 稿：grid 168px 1fr … 96px，gap 12。
+  static const double providerColumnWidth = 168;
+  static const double statusColumnWidth = 96;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final caps = ref.watch(providerCapabilitiesListProvider);
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
+    final c = context.inkColors;
+    final t = context.inkTypography;
 
     // 按 scope 折叠。LinkedHashMap 保持 caps 的注册顺序 → UI 稳定。
     final groups = <String, List<ProviderCapabilities>>{};
-    for (final c in caps) {
-      final scope = SecureStorageKeys.scopeOf(c.providerId);
-      groups.putIfAbsent(scope, () => []).add(c);
+    for (final cap in caps) {
+      final scope = SecureStorageKeys.scopeOf(cap.providerId);
+      groups.putIfAbsent(scope, () => []).add(cap);
     }
 
+    final TextStyle head = t.meta.copyWith(color: c.fg6);
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.settingsApiKeysSection,
-          style: typo.sectionTitle.copyWith(color: colors.fg1),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        // 稿：表头 26 高 + 下沿 1，11px fg6。
+        Container(
+          height: 27,
+          decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.borderStrong))),
+          child: _Columns(
+            provider: Text(context.l10n.settingsColumnProvider, style: head),
+            key_: Text(context.l10n.settingsColumnKey, style: head),
+            status: Text(context.l10n.settingsColumnStatus, style: head),
+            actions: const SizedBox.shrink(),
+          ),
         ),
-        const SizedBox(height: InkSpacing.xs),
-        Text(
-          context.l10n.settingsApiKeysHint,
-          style: typo.meta.copyWith(color: colors.fg3),
-        ),
-        const SizedBox(height: InkSpacing.md),
         for (final entry in groups.entries)
           _ApiKeyRow(scope: entry.key, members: entry.value),
       ],
     );
   }
+}
+
+/// 稿的四列网格：168 | 1fr | 96 | 动作（稿上没有的保存 / 清除）。
+class _Columns extends StatelessWidget {
+  const _Columns({required this.provider, required this.key_, required this.status, required this.actions});
+  final Widget provider;
+  final Widget key_;
+  final Widget status;
+  final Widget actions;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: <Widget>[
+          SizedBox(width: ApiKeysSection.providerColumnWidth, child: provider),
+          const SizedBox(width: InkSpacing.s12),
+          Expanded(child: key_),
+          const SizedBox(width: InkSpacing.s12),
+          SizedBox(width: ApiKeysSection.statusColumnWidth, child: status),
+          const SizedBox(width: InkSpacing.s12),
+          actions,
+        ],
+      );
 }
 
 class _ApiKeyRow extends ConsumerStatefulWidget {
@@ -129,8 +161,8 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
+    final c = context.inkColors;
+    final t = context.inkTypography;
     final keyState = ref.watch(apiKeyScopeControllerProvider(_providerId));
     final loading = keyState.isLoading;
     final isSet = keyState.valueOrNull ?? false;
@@ -146,68 +178,58 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
     final showMembers =
         widget.members.length > 1 || memberIds != label;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: InkSpacing.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: typo.body.copyWith(color: colors.fg1),
-                    ),
-                    if (showMembers)
-                      Text(
-                        memberIds,
-                        style: typo.meta.copyWith(color: colors.fg3),
-                      ),
-                  ],
-                ),
-              ),
-              _StatusChip(isSet: loading ? null : isSet),
+    // 稿：行 min 40 + padding 6，下沿 1（borderSubtle）。
+    return Container(
+      constraints: const BoxConstraints(minHeight: 53),
+      padding: const EdgeInsets.symmetric(vertical: InkSpacing.s6),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.borderSubtle))),
+      child: _Columns(
+        provider: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.body.copyWith(color: c.fg1)),
+            if (showMembers) ...<Widget>[
+              const SizedBox(height: InkSpacing.s2),
+              Text(memberIds, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.micro.copyWith(color: c.fg6)),
             ],
-          ),
-          const SizedBox(height: InkSpacing.xs),
-          Row(
-            children: [
-              Expanded(
-                child: InkInput(
-                  controller: _ctrl,
-                  hintText: context.l10n.settingsApiKeyPlaceholder,
-                ),
-              ),
-              const SizedBox(width: InkSpacing.sm),
-              InkButton(
-                label: context.l10n.settingsApiKeySave,
-                onPressed: loading ? null : _save,
-              ),
-              const SizedBox(width: InkSpacing.xs),
-              InkButton(
-                label: context.l10n.settingsApiKeyClear,
-                variant: InkButtonVariant.secondary,
-                onPressed: (loading || !isSet) ? null : _clear,
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
+        key_: InkInput(
+          controller: _ctrl,
+          hintText: context.l10n.settingsApiKeyPlaceholder,
+          enabled: !loading,
+        ),
+        status: _Status(isSet: loading ? null : isSet),
+        actions: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            InkButton(
+              label: context.l10n.settingsApiKeySave,
+              onPressed: loading ? null : _save,
+            ),
+            const SizedBox(width: InkSpacing.xs),
+            InkButton(
+              label: context.l10n.settingsApiKeyClear,
+              variant: InkButtonVariant.secondary,
+              onPressed: (loading || !isSet) ? null : _clear,
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({required this.isSet});
+/// 稿：状态列 = 等宽标记 + 11px 文字，同一语义色。已配置 ✓ 绿；未配置 – 灰。
+class _Status extends StatelessWidget {
+  const _Status({required this.isSet});
   final bool? isSet;
 
   @override
   Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
+    final c = context.inkColors;
+    final t = context.inkTypography;
     if (isSet == null) {
       return const SizedBox(
         width: 12,
@@ -215,21 +237,17 @@ class _StatusChip extends StatelessWidget {
         child: CircularProgressIndicator(strokeWidth: 2),
       );
     }
-    final set = isSet!;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
-      decoration: BoxDecoration(
-        color: set ? colors.success.withValues(alpha: 0.15) : colors.surface2,
-        borderRadius: BorderRadius.circular(InkRadius.sm),
-      ),
-      child: Text(
-        set
-            ? context.l10n.settingsApiKeySet
-            : context.l10n.settingsApiKeyNotSet,
-        style: typo.meta.copyWith(
-          color: set ? colors.success : colors.fg3,
+    final bool set = isSet!;
+    final Color color = set ? c.success : c.fg6;
+    return Row(
+      children: <Widget>[
+        Text(set ? '✓' : '–', style: t.mono.copyWith(color: color)),
+        const SizedBox(width: InkSpacing.s6),
+        Text(
+          set ? context.l10n.settingsApiKeySet : context.l10n.settingsApiKeyNotSet,
+          style: t.meta.copyWith(color: color),
         ),
-      ),
+      ],
     );
   }
 }

@@ -182,11 +182,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsTitle => 'Settings';
 
   @override
-  String get settingsApiKeysSection => 'API Keys';
+  String get settingsApiKeysSection => 'API keys';
 
   @override
   String get settingsApiKeysHint =>
-      'Keys are stored in your system keychain. Nothing is sent off-device.';
+      'Keys live in the macOS Keychain / Windows Credential Manager — never in the database, never exported with a project.';
 
   @override
   String get settingsApiKeyPlaceholder => 'sk-...';
@@ -228,7 +228,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsCustomProvidersEmpty => 'No custom providers yet';
 
   @override
-  String get settingsCustomProvidersAdd => 'Add provider';
+  String get settingsCustomProvidersAdd => 'Add custom provider…';
 
   @override
   String get settingsCustomProvidersRestartNotice =>
@@ -527,7 +527,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check for updates at startup';
 
   @override
-  String get shellKeepLastCanvasTitle => 'Restore last canvas on startup';
+  String get shellKeepLastCanvasTitle => 'Open last canvas on startup';
 
   @override
   String get shellKeepLastCanvasSubtitle =>
@@ -1909,6 +1909,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String commandPaletteShotPath(String project, String canvas, String type) {
     return '$project › $canvas › $type';
   }
+
+  @override
+  String get settingsNavGeneral => 'General';
+
+  @override
+  String get settingsNavNodeLayout => 'Node layout';
+
+  @override
+  String get settingsColumnProvider => 'Provider';
+
+  @override
+  String get settingsColumnKey => 'Key';
+
+  @override
+  String get settingsColumnStatus => 'Status';
+
+  @override
+  String get settingsFooterNote =>
+      'Changes apply immediately and are written to the keychain';
+
+  @override
+  String get settingsDone => 'Done';
+
+  @override
+  String get settingsEscHint => 'Esc';
+
+  @override
+  String get settingsCloseTooltip => 'Close settings';
 
   @override
   String commandPaletteSequenceSegment(String index) {

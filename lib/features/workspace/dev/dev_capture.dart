@@ -35,6 +35,7 @@ import '../../gallery/models/gallery_selection.dart';
 import '../../gallery/providers/gallery_filter.dart';
 import '../../gallery/providers/gallery_selection.dart';
 import '../../gallery/util/gallery_meta.dart';
+import '../../settings/providers/settings_page.dart';
 import '../../settings/providers/shell_keep_last_canvas_controller.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
@@ -49,7 +50,7 @@ const int kCaptureDelayMs = int.fromEnvironment(
   defaultValue: 12000,
 );
 const bool kSeedFixture = bool.fromEnvironment('INKFRAME_SEED_FIXTURE');
-/// 截哪一屏：canvas（默认）/ gallery（再播 Screens 稿第 2 屏的 15 个产物并打开画廊标签）。
+/// 截哪一屏：canvas（默认）/ gallery（再播 Screens 稿第 2 屏的 15 个产物并打开画廊标签）/ studio / settings（Studio + 设置浮层「API 密钥」页）。
 const String kCaptureScreen = String.fromEnvironment('INKFRAME_CAPTURE_SCREEN', defaultValue: 'canvas');
 
 class DevCaptureFrame extends ConsumerStatefulWidget {
@@ -82,6 +83,13 @@ class _DevCaptureFrameState extends ConsumerState<DevCaptureFrame> {
       final WorkspaceFixtureIds ids = await seedWorkspaceFixture(ref);
       if (kCaptureScreen == 'gallery') await seedGalleryFixture(ref, ids);
       if (kCaptureScreen == 'studio') await seedStudioFixture(ref, ids);
+      if (kCaptureScreen == 'settings') {
+        // Screens 稿第 3 屏：设置浮层盖在 Studio 上，停在「API 密钥」页。
+        // 不播种任何 Key——截图 app 用的是真平台安全存储，绝不往里写。
+        await seedStudioFixture(ref, ids);
+        ref.read(settingsPageProvider.notifier).state = SettingsPage.apiKeys;
+        ref.read(shellControllerProvider.notifier).openOverlay(ShellOverlay.settings);
+      }
     }
     if (kCaptureOut.isNotEmpty) {
       await Future<void>.delayed(const Duration(milliseconds: kCaptureDelayMs));

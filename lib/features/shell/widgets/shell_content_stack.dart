@@ -1,9 +1,12 @@
-// 内容区：外层 IndexedStack（浮层槽 vs 标签宿主）+ 内层保活宿主 + 兜底焦点。
+// 内容区：外层 Stack（标签宿主在下、浮层盖在上）+ 内层保活宿主 + 兜底焦点。
 //
-// 两级 IndexedStack 的三条保证都是【框架保证】而非手写纪律：
-// - 浮层打开 ⇒ 五个标签体一律 offstage（_IndexedStackElement.debugVisitOnstageChildren）
-// - 设置盖着时底下画布不会被点穿（RenderIndexedStack.hitTestChildren 只命中 index 子）
-// - 浮层打开时标签宿主整体失焦（IndexedStack 给隐藏子套 ExcludeFocus）
+// 浮层形态（Screens 稿第 3 屏，2026-09-24）：设置是盖在【仍然可见、被遮暗】的原界面
+// 之上的对话框，所以外层不能再用 IndexedStack（它会把底下的标签体整个不画）。
+// 三条保证换成了这样的来源，仍是框架保证而非手写纪律：
+// - 底下的标签体不会被点穿 ⇒ ShellOverlayLayer 里的 ModalBarrier 吃掉全部指针
+// - 浮层打开时标签宿主整体失焦 ⇒ 这里显式 ExcludeFocus（IndexedStack 以前替我们做的事）
+// - 画布不再抢键盘 ⇒ CanvasTab(isVisible: false) → CanvasShortcuts.isActive = false
+// 内层五槽仍是 IndexedStack：切标签时非活动标签照旧离台（offstage）。
 import 'package:flutter/material.dart';
 
 import '../models/shell_state.dart';
@@ -51,23 +54,13 @@ class _ShellContentStackState extends State<ShellContentStack> {
     // → 全 app 的 ⌘K 直接失效。
     //
     // 顺序安全性来自【注册时机】：本回调在祖先重建时先注册（早），
-    // CanvasShortcuts 的 _claimFocus 在后代 build 期间注册（晚），
-    // post-frame 队列 FIFO ⇒ 晚的赢 ⇒ 切回画布页时画布稳拿焦点。
+    // CanvasShortcuts 的 _claimFocus / SettingsScreen 的夺焦在后代 build 期间注册（晚），
+    // post-frame 队列 FIFO ⇒ 晚的赢 ⇒ 切回画布页时画布稳拿焦点、开设置时设置稳拿焦点。
     //
     // 【T8 实测：上面这段不是纸面推理，已有护栏】守它的是
     // test/features/shell/shell_focus_test.dart 的
     // 「V2：浮层打开时画布不可见，Delete 不删节点且 ⌘K 仍可用」那条 ⌘K 断言。
     // 两次变异都把它打红：(a) 本 requestFocus 改成 no-op；(b) 加 hasFocus 守卫。
-    // 焦点探针显示，两种变异下开浮层后 primaryFocus 都变成
-    // _ModalScopeState 的 FocusScope，⌘K 面板计数为 0。
-    //
-    // T7 复评当时"构造不出证伪场景"的原因：⌘K 只在【画布先抢过焦点】的路径上
-    // 才会掉链子。若当前标签里没有 CanvasShortcuts 这类主动夺焦者，⌘K 全程可用
-    // ——焦点要么留在 CommandPaletteShortcuts 的 autofocus 兜底节点上，要么落到
-    // 本节点（守卫版下也会落过来：此刻持焦的兜底节点是 _shellFocus 的【祖先】
-    // 而非后代，hasFocus 为 false，守卫并不跳过请求），**两者都在
-    // CommandPaletteShortcuts 之下**，按键照常冒泡。那条路径下本段确实无作用面，
-    // 但那不是全部路径。
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _shellFocus.requestFocus();
     });
@@ -75,21 +68,25 @@ class _ShellContentStackState extends State<ShellContentStack> {
 
   @override
   Widget build(BuildContext context) {
+    final bool covered = widget.overlay != null;
     return Focus(
       focusNode: _shellFocus,
       skipTraversal: true,
-      child: IndexedStack(
-        index: widget.overlay == null ? 0 : 1,
-        sizing: StackFit.expand,
+      child: Stack(
+        fit: StackFit.expand,
         children: <Widget>[
-          ShellKeepAliveHost(activeTab: widget.tab, buildTab: _buildTab),
+          // 浮层盖着时标签宿主整体失焦：以前由 IndexedStack 给隐藏子套的 ExcludeFocus
+          // 代劳，现在标签体仍在台上（被遮暗可见），得自己套。
+          ExcludeFocus(
+            excluding: covered,
+            child: ShellKeepAliveHost(activeTab: widget.tab, buildTab: _buildTab),
+          ),
           // 浮层不保活：关掉即销毁。
-          widget.overlay == null
-              ? const SizedBox.shrink()
-              : ShellOverlayLayer(
-                  key: ValueKey<String>('shellOverlay-${widget.overlay!.name}'),
-                  overlay: widget.overlay!,
-                ),
+          if (covered)
+            ShellOverlayLayer(
+              key: ValueKey<String>('shellOverlay-${widget.overlay!.name}'),
+              overlay: widget.overlay!,
+            ),
         ],
       ),
     );

@@ -413,13 +413,13 @@ abstract class AppLocalizations {
   /// No description provided for @settingsApiKeysSection.
   ///
   /// In en, this message translates to:
-  /// **'API Keys'**
+  /// **'API keys'**
   String get settingsApiKeysSection;
 
   /// No description provided for @settingsApiKeysHint.
   ///
   /// In en, this message translates to:
-  /// **'Keys are stored in your system keychain. Nothing is sent off-device.'**
+  /// **'Keys live in the macOS Keychain / Windows Credential Manager — never in the database, never exported with a project.'**
   String get settingsApiKeysHint;
 
   /// No description provided for @settingsApiKeyPlaceholder.
@@ -497,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsCustomProvidersAdd.
   ///
   /// In en, this message translates to:
-  /// **'Add provider'**
+  /// **'Add custom provider…'**
   String get settingsCustomProvidersAdd;
 
   /// No description provided for @settingsCustomProvidersRestartNotice.
@@ -1007,7 +1007,7 @@ abstract class AppLocalizations {
   /// No description provided for @shellKeepLastCanvasTitle.
   ///
   /// In en, this message translates to:
-  /// **'Restore last canvas on startup'**
+  /// **'Open last canvas on startup'**
   String get shellKeepLastCanvasTitle;
 
   /// No description provided for @shellKeepLastCanvasSubtitle.
@@ -3445,6 +3445,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{project} › {canvas} › {type}'**
   String commandPaletteShotPath(String project, String canvas, String type);
+
+  /// No description provided for @settingsNavGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get settingsNavGeneral;
+
+  /// No description provided for @settingsNavNodeLayout.
+  ///
+  /// In en, this message translates to:
+  /// **'Node layout'**
+  String get settingsNavNodeLayout;
+
+  /// No description provided for @settingsColumnProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider'**
+  String get settingsColumnProvider;
+
+  /// No description provided for @settingsColumnKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Key'**
+  String get settingsColumnKey;
+
+  /// No description provided for @settingsColumnStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get settingsColumnStatus;
+
+  /// No description provided for @settingsFooterNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply immediately and are written to the keychain'**
+  String get settingsFooterNote;
+
+  /// No description provided for @settingsDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get settingsDone;
+
+  /// No description provided for @settingsEscHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Esc'**
+  String get settingsEscHint;
+
+  /// No description provided for @settingsCloseTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Close settings'**
+  String get settingsCloseTooltip;
 
   /// No description provided for @commandPaletteSequenceSegment.
   ///

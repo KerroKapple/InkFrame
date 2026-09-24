@@ -169,10 +169,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsTitle => '设置';
 
   @override
-  String get settingsApiKeysSection => 'API Keys';
+  String get settingsApiKeysSection => 'API 密钥';
 
   @override
-  String get settingsApiKeysHint => 'Key 存储在系统钥匙串中，不会发送到任何外部服务。';
+  String get settingsApiKeysHint =>
+      'Key 存入 macOS 钥匙串 / Windows 凭据管理器，不进数据库、不随项目导出。';
 
   @override
   String get settingsApiKeyPlaceholder => 'sk-...';
@@ -213,7 +214,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsCustomProvidersEmpty => '暂无自定义服务商';
 
   @override
-  String get settingsCustomProvidersAdd => '添加服务商';
+  String get settingsCustomProvidersAdd => '添加自定义 Provider';
 
   @override
   String get settingsCustomProvidersRestartNotice => '更改已保存——重启 InkFrame 后生效';
@@ -499,7 +500,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutUpdateAutoCheckLabel => '启动时自动检查更新';
 
   @override
-  String get shellKeepLastCanvasTitle => '启动时恢复上次的画布';
+  String get shellKeepLastCanvasTitle => '启动时打开上次的画布';
 
   @override
   String get shellKeepLastCanvasSubtitle =>
@@ -1836,6 +1837,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String commandPaletteShotPath(String project, String canvas, String type) {
     return '$project › $canvas › $type';
   }
+
+  @override
+  String get settingsNavGeneral => '常规';
+
+  @override
+  String get settingsNavNodeLayout => '节点布局';
+
+  @override
+  String get settingsColumnProvider => 'Provider';
+
+  @override
+  String get settingsColumnKey => 'Key';
+
+  @override
+  String get settingsColumnStatus => '状态';
+
+  @override
+  String get settingsFooterNote => '改动即时生效并写入钥匙串';
+
+  @override
+  String get settingsDone => '完成';
+
+  @override
+  String get settingsEscHint => 'Esc';
+
+  @override
+  String get settingsCloseTooltip => '关闭设置';
 
   @override
   String commandPaletteSequenceSegment(String index) {
