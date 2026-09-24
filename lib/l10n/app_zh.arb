@@ -729,6 +729,8 @@
   "commandPaletteHintClose": "Esc 关闭",
   "commandPaletteShotPath": "{project} › {canvas} › {type}",
   "@commandPaletteShotPath": { "placeholders": { "project": { "type": "String" }, "canvas": { "type": "String" }, "type": { "type": "String" } } },
+  "commandPaletteSequenceSegment": "序列 {index}",
+  "@commandPaletteSequenceSegment": { "placeholders": { "index": { "type": "String" } } },
   "commandPaletteArtifactPath": "画廊 › {kind} › {provider}",
   "@commandPaletteArtifactPath": { "placeholders": { "kind": { "type": "String" }, "provider": { "type": "String" } } }
 }

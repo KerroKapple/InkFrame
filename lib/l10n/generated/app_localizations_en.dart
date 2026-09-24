@@ -1911,6 +1911,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String commandPaletteSequenceSegment(String index) {
+    return 'Sequence $index';
+  }
+
+  @override
   String commandPaletteArtifactPath(String kind, String provider) {
     return 'Gallery › $kind › $provider';
   }

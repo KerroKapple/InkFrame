@@ -105,6 +105,16 @@ class _ChainOrderNodesController extends CanvasNodesController {
       ];
 }
 
+/// 三个图像 config 节点：cfg-a / cfg-b 在链上（边见 _ChainEdgesController），cfg-lone 孤立。
+class _ChainShotsController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => <CanvasNode>[
+        CanvasNode(id: 'cfg-a', label: 'cfg-a', type: CanvasNodeType.image, canvasId: canvasId),
+        CanvasNode(id: 'cfg-b', label: 'cfg-b', type: CanvasNodeType.image, canvasId: canvasId),
+        CanvasNode(id: 'cfg-lone', label: 'cfg-lone', type: CanvasNodeType.image, canvasId: canvasId),
+      ];
+}
+
 /// narrative 链 cfg-b → cfg-a（与 position.x 序刻意相反）。
 class _ChainEdgesController extends CanvasEdgesController {
   @override
@@ -507,6 +517,30 @@ void main() {
     expect(find.text('Sunrise'), findsOneWidget);
     expect(find.text('Actions'), findsNothing, reason: '没有动作匹配 sun');
     expect(find.text('1 results'), findsOneWidget);
+  });
+
+  testWidgets('镜头路径第三段：在叙事链上写「序列 NNN」（链序，不是原序），链外写节点类型',
+      (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_ChainShotsController.new),
+      canvasEdgesControllerProvider.overrideWith(_ChainEdgesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    await _warmNodes(container, 'c1');
+    await _warmEdges(container, 'c1');
+    await _pressCtrlK(tester);
+    await tester.enterText(find.byType(TextField), 'cfg');
+    await tester.pumpAndSettle();
+
+    // 链 cfg-b → cfg-a：b 是 001、a 是 002；lone 不在链上 ⇒ 类型名。
+    expect(find.textContaining('Sequence 001'), findsOneWidget);
+    expect(find.textContaining('Sequence 002'), findsOneWidget);
+    final String pathA = tester.widget<Text>(find.textContaining('Sequence 002')).data!;
+    final String pathB = tester.widget<Text>(find.textContaining('Sequence 001')).data!;
+    expect(tester.getTopLeft(find.text(pathA)).dy, lessThan(tester.getTopLeft(find.text(pathB)).dy),
+        reason: '条目顺序是节点原序（cfg-a 在前、序号 002），序号却按链序——序号不是行号');
+    expect(find.textContaining('Sequence 003'), findsNothing);
+    expect(find.textContaining('Image'), findsWidgets, reason: 'cfg-lone 不在链上 ⇒ 第三段是类型名');
   });
 
   testWidgets('「设置项」组不存在；Studio 上下文有查询词也只出动作组', (tester) async {

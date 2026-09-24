@@ -806,6 +806,8 @@
   "commandPaletteHintClose": "Esc close",
   "commandPaletteShotPath": "{project} › {canvas} › {type}",
   "@commandPaletteShotPath": { "placeholders": { "project": { "type": "String" }, "canvas": { "type": "String" }, "type": { "type": "String" } } },
+  "commandPaletteSequenceSegment": "Sequence {index}",
+  "@commandPaletteSequenceSegment": { "placeholders": { "index": { "type": "String" } } },
   "commandPaletteArtifactPath": "Gallery › {kind} › {provider}",
   "@commandPaletteArtifactPath": { "placeholders": { "kind": { "type": "String" }, "provider": { "type": "String" } } }
 }

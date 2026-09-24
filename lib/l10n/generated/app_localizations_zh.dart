@@ -1838,6 +1838,11 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String commandPaletteSequenceSegment(String index) {
+    return '序列 $index';
+  }
+
+  @override
   String commandPaletteArtifactPath(String kind, String provider) {
     return '画廊 › $kind › $provider';
   }

@@ -3446,6 +3446,12 @@ abstract class AppLocalizations {
   /// **'{project} › {canvas} › {type}'**
   String commandPaletteShotPath(String project, String canvas, String type);
 
+  /// No description provided for @commandPaletteSequenceSegment.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence {index}'**
+  String commandPaletteSequenceSegment(String index);
+
   /// No description provided for @commandPaletteArtifactPath.
   ///
   /// In en, this message translates to:
