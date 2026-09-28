@@ -437,7 +437,17 @@ class _CanvasStage extends ConsumerWidget {
     // 折叠态（纯 UI，不持久化）。
     final collapsedIds = ref.watch(laneCollapseProvider(canvasId));
     // 拖拽落点 → 泳道归属用的切片，整层算一次复用给各卡片插槽。
-    final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
+    // 【有效厚度】：折叠的道按 kCollapsedLaneSize（Lanes 稿改动 4）——几何全家同吃这一份，
+    // 折叠才真的省空间。
+    final laneSlices = collapseLaneSlices(
+      [for (final l in lanes) (id: l.id, size: l.size)],
+      collapsedIds,
+    );
+    // 折叠道里的节点不画：连线 / 命中 / 选中边几何都只看这份可见集。
+    final visibleNodes = [
+      for (final n in nodes)
+        if (n.laneId == null || !collapsedIds.contains(n.laneId)) n,
+    ];
 
     // PL-2：绑定快捷键缩放共用的变换控制器（按 canvasId 分族；gesture 平移/缩放照常）。
     final transformController = ref.watch(
@@ -450,7 +460,7 @@ class _CanvasStage extends ConsumerWidget {
         edges: edges,
         // 命中用渲染位置（含分道位移），与 EdgePainter 同源。
         nodes: displacedNodes(
-          nodes: nodes,
+          nodes: visibleNodes,
           lanes: laneSlices,
           direction: direction,
           transform: transformController.value,
@@ -467,18 +477,18 @@ class _CanvasStage extends ConsumerWidget {
     final selectedGeometry = _selectedEdgeGeometry(
       selectedEdgeId: selectedEdgeId,
       edges: edges,
-      nodes: nodes,
+      nodes: visibleNodes,
     );
 
     // 全向无限画布：居中定舞台（100k×100k，世界原点在正中央）。
     // Positioned/painter 使用舞台坐标 = 世界坐标 + kStageOrigin。
     const stage = kStageSize;
 
-    // 各泳道起始边（屏幕坐标 = 尺寸顺序累计），分道位移组用。
+    // 各泳道起始边（屏幕坐标 = 有效厚度顺序累计），分道位移组用。
     final laneStarts = <String, double>{};
     {
       var offset = 0.0;
-      for (final l in lanes) {
+      for (final l in laneSlices) {
         laneStarts[l.id] = offset;
         offset += l.size;
       }
@@ -508,7 +518,10 @@ class _CanvasStage extends ConsumerWidget {
           // RenderBox.hitTest 先按未变换的盒子边界筛，Transform 只移画面
           // 不移命中区——平移后泳道边界"看得见摸不着"（宽度拖拽锁死）。
           final horizontal = direction == LaneDirection.horizontal;
-          final lanesTotal = lanes.fold(0.0, (sum, l) => sum + l.size);
+          final lanesTotal = laneSlices.fold(0.0, (sum, l) => sum + l.size);
+          // 皮层盒子比泳道栈多留一个标题栏的余量（BOARD P2-3）：竖向窄道的标题栏按下限宽
+          // 溢出到栈外时仍在盒内——RenderBox.hitTest 先按盒界筛，盒外的按钮看得见点不到。
+          final skinExtent = lanesTotal + LaneTitleBar.minWidth;
           Widget laneShifted(Widget child) => ValueListenableBuilder<Matrix4>(
                 valueListenable: transformController,
                 builder: (context, m, c) {
@@ -518,8 +531,8 @@ class _CanvasStage extends ConsumerWidget {
                       Positioned(
                         left: horizontal ? 0 : off,
                         top: horizontal ? off : 0,
-                        width: horizontal ? size.width : lanesTotal,
-                        height: horizontal ? lanesTotal : size.height,
+                        width: horizontal ? size.width : skinExtent,
+                        height: horizontal ? skinExtent : size.height,
                         child: c!,
                       ),
                     ],
@@ -545,6 +558,7 @@ class _CanvasStage extends ConsumerWidget {
                         canvasExtent:
                             horizontal ? size.width : size.height,
                         dividerColor: colors.borderSubtle,
+                        railFallbackColor: colors.control,
                         collapsedIds: collapsedIds,
                       ),
                     ),
@@ -590,7 +604,7 @@ class _CanvasStage extends ConsumerWidget {
                                 painter: EdgePainter(
                                   edges: edges,
                                   nodes: displacedNodes(
-                                    nodes: nodes,
+                                    nodes: visibleNodes,
                                     lanes: laneSlices,
                                     direction: direction,
                                     transform: m,
@@ -641,7 +655,9 @@ class _CanvasStage extends ConsumerWidget {
                   // 分道位移组：每条泳道一个 Transform.translate——以泳道起始边
                   // 为锚缩放，保证泳道内的卡片缩放/平移时不穿出泳道带。
                   // VLB 的 child 只建一次，缩放帧只更新 Transform（不重建卡片）。
+                  // 折叠的道不建卡片（稿：折叠收成 36 轨，道内内容隐藏）。
                   for (final lane in lanes)
+                    if (!collapsedIds.contains(lane.id))
                     Positioned.fill(
                       key: ValueKey('lane-group-${lane.id}'),
                       child: ValueListenableBuilder<Matrix4>(
@@ -672,6 +688,7 @@ class _CanvasStage extends ConsumerWidget {
                                   top: node.position.dy + kStageOrigin.dy,
                                   child: _NodeCardSlot(
                                     node: node,
+                                    lane: lane,
                                     canvasId: canvasId,
                                     laneSlices: laneSlices,
                                     direction: direction,
@@ -747,13 +764,15 @@ class _CanvasStage extends ConsumerWidget {
                           context,
                           ref,
                           lanes,
+                          laneSlices,
+                          nodes,
                           direction,
                           collapsedIds,
                           size,
                         ),
                         if (lanes.length >= 2)
                           ..._buildResizeDividers(
-                            context, ref, lanes, direction, size,
+                            context, ref, lanes, laneSlices, direction, collapsedIds, size,
                           ),
                       ],
                     ),
@@ -774,15 +793,19 @@ class _CanvasStage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<StyleLane> lanes,
+    List<({String id, double size})> laneSlices,
+    List<CanvasNode> nodes,
     LaneDirection direction,
     Set<String> collapsedIds,
     Size viewport,
   ) {
-    // 稿：标题栏 26px；横向固定 268 宽、左上角内缩 (12, 6)；竖向 min(道宽 − 24, 240)。
+    // 稿：标题栏 26px；横向固定 268 宽、左 14 / 道顶 +14；竖向 left = 道左 + 12、top 14、
+    // 宽 min(道宽 − 24, 240)（下限 LaneTitleBar.minWidth，窄道时溢出但可命中——BOARD P2-3）。
+    // 折叠道（36 轨）里标题栏垂直居中。
     const double kTitleBarHeight = LaneTitleBar.height;
-    const double kTitleBarInset = 12.0;
-    const double kTitleBarWidth = 268.0;
-    final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
+    const double kTitleBarInsetH = 14.0;
+    const double kTitleBarInsetV = 12.0;
+    const double kTitleBarTop = 14.0;
     final rects = laneRects(
       lanes: laneSlices,
       direction: direction,
@@ -790,21 +813,28 @@ class _CanvasStage extends ConsumerWidget {
           ? viewport.width
           : viewport.height,
     );
+    final counts = <String, int>{};
+    for (final n in nodes) {
+      if (n.laneId != null) counts[n.laneId!] = (counts[n.laneId!] ?? 0) + 1;
+    }
     final result = <Widget>[];
     for (var i = 0; i < lanes.length; i++) {
       final lane = lanes[i];
       final rect = rects[i];
+      final bool collapsed = collapsedIds.contains(lane.id);
+      final double crossInset = collapsed ? (kCollapsedLaneSize - kTitleBarHeight) / 2 : kTitleBarTop;
       final double left;
       final double top;
       final double? width;
       if (direction == LaneDirection.horizontal) {
-        left = kTitleBarInset;
-        top = rect.top + InkSpacing.s6;
-        width = kTitleBarWidth;
+        left = kTitleBarInsetH;
+        top = rect.top + crossInset;
+        width = LaneTitleBar.horizontalWidth;
       } else {
-        left = rect.left + kTitleBarInset;
-        top = InkSpacing.s6;
-        width = (lane.size - kTitleBarInset * 2).clamp(0.0, 240.0);
+        left = rect.left + kTitleBarInsetV;
+        top = crossInset;
+        width = (rect.width - kTitleBarInsetV * 2)
+            .clamp(LaneTitleBar.minWidth, LaneTitleBar.verticalMaxWidth);
       }
       // 拖拽重排：记录拖拽偏移，pan end 时计算目标 lane 并 reorderLanes。
       var dragOffset = Offset.zero;
@@ -822,7 +852,7 @@ class _CanvasStage extends ConsumerWidget {
               if (moved.distance < 12) return; // 阈值：避免误触重排
               final dropPoint = direction == LaneDirection.horizontal
                   ? Offset(0, rect.top + kTitleBarHeight / 2 + moved.dy)
-                  : Offset(rect.left + kTitleBarWidth / 2 + moved.dx, 0);
+                  : Offset(rect.left + rect.width / 2 + moved.dx, 0);
               final targetId = laneIdAtPoint(
                 point: dropPoint,
                 lanes: laneSlices,
@@ -839,7 +869,8 @@ class _CanvasStage extends ConsumerWidget {
             },
             child: LaneTitleBar(
               lane: lane,
-              collapsed: collapsedIds.contains(lane.id),
+              nodeCount: counts[lane.id] ?? 0,
+              collapsed: collapsed,
               onToggleCollapse: () => ref
                   .read(laneCollapseProvider(canvasId).notifier)
                   .toggle(lane.id),
@@ -859,11 +890,12 @@ class _CanvasStage extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     List<StyleLane> lanes,
+    List<({String id, double size})> laneSlices,
     LaneDirection direction,
+    Set<String> collapsedIds,
     Size viewport,
   ) {
     const double kStripThick = 10.0;
-    final laneSlices = [for (final l in lanes) (id: l.id, size: l.size)];
     final rects = laneRects(
       lanes: laneSlices,
       direction: direction,
@@ -876,6 +908,8 @@ class _CanvasStage extends ConsumerWidget {
     // 相邻泳道之间各一条感应条，以 upper lane id 为键。
     for (var i = 1; i < lanes.length; i++) {
       final upperLane = lanes[i - 1];
+      // 折叠的道厚度是定值，不给拖。
+      if (collapsedIds.contains(upperLane.id)) continue;
       final dividerPos = horizontal ? rects[i].top : rects[i].left;
       final upperLaneId = upperLane.id;
       final double currentSize = upperLane.size;
@@ -1015,6 +1049,7 @@ _selectedEdgeGeometry({
 class _NodeCardSlot extends ConsumerWidget {
   const _NodeCardSlot({
     required this.node,
+    this.lane,
     required this.canvasId,
     required this.laneSlices,
     required this.direction,
@@ -1024,6 +1059,8 @@ class _NodeCardSlot extends ConsumerWidget {
   });
 
   final CanvasNode node;
+  /// 所在泳道（稿：卡片底部「继承 X」行）；无道节点为 null。
+  final StyleLane? lane;
   final String canvasId;
   final List<({String id, double size})> laneSlices;
   final LaneDirection direction;
@@ -1043,6 +1080,7 @@ class _NodeCardSlot extends ConsumerWidget {
     return RepaintBoundary(
       child: NodeCard(
         node: node,
+        lane: lane,
         selected: selected,
         onTap: onTap,
         onDragEnd: (totalDelta) {

@@ -64,3 +64,18 @@ String? laneIdAtPoint({
   }
   return null;
 }
+
+/// 折叠态泳道的厚度（Lanes 稿改动 4）：整条道收成 36px 的轨，只留标题栏。
+const double kCollapsedLaneSize = 36;
+
+/// 把泳道切片换成【有效厚度】：折叠的道按 [kCollapsedLaneSize]，其余照原 size。
+/// 几何全家（laneRects / laneStartOf / laneIdAtPoint / 分道位移）都要吃这份切片，
+/// 折叠才是真的省空间——后面的道整体上移，而不是只把底色关掉。
+List<({String id, double size})> collapseLaneSlices(
+  List<({String id, double size})> lanes,
+  Set<String> collapsedIds,
+) =>
+    [
+      for (final l in lanes)
+        (id: l.id, size: collapsedIds.contains(l.id) ? kCollapsedLaneSize : l.size),
+    ];

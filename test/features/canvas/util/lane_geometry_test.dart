@@ -56,4 +56,25 @@ void main() {
       expect(reorderedLaneIds(ids, 'zzz', 'a'), ids);
     });
   });
+
+  group('collapseLaneSlices（Lanes 稿改动 4）', () {
+    test('折叠的道按 kCollapsedLaneSize，其余照原 size，顺序不变', () {
+      final out = collapseLaneSlices(lanes, {'a'});
+      expect(out, [(id: 'a', size: kCollapsedLaneSize), (id: 'b', size: 200.0)]);
+      expect(kCollapsedLaneSize, 36);
+    });
+
+    test('后面的道整体上移：折叠 a 后 b 的起始边从 100 变成 36', () {
+      final r = laneRects(
+        lanes: collapseLaneSlices(lanes, {'a'}),
+        direction: LaneDirection.horizontal,
+        canvasExtent: 4000,
+      );
+      expect(r[1].top, kCollapsedLaneSize);
+    });
+
+    test('空折叠集原样返回', () {
+      expect(collapseLaneSlices(lanes, const <String>{}), lanes);
+    });
+  });
 }

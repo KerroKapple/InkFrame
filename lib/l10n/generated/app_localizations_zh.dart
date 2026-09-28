@@ -1081,13 +1081,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneNameHint => '泳道名称';
 
   @override
-  String get laneStyleLabel => '风格描述';
+  String get laneStyleLabel => '风格提示词';
 
   @override
   String get laneStyleHint => '如：温暖的黄昏光线、烛光';
 
   @override
-  String get laneTintLabel => '背景色';
+  String get laneTintLabel => '底色';
 
   @override
   String get laneTintAuto => '自动';
@@ -1127,6 +1127,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get laneExpand => '展开泳道';
+
+  @override
+  String get laneCollapsedTag => '已折叠';
+
+  @override
+  String laneInherits(String lane) {
+    return '继承 $lane';
+  }
+
+  @override
+  String get laneStyleNote => '道内节点生成时自动前置此段。提示词为模型合约，保持英文。';
+
+  @override
+  String laneTintAutoHit(String keywords, String hex) {
+    return '「自动」时按提示词推断，当前命中「$keywords」→ $hex。';
+  }
+
+  @override
+  String get laneTintAutoMiss => '「自动」时按提示词推断，当前未命中词表，不绘底色。';
+
+  @override
+  String get lanePreviewLabel => '预览';
+
+  @override
+  String get laneDialogThicknessNote => '厚度不在此处调，拖分界线改';
+
+  @override
+  String get laneDirectionHorizontal => '横向';
+
+  @override
+  String get laneDirectionVertical => '竖向';
 
   @override
   String get inspectorPromptPreviewLabel => '最终提示词预览';

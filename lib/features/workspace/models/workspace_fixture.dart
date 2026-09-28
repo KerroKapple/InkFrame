@@ -225,6 +225,8 @@ class WorkspaceFixture {
   static const String autosave = '自动保存 · 2 秒前';
   static const String fit = '适应';
   static const List<String> laneLabels = <String>['场景 A · 山径', '场景 B · 破晓'];
+  /// 泳道风格提示词（Lanes 稿原文：标题栏第二行 + 底色推断的来源）。
+  static const List<String> lanePrompts = <String>['warm dusk, golden hour, long shadows', 'traditional Chinese ink wash painting, sumi-e'];
 
   static const List<WsNode> nodes = <WsNode>[
     WsNode(x: 72, y: 130, name: '镜头 01 · 分镜描述', kind: 'shot', hasIn: false,

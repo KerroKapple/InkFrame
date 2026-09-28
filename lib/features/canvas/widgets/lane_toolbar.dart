@@ -1,4 +1,5 @@
-// 泳道工具栏：添加泳道 + 方向切换，紧凑 token 化容器。
+// 泳道工具栏（Lanes 稿）：画布右下角，surface4 底 + control 边 + 圆角 3；
+// 「+」30×26 带右分隔线 | 方向键 = 图标（随当前方向变）+ 「横向 / 竖向」文字标签。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -17,42 +18,57 @@ class LaneToolbar extends ConsumerWidget {
 
   final String canvasId;
 
+  static const double height = 26;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final dir = ref.watch(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
         LaneDirection.horizontal;
     final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final l10n = context.l10n;
+    final bool horizontal = dir == LaneDirection.horizontal;
 
     return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: InkSpacing.xs,
-        vertical: InkSpacing.xs,
-      ),
+      clipBehavior: Clip.hardEdge,
       decoration: BoxDecoration(
-        color: colors.surface3,
-        borderRadius: BorderRadius.circular(InkRadius.md),
-        boxShadow: InkShadow.card,
+        color: colors.surface4,
+        border: Border.all(color: colors.control),
+        borderRadius: BorderRadius.circular(InkRadius.s3),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
           // 添加泳道
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: context.l10n.laneAdd,
-            color: colors.fg1,
-            onPressed: () => _onAdd(context, ref),
-          ),
-          // 方向切换
-          IconButton(
-            icon: Icon(
-              dir == LaneDirection.horizontal
-                  ? Icons.swap_horiz
-                  : Icons.swap_vert,
+          _Key(
+            tooltip: l10n.laneAdd,
+            onTap: () => _onAdd(context, ref),
+            child: Container(
+              width: 30,
+              height: height,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(border: Border(right: BorderSide(color: colors.control))),
+              child: Icon(Icons.add, size: InkSpacing.md, color: colors.fg3),
             ),
-            tooltip: context.l10n.laneDirectionToggle,
-            color: colors.fg1,
-            onPressed: () => _onToggleDirection(context, ref, dir),
+          ),
+          // 方向切换：图标随当前方向变 + 文字标签（稿）。
+          _Key(
+            tooltip: l10n.laneDirectionToggle,
+            onTap: () => _onToggleDirection(context, ref, dir),
+            child: Container(
+              height: height,
+              padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
+              child: Row(
+                children: <Widget>[
+                  Icon(horizontal ? Icons.swap_vert : Icons.swap_horiz, size: InkSpacing.s12, color: colors.fg3),
+                  const SizedBox(width: InkSpacing.s6),
+                  Text(
+                    horizontal ? l10n.laneDirectionHorizontal : l10n.laneDirectionVertical,
+                    style: typo.meta.copyWith(color: colors.fg3, height: 1.0),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -107,4 +123,25 @@ class LaneToolbar extends ConsumerWidget {
       );
     }
   }
+}
+
+/// 工具栏里的一枚键：tooltip + 语义 + 手型光标。
+class _Key extends StatelessWidget {
+  const _Key({required this.tooltip, required this.onTap, required this.child});
+  final String tooltip;
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: tooltip,
+        child: Semantics(
+          button: true,
+          label: tooltip,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: child),
+          ),
+        ),
+      );
 }

@@ -1128,13 +1128,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get laneNameHint => 'Lane name';
 
   @override
-  String get laneStyleLabel => 'Style description';
+  String get laneStyleLabel => 'Style prompt';
 
   @override
   String get laneStyleHint => 'e.g. warm sunset lighting, candlelit';
 
   @override
-  String get laneTintLabel => 'Background color';
+  String get laneTintLabel => 'Tint';
 
   @override
   String get laneTintAuto => 'Auto';
@@ -1175,6 +1175,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get laneExpand => 'Expand lane';
+
+  @override
+  String get laneCollapsedTag => 'Collapsed';
+
+  @override
+  String laneInherits(String lane) {
+    return 'Inherits $lane';
+  }
+
+  @override
+  String get laneStyleNote =>
+      'Prepended automatically when nodes in this lane generate. Prompts are the model contract — keep them in English.';
+
+  @override
+  String laneTintAutoHit(String keywords, String hex) {
+    return 'Auto picks from the prompt — matched “$keywords” → $hex.';
+  }
+
+  @override
+  String get laneTintAutoMiss =>
+      'Auto picks from the prompt — no keyword matched, no tint is drawn.';
+
+  @override
+  String get lanePreviewLabel => 'Preview';
+
+  @override
+  String get laneDialogThicknessNote =>
+      'Thickness is not set here — drag the divider.';
+
+  @override
+  String get laneDirectionHorizontal => 'Horizontal';
+
+  @override
+  String get laneDirectionVertical => 'Vertical';
 
   @override
   String get inspectorPromptPreviewLabel => 'Final prompt preview';

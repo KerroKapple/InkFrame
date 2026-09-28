@@ -26,4 +26,17 @@ void main() {
     expect(effectiveLaneTint(tintColor: null, stylePrompt: '森林'), const Color(0xFF3E7C5A));
     expect(effectiveLaneTint(tintColor: null, stylePrompt: 'nothing'), isNull);
   });
+
+  // Lanes 稿改动 6：色板与推断说明都只认词表这一份数据源。
+  test('kLaneTintChoices 就是词表五组的 hex，按词表顺序', () {
+    expect(kLaneTintChoices, [for (final g in kLaneTintGroups) g.hex]);
+    expect(kLaneTintChoices.length, 5);
+  });
+
+  test('matchedTintKeywords 只取首个命中组里出现过的词，按词表顺序', () {
+    expect(matchedTintKeywords('cyberpunk, neon-lit, rain-slicked streets'), ['rain', 'neon']);
+    expect(matchedTintKeywords('霓虹雨夜'), ['雨', '夜', '霓虹']);
+    expect(matchedTintKeywords('plain daylight'), isEmpty);
+    expect(matchedTintKeywords(''), isEmpty);
+  });
 }

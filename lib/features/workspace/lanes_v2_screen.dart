@@ -172,23 +172,17 @@ class _HBar extends StatelessWidget {
           _Dot(size: 8, color: _hex(context, lane.hex)),
           const SizedBox(width: InkSpacing.sm),
           Expanded(
-            // 稿：两行 line-height 1.2 + gap 1 = 27.4，在 26 的栏里居中溢出（CSS 不裁）；
-            // OverflowBox 复现同样的居中溢出，不让 Column 报 1px 溢出条。
-            child: OverflowBox(
-              alignment: Alignment.centerLeft,
-              minHeight: 0,
-              maxHeight: double.infinity,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(lane.label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: t.bodyStrong.copyWith(color: c.fg1, height: 1.2)),
-                  const SizedBox(height: 1),
-                  Text(lane.prompt, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: t.micro.copyWith(color: c.fg5, height: 1.2)),
-                ],
-              ),
+            // 稿的两行 line-height 1.2 + gap 1 = 27.4 在 26 栏里溢出——是稿的问题（用户 2026-09-29）；
+            // 与接线一致改 1.15 收进 26 高，不复现溢出。允许的偏离。
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(lane.label, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: t.bodyStrong.copyWith(color: c.fg1, height: 1.15)),
+                Text(lane.prompt, maxLines: 1, overflow: TextOverflow.ellipsis,
+                    style: t.micro.copyWith(color: c.fg5, height: 1.15)),
+              ],
             ),
           ),
           const SizedBox(width: InkSpacing.sm),
