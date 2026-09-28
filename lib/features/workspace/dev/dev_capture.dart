@@ -348,7 +348,9 @@ Future<WorkspaceFixtureIds> seedWorkspaceFixtureInto(RepositoryScope s) async {
       label: n.name,
       laneId: n.y < 400 ? laneA : laneB,
       positionX: n.x,
-      positionY: n.y,
+      // 稿的 y 贴道顶放，P1 之后 +14 的泳道标题栏会压住卡片一角——播种时整体下移 30，
+      // 画布 golden 不带着这个已知遮挡当基线（用户 2026-09-29）。静态复刻的 y 不动。
+      positionY: n.y + 30,
       width: kNodeCardSize.width,
       height: kNodeCardSize.height,
       typeConfig: cfg,
