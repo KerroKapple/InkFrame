@@ -173,7 +173,7 @@
 | link 智能默认 role 竞态残留（2026-07-08 深审:_defaultRole 读内存 edges 快照,首条 first_frame 边写在途时连第二条可产双 first_frame,uq_edges_live 不拦不同 source 同 role;link_action_controller.dart:83） | 🅿️ | 毫秒级低频;随上表「乐观新增竞态」并发模型债同窗处理 |
 | 无单实例守卫：升级窗口旧实例并存时（macOS）目录 rename 仍成功,旧实例沿绝对路径重建旧址旁写媒体（DIR-1/#183 评审 P2;Windows 句柄锁天然拦截） | 🅿️ | 单实例锁/启动互斥另卡;既有 out-of-contract 场景被迁移放大,非 DIR-1 范围 |
 | 深缩 + 厚泳道栈尾道内容不可达（#186 评审 P2-2:s=0.1×≥14 条默认泳道时位移项越出 100k 盒,皮可见内容点不中;根因=定舞台盒界 hitTest 短路 + Clip.none 越界绘制） | 🅿️ | 参数极端;与 P2-3 同根因族,随泳道命中层重构同窗处理 |
-| 竖向末道 <200px 时标题栏按钮点不动（#186 评审 P2-3:皮 Positioned 盒宽=lanesTotal,溢出部分可见不可命中;标签区可拖是唯一逃生口） | 🅿️ | 同上根因族;修法=标题栏盒宽脱离道宽或按钮区折叠 |
+| 竖向末道 <200px 时标题栏按钮点不动（#186 评审 P2-3:皮 Positioned 盒宽=lanesTotal,溢出部分可见不可命中;标签区可拖是唯一逃生口） | ✅ | **已解决**（P1 风格泳道接线，commit `c54fe16`）：两处一起修——标题栏宽度下限 `LaneTitleBar.minWidth`（128，色点 + 计数 + 三键都摆得下），窄道时按稿「溢出但可命中」；皮层 Positioned 盒子比泳道栈多留一个标题栏的余量（`skinExtent = lanesTotal + minWidth`），溢出到栈外的按钮仍在盒内。靶：`lane_interactions_test`「竖向末道 80px 时…编辑键仍可点开编辑框」（注意标题栏挂着 onDoubleTap，单击要等 300ms 才落地） |
 | 建点位置固定世界 (200..600),全向漫游后建点必在屏幕外（#186 评审 P3-3:旧模型只右下漫游概率低,全向后被放大;命令面板/FAB/空态三入口同病） | ✅ | Polish Wave 1 PR-8（本 PR）:`pickViewportCenteredNodePosition`——视口中心经逆变换入世界坐标+±60 散布防叠点,三入口接线;视口未上报回退旧固定区（既有测试语义不变）;矩阵换算单测钉死 |
 | 项目导出大文件路径（#188 评审 P2-4）:archive 包 deflate 把单文件压缩输出整段驻内存（GB 视频=GB 峰值）且同步压缩冻结 UI;附带 addFile 异常路径泄漏源文件句柄（Windows 进程退出才释放） | 🅿️ | 媒体改 store 不压缩 + Isolate.run 整体导出;与 LB-12 进度组件同窗做,v1 有 busy 防重入垫底 |
 | OrphanFileReaper 转真删前必须 restore-aware（LB-22 评审 P3-1）:还原旧备份后新生成文件成 DB 孤儿——reaper 真删会吃掉「还原更新备份时还需要的文件」;当前 reaper 无删除代码（#232 P0-1）,无害 | 🅿️ | 将来若另立真删实现,此为前置不变量;修法=还原动作后重置 mtime 护栏或记还原水位 |

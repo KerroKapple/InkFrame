@@ -66,7 +66,7 @@ void main() {
     const v = LaneDirection.vertical;
 
     test('源出点 = 下边中点，靶入点 = 上边中点', () {
-      expect(edgeSourceAnchor(node, direction: v), const Offset(100 + 112, 200 + 172));
+      expect(edgeSourceAnchor(node, direction: v), Offset(100 + 112, 200 + kNodeCardSize.height));
       expect(edgeTargetAnchor(node, direction: v), const Offset(100 + 112, 200));
     });
 

@@ -28,11 +28,13 @@ import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
+import '../models/style_lane.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/node_active_job.dart';
 import '../providers/node_drag_delta.dart';
 import '../util/camera_labels.dart';
+import '../util/lane_tint.dart';
 import 'video_node_body.dart';
 
 class NodeCard extends ConsumerStatefulWidget {
@@ -42,6 +44,7 @@ class NodeCard extends ConsumerStatefulWidget {
     required this.selected,
     required this.onTap,
     required this.onDragEnd,
+    this.lane,
     this.onStartLink,
     this.onDelete,
     this.isLinkSource = false,
@@ -49,6 +52,10 @@ class NodeCard extends ConsumerStatefulWidget {
   });
 
   final CanvasNode node;
+
+  /// 所在泳道（Lanes 稿改动 3）：卡片底部一行 6px 色点 + 「继承 X」——跨道拖动改写 lane_id 时
+  /// 用户能立刻看见风格变了。无道节点为 null，该行留空（高度照旧预留，卡片尺寸恒定）。
+  final StyleLane? lane;
   final bool selected;
   final VoidCallback onTap;
 
@@ -246,11 +253,55 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                     child: _StatusRow(node: node),
                   ),
                 ),
+                const SizedBox(height: 5),
+                // 稿：14 高继承行——6px 方色点（道的 tint）+ 「继承 X」10px fg5。
+                SizedBox(
+                  height: 14,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s2),
+                    child: widget.lane == null ? const SizedBox.shrink() : _InheritRow(lane: widget.lane!),
+                  ),
+                ),
               ],
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 泳道继承行：色点取道的有效 tint（没有则 fg6），文字「继承 <道名>」。
+class _InheritRow extends StatelessWidget {
+  const _InheritRow({required this.lane});
+  final StyleLane lane;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    final Color? tint = effectiveLaneTint(tintColor: lane.tintColor, stylePrompt: lane.stylePrompt);
+    final String name = lane.label.isEmpty ? context.l10n.laneUntitled : lane.label;
+    return Row(
+      children: <Widget>[
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: tint ?? colors.fg6,
+            borderRadius: BorderRadius.circular(InkRadius.s1),
+          ),
+        ),
+        const SizedBox(width: InkSpacing.s6),
+        Expanded(
+          child: Text(
+            context.l10n.laneInherits(name),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: typo.micro.copyWith(color: colors.fg5),
+          ),
+        ),
+      ],
     );
   }
 }

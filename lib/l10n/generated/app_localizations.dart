@@ -2087,7 +2087,7 @@ abstract class AppLocalizations {
   /// No description provided for @laneStyleLabel.
   ///
   /// In en, this message translates to:
-  /// **'Style description'**
+  /// **'Style prompt'**
   String get laneStyleLabel;
 
   /// No description provided for @laneStyleHint.
@@ -2099,7 +2099,7 @@ abstract class AppLocalizations {
   /// No description provided for @laneTintLabel.
   ///
   /// In en, this message translates to:
-  /// **'Background color'**
+  /// **'Tint'**
   String get laneTintLabel;
 
   /// No description provided for @laneTintAuto.
@@ -2179,6 +2179,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Expand lane'**
   String get laneExpand;
+
+  /// No description provided for @laneCollapsedTag.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapsed'**
+  String get laneCollapsedTag;
+
+  /// No description provided for @laneInherits.
+  ///
+  /// In en, this message translates to:
+  /// **'Inherits {lane}'**
+  String laneInherits(String lane);
+
+  /// No description provided for @laneStyleNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Prepended automatically when nodes in this lane generate. Prompts are the model contract — keep them in English.'**
+  String get laneStyleNote;
+
+  /// No description provided for @laneTintAutoHit.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto picks from the prompt — matched “{keywords}” → {hex}.'**
+  String laneTintAutoHit(String keywords, String hex);
+
+  /// No description provided for @laneTintAutoMiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto picks from the prompt — no keyword matched, no tint is drawn.'**
+  String get laneTintAutoMiss;
+
+  /// No description provided for @lanePreviewLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get lanePreviewLabel;
+
+  /// No description provided for @laneDialogThicknessNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Thickness is not set here — drag the divider.'**
+  String get laneDialogThicknessNote;
+
+  /// No description provided for @laneDirectionHorizontal.
+  ///
+  /// In en, this message translates to:
+  /// **'Horizontal'**
+  String get laneDirectionHorizontal;
+
+  /// No description provided for @laneDirectionVertical.
+  ///
+  /// In en, this message translates to:
+  /// **'Vertical'**
+  String get laneDirectionVertical;
 
   /// No description provided for @inspectorPromptPreviewLabel.
   ///

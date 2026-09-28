@@ -115,4 +115,26 @@ void main() {
         tester.any(find.byIcon(Icons.swap_vert));
     expect(hasSwapIcon, isTrue);
   });
+
+  // Lanes 稿：方向键带「横向 / 竖向」文字标签（默认横向）。
+  testWidgets('方向键显示文字标签 Horizontal', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          canvasRepositoryProvider.overrideWith((ref) async => _FakeCanvasRepo()),
+          styleLaneRepositoryProvider.overrideWith((ref) async => _FakeStyleLaneRepo()),
+        ],
+        child: MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
+          home: const Scaffold(body: LaneToolbar(canvasId: 'cv')),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    expect(find.text('Horizontal'), findsOneWidget);
+    expect(tester.getSize(find.byType(LaneToolbar)).height, LaneToolbar.height + 2, reason: '26 + 上下 1px 边');
+  });
 }

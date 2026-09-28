@@ -51,7 +51,7 @@ void main() {
     });
 
     test('点在源节点出点（右缘端口）→ 命中（距离为 0）', () {
-      // 卡片渲染尺寸 224×172、端口 y=87（不读 node.size）。
+      // 卡片渲染尺寸 kNodeCardSize（224×191）、端口 y=87（不读 node.size）。
       final id = hitTestEdge(
         point: const Offset(224, 87),
         edges: const [edgeAB],
@@ -145,8 +145,8 @@ void main() {
 
   group('竖向泳道命中（direction: vertical）', () {
     test('竖向锚点（源下边中点）→ 命中；同点在横向语义下未命中', () {
-      // a 下边中点：卡片渲染尺寸 224×172（不读 node.size）⇒ (112,172)。
-      const p = Offset(112, 172);
+      // a 下边中点：卡片渲染尺寸 kNodeCardSize（不读 node.size）⇒ (112, 高)。
+      final p = Offset(112, kNodeCardSize.height);
       expect(
         hitTestEdge(
           point: p,
@@ -167,14 +167,14 @@ void main() {
     });
 
     test('edgeMidpoint 竖向：对称手柄下 ≈ 锚点几何中点', () {
-      // a-out (112,172) → b-in (312,200) → 中点 (212,186)。
+      // a-out (112, 高) → b-in (312,200) → 中点 (212, (高 + 200) / 2)。
       final mid = edgeMidpoint(
         source: nodeA,
         target: nodeB,
         direction: LaneDirection.vertical,
       );
       expect(mid.dx, closeTo(212, 1));
-      expect(mid.dy, closeTo(186, 1));
+      expect(mid.dy, closeTo((kNodeCardSize.height + 200) / 2, 1));
     });
   });
 }

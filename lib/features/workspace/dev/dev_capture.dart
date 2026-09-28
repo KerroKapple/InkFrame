@@ -52,6 +52,15 @@ const int kCaptureDelayMs = int.fromEnvironment(
 const bool kSeedFixture = bool.fromEnvironment('INKFRAME_SEED_FIXTURE');
 /// 截哪一屏：canvas（默认）/ gallery（再播 Screens 稿第 2 屏的 15 个产物并打开画廊标签）/ studio / settings（Studio + 设置浮层「API 密钥」页）。
 const String kCaptureScreen = String.fromEnvironment('INKFRAME_CAPTURE_SCREEN', defaultValue: 'canvas');
+/// 截图逻辑尺寸「宽x高」（PLAN_remaining：每屏两张，1600x1000 与 960x600）。
+const String kCaptureSize = String.fromEnvironment('INKFRAME_CAPTURE_SIZE', defaultValue: '1600x1000');
+
+Size parseCaptureSize(String spec) {
+  final List<String> parts = spec.toLowerCase().split('x');
+  final double? w = parts.length == 2 ? double.tryParse(parts[0]) : null;
+  final double? h = parts.length == 2 ? double.tryParse(parts[1]) : null;
+  return (w == null || h == null || w <= 0 || h <= 0) ? const Size(1600, 1000) : Size(w, h);
+}
 
 class DevCaptureFrame extends ConsumerStatefulWidget {
   const DevCaptureFrame({super.key, required this.child});
@@ -119,7 +128,7 @@ class _DevCaptureFrameState extends ConsumerState<DevCaptureFrame> {
         alignment: Alignment.topLeft,
         child: RepaintBoundary(
           key: _boundary,
-          child: SizedBox(width: 1600, height: 1000, child: widget.child),
+          child: SizedBox.fromSize(size: parseCaptureSize(kCaptureSize), child: widget.child),
         ),
       ),
     );
@@ -299,11 +308,13 @@ Future<WorkspaceFixtureIds> seedWorkspaceFixtureInto(RepositoryScope s) async {
   final String laneA = await s.styleLanes.create(
     canvasId: canvasId,
     label: WorkspaceFixture.laneLabels[0],
+    stylePrompt: WorkspaceFixture.lanePrompts[0],
     sortOrder: 0,
   );
   final String laneB = await s.styleLanes.create(
     canvasId: canvasId,
     label: WorkspaceFixture.laneLabels[1],
+    stylePrompt: WorkspaceFixture.lanePrompts[1],
     sortOrder: 1,
   );
   final Map<String, String> nodeIds = <String, String>{};

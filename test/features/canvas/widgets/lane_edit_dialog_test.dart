@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/style_lane.dart';
+import 'package:inkframe/features/canvas/util/lane_tint.dart';
 import 'package:inkframe/features/canvas/widgets/lane_edit_dialog.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
@@ -119,5 +120,45 @@ void main() {
     // 名称和风格已预填。
     expect(find.text('夜景'), findsOneWidget);
     expect(find.text('霓虹雨夜'), findsOneWidget);
+  });
+
+  // ---- Lanes 稿接线补测（P1，改动 6）----
+
+  Future<void> open(WidgetTester tester, StyleLane? existing) async {
+    await tester.pumpWidget(wrap(Scaffold(
+      body: Builder(
+        builder: (ctx) => TextButton(
+          onPressed: () => showLaneEditDialog(ctx, existing: existing),
+          child: const Text('open'),
+        ),
+      ),
+    )));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+  }
+
+  Finder swatches() => find.byWidgetPredicate(
+        (Widget w) => w is Container && w.constraints?.maxWidth == 26 && w.constraints?.maxHeight == 26,
+      );
+
+  testWidgets('「自动」推断说明：命中时写出命中的词与色值', (tester) async {
+    await open(tester, const StyleLane(id: 'l', canvasId: 'c', label: 'Night', stylePrompt: 'cyberpunk, neon-lit, rain-slicked streets'));
+    expect(find.text('Auto picks from the prompt — matched “rain / neon” → #4A78C8.'), findsOneWidget);
+  });
+
+  testWidgets('「自动」推断说明：没命中写「不绘底色」；色板 = 词表五色；手动选色后说明消失', (tester) async {
+    await open(tester, const StyleLane(id: 'l', canvasId: 'c', label: 'Plain', stylePrompt: 'plain daylight'));
+    expect(find.text('Auto picks from the prompt — no keyword matched, no tint is drawn.'), findsOneWidget);
+    expect(swatches(), findsNWidgets(kLaneTintChoices.length), reason: '改动 6：色板只认词表');
+    await tester.tap(swatches().first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Auto picks from the prompt'), findsNothing);
+  });
+
+  testWidgets('底部条：厚度说明 + 取消 / 保存；不再是 AlertDialog', (tester) async {
+    await open(tester, null);
+    expect(find.text('Thickness is not set here — drag the divider.'), findsOneWidget);
+    expect(find.text('New lane'), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing, reason: '稿是自定义对话框壳');
   });
 }

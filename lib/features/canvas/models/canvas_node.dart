@@ -183,9 +183,10 @@ class CanvasNode {
 
 enum CanvasNodeType { image, text, video, shot }
 
-/// 节点卡片渲染尺寸（Workspace v2 稿）：224 宽；18 标题 + 6 + 126 图区（16:9）+ 6 + 16 状态行 = 172。
+/// 节点卡片渲染尺寸（Workspace v2 稿 + Lanes 稿）：224 宽；18 标题 + 6 + 126 图区（16:9）+ 6 + 16 状态行
+/// + 5 + 14 泳道「继承」行 = 191（继承行对所有卡片预留，不在泳道里时留空，卡片尺寸恒定）。
 /// 所有类型同尺寸；DB 的 size 列不再驱动渲染（存量值忽略），连线锚点见 util/edge_geometry.dart。
-const Size kNodeCardSize = Size(224, 172);
+const Size kNodeCardSize = Size(224, 191);
 
 /// 端口在图区垂直中心：18 + 6 + 63。
 const double kNodeCardPortY = 87;

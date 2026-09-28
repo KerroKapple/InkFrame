@@ -19,9 +19,11 @@ import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
+import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_background.dart';
 import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
+import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
@@ -230,6 +232,9 @@ class _FakeStyleLaneRepository implements StyleLaneRepository {
 }
 
 class _FakeCanvasRepository implements CanvasRepository {
+  // P2-3 test flips this to vertical; setUp resets it.
+  static String direction = 'horizontal';
+
   @override
   Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
       const <Map<String, Object?>>[];
@@ -237,7 +242,7 @@ class _FakeCanvasRepository implements CanvasRepository {
   @override
   Future<Map<String, Object?>?> findById(String id) async => <String, Object?>{
         'id': id,
-        'lane_direction': 'horizontal',
+        'lane_direction': direction,
         'base_style_prefix': '',
         'base_style_suffix': '',
       };
@@ -292,6 +297,7 @@ void main() {
   late ProviderContainer container;
 
   setUp(() {
+    _FakeCanvasRepository.direction = 'horizontal';
     fakeLaneRepo = _FakeStyleLaneRepository();
     final tmp = Directory.systemTemp.createTempSync('ink_interactions_test_');
     addTearDown(() => tmp.deleteSync(recursive: true));
@@ -567,5 +573,57 @@ void main() {
 
     // LaneTitleBar 均在树中。
     expect(find.byType(LaneTitleBar), findsNWidgets(2));
+  });
+
+  // ── Lanes 稿改动 4：折叠真的省空间 ────────────────────────────────────────
+
+  testWidgets('折叠 lane-1 → 收成 36 轨：lane-2 标题栏上移 400 − 36，lane-1 里的节点不再建卡', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+    // 三个节点：n1 无道、n2 在 lane-2、n3 无道 ⇒ 三张卡。
+    expect(find.byType(NodeCard, skipOffstage: false), findsNWidgets(3));
+    final Offset lane2Before = tester.getTopLeft(find.byType(LaneTitleBar).at(1));
+
+    container.read(laneCollapseProvider('cv1').notifier).toggle('lane-1');
+    await tester.pump();
+
+    final Offset lane2After = tester.getTopLeft(find.byType(LaneTitleBar).at(1));
+    expect(lane2After.dy, lane2Before.dy - (400 - kCollapsedLaneSize), reason: '后面的道整体上移');
+    expect(find.text('Collapsed'), findsOneWidget);
+
+    // 折叠 lane-2：它里面的 n2 不再建卡，只剩两张。
+    container.read(laneCollapseProvider('cv1').notifier).toggle('lane-2');
+    await tester.pump();
+    expect(find.byType(NodeCard, skipOffstage: false), findsNWidgets(2), reason: '折叠道里的内容隐藏');
+    expect(find.text('laned', skipOffstage: false), findsNothing);
+  });
+
+  // ── BOARD P2-3：竖向窄末道的标题栏按钮必须可命中 ─────────────────────────
+
+  testWidgets('竖向末道 80px 时标题栏按最小宽溢出到道外，编辑键仍可点开编辑框', (tester) async {
+    _FakeCanvasRepository.direction = 'vertical';
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+    await container.read(canvasLanesControllerProvider('cv1').future);
+    // 末道收到下限 80：栏宽 80 − 24 = 56 < LaneTitleBar.minWidth ⇒ 按 128 溢出到道外。
+    await container.read(canvasLanesControllerProvider('cv1').notifier).updateLane('lane-2', size: 80);
+    // 初始相机把世界原点放在视口正中（x=400），竖向泳道栈从那里开始往右堆——末道会落到 800 宽的
+    // 视口之外。往左平移 300，让末道（400..480 → 500..580）和它溢出的标题栏都在视口里。
+    container.read(canvasTransformControllerProvider('cv1')).value =
+        initialCanvasTransform()..translateByDouble(-300.0, 0.0, 0.0, 1.0);
+    await tester.pump();
+
+    final Finder lastBar = find.byType(LaneTitleBar).at(1);
+    expect(tester.getSize(lastBar).width, LaneTitleBar.minWidth);
+    final Offset stackOrigin = tester.getTopLeft(find.byType(LaneTitleBar).first) - const Offset(12, 14);
+    expect(tester.getBottomRight(lastBar).dx, greaterThan(stackOrigin.dx + 400 + 80),
+        reason: '前置：栏确实溢出到泳道栈之外');
+
+    final Finder editKey = find.descendant(of: lastBar, matching: find.byIcon(Icons.edit));
+    await tester.tap(editKey);
+    // 标题栏挂着 onDoubleTap：单击要等 kDoubleTapTimeout（300ms）才落地，pumpAndSettle 不推计时器。
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+    expect(find.text('Edit lane'), findsOneWidget, reason: '溢出到栈外的按钮也得能点——皮层盒子留了余量');
   });
 }
