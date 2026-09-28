@@ -42,7 +42,7 @@ class ThemeSection extends ConsumerWidget {
       children: [
         Text(
           context.l10n.settingsThemeSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.sm),
         Wrap(

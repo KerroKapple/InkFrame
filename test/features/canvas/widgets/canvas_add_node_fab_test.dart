@@ -42,7 +42,7 @@ void main() {
 
   testWidgets('菜单展示 image / video / shot 三项', (tester) async {
     await pump(tester);
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byKey(CanvasAddNodeFab.buttonKey));
     await tester.pumpAndSettle();
 
     expect(find.text('Add image node'), findsOneWidget);
@@ -53,7 +53,7 @@ void main() {
 
   testWidgets('点选 shot → 创建 shot config 节点', (tester) async {
     await pump(tester);
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byKey(CanvasAddNodeFab.buttonKey));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Add shot node'));
@@ -67,7 +67,7 @@ void main() {
 
   testWidgets('菜单含「导入脚本」→ 打开脚本导入对话框（不建节点）', (tester) async {
     await pump(tester);
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byKey(CanvasAddNodeFab.buttonKey));
     await tester.pumpAndSettle();
     expect(find.text('Import script…'), findsOneWidget);
 
@@ -80,7 +80,7 @@ void main() {
 
   testWidgets('点选 image → 创建 image 节点（既有路径不回归）', (tester) async {
     await pump(tester);
-    await tester.tap(find.byType(FloatingActionButton));
+    await tester.tap(find.byKey(CanvasAddNodeFab.buttonKey));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Add image node'));

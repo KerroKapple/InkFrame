@@ -1,66 +1,88 @@
-// 设置页返回键（shell 路由）单测。
+// 设置浮层（Screens 稿第 3 屏）的外形与关闭途径。
 //
-// 返回键抽成独立小件测（不整页 pump）：StoragePathSection 在本 toolchain 下有
-// ticker 挂起坑（见 storage_path_section_test 头注）。横栏形态那条走 pumpInkShell
-// ——外壳 harness 只做固定次数 pump()，不 pumpAndSettle，同样绕开那个坑。
+// 走 pumpInkShell 而非整页 pump：StoragePathSection 在本 toolchain 下留
+// pending frame，外壳 harness 只做固定次数 pump()，不 pumpAndSettle。
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
+import 'package:inkframe/features/settings/widgets/api_keys_section.dart';
 import 'package:inkframe/features/settings/widgets/startup_section.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
-import 'package:inkframe/theme/components/ink_tool_bar.dart';
 
 import '../../_harness/shell_app.dart';
-import '../../_harness/test_app.dart';
 
 void main() {
-  // R50：`InkToolBar` 全仓零测试引用——把它换回 `AppBar` 跑全量一片绿。
-  // 后果是 960×600 下内容区从 500 掉回 444（chrome 56 + 标签条 44 + AppBar 56），
-  // 正是用户明确拍板不可接受的那个数。唯一会察觉的是 settings_screen 那张
-  // golden，**而它正在 T13 的重铸清单上**——重铸会把回归一起烤进新基线，
-  // 从此再无人发现。所以这条断言必须在这里，不能指望 golden。
-  //
-  // 走 pumpInkShell 而非整页 pump：StoragePathSection 在本 toolchain 下留
-  // pending frame，外壳 harness 只做固定次数 pump()，不 pumpAndSettle。
-  testWidgets('设置浮层的横栏是 InkToolBar(44)，不是 AppBar(56)', (tester) async {
-    final paths = await setupTempPaths(tester, 'ink_settings_toolbar_');
+  // R50 的后继：横栏曾是 InkToolBar(44)（换回 AppBar(56) 会让 960×600 下内容区掉回 444）。
+  // 浮层形态下标题栏是稿的 40 + 1px 下沿；AppBar 仍然禁止出现。这条断言不能指望
+  // settings_screen 那张 golden——它在重铸清单上，重铸会把回归一起烤进新基线。
+  testWidgets('设置是居中对话框：标题栏 40+1、没有 AppBar；默认落在常规页（含启动开关）',
+      (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_settings_dialog_');
     await pumpInkShell(
       tester,
       paths: paths,
       initial: const ShellState(overlay: ShellOverlay.settings),
     );
 
-    expect(find.byType(InkToolBar), findsOneWidget);
-    expect(tester.getSize(find.byType(InkToolBar)).height, 44);
+    expect(tester.getSize(find.byKey(SettingsScreen.titleBarKey)).height, 41);
     expect(
       find.byType(AppBar, skipOffstage: false),
       findsNothing,
       reason: '换回 AppBar = 三层横栏 156，内容区掉回 444',
     );
-    // T12 卫生项(c)：StartupSection 是本 PR 新增的接线（settings_screen.dart:70），
-    // 删掉它用户就再也改不了那个开关，而门禁全绿——只给这一个新增 section 补
-    // 存在性断言，其余九个是既有状态，批量补属于范围蔓延（另开卡）。
+    // 稿的对话框是 1120×740（content-box）；1440×900 的外壳放得下，不该被压扁。
+    final Size dialog = tester.getSize(find.byKey(SettingsScreen.titleBarKey));
+    expect(dialog.width, SettingsScreen.dialogWidth);
+    // T12 卫生项(c)：StartupSection 是常规页的接线，删掉它用户就再也改不了那个开关。
     expect(find.byType(StartupSection), findsOneWidget);
+    expect(find.byType(ApiKeysSection), findsNothing, reason: '一次只挂一页');
   }, timeout: const Timeout(Duration(seconds: 10)));
 
-  testWidgets('返回键点击 → 关闭浮层', (tester) async {
-    await pumpInkApp(
+  testWidgets('左导航切页：点「API 密钥」→ Key 表在台，常规页离树', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_settings_nav_');
+    await pumpInkShell(
       tester,
-      const Scaffold(body: SettingsBackButton()),
+      paths: paths,
+      initial: const ShellState(overlay: ShellOverlay.settings),
     );
-    final container = ProviderScope.containerOf(
-      tester.element(find.byType(SettingsBackButton)),
-      listen: false,
-    );
-    container
-        .read(shellControllerProvider.notifier)
-        .openOverlay(ShellOverlay.settings);
 
-    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.tap(find.byKey(SettingsScreen.navKey(SettingsPage.apiKeys)));
+    await tester.pump();
     await tester.pump();
 
-    expect(container.read(shellControllerProvider).overlay, isNull);
-  });
+    expect(find.byType(ApiKeysSection), findsOneWidget);
+    expect(find.byType(StartupSection), findsNothing);
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('✕ 关闭浮层', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_settings_close_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(overlay: ShellOverlay.settings),
+    );
+
+    await tester.tap(find.byKey(SettingsScreen.closeKey));
+    await tester.pump();
+    await tester.pump();
+
+    expect(readShellContainer(tester).read(shellControllerProvider).overlay, isNull);
+    expect(find.byType(SettingsScreen, skipOffstage: false), findsNothing, reason: '浮层不保活');
+  }, timeout: const Timeout(Duration(seconds: 10)));
+
+  testWidgets('底部条「完成」关闭浮层', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_settings_done_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(overlay: ShellOverlay.settings),
+    );
+
+    await tester.tap(find.byKey(SettingsScreen.doneKey));
+    await tester.pump();
+    await tester.pump();
+
+    expect(readShellContainer(tester).read(shellControllerProvider).overlay, isNull);
+  }, timeout: const Timeout(Duration(seconds: 10)));
 }

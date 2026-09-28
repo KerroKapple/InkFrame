@@ -123,12 +123,12 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
               children: <Widget>[
                 Text(
                   l.exportVideoDialogTitle,
-                  style: typo.title.copyWith(color: colors.fg1),
+                  style: typo.sectionTitle.copyWith(color: colors.fg1),
                 ),
                 const SizedBox(height: InkSpacing.xs),
                 Text(
                   l.exportVideoDialogHint,
-                  style: typo.caption.copyWith(color: colors.fg3),
+                  style: typo.meta.copyWith(color: colors.fg3),
                 ),
                 const SizedBox(height: InkSpacing.md),
                 Flexible(
@@ -143,7 +143,7 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                 const SizedBox(height: InkSpacing.md),
                 Text(
                   l.exportVideoOutputNameLabel,
-                  style: typo.label.copyWith(color: colors.fg2),
+                  style: typo.bodyStrong.copyWith(color: colors.fg2),
                 ),
                 const SizedBox(height: InkSpacing.xs),
                 InkInput(
@@ -156,7 +156,7 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                   const SizedBox(height: InkSpacing.xs),
                   Text(
                     l.exportVideoInvalidName,
-                    style: typo.caption.copyWith(color: colors.danger),
+                    style: typo.meta.copyWith(color: colors.danger),
                   ),
                 // busy 期屏蔽：导出自己写盘期间警示会被自家产物触发（评审 P2-5；
                 // 服务层已走 .partial+rename，此守卫兜 UI 语义——busy 期该行无意义）。
@@ -165,7 +165,7 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                   Text(
                     l.exportVideoOverwriteWarning,
                     // 提示不是错误：fg3 而非 danger。
-                    style: typo.caption.copyWith(color: colors.fg3),
+                    style: typo.meta.copyWith(color: colors.fg3),
                   ),
                 ],
                 if (state is ExportVideoBusy) ...<Widget>[
@@ -249,7 +249,7 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
               ),
               Text(
                 fileName,
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),

@@ -85,7 +85,7 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
       ),
       title: Text(
         isNew ? l10n.laneNewTitle : l10n.laneEditTitle,
-        style: typo.headline.copyWith(color: colors.fg1),
+        style: typo.dialogTitle.copyWith(color: colors.fg1),
       ),
       content: SizedBox(
         width: 360,
@@ -96,7 +96,7 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
               // 名称
               Text(
                 l10n.laneNameLabel,
-                style: typo.label.copyWith(color: colors.fg2),
+                style: typo.bodyStrong.copyWith(color: colors.fg2),
               ),
               const SizedBox(height: InkSpacing.xs),
               InkInput(
@@ -108,7 +108,7 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
               // 风格描述（多行）
               Text(
                 l10n.laneStyleLabel,
-                style: typo.label.copyWith(color: colors.fg2),
+                style: typo.bodyStrong.copyWith(color: colors.fg2),
               ),
               const SizedBox(height: InkSpacing.xs),
               InkInput(
@@ -123,7 +123,7 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
               // 底色选择
               Text(
                 l10n.laneTintLabel,
-                style: typo.label.copyWith(color: colors.fg2),
+                style: typo.bodyStrong.copyWith(color: colors.fg2),
               ),
               const SizedBox(height: InkSpacing.xs),
               _TintRow(
@@ -197,7 +197,7 @@ class _TintRow extends StatelessWidget {
             isSelected: selected == null,
             label: Text(
               autoLabel,
-              style: typo.label.copyWith(
+              style: typo.bodyStrong.copyWith(
                 color: selected == null ? colors.fg1 : colors.fg3,
               ),
             ),
@@ -244,7 +244,7 @@ class _SwatchChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(InkRadius.md),
         border: isSelected
             ? Border.all(color: colors.accent, width: 2)
-            : Border.all(color: colors.border),
+            : Border.all(color: colors.outline),
       ),
       child: label ??
           const SizedBox(
@@ -278,7 +278,7 @@ class _PreviewBox extends StatelessWidget {
       decoration: BoxDecoration(
         color: tint?.withValues(alpha: 0.15) ?? colors.surface3,
         borderRadius: BorderRadius.circular(InkRadius.md),
-        border: Border.all(color: colors.border),
+        border: Border.all(color: colors.outline),
       ),
     );
   }

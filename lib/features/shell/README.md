@@ -15,13 +15,14 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
             ├ InkShellTabBar       44  # 在 DragToMoveArea 之外
             └ Expanded
                └ ShellContentStack       # 持 _shellFocus
-                  └ IndexedStack(index: overlay == null ? 0 : 1)
-                     ├[0] ShellKeepAliveHost
+                  └ Stack                       # 浮层盖在【遮暗可见】的标签体上（Screens 稿第 3 屏）
+                     ├ ExcludeFocus(excluding: overlay != null)
+                     │  └ ShellKeepAliveHost
                      │     └ IndexedStack(index: ShellTab.values.indexOf(tab))
                      │        └ 5 × KeyedSubtree(key: 'shellTabBody-<name>')
                      │              child = 已物化 ? <TabBody> : SizedBox.shrink()
-                     └[1] overlay == null ? SizedBox.shrink()
-                                          : ShellOverlayLayer(key: 'shellOverlay-<name>')
+                     └ if (overlay != null) ShellOverlayLayer(key: 'shellOverlay-<name>')
+                          └ Stack[ ModalBarrier(scrim, 不可点关) , SettingsScreen | BuiltInShowcaseScreen ]
            )
 ```
 
@@ -41,7 +42,9 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | `SequencePreviewContent` **只活在对话框里**，关掉即离树 | 它的 media_kit `Player` 从 `initState` 持有到 `dispose` 且自动播放；一旦抬成常驻标签视图，就会在后台标签里一直播。这正是"序列标签只做空态 + 拉起对话框"这个取舍的全部理由 | `shell_tabs_empty_state_test.dart`「关闭序列对话框后…离树」。断言必须写 `skipOffstage: false`——保活宿主用 `Offstage` 藏非活动标签，默认 `true` 会跳过整棵子树，T10 实测去掉后该断言恒真 |
 | `_open` 的 `projectId` 取自 `ShellState.project`，不从节点数据摸。**三个写点**：`sequence_tab` / `export_tab` / `command_palette/command_actions.dart` 的 `_openExport` | 启用判据与 projectId 来源必须同源：旧写法启用只看【边】、projectId 却从 `nodes.first.projectId` 取，节点列表为空或首节点 `project_id` 为空时就"看着能点、点了没反应"。⌘K 那处更阴——启用判据取**原序**首个、`_openExport` 取**链序**首个，候选集相同、排序不同（R86，fix round 18 才补上） | `shell_tabs_empty_state_test.dart` 的点击类用例（夹具 `_shellWith` 带 `ProjectRef`）+ `test/features/command_palette/command_palette_test.dart` 的 R86 用例 |
 | 四处空态的「去 Studio」CTA 真的能走（不是哑键、不自跳），正文各标签不串 | D12：空态必须是**可行动的引导**，用户不能觉得卡死。该空态在 T7 之前的生产代码里根本不可达，本 PR 让它第一次真正可达 | `test/features/shell/shell_empty_state_cta_test.dart`（四标签各一例；文案与 CTA 两半各有独立变异证明，见该文件头注） |
-| 标签条在浮层打开时仍可见、仍可点（点任一标签 = 关浮层 + 切标签） | D11 刻意不做 Esc，这是它赖以成立的三条关闭途径之一 | `test/features/shell/shell_tab_bar_overlay_test.dart` |
+| 标签条在浮层打开时仍可见、仍可点（点任一标签 = 关浮层 + 切标签） | 关浮层的途径之一（其余：Esc / ✕ / 完成 / ⌘K） | `test/features/shell/shell_tab_bar_overlay_test.dart` |
+| 浮层打开时标签体**仍在台上**（遮暗可见），但点不穿、不持焦 | 浮层形态（Screens 稿第 3 屏）：原界面在下面看得见。点穿由 `ShellOverlayLayer` 的 `ModalBarrier` 拦，失焦由 `ShellContentStack` 的显式 `ExcludeFocus` 保证——这两件事以前是外层 IndexedStack 代劳的 | `test/app/app_routing_test.dart`（`onstage: true, hittable: false`）+ `test/features/shell/shell_focus_test.dart` V2 |
+| 浮层 Esc 分层：编辑框开着只关编辑框，没有编辑框才关浮层；开关浮层不写路由（不清 canvasId、不切标签） | 设置浮层自己持焦并挂 `CallbackShortcuts`；`showDialog` 的编辑框在 Navigator 另一条路由上，Esc 到不了浮层。D11 那条债由此解决 | `test/features/settings/settings_overlay_test.dart` |
 | **同一时刻只保活一个 `canvasId`**：五槽保活是按 `ShellTab` 分的，不是按 `canvasId` 分的。`canvas` 那一槽从头到尾只有一个 `KeyedSubtree('shellTabBody-canvas')`，`CanvasTab` 内部 `watch(currentCanvasIdProvider)` 变了就在同一个槽位里换内容 | 从画布 A 切到画布 B 不是"多开一个保活槽"，是把槽位里的树换成 B；A 的滚动位置/本地 UI 态随之丢弃——这是当前设计的边界，不是 bug | `shell_keep_alive_host_test.dart`（五槽 == 五个 `ShellTab`，与 `canvasId` 无关） |
 
 ## 已知且接受的副作用（隐藏标签仍会 build / layout）
@@ -56,10 +59,8 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 
 ## 刻意不做
 
-- **浮层没有 Esc 关闭**（D11）。不是遗漏：加它要在外壳层新增 `CallbackShortcuts`，
-  且会与设置内部 `_EditorDialog` 的默认 `DismissIntent` 竞争。关闭途径三条：
-  工具条返回键、点任一标签、⌘K。补做时必须同时加一条"`_EditorDialog` 打开时
-  Esc 先关对话框、不关浮层"的竞争用例。
+- **点遮罩不关浮层**：设置里可能有没提交的输入，关闭只走 Esc / ✕ / 完成 / 点标签 / ⌘K。
+  （D11「浮层没有 Esc」已在视觉重做设置浮层时解决，见不变量表与 `docs/BOARD.md`。）
 - **没有"关闭当前画布"**：`ShellState` 没有任何能清 `canvasId` 的公共动词
   （`resetSession()` 除外）。老代码里"清 canvasId"的真实意图都是"回 Studio"，
   正确替代是 `goTab(studio)`。

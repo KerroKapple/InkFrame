@@ -25,7 +25,7 @@ class BuiltInShowcaseScreen extends ConsumerWidget {
     final typo = context.inkTypography;
     final l = context.l10n;
     return Material(
-      color: colors.surfaceCanvas,
+      color: colors.surface0,
       child: Column(
         children: <Widget>[
           // 浮层自己不带窗口 chrome：它盖在外壳 chrome【之下】、内容区之内，
@@ -40,7 +40,7 @@ class BuiltInShowcaseScreen extends ConsumerWidget {
             ),
             title: Text(
               l.showcaseTitle,
-              style: typo.headlineXs.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -163,13 +163,13 @@ class _ShowcaseCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      style: typo.headlineSm.copyWith(color: colors.fg1),
+                      style: typo.sectionTitle.copyWith(color: colors.fg1),
                     ),
                   ),
                   const SizedBox(width: InkSpacing.md),
                   Text(
                     meta,
-                    style: typo.caption.copyWith(color: colors.accent),
+                    style: typo.meta.copyWith(color: colors.accent),
                   ),
                 ],
               ),

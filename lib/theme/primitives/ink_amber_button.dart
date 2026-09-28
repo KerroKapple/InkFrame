@@ -28,7 +28,7 @@ class _InkAmberButtonState extends State<InkAmberButton> {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    final bg = _hover ? colors.ctaHover : colors.cta;
+    final bg = _hover ? colors.accentHover : colors.accent;
     final child = AnimatedContainer(
       duration: InkMotion.fast,
       height: 44,

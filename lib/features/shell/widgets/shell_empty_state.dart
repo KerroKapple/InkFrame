@@ -53,7 +53,7 @@ class ShellEmptyState extends StatelessWidget {
             const SizedBox(height: InkSpacing.lg),
             Text(
               title,
-              style: typo.headline.copyWith(color: colors.fg1),
+              style: typo.dialogTitle.copyWith(color: colors.fg1),
               textAlign: TextAlign.center,
             ),
             if (body != null) ...<Widget>[

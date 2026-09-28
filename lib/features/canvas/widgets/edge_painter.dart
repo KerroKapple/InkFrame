@@ -1,10 +1,10 @@
-// EdgePainter：在画布垫底层绘制连线（CineFlow 式端口曲线）。
+// EdgePainter：在画布垫底层绘制连线（Workspace v2 稿）。
 //
-// 几何与 hitTestEdge 同源（util/edge_geometry.dart）：沿泳道主轴出入
-// （横向右出左入 / 竖向下出上入），三次贝塞尔；两端画端口圆点，
-// 靶端沿切线画箭头。
-// 交互（点击选中 / 悬停高亮）留给后续 PR——当前 IgnorePointer 挂在父层。
-
+// 几何与 hitTestEdge 同源（util/edge_geometry.dart）。视觉：1.5px 三次贝塞尔，
+// 默认 fg6；与选中节点相连的边 accent（「当前链路」）；narrative 与 reference
+// 角色用 4/3 虚线（弱关联）；终点 8×8 开口箭头 marker（refX=7，尖端落在端口外缘）。
+// 多入边的 video 节点在连线中段标注角色（起始帧 accent / 结束帧 fg5）。
+// 端口圆点由 NodeCard 自己画，本层不画。
 import 'package:flutter/material.dart';
 
 import '../models/canvas_edge.dart';
@@ -16,11 +16,14 @@ class EdgePainter extends CustomPainter {
   EdgePainter({
     required this.edges,
     required this.nodes,
-    required this.dataColor,
-    required this.narrativeColor,
-    required this.generationSourceColor,
-    required this.selectedColor,
+    required this.neutralColor,
+    required this.arrowColor,
+    required this.accentColor,
+    required this.labelStyle,
+    required this.firstFrameLabel,
+    required this.lastFrameLabel,
     this.direction = LaneDirection.horizontal,
+    this.selectedNodeIds = const <String>{},
     this.selectedEdgeId,
     this.dragNodeId,
     this.dragDelta = Offset.zero,
@@ -28,13 +31,20 @@ class EdgePainter extends CustomPainter {
 
   final List<CanvasEdge> edges;
   final List<CanvasNode> nodes;
-  final Color dataColor;
-  final Color narrativeColor;
-  final Color generationSourceColor;
-  final Color selectedColor;
+  final Color neutralColor;
+  final Color arrowColor;
+  final Color accentColor;
+
+  /// 角色标注字体（10px micro），颜色由本层按角色覆盖。
+  final TextStyle labelStyle;
+  final String firstFrameLabel;
+  final String lastFrameLabel;
 
   /// 泳道主轴——决定出/入锚点方位与曲线走向。
   final LaneDirection direction;
+
+  /// 与这些节点相连的边视为「当前链路」→ accent。
+  final Set<String> selectedNodeIds;
   final String? selectedEdgeId;
 
   /// 拖拽中节点及其实时位移——连线跟手（拖拽位移未提交 controller 前先补到锚点上）。
@@ -44,9 +54,15 @@ class EdgePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     if (edges.isEmpty || nodes.isEmpty) return;
-    final nodeById = <String, CanvasNode>{
-      for (final n in nodes) n.id: n,
-    };
+    final nodeById = <String, CanvasNode>{for (final n in nodes) n.id: n};
+
+    // 多入边（≥2 条 data 入边）的靶节点才标注角色。
+    final inCount = <String, int>{};
+    for (final e in edges) {
+      if (e.edgeType == EdgeType.data) {
+        inCount[e.targetNodeId] = (inCount[e.targetNodeId] ?? 0) + 1;
+      }
+    }
 
     for (final edge in edges) {
       final src = nodeById[edge.sourceNodeId];
@@ -56,87 +72,91 @@ class EdgePainter extends CustomPainter {
       var p2 = edgeTargetAnchor(dst, direction: direction);
       if (src.id == dragNodeId) p1 += dragDelta;
       if (dst.id == dragNodeId) p2 += dragDelta;
-      final isSelected = edge.id == selectedEdgeId;
 
-      final paint = Paint()
-        ..color = isSelected ? selectedColor : _colorFor(edge.edgeType)
-        ..strokeWidth = isSelected
-            ? 3.0
-            : edge.edgeType == EdgeType.data
-                ? 2.0
-                : 1.0
+      final bool onChain = edge.id == selectedEdgeId ||
+          selectedNodeIds.contains(src.id) ||
+          selectedNodeIds.contains(dst.id);
+      final bool weak = edge.edgeType == EdgeType.narrative ||
+          (edge.edgeType == EdgeType.data && edge.role == EdgeRole.reference &&
+              (inCount[dst.id] ?? 0) > 1);
+      final Color lineColor = onChain ? accentColor : neutralColor;
+
+      final line = Paint()
+        ..color = lineColor
+        ..strokeWidth = 1.5
         ..style = PaintingStyle.stroke;
-
       final path = edgePath(p1, p2, direction: direction);
-      if (edge.edgeType == EdgeType.narrative) {
-        _drawDashedPath(canvas, path, paint);
-      } else {
-        canvas.drawPath(path, paint);
-      }
+      canvas.drawPath(weak ? _dashed(path, 4, 3) : path, line);
+      _drawArrowHead(canvas, p1, p2, onChain ? accentColor : arrowColor);
 
-      _drawArrowHead(canvas, p2, paint);
-      _drawPort(canvas, p1, paint.color);
-      _drawPort(canvas, p2, paint.color);
-    }
-  }
-
-  Color _colorFor(EdgeType t) => switch (t) {
-        EdgeType.data => dataColor,
-        EdgeType.narrative => narrativeColor,
-        EdgeType.generationSource => generationSourceColor,
-      };
-
-  void _drawDashedPath(Canvas canvas, Path path, Paint paint) {
-    const dashLen = 6.0;
-    const gapLen = 4.0;
-    for (final metric in path.computeMetrics()) {
-      var drawn = 0.0;
-      while (drawn < metric.length) {
-        final segEnd = (drawn + dashLen).clamp(0.0, metric.length).toDouble();
-        canvas.drawPath(metric.extractPath(drawn, segEnd), paint);
-        drawn = segEnd + gapLen;
+      if ((inCount[dst.id] ?? 0) > 1 && edge.edgeType == EdgeType.data) {
+        final String? text = switch (edge.role) {
+          EdgeRole.firstFrame => firstFrameLabel,
+          EdgeRole.lastFrame => lastFrameLabel,
+          EdgeRole.reference => null,
+        };
+        if (text != null) {
+          final mid = edgePathMidpoint(p1, p2, direction: direction);
+          final tp = TextPainter(
+            text: TextSpan(
+              text: text,
+              style: labelStyle.copyWith(
+                color: edge.role == EdgeRole.firstFrame ? accentColor : arrowColor,
+              ),
+            ),
+            textDirection: TextDirection.ltr,
+          )..layout();
+          // 稿：标注贴在曲线中段上方偏右。
+          tp.paint(canvas, mid + Offset(-tp.width / 2, -tp.height - 2));
+        }
       }
     }
   }
 
-  /// 端口圆点：进/出锚点上的实心圆（半覆盖在卡片边缘上，读作端口凸点）。
-  void _drawPort(Canvas canvas, Offset center, Color color) {
-    canvas.drawCircle(center, kEdgePortRadius, Paint()..color = color);
+  static Path _dashed(Path src, double on, double off) {
+    final out = Path();
+    for (final metric in src.computeMetrics()) {
+      var d = 0.0;
+      while (d < metric.length) {
+        final end = (d + on).clamp(0.0, metric.length).toDouble();
+        out.addPath(metric.extractPath(d, end), Offset.zero);
+        d += on + off;
+      }
+    }
+    return out;
   }
 
-  /// 靶端箭头：末端切线恒沿主轴正向（横向 +x / 竖向 +y），箭头指向入端口。
-  void _drawArrowHead(Canvas canvas, Offset tip, Paint paint) {
-    const arrowSize = 8.0;
-    final Path path;
-    if (direction == LaneDirection.horizontal) {
-      final base = tip - const Offset(arrowSize + kEdgePortRadius, 0);
-      path = Path()
-        ..moveTo(tip.dx - kEdgePortRadius, tip.dy)
-        ..lineTo(base.dx, base.dy + arrowSize * 0.5)
-        ..lineTo(base.dx, base.dy - arrowSize * 0.5)
-        ..close();
-    } else {
-      final base = tip - const Offset(0, arrowSize + kEdgePortRadius);
-      path = Path()
-        ..moveTo(tip.dx, tip.dy - kEdgePortRadius)
-        ..lineTo(base.dx + arrowSize * 0.5, base.dy)
-        ..lineTo(base.dx - arrowSize * 0.5, base.dy)
-        ..close();
-    }
-    canvas.drawPath(path, Paint()..color = paint.color);
+  /// 8×8 开口箭头：marker 坐标系 x 轴沿终点切线，refX=7 ⇒ 尖端落在终点。
+  void _drawArrowHead(Canvas canvas, Offset from, Offset tip, Color color) {
+    final Offset dir = direction == LaneDirection.horizontal
+        ? const Offset(1, 0)
+        : const Offset(0, 1);
+    final Offset nrm = Offset(-dir.dy, dir.dx);
+    Offset m(double x, double y) => tip + dir * (x - 7) + nrm * (y - 4);
+    final head = Path()
+      ..moveTo(m(0, 0.5).dx, m(0, 0.5).dy)
+      ..lineTo(m(7, 4).dx, m(7, 4).dy)
+      ..lineTo(m(0, 7.5).dx, m(0, 7.5).dy);
+    canvas.drawPath(
+      head,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.3,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant EdgePainter oldDelegate) {
-    return oldDelegate.edges != edges ||
-        oldDelegate.nodes != nodes ||
-        oldDelegate.dataColor != dataColor ||
-        oldDelegate.narrativeColor != narrativeColor ||
-        oldDelegate.generationSourceColor != generationSourceColor ||
-        oldDelegate.selectedColor != selectedColor ||
-        oldDelegate.direction != direction ||
-        oldDelegate.selectedEdgeId != selectedEdgeId ||
-        oldDelegate.dragNodeId != dragNodeId ||
-        oldDelegate.dragDelta != dragDelta;
+  bool shouldRepaint(covariant EdgePainter old) {
+    return old.edges != edges ||
+        old.nodes != nodes ||
+        old.neutralColor != neutralColor ||
+        old.arrowColor != arrowColor ||
+        old.accentColor != accentColor ||
+        old.direction != direction ||
+        old.selectedNodeIds != selectedNodeIds ||
+        old.selectedEdgeId != selectedEdgeId ||
+        old.dragNodeId != dragNodeId ||
+        old.dragDelta != dragDelta;
   }
 }

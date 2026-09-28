@@ -9,13 +9,18 @@ class ProjectWithCanvases {
     required this.name,
     required this.createdAt,
     required this.canvases,
-  });
+    DateTime? updatedAt,
+  }) : updatedAt = updatedAt ?? createdAt;
 
   final String id;
   final String name;
 
-  /// 项目真实创建时间（UTC），来自 projects.created_at —— 卡片 meta 行的数据源。
+  /// 项目真实创建时间（UTC），来自 projects.created_at。
   final DateTime createdAt;
+
+  /// 最近修改时间（UTC），来自 projects.updated_at——Studio 卡片「N 小时前」与排序的数据源；
+  /// 缺失时回落 createdAt。
+  final DateTime updatedAt;
   final List<CanvasRef> canvases;
 }
 

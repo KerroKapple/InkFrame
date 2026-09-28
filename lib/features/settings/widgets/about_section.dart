@@ -109,7 +109,7 @@ class AboutSection extends ConsumerWidget {
       children: [
         Text(
           context.l10n.settingsAboutSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.sm),
         InkCard(
@@ -168,9 +168,9 @@ class AboutSection extends ConsumerWidget {
                 // error 分支显示 missing 文案,颜色须同步 warning
                 valueColor: ffmpegAsync.when(
                   data: (path) =>
-                      path != null ? colors.success : colors.warning,
+                      path != null ? colors.success : colors.accent,
                   loading: () => colors.fg2,
-                  error: (_, _) => colors.warning,
+                  error: (_, _) => colors.accent,
                 ),
               ),
             ],
@@ -343,7 +343,7 @@ class _Row extends StatelessWidget {
           width: 160,
           child: Text(
             label,
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
           ),
         ),
         Expanded(

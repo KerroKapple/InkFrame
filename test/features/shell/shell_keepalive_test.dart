@@ -31,6 +31,7 @@ import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
 import 'package:inkframe/features/gallery/providers/gallery_controller.dart';
 import 'package:inkframe/features/gallery/providers/gallery_filter.dart';
+import 'package:inkframe/features/gallery/widgets/gallery_filter_panel.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
@@ -52,16 +53,6 @@ Matrix4 _ivTransform(WidgetTester tester) => tester
 ///
 /// 【必须限定在 GalleryScreen 子树内】——保活宿主下画布/Studio 标签可能同时
 /// 挂着自己的输入框，全局 find.byType(TextField) 会在标签切换时静默换目标。
-final Finder _searchField = find.descendant(
-  of: find.byType(GalleryScreen, skipOffstage: false),
-  matching: find.byType(TextField, skipOffstage: false),
-  skipOffstage: false,
-);
-
-/// 搜索框当前绑定的控制器实例。
-TextEditingController _searchController(WidgetTester tester) =>
-    tester.widget<TextField>(_searchField).controller!;
-
 /// 恒定返回一批产物的画廊 Fake——真控制器要 await 三个仓储（pool 被封印后永挂）。
 class _FakeGalleryController extends GalleryController {
   _FakeGalleryController(this._items);
@@ -173,7 +164,8 @@ void main() {
     );
   }, timeout: const Timeout(Duration(seconds: 30)));
 
-  testWidgets('V1：画廊筛选与搜索框跨标签保留（State 对象本人存活）', (tester) async {
+  testWidgets('V1：画廊筛选跨标签保留，且切回后控件显示与实际生效一致（GridView State 本人存活）',
+      (tester) async {
     final paths = await setupTempPaths(tester, 'ink_shell_gfilter_');
     await pumpInkShell(
       tester,
@@ -185,19 +177,19 @@ void main() {
             .overrideWith(() => _FakeGalleryController(_items)),
       ],
     );
+    for (int i = 0; i < 4; i++) {
+      await tester.pump();
+    }
 
     final ProviderContainer c = readShellContainer(tester);
-    // 走真实用户路径：在搜索框里打字（onChanged → provider），而不是直接写
-    // provider——后者不会让 _searchCtrl 的内容成为 State 自己的产物。
-    await tester.enterText(_searchField, 'moon');
+    // 走真实用户路径：点筛选行（onTap → provider），而不是直接写 provider。
+    final Key imageRow = GalleryFilterPanel.rowKey('type', GalleryItemKind.image.name);
+    await tester.tap(find.byKey(imageRow));
     await tester.pump();
-    c.read(galleryFilterProvider('p1').notifier).state = c
-        .read(galleryFilterProvider('p1'))
-        .copyWith(kind: () => GalleryItemKind.video);
-    await tester.pump();
-
-    final TextEditingController beforeCtrl = _searchController(tester);
-    expect(beforeCtrl.text, 'moon');
+    expect(c.read(galleryFilterProvider('p1')).kind, GalleryItemKind.image);
+    final ScrollableState beforeGrid = tester.state<ScrollableState>(
+      find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)),
+    );
 
     await tapShellTab(tester, ShellTab.studio);
     expectShellSurface<GalleryScreen>(
@@ -214,19 +206,21 @@ void main() {
     );
     await tapShellTab(tester, ShellTab.gallery);
 
-    expect(c.read(galleryFilterProvider('p1')).kind, GalleryItemKind.video);
-    expect(c.read(galleryFilterProvider('p1')).query, 'moon');
-    expect(
-      _searchController(tester).text,
-      'moon',
-      reason: '搜索框必须显示当前筛选词，否则显示空、筛选却仍生效——界面撒谎',
+    expect(c.read(galleryFilterProvider('p1')).kind, GalleryItemKind.image);
+    final Container rowBox = tester.widget<Container>(
+      find.descendant(of: find.byKey(imageRow), matching: find.byType(Container)).first,
     );
+    expect(rowBox.color, isNotNull,
+        reason: '筛选行必须显示为选中，否则筛选仍生效、控件却显示未筛选——界面撒谎');
     expect(
-      identical(_searchController(tester), beforeCtrl),
+      identical(
+        tester.state<ScrollableState>(
+          find.descendant(of: find.byType(GridView), matching: find.byType(Scrollable)),
+        ),
+        beforeGrid,
+      ),
       isTrue,
-      reason: '同一个 TextEditingController 实例 ⇒ _GalleryContentState 本人活过了'
-          '这次切换。只断言文本相等是不够的：State 被重建时 initState 会从 '
-          'galleryFilterProvider 回种同样的文本，那条断言照样绿。',
+      reason: '同一个 ScrollableState 实例 ⇒ 网格本人活过了这次切换，滚动位置随之保留',
     );
   }, timeout: const Timeout(Duration(seconds: 30)));
 }

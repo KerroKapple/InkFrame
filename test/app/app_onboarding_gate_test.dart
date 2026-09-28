@@ -11,8 +11,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/app.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/orphan_reaper.dart';
+import 'package:inkframe/core/di/video_backfill.dart';
 import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/preferences.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/models/app_preferences.dart';
@@ -24,6 +26,7 @@ import 'package:inkframe/features/studio/providers/workspace_projects_provider.d
 import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:postgres/postgres.dart';
 
+import '../_harness/fake_repositories.dart';
 import '../_harness/fake_secure_storage.dart';
 
 /// DB-ready 成功密封：Pool 懒建连接——无人消费即无 IO，不触真 PG。
@@ -61,11 +64,20 @@ Future<void> _pumpApp(
       anyProviderKeyConfiguredProvider.overrideWith((_) async => true),
       // 密封 LB-13 孤儿回收启动读：boot 测试不触发真 PG/dart:io。
       orphanReapStartupProvider.overrideWith((_) async {}),
+      // 密封 XM-1b 视频元数据回填：它直接向 pool 要连接，fake pool 会挂 15s 超时定时器。
+      videoBackfillStartupProvider.overrideWith((_) async {}),
       dbReady,
       // 密封：boot 渲染唯一碰 DB 的链路，断在此处——避免真起内嵌 PG。
       workspaceProjectsProvider
           .overrideWith((_) async => const <ProjectWithCanvases>[]),
+      // 库面板的回收站计数读 projectRepository：密封，别去碰假 pool。
+      projectRepositoryProvider
+          .overrideWith((_) async => InMemoryProjectRepository()),
       restoreLastSessionProvider.overrideWith((_) async => onRestore()),
+      // 密封：壳级状态栏读 appPaths.projects.path（纯字符串，无 IO）。
+      appPathsProvider.overrideWithValue(
+        DefaultAppPaths.forRoot(Directory.systemTemp.createTempSync('ink_gate_')),
+      ),
       ...extra,
     ],
     child: const InkFrameApp(),

@@ -69,7 +69,7 @@ void main() {
 
     // 步骤 2：API Keys（复用 ApiKeysSection）
     expect(find.text('Step 2 of 3'), findsOneWidget);
-    expect(find.text('API Keys'), findsOneWidget);
+    expect(find.text('API keys'), findsOneWidget);
 
     await tester.tap(find.text('Next'));
     await tester.pumpAndSettle();

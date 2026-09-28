@@ -35,7 +35,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('beta'), findsOneWidget);
-    expect(tester.getSize(find.byType(InkShellTabBar)).height, 44);
+    expect(tester.getSize(find.byType(InkShellTabBar)).height, InkShellTabBar.height);
 
     await pumpInkApp(
       tester,

@@ -5,7 +5,7 @@
 // 覆盖对象：
 //   - libmpv + FFmpeg：media_kit_libs_video 分发的 LGPL-2.1「video」构建（动态链接）
 //   - PostgreSQL：内嵌数据库二进制（PostgreSQL License）
-//   - Cormorant Garamond / JetBrains Mono：打包字体（SIL OFL 1.1）
+//   - JetBrains Mono：打包字体（SIL OFL 1.1）；界面无衬线字体走系统回落链，不打包
 //
 // 许可正文以 assets 为单一事实源（assets/licenses、assets/fonts），此处按需加载后入册；
 // 说明性 notice 属法律署名文本，保持英文常量（非 ARB 用户文案）。
@@ -44,15 +44,6 @@ void registerThirdPartyLicenses() {
     final String pg =
         await rootBundle.loadString('assets/licenses/PostgreSQL.txt');
     yield LicenseEntryWithLineBreaks(const <String>['PostgreSQL'], pg);
-  });
-
-  LicenseRegistry.addLicense(() async* {
-    final String ofl =
-        await rootBundle.loadString('assets/fonts/OFL-CormorantGaramond.txt');
-    yield LicenseEntryWithLineBreaks(
-      const <String>['Cormorant Garamond (font)'],
-      ofl,
-    );
   });
 
   LicenseRegistry.addLicense(() async* {

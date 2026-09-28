@@ -72,14 +72,14 @@ class _BaseStyleEditorDialogState extends State<_BaseStyleEditorDialog> {
               // 标题
               Text(
                 l10n.baseStyleEditTitle,
-                style: typography.title.copyWith(color: colors.fg1),
+                style: typography.sectionTitle.copyWith(color: colors.fg1),
               ),
               const SizedBox(height: InkSpacing.lg),
 
               // 前缀输入
               Text(
                 l10n.baseStylePrefixLabel,
-                style: typography.label.copyWith(color: colors.fg2),
+                style: typography.bodyStrong.copyWith(color: colors.fg2),
               ),
               const SizedBox(height: InkSpacing.xs),
               InkInput(
@@ -93,7 +93,7 @@ class _BaseStyleEditorDialogState extends State<_BaseStyleEditorDialog> {
               // 快速预设
               Text(
                 l10n.baseStylePresetsLabel,
-                style: typography.label.copyWith(color: colors.fg2),
+                style: typography.bodyStrong.copyWith(color: colors.fg2),
               ),
               const SizedBox(height: InkSpacing.xs),
               Wrap(
@@ -103,7 +103,7 @@ class _BaseStyleEditorDialogState extends State<_BaseStyleEditorDialog> {
                   return ActionChip(
                     label: Text(
                       _presetLabel(context, preset.id),
-                      style: typography.caption.copyWith(color: colors.fg1),
+                      style: typography.meta.copyWith(color: colors.fg1),
                     ),
                     backgroundColor: colors.surface2,
                     side: BorderSide(color: colors.borderSubtle),
@@ -121,7 +121,7 @@ class _BaseStyleEditorDialogState extends State<_BaseStyleEditorDialog> {
               // 后缀输入
               Text(
                 l10n.baseStyleSuffixLabel,
-                style: typography.label.copyWith(color: colors.fg2),
+                style: typography.bodyStrong.copyWith(color: colors.fg2),
               ),
               const SizedBox(height: InkSpacing.xs),
               InkInput(

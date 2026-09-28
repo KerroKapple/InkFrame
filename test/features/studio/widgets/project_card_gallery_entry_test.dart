@@ -44,7 +44,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(shellControllerProvider).project, isNull);
-    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.tap(find.byTooltip('Project options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Gallery'));
     await tester.pumpAndSettle();
@@ -87,7 +87,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(shellControllerProvider).overlay, isNull);
-    await tester.tap(find.byIcon(Icons.more_vert));
+    await tester.tap(find.byTooltip('Project options'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Built-in samples'));
     await tester.pumpAndSettle();

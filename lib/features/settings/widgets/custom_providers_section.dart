@@ -53,12 +53,12 @@ class CustomProvidersSection extends ConsumerWidget {
       children: [
         Text(
           context.l10n.settingsCustomProvidersSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.xs),
         Text(
           context.l10n.settingsCustomProvidersHint,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         if (dirty) ...[
           const SizedBox(height: InkSpacing.sm),
@@ -108,14 +108,14 @@ class _RestartNotice extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         color: colors.surface2,
-        border: Border.all(color: colors.warning),
+        border: Border.all(color: colors.accent),
         borderRadius: BorderRadius.circular(InkRadius.md),
       ),
       child: Padding(
         padding: const EdgeInsets.all(InkSpacing.sm),
         child: Text(
           context.l10n.settingsCustomProvidersRestartNotice,
-          style: typo.caption.copyWith(color: colors.warning),
+          style: typo.meta.copyWith(color: colors.accent),
         ),
       ),
     );
@@ -144,7 +144,7 @@ class _ProviderRow extends ConsumerWidget {
                 const SizedBox(height: InkSpacing.xs),
                 Text(
                   '${config.providerId} · ${config.template} · ${config.baseUrl}',
-                  style: typo.caption.copyWith(color: colors.fg3),
+                  style: typo.meta.copyWith(color: colors.fg3),
                   overflow: TextOverflow.ellipsis,
                 ),
               ],
@@ -365,14 +365,14 @@ class _EditorDialogState extends State<_EditorDialog> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: typo.caption.copyWith(color: colors.fg3)),
+          Text(label, style: typo.meta.copyWith(color: colors.fg3)),
           const SizedBox(height: InkSpacing.xs),
           InkInput(controller: controller, enabled: enabled, hintText: hint),
           if (err != null) ...[
             const SizedBox(height: InkSpacing.xs),
             Text(
               _errorText(context, err),
-              style: typo.caption.copyWith(color: colors.danger),
+              style: typo.meta.copyWith(color: colors.danger),
             ),
           ],
           const SizedBox(height: InkSpacing.sm),
@@ -405,7 +405,7 @@ class _EditorDialogState extends State<_EditorDialog> {
               ),
               Text(
                 l10n.settingsCustomProviderFieldTemplate,
-                style: typo.caption.copyWith(color: colors.fg3),
+                style: typo.meta.copyWith(color: colors.fg3),
               ),
               const SizedBox(height: InkSpacing.xs),
               DropdownButton<String>(

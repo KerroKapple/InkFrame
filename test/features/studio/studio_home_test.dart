@@ -45,7 +45,7 @@ class _FailingCreateCanvasRepository extends InMemoryCanvasRepository {
 }
 
 void main() {
-  testWidgets('StudioHome 数据态：渲染 sidebar + Recent Projects 标题 + 卡片 + FAB',
+  testWidgets('StudioHome 数据态：渲染库面板 + 工具行 + 卡片 + 虚线新建格',
       (tester) async {
     await pumpInkApp(
       tester,
@@ -66,14 +66,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('LIBRARY'), findsOneWidget);
-    expect(find.text('Recent Projects'), findsOneWidget);
-    expect(find.text('New Project'), findsOneWidget); // FAB
-    // Alpha 既出现在 sidebar tree row 也出现在 ProjectCard
-    expect(find.text('Alpha'), findsNWidgets(2));
+    expect(find.text('Library'), findsOneWidget);
+    expect(find.text('All projects'), findsNWidgets(2), reason: '库面板行 + 工具行标题');
+    expect(find.text('New Project'), findsOneWidget); // 网格末位的虚线格
+    expect(find.text('Alpha'), findsOneWidget, reason: '库面板不再列项目，只有卡片');
   });
 
-  testWidgets('ProjectCard meta 行：真实 createdAt 月份 + 画布数（无捏造 EP/日期）',
+  testWidgets('ProjectCard meta 行：真实 updatedAt 相对时间 + 画布数徽标（无捏造 EP/日期）',
       (tester) async {
     await pumpInkApp(
       tester,
@@ -86,6 +85,7 @@ void main() {
               id: 'p1',
               name: 'Alpha',
               createdAt: DateTime.utc(2026, 5, 12),
+              updatedAt: DateTime.now().toUtc().subtract(const Duration(hours: 2)),
               canvases: const <CanvasRef>[
                 CanvasRef(id: 'c1', name: 'A'),
                 CanvasRef(id: 'c2', name: 'B'),
@@ -95,6 +95,7 @@ void main() {
               id: 'p2',
               name: 'Beta',
               createdAt: DateTime.utc(2025, 11, 3),
+              updatedAt: DateTime.now().toUtc().subtract(const Duration(days: 3)),
               canvases: const <CanvasRef>[CanvasRef(id: 'c3', name: 'C')],
             ),
           ],
@@ -103,8 +104,10 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('May 2026 · 2 canvases'), findsOneWidget);
-    expect(find.text('Nov 2025 · 1 canvas'), findsOneWidget);
+    expect(find.text('2 h ago'), findsOneWidget);
+    expect(find.text('2 canvases'), findsOneWidget);
+    expect(find.text('3 d ago'), findsOneWidget);
+    expect(find.text('1 canvas'), findsOneWidget);
     expect(find.textContaining('EP 01'), findsNothing);
   });
 
@@ -344,6 +347,6 @@ void main() {
     expect(projects.rows.values.single['name'], 'Heist');
     expect(canvases.rows.values.single['name'], 'Untitled Canvas');
     // 列表刷新后卡片可见（sidebar + card 各一处）
-    expect(find.text('Heist'), findsNWidgets(2));
+    expect(find.text('Heist'), findsOneWidget, reason: '只在卡片上；库面板不列项目');
   });
 }

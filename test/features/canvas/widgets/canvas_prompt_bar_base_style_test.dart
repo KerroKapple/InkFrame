@@ -1,6 +1,5 @@
-// CanvasToolBar — 调色板按钮 + base style 编辑对话框集成测试。
-// T7：从已删除的 CanvasTopChrome 改指画布工具条；工具条不在 DragToMoveArea 里，
-// 单击一帧落地，原先越过 kDoubleTapTimeout 的 pump(400ms) 不再需要。
+// CanvasPromptBar 的「基础风格」入口 + base style 编辑对话框集成测试。
+// Workspace v2 稿撤掉了画布工具条，基底风格入口挂在底部提示词条上（选中一个 config 节点时出现）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,15 +8,22 @@ import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
-import 'package:inkframe/features/canvas/widgets/canvas_tool_bar.dart';
+import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_prompt_bar.dart';
 
 import '../../../_harness/test_app.dart';
 
-// 导出按钮 watch 节点集合；fake 隔离 DB DI。
-class _EmptyNodesController extends CanvasNodesController {
+// 提示词条只在恰好选中一个 image / video config 节点时出现；fake 隔离 DB DI。
+const CanvasNode _imageNode = CanvasNode(id: 'n1', label: 'Shot', type: CanvasNodeType.image, canvasId: 'cv1');
+
+class _OneNodeController extends CanvasNodesController {
   @override
-  Future<List<CanvasNode>> build(String canvasId) async =>
-      const <CanvasNode>[];
+  Future<List<CanvasNode>> build(String canvasId) async => const <CanvasNode>[_imageNode];
+}
+
+class _Selected extends CanvasSelectionController {
+  @override
+  Set<String> build(String canvasId) => <String>{'n1'};
 }
 
 // 最小化 fake：仅实现 findById（返回 base_style 字段），update 记录调用。
@@ -75,52 +81,41 @@ class _FakeCanvasRepository implements CanvasRepository {
 }
 
 void main() {
-  testWidgets('调色板按钮在 canvasId 非 null 时可见', (tester) async {
+  testWidgets('选中一个 config 节点 → 提示词条带「基础风格」入口', (tester) async {
     final repo = _FakeCanvasRepository();
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasToolBar()),
+      const Scaffold(body: CanvasPromptBar(canvasId: 'cv1')),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
         canvasRepositoryProvider.overrideWith((_) async => repo),
-        canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
+        canvasNodesControllerProvider.overrideWith(_OneNodeController.new),
+        canvasSelectionControllerProvider.overrideWith(_Selected.new),
       ],
     );
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.palette_outlined), findsOneWidget);
+    expect(find.byKey(CanvasPromptBar.baseStyleKey), findsOneWidget);
   });
 
-  testWidgets('调色板按钮在 canvasId 为 null 时隐藏', (tester) async {
-    await pumpInkApp(
-      tester,
-      const Scaffold(body: CanvasToolBar()),
-      overrides: <Override>[
-        currentCanvasIdProvider.overrideWith((ref) => null),
-      ],
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.byIcon(Icons.palette_outlined), findsNothing);
-  });
-
-  testWidgets('调色板按钮 → 对话框用已存值预填 → 保存 → repo 收到 base_style patch',
+  testWidgets('基础风格入口 → 对话框用已存值预填 → 保存 → repo 收到 base_style patch',
       (tester) async {
     // 端到端覆盖 _openEditor：await provider.future 预填（防数据丢失 guard）→
     // 编辑前缀 → Save → setBaseStyle 写库。这是用户真实路径。
     final repo = _FakeCanvasRepository(prefix: 'old-pre', suffix: 'old-suf');
     await pumpInkApp(
       tester,
-      const Scaffold(body: CanvasToolBar()),
+      const Scaffold(body: CanvasPromptBar(canvasId: 'cv1')),
       overrides: <Override>[
         currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
         canvasRepositoryProvider.overrideWith((_) async => repo),
-        canvasNodesControllerProvider.overrideWith(_EmptyNodesController.new),
+        canvasNodesControllerProvider.overrideWith(_OneNodeController.new),
+        canvasSelectionControllerProvider.overrideWith(_Selected.new),
       ],
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byIcon(Icons.palette_outlined));
+    await tester.tap(find.byKey(CanvasPromptBar.baseStyleKey));
     await tester.pump();
     await tester.pumpAndSettle();
 
@@ -129,7 +124,8 @@ void main() {
     expect(find.text('old-pre'), findsOneWidget);
 
     // 改前缀后保存。
-    await tester.enterText(find.byType(TextField).first, 'new-pre');
+    // 第 0 个 TextField 是提示词条自己的输入框，对话框的前缀框是第 1 个。
+    await tester.enterText(find.byType(TextField).at(1), 'new-pre');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 

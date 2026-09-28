@@ -79,7 +79,7 @@ void main() {
     final store = _FakeStore();
     await _pump(tester, store);
 
-    await tester.tap(find.text('Add provider'));
+    await tester.tap(find.text('Add custom provider…'));
     await tester.pumpAndSettle();
 
     final fields = find.byType(TextField);
@@ -104,7 +104,7 @@ void main() {
     final store = _FakeStore([_cfg()]);
     await _pump(tester, store);
 
-    await tester.tap(find.text('Add provider'));
+    await tester.tap(find.text('Add custom provider…'));
     await tester.pumpAndSettle();
 
     final fields = find.byType(TextField);
@@ -172,7 +172,7 @@ void main() {
     );
 
     // 添加入口仍可点;list() 拒绝 → snackbar 提示
-    await tester.tap(find.text('Add provider'));
+    await tester.tap(find.text('Add custom provider…'));
     await tester.pumpAndSettle();
     expect(
       find.textContaining("Couldn't save"),

@@ -3,6 +3,9 @@
 // 打开日志目录走 FolderOpener（best-effort）；导出经 saveLocationPickerProvider
 // seam（LB-11 同款）→ DiagnosticsBundleService → 成败 toast。
 // 跨 await 依赖首个 await 前 read 持有（#188 P1-1 惯例）。
+//
+// 导出按钮抽成 [DiagnosticsExportButton]：设置浮层的底部条（Screens 稿）也放一枚，
+// 两处同一条导出路径，不复制逻辑。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,19 +23,11 @@ import '../../../theme/components/ink_button.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/services/toast_service.dart';
 
-class DiagnosticsSection extends ConsumerStatefulWidget {
+class DiagnosticsSection extends ConsumerWidget {
   const DiagnosticsSection({super.key});
 
   @override
-  ConsumerState<DiagnosticsSection> createState() =>
-      _DiagnosticsSectionState();
-}
-
-class _DiagnosticsSectionState extends ConsumerState<DiagnosticsSection> {
-  bool _exporting = false;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     return Column(
@@ -40,12 +35,12 @@ class _DiagnosticsSectionState extends ConsumerState<DiagnosticsSection> {
       children: [
         Text(
           context.l10n.settingsDiagnosticsSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.xs),
         Text(
           context.l10n.settingsDiagnosticsHint,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.sm),
         Wrap(
@@ -56,13 +51,9 @@ class _DiagnosticsSectionState extends ConsumerState<DiagnosticsSection> {
               label: context.l10n.settingsOpenLogDir,
               variant: InkButtonVariant.secondary,
               icon: Icons.folder_open,
-              onPressed: _openLogs,
+              onPressed: () => _openLogs(ref),
             ),
-            InkButton(
-              label: context.l10n.settingsExportDiagnostics,
-              icon: Icons.medical_information_outlined,
-              onPressed: _exporting ? null : _export,
-            ),
+            const DiagnosticsExportButton(),
           ],
         ),
       ],
@@ -70,9 +61,33 @@ class _DiagnosticsSectionState extends ConsumerState<DiagnosticsSection> {
   }
 
   /// best-effort 打开日志目录（同 StartupErrorView：打不开静默，不崩 UI）。
-  void _openLogs() {
+  void _openLogs(WidgetRef ref) {
     final logsPath = ref.read(appPathsProvider).logs.path;
     ref.read(folderOpenerProvider).open(logsPath).ignore();
+  }
+}
+
+/// 「导出诊断包…」：选保存位置 → 打包 → toast。在途时禁用（防重入）。
+class DiagnosticsExportButton extends ConsumerStatefulWidget {
+  const DiagnosticsExportButton({super.key, this.variant = InkButtonVariant.primary});
+
+  final InkButtonVariant variant;
+
+  @override
+  ConsumerState<DiagnosticsExportButton> createState() => _DiagnosticsExportButtonState();
+}
+
+class _DiagnosticsExportButtonState extends ConsumerState<DiagnosticsExportButton> {
+  bool _exporting = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkButton(
+      label: context.l10n.settingsExportDiagnostics,
+      variant: widget.variant,
+      icon: widget.variant == InkButtonVariant.primary ? Icons.medical_information_outlined : null,
+      onPressed: _exporting ? null : _export,
+    );
   }
 
   Future<void> _export() async {

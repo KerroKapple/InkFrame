@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
+import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/canvas_node.dart';
@@ -142,13 +143,38 @@ class CanvasAddNodeFab extends ConsumerWidget {
     }
   }
 
+  /// 测试锚点。
+  static const Key buttonKey = Key('canvas.addNodeFab');
+
+  // 稿：右下 32×32 琥珀方块 + 深色「+」，圆角 3。
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return FloatingActionButton.extended(
-      tooltip: context.l10n.canvasAddNodeTooltip,
-      onPressed: () => _showMenu(context, ref),
-      icon: const Icon(Icons.add),
-      label: Text(context.l10n.canvasAddNodeTooltip),
+    final colors = context.inkColors;
+    final String tip = context.l10n.canvasAddNodeTooltip;
+    return Semantics(
+      button: true,
+      label: tip,
+      child: Tooltip(
+        message: tip,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            key: buttonKey,
+            behavior: HitTestBehavior.opaque,
+            onTap: () => _showMenu(context, ref),
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: colors.accent,
+                borderRadius: BorderRadius.circular(InkRadius.s3),
+              ),
+              child: Icon(Icons.add, size: 20, color: colors.onAccent),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

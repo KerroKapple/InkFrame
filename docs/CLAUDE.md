@@ -237,31 +237,34 @@ lib/
 │   │   ├── providers/                 # Riverpod ViewModels
 │   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart
 │   │   └── widgets/
-│   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps _UnlockedShell)
+│   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps InkShell). Screens 稿第 4 屏右：跨实体搜索，三组「镜头 · 当前画布 / 产物 / 动作」
+│   │   ├── palette_entry.dart         # PaletteEntry / PaletteChoice（hand-written value objects; run = ↵ 打开, locate = ⌘↵ 在画布中定位）
+│   │   ├── palette_search.dart        # buildPaletteEntries — 镜头组只搜当前画布已加载节点（不为搜索读库）、产物组复用 galleryController、动作组 = buildCommandActions
 │   │   ├── command_actions.dart       # CommandAction + context-aware hardwired action list (≤6)
 │   │   └── widgets/                   # palette dialog / top-chrome chip / app-level shortcuts wrapper
 │   ├── export/                        # Video export UI (concat dialog; entry in canvas top chrome)
 │   │   ├── providers/                 # ExportController (canvas→project path conversion)
 │   │   ├── util/                      # Output-name pre-validation + export_order.dart (EX-1′ narrative-chain default order)
 │   │   └── widgets/
-│   ├── gallery/                       # Project-wide generated-asset gallery (read-only)
-│   │   ├── models/
-│   │   ├── providers/
-│   │   └── widgets/
+│   ├── gallery/                       # Project-wide generated-asset gallery (Screens 稿第 2 屏：筛选 220 | 网格 | 信息 320)
+│   │   ├── models/                    # gallery_item (freezed) + gallery_graph / gallery_selection (hand-written)
+│   │   ├── providers/                 # gallery_graph_provider (sole DB read) → gallery_controller (items) → gallery_view (meta / filtered / anchor); gallery_filter + gallery_selection are keepAlive per project
+│   │   ├── util/                      # gallery_meta.dart (pure: meta / lineage / narrative-chain marks) + gallery_time.dart
+│   │   └── widgets/                   # gallery_screen / gallery_filter_panel / gallery_grid + gallery_tile / gallery_info_panel / gallery_actions (save-as-character, locate-in-canvas)
 │   ├── generation/                    # Generation flow UI + state (no widgets/ — panel retired in #164)
 │   │   ├── generation_controller.dart
 │   │   ├── models/
 │   │   ├── providers/
 │   │   └── services/
-│   ├── settings/                      # Settings surfaces
-│   │   ├── settings_screen.dart
+│   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
+│   │   ├── settings_screen.dart       # SettingsScreen (dialog frame + nav + page bodies + footer 完成/导出诊断包); pages = 常规 / API 密钥 / 节点布局 / 存储 / 关于
 │   │   ├── providers/
 │   │   └── widgets/
 │   ├── shell/                         # Persistent-tab app shell — the sole host after unlock; lib/app.dart's body is just InkShell (no routing predicates left there). See lib/features/shell/README.md for the invariants
 │   │   ├── models/                    # shell_state.dart (ShellTab / ShellOverlay / ProjectRef / ShellState — hand-written value object, 7 named transitions, no copyWith)
 │   │   ├── providers/                 # shell_controller.dart (ShellNavigator Notifier + shellControllerProvider — sole write entry point) + active_project.dart (activeProjectProvider — read-only projection of ShellState.project) + gallery_dirty.dart (galleryDirtyProvider — any job reaching JobSucceeded marks the gallery dirty; the gallery tab refreshes once on the invisible→visible edge, then clears. NOT live refresh: a gallery the user is already looking at stays put until they switch away and back)
 │   │   ├── util/                      # tab_availability.dart (hasNarrativeEdges / canExportVideo — pure predicates moved verbatim out of the deleted canvas_top_chrome.dart)
-│   │   └── widgets/                   # ink_shell.dart (sole root Scaffold + chrome + tab bar) / shell_content_stack.dart (two-level IndexedStack + fallback focus) / shell_keep_alive_host.dart (five lazily-materialized, then permanent tab slots) / shell_chrome.dart (the tree's only InkWindowChrome) / shell_breadcrumb.dart / shell_empty_state.dart / shell_overlay_layer.dart (settings + showcase overlays; NOT kept alive) / shell_tab_bar.dart (wires ShellState into the theme-layer InkShellTabBar — that component knows nothing about ShellTab, see test/quality/no_reverse_layer_import_test.dart) + tabs/ (studio / canvas / sequence / gallery / export bodies)
+│   │   └── widgets/                   # ink_shell.dart (sole root Scaffold + chrome + tab bar) / shell_content_stack.dart (outer Stack: tab host under an ExcludeFocus + overlay on top; inner five-slot IndexedStack; fallback focus) / shell_keep_alive_host.dart (five lazily-materialized, then permanent tab slots) / shell_chrome.dart (the tree's only InkWindowChrome) / shell_breadcrumb.dart / shell_empty_state.dart / shell_overlay_layer.dart (ModalBarrier scrim + settings / showcase overlays; NOT kept alive; the barrier is what stops click-through) / shell_tab_bar.dart (wires ShellState into the theme-layer InkShellTabBar — that component knows nothing about ShellTab, see test/quality/no_reverse_layer_import_test.dart) + tabs/ (studio / canvas / sequence / gallery / export bodies)
 │   ├── showcase/                      # Bundled Codex image samples (local preview; no project records/API key)
 │   │   └── widgets/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
@@ -271,14 +274,15 @@ lib/
 │   │   ├── providers/                 # script_import_controller.dart (ShotDrafts → shot chain in ONE transaction; failure leaves no residue)
 │   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist) + script_splitter.dart (SB-1 rule-based, no LLM); both pure
 │   │   └── widgets/                   # script_import_dialog.dart (paste + strategy + live preview) + sequence_preview_dialog.dart (playback + advance only)
-│   └── studio/                        # Project / workspace shell (home + open-canvas + first-run onboarding dialog; ON-1/ON-2)
-│       ├── studio_home_screen.dart
+│   └── studio/                        # Project / workspace shell (Screens 稿第 1 屏：库 220 | 工具行 + 恢复条 + 4 列项目网格；first-run onboarding dialog; ON-1/ON-2)
+│       ├── studio_home_screen.dart    # + showStudioNewProjectDialog / createStudioSampleProject（标签栏「新建项目」与网格虚线格共用）
 │       ├── open_canvas.dart           # Open/create a canvas from Studio
-│       ├── project_import_flow.dart   # runProjectImportFlow — LB-12 archive import, one path shared by FAB / zero-project empty state / ⌘K (audit 2026-08-31 P0-3)
+│       ├── project_import_flow.dart   # runProjectImportFlow — LB-12 archive import, one path shared by shell tab-bar「导入项目包」/ zero-project empty state / ⌘K (audit 2026-08-31 P0-3)
 │       ├── controllers/
-│       ├── models/
-│       ├── providers/
-│       └── widgets/
+│       ├── models/                    # project_with_canvases (createdAt + updatedAt; list sorted by updatedAt desc)
+│       ├── providers/                 # workspace_projects_provider / restore_last_session (startup guard) / trashed_items_providers
+│       ├── util/                      # last_session.dart — hasRestorableLastSession，启动守卫与首页恢复条共用的唯一判据
+│       └── widgets/                   # library_sidebar / project_card / studio_provider_banner (无 Key 引导条) / onboarding_dialog / trash_dialog
 ├── providers/                         # AI provider adapters (see docs/PROVIDER-API.md)
 │   ├── provider_registry.dart         # providerId → factory mapping
 │   ├── rate_limiter.dart              # Per-provider token bucket

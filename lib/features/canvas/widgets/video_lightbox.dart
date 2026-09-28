@@ -76,7 +76,7 @@ class _VideoLightboxState extends ConsumerState<VideoLightboxContent> {
               child: (_opened && _videoController != null)
                   ? Video(controller: _videoController!)
                   : Container(
-                      color: colors.surfaceCanvas,
+                      color: colors.surface0,
                       alignment: Alignment.center,
                       child: const CircularProgressIndicator(),
                     ),

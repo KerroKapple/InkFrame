@@ -34,7 +34,7 @@ void main() {
     expect(labelColor(tester, 'Go'), InkColors.dark().onAccent);
   });
 
-  testWidgets('danger 前景用 onDanger', (tester) async {
+  testWidgets('danger 变体：透明底 + danger 红字（不做容器底色）', (tester) async {
     await pump(
       tester,
       InkButton(
@@ -43,7 +43,7 @@ void main() {
         variant: InkButtonVariant.danger,
       ),
     );
-    expect(labelColor(tester, 'Del'), InkColors.dark().onDanger);
+    expect(labelColor(tester, 'Del'), InkColors.dark().danger);
   });
 
   testWidgets('secondary/ghost 中性底保持 fg1 前景', (tester) async {
@@ -69,10 +69,10 @@ void main() {
     expect(labelColor(tester, 'Gho'), InkColors.dark().fg1);
   });
 
-  // 对比率锁定（WCAG AA ≥4.5:1）：彩底（brand/danger）× 三变体逐一锁死，
+  // 对比率锁定（WCAG AA ≥4.5:1）：唯一彩底（primary 琥珀）× 三变体逐一锁死，
   // 防 per-variant 前景取色再翻车（历史 bug：light 一刀切 surfaceCanvas）。
   for (final variant in InkThemeVariant.values) {
-    testWidgets('$variant: primary/danger 前景对底色对比率 ≥4.5', (tester) async {
+    testWidgets('$variant: primary 前景对琥珀底对比率 ≥4.5，danger 透明底红字', (tester) async {
       await pump(
         tester,
         Column(
@@ -103,12 +103,18 @@ void main() {
       expect(
         wcagContrast(bgOf('Go'), labelColor(tester, 'Go')),
         greaterThanOrEqualTo(4.5),
-        reason: '$variant primary(brand 底)',
+        reason: '$variant primary(accent 底)',
       );
+      // danger 不做容器底色（README：语义色只做文字与小图标）：透明底 + danger 红字。
+      // 红字落在下方面板上的对比率是 README 取值的既有属性，不在按钮层锁。
+      expect(bgOf('Del').a, 0, reason: '$variant danger 底必须透明');
       expect(
-        wcagContrast(bgOf('Del'), labelColor(tester, 'Del')),
-        greaterThanOrEqualTo(4.5),
-        reason: '$variant danger(danger 底)',
+        labelColor(tester, 'Del'),
+        switch (variant) {
+          InkThemeVariant.dark => InkColors.dark().danger,
+          InkThemeVariant.light => InkColors.light().danger,
+          InkThemeVariant.highContrast => InkColors.highContrast().danger,
+        },
       );
     });
   }

@@ -69,12 +69,12 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
       children: [
         Text(
           context.l10n.settingsBackupSection,
-          style: typo.title.copyWith(color: colors.fg1),
+          style: typo.sectionTitle.copyWith(color: colors.fg1),
         ),
         const SizedBox(height: InkSpacing.xs),
         Text(
           context.l10n.settingsBackupHint,
-          style: typo.caption.copyWith(color: colors.fg3),
+          style: typo.meta.copyWith(color: colors.fg3),
         ),
         const SizedBox(height: InkSpacing.sm),
         InkButton(
@@ -86,7 +86,7 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
         if (_backups.isEmpty)
           Text(
             context.l10n.settingsBackupsEmpty,
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
           )
         else
           InkCard(
@@ -101,7 +101,7 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
                           children: [
                             Text(
                               b.name,
-                              style: typo.monoMicro.copyWith(color: colors.fg1),
+                              style: typo.monoSmall.copyWith(color: colors.fg1),
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: InkSpacing.xs),
@@ -109,7 +109,7 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
                               '${_kindLabel(context.l10n, b.kind)} · '
                               '${context.l10n.settingsBackupMetaLine(_humanSize(b.sizeBytes), b.modified.toLocal())}',
                               style:
-                                  typo.caption.copyWith(color: colors.fg3),
+                                  typo.meta.copyWith(color: colors.fg3),
                             ),
                           ],
                         ),

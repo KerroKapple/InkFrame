@@ -60,7 +60,7 @@ void main() {
       find.byKey(const ValueKey<String>('shellTab-gallery')),
       findsOneWidget,
     );
-    expect(tester.getSize(find.byType(InkShellTabBar)).height, 44);
+    expect(tester.getSize(find.byType(InkShellTabBar)).height, InkShellTabBar.height);
     // 真实 l10n 文案接上了（_labelOf 的接线，不只是画了个壳）。
     expect(find.text('Sequence'), findsOneWidget);
   });

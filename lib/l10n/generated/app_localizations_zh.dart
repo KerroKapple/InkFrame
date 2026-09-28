@@ -169,10 +169,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsTitle => '设置';
 
   @override
-  String get settingsApiKeysSection => 'API Keys';
+  String get settingsApiKeysSection => 'API 密钥';
 
   @override
-  String get settingsApiKeysHint => 'Key 存储在系统钥匙串中，不会发送到任何外部服务。';
+  String get settingsApiKeysHint =>
+      'Key 存入 macOS 钥匙串 / Windows 凭据管理器，不进数据库、不随项目导出。';
 
   @override
   String get settingsApiKeyPlaceholder => 'sk-...';
@@ -213,7 +214,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsCustomProvidersEmpty => '暂无自定义服务商';
 
   @override
-  String get settingsCustomProvidersAdd => '添加服务商';
+  String get settingsCustomProvidersAdd => '添加自定义 Provider';
 
   @override
   String get settingsCustomProvidersRestartNotice => '更改已保存——重启 InkFrame 后生效';
@@ -470,7 +471,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsAboutLegalese =>
-      'InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 Cormorant Garamond 与 JetBrains Mono 字体（SIL OFL 1.1）。';
+      'InkFrame 以 MIT 许可发布。随附组件各自遵循其原许可：libmpv 与 FFmpeg（LGPL-2.1）、PostgreSQL（PostgreSQL License），以及 JetBrains Mono 字体（SIL OFL 1.1）。';
 
   @override
   String get settingsAboutUpdateCheckButton => '检查更新';
@@ -499,7 +500,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsAboutUpdateAutoCheckLabel => '启动时自动检查更新';
 
   @override
-  String get shellKeepLastCanvasTitle => '启动时恢复上次的画布';
+  String get shellKeepLastCanvasTitle => '启动时打开上次的画布';
 
   @override
   String get shellKeepLastCanvasSubtitle =>
@@ -518,6 +519,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get resultNodePending => '等待生成';
+
+  @override
+  String get nodeStatusReady => '已就绪';
+
+  @override
+  String get nodeStatusDraft => '待填写';
+
+  @override
+  String get nodeStatusDone => '完成';
+
+  @override
+  String get nodeStatusPending => '等待中';
 
   @override
   String get resultNodeImageMissing => '图片文件缺失';
@@ -575,13 +588,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorInputsEmpty => '无输入连线';
 
   @override
-  String get inspectorRoleReference => '参考图';
+  String get inspectorRoleReference => '参考帧';
 
   @override
-  String get inspectorRoleFirstFrame => '首帧';
+  String get inspectorRoleFirstFrame => '起始帧';
 
   @override
-  String get inspectorRoleLastFrame => '尾帧';
+  String get inspectorRoleLastFrame => '结束帧';
 
   @override
   String get inspectorRemoveInput => '移除输入';
@@ -739,13 +752,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorVideoCameraLabel => '运镜';
 
   @override
-  String get cameraStatic => '固定机位';
+  String get cameraStatic => '固定';
 
   @override
-  String get cameraPushIn => '推进';
+  String get cameraPushIn => '推镜';
 
   @override
-  String get cameraPullOut => '拉远';
+  String get cameraPullOut => '拉镜';
 
   @override
   String get cameraPanLeft => '左摇';
@@ -754,10 +767,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraPanRight => '右摇';
 
   @override
-  String get cameraTiltUp => '上仰';
+  String get cameraTiltUp => '仰摇';
 
   @override
-  String get cameraTiltDown => '下俯';
+  String get cameraTiltDown => '俯摇';
 
   @override
   String get cameraOrbit => '环绕';
@@ -964,10 +977,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioOpenCanvasFailed => '打开画布失败';
 
   @override
-  String get studioNoKeyBannerText => '尚未配置任何服务商 API Key——配置后才能生成。';
+  String get studioNoKeyBannerText => '尚未配置任何 API Key，生成功能不可用。';
 
   @override
-  String get studioNoKeyBannerAction => '前往设置配置';
+  String get studioNoKeyBannerAction => '前往设置';
 
   @override
   String get studioCreateSampleProject => '创建示例项目';
@@ -1203,7 +1216,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get gallerySavedAsCharacter => '已存为角色';
 
   @override
-  String get galleryKindImage => '图片';
+  String get galleryKindImage => '图像';
 
   @override
   String get galleryKindVideo => '视频';
@@ -1312,6 +1325,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commandPaletteTooltip => '命令面板';
 
   @override
+  String get commandPaletteEntryPlaceholder => '搜索项目、节点、产物…';
+
+  @override
   String get commandPaletteSearchHint => '输入命令…';
 
   @override
@@ -1374,6 +1390,180 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scriptImportFailed => '脚本导入失败，画布未做改动。';
 
   @override
+  String get inspectorGroupModel => '模型';
+
+  @override
+  String get inspectorGroupKeyframes => '关键帧';
+
+  @override
+  String get inspectorGroupCamera => '镜头运动';
+
+  @override
+  String get inspectorGroupShot => '分镜';
+
+  @override
+  String get inspectorEstimatedCostLabel => '预估费用';
+
+  @override
+  String get inspectorCameraUnsupported => '该供应商不支持运镜控制';
+
+  @override
+  String renderQueueConcurrency(int count) {
+    return '并发 $count';
+  }
+
+  @override
+  String get renderQueueLocate => '定位';
+
+  @override
+  String get canvasToolSelect => '选择';
+
+  @override
+  String get canvasToolPan => '平移';
+
+  @override
+  String get canvasToolLink => '连线';
+
+  @override
+  String get canvasToolTextNode => '文本节点';
+
+  @override
+  String get canvasToolImageNode => '图像节点';
+
+  @override
+  String get canvasToolVideoNode => '视频节点';
+
+  @override
+  String get canvasToolLane => '泳道';
+
+  @override
+  String get projectPanelCanvases => '画布';
+
+  @override
+  String get projectPanelAssets => '资产';
+
+  @override
+  String get projectPanelCharacters => '角色';
+
+  @override
+  String get projectPanelFilterHint => '筛选…';
+
+  @override
+  String get projectPanelCurrentNodes => '当前画布 · 节点';
+
+  @override
+  String get canvasHeaderLanes => '泳道：';
+
+  @override
+  String get canvasZoomFit => '适应';
+
+  @override
+  String get promptBarBaseStyle => '基础风格';
+
+  @override
+  String get promptBarAttached => '已附加';
+
+  @override
+  String promptBarChars(int count) {
+    return '$count 字';
+  }
+
+  @override
+  String get inspectorTabProperties => '属性';
+
+  @override
+  String get inspectorTabStatus => '状态';
+
+  @override
+  String get inspectorTabHistory => '历史';
+
+  @override
+  String get inspectorNoSelection => '选中一个节点以编辑参数';
+
+  @override
+  String get inspectorHintFollowsSelection => '参数随选中节点切换';
+
+  @override
+  String get renderQueueTabExportHistory => '导出历史';
+
+  @override
+  String get renderQueueColTask => '任务';
+
+  @override
+  String get renderQueueColType => '类型';
+
+  @override
+  String get renderQueueColProgress => '进度';
+
+  @override
+  String get renderQueueColElapsed => '耗时';
+
+  @override
+  String get renderQueueColModel => '模型';
+
+  @override
+  String get renderQueueClearDone => '清除已完成';
+
+  @override
+  String get renderQueueStatusRunning => '渲染中';
+
+  @override
+  String get renderQueueStatusDone => '完成';
+
+  @override
+  String get renderQueueStatusFailed => '失败';
+
+  @override
+  String get renderQueueStatusCancelled => '已取消';
+
+  @override
+  String statusBarNodesEdges(int nodes, int edges) {
+    return '$nodes 节点 · $edges 边';
+  }
+
+  @override
+  String statusBarSelected(int count) {
+    return '选中 $count';
+  }
+
+  @override
+  String statusBarStorage(String path) {
+    return '存储 $path';
+  }
+
+  @override
+  String statusBarProjects(int count) {
+    return '$count 个项目';
+  }
+
+  @override
+  String get shellActionImportScript => '导入脚本';
+
+  @override
+  String get shellActionSequencePreview => '序列预览';
+
+  @override
+  String get shellActionExportVideo => '导出视频';
+
+  @override
+  String get shellMenuFile => '文件';
+
+  @override
+  String get shellMenuEdit => '编辑';
+
+  @override
+  String get shellMenuCanvas => '画布';
+
+  @override
+  String get shellMenuNode => '节点';
+
+  @override
+  String get shellMenuWindow => '窗口';
+
+  @override
+  String get shellMenuHelp => '帮助';
+
+  @override
   String get shellTabStudio => '工作室';
 
   @override
@@ -1408,4 +1598,280 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get shellExportEmptyBody => '先打开一个画布，就能在这里导出它的视频结果。';
+
+  @override
+  String get galleryFilterGroupScope => '范围';
+
+  @override
+  String get galleryFilterGroupType => '类型';
+
+  @override
+  String get galleryFilterGroupModel => '模型';
+
+  @override
+  String get galleryFilterGroupMark => '标记';
+
+  @override
+  String get galleryFilterAllInProject => '本项目全部';
+
+  @override
+  String get galleryMarkCurrentLine => '当前线';
+
+  @override
+  String get galleryMarkInSequence => '已入序列';
+
+  @override
+  String get galleryThumbMedium => '中';
+
+  @override
+  String get galleryThumbLarge => '大';
+
+  @override
+  String get galleryThumbXLarge => '特大';
+
+  @override
+  String get galleryPanelInfo => '信息';
+
+  @override
+  String get galleryPanelLineage => '血缘';
+
+  @override
+  String get galleryGroupParams => '生成参数';
+
+  @override
+  String get galleryGroupPrompt => '提示词';
+
+  @override
+  String get galleryParamProvider => '服务商';
+
+  @override
+  String get galleryParamDuration => '片长';
+
+  @override
+  String get galleryParamCamera => '运镜方式';
+
+  @override
+  String get galleryParamKeyframes => '关键帧';
+
+  @override
+  String get galleryParamPrompt => '最终提示词';
+
+  @override
+  String get galleryParamBaseStyle => '基础风格';
+
+  @override
+  String galleryKeyframeRef(String role, String source) {
+    return '$role ← $source';
+  }
+
+  @override
+  String get galleryLineageTitle => '血缘 · 当前线';
+
+  @override
+  String get galleryLineageShotText => '分镜文本';
+
+  @override
+  String galleryLineageChosenOf(int count) {
+    return '从 $count 个结果中选定';
+  }
+
+  @override
+  String galleryLineageBranches(int count) {
+    return '+$count 分支';
+  }
+
+  @override
+  String get galleryLineageCurrent => '当前项';
+
+  @override
+  String galleryLineageInSequence(String index) {
+    return '已入序列 $index';
+  }
+
+  @override
+  String get galleryLocateInCanvas => '在画布中定位';
+
+  @override
+  String get galleryBreadcrumbAll => '全部产物';
+
+  @override
+  String galleryCounts(int images, int videos) {
+    return '$images 图 · $videos 视频';
+  }
+
+  @override
+  String galleryItemsShort(int count) {
+    return '$count 项';
+  }
+
+  @override
+  String statusBarGallery(int count, int selected) {
+    return '$count 项 · 已选 $selected';
+  }
+
+  @override
+  String get statusBarGalleryHint => '空格预览 · ↑↓ 切换 · 双击放大';
+
+  @override
+  String get galleryTimeJustNow => '刚刚';
+
+  @override
+  String galleryTimeMinutesAgo(int count) {
+    return '$count 分钟前';
+  }
+
+  @override
+  String galleryTimeHoursAgo(int count) {
+    return '$count 小时前';
+  }
+
+  @override
+  String galleryTimeDaysAgo(int count) {
+    return '$count 天前';
+  }
+
+  @override
+  String gallerySourceLine(String canvas, String time) {
+    return '$canvas · $time';
+  }
+
+  @override
+  String get galleryNoSelection => '选中一个产物查看信息';
+
+  @override
+  String get studioLibraryHeading => '库';
+
+  @override
+  String get studioLibraryAllProjects => '全部项目';
+
+  @override
+  String get studioSettings => '设置';
+
+  @override
+  String get studioNoKeyBannerHint => 'Key 存入系统钥匙串，不进数据库。';
+
+  @override
+  String get studioNoKeyBannerDismiss => '关闭';
+
+  @override
+  String get studioSortRecent => '排序：最近修改';
+
+  @override
+  String get studioViewGrid => '网格';
+
+  @override
+  String get studioResumeLabel => '上次离开时';
+
+  @override
+  String studioResumeName(String project, String canvas) {
+    return '$project · $canvas';
+  }
+
+  @override
+  String get studioResumeAction => '继续创作';
+
+  @override
+  String studioCardCanvasBadge(int count) {
+    return '$count 画布';
+  }
+
+  @override
+  String studioCardRendering(int count) {
+    return '$count 节点在渲染';
+  }
+
+  @override
+  String studioCardMeta(String time, String rendering) {
+    return '$time · $rendering';
+  }
+
+  @override
+  String get studioNewProjectHintBlank => '空白';
+
+  @override
+  String get studioNewProjectHintSample => '短剧示例';
+
+  @override
+  String get studioImportPackage => '导入项目包';
+
+  @override
+  String statusBarProjectsCanvases(int projects, int canvases) {
+    return '$projects 项目 · $canvases 画布';
+  }
+
+  @override
+  String get statusBarKeyMissing => '未配置 Key';
+
+  @override
+  String get statusBarKeyConfigured => '已配置 Key';
+
+  @override
+  String get commandPaletteGroupShots => '镜头 · 当前画布';
+
+  @override
+  String get commandPaletteGroupArtifacts => '产物';
+
+  @override
+  String get commandPaletteGroupActions => '动作';
+
+  @override
+  String commandPaletteResultCount(int count) {
+    return '$count 条结果';
+  }
+
+  @override
+  String get commandPaletteHintMove => '↑↓ 移动';
+
+  @override
+  String get commandPaletteHintOpen => '↵ 打开';
+
+  @override
+  String commandPaletteHintLocate(String key) {
+    return '$key 在画布中定位';
+  }
+
+  @override
+  String get commandPaletteHintClose => 'Esc 关闭';
+
+  @override
+  String commandPaletteShotPath(String project, String canvas, String type) {
+    return '$project › $canvas › $type';
+  }
+
+  @override
+  String get settingsNavGeneral => '常规';
+
+  @override
+  String get settingsNavNodeLayout => '节点布局';
+
+  @override
+  String get settingsColumnProvider => 'Provider';
+
+  @override
+  String get settingsColumnKey => 'Key';
+
+  @override
+  String get settingsColumnStatus => '状态';
+
+  @override
+  String get settingsFooterNote => '改动即时生效并写入钥匙串';
+
+  @override
+  String get settingsDone => '完成';
+
+  @override
+  String get settingsEscHint => 'Esc';
+
+  @override
+  String get settingsCloseTooltip => '关闭设置';
+
+  @override
+  String commandPaletteSequenceSegment(String index) {
+    return '序列 $index';
+  }
+
+  @override
+  String commandPaletteArtifactPath(String kind, String provider) {
+    return '画廊 › $kind › $provider';
+  }
 }

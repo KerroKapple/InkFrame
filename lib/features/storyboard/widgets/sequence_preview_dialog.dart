@@ -291,7 +291,7 @@ class _Frame extends StatelessWidget {
     final colors = context.inkColors;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: colors.surfaceCanvas,
+        color: colors.surface0,
         borderRadius: BorderRadius.circular(InkRadius.lg),
       ),
       child: ClipRRect(
@@ -336,7 +336,7 @@ class _NotesPlaceholder extends StatelessWidget {
           const SizedBox(height: InkSpacing.md),
           Text(
             missing ? l.sequencePreviewMissingFile : l.sequencePreviewNoArtifact,
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
           ),
           if (shot.notes != null) ...<Widget>[
             const SizedBox(height: InkSpacing.md),
@@ -432,7 +432,7 @@ class _ControlsBar extends StatelessWidget {
           const SizedBox(width: InkSpacing.sm),
           Text(
             l.sequencePreviewShotCounter(index + 1, total),
-            style: typo.caption.copyWith(color: colors.fg2),
+            style: typo.meta.copyWith(color: colors.fg2),
           ),
           IconButton(
             tooltip: l.lightboxClose,

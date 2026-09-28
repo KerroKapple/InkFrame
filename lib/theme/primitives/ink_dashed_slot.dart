@@ -1,7 +1,7 @@
 // InkDashedSlot：虚线边"未填"空槽容器。
 //
 // 用途：参考图空位、待填写的占位按钮。CustomPainter 画虚线 RRect 外框。
-// 默认 dash 6px / gap 4px；border 色取 inkColors.border；tap hover 淡色底。
+// 默认 dash 6px / gap 4px；border 色取 inkColors.outline；tap hover 淡色底。
 import 'package:flutter/material.dart';
 
 import '../app_theme.dart';
@@ -53,7 +53,7 @@ class _InkDashedSlotState extends State<InkDashedSlot> {
 
     final content = CustomPaint(
       painter: _DashedBorderPainter(
-        color: colors.border,
+        color: colors.outline,
         radius: widget.borderRadius,
         dashLength: widget.dashLength,
         gapLength: widget.gapLength,

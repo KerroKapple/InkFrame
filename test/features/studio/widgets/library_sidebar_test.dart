@@ -1,54 +1,57 @@
+// 库面板（Screens 稿第 1 屏）：「库」标题 + 全部项目（计数）/ 回收站（计数）+ 底部「设置」。
+// 稿上的「最近打开 / 归档 / 最近画布」无数据不画；旧的 project 树行与 LIBRARY 大写标题退役。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
-import 'package:inkframe/features/studio/controllers/studio_state.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/widgets/library_sidebar.dart';
+import 'package:inkframe/features/studio/widgets/trash_dialog.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
+import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/test_app.dart';
 
+List<ProjectWithCanvases> _two() => <ProjectWithCanvases>[
+      ProjectWithCanvases(id: 'p1', name: 'Alpha Project', createdAt: DateTime.utc(2026, 5, 1), canvases: const []),
+      ProjectWithCanvases(id: 'p2', name: 'Beta Project', createdAt: DateTime.utc(2026, 5, 2), canvases: const []),
+    ];
+
 void main() {
-  testWidgets('LibrarySidebar 渲染 LIBRARY 树；CV-1 死件（ARCHIVE/stub icons/"+"）不再出现',
-      (tester) async {
+  testWidgets('渲染「库」+ 全部项目（计数 2）+ 回收站 + 设置；旧树行 / 大写标题不再出现', (tester) async {
     await pumpInkApp(
       tester,
       const Scaffold(body: LibrarySidebar()),
       surfaceSize: const Size(400, 900),
       overrides: <Override>[
-        workspaceProjectsProvider.overrideWith((_) async => const []),
+        workspaceProjectsProvider.overrideWith((_) async => _two()),
+        projectRepositoryProvider.overrideWith((_) async => InMemoryProjectRepository()),
       ],
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('LIBRARY'), findsOneWidget);
-    // currentStudioProvider 默认 null → en 兜底 studioDefaultName。
-    expect(find.text('My Studio'), findsOneWidget);
-    expect(find.text('Projects'), findsOneWidget);
+    expect(find.text('Library'), findsOneWidget);
+    expect(find.text('All projects'), findsOneWidget);
+    expect(find.text('2'), findsOneWidget, reason: '全部项目的计数');
+    expect(find.text('Trash'), findsOneWidget);
+    expect(find.text('Settings'), findsOneWidget);
 
-    // CV-1（D-7 d6）：ARCHIVE 死行随裁（GAP-2 激活时再回）。
-    expect(find.text('ARCHIVE'), findsNothing);
-    expect(find.text('Archived Projects'), findsNothing);
-    // footer：接真的 settings + 回收站（LB-15/GAP-2 激活后 trash 以真入口回归）；
-    // archive/people 死 stub 仍不得出现。
-    expect(find.byIcon(Icons.settings_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.inventory_2_outlined), findsNothing);
-    expect(find.byIcon(Icons.person_outline), findsNothing);
-    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
-    // SectionLabel 的装饰性 '+'（无功能）已裁。
+    expect(find.text('LIBRARY'), findsNothing);
+    expect(find.text('My Studio'), findsNothing);
+    expect(find.text('Alpha Project'), findsNothing, reason: '稿上库面板不列项目');
     expect(find.byIcon(Icons.add), findsNothing);
   });
 
-  testWidgets('footer settings icon 点击打开设置浮层（shellControllerProvider）',
-      (tester) async {
+  testWidgets('「设置」行点击打开设置层（shellControllerProvider）', (tester) async {
     final container = ProviderContainer(overrides: <Override>[
       workspaceProjectsProvider.overrideWith((_) async => const []),
+      projectRepositoryProvider.overrideWith((_) async => InMemoryProjectRepository()),
     ]);
     addTearDown(container.dispose);
 
@@ -66,60 +69,28 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(container.read(shellControllerProvider).overlay, isNull);
-    await tester.tap(find.byIcon(Icons.settings_outlined));
+    await tester.tap(find.byKey(LibrarySidebar.settingsKey));
     await tester.pump();
     expect(container.read(shellControllerProvider).overlay, ShellOverlay.settings);
   });
 
-  testWidgets('LibrarySidebar 显示 project 行 + 点击切换 selectedProjectIdProvider',
-      (tester) async {
-    await tester.binding.setSurfaceSize(const Size(400, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final projects = <ProjectWithCanvases>[
-      ProjectWithCanvases(
-        id: 'p1',
-        name: 'Alpha Project',
-        createdAt: DateTime.utc(2026, 5, 1),
-        canvases: const [],
-      ),
-      ProjectWithCanvases(
-        id: 'p2',
-        name: 'Beta Project',
-        createdAt: DateTime.utc(2026, 5, 2),
-        canvases: const [],
-      ),
-    ];
-    final container = ProviderContainer(overrides: <Override>[
-      workspaceProjectsProvider.overrideWith((_) async => projects),
-    ]);
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(UncontrolledProviderScope(
-      container: container,
-      child: MaterialApp(
-        theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: const Scaffold(body: LibrarySidebar()),
-      ),
-    ));
+  testWidgets('「回收站」行点击打开回收站对话框', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: LibrarySidebar()),
+      surfaceSize: const Size(600, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith((_) async => const []),
+        projectRepositoryProvider.overrideWith((_) async => InMemoryProjectRepository()),
+      ],
+    );
     await tester.pumpAndSettle();
-
-    expect(find.text('Alpha Project'), findsOneWidget);
-    expect(find.text('Beta Project'), findsOneWidget);
-    expect(container.read(selectedProjectIdProvider), isNull);
-
-    await tester.tap(find.text('Alpha Project'));
-    await tester.pump();
-    expect(container.read(selectedProjectIdProvider), 'p1');
-
-    await tester.tap(find.text('Beta Project'));
-    await tester.pump();
-    expect(container.read(selectedProjectIdProvider), 'p2');
+    await tester.tap(find.byKey(LibrarySidebar.trashKey));
+    await tester.pumpAndSettle();
+    expect(find.byType(TrashDialog), findsOneWidget);
   });
 
-  testWidgets('LibrarySidebar loading 状态展示 CircularProgressIndicator',
-      (tester) async {
+  testWidgets('loading 态：计数先不出，行照常渲染', (tester) async {
     final completer = Completer<List<ProjectWithCanvases>>();
     addTearDown(() => completer.complete(const <ProjectWithCanvases>[]));
     await pumpInkApp(
@@ -128,9 +99,11 @@ void main() {
       surfaceSize: const Size(400, 900),
       overrides: <Override>[
         workspaceProjectsProvider.overrideWith((_) => completer.future),
+        projectRepositoryProvider.overrideWith((_) async => InMemoryProjectRepository()),
       ],
     );
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.text('All projects'), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
   });
 }

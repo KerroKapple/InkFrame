@@ -203,7 +203,7 @@ class _VideoPlaceholder extends StatelessWidget {
           const SizedBox(height: InkSpacing.xs),
           Text(
             text,
-            style: typo.caption.copyWith(color: colors.fg3),
+            style: typo.meta.copyWith(color: colors.fg3),
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,

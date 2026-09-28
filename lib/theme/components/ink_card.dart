@@ -30,7 +30,7 @@ class InkCard extends StatelessWidget {
           InkCardElevation.flat => InkShadow.card,
           InkCardElevation.raised => InkShadow.elevated,
         },
-        border: Border.all(color: colors.border, width: 1),
+        border: Border.all(color: colors.outline, width: 1),
       ),
       child: Padding(padding: padding, child: child),
     );

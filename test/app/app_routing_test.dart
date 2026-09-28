@@ -53,11 +53,13 @@ void main() {
       onstage: true,
       hittable: true,
     );
+    // 浮层形态（Screens 稿第 3 屏）：底下的标签体【仍在台上】——被遮暗但可见，
+    // 只是被 ShellOverlayLayer 的 ModalBarrier 挡住点不到。
     expectShellSurface<StudioHomeScreen>(
       mounted: true,
-      onstage: false,
+      onstage: true,
       hittable: false,
-      reason: 'tab 仍是 studio（浮层不改 tab）⇒ 槽已物化，但被浮层盖住',
+      reason: 'tab 仍是 studio（浮层不改 tab）⇒ 槽已物化、遮暗可见，但被浮层挡住点不穿',
     );
   }, timeout: const Timeout(Duration(seconds: 10)));
 
@@ -104,8 +106,9 @@ void main() {
     );
     expectShellSurface<StudioHomeScreen>(
       mounted: true,
-      onstage: false,
+      onstage: true,
       hittable: false,
+      reason: '浮层形态：标签体在台但被 ModalBarrier 挡住',
     );
   }, timeout: const Timeout(Duration(seconds: 10)));
 
@@ -130,9 +133,9 @@ void main() {
     );
     expectShellSurface<CanvasScreen>(
       mounted: true,
-      onstage: false,
+      onstage: true,
       hittable: false,
-      reason: '浮层盖住 ⇒ 画布离台且点不穿，但仍在树里（保活）',
+      reason: '浮层盖住 ⇒ 画布点不穿，但仍在台（遮暗可见）、仍在树里（保活）',
     );
   }, timeout: const Timeout(Duration(seconds: 10)));
 
@@ -157,8 +160,9 @@ void main() {
     );
     expectShellSurface<CanvasScreen>(
       mounted: true,
-      onstage: false,
+      onstage: true,
       hittable: false,
+      reason: '浮层形态：画布遮暗可见、点不穿',
     );
   }, timeout: const Timeout(Duration(seconds: 10)));
 

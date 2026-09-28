@@ -214,7 +214,7 @@ void main() {
         size: Size(1536, 984),
         minimumSize: Size(960, 600),
         titleBarStyle: TitleBarStyle.hidden,
-        backgroundColor: InkPalette.surfaceCanvasDark,
+        backgroundColor: InkPalette.surface0Dark,
       );
       await windowManager.setPreventClose(true);
       await windowManager.waitUntilReadyToShow(winOpts, () async {

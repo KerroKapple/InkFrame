@@ -34,7 +34,7 @@ void main() {
   group('hitTestEdge', () {
     test('点在线段中点 → 命中', () {
       final id = hitTestEdge(
-        point: const Offset(150, 150),
+        point: edgeMidpoint(source: nodeA, target: nodeB),
         edges: const [edgeAB],
         nodes: const [nodeA, nodeB],
       );
@@ -50,9 +50,10 @@ void main() {
       expect(id, isNull);
     });
 
-    test('点在源节点出点（右边中点）→ 命中（距离为 0）', () {
+    test('点在源节点出点（右缘端口）→ 命中（距离为 0）', () {
+      // 卡片渲染尺寸 224×172、端口 y=87（不读 node.size）。
       final id = hitTestEdge(
-        point: const Offset(100, 50),
+        point: const Offset(224, 87),
         edges: const [edgeAB],
         nodes: const [nodeA, nodeB],
       );
@@ -84,10 +85,9 @@ void main() {
         targetNodeId: 'c',
         edgeType: EdgeType.data,
       );
-      // 点 (50, 150) 距 a-c 线段（从 (50,50) 到 (50,250)）距离 0
-      // 距 a-b 线段（从 (50,50) 到 (250,250)）距离 ~70
+      // 取 a-c 曲线中点：距 a-c 为 0，距 a-b（靶在 (195,287)）远 > 10。
       final id = hitTestEdge(
-        point: const Offset(50, 150),
+        point: edgeMidpoint(source: nodeA, target: nodeC),
         edges: const [edgeAB, edgeAC],
         nodes: const [nodeA, nodeB, nodeC],
       );
@@ -137,16 +137,16 @@ void main() {
   });
 
   test('edgeMidpoint 返回连线曲线弧长中点（对称手柄下 ≈ 锚点几何中点）', () {
-    // a-out (100,50) → b-in (200,250)，水平对称手柄 → 中点 (150,150)。
+    // a-out (224,87) → b-in (195,287)，水平对称手柄 → 中点 (209.5,187)。
     final mid = edgeMidpoint(source: nodeA, target: nodeB);
-    expect(mid.dx, closeTo(150, 1));
-    expect(mid.dy, closeTo(150, 1));
+    expect(mid.dx, closeTo(209.5, 1));
+    expect(mid.dy, closeTo(187, 1));
   });
 
   group('竖向泳道命中（direction: vertical）', () {
     test('竖向锚点（源下边中点）→ 命中；同点在横向语义下未命中', () {
-      // a 下边中点 (50,100)。
-      const p = Offset(50, 100);
+      // a 下边中点：卡片渲染尺寸 224×172（不读 node.size）⇒ (112,172)。
+      const p = Offset(112, 172);
       expect(
         hitTestEdge(
           point: p,
@@ -167,14 +167,14 @@ void main() {
     });
 
     test('edgeMidpoint 竖向：对称手柄下 ≈ 锚点几何中点', () {
-      // a-out (50,100) → b-in (250,200) → 中点 (150,150)。
+      // a-out (112,172) → b-in (312,200) → 中点 (212,186)。
       final mid = edgeMidpoint(
         source: nodeA,
         target: nodeB,
         direction: LaneDirection.vertical,
       );
-      expect(mid.dx, closeTo(150, 1));
-      expect(mid.dy, closeTo(150, 1));
+      expect(mid.dx, closeTo(212, 1));
+      expect(mid.dy, closeTo(186, 1));
     });
   });
 }

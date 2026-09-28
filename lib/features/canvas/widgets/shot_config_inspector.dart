@@ -1,7 +1,9 @@
-// ShotConfigInspector：单选 shot 节点时的最简参数面板（分镜骨架）。
+// ShotConfigInspector：单选 shot 节点时的参数面板（Workspace v2 稿的分组样式）。
 //
-// shot 是真实节点类型（image/text/video/shot），此前无编辑面板。本面板先提供分镜
-// 备注（type_config.shot_notes），作为后续 storyboard→shot→序列 流水线的编辑起点。
+//   分镜     备注（type_config.shot_notes）
+//   镜头运动 片长（导演意图档位）/ 运镜方式（全量枚举）
+// 底部两个动作：用本镜备注生成图像（主）/ 生成视频（次，SB-4 带镜头级参数过去）。
+//
 // 持久化经 InspectorSubmitController.saveDebounced（防抖），与 image/video 面板同构。
 // 「用本镜备注生成图像」：以 shot_notes 为 prompt 在旁侧新建 image config 节点，
 // 并挂一条 narrative 边（shot→image），复用现有生成链路（M3 §1 首切片）。
@@ -16,12 +18,14 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../../../theme/typography.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
+import 'inspector_rows.dart';
 
 class ShotConfigInspector extends ConsumerStatefulWidget {
   const ShotConfigInspector({super.key, required this.node});
@@ -138,7 +142,7 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
     final addFailedMsg = context.l10n.canvasAddNodeFailed;
     final linkFailedMsg = context.l10n.inspectorShotLinkFailed;
     final position = widget.node.position +
-        Offset(widget.node.size.width + InkSpacing.xxl, 0);
+        Offset(kNodeCardSize.width + InkSpacing.xxl, 0);
     final nodes = ref.read(canvasNodesControllerProvider(canvasId).notifier);
     final edges = ref.read(canvasEdgesControllerProvider(canvasId).notifier);
     setState(() => _busy = true);
@@ -183,119 +187,127 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
   Widget build(BuildContext context) {
     final colors = context.inkColors;
     final typo = context.inkTypography;
-    return Container(
-      width: 320,
-      padding: const EdgeInsets.all(InkSpacing.lg),
-      decoration: BoxDecoration(
-        color: colors.surface1,
-        border: Border(left: BorderSide(color: colors.border)),
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    final l = context.l10n;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        InspectorGroup(
+          title: l.inspectorGroupShot,
           children: [
-            Text(
-              context.l10n.inspectorShotTitle,
-              style: typo.title.copyWith(color: colors.fg1),
-            ),
-            const SizedBox(height: InkSpacing.lg),
-            Text(
-              context.l10n.inspectorShotNotesLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
-            ),
-            const SizedBox(height: InkSpacing.xs),
-            InkInput(
-              controller: _notesCtrl,
-              hintText: context.l10n.inspectorShotNotesHint,
-              minLines: 4,
-              maxLines: 10,
-              onChanged: _onChanged,
-            ),
-            const SizedBox(height: InkSpacing.lg),
-            Text(
-              context.l10n.inspectorShotDurationLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
-            ),
-            const SizedBox(height: InkSpacing.xs),
-            DropdownButton<int?>(
-              value: _durationSec,
-              isExpanded: true,
-              items: <DropdownMenuItem<int?>>[
-                DropdownMenuItem<int?>(
-                  child: Text(context.l10n.inspectorShotParamUnset),
-                ),
-                for (final d in kShotDurationOptions)
-                  DropdownMenuItem<int?>(
-                    value: d,
-                    child: Text(context.l10n.inspectorVideoDurationOption(d)),
-                  ),
-              ],
-              onChanged: _busy
-                  ? null
-                  : (v) {
-                      setState(() => _durationSec = v);
-                      // 清空写 null 而不是省略键——省略会让 saveConfig 的
-                      // merge 保留旧值，用户点了「未设置」却清不掉。
-                      _save(<String, Object?>{
-                        'duration_ms': v == null ? null : v * 1000,
-                      });
-                    },
-            ),
-            const SizedBox(height: InkSpacing.md),
-            Text(
-              context.l10n.inspectorShotCameraLabel,
-              style: typo.caption.copyWith(color: colors.fg3),
-            ),
-            const SizedBox(height: InkSpacing.xs),
-            // 列**全量**枚举：shot 记的是意图，此刻还没选 provider。
-            // 生成时由 video inspector 的 supportedCameras 钳制收口。
-            DropdownButton<CameraMovement?>(
-              value: _camera,
-              isExpanded: true,
-              items: <DropdownMenuItem<CameraMovement?>>[
-                DropdownMenuItem<CameraMovement?>(
-                  child: Text(context.l10n.inspectorShotParamUnset),
-                ),
-                for (final c in CameraMovement.values)
-                  DropdownMenuItem<CameraMovement?>(
-                    value: c,
-                    child: Text(cameraMovementLabel(context, c)),
-                  ),
-              ],
-              onChanged: _busy
-                  ? null
-                  : (v) {
-                      setState(() => _camera = v);
-                      _save(<String, Object?>{'camera': v?.name});
-                    },
-            ),
-            const SizedBox(height: InkSpacing.xs),
-            Text(
-              context.l10n.inspectorShotParamHint,
-              style: typo.caption.copyWith(color: colors.fg4),
-            ),
-            const SizedBox(height: InkSpacing.lg),
-            FilledButton.icon(
-              onPressed: _canGenerate ? _generateImageFromNotes : null,
-              icon: const Icon(
-                Icons.add_photo_alternate_outlined,
-                size: InkSpacing.md,
+            InspectorRow(
+              label: l.inspectorShotNotesLabel,
+              height: null,
+              child: InkInput(
+                controller: _notesCtrl,
+                hintText: l.inspectorShotNotesHint,
+                minLines: 3,
+                maxLines: 10,
+                onChanged: _onChanged,
               ),
-              label: Text(context.l10n.inspectorShotGenerateImage),
-            ),
-            const SizedBox(height: InkSpacing.sm),
-            // SB-4：直达视频。次要按钮——图片是分镜的主流程，视频是进阶动作。
-            OutlinedButton.icon(
-              onPressed: _canGenerate ? _generateVideoFromNotes : null,
-              icon: const Icon(
-                Icons.movie_creation_outlined,
-                size: InkSpacing.md,
-              ),
-              label: Text(context.l10n.inspectorShotGenerateVideo),
             ),
           ],
         ),
-      ),
+        InspectorGroup(
+          title: l.inspectorGroupCamera,
+          children: [
+            InspectorRow(
+              label: l.inspectorShotDurationLabel,
+              child: InspectorDropdown<int?>(
+                value: _durationSec,
+                items: <DropdownMenuItem<int?>>[
+                  DropdownMenuItem<int?>(child: Text(l.inspectorShotParamUnset)),
+                  for (final d in kShotDurationOptions)
+                    DropdownMenuItem<int?>(
+                      value: d,
+                      child: Text(l.inspectorVideoDurationOption(d)),
+                    ),
+                ],
+                onChanged: _busy
+                    ? null
+                    : (v) {
+                        setState(() => _durationSec = v);
+                        // 清空写 null 而不是省略键——省略会让 saveConfig 的
+                        // merge 保留旧值，用户点了「未设置」却清不掉。
+                        _save(<String, Object?>{
+                          'duration_ms': v == null ? null : v * 1000,
+                        });
+                      },
+              ),
+            ),
+            // 列**全量**枚举：shot 记的是意图，此刻还没选 provider。
+            // 生成时由 video inspector 的 supportedCameras 钳制收口。
+            InspectorRow(
+              label: l.inspectorShotCameraLabel,
+              child: InspectorDropdown<CameraMovement?>(
+                value: _camera,
+                items: <DropdownMenuItem<CameraMovement?>>[
+                  DropdownMenuItem<CameraMovement?>(child: Text(l.inspectorShotParamUnset)),
+                  for (final c in CameraMovement.values)
+                    DropdownMenuItem<CameraMovement?>(
+                      value: c,
+                      child: Text(cameraMovementLabel(context, c)),
+                    ),
+                ],
+                onChanged: _busy
+                    ? null
+                    : (v) {
+                        setState(() => _camera = v);
+                        _save(<String, Object?>{'camera': v?.name});
+                      },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(InkSpacing.s12, InkSpacing.xs, InkSpacing.s12, 0),
+              child: Text(l.inspectorShotParamHint, style: typo.meta.copyWith(color: colors.fg6)),
+            ),
+          ],
+        ),
+        Padding(
+          padding: const EdgeInsets.all(InkSpacing.s12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              FilledButton.icon(
+                style: _primaryStyle(colors, typo),
+                onPressed: _canGenerate ? _generateImageFromNotes : null,
+                icon: const Icon(Icons.add_photo_alternate_outlined, size: InkSpacing.md),
+                label: Text(l.inspectorShotGenerateImage),
+              ),
+              const SizedBox(height: InkSpacing.s6),
+              // SB-4：直达视频。次要按钮——图片是分镜的主流程，视频是进阶动作。
+              OutlinedButton.icon(
+                style: _secondaryStyle(colors, typo),
+                onPressed: _canGenerate ? _generateVideoFromNotes : null,
+                icon: const Icon(Icons.movie_creation_outlined, size: InkSpacing.md),
+                label: Text(l.inspectorShotGenerateVideo),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
+
+  /// 稿的主按钮：琥珀底 + onAccent 字，26 高，3px 圆角。
+  static ButtonStyle _primaryStyle(InkColors c, InkTypography t) => FilledButton.styleFrom(
+        backgroundColor: c.accent,
+        foregroundColor: c.onAccent,
+        disabledBackgroundColor: c.surface5,
+        disabledForegroundColor: c.fg6,
+        minimumSize: const Size.fromHeight(26),
+        padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+        textStyle: t.bodyStrong,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(InkRadius.s3)),
+      );
+
+  /// 稿的次级按钮：透明底 + controlStrong 边。
+  static ButtonStyle _secondaryStyle(InkColors c, InkTypography t) => OutlinedButton.styleFrom(
+        foregroundColor: c.fg2,
+        disabledForegroundColor: c.fg6,
+        side: BorderSide(color: c.controlStrong),
+        minimumSize: const Size.fromHeight(26),
+        padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+        textStyle: t.body,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(InkRadius.s3)),
+      );
 }

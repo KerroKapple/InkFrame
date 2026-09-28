@@ -33,6 +33,9 @@ import 'job_queue/job_state_persister.dart';
 //   cancel pending = pendingIndex.remove + 标记 cancelled；queue 不重建
 //   dispatch loop  = 跳过 cancelled 条目并顺手出队（摊还 O(1)）
 //   FIFO / retry / status 机 契约外部不变。
+/// 全局并发上限（渲染队列面板只读显示）。
+const int kDefaultGlobalConcurrency = 2;
+
 class InMemoryJobQueueService implements JobQueueService {
   InMemoryJobQueueService({
     required ProviderRegistry registry,
@@ -43,7 +46,7 @@ class InMemoryJobQueueService implements JobQueueService {
     VideoDownloadService? videoDownloader,
     ThumbnailService? thumbnailService,
     LoggerService? logger,
-    int globalConcurrency = 2,
+    int globalConcurrency = kDefaultGlobalConcurrency,
     Duration pollInitialInterval = const Duration(seconds: 3),
     Duration pollMaxInterval = const Duration(seconds: 30),
     double pollBackoffMultiplier = 2.0,

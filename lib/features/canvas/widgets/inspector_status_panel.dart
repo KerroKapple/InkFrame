@@ -213,7 +213,7 @@ class _RunningPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: InkSpacing.xs),
-        Text(label, style: typo.caption.copyWith(color: colors.fg3)),
+        Text(label, style: typo.meta.copyWith(color: colors.fg3)),
       ],
     );
   }
@@ -256,7 +256,7 @@ class _ErrorPanel extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       message,
-                      style: typo.caption.copyWith(color: colors.fg3),
+                      style: typo.meta.copyWith(color: colors.fg3),
                     ),
                   ],
                 ),

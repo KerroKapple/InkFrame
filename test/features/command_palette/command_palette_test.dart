@@ -7,12 +7,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/project_archive.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/project_import_service.dart';
 import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
@@ -23,6 +25,7 @@ import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
+import '../../_harness/fake_repositories.dart';
 import '../../helpers/recording_logger.dart';
 
 /// 空画布节点集（隔离 DB DI）。
@@ -102,6 +105,16 @@ class _ChainOrderNodesController extends CanvasNodesController {
       ];
 }
 
+/// 三个图像 config 节点：cfg-a / cfg-b 在链上（边见 _ChainEdgesController），cfg-lone 孤立。
+class _ChainShotsController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => <CanvasNode>[
+        CanvasNode(id: 'cfg-a', label: 'cfg-a', type: CanvasNodeType.image, canvasId: canvasId),
+        CanvasNode(id: 'cfg-b', label: 'cfg-b', type: CanvasNodeType.image, canvasId: canvasId),
+        CanvasNode(id: 'cfg-lone', label: 'cfg-lone', type: CanvasNodeType.image, canvasId: canvasId),
+      ];
+}
+
 /// narrative 链 cfg-b → cfg-a（与 position.x 序刻意相反）。
 class _ChainEdgesController extends CanvasEdgesController {
   @override
@@ -112,6 +125,20 @@ class _ChainEdgesController extends CanvasEdgesController {
           sourceNodeId: 'cfg-b',
           targetNodeId: 'cfg-a',
           edgeType: EdgeType.narrative,
+        ),
+      ];
+}
+
+/// 带一个可搜到的图像 config 节点（「镜头 · 当前画布」组的数据源）。
+class _ShotNodesController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => <CanvasNode>[
+        CanvasNode(
+          id: 'img',
+          label: 'Sunrise',
+          type: CanvasNodeType.image,
+          projectId: 'p1',
+          canvasId: canvasId,
         ),
       ];
 }
@@ -160,7 +187,11 @@ Future<ProviderContainer> _pumpShell(
   WidgetTester tester, {
   List<Override> overrides = const <Override>[],
 }) async {
-  final container = ProviderContainer(overrides: overrides);
+  final container = ProviderContainer(overrides: <Override>[
+    // 「镜头」组的路径面包屑读画布名（canvases 表）——封住，别去起真 PG。
+    canvasRepositoryProvider.overrideWith((_) async => InMemoryCanvasRepository()),
+    ...overrides,
+  ]);
   addTearDown(container.dispose);
   await tester.binding.setSurfaceSize(const Size(1000, 800));
   addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -460,5 +491,86 @@ void main() {
     expect(find.text('Add video node'), findsNothing);
     expect(find.text('Add shot node'), findsNothing);
     expect(find.text('Import project…'), findsOneWidget);
+  });
+
+  // ---- 视觉重做（Screens 稿第 4 屏右）：三组 + 范围说明 + 计数 ----
+
+  testWidgets('有查询词时出「镜头 · 当前画布」组：只搜当前画布已加载的 config 节点',
+      (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_ShotNodesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas(
+          'c1',
+          withProject: const ProjectRef(id: 'p1', name: 'Alpha'),
+        );
+    await _warmNodes(container, 'c1');
+    await _pressCtrlK(tester);
+
+    // 空查询：只有动作组，镜头组不出现（不是搜索结果）。
+    expect(find.text('Actions'), findsOneWidget);
+    expect(find.text('Shots · current canvas'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'sun');
+    await tester.pumpAndSettle();
+    expect(find.text('Shots · current canvas'), findsOneWidget);
+    expect(find.text('Sunrise'), findsOneWidget);
+    expect(find.text('Actions'), findsNothing, reason: '没有动作匹配 sun');
+    expect(find.text('1 results'), findsOneWidget);
+  });
+
+  testWidgets('镜头路径第三段：在叙事链上写「序列 NNN」（链序，不是原序），链外写节点类型',
+      (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_ChainShotsController.new),
+      canvasEdgesControllerProvider.overrideWith(_ChainEdgesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    await _warmNodes(container, 'c1');
+    await _warmEdges(container, 'c1');
+    await _pressCtrlK(tester);
+    await tester.enterText(find.byType(TextField), 'cfg');
+    await tester.pumpAndSettle();
+
+    // 链 cfg-b → cfg-a：b 是 001、a 是 002；lone 不在链上 ⇒ 类型名。
+    expect(find.textContaining('Sequence 001'), findsOneWidget);
+    expect(find.textContaining('Sequence 002'), findsOneWidget);
+    final String pathA = tester.widget<Text>(find.textContaining('Sequence 002')).data!;
+    final String pathB = tester.widget<Text>(find.textContaining('Sequence 001')).data!;
+    expect(tester.getTopLeft(find.text(pathA)).dy, lessThan(tester.getTopLeft(find.text(pathB)).dy),
+        reason: '条目顺序是节点原序（cfg-a 在前、序号 002），序号却按链序——序号不是行号');
+    expect(find.textContaining('Sequence 003'), findsNothing);
+    expect(find.textContaining('Image'), findsWidgets, reason: 'cfg-lone 不在链上 ⇒ 第三段是类型名');
+  });
+
+  testWidgets('「设置项」组不存在；Studio 上下文有查询词也只出动作组', (tester) async {
+    await _pumpShell(tester);
+    await _pressCtrlK(tester);
+    await tester.enterText(find.byType(TextField), 'settings');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Actions'), findsOneWidget);
+    expect(find.text('Open settings'), findsOneWidget);
+    expect(find.text('Shots · current canvas'), findsNothing);
+    expect(find.text('Artifacts'), findsNothing);
+  });
+
+  testWidgets('↵ 打开镜头条目 = 在画布里选中该节点；面板关闭', (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_ShotNodesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    await _warmNodes(container, 'c1');
+    // 选择集 provider 是 autoDispose：真 app 里画布常驻 watch，这里补一个监听，
+    // 否则动作写完的选中态会在断言前被回收成空集。
+    container.listen(canvasSelectionControllerProvider('c1'), (_, _) {});
+    await _pressCtrlK(tester);
+    await tester.enterText(find.byType(TextField), 'sunrise');
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CommandPaletteDialog), findsNothing);
+    expect(container.read(canvasSelectionControllerProvider('c1')), <String>{'img'});
   });
 }

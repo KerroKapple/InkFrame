@@ -30,7 +30,7 @@ class ImageResultInspector extends ConsumerWidget {
       padding: const EdgeInsets.all(InkSpacing.lg),
       decoration: BoxDecoration(
         color: colors.surface1,
-        border: Border(left: BorderSide(color: colors.border)),
+        border: Border(left: BorderSide(color: colors.outline)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -38,7 +38,7 @@ class ImageResultInspector extends ConsumerWidget {
           children: [
             Text(
               context.l10n.inspectorResultTitle,
-              style: typo.title.copyWith(color: colors.fg1),
+              style: typo.sectionTitle.copyWith(color: colors.fg1),
             ),
             const SizedBox(height: InkSpacing.lg),
             BatchResultsGrid(resultNode: node),

@@ -24,6 +24,7 @@ void main() {
       overrides: <Override>[
         canvasRepositoryProvider.overrideWith((_) async => canvases),
         nodeRepositoryProvider.overrideWith((_) async => nodes),
+        edgeRepositoryProvider.overrideWith((_) async => InMemoryEdgeRepository()),
         batchResultRepositoryProvider.overrideWith((_) async => batch),
       ],
     );
