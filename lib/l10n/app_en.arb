@@ -849,7 +849,7 @@
   "sequenceArtifactVideo": "Video",
   "sequenceArtifactImage": "Image",
   "sequenceArtifactMissing": "Missing",
-  "sequenceChainNote": "Order is the narrative edges on the canvas. Reordering here rewrites the links; trims write back to the shot's in/out points.",
+  "sequenceChainNote": "Order is the narrative edges on the canvas — change the links there; this list is read-only.",
   "sequenceDeliveryTab": "Delivery",
   "sequenceDeliveryTargets": "Target software",
   "sequenceTargetResolve": "Resolve",
