@@ -30,6 +30,7 @@ import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/characters_controller.dart';
 import '../providers/inspector_submit_controller.dart';
+import '../providers/project_panel_tab.dart';
 
 /// 项目级角色一致性：把可复用角色挂到本 config 节点（写 type_config.character_ids），
 /// 并支持把已连的参考图「存为角色」。仅当 provider 支持参考图时真正生效（否则给提示）。
@@ -137,9 +138,29 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          context.l10n.inspectorCharactersLabel,
-          style: typo.meta.copyWith(color: colors.fg3),
+        Row(
+          children: [
+            Text(
+              context.l10n.inspectorCharactersLabel,
+              style: typo.meta.copyWith(color: colors.fg3),
+            ),
+            const Spacer(),
+            // 「管理」= 去左栏角色页。挂载区本身保持原样，这里只多一条去处。
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                key: const ValueKey<String>('characters-manage'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => ref
+                    .read(projectPanelTabProvider.notifier)
+                    .select(ProjectPanelTab.characters),
+                child: Text(
+                  context.l10n.characterManage,
+                  style: typo.micro.copyWith(color: colors.accent),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: InkSpacing.xs),
         if (!_supportsRefs)

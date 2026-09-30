@@ -1,8 +1,10 @@
 // CanvasProjectPanel：左侧项目面板 241px（稿 240 + 1px 右沿）。
 //
-// 三标签「画布 / 资产 / 角色」——资产与角色在仓库里没有面板内容（角色目前只在
-// 检查器里挂载），只画标签不挂交互，另开卡。
-// 22px 筛选字段：客户端过滤画布树与节点列表。
+// 三标签「画布 / 资产 / 角色」——P4 起「角色」页有真内容（CharacterLibraryPanel）；
+// 「资产」仍无页面体，故只画不挂点击（不给它假的可点态）。
+// 页签条为什么在本文件里重画：theme 层的 WsPanelTabs 没有 onTap，而它是另一条线
+// （批量复刻屏）也在用的共享件，这轮不动它；这里就地复刻同一几何并挂上点击。
+// 22px 筛选字段：只属于「画布」页（稿上角色页那个位置是说明行），随页签切换。
 // 画布树：activeProject 下的画布（workspaceProjectsProvider），行高 26，点击 openCanvas；
 // 当前画布 ▾ + surface5 底。计数列：CanvasRef 没有节点数，留空。
 // 当前画布节点列表：行高 24，方点 + 名称 + 类型；选中行 surface5，点击 = 单选。
@@ -21,6 +23,8 @@ import '../../studio/providers/workspace_projects_provider.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
+import '../providers/project_panel_tab.dart';
+import 'character_library_panel.dart';
 import 'node_card.dart';
 
 class CanvasProjectPanel extends ConsumerStatefulWidget {
@@ -47,23 +51,12 @@ class _CanvasProjectPanelState extends ConsumerState<CanvasProjectPanel> {
   @override
   Widget build(BuildContext context) {
     final c = context.inkColors;
-    final t = context.inkTypography;
     final l = context.l10n;
-    final String q = _filter.text.trim().toLowerCase();
-
     final ProjectRef? project = ref.watch(activeProjectProvider);
-    final List<CanvasRef> canvases = project == null
-        ? const <CanvasRef>[]
-        : (ref.watch(workspaceProjectsProvider).valueOrNull ?? const <ProjectWithCanvases>[])
-            .where((p) => p.id == project.id)
-            .expand((p) => p.canvases)
-            .where((cv) => q.isEmpty || cv.name.toLowerCase().contains(q))
-            .toList();
-    final List<CanvasNode> nodes =
-        (ref.watch(canvasNodesControllerProvider(widget.canvasId)).valueOrNull ?? const <CanvasNode>[])
-            .where((n) => q.isEmpty || nodeDisplayName(context, n).toLowerCase().contains(q))
-            .toList();
-    final Set<String> selected = ref.watch(canvasSelectionControllerProvider(widget.canvasId));
+    final ProjectPanelTab tab = ref.watch(projectPanelTabProvider);
+    final ProjectPanelTabController tabs = ref.read(
+      projectPanelTabProvider.notifier,
+    );
 
     return Container(
       width: CanvasProjectPanel.width,
@@ -74,52 +67,195 @@ class _CanvasProjectPanelState extends ConsumerState<CanvasProjectPanel> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          WsPanelTabs(
-            tabs: <String>[l.projectPanelCanvases, l.projectPanelAssets, l.projectPanelCharacters],
+          _PanelTabs(
+            active: tab.index,
             trailing: const WsPanelMenuGlyph(),
+            tabs: <(String, VoidCallback?)>[
+              (
+                l.projectPanelCanvases,
+                () => tabs.select(ProjectPanelTab.canvases),
+              ),
+              // 「资产」还没有页面体：不挂点击，免得画出一个点了没反应的页签。
+              (l.projectPanelAssets, null),
+              (
+                l.projectPanelCharacters,
+                () => tabs.select(ProjectPanelTab.characters),
+              ),
+            ],
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(InkSpacing.sm, InkSpacing.sm, InkSpacing.sm, InkSpacing.xs),
-            child: WsUnderlineField(
-              child: TextField(
-                controller: _filter,
-                onChanged: (_) => setState(() {}),
-                style: t.body.copyWith(color: c.fg2),
-                cursorColor: c.accent,
-                decoration: InputDecoration.collapsed(
-                  hintText: l.projectPanelFilterHint,
-                  hintStyle: t.body.copyWith(color: c.fg6),
+          Expanded(
+            child: switch (tab) {
+              ProjectPanelTab.characters when project != null =>
+                CharacterLibraryPanel(projectId: project.id),
+              // 无活动项目 = 角色页无数据源；退回画布页的既有形态，不画空壳。
+              ProjectPanelTab.characters ||
+              ProjectPanelTab.assets ||
+              ProjectPanelTab.canvases => _CanvasesPage(
+                canvasId: widget.canvasId,
+                project: project,
+                filter: _filter,
+                onFilterChanged: () => setState(() {}),
+              ),
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 「画布」页：22px 筛选字段 + 画布树 + 当前画布节点列表（P4 之前的整个面板体）。
+class _CanvasesPage extends ConsumerWidget {
+  const _CanvasesPage({
+    required this.canvasId,
+    required this.project,
+    required this.filter,
+    required this.onFilterChanged,
+  });
+
+  final String canvasId;
+  final ProjectRef? project;
+  final TextEditingController filter;
+  final VoidCallback onFilterChanged;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    final l = context.l10n;
+    final String q = filter.text.trim().toLowerCase();
+    final ProjectRef? p = project;
+
+    final List<CanvasRef> canvases = p == null
+        ? const <CanvasRef>[]
+        : (ref.watch(workspaceProjectsProvider).valueOrNull ?? const <ProjectWithCanvases>[])
+            .where((pr) => pr.id == p.id)
+            .expand((pr) => pr.canvases)
+            .where((cv) => q.isEmpty || cv.name.toLowerCase().contains(q))
+            .toList();
+    final List<CanvasNode> nodes =
+        (ref.watch(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[])
+            .where((n) => q.isEmpty || nodeDisplayName(context, n).toLowerCase().contains(q))
+            .toList();
+    final Set<String> selected = ref.watch(canvasSelectionControllerProvider(canvasId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(InkSpacing.sm, InkSpacing.sm, InkSpacing.sm, InkSpacing.xs),
+          child: WsUnderlineField(
+            child: TextField(
+              controller: filter,
+              onChanged: (_) => onFilterChanged(),
+              style: t.body.copyWith(color: c.fg2),
+              cursorColor: c.accent,
+              decoration: InputDecoration.collapsed(
+                hintText: l.projectPanelFilterHint,
+                hintStyle: t.body.copyWith(color: c.fg6),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.symmetric(vertical: InkSpacing.xs),
+            children: <Widget>[
+              for (final CanvasRef cv in canvases)
+                _CanvasRow(
+                  name: cv.name.isEmpty ? l.canvasDefaultName : cv.name,
+                  current: cv.id == canvasId,
+                  onTap: cv.id == canvasId
+                      ? null
+                      : () => ref.read(shellControllerProvider.notifier).openCanvas(cv.id),
+                ),
+              Container(height: 1, margin: const EdgeInsets.symmetric(vertical: InkSpacing.s6), color: c.borderStrong),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(InkSpacing.s12, InkSpacing.s6, InkSpacing.s12, InkSpacing.xs),
+                child: Text(l.projectPanelCurrentNodes, style: t.meta.copyWith(color: c.fg6)),
+              ),
+              for (final CanvasNode n in nodes)
+                _NodeRow(
+                  name: nodeDisplayName(context, n),
+                  kind: n.type.name,
+                  selected: selected.contains(n.id),
+                  onTap: () => ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(n.id),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// 可点的页签条。几何与 theme 层的 WsPanelTabs 逐项一致（29 高 = 28 content + 1px 下沿，
+/// 每格左右 12，选中 = surface3 底 + 1px accent 上边 + bodyStrong/fg1）；
+/// 差别只有一个：每格挂 onTap，null 即该页不可达（不做假可点）。
+class _PanelTabs extends StatelessWidget {
+  const _PanelTabs({required this.tabs, required this.active, this.trailing});
+
+  final List<(String, VoidCallback?)> tabs;
+  final int active;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    return Container(
+      height: WsPanelTabs.height,
+      decoration: BoxDecoration(
+        color: c.surface2,
+        border: Border(bottom: BorderSide(color: c.borderStrong)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          // 面板窄于标签总宽（英文文案）时从右侧裁掉，不报溢出。
+          Expanded(
+            child: ClipRect(
+              child: OverflowBox(
+                alignment: Alignment.centerLeft,
+                maxWidth: double.infinity,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    for (int i = 0; i < tabs.length; i++)
+                      MouseRegion(
+                        cursor: tabs[i].$2 == null
+                            ? SystemMouseCursors.basic
+                            : SystemMouseCursors.click,
+                        child: GestureDetector(
+                          key: ValueKey<String>('project-panel-tab-$i'),
+                          behavior: HitTestBehavior.opaque,
+                          onTap: tabs[i].$2,
+                          child: Container(
+                            height: WsPanelTabs.height - 1,
+                            padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+                            alignment: Alignment.center,
+                            decoration: i == active
+                                ? BoxDecoration(
+                                    color: c.surface3,
+                                    border: Border(top: BorderSide(color: c.accent)),
+                                  )
+                                : null,
+                            child: Text(
+                              tabs[i].$1,
+                              style: i == active
+                                  ? t.bodyStrong.copyWith(color: c.fg1)
+                                  : t.body.copyWith(color: c.fg5),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
               ),
             ),
           ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: InkSpacing.xs),
-              children: <Widget>[
-                for (final CanvasRef cv in canvases)
-                  _CanvasRow(
-                    name: cv.name.isEmpty ? l.canvasDefaultName : cv.name,
-                    current: cv.id == widget.canvasId,
-                    onTap: cv.id == widget.canvasId
-                        ? null
-                        : () => ref.read(shellControllerProvider.notifier).openCanvas(cv.id),
-                  ),
-                Container(height: 1, margin: const EdgeInsets.symmetric(vertical: InkSpacing.s6), color: c.borderStrong),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(InkSpacing.s12, InkSpacing.s6, InkSpacing.s12, InkSpacing.xs),
-                  child: Text(l.projectPanelCurrentNodes, style: t.meta.copyWith(color: c.fg6)),
-                ),
-                for (final CanvasNode n in nodes)
-                  _NodeRow(
-                    name: nodeDisplayName(context, n),
-                    kind: n.type.name,
-                    selected: selected.contains(n.id),
-                    onTap: () => ref.read(canvasSelectionControllerProvider(widget.canvasId).notifier).select(n.id),
-                  ),
-              ],
-            ),
-          ),
+          ?trailing,
         ],
       ),
     );
