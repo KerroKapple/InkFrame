@@ -19,7 +19,9 @@ for ($y = 0; $y -lt $h; $y++) {
     if (($dr -gt $Tol) -or ($dg -gt $Tol) -or ($db -gt $Tol)) {
       $diff++
       $d.SetPixel($x, $y, [System.Drawing.Color]::FromArgb(255, 255, 40, 40))
-      $k = [int]($y / 20); $bands[$k] = 1 + $(if ($bands.ContainsKey($k)) { $bands[$k] } else { 0 })
+      # [int] 在 PowerShell 里是四舍六入五取偶，不是截断：y=130 会落到带 6、y=150 落到带 8，
+      # 标签因此整体偏约 10 行（总百分比不受影响，但「差异集中在哪一带」一直是错的）。
+      $k = [Math]::Floor($y / 20); $bands[$k] = 1 + $(if ($bands.ContainsKey($k)) { $bands[$k] } else { 0 })
     } else {
       $g = [int](($pa.R + $pa.G + $pa.B) / 3 * 0.35)
       $d.SetPixel($x, $y, [System.Drawing.Color]::FromArgb(255, $g, $g, $g))

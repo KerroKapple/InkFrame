@@ -15,6 +15,7 @@ import 'package:flutter/rendering.dart';
 import 'features/workspace/batch_v2_screen.dart';
 import 'features/workspace/gallery_v2_screen.dart';
 import 'features/workspace/lanes_v2_screen.dart';
+import 'features/workspace/onboarding_v2_screen.dart';
 import 'features/workspace/palette_v2_screen.dart';
 import 'features/workspace/sequence_v2_screen.dart';
 import 'features/workspace/settings_v2_screen.dart';
@@ -23,7 +24,7 @@ import 'features/workspace/workspace_v2_screen.dart';
 import 'theme/app_theme.dart';
 
 const String _kOut = String.fromEnvironment('INKFRAME_REPLICA_OUT');
-/// 复刻哪一屏：workspace（默认）/ gallery / studio / palette / settings / lanes / sequence / batch。
+/// 复刻哪一屏：workspace（默认）/ gallery / studio / palette / settings / lanes / sequence / batch / onboarding。
 const String _kScreen = String.fromEnvironment('INKFRAME_REPLICA_SCREEN', defaultValue: 'workspace');
 
 void main() {
@@ -87,6 +88,7 @@ class _ReplicaHostState extends State<_ReplicaHost> {
             child: switch (_kScreen) {
               'gallery' => const GalleryV2Screen(),
               'studio' => const StudioV2Screen(),
+              'onboarding' => const OnboardingV2Screen(),
               'palette' => const PaletteV2Screen(),
               'settings' => const SettingsV2Screen(),
               'lanes' => const LanesV2Screen(),
