@@ -246,8 +246,39 @@ List<CanvasEdge> _inputsOf(GalleryGraph graph, String canvasId, String configId)
   return l;
 }
 
-int _artifactCountOf(GalleryGraph graph, List<CanvasNode> nodes, CanvasNode config) =>
-    resultsFor(sourceNodeId: config.id, nodes: nodes).length + graph.slotsOf(config.id).length;
+/// 一个 config 名下的全部批量 slot。
+///
+/// **batch_results.node_id 存的是 result 节点 id，不是 config 节点 id**
+/// （见 GenerationController 预建 slot 那段：`batchResults.create(nodeId: rNode, …)`）。
+/// 所以要先经 result 节点中转一层——直接 `graph.slotsOf(config.id)` 永远是空，
+/// 「转正后画廊跟着变」那条线会静默失效（P4 修）。
+/// 注意不能借 [resultsFor]：它要求产物 url 非空，而批量的 result 节点在转正之前
+/// 正是「有行、无 url」的容器，会被整个跳过。
+List<GalleryBatchSlot> _slotsOfConfig(
+  GalleryGraph graph,
+  List<CanvasNode> nodes,
+  CanvasNode config,
+) =>
+    <GalleryBatchSlot>[
+      for (final CanvasNode n in nodes)
+        if (n.role == NodeRole.result && n.sourceNodeId == config.id) ...graph.slotsOf(n.id),
+    ];
+
+/// 这个 config 一共产出多少份产物。
+///
+/// 批量的 result 节点是个容器（转正后才持有某一张），它本身不算一份——否则
+/// 4 张的批量会数成 1 + 4 = 5。所以：**带 slot 的 result 节点按它的 slot 数计，
+/// 不带 slot 的按 1 计**。
+int _artifactCountOf(GalleryGraph graph, List<CanvasNode> nodes, CanvasNode config) {
+  int n = 0;
+  for (final CanvasNode r in nodes) {
+    if (r.role != NodeRole.result || r.sourceNodeId != config.id) continue;
+    final int slots = graph.slotsOf(r.id).length;
+    // 带 slot 的 result 节点是容器，本身不算一份；不带 slot 的按有没有 url 计。
+    n += slots > 0 ? slots : ((r.imageUrl != null || r.videoUrl != null) ? 1 : 0);
+  }
+  return n;
+}
 
 class _Chosen {
   const _Chosen({required this.label, required this.thumbPath, required this.count});
@@ -259,7 +290,7 @@ class _Chosen {
 /// 上游 config「选定」的产物：有 promoted slot 用它（名后缀 #n），否则最新 result。
 _Chosen _chosenArtifactOf(GalleryGraph graph, List<CanvasNode> nodes, CanvasNode u) {
   final int count = _artifactCountOf(graph, nodes, u);
-  for (final GalleryBatchSlot s in graph.slotsOf(u.id)) {
+  for (final GalleryBatchSlot s in _slotsOfConfig(graph, nodes, u)) {
     if (s.promoted) {
       return _Chosen(label: '${u.label} #${s.slotIndex + 1}', thumbPath: s.outputUrl, count: count);
     }
