@@ -31,6 +31,7 @@ class SequenceShot {
     this.notes,
     this.relativePath,
     this.canvasId,
+    this.thumbnailRelativePath,
   });
 
   /// 链上贡献这一镜的节点 id（shot 节点，或没有 shot 包裹时的 config 节点）。
@@ -54,6 +55,10 @@ class SequenceShot {
   /// 但不做此假设，跟着产物走）。
   final String? canvasId;
 
+  /// 缩略图的画布相对路径（视频取 thumbnail_url，图片就是产物本身）；无产物为 null。
+  /// 序列视图的叙事链行 / V1 片段用它，不为列表去解视频。
+  final String? thumbnailRelativePath;
+
   Duration get duration => Duration(milliseconds: durationMs);
 
   @override
@@ -66,7 +71,8 @@ class SequenceShot {
           label == other.label &&
           notes == other.notes &&
           relativePath == other.relativePath &&
-          canvasId == other.canvasId;
+          canvasId == other.canvasId &&
+          thumbnailRelativePath == other.thumbnailRelativePath;
 
   @override
   int get hashCode => Object.hash(
@@ -77,6 +83,7 @@ class SequenceShot {
         notes,
         relativePath,
         canvasId,
+        thumbnailRelativePath,
       );
 
   @override

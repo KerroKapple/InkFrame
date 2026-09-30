@@ -31,7 +31,14 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/components/ink_shell_tab_bar.dart';
 import '../../../theme/components/ws_primitives.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/providers/canvas_nodes_controller.dart';
+import '../../canvas/providers/canvas_selection_controller.dart';
 import '../../canvas/providers/canvas_transform_controller.dart';
+import '../../export/open_export_dialog.dart';
+import '../../sequence/models/sequence_lens.dart';
+import '../../sequence/providers/sequence_lens_provider.dart';
+import '../../sequence/providers/sequence_playhead.dart';
+import '../util/tab_availability.dart';
 import '../../canvas/util/node_position.dart';
 import '../../gallery/models/gallery_item.dart';
 import '../../gallery/providers/gallery_view.dart';
@@ -72,6 +79,8 @@ class ShellTabBar extends ConsumerWidget {
   static const Key exportVideoKey = Key('shellAction-exportVideo');
   static const Key importPackageKey = Key('shellAction-importPackage');
   static const Key newProjectKey = Key('shellAction-newProject');
+  static const Key locateInCanvasKey = Key('shellAction-locateInCanvas');
+  static const Key exportMp4Key = Key('shellAction-exportMp4');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -108,6 +117,39 @@ class ShellTabBar extends ConsumerWidget {
       return InkShellTabBar(
         after: const ShellBreadcrumb(),
         actions: <Widget>[_GallerySaveAsCharacter(project: project)],
+        items: _items(l, s, nav),
+      );
+    }
+    if (s.tab == ShellTab.sequence && canvasId != null) {
+      // Timeline 稿：回到画布定位（次级）| 导出 mp4（次级）| 交付到 DaVinci Resolve（主）——交付随 P6，
+      // 不画哑键。导出的可用性 = 有可导出 video result 且外壳有项目上下文（BOARD 210）。
+      final SequenceLens lens = ref.watch(sequenceLensProvider(canvasId));
+      final int shotIndex = ref.watch(sequencePlayheadProvider(canvasId).select((SequencePlayhead p) => p.index));
+      final bool canLocate = shotIndex < lens.shots.length;
+      final bool canExport =
+          ref.watch(canvasNodesControllerProvider(canvasId).select(canExportVideo)) && project != null;
+      return InkShellTabBar(
+        after: const ShellBreadcrumb(),
+        actions: <Widget>[
+          _Action(
+            key: locateInCanvasKey,
+            label: l.shellActionLocateInCanvas,
+            onTap: !canLocate
+                ? () {}
+                : () {
+                    // 与 galleryLocateInCanvas 同序：先切标签再选中。
+                    nav.goTab(ShellTab.canvas);
+                    ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(lens.shots[shotIndex].nodeId);
+                  },
+            child: Opacity(opacity: canLocate ? 1 : 0.5, child: WsSecondaryButton(l.shellActionLocateInCanvas)),
+          ),
+          _Action(
+            key: exportMp4Key,
+            label: l.shellActionExportMp4,
+            onTap: !canExport ? () {} : () => openExportVideoDialogForCanvas(context, ref, canvasId),
+            child: Opacity(opacity: canExport ? 1 : 0.5, child: WsSecondaryButton(l.shellActionExportMp4)),
+          ),
+        ],
         items: _items(l, s, nav),
       );
     }

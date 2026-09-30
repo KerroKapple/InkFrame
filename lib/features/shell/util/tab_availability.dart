@@ -19,9 +19,10 @@ bool hasNarrativeEdges(AsyncValue<List<CanvasEdge>> async) =>
     (async.valueOrNull ?? const <CanvasEdge>[])
         .any((CanvasEdge e) => e.edgeType == EdgeType.narrative);
 
-/// 画布上是否有可导出的 video result（且带得出 projectId）。
-bool canExportVideo(AsyncValue<List<CanvasNode>> async) {
-  final List<CanvasNode> videoNodes =
-      exportableVideoNodes(async.valueOrNull ?? const <CanvasNode>[]);
-  return videoNodes.isNotEmpty && videoNodes.first.projectId != null;
-}
+/// 画布上是否有可导出的 video result。
+///
+/// BOARD 210（P2 收口）：不再从节点数据摸 projectId——那半个判据与已迁走的动作错位：
+/// 外壳里项目上下文完好、但"原序第一个"可导出 video 的 project_id 为空时，导出本来能跑却
+/// 被判成不可用。projectId 的真相源是 `ShellState.project`，由调用点一并判（同源）。
+bool canExportVideo(AsyncValue<List<CanvasNode>> async) =>
+    exportableVideoNodes(async.valueOrNull ?? const <CanvasNode>[]).isNotEmpty;

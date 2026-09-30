@@ -1,13 +1,15 @@
-// 序列 / 导出标签：可用性判据 + 空态 + 拉起既有对话框。
+// 序列 / 导出标签：可用性判据 + 空态 + （导出）拉起既有对话框 / （序列）常驻序列 lens。
 //
 // 本文件的用例【整体搬运】自 canvas_top_chrome_sequence_test.dart 与
 // canvas_top_chrome_export_test.dart——那两个文件随 CanvasTopChrome 删除，但
 // 覆盖面一条不许丢：判据本身（hasNarrativeEdges / canExportVideo）是原样搬到
-// lib/features/shell/util/tab_availability.dart 的纯函数，不是重写。
+// lib/features/shell/util/tab_availability.dart 的纯函数。P2（#237）改了一处：
+// canExportVideo 去掉 projectId 子判据，项目上下文改由调用方看 ShellState.project
+// （BOARD 210）——夹具 _shellWith 带 ProjectRef，所以导出组的禁用/可用语义不变。
 //
-// 与旧用例的唯一形状差异：入口从顶栏 IconButton 变成标签里的 InkGhostButton，
-// 于是断言从 IconButton.onPressed 改成 InkGhostButton.onPressed。禁用/可用的
-// 语义与 tooltip 文案一字未动。
+// 导出：入口从顶栏 IconButton 变成标签里的 InkGhostButton，断言从 IconButton.onPressed
+// 改成 InkGhostButton.onPressed。序列（P2）：不再是空态 + 对话框，有叙事边即渲染
+// SequenceScreen，无边显示既有的引导文案（不是灰按钮）。
 //
 // canvasId == null 那一支【不 watch 任何仓储】——序列/导出标签一旦 eager 碰
 // canvas/node/edge 仓储就会去起真内嵌 PG，boot 级测试会挂到 isolate 超时。
@@ -25,8 +27,8 @@ import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart'
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/shell/widgets/tabs/export_tab.dart';
+import 'package:inkframe/features/sequence/widgets/sequence_screen.dart';
 import 'package:inkframe/features/shell/widgets/tabs/sequence_tab.dart';
-import 'package:inkframe/features/storyboard/widgets/sequence_preview_dialog.dart';
 import 'package:inkframe/theme/primitives/ink_ghost_button.dart';
 
 import '../../_harness/test_app.dart';
@@ -171,6 +173,16 @@ const _shot = CanvasNode(
   typeConfig: <String, Object?>{'shot_notes': 'x'},
 );
 
+/// 叙事边 a→b 的另一端：两端都在场边才算链，序列 lens 只认链上的镜（P2）。
+const _shotB = CanvasNode(
+  id: 'b',
+  label: 'b',
+  type: CanvasNodeType.shot,
+  projectId: 'p1',
+  canvasId: 'c1',
+  typeConfig: <String, Object?>{'shot_notes': 'y'},
+);
+
 /// 播种外壳态（canvasId 是 ShellState 的派生投影，禁止 override 投影本身）。
 ///
 /// 打开画布的那一支必须同时带 project：_open 的 projectId 现在走
@@ -228,7 +240,10 @@ Future<void> _pumpSequence(
 }) async {
   await pumpInkApp(
     tester,
-    const Scaffold(body: SequenceTab()),
+    const Scaffold(body: SequenceTab(isVisible: true)),
+    // 序列 lens 三栏 320 | 监视器 | 320：默认 800 宽的测试面给监视器只剩 158，
+    // 生产窗口最小 960 都不会这么窄；按最小窗口以上给面。
+    surfaceSize: const Size(1280, 800),
     overrides: <Override>[
       _shellWith(canvasId: 'c1'),
       canvasNodesControllerProvider
@@ -387,81 +402,41 @@ void main() {
     });
   });
 
-  group('序列标签', () {
-    testWidgets('有 narrative 边 → 序列预览可用', (tester) async {
+  group('序列标签（P2：只读序列 lens 常驻，不再是空态 + 对话框）', () {
+    testWidgets('有 narrative 边 → 序列 lens 在树：叙事链首行 + 交付占位', (tester) async {
       await _pumpSequence(
         tester,
+        nodes: const <CanvasNode>[_shot, _shotB],
         edges: <CanvasEdge>[_edge('e1', EdgeType.narrative)],
       );
 
-      expect(find.byIcon(Icons.play_circle_outline), findsOneWidget);
-      expect(_cta(tester, Icons.play_circle_outline).onPressed, isNotNull);
+      expect(find.byType(SequenceScreen), findsOneWidget);
+      expect(find.byKey(SequenceScreen.chainRowKey(0)), findsOneWidget);
+      expect(find.byKey(SequenceScreen.deliveryPlaceholderKey), findsOneWidget,
+          reason: '交付面板位置放空态占位（交付随 P6）');
     });
 
-    testWidgets('无边 → 禁用', (tester) async {
+    testWidgets('无边 → 引导文案（不是灰按钮），lens 不在树', (tester) async {
       await _pumpSequence(tester, edges: const <CanvasEdge>[]);
 
-      expect(_cta(tester, Icons.play_circle_outline).onPressed, isNull);
+      expect(find.byType(SequenceScreen), findsNothing);
+      expect(
+        find.text('Link shots with narrative edges to preview a sequence'),
+        findsOneWidget,
+      );
     });
 
-    testWidgets('只有 data / generation_source 边 → 仍禁用（不是叙事链）',
+    testWidgets('只有 data / generation_source 边 → 仍是引导文案（不是叙事链）',
         (tester) async {
       await _pumpSequence(tester, edges: <CanvasEdge>[
         _edge('e1', EdgeType.data),
         _edge('e2', EdgeType.generationSource),
       ]);
 
-      expect(_cta(tester, Icons.play_circle_outline).onPressed, isNull);
-    });
-
-    testWidgets('点击打开序列预览对话框', (tester) async {
-      await _pumpSequence(
-        tester,
-        edges: <CanvasEdge>[_edge('e1', EdgeType.narrative)],
-      );
-
-      await tester.tap(find.byIcon(Icons.play_circle_outline));
-      await tester.pump(); // 起 route 过渡
-      await tester.pump(const Duration(milliseconds: 400)); // 过渡走完 + 首帧回调
-
-      // 单个无产物的 shot → 占位文案在场即证明清单构建与对话框都通了。
-      expect(find.text('Not generated yet'), findsOneWidget);
-
-      await tester.pumpWidget(const SizedBox.shrink()); // 收尾:走 dispose 取消定时器
-    });
-
-    // 【本 PR 的核心取舍，不许静默失效】序列预览的 media_kit Player 从 initState
-    // 持有到 dispose 且自动播放。正因如此第 1 步才决定：序列标签只做空态 + 拉起
-    // 对话框，而【不】把 SequencePreviewContent 抬成常驻标签视图——抬上去它就会
-    // 在后台标签里一直播。这条约束只有"关掉对话框后 SequencePreviewContent 不在
-    // 树里"能守住。
-    //
-    // skipOffstage: false 是必需的：默认 true 会跳过 Offstage 子树（保活宿主正是
-    // 靠 Offstage 藏起非活动标签），一条"不在树里"的断言不写 false 就是假绿
-    // ——本分支已经因此踩过 2/7 例恒真。
-    testWidgets('关闭序列对话框后 SequencePreviewContent 离树（Player 已 dispose）',
-        (tester) async {
-      await _pumpSequence(
-        tester,
-        edges: <CanvasEdge>[_edge('e1', EdgeType.narrative)],
-      );
-
-      await tester.tap(find.byIcon(Icons.play_circle_outline));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byType(SequenceScreen), findsNothing);
       expect(
-        find.byType(SequencePreviewContent, skipOffstage: false),
+        find.text('Link shots with narrative edges to preview a sequence'),
         findsOneWidget,
-        reason: '前置条件：对话框先得真的开出来，否则下面那条"离树"是恒真的',
-      );
-
-      await tester.tap(find.byIcon(Icons.close));
-      await tester.pumpAndSettle();
-
-      expect(
-        find.byType(SequencePreviewContent, skipOffstage: false),
-        findsNothing,
-        reason: '关掉后还留在树里 ⇒ media_kit Player 没 dispose ⇒ 后台标签里继续播',
       );
     });
 
@@ -470,7 +445,7 @@ void main() {
       final repos = _explodingRepos();
       await pumpInkApp(
         tester,
-        const Scaffold(body: SequenceTab()),
+        const Scaffold(body: SequenceTab(isVisible: true)),
         overrides: <Override>[_shellWith(), ...repos.overrides],
       );
       await tester.pumpAndSettle();

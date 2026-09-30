@@ -1945,6 +1945,93 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sequenceMonitorTitle => 'Program monitor';
+
+  @override
+  String get sequenceChainTab => 'Narrative chain';
+
+  @override
+  String sequenceUnchained(int count) {
+    return 'Unchained · $count';
+  }
+
+  @override
+  String get sequenceColumnShot => 'Shot';
+
+  @override
+  String get sequenceColumnDuration => 'Length';
+
+  @override
+  String get sequenceColumnArtifact => 'Output';
+
+  @override
+  String get sequenceArtifactVideo => 'Video';
+
+  @override
+  String get sequenceArtifactImage => 'Image';
+
+  @override
+  String get sequenceArtifactMissing => 'Missing';
+
+  @override
+  String get sequenceChainNote =>
+      'Order is the narrative edges on the canvas. Reordering here rewrites the links; trims write back to the shot\'s in/out points.';
+
+  @override
+  String get sequenceDeliveryTab => 'Delivery';
+
+  @override
+  String get sequenceDeliveryTargets => 'Target software';
+
+  @override
+  String get sequenceTargetResolve => 'Resolve';
+
+  @override
+  String get sequenceTargetPremiere => 'Premiere';
+
+  @override
+  String get sequenceTargetFinalCut => 'Final Cut';
+
+  @override
+  String get sequenceTargetJianying => 'Jianying';
+
+  @override
+  String get sequenceDeliveryPlaceholder => 'Delivery arrives with P6';
+
+  @override
+  String get sequenceTitle => 'Sequence';
+
+  @override
+  String get sequenceTotal => 'Total ';
+
+  @override
+  String sequenceCountSummary(int shots, int placeholders) {
+    return '$shots shots · $placeholders placeholder';
+  }
+
+  @override
+  String get sequenceMarkerTrack => 'Markers';
+
+  @override
+  String get sequenceTrackV1 => 'V1';
+
+  @override
+  String sequenceTrackV1Meta(int count) {
+    return 'Video · $count';
+  }
+
+  @override
+  String get shellActionLocateInCanvas => 'Locate in canvas';
+
+  @override
+  String get shellActionExportMp4 => 'Export mp4';
+
+  @override
+  String statusBarSequence(String project, int count) {
+    return '$project · Narrative chain · $count shots';
+  }
+
+  @override
   String get settingsNavGeneral => 'General';
 
   @override

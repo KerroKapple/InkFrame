@@ -24,6 +24,8 @@ import '../../canvas/providers/current_canvas_name.dart';
 import '../../gallery/models/gallery_selection.dart';
 import '../../gallery/providers/gallery_selection.dart';
 import '../../gallery/providers/gallery_view.dart';
+import '../../sequence/models/sequence_lens.dart';
+import '../../sequence/providers/sequence_lens_provider.dart';
 import '../../studio/models/project_with_canvases.dart';
 import '../../studio/providers/workspace_projects_provider.dart';
 import '../models/shell_state.dart';
@@ -62,6 +64,10 @@ class ShellStatusBar extends ConsumerWidget {
           ref.watch(gallerySelectionProvider(s.project!.id).select((GallerySelection x) => x.count));
       left.add(l.statusBarGallery(count, selected));
       left.add(l.statusBarGalleryHint);
+    } else if (s.tab == ShellTab.sequence && s.canvasId != null) {
+      // 稿：山径破晓 · 叙事链 · 8 镜 | 选中片段入出点（无字段）| 上次交付（无字段）
+      final int shots = ref.watch(sequenceLensProvider(s.canvasId!).select((SequenceLens x) => x.shots.length));
+      left.add(l.statusBarSequence(s.project?.name ?? l.shellBreadcrumbNoProject, shots));
     } else if (s.tab == ShellTab.studio) {
       // 稿：4 项目 · 11 画布 | 存储 42.3 GB · 可用 128 GB（无字段，不画）| 未配置 Key | 版本
       final List<ProjectWithCanvases> projects =

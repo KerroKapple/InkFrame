@@ -1870,6 +1870,93 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get sequenceMonitorTitle => '节目监视器';
+
+  @override
+  String get sequenceChainTab => '叙事链';
+
+  @override
+  String sequenceUnchained(int count) {
+    return '未入链 · $count';
+  }
+
+  @override
+  String get sequenceColumnShot => '镜头';
+
+  @override
+  String get sequenceColumnDuration => '片长';
+
+  @override
+  String get sequenceColumnArtifact => '产物';
+
+  @override
+  String get sequenceArtifactVideo => '视频';
+
+  @override
+  String get sequenceArtifactImage => '图像';
+
+  @override
+  String get sequenceArtifactMissing => '缺失';
+
+  @override
+  String get sequenceChainNote =>
+      '顺序即画布上的 narrative 边。这里拖动排序会改写连线；裁切写回镜头节点的入出点。';
+
+  @override
+  String get sequenceDeliveryTab => '交付';
+
+  @override
+  String get sequenceDeliveryTargets => '目标软件';
+
+  @override
+  String get sequenceTargetResolve => 'Resolve';
+
+  @override
+  String get sequenceTargetPremiere => 'Premiere';
+
+  @override
+  String get sequenceTargetFinalCut => 'Final Cut';
+
+  @override
+  String get sequenceTargetJianying => '剪映';
+
+  @override
+  String get sequenceDeliveryPlaceholder => '交付随 P6 到来';
+
+  @override
+  String get sequenceTitle => '序列';
+
+  @override
+  String get sequenceTotal => '总长 ';
+
+  @override
+  String sequenceCountSummary(int shots, int placeholders) {
+    return '$shots 镜 · $placeholders 占位';
+  }
+
+  @override
+  String get sequenceMarkerTrack => '标记';
+
+  @override
+  String get sequenceTrackV1 => 'V1';
+
+  @override
+  String sequenceTrackV1Meta(int count) {
+    return '视频 · $count';
+  }
+
+  @override
+  String get shellActionLocateInCanvas => '回到画布定位';
+
+  @override
+  String get shellActionExportMp4 => '导出 mp4';
+
+  @override
+  String statusBarSequence(String project, int count) {
+    return '$project · 叙事链 · $count 镜';
+  }
+
+  @override
   String get settingsNavGeneral => '常规';
 
   @override
