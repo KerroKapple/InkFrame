@@ -453,14 +453,18 @@ class _CharacterEditDialogState extends ConsumerState<CharacterEditDialog> {
     final String name = _name.text.trim();
     final String description = _description.text.trim();
     final NavigatorState nav = Navigator.of(context);
+    // 两处写都要先把 notifier 取成局部量：改名成功后才 await 描述那一步，期间
+    // 对话框可能已被关掉（角色在别处被删 → build 收内容 → dispose），第二次再走
+    // `_controller` getter 就是 await 之后碰 ref，抛 ref-after-dispose。
+    final CharactersController ctrl = _controller;
     if (name.isNotEmpty && name != current.name) {
-      if (!await _guard(() => _controller.rename(widget.characterId, name))) {
+      if (!await _guard(() => ctrl.rename(widget.characterId, name))) {
         return;
       }
     }
     if (description != current.description) {
       if (!await _guard(
-        () => _controller.setDescription(widget.characterId, description),
+        () => ctrl.setDescription(widget.characterId, description),
       )) {
         return;
       }

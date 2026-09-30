@@ -234,9 +234,9 @@ lib/
 ├── features/                          # Feature modules (vertical slices)
 │   ├── canvas/                        # Node canvas
 │   │   ├── models/
-│   │   ├── providers/                 # Riverpod ViewModels
-│   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart (运镜 / 景别 / 机位角度 / 焦段 → ARB 文案 + parseCameraMovement + shotLanguageSummary)
-│   │   └── widgets/
+│   │   ├── providers/                 # Riverpod ViewModels; P4 起还有 project_panel_tab.dart（左栏三页签选中态，非 autoDispose——「管理」链接要跨子树把左栏切到角色页）+ character_usage.dart（角色 id → 引用它的 config 节点，只数 config、跨全项目画布、按节点 id 去重；数据源复用 galleryGraphProvider，挂/摘角色后由 CharactersSection 定点 invalidate）
+│   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart (运镜 / 景别 / 机位角度 / 焦段 → ARB 文案 + parseCameraMovement + shotLanguageSummary) + batch_slot_view.dart (P4: slot 行 → 四种呈现态 promoted/success/error/generating 的唯一判据 + canPromote/aspectRatio)
+│   │   └── widgets/                   # P4 批量：batch_results_grid.dart（检查器内联 2×N 网格，宿主 image_result_inspector.dart 只剩一层 s12 内边距——宽度跟面板走）/ batch_compare_overlay.dart（全屏并排对比；「叠加对比」是禁用标签，不做清单）/ batch_slot_parts.dart（BatchSlotImage + BatchTappable + runBatchSlotAction——slot 动作的统一执行口，只捕具体失败类型并落 toast）。P4 角色：character_library_panel.dart（左栏角色页，行 = 缩略图 + 名 + 「N 张参考图 · M 处引用」+ ⋯ 菜单）/ character_edit_dialog.dart（改名 + 描述 + 参考图增删拖排 + 「被引用」）
 │   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps InkShell). Screens 稿第 4 屏右：跨实体搜索，三组「镜头 · 当前画布 / 产物 / 动作」
 │   │   ├── palette_entry.dart         # PaletteEntry / PaletteChoice（hand-written value objects; run = ↵ 打开, locate = ⌘↵ 在画布中定位）
 │   │   ├── palette_search.dart        # buildPaletteEntries — 镜头组只搜当前画布已加载节点（不为搜索读库）、产物组复用 galleryController、动作组 = buildCommandActions
@@ -253,9 +253,9 @@ lib/
 │   │   ├── util/                      # gallery_meta.dart (pure: meta / lineage / narrative-chain marks) + gallery_time.dart
 │   │   └── widgets/                   # gallery_screen / gallery_filter_panel / gallery_grid + gallery_tile / gallery_info_panel / gallery_actions (save-as-character, locate-in-canvas)
 │   ├── generation/                    # Generation flow UI + state (no widgets/ — panel retired in #164)
-│   │   ├── generation_controller.dart # P3: 镜头语言英文前缀注入 fullPrompt；camera 参数只在 provider 声明 supportedCameras 时下发
+│   │   ├── generation_controller.dart # P3: 镜头语言英文前缀注入 fullPrompt；camera 参数只在 provider 声明 supportedCameras 时下发。P4: submitFromConfigNode 收 seedOverride（只对这一次生效、不写回节点）+ 挂载角色的 description 按 character_ids 顺序注入提示词（与参考图共用同一道能力位门）
 │   │   ├── models/
-│   │   ├── providers/
+│   │   ├── providers/                 # P4: batch_results_controller.dart（某 result 节点下的 slot 列表 + 转正/重跑/取消三个动作的唯一入口；转正在一个事务里改节点产物 + 清同节点旧 promoted + 标本行，然后定点重建画布节点集合）+ batch_job_progress.dart（jobId → 进度，family 化避免注册表任何一条 job 变动都重建整屏）
 │   │   └── services/                  # prompt_assembler + shot_language_prompt.dart (P3: 镜头语言 → 英文提示词前缀，不 i18n) + cost_estimator
 │   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
 │   │   ├── settings_screen.dart       # SettingsScreen (dialog frame + nav + page bodies + footer 完成/导出诊断包); pages = 常规 / API 密钥 / 节点布局 / 存储 / 关于

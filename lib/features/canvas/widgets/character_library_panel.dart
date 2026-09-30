@@ -240,7 +240,9 @@ class _CharacterLibraryRowState extends ConsumerState<CharacterLibraryRow> {
                 type: MaterialType.transparency,
                 child: PopupMenuButton<_CharacterAction>(
                   key: ValueKey<String>('character-menu-${ch.id}'),
-                  tooltip: ch.name,
+                  // 不设 tooltip：按钮的 tooltip 说的是「点了会怎样」，填角色名会把
+                  // 提示当正文用。留空走 MaterialLocalizations 的「显示菜单」。
+                  tooltip: null,
                   color: c.surface2,
                   padding: EdgeInsets.zero,
                   onSelected: (_CharacterAction a) => switch (a) {
@@ -354,15 +356,18 @@ class _CharacterLibraryRowState extends ConsumerState<CharacterLibraryRow> {
     );
   }
 
-  /// 仓储只抛 InkError；失败给 SnackBar，不崩 UI 也不假装成功。
+  /// 改名 / 删除只经仓储，仓储只抛 InkError；失败给 SnackBar，不崩 UI 也不假装成功。
+  ///
+  /// 文案走 l10nError：这里的失败可能是磁盘满、连接断，套「角色导入失败」会把用户
+  /// 引到一个跟本次操作无关的方向（这两条路径根本不导入任何文件）。
   Future<void> _guard(Future<void> Function() action) async {
     try {
       await action();
-    } on InkError catch (_) {
+    } on InkError catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
-      );
+      ScaffoldMessenger.maybeOf(
+        context,
+      )?.showSnackBar(SnackBar(content: Text(l10nError(context, e))));
     }
   }
 }
@@ -445,7 +450,20 @@ Future<void> createCharacterFromFile(
     await ref
         .read(charactersControllerProvider(projectId).notifier)
         .createFromImage(name: trimmed, sourceAbsolutePath: file.path);
-  } on InkError catch (_) {
+  } on InkError catch (e) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.maybeOf(
+      context,
+    )?.showSnackBar(SnackBar(content: Text(l10nError(context, e))));
+  } on CharacterAssetError catch (_) {
+    // 捕获集 = createFromImage 的真实抛出集（仓储 InkError / 资产服务 / dart:io）。
+    // 后两类不是 InkError，只接 InkError 会让「选了个坏文件」变成未捕获异步异常：
+    // 用户点了没反应，只多一份 crash 文件。
+    if (!context.mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+    );
+  } on FileSystemException catch (_) {
     if (!context.mounted) return;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),

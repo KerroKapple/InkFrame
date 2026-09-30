@@ -285,7 +285,6 @@
   "inspectorPresetsNameHint": "预设名称",
 
   "batchResultsLabel": "批量结果",
-  "inspectorResultTitle": "结果",
 
   "inspectorShotTitle": "分镜",
   "inspectorShotNotesLabel": "分镜备注",
@@ -833,6 +832,9 @@
   "batchRerunWithSeed": "以该种子重跑",
   "batchRerunWithSeedUnavailable": "这一格没有记录种子",
   "batchCancelWholeBatch": "取消整批",
+  "batchSlotBadge": "slot #{index}",
+  "@batchSlotBadge": { "placeholders": { "index": { "type": "int" } } },
+  "batchRerunWholeBatchHint": "重跑一次就是整批重来，新图落在新节点上；单格没法单独重跑。",
   "batchOpenCompare": "打开足尺对比",
 
   "characterLibraryHint": "项目级 · 跨画布复用",

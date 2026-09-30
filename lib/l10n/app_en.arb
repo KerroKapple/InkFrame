@@ -294,7 +294,6 @@
   "inspectorPresetsNameHint": "Preset name",
 
   "batchResultsLabel": "Batch results",
-  "inspectorResultTitle": "Result",
 
   "inspectorShotTitle": "Shot",
   "inspectorShotNotesLabel": "Shot notes",
@@ -910,12 +909,15 @@
   "batchRerunWithSeed": "Rerun with this seed",
   "batchRerunWithSeedUnavailable": "No seed recorded for this slot",
   "batchCancelWholeBatch": "Cancel the whole batch",
+  "batchSlotBadge": "slot #{index}",
+  "@batchSlotBadge": { "placeholders": { "index": { "type": "int" } } },
+  "batchRerunWholeBatchHint": "One rerun re-runs the whole batch and the new images land on a new node; a single slot cannot be re-run on its own.",
   "batchOpenCompare": "Open full-size comparison",
 
   "characterLibraryHint": "Project-wide · reused across canvases",
-  "characterRefAndUsage": "{refs} reference images · {usages} uses",
+  "characterRefAndUsage": "{refs, plural, =1{1 reference image} other{{refs} reference images}} · {usages, plural, =1{1 use} other{{usages} uses}}",
   "@characterRefAndUsage": { "placeholders": { "refs": { "type": "int" }, "usages": { "type": "int" } } },
-  "characterRefAndUsageNone": "{refs} reference images · unused",
+  "characterRefAndUsageNone": "{refs, plural, =0{No reference images} =1{1 reference image} other{{refs} reference images}} · unused",
   "@characterRefAndUsageNone": { "placeholders": { "refs": { "type": "int" } } },
   "characterNew": "New character",
   "characterMenuEdit": "Edit",

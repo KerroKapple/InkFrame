@@ -5,6 +5,7 @@ import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/models/batch_result.dart';
+import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
 import 'package:inkframe/features/generation/providers/batch_results_controller.dart';
 
@@ -12,12 +13,22 @@ import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_unit_of_work.dart';
 
 class _FakeNodeRepo implements NodeRepository {
-  /// 转正后要靠 canvas_id 定点 invalidate 画布节点集合——这里给一个非空值，
-  /// 让那条分支真的被走到（测试容器里该 family 没人监听，invalidate 是 no-op）。
+  /// 转正后要靠 canvas_id 定点 invalidate 画布节点集合；findById 回这个值，
+  /// 「转正后定点重建画布节点集合」那条用例就监听同名 family 数重建次数。
   static const String canvasId = 'c1';
 
   final List<(String, Map<String, Object?>)> patches =
       <(String, Map<String, Object?>)>[];
+
+  /// canvasNodesControllerProvider 每次 build 都会调一次——转正后画布缩略图有没有
+  /// 真的被重建，就数这个。
+  int listByCanvasCalls = 0;
+
+  @override
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async {
+    listByCanvasCalls++;
+    return const <Map<String, Object?>>[];
+  }
 
   @override
   Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async {
@@ -196,6 +207,35 @@ void main() {
       // 4. 状态已刷新
       expect(slotsOf('n1')[1].promoted, isTrue);
       expect(slotsOf('n1')[0].promoted, isFalse);
+    });
+
+    // a11e8ef 把这句 invalidate 写成了 `canvasId == '__never__'`——条件恒假，
+    // 转正后画布上的节点缩略图不会换图。原来的测试只让分支「有机会」被走到，
+    // 没断言结果，所以全绿。
+    test('转正后定点重建画布节点集合（缩略图跟着换图）', () async {
+      repo.rows['b1'] = _row(
+        id: 'b1',
+        slotIndex: 0,
+        outputUrl: 'images/new.png',
+      );
+      final notifier = await boot('n1');
+      final sub = container.listen(
+        canvasNodesControllerProvider(_FakeNodeRepo.canvasId),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      addTearDown(sub.close);
+      await container.read(
+        canvasNodesControllerProvider(_FakeNodeRepo.canvasId).future,
+      );
+      final int before = nodes.listByCanvasCalls;
+
+      await notifier.promote(slotsOf('n1').single);
+      await container.read(
+        canvasNodesControllerProvider(_FakeNodeRepo.canvasId).future,
+      );
+
+      expect(nodes.listByCanvasCalls, greaterThan(before));
     });
 
     test('不碰别的节点的 promoted 行', () async {

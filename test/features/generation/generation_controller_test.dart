@@ -594,6 +594,55 @@ void main() {
     expect(queue.lastTask!.prompt, full, reason: '下发给 provider 的就是这条');
   });
 
+  test('P4 角色描述：多角色按 character_ids 顺序，整体排在连线文本之后、用户提示词之前', () async {
+    // 顺序是注入契约的一部分：描述是「这个人一直长这样」的补充，属于随上下文带进来
+    // 的文本，既不能盖过用户这一次写的话，也不该插到连线文本前面。既有三例只断言
+    // 「描述在用户提示词之前」，两个角色互换、或描述与连线文本对调都测不出来。
+    useCapableProvider();
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'name': 'Hero',
+        'description': 'DESC-A',
+        'reference_image_paths': <String>['characters/a-0.png'],
+      },
+      'char-2': <String, Object?>{
+        'id': 'char-2',
+        'project_id': 'proj-1',
+        'name': 'Boy',
+        'description': 'DESC-B',
+        'reference_image_paths': <String>['characters/b-0.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(
+      characterIds: <String>['char-1', 'char-2'],
+    );
+    nodes.rows['txt1'] = <String, Object?>{
+      'id': 'txt1',
+      'canvas_id': 'cvx',
+      'project_id': 'proj-1',
+      'type': 'text',
+      'node_role': 'config',
+      'type_config': <String, Object?>{'text': 'TEXT-T'},
+    };
+    seedDataEdge(sourceId: 'txt1', targetId: cfg);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    final String full = jobs.creates.first['full_prompt']! as String;
+    final int t = full.indexOf('TEXT-T');
+    final int a = full.indexOf('DESC-A');
+    final int b = full.indexOf('DESC-B');
+    final int user = full.indexOf('a cat');
+    expect(<int>[t, a, b, user], everyElement(greaterThanOrEqualTo(0)),
+        reason: '四段都要在提示词里');
+    expect(t < a, isTrue, reason: '连线文本在角色描述之前');
+    expect(a < b, isTrue, reason: '多角色按 character_ids 的顺序，不是库里的顺序');
+    expect(b < user, isTrue, reason: '所有带进来的上下文都排在用户这一次写的话之前');
+  });
+
   test('P4 角色描述：provider maxRefImages=0 → 图注不进去，描述也不单独注', () async {
     useCapableProvider(maxRefImages: 0);
     characters = FakeCharacterRepo(<String, Map<String, Object?>>{

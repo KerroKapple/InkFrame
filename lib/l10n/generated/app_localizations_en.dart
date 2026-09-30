@@ -689,9 +689,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchResultsLabel => 'Batch results';
 
   @override
-  String get inspectorResultTitle => 'Result';
-
-  @override
   String get inspectorShotTitle => 'Shot';
 
   @override
@@ -2216,6 +2213,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchCancelWholeBatch => 'Cancel the whole batch';
 
   @override
+  String batchSlotBadge(int index) {
+    return 'slot #$index';
+  }
+
+  @override
+  String get batchRerunWholeBatchHint =>
+      'One rerun re-runs the whole batch and the new images land on a new node; a single slot cannot be re-run on its own.';
+
+  @override
   String get batchOpenCompare => 'Open full-size comparison';
 
   @override
@@ -2223,12 +2229,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String characterRefAndUsage(int refs, int usages) {
-    return '$refs reference images · $usages uses';
+    String _temp0 = intl.Intl.pluralLogic(
+      refs,
+      locale: localeName,
+      other: '$refs reference images',
+      one: '1 reference image',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      usages,
+      locale: localeName,
+      other: '$usages uses',
+      one: '1 use',
+    );
+    return '$_temp0 · $_temp1';
   }
 
   @override
   String characterRefAndUsageNone(int refs) {
-    return '$refs reference images · unused';
+    String _temp0 = intl.Intl.pluralLogic(
+      refs,
+      locale: localeName,
+      other: '$refs reference images',
+      one: '1 reference image',
+      zero: 'No reference images',
+    );
+    return '$_temp0 · unused';
   }
 
   @override

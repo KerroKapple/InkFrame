@@ -1,10 +1,11 @@
 // CharacterEditDialog widget 测试（P4）：560 宽编辑框的四组字段 + 底部条。
 //
-// 断言的是落库内容与禁用态，不是"控件在树上"：保存把名称/描述写进仓储行、
+// 断言的是落库内容与禁用态，不是"控件在树上"：开框即回填、保存把名称/描述写进仓储行、
 // ✕ 真的删掉那一张并连带删文件、拖动真的换了注入次序、达上限时「添加」格 onTap 为 null。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/db/columns.dart';
 import 'package:inkframe/core/di/character_assets.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -59,6 +60,24 @@ Map<String, Object?> _row({
   'description': description,
   'sort_order': 0,
 };
+
+/// 在既有 FakeCharacterRepo 之上只加一件事：把每次 update 的 patch 原样记下来。
+///
+/// 既有 fake 只留「最终行状态」，于是"一次写请求都没发"和"发了一次把值写回原样"
+/// 这两种截然不同的行为在断言里长得一模一样——`_save` 里"没改的那条不发写请求"
+/// 这条契约因此从来没被钉住过。patches 让写请求本身成为可断言对象。
+class _SpyCharacterRepo extends FakeCharacterRepo {
+  _SpyCharacterRepo([super.rows]);
+
+  /// 按调用顺序记下每次 update 的 patch（失败的那次也记——记的是"发出去了"）。
+  final List<Map<String, Object?>> patches = <Map<String, Object?>>[];
+
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) {
+    patches.add(patch);
+    return super.update(id, patch);
+  }
+}
 
 /// 打开编辑框的宿主：走 showCharacterEditDialog 这条真入口，不直接 pump 对话框
 /// （直接 pump 会让保存时的 Navigator.pop 落在根路由上）。
@@ -130,6 +149,33 @@ Future<void> _open(
 AppLocalizations _l(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byType(CharacterEditDialog)));
 
+/// 直接读输入框背后的 controller 文本——不经 enterText，才能看见"打开那一刻"的值。
+String _fieldText(WidgetTester tester, String key) =>
+    tester.widget<TextField>(find.byKey(ValueKey<String>(key))).controller!.text;
+
+/// 把第 [from] 格拖到第 [to] 格。整格即把手，Draggable 的 affinity 是横向，
+/// 所以一次横向 moveTo 就够起拖。[via] 用于先绕开再落回原位（自拖自）。
+Future<void> _dragRef(
+  WidgetTester tester, {
+  required int from,
+  required int to,
+  int? via,
+}) async {
+  Offset centerOf(int i) =>
+      tester.getCenter(find.byKey(ValueKey<String>('character-ref-$i')));
+
+  final TestGesture gesture = await tester.startGesture(centerOf(from));
+  await tester.pump();
+  if (via != null) {
+    await gesture.moveTo(centerOf(via));
+    await tester.pump();
+  }
+  await gesture.moveTo(centerOf(to));
+  await tester.pump();
+  await gesture.up();
+  await tester.pumpAndSettle();
+}
+
 void main() {
   test('参考图上限取所有已登记 provider 的 maxRefImages 最大值', () {
     expect(
@@ -141,6 +187,41 @@ void main() {
       6,
     );
     expect(maxReferenceImagesOf(const <caps.ProviderCapabilities>[]), 0);
+  });
+
+  // 钉 _CharacterEditDialogState.build 里的 `if (!_seeded) { ... }` 回填两行。
+  // 既有用例一律先 enterText 再断言，等于把回填结果整个覆盖掉——那两行被删也全绿，
+  // 而线上表现是"开框即空"。所以这里不许碰输入框，直接读 controller。
+  testWidgets('打开即回填：两个输入框的 controller 等于库里的名称与描述', (
+    WidgetTester tester,
+  ) async {
+    final FakeCharacterRepo repo = FakeCharacterRepo(
+      <String, Map<String, Object?>>{
+        _kCharacterId: _row(description: '灰褐色斗篷，左颊有旧疤'),
+      },
+    );
+    await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+
+    expect(_fieldText(tester, 'character-name-field'), '行者');
+    expect(_fieldText(tester, 'character-description-field'), '灰褐色斗篷，左颊有旧疤');
+  });
+
+  // 回填失效的真正后果不是"框里空着"，是"用户一个字没改点保存，描述被写成空串"。
+  // 这条用写请求的条数把它钉死：没改过就不该有任何 update 发出去。
+  testWidgets('一个字都没改点保存：一次 update 都不发', (WidgetTester tester) async {
+    final _SpyCharacterRepo repo = _SpyCharacterRepo(
+      <String, Map<String, Object?>>{
+        _kCharacterId: _row(description: '灰褐色斗篷，左颊有旧疤'),
+      },
+    );
+    await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+
+    await tester.tap(find.byKey(const ValueKey<String>('character-save')));
+    await tester.pumpAndSettle();
+
+    expect(repo.patches, isEmpty, reason: '没改动却发写请求 = 拿界面状态覆盖库里的值');
+    expect(repo.rows[_kCharacterId]!['description'], '灰褐色斗篷，左颊有旧疤');
+    expect(find.byType(CharacterEditDialog), findsNothing);
   });
 
   testWidgets('保存把名称与描述写进仓储行，并关掉框', (WidgetTester tester) async {
@@ -188,6 +269,77 @@ void main() {
     expect(find.byType(CharacterEditDialog), findsNothing);
   });
 
+  // 钉 _save 的第一条守卫 `name.isNotEmpty &&`。既有用例只保存过非空名称，
+  // 这条守卫被删也全绿；删掉后清空名称点保存会把角色名写成空串（列表里从此是个无名条目）。
+  testWidgets('名称清空点保存：库里仍是原名，且没发过带 name 的写请求', (
+    WidgetTester tester,
+  ) async {
+    final _SpyCharacterRepo repo = _SpyCharacterRepo(
+      <String, Map<String, Object?>>{_kCharacterId: _row(description: '灰袍')},
+    );
+    await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('character-name-field')),
+      '',
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('character-save')));
+    await tester.pumpAndSettle();
+
+    expect(repo.rows[_kCharacterId]!['name'], '行者');
+    expect(
+      repo.patches.where(
+        (Map<String, Object?> p) => p.containsKey(CharacterCol.name),
+      ),
+      isEmpty,
+      reason: '空名不落库',
+    );
+  });
+
+  // 钉 _save 里 `if (!await _guard(...)) return;` 的早退。既有用例没有一条走失败路径，
+  // 把早退删成 `await _guard(...)` 也全绿；删掉后写库失败仍然关框，用户以为存上了。
+  testWidgets('保存失败：框不关，出 SnackBar', (WidgetTester tester) async {
+    final FakeCharacterRepo repo = FakeCharacterRepo(
+      <String, Map<String, Object?>>{_kCharacterId: _row()},
+    )..failUpdate = true;
+    await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('character-name-field')),
+      '山中老者',
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('character-save')));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(CharacterEditDialog),
+      findsOneWidget,
+      reason: '写库失败却关框 = 用户以为存上了',
+    );
+    expect(find.byType(SnackBar), findsOneWidget);
+    expect(repo.rows[_kCharacterId]!['name'], '行者');
+  });
+
+  // 钉 _save 里 `if (description != current.description)` 这条按列取舍。
+  // 只看最终行状态是看不出来的（写回原值和不写，行状态一模一样），得看 patch 的列集合。
+  testWidgets('只改名称：patch 里没有 description 列', (WidgetTester tester) async {
+    final _SpyCharacterRepo repo = _SpyCharacterRepo(
+      <String, Map<String, Object?>>{_kCharacterId: _row(description: '灰袍')},
+    );
+    await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('character-name-field')),
+      '山中老者',
+    );
+    await tester.tap(find.byKey(const ValueKey<String>('character-save')));
+    await tester.pumpAndSettle();
+
+    expect(repo.patches, hasLength(1), reason: '没改的那条不该发写请求');
+    expect(repo.patches.single.containsKey(CharacterCol.name), isTrue);
+    expect(repo.patches.single.containsKey(CharacterCol.description), isFalse);
+  });
+
   testWidgets('✕ 删掉第 2 张：库里少一条，磁盘上那张也一并删', (WidgetTester tester) async {
     final FakeCharacterRepo repo = FakeCharacterRepo(
       <String, Map<String, Object?>>{
@@ -215,31 +367,81 @@ void main() {
     expect(assets.deleted, <String>['characters/c1-1.png']);
   });
 
-  testWidgets('拖第 1 张到第 2 张：注入次序真的换了', (WidgetTester tester) async {
+  // 三张，不是两张：两张时 reorder(from, to) 与 reorder(to, from) 都只是"对调"，
+  // 参数颠倒测不出来。三张且跨两格才把两个参数的角色分开——
+  // 正确的 0→2 是 [1,2,0]，颠倒成 2→0 是 [2,0,1]。
+  testWidgets('三张参考图，第 1 张拖到第 3 张：落库次序是 1,2,0', (
+    WidgetTester tester,
+  ) async {
     final FakeCharacterRepo repo = FakeCharacterRepo(
       <String, Map<String, Object?>>{
         _kCharacterId: _row(
-          refs: <String>['characters/c1-0.png', 'characters/c1-1.png'],
+          refs: <String>[
+            'characters/c1-0.png',
+            'characters/c1-1.png',
+            'characters/c1-2.png',
+          ],
         ),
       },
     );
     await _open(tester, repo: repo, assets: FakeCharacterAssetService());
 
-    final TestGesture gesture = await tester.startGesture(
-      tester.getCenter(find.byKey(const ValueKey<String>('character-ref-0'))),
-    );
-    await tester.pump();
-    await gesture.moveTo(
-      tester.getCenter(find.byKey(const ValueKey<String>('character-ref-1'))),
-    );
-    await tester.pump();
-    await gesture.up();
-    await tester.pumpAndSettle();
+    await _dragRef(tester, from: 0, to: 2);
 
     expect(repo.rows[_kCharacterId]!['reference_image_paths'], <String>[
       'characters/c1-1.png',
+      'characters/c1-2.png',
       'characters/c1-0.png',
     ]);
+  });
+
+  // 钉 _ReferenceTile 里 DragTarget 的 onWillAcceptWithDetails: `d.data != index`。
+  // 只断言"库没变"抓不到它——把守卫改成恒 true，落到自己身上仍会走 reorder(i, i)，
+  // 而 controller 自己那条 `oldIndex == newIndex` 早退会把写请求挡下来，库照样不变。
+  // 所以这里既断行为（不重排、不发写请求），也直接断这个谓词本身。
+  testWidgets('拖到自己身上是 no-op：不重排、不发写请求', (WidgetTester tester) async {
+    final _SpyCharacterRepo repo = _SpyCharacterRepo(
+      <String, Map<String, Object?>>{
+        _kCharacterId: _row(
+          refs: <String>[
+            'characters/c1-0.png',
+            'characters/c1-1.png',
+            'characters/c1-2.png',
+          ],
+        ),
+      },
+    );
+    await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+
+    // 先绕到第 3 格再落回自己，保证真的起拖了（横向位移超过 slop）。
+    await _dragRef(tester, from: 0, to: 0, via: 2);
+
+    expect(repo.rows[_kCharacterId]!['reference_image_paths'], <String>[
+      'characters/c1-0.png',
+      'characters/c1-1.png',
+      'characters/c1-2.png',
+    ]);
+    expect(repo.patches, isEmpty);
+
+    final DragTarget<int> target = tester.widget<DragTarget<int>>(
+      find.descendant(
+        of: find.byKey(const ValueKey<String>('character-ref-0')),
+        matching: find.byType(DragTarget<int>),
+      ),
+    );
+    expect(
+      target.onWillAcceptWithDetails!(
+        DragTargetDetails<int>(data: 0, offset: Offset.zero),
+      ),
+      isFalse,
+      reason: '第 0 格不该把第 0 格当作可接收的来源',
+    );
+    expect(
+      target.onWillAcceptWithDetails!(
+        DragTargetDetails<int>(data: 1, offset: Offset.zero),
+      ),
+      isTrue,
+    );
   });
 
   testWidgets('达上限：「添加」格禁用（onTap 为 null）且 tooltip 说明原因', (

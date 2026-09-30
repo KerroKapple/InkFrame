@@ -331,6 +331,9 @@ class _BatchSlotTile extends ConsumerWidget {
       BatchSlotView.error when configNodeId != null => word(
         l.batchActionRerun,
         colors.danger,
+        // 「重跑」是整批重来、产物落新节点——单格重跑在架构上不成立，代价（一整批的
+        // 额度）得在点之前讲清楚，与「取消」那一格同例。
+        tip: l.batchRerunWholeBatchHint,
         onTap: () => unawaited(
           runBatchSlotAction(
             context,

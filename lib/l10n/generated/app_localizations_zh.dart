@@ -658,9 +658,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchResultsLabel => '批量结果';
 
   @override
-  String get inspectorResultTitle => '结果';
-
-  @override
   String get inspectorShotTitle => '分镜';
 
   @override
@@ -2135,6 +2132,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get batchCancelWholeBatch => '取消整批';
+
+  @override
+  String batchSlotBadge(int index) {
+    return 'slot #$index';
+  }
+
+  @override
+  String get batchRerunWholeBatchHint => '重跑一次就是整批重来，新图落在新节点上；单格没法单独重跑。';
 
   @override
   String get batchOpenCompare => '打开足尺对比';

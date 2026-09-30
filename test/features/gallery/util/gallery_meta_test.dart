@@ -157,6 +157,66 @@ void main() {
         reason: '仍要能从 config 找到它名下 result 的那个 promoted slot');
   });
 
+  test('同一 config 重跑过两批、两批各自转正 → 血缘取【新那批】的那一格', () {
+    // promoted 在 DB 上没有唯一约束，BatchResultsController.promote 只清**同一个
+    // result 节点**里的旧标记。同一 config 重跑一次就有两个容器，两边各转正一次就
+    // 有两行 promoted。原来 _chosenArtifactOf 撞到列表里第一个 promoted 就返回，
+    // 而列表序是 `z_index ASC, created_at ASC`——主序是 z_index，用户把某个 result
+    // 节点拖到最上层就能翻转「当前选定」，且默认顺序下拿到的是**旧**那批。
+    final CanvasNode cfg = _node('cfg', '镜头 09 · 图像', CanvasNodeType.image);
+    final CanvasNode newer = CanvasNode(
+      id: 'r2', label: '', type: CanvasNodeType.image, role: NodeRole.result,
+      canvasId: 'c9', sourceNodeId: 'cfg', typeConfig: const <String, Object?>{},
+      position: Offset.zero, createdAt: DateTime.utc(2026, 9, 2),
+    );
+    final CanvasNode older = CanvasNode(
+      id: 'r1', label: '', type: CanvasNodeType.image, role: NodeRole.result,
+      canvasId: 'c9', sourceNodeId: 'cfg', typeConfig: const <String, Object?>{},
+      position: Offset.zero, createdAt: DateTime.utc(2026, 9, 1),
+    );
+    final CanvasNode video = _node('v9', '镜头 09 · 图转视频', CanvasNodeType.video, x: 100);
+    final CanvasNode videoR = _node('v9r', '', CanvasNodeType.video,
+        role: NodeRole.result, source: 'v9',
+        cfg: <String, Object?>{'video_url': 'videos/v9.mp4'});
+    GalleryBatchSlot slot(String node, int i, {bool promoted = false}) =>
+        GalleryBatchSlot(
+          nodeId: node, canvasId: 'c9', slotIndex: i,
+          outputUrl: 'images/$node-$i.png',
+          createdAt: DateTime.utc(2026, 9, 1, i), promoted: promoted,
+        );
+    GalleryGraph graphWith(List<CanvasNode> ordered) => GalleryGraph(
+      canvases: const <GalleryCanvasInfo>[GalleryCanvasInfo(id: 'c9', name: '画布 09')],
+      nodesByCanvas: <String, List<CanvasNode>>{'c9': ordered},
+      edgesByCanvas: <String, List<CanvasEdge>>{
+        'c9': <CanvasEdge>[_edge('e9', 'cfg', 'v9', EdgeType.data, role: EdgeRole.firstFrame)],
+      },
+      slotsByNode: <String, List<GalleryBatchSlot>>{
+        'r1': <GalleryBatchSlot>[slot('r1', 0, promoted: true), slot('r1', 1)],
+        'r2': <GalleryBatchSlot>[slot('r2', 0), slot('r2', 1, promoted: true)],
+      },
+    );
+    GalleryLineageRow firstRowOf(GalleryGraph g) {
+      final GalleryIndex idx = GalleryIndex.build(g);
+      final GalleryItem v = galleryItemsFromGraph(g)
+          .firstWhere((GalleryItem i) => i.relativePath == 'videos/v9.mp4');
+      return galleryLineageFor(g, idx, v).first;
+    }
+
+    // ① 库里的默认顺序：`z_index ASC, created_at ASC` ⇒ 旧容器在前。
+    //    取列表里第一个 promoted 就会拿到**旧**那批，这正是原来的行为。
+    final GalleryLineageRow dbOrder =
+        firstRowOf(graphWith(<CanvasNode>[cfg, older, newer, video, videoR]));
+    expect(dbOrder.name, '镜头 09 · 图像 #2', reason: '新容器里转正的是 slot_index 1');
+    expect(dbOrder.thumbRelativePath, 'images/r2-1.png');
+    expect(dbOrder.resultCount, 4, reason: '两个容器各 2 格，产物总数照数');
+
+    // ② 用户把新容器拖到最上层（z_index 变了，列表序跟着变）——答案必须一样。
+    final GalleryLineageRow dragged =
+        firstRowOf(graphWith(<CanvasNode>[cfg, newer, older, video, videoR]));
+    expect(dragged.thumbRelativePath, 'images/r2-1.png',
+        reason: '「当前选定」不能被拖动节点层级改掉');
+  });
+
   test('图里找不到节点 → meta 空、血缘空，不抛', () {
     final GalleryItem ghost = GalleryItem(
       kind: GalleryItemKind.image,

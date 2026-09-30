@@ -32,6 +32,10 @@ import 'batch_slot_parts.dart';
 /// 稿上的外框宽（1080 content + 1px 边 ×2）。窗口更窄时取可用宽。
 const double kBatchCompareOverlayWidth = 1082;
 
+/// 选中格的高亮环。挂 Key 纯为可测：浮层里同形状的 DecoratedBox 满地都是，
+/// 没有稳定锚点就没法断言「←→ 之后环落在哪一格」。
+const Key kBatchSlotSelectedRingKey = ValueKey<String>('batchSlotSelectedRing');
+
 Future<void> showBatchCompareOverlay(
   BuildContext context, {
   required CanvasNode resultNode,
@@ -320,6 +324,7 @@ class _OverlaySlot extends ConsumerWidget {
                 // 稿是静态图、没有选中概念；←→ 需要一个看得见的落点，这里补上。
                 if (selected)
                   Padding(
+                    key: kBatchSlotSelectedRingKey,
                     padding: const EdgeInsets.all(InkSpacing.s2),
                     child: DecoratedBox(
                       decoration: BoxDecoration(
@@ -331,8 +336,10 @@ class _OverlaySlot extends ConsumerWidget {
                 Positioned(
                   left: InkSpacing.sm,
                   top: InkSpacing.s6,
+                  // 稿上浮层写全「slot #1」，检查器内联格才是短的「#1」——浮层里
+                  // 一屏只有两格，写全比省两个词更清楚。
                   child: Text(
-                    '#${slot.slotIndex + 1}',
+                    l.batchSlotBadge(slot.slotIndex + 1),
                     style: t.monoSmall.copyWith(
                       color: c.fg1.withValues(alpha: 0.85),
                     ),
@@ -512,6 +519,10 @@ class _OverlaySlot extends ConsumerWidget {
       ),
       BatchSlotView.error when canRerun => BatchTappable(
         semanticLabel: l.batchRerunThisSlot,
+        // 稿上的字是「重跑此 slot」，可 provider 一次调用返 N 张，没有「只补第 3 张」
+        // 这种请求：点下去是整批重来、产物落新节点。字照稿不动，代价由 tooltip 说清，
+        // 与「取消」那颗同例。
+        tooltip: l.batchRerunWholeBatchHint,
         onTap: () => unawaited(
           runBatchSlotAction(
             context,
@@ -545,7 +556,7 @@ class _OverlaySlot extends ConsumerWidget {
           BatchTappable(
             semanticLabel: l.batchRerunWithSeed,
             tooltip: canRerunSeed
-                ? l.batchRerunWithSeed
+                ? l.batchRerunWholeBatchHint
                 : l.batchRerunWithSeedUnavailable,
             onTap: canRerunSeed
                 ? () => unawaited(

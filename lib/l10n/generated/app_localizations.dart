@@ -1292,12 +1292,6 @@ abstract class AppLocalizations {
   /// **'Batch results'**
   String get batchResultsLabel;
 
-  /// No description provided for @inspectorResultTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Result'**
-  String get inspectorResultTitle;
-
   /// No description provided for @inspectorShotTitle.
   ///
   /// In en, this message translates to:
@@ -3992,6 +3986,18 @@ abstract class AppLocalizations {
   /// **'Cancel the whole batch'**
   String get batchCancelWholeBatch;
 
+  /// No description provided for @batchSlotBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'slot #{index}'**
+  String batchSlotBadge(int index);
+
+  /// No description provided for @batchRerunWholeBatchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'One rerun re-runs the whole batch and the new images land on a new node; a single slot cannot be re-run on its own.'**
+  String get batchRerunWholeBatchHint;
+
   /// No description provided for @batchOpenCompare.
   ///
   /// In en, this message translates to:
@@ -4007,13 +4013,13 @@ abstract class AppLocalizations {
   /// No description provided for @characterRefAndUsage.
   ///
   /// In en, this message translates to:
-  /// **'{refs} reference images · {usages} uses'**
+  /// **'{refs, plural, =1{1 reference image} other{{refs} reference images}} · {usages, plural, =1{1 use} other{{usages} uses}}'**
   String characterRefAndUsage(int refs, int usages);
 
   /// No description provided for @characterRefAndUsageNone.
   ///
   /// In en, this message translates to:
-  /// **'{refs} reference images · unused'**
+  /// **'{refs, plural, =0{No reference images} =1{1 reference image} other{{refs} reference images}} · unused'**
   String characterRefAndUsageNone(int refs);
 
   /// No description provided for @characterNew.

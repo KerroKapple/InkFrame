@@ -21,6 +21,7 @@ import 'package:window_manager/window_manager.dart';
 import '../../../core/db/columns.dart';
 import '../../../core/di/database.dart';
 import '../../../core/di/file_resolver.dart';
+import '../../../core/di/locale.dart';
 import '../../../core/di/preferences.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
@@ -31,10 +32,13 @@ import '../../../core/models/shot_language.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
+import '../../canvas/providers/project_panel_tab.dart';
 import '../../gallery/models/gallery_item.dart';
 import '../../gallery/models/gallery_selection.dart';
 import '../../gallery/providers/gallery_filter.dart';
+import '../../gallery/providers/gallery_graph_provider.dart';
 import '../../gallery/providers/gallery_selection.dart';
 import '../../gallery/util/gallery_meta.dart';
 import '../../settings/providers/settings_page.dart';
@@ -94,6 +98,15 @@ class _DevCaptureFrameState extends ConsumerState<DevCaptureFrame> {
     // 等 DB 就绪（pool 可用 = 迁移完成）。
     await ref.read(pgMigratedPoolProvider.future);
     if (kSeedFixture) {
+      // 稿是中文的，验收图必须同语种才能和静态复刻比。临时数据根没有偏好文件时应用默认
+      // 走英文；而 LocaleController 只在 build 时读一次偏好，光写 preferences 已经晚了，
+      // 必须走 setLocale 才会推到 MaterialApp。
+      ref.read(localeControllerProvider.notifier).setLocale(const Locale('zh'));
+      // 临时数据根是「首次启动」，首启向导会盖在要截的那一屏上。截图不是在验收向导，
+      // 直接按已完成落库。
+      await ref.read(preferencesServiceProvider).update(
+            (AppPreferences p) => p.copyWith(onboardingCompleted: true),
+          );
       final WorkspaceFixtureIds ids = await seedWorkspaceFixture(ref);
       if (kCaptureScreen == 'gallery') await seedGalleryFixture(ref, ids);
       if (kCaptureScreen == 'sequence') await seedSequenceFixture(ref, ids);
@@ -385,7 +398,7 @@ Future<void> seedBatchFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
     const List<(String, int?, String?)> spec = <(String, int?, String?)>[
       ('success', 41207, null),
       ('success', 88316, null),
-      ('error', 15043, 'content_filtered'),
+      ('error', 15043, 'content_policy'),
       ('generating', null, null),
     ];
     for (int i = 0; i < spec.length; i++) {
@@ -420,6 +433,10 @@ Future<void> seedBatchFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
     f.parent.createSync(recursive: true);
     await f.writeAsBytes(await _gradientPng(InkPalette.thumbPlaceholderGradients[i]));
   }
+  // 画布节点控制器在 seedWorkspaceFixture 里就已经加载完了，这里新建的节点不会自己进来；
+  // 不 invalidate 就选不中（检查器会停在「选中一个节点以编辑参数」）。
+  ref.invalidate(canvasNodesControllerProvider(ids.canvasId));
+  await Future<void>.delayed(const Duration(seconds: 2));
   ref.read(canvasSelectionControllerProvider(ids.canvasId).notifier).select(resultId);
 }
 
@@ -480,6 +497,11 @@ Future<void> seedCharactersFixture(WidgetRef ref, WorkspaceFixtureIds ids) async
       );
     }
   }
+  // 引用节点是播种后才有的，画廊图（引用计数的数据源）与画布节点都要重取。
+  ref.invalidate(canvasNodesControllerProvider(ids.canvasId));
+  ref.invalidate(galleryGraphProvider(ids.projectId));
+  ref.read(projectPanelTabProvider.notifier).select(ProjectPanelTab.characters);
+  await Future<void>.delayed(const Duration(seconds: 2));
 }
 
 Future<Uint8List> _gradientPng((Color, Color) g) async {
