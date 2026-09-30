@@ -54,7 +54,8 @@ const int kCaptureDelayMs = int.fromEnvironment(
 );
 const bool kSeedFixture = bool.fromEnvironment('INKFRAME_SEED_FIXTURE');
 /// 截哪一屏：canvas（默认）/ gallery（再播 Screens 稿第 2 屏的 15 个产物并打开画廊标签）/ studio / settings（Studio + 设置浮层「API 密钥」页）
-/// / sequence（再播 Timeline 稿的 8 镜叙事链 + 3 个未入链产物，打开序列标签）。
+/// / sequence（再播 Timeline 稿的 8 镜叙事链 + 3 个未入链产物，打开序列标签）
+/// / batch（Batch 稿的四态 slot，选中批量 result 节点）/ characters（三个角色 + 引用节点）。
 const String kCaptureScreen = String.fromEnvironment('INKFRAME_CAPTURE_SCREEN', defaultValue: 'canvas');
 /// 截图逻辑尺寸「宽x高」（PLAN_remaining：每屏两张，1600x1000 与 960x600）。
 const String kCaptureSize = String.fromEnvironment('INKFRAME_CAPTURE_SIZE', defaultValue: '1600x1000');
@@ -96,6 +97,8 @@ class _DevCaptureFrameState extends ConsumerState<DevCaptureFrame> {
       final WorkspaceFixtureIds ids = await seedWorkspaceFixture(ref);
       if (kCaptureScreen == 'gallery') await seedGalleryFixture(ref, ids);
       if (kCaptureScreen == 'sequence') await seedSequenceFixture(ref, ids);
+      if (kCaptureScreen == 'batch') await seedBatchFixture(ref, ids);
+      if (kCaptureScreen == 'characters') await seedCharactersFixture(ref, ids);
       if (kCaptureScreen == 'studio') await seedStudioFixture(ref, ids);
       if (kCaptureScreen == 'settings') {
         // Screens 稿第 3 屏：设置浮层盖在 Studio 上，停在「API 密钥」页。
@@ -333,6 +336,150 @@ Future<void> seedSequenceFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
   }
   ref.read(shellControllerProvider.notifier).openCanvas(canvasId, withProject: ProjectRef(id: ids.projectId, name: WorkspaceFixture.breadcrumb[1]));
   ref.read(shellControllerProvider.notifier).goTab(ShellTab.sequence);
+}
+
+/// P4 批量结果那一屏：在画布 02 上放一个 image config + 它的批量 result 容器 +
+/// 四个 slot（已转正 / 成功 / 失败带 errorCode / 生成中），然后选中 result 节点
+/// ——批量网格挂在 ImageResultInspector 里，选中 result 才看得到。
+///
+/// slot 的 seed / 尺寸 / errorCode 照稿：41207 promoted · 88316 · 15043 failed · 生成中无 seed。
+Future<void> seedBatchFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
+  final UnitOfWork uow = await ref.read(unitOfWorkProvider.future);
+  final FileResolverService files = ref.read(fileResolverServiceProvider);
+
+  final String resultId = await uow.run((RepositoryScope s) async {
+    final String cfg = await s.nodes.create(
+      canvasId: ids.canvasId,
+      type: CanvasNodeType.image.name,
+      nodeRole: NodeRole.config.name,
+      label: '镜头 05 · 松林',
+      positionX: 1200,
+      positionY: 120,
+      typeConfig: <String, Object?>{
+        'provider_id': 'wanx-image',
+        'prompt': WorkspaceFixture.promptText,
+        'batch_size': 4,
+      },
+    );
+    // 批量的 result 节点是容器：转正之前不持有 image_url，四张都在 slot 里。
+    final String result = await s.nodes.create(
+      canvasId: ids.canvasId,
+      type: CanvasNodeType.image.name,
+      nodeRole: NodeRole.result.name,
+      sourceNodeId: cfg,
+      positionX: 1200,
+      positionY: 420,
+    );
+    final String jobId = await s.jobs.create(
+      canvasId: ids.canvasId,
+      sourceNodeId: cfg,
+      resultNodeId: result,
+      providerId: 'wanx-image',
+      jobType: 'image',
+      fullPrompt: WorkspaceFixture.promptText,
+      userPrompt: WorkspaceFixture.promptText,
+      batchSize: 4,
+    );
+
+    // 稿上四态：0 已转正 / 1 成功 / 2 失败（带 errorCode）/ 3 生成中。
+    const List<(String, int?, String?)> spec = <(String, int?, String?)>[
+      ('success', 41207, null),
+      ('success', 88316, null),
+      ('error', 15043, 'content_filtered'),
+      ('generating', null, null),
+    ];
+    for (int i = 0; i < spec.length; i++) {
+      final (String status, int? seed, String? code) = spec[i];
+      final String slotId = await s.batchResults.create(
+        nodeId: result,
+        jobId: jobId,
+        slotIndex: i,
+        status: status,
+      );
+      await s.batchResults.update(slotId, <String, Object?>{
+        BatchResultCol.status: status,
+        if (status == 'success') BatchResultCol.outputUrl: 'images/slot$i.png',
+        if (status == 'success') BatchResultCol.width: 1024,
+        if (status == 'success') BatchResultCol.height: 576,
+        BatchResultCol.seed: seed,
+        BatchResultCol.errorCode: code,
+      });
+      if (i == 0) {
+        await s.batchResults.markPromoted(id: slotId, promotedNodeId: result);
+      }
+    }
+    return result;
+  });
+
+  for (int i = 0; i < 2; i++) {
+    final File f = files.resolve(
+      projectId: ids.projectId,
+      canvasId: ids.canvasId,
+      relativePath: 'images/slot$i.png',
+    );
+    f.parent.createSync(recursive: true);
+    await f.writeAsBytes(await _gradientPng(InkPalette.thumbPlaceholderGradients[i]));
+  }
+  ref.read(canvasSelectionControllerProvider(ids.canvasId).notifier).select(resultId);
+}
+
+/// P4 角色那一屏：播三个角色（稿上原文的名字 + 参考图张数），并把它们挂到若干
+/// config 节点上，好让「N 张参考图 · M 处引用」有真数。
+Future<void> seedCharactersFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
+  final UnitOfWork uow = await ref.read(unitOfWorkProvider.future);
+  final FileResolverService files = ref.read(fileResolverServiceProvider);
+
+  // 名字 / 参考图张数 / 要挂到几个节点上——对齐稿的「4 张参考图 · 6 处引用」等三行。
+  const List<(String, String, int, int)> spec = <(String, String, int, int)>[
+    ('行者', '中年男性，粗布行囊，灰褐色斗篷，左颊有旧疤', 4, 6),
+    ('少年', '十五六岁，短打，背一把柴刀', 2, 3),
+    ('山中老者', '白须及胸，竹杖，粗麻衣', 1, 0),
+  ];
+
+  final List<String> charIds = await uow.run((RepositoryScope s) async {
+    final List<String> out = <String>[];
+    for (final (String name, String desc, int refs, int _) in spec) {
+      final String id = await s.characters.create(projectId: ids.projectId, name: name);
+      await s.characters.update(id, <String, Object?>{
+        CharacterCol.description: desc,
+        CharacterCol.referenceImagePaths: <String>[
+          for (int i = 0; i < refs; i++) 'characters/$id-$i.png',
+        ],
+      });
+      out.add(id);
+    }
+    // 引用：给每个角色建 N 个挂着它的 config 节点（放在画布视口外，只为计数）。
+    for (int c = 0; c < spec.length; c++) {
+      for (int k = 0; k < spec[c].$4; k++) {
+        await s.nodes.create(
+          canvasId: ids.canvasId,
+          type: CanvasNodeType.image.name,
+          nodeRole: NodeRole.config.name,
+          label: '引用 ${c + 1}-${k + 1}',
+          positionX: 300.0 * k,
+          positionY: 6000 + 300.0 * c,
+          typeConfig: <String, Object?>{
+            'provider_id': 'gemini-image',
+            'character_ids': <String>[out[c]],
+          },
+        );
+      }
+    }
+    return out;
+  });
+
+  for (int c = 0; c < spec.length; c++) {
+    for (int i = 0; i < spec[c].$3; i++) {
+      final File f = files.resolveInProject(
+        projectId: ids.projectId,
+        relativePath: 'characters/${charIds[c]}-$i.png',
+      );
+      f.parent.createSync(recursive: true);
+      await f.writeAsBytes(
+        await _gradientPng(InkPalette.thumbPlaceholderGradients[(c * 3 + i) % 8]),
+      );
+    }
+  }
 }
 
 Future<Uint8List> _gradientPng((Color, Color) g) async {
