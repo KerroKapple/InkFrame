@@ -536,6 +536,100 @@ void main() {
     },
   );
 
+  // ---- P4：以该种子重跑 ----------------------------------------------------
+
+  test('P4 seedOverride：这一次用指定 seed，且不写回节点', () async {
+    useCapableProvider();
+    final cfg = await seedConfigNodeWithCharacters(characterIds: const <String>[]);
+    (nodes.rows[cfg]!['type_config']! as Map<String, Object?>)['seed'] = 111;
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg, seedOverride: 42);
+
+    final params = jobs.creates.first['parameters']! as Map<String, Object?>;
+    expect(params['seed'], 42);
+    expect(
+      (nodes.rows[cfg]!['type_config']! as Map<String, Object?>)['seed'],
+      111,
+      reason: '用户自己填的 seed 不能被重跑覆盖掉',
+    );
+  });
+
+  test('P4 seedOverride 缺省 → 沿用节点上的 seed', () async {
+    useCapableProvider();
+    final cfg = await seedConfigNodeWithCharacters(characterIds: const <String>[]);
+    (nodes.rows[cfg]!['type_config']! as Map<String, Object?>)['seed'] = 111;
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    expect((jobs.creates.first['parameters']! as Map<String, Object?>)['seed'], 111);
+  });
+
+  // ---- P4：角色 description 与参考图同一道门 --------------------------------
+
+  test('P4 角色描述：provider 支持参考图 → description 进 fullPrompt（在用户提示词之前）', () async {
+    useCapableProvider();
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'name': 'Hero',
+        'description': '中年男性，粗布行囊',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    final String full = jobs.creates.first['full_prompt']! as String;
+    expect(full, contains('中年男性，粗布行囊'));
+    expect(
+      full.indexOf('中年男性，粗布行囊') < full.indexOf('a cat'),
+      isTrue,
+      reason: '描述是带进来的上下文，排在用户这一次写的话之前',
+    );
+    expect(queue.lastTask!.prompt, full, reason: '下发给 provider 的就是这条');
+  });
+
+  test('P4 角色描述：provider maxRefImages=0 → 图注不进去，描述也不单独注', () async {
+    useCapableProvider(maxRefImages: 0);
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'description': '中年男性，粗布行囊',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    expect(jobs.creates.first['full_prompt'], isNot(contains('中年男性')));
+  });
+
+  test('P4 角色描述：description 为空 → 提示词不变', () async {
+    useCapableProvider();
+    characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'description': '   ',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    final cfg = await seedConfigNodeWithCharacters(characterIds: ['char-1']);
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    expect(jobs.creates.first['full_prompt'], 'a cat', reason: '空白描述不进提示词');
+  });
+
   test('角色一致性：provider maxRefImages=0 → 不注入，保持 textToImage', () async {
     useCapableProvider(maxRefImages: 0);
     characters = FakeCharacterRepo(<String, Map<String, Object?>>{
