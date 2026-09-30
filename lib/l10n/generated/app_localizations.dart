@@ -3779,7 +3779,7 @@ abstract class AppLocalizations {
   /// No description provided for @sequenceChainNote.
   ///
   /// In en, this message translates to:
-  /// **'Order is the narrative edges on the canvas. Reordering here rewrites the links; trims write back to the shot\'s in/out points.'**
+  /// **'Order is the narrative edges on the canvas — change the links there; this list is read-only.'**
   String get sequenceChainNote;
 
   /// No description provided for @sequenceDeliveryTab.

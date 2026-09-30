@@ -2093,7 +2093,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sequenceChainNote =>
-      'Order is the narrative edges on the canvas. Reordering here rewrites the links; trims write back to the shot\'s in/out points.';
+      'Order is the narrative edges on the canvas — change the links there; this list is read-only.';
 
   @override
   String get sequenceDeliveryTab => 'Delivery';
