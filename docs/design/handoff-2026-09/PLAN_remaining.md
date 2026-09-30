@@ -52,7 +52,7 @@ BOARD 211。四字段进 video config 的 type_config：`shot_size`（景别）/
 角色三块：
 - 检查器挂载区保留原样，加「管理」链接。
 - 角色库进画布左栏「角色」页：36×36 首图 + 名 + 「N 张参考图 · M 处引用」+ ⋯（编辑 / 改名 / 删除）。rename / delete 直接接现有控制器。删除确认文案写「可从回收站恢复」（softDelete 保资产）。
-- 编辑框 520：名称 / 描述 / 参考图（序号 + 备注 + 删 + 拖排，末位添加格，上限沿用 provider maxRefImages）/ 被引用节点。
+- 编辑框 560（稿 markup 是 560，正文原写 520 为笔误，2026-09-30 更正）：名称 / 描述 / 参考图（序号 + 备注 + 删 + 拖排，末位添加格，上限沿用 provider maxRefImages）/ 被引用节点。
 控制器补四个薄方法：setDescription / addReferenceImage / removeReferenceImage / reorderReferenceImages。多图落盘 `{id}-{n}`。不改仓储、不加迁移。
 无字段：参考图「备注」文字（不做，格下只留序号）。
 
