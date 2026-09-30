@@ -19,7 +19,7 @@
 画布 golden 会红：预期，PR 说明重铸原因。
 无字段：无。差异升高先查 stylePrompt 撑破两行。
 
-## P2 · 序列 A（序列 lens，只读；feat/v1-sequence-a #237，静态复刻 2026-09-30 验收通过，接线中）
+## P2 · 序列 A（✅ 已合入 #237，2026-09-30）
 
 稿：`InkFrame Timeline.html`（2026-09-25 默认 EDL 版）。
 接：叙事链列表（短时间码 MM:SS）· 节目监视器 · V1 只读轨 · 标记轨（场次标记由链推）· 播放头 · 34px/s 可缩放。
@@ -29,7 +29,7 @@
 标签在 canvasId == null 时禁用 + 「请先打开一个画布」，不 watch 仓储。
 无字段：入出点 / 手柄 / 音轨 / 断点标记（用户手打的 M）。
 
-## P3 · 镜头语言数据模型（唯一补建的模型；feat/v1-shot-language，2026-09-30 开工）
+## P3 · 镜头语言数据模型（✅ 已合入 #238，2026-09-30）
 
 BOARD 211。四字段进 video config 的 type_config：`shot_size`（景别）/ `camera_angle`（机位角度）/ `camera_motion_strength`（运镜幅度 0–1）/ `focal_length_mm`（焦段）。
 枚举值（zh / en 各一份 ARB）：
@@ -42,7 +42,7 @@ BOARD 211。四字段进 video config 的 type_config：`shot_size`（景别）/
 提示词注入：四字段非空时按 `{景别}, {运镜}, {角度}, {焦段}mm lens` 英文前置到 prompt（provider 不支持 camera 能力位时只注入不下发参数）。
 不做：模型名 / fps（BOARD 212，provider 元数据问题，另议）。
 
-## P4 · 批量结果 + 角色（V8）
+## P4 · 批量结果 + 角色（V8；feat/v1-batch-characters #240，静态复刻 2026-09-30 验收通过，接线 + 复核 2026-10-01 完成，待合）
 
 稿：`InkFrame Batch and Characters.html`（danger 已同步 #D25A4A）。
 
