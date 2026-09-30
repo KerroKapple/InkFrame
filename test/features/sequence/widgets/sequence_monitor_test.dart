@@ -89,6 +89,30 @@ class _EmptyNodes extends CanvasNodesController {
   Future<List<CanvasNode>> build(String canvasId) async => const <CanvasNode>[];
 }
 
+/// 叠字用：shot 折叠借了 cfg 的产物（result 的 image_url == 镜的 relativePath），cfg 带运镜 + 景别。
+class _OverlayNodes extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => const <CanvasNode>[
+        CanvasNode(id: 'a', label: 'a', type: CanvasNodeType.shot, canvasId: 'c1'),
+        CanvasNode(
+          id: 'cfg',
+          label: 'cfg',
+          type: CanvasNodeType.image,
+          canvasId: 'c1',
+          typeConfig: <String, Object?>{'camera': 'pushIn', 'shot_size': 'mediumShot'},
+        ),
+        CanvasNode(
+          id: 'r',
+          label: '',
+          type: CanvasNodeType.image,
+          role: NodeRole.result,
+          canvasId: 'c1',
+          sourceNodeId: 'cfg',
+          typeConfig: <String, Object?>{'image_url': 'a.png'},
+        ),
+      ];
+}
+
 SequenceShot _image(String id, {int ms = 3000}) =>
     SequenceShot(nodeId: id, kind: SequenceArtifactKind.image, durationMs: ms, canvasId: 'c1', relativePath: '$id.png', label: id);
 
@@ -308,9 +332,25 @@ void main() {
     expect(c.read(sequencePlayheadProvider('c1')).seekToken, 1);
   });
 
-  testWidgets('叠字三段：序号 · 时码 src；无节点信息时不出运镜 / 模型段', (tester) async {
+  testWidgets('叠字：序号 · 时码 src；无节点信息时不出运镜 / 景别 / 模型段', (tester) async {
     await pump(tester, <SequenceShot>[_placeholder('a', ms: 2000)]);
     expect(find.text('001'), findsOneWidget);
     expect(find.text('src 00:00:00:00 / 00:00:02:00'), findsOneWidget);
+  });
+
+  testWidgets('叠字（P3）：运镜与景别取自产物的 config 节点——序号 · 运镜 · 景别', (tester) async {
+    await pumpInkApp(
+      tester,
+      Scaffold(body: _Host(lens: _lens(<SequenceShot>[_image('a')]), paused: paused)),
+      surfaceSize: const Size(900, 700),
+      overrides: <Override>[
+        videoPlayerServiceProvider.overrideWithValue(player),
+        fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
+        canvasNodesControllerProvider.overrideWith(_OverlayNodes.new),
+      ],
+    );
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('001 · Dolly in · Medium shot MS'), findsOneWidget);
   });
 }

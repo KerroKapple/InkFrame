@@ -477,7 +477,7 @@ class _VideoConfigBody extends ConsumerWidget {
       };
       parts.add('$roleLabel ← ${nodeRefName(context, src)}');
     }
-    final CameraMovement? camera = _cameraOf(node);
+    final CameraMovement? camera = parseCameraMovement(node.cameraName);
     if (camera != null) parts.add(cameraMovementLabel(context, camera));
 
     if (parts.isEmpty) {
@@ -486,15 +486,6 @@ class _VideoConfigBody extends ConsumerWidget {
       return _ThumbLabel(prompt.trim());
     }
     return _ThumbLabel(parts.join(' · '));
-  }
-
-  static CameraMovement? _cameraOf(CanvasNode node) {
-    final String? name = node.cameraName;
-    if (name == null) return null;
-    for (final CameraMovement c in CameraMovement.values) {
-      if (c.name == name) return c;
-    }
-    return null;
   }
 }
 

@@ -29,7 +29,7 @@
 标签在 canvasId == null 时禁用 + 「请先打开一个画布」，不 watch 仓储。
 无字段：入出点 / 手柄 / 音轨 / 断点标记（用户手打的 M）。
 
-## P3 · 镜头语言数据模型（唯一补建的模型）
+## P3 · 镜头语言数据模型（唯一补建的模型；feat/v1-shot-language，2026-09-30 开工）
 
 BOARD 211。四字段进 video config 的 type_config：`shot_size`（景别）/ `camera_angle`（机位角度）/ `camera_motion_strength`（运镜幅度 0–1）/ `focal_length_mm`（焦段）。
 枚举值（zh / en 各一份 ARB）：

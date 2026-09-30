@@ -790,10 +790,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cameraStatic => 'Static';
 
   @override
-  String get cameraPushIn => 'Push in';
+  String get cameraPushIn => 'Dolly in';
 
   @override
-  String get cameraPullOut => 'Pull out';
+  String get cameraPullOut => 'Dolly out';
 
   @override
   String get cameraPanLeft => 'Pan left';
@@ -808,10 +808,78 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cameraTiltDown => 'Tilt down';
 
   @override
-  String get cameraOrbit => 'Orbit';
+  String get cameraTruckLeft => 'Truck left';
 
   @override
-  String get cameraHandheld => 'Handheld';
+  String get cameraTruckRight => 'Truck right';
+
+  @override
+  String get cameraTracking => 'Tracking';
+
+  @override
+  String get cameraPedestalUp => 'Pedestal up';
+
+  @override
+  String get cameraPedestalDown => 'Pedestal down';
+
+  @override
+  String get cameraOrbit => 'Arc';
+
+  @override
+  String get inspectorShotSizeLabel => 'Shot size';
+
+  @override
+  String get inspectorCameraAngleLabel => 'Camera angle';
+
+  @override
+  String get inspectorMotionStrengthLabel => 'Motion strength';
+
+  @override
+  String get inspectorFocalLengthLabel => 'Focal length';
+
+  @override
+  String get inspectorShotLanguageUnset => 'Not set';
+
+  @override
+  String get shotSizeExtremeLongShot => 'Extreme long shot ELS';
+
+  @override
+  String get shotSizeLongShot => 'Long shot LS';
+
+  @override
+  String get shotSizeMediumShot => 'Medium shot MS';
+
+  @override
+  String get shotSizeMediumCloseUp => 'Medium close-up MCU';
+
+  @override
+  String get shotSizeCloseUp => 'Close-up CU';
+
+  @override
+  String get shotSizeExtremeCloseUp => 'Extreme close-up ECU';
+
+  @override
+  String get cameraAngleEyeLevel => 'Eye level';
+
+  @override
+  String get cameraAngleHigh => 'High angle';
+
+  @override
+  String get cameraAngleLow => 'Low angle';
+
+  @override
+  String get cameraAngleBirdsEye => 'Bird\'s eye';
+
+  @override
+  String get cameraAngleDutch => 'Dutch angle';
+
+  @override
+  String focalLengthMm(int mm) {
+    return '${mm}mm';
+  }
+
+  @override
+  String get galleryParamShotLanguage => 'Shot language';
 
   @override
   String get inspectorVideoModeAuto => 'Mode: auto-detected from inputs';

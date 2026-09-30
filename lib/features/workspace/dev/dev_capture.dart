@@ -27,6 +27,7 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/interfaces/unit_of_work.dart';
 import '../../../core/models/app_preferences.dart';
 import '../../../core/models/provider_capabilities.dart';
+import '../../../core/models/shot_language.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../canvas/models/canvas_node.dart';
@@ -282,7 +283,9 @@ Future<void> seedSequenceFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
           'provider_id': video ? 'kling-v3' : 'gemini-image',
           'prompt': shot.name,
           if (video) 'duration_ms': ms,
-          if (video) 'camera': CameraMovement.pushIn.name,
+          // 稿的叠字「003 · 推镜 · 中景 · Kling 2.1」：运镜 + 景别（P3）给监视器叠字；景别按镜轮换。
+          'camera': (i == 2 ? CameraMovement.pushIn : CameraMovement.static_).name,
+          ShotLanguage.keyShotSize: ShotSize.values[i % ShotSize.values.length].name,
         },
       );
       await s.nodes.create(
@@ -443,6 +446,11 @@ Future<WorkspaceFixtureIds> seedWorkspaceFixtureInto(RepositoryScope s) async {
         'provider_id': 'kling-v3',
         'duration_ms': 5000,
         'camera': CameraMovement.pushIn.name,
+        // P3：稿的检查器「镜头运动」组四行原文——中景 MS / 平视 Eye Level / 0.35 / 35mm。
+        ShotLanguage.keyShotSize: ShotSize.mediumShot.name,
+        ShotLanguage.keyCameraAngle: CameraAngle.eyeLevel.name,
+        ShotLanguage.keyMotionStrength: 0.35,
+        ShotLanguage.keyFocalLength: 35,
       },
       _ => <String, Object?>{
         'prompt': n.thumbLabel,

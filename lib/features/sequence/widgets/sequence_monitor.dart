@@ -26,6 +26,7 @@ import '../../../core/di/video_player.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/interfaces/video_player_service.dart';
 import '../../../core/models/provider_capabilities.dart' show CameraMovement;
+import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
@@ -486,21 +487,30 @@ class _Overlay extends ConsumerWidget {
     final t = context.inkTypography;
     final List<CanvasNode> nodes =
         ref.watch(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[];
-    CanvasNode? node;
-    for (final CanvasNode n in nodes) {
-      if (n.id == shot.nodeId) node = n;
-    }
-    final List<String> parts = <String>[(index + 1).toString().padLeft(3, '0')];
-    if (node != null) {
-      final String? cam = node.cameraName;
-      if (cam != null) {
-        for (final CameraMovement m in CameraMovement.values) {
-          if (m.name == cam) parts.add(cameraMovementLabel(context, m));
+    // 叠字四段（稿：003 · 推镜 · 中景 · Kling 2.1）：序号 · 运镜 · 景别（P3）· Provider 显示名。
+    // 字段先看产物的 config 节点（shot 折叠借来的图 / 视频 config 才带 provider 与镜头语言），
+    // 没有再回落到镜本身的节点（shot 节点也能记运镜意图）。模型名无字段，第四段是 provider 显示名。
+    final Map<String, CanvasNode> byId = <String, CanvasNode>{for (final CanvasNode n in nodes) n.id: n};
+    final CanvasNode? node = byId[shot.nodeId];
+    CanvasNode? cfg;
+    final String? rel = shot.relativePath;
+    if (rel != null) {
+      for (final CanvasNode n in nodes) {
+        if (n.role == NodeRole.result && (n.videoUrl == rel || n.imageUrl == rel)) {
+          cfg = n.sourceNodeId == null ? null : byId[n.sourceNodeId!];
+          break;
         }
       }
-      final String? providerId = node.typeConfig['provider_id'] as String?;
-      if (providerId != null) parts.add(ref.watch(providerDisplayNamesProvider)[providerId] ?? providerId);
     }
+    final CameraMovement? camera = parseCameraMovement(cfg?.cameraName ?? node?.cameraName);
+    final ShotSize? shotSize = cfg?.shotLanguage.shotSize ?? node?.shotLanguage.shotSize;
+    final String? providerId = (cfg?.typeConfig['provider_id'] ?? node?.typeConfig['provider_id']) as String?;
+    final List<String> parts = <String>[
+      (index + 1).toString().padLeft(3, '0'),
+      if (camera != null) cameraMovementLabel(context, camera),
+      if (shotSize != null) shotSizeLabel(context, shotSize),
+      if (providerId != null) ref.watch(providerDisplayNamesProvider)[providerId] ?? providerId,
+    ];
     final TextStyle s = t.mono.copyWith(color: c.fg1.withValues(alpha: 0.75));
     final String src = 'src ${formatTimecode(offsetMs)} / ${formatTimecode(sourceMs)}';
     return Positioned(

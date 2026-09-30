@@ -27,6 +27,7 @@ import 'package:inkframe/providers/provider_registry.dart';
 
 import '../../_harness/fake_batch_result.dart';
 import '../../_harness/fake_character.dart';
+import '../../_harness/fake_providers.dart';
 import '../../_harness/fake_unit_of_work.dart';
 
 // ---- fakes ---------------------------------------------------------------
@@ -318,8 +319,10 @@ void main() {
         jobs: jobs,
         secure: secure,
         queue: queue,
+        // P3 起 video 分支按能力位决定运镜参数是否下发，会 registry.get 一次：
+        // 给个不声明 supportedCameras 的 fake（image 分支仍不碰 registry）。
         registry: CachingProviderRegistry({
-          providerId: () => throw UnimplementedError(),
+          providerId: () => FakeProvider(capabilities: fakeVideoCapabilities(id: providerId)),
         }),
         resolver: _FakeResolver(),
         canvas: canvasRepo,
@@ -429,5 +432,44 @@ void main() {
     await buildCtrl().submitFromConfigNode('cfg4');
 
     expect(jobs.creates.first['full_prompt'], 'film grain, a bird');
+  });
+
+  // ---- P3 镜头语言注入 ------------------------------------------------------
+  test('P3：四字段 + 运镜按英文模板前置到用户提示词，基底前缀仍在最前；user_prompt 不带前缀', () async {
+    canvasRepo.prefix = 'film grain';
+    nodes.rows['cfg5'] = {
+      'id': 'cfg5', 'canvas_id': 'cvx', 'project_id': 'proj-1',
+      'type': 'video', 'node_role': 'config',
+      'type_config': <String, Object?>{
+        'prompt': 'a bird takes off',
+        'provider_id': providerId,
+        'camera': 'pushIn',
+        'shot_size': 'mediumShot',
+        'camera_angle': 'low',
+        'camera_motion_strength': 0.35,
+        'focal_length_mm': 35,
+      },
+    };
+
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk-x');
+    await buildCtrl().submitFromConfigNode('cfg5');
+
+    expect(jobs.creates.first['full_prompt'],
+        'film grain, medium shot, dolly in, low angle, 35mm lens, a bird takes off');
+    expect(jobs.creates.first['user_prompt'], 'a bird takes off', reason: '用户原话不带注入');
+    expect(queue.lastTask!.camera, isNull, reason: 'fake provider 不声明 supportedCameras ⇒ 只注入不下发参数');
+  });
+
+  test('P3：四字段全空、无运镜 → 提示词不变', () async {
+    nodes.rows['cfg6'] = {
+      'id': 'cfg6', 'canvas_id': 'cvx', 'project_id': 'proj-1',
+      'type': 'video', 'node_role': 'config',
+      'type_config': <String, Object?>{'prompt': 'a bird', 'provider_id': providerId, 'camera_motion_strength': 0.5},
+    };
+
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk-x');
+    await buildCtrl().submitFromConfigNode('cfg6');
+
+    expect(jobs.creates.first['full_prompt'], 'a bird', reason: '幅度不注入');
   });
 }

@@ -64,6 +64,7 @@ ProviderCapabilities fakeVideoCapabilities({
   bool supportsFirstFrame = false,
   bool supportsLastFrame = false,
   int maxRefImages = 0,
+  List<CameraMovement> supportedCameras = const <CameraMovement>[],
 }) {
   return ProviderCapabilities(
     providerId: id,
@@ -72,7 +73,7 @@ ProviderCapabilities fakeVideoCapabilities({
     supportedRatios: const <AspectRatio>[AspectRatio.r16x9],
     supportedResolutions: const <Resolution>[Resolution.p720],
     supportedDurations: const <int>[5],
-    supportedCameras: const <CameraMovement>[],
+    supportedCameras: supportedCameras,
     maxBatchSize: 1,
     maxRefImages: maxRefImages,
     refImagesIncludeKeyframes: false,

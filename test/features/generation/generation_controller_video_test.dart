@@ -500,6 +500,10 @@ void main() {
 
   test('video config + 无 data edge → resultNode.type=video + mode=textToVideo',
       () async {
+    // P3：运镜参数门控要读能力位（默认 registry 是「不该被调」的炸弹）。
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(capabilities: fakeVideoCapabilities(id: providerId)),
+    });
     final cfg = await seedVideoConfigNode(
       durationMs: 5000,
       camera: 'pushIn',
@@ -524,7 +528,39 @@ void main() {
     final task = queue.lastTask!;
     expect(task.mode, GenerationMode.textToVideo);
     expect(task.durationSeconds, 5);
+    // P3：provider 不声明 supportedCameras ⇒ 运镜只进提示词、不下发参数。
+    expect(task.camera, isNull);
+    expect(task.prompt, startsWith('dolly in, '));
+  });
+
+  test('P3：provider 声明支持该运镜 → 参数下发 + 提示词也注入', () async {
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(
+        capabilities: fakeVideoCapabilities(id: providerId, supportedCameras: const <CameraMovement>[CameraMovement.pushIn]),
+      ),
+    });
+    final cfg = await seedVideoConfigNode(durationMs: 5000, camera: 'pushIn');
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk-test');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+
+    final task = queue.lastTask!;
     expect(task.camera, CameraMovement.pushIn);
+    expect(task.prompt, startsWith('dolly in, '));
+  });
+
+  test('P3：provider 支持别的运镜、不支持这个 → 不下发', () async {
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(
+        capabilities: fakeVideoCapabilities(id: providerId, supportedCameras: const <CameraMovement>[CameraMovement.static_]),
+      ),
+    });
+    final cfg = await seedVideoConfigNode(camera: 'orbit');
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk-test');
+
+    await buildCtrl().submitFromConfigNode(cfg);
+    expect(queue.lastTask!.camera, isNull);
+    expect(queue.lastTask!.prompt, startsWith('arc shot, '));
   });
 
   test('video config + reference data edge → mode=imageToVideo', () async {

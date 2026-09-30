@@ -105,11 +105,15 @@ class InspectorDropdown<T> extends StatelessWidget {
     required this.value,
     required this.items,
     required this.onChanged,
+    this.hint,
   });
 
   final T? value;
   final List<DropdownMenuItem<T>> items;
   final ValueChanged<T?>? onChanged;
+
+  /// value 为 null 时显示的占位（可空字段：「未设」）。
+  final String? hint;
 
   @override
   Widget build(BuildContext context) {
@@ -128,9 +132,76 @@ class InspectorDropdown<T> extends StatelessWidget {
         underline: const SizedBox.shrink(),
         icon: Text('▼', style: t.micro.copyWith(color: c.fg6)),
         style: t.body.copyWith(color: c.fg2),
+        hint: hint == null ? null : Text(hint!, style: t.body.copyWith(color: c.fg6)),
         dropdownColor: c.surface4,
         borderRadius: BorderRadius.circular(InkRadius.s3),
       ),
+    );
+  }
+}
+
+/// 稿的滑杆行：2px 轨（已走过 accent / 未走 controlStrong）+ 10px 圆点 + 右侧 40px 等宽读数。
+/// 内部是 Material Slider（测试按类型定位、键盘可达），皮层按稿。
+class InspectorSlider extends StatelessWidget {
+  const InspectorSlider({
+    super.key,
+    required this.value,
+    required this.onChanged,
+    required this.label,
+    this.min = 0,
+    this.max = 1,
+    this.divisions,
+  });
+
+  /// 0..1 之类的当前值；null = 未设（轨道空、读数显示 —）。
+  final double? value;
+  final ValueChanged<double>? onChanged;
+
+  /// 右侧读数（调用方格式化，如 `0.35`）。
+  final String label;
+  final double min;
+  final double max;
+  final int? divisions;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: SizedBox(
+            height: 22,
+            child: SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 2,
+                activeTrackColor: c.accent,
+                inactiveTrackColor: c.controlStrong,
+                disabledActiveTrackColor: c.controlStrong,
+                disabledInactiveTrackColor: c.controlStrong,
+                thumbColor: c.fg1,
+                disabledThumbColor: c.fg5,
+                overlayShape: SliderComponentShape.noOverlay,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5, disabledThumbRadius: 5),
+                trackShape: const RectangularSliderTrackShape(),
+                tickMarkShape: SliderTickMarkShape.noTickMark,
+              ),
+              child: Slider(
+                value: (value ?? min).clamp(min, max),
+                min: min,
+                max: max,
+                divisions: divisions,
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: InkSpacing.sm),
+        SizedBox(
+          width: 40,
+          child: Text(label, textAlign: TextAlign.right, style: t.mono.copyWith(color: value == null ? c.fg6 : c.accent)),
+        ),
+      ],
     );
   }
 }

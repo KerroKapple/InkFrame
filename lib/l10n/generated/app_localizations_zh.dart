@@ -767,16 +767,84 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cameraPanRight => '右摇';
 
   @override
-  String get cameraTiltUp => '仰摇';
+  String get cameraTiltUp => '上摇';
 
   @override
-  String get cameraTiltDown => '俯摇';
+  String get cameraTiltDown => '下摇';
+
+  @override
+  String get cameraTruckLeft => '左移';
+
+  @override
+  String get cameraTruckRight => '右移';
+
+  @override
+  String get cameraTracking => '跟拍';
+
+  @override
+  String get cameraPedestalUp => '升';
+
+  @override
+  String get cameraPedestalDown => '降';
 
   @override
   String get cameraOrbit => '环绕';
 
   @override
-  String get cameraHandheld => '手持';
+  String get inspectorShotSizeLabel => '景别';
+
+  @override
+  String get inspectorCameraAngleLabel => '机位角度';
+
+  @override
+  String get inspectorMotionStrengthLabel => '运镜幅度';
+
+  @override
+  String get inspectorFocalLengthLabel => '焦段';
+
+  @override
+  String get inspectorShotLanguageUnset => '未设';
+
+  @override
+  String get shotSizeExtremeLongShot => '远景 ELS';
+
+  @override
+  String get shotSizeLongShot => '全景 LS';
+
+  @override
+  String get shotSizeMediumShot => '中景 MS';
+
+  @override
+  String get shotSizeMediumCloseUp => '近景 MCU';
+
+  @override
+  String get shotSizeCloseUp => '特写 CU';
+
+  @override
+  String get shotSizeExtremeCloseUp => '大特写 ECU';
+
+  @override
+  String get cameraAngleEyeLevel => '平视 Eye Level';
+
+  @override
+  String get cameraAngleHigh => '俯拍 High';
+
+  @override
+  String get cameraAngleLow => '仰拍 Low';
+
+  @override
+  String get cameraAngleBirdsEye => '鸟瞰 Bird\'s Eye';
+
+  @override
+  String get cameraAngleDutch => '荷兰角 Dutch';
+
+  @override
+  String focalLengthMm(int mm) {
+    return '${mm}mm';
+  }
+
+  @override
+  String get galleryParamShotLanguage => '镜头语言';
 
   @override
   String get inspectorVideoModeAuto => '生成模式：根据输入自动识别';

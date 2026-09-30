@@ -50,11 +50,13 @@ import '../../core/logging/logger_service.dart';
 import '../../core/models/generation_task.dart';
 import '../../core/models/job_status.dart';
 import '../../core/models/provider_capabilities.dart';
+import '../../core/models/shot_language.dart';
 import '../../core/interfaces/provider_registry.dart';
 import '../canvas/models/character.dart';
 import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
 import 'services/prompt_assembler.dart';
+import 'services/shot_language_prompt.dart';
 
 final generationControllerProvider = FutureProvider<GenerationController>((
   ref,
@@ -210,8 +212,14 @@ class GenerationController {
     final ignoreLane = typeConfig['ignore_lane_style'] == true;
     // data 入连线取一次，参考图与关联文本共用，避免重复 listIncoming（评审 P1#5①）。
     final incoming = await _incomingEdges(configNodeId);
+    // P3 镜头语言：四字段 + 运镜按英文模板前置到用户提示词（`medium shot, dolly in, eye level, 35mm lens`）。
+    // 不管 provider 支不支持 camera 能力位都注入——文本是对所有模型都成立的通道。
+    final String shotPrefix = shotLanguagePromptPrefix(
+      ShotLanguage.fromTypeConfig(typeConfig),
+      camera: _parseCamera(typeConfig['camera']),
+    );
     final fullPrompt = await _assembleFullPrompt(
-      userPrompt: prompt,
+      userPrompt: shotPrefix.isEmpty ? prompt : '$shotPrefix, $prompt',
       canvasId: canvasId,
       incoming: incoming,
       laneId: laneId,
@@ -246,11 +254,11 @@ class GenerationController {
           : GenerationMode.imageToVideo;
       final durMs = typeConfig['duration_ms'];
       if (durMs is int) durationSeconds = durMs ~/ 1000;
-      final camRaw = typeConfig['camera'];
-      if (camRaw is String) {
-        for (final c in CameraMovement.values) {
-          if (c.name == camRaw) cameraEnum = c;
-        }
+      // P3：运镜作为【参数】只在 provider 声明支持时下发；不支持的 provider 只吃提示词里的英文
+      // （见上面 _assembleFullPrompt 的镜头语言前缀）。
+      final CameraMovement? wanted = _parseCamera(typeConfig['camera']);
+      if (wanted != null && registry.get(providerId).capabilities.supportedCameras.contains(wanted)) {
+        cameraEnum = wanted;
       }
     } else {
       mode = refs.refImagePaths.isEmpty
@@ -738,6 +746,14 @@ class GenerationController {
 
   /// PRD §7.4：组装 base前缀 + 泳道风格 + 关联文本 + userPrompt + base后缀。
   /// 任一查询失败降级（仅用 userPrompt），不阻断生成。
+  static CameraMovement? _parseCamera(Object? raw) {
+    if (raw is! String) return null;
+    for (final CameraMovement c in CameraMovement.values) {
+      if (c.name == raw) return c;
+    }
+    return null;
+  }
+
   Future<String> _assembleFullPrompt({
     required String userPrompt,
     required String canvasId,

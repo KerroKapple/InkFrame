@@ -14,6 +14,7 @@ import 'package:flutter/painting.dart';
 
 import '../../../core/db/columns.dart';
 import '../../../core/db/row_reader.dart';
+import '../../../core/models/shot_language.dart';
 
 /// 节点角色（对应 schema `nodes.node_role`）。
 enum NodeRole { config, result }
@@ -93,6 +94,9 @@ class CanvasNode {
     final v = typeConfig['camera'];
     return v is String && v.isNotEmpty ? v : null;
   }
+
+  /// 镜头语言四字段（P3：景别 / 机位角度 / 运镜幅度 / 焦段）；全未设时为 [ShotLanguage.empty]。
+  ShotLanguage get shotLanguage => ShotLanguage.fromTypeConfig(typeConfig);
 
   /// video config 节点的生成模式（"t2v" / "i2v"）；未设置返回 null，
   /// 生成时按 incoming data edges **与角色注入**自动推断（见

@@ -336,13 +336,16 @@ class _ParamsGroup extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
     final Map<String, String> providerNames = ref.watch(providerDisplayNamesProvider);
-    final CameraMovement? camera = meta.cameraName == null ? null : _parseCamera(meta.cameraName!);
+    final CameraMovement? camera = parseCameraMovement(meta.cameraName);
+    final String shotLanguage = shotLanguageSummary(context, meta.shotLanguage);
     final List<Widget> rows = <Widget>[
       if (meta.providerId != null)
         _MetaRow(label: l.galleryParamProvider, value: providerNames[meta.providerId!] ?? meta.providerId!),
       if (item.durationMs != null)
         _MetaRow(label: l.galleryParamDuration, value: galleryFormatDuration(item.durationMs!)),
       if (camera != null) _MetaRow(label: l.galleryParamCamera, value: cameraMovementLabel(context, camera)),
+      // P3：景别 · 机位角度 · 运镜幅度 · 焦段（有一项就出这一行）。
+      if (shotLanguage.isNotEmpty) _MetaRow(label: l.galleryParamShotLanguage, value: shotLanguage),
       if (meta.keyframes.isNotEmpty)
         _MetaRow(
           label: l.galleryParamKeyframes,
@@ -353,13 +356,6 @@ class _ParamsGroup extends ConsumerWidget {
     ];
     if (rows.isEmpty) return const SizedBox.shrink();
     return _Group(title: l.galleryGroupParams, rows: rows);
-  }
-
-  static CameraMovement? _parseCamera(String raw) {
-    for (final CameraMovement c in CameraMovement.values) {
-      if (c.name == raw) return c;
-    }
-    return null;
   }
 }
 

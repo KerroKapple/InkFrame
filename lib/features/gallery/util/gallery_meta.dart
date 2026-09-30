@@ -7,6 +7,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../canvas/models/canvas_edge.dart';
+import '../../../core/models/shot_language.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/util/node_artifacts.dart';
 import '../../storyboard/models/sequence_shot.dart';
@@ -34,6 +35,7 @@ class GalleryItemMeta {
     this.sequenceIndex,
     this.prompt,
     this.cameraName,
+    this.shotLanguage = ShotLanguage.empty,
     this.keyframes = const <GalleryKeyframeRef>[],
     this.baseStylePrefix = '',
     this.configNodeId,
@@ -49,6 +51,8 @@ class GalleryItemMeta {
   final int? sequenceIndex;
   final String? prompt;
   final String? cameraName;
+  /// P3 镜头语言四字段（源 config 的 type_config）；全空时界面不出「镜头语言」行。
+  final ShotLanguage shotLanguage;
   final List<GalleryKeyframeRef> keyframes;
   final String baseStylePrefix;
   final String? configNodeId;
@@ -158,6 +162,7 @@ GalleryItemMeta galleryMetaFor(GalleryGraph graph, GalleryIndex index, GalleryIt
     sequenceIndex: index.sequenceIndexOf(item.canvasId, item.relativePath),
     prompt: config.promptText,
     cameraName: config.cameraName,
+    shotLanguage: config.shotLanguage,
     keyframes: keyframes,
     baseStylePrefix: graph.canvas(item.canvasId)?.baseStylePrefix ?? '',
     configNodeId: config.id,

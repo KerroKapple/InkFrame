@@ -75,7 +75,7 @@ void main() {
     await pump(tester, node);
 
     expect(find.text('10s'), findsOneWidget);
-    expect(find.text('Push in'), findsOneWidget);
+    expect(find.text('Dolly in'), findsOneWidget);
     // 「未设置」占位不应同时被选中显示两次（下拉收起时只渲染选中项）。
     expect(find.text('Not set'), findsNothing);
   });
@@ -90,13 +90,15 @@ void main() {
 
     // 9 个枚举一个不少。本测试没有注入任何 provider 能力表——video 面板在
     // 这种情况下整段隐藏，shot 面板必须照列。
-    expect(CameraMovement.values, hasLength(9));
+    expect(CameraMovement.values, hasLength(13), reason: 'P3：运镜方式 13 项');
     for (final c in CameraMovement.values) {
       expect(
         find.byWidgetPredicate(
           (w) => w is DropdownMenuItem<CameraMovement?> && w.value == c,
+          skipOffstage: false,
         ),
-        findsOneWidget,
+        findsWidgets, // 菜单项 + 按钮自身的隐藏副本都算（skipOffstage: false）
+
         reason: '缺运镜选项：${c.name}',
       );
     }
@@ -121,10 +123,11 @@ void main() {
 
     await tester.tap(find.byType(DropdownButton<CameraMovement?>));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Orbit').last);
+    // 13 项菜单在 600 高的测试面里末尾几项在滚动区外，选一个一定在台上的。
+    await tester.tap(find.text('Truck left').last);
     await tester.pumpAndSettle();
 
-    expect(savedConfig(node.id)['camera'], 'orbit');
+    expect(savedConfig(node.id)['camera'], 'truckLeft');
   });
 
   testWidgets('选回「未设置」→ 显式写 null 清掉,而不是被 merge 保留旧值',
