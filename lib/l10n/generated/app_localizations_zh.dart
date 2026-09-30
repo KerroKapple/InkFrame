@@ -655,7 +655,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorPresetsNameHint => '预设名称';
 
   @override
-  String get batchResultsLabel => '变体';
+  String get batchResultsLabel => '批量结果';
 
   @override
   String get inspectorResultTitle => '结果';
@@ -2060,4 +2060,176 @@ class AppLocalizationsZh extends AppLocalizations {
   String commandPaletteArtifactPath(String kind, String provider) {
     return '画廊 › $kind › $provider';
   }
+
+  @override
+  String batchSlotCount(int count) {
+    return '$count slot';
+  }
+
+  @override
+  String get batchCompare => '对比';
+
+  @override
+  String get batchBadgeChosen => '已选';
+
+  @override
+  String get batchStateGenerating => '生成中';
+
+  @override
+  String get batchActionPromote => '转正';
+
+  @override
+  String get batchActionCurrent => '当前';
+
+  @override
+  String get batchActionRerun => '重跑';
+
+  @override
+  String get batchActionCancel => '取消';
+
+  @override
+  String get batchRerunFailed => '重跑失败 slot';
+
+  @override
+  String get batchPromoteHint => '转正即把该 slot 写为节点产物；其余 slot 保留在画廊，可随时改选。';
+
+  @override
+  String batchOverlayTitle(String node) {
+    return '批量结果 · $node';
+  }
+
+  @override
+  String get batchCurrentArtifact => '当前产物';
+
+  @override
+  String get batchSetArtifact => '设为产物';
+
+  @override
+  String get batchRerunThisSlot => '重跑此 slot';
+
+  @override
+  String batchGeneratingPercent(int percent) {
+    return '生成中 $percent%';
+  }
+
+  @override
+  String get batchModeSideBySide => '并排';
+
+  @override
+  String get batchModeStacked => '叠加对比';
+
+  @override
+  String get batchModeStackedUnavailable => '叠加对比暂未实现';
+
+  @override
+  String get batchOverlayHint => '←→ 切换 · ↵ 转正 · ⎘ 以该种子重跑';
+
+  @override
+  String get batchDone => '完成';
+
+  @override
+  String get batchRerunWithSeed => '以该种子重跑';
+
+  @override
+  String get batchRerunWithSeedUnavailable => '这一格没有记录种子';
+
+  @override
+  String get batchCancelWholeBatch => '取消整批';
+
+  @override
+  String get batchOpenCompare => '打开足尺对比';
+
+  @override
+  String get characterLibraryHint => '项目级 · 跨画布复用';
+
+  @override
+  String characterRefAndUsage(int refs, int usages) {
+    return '$refs 张参考图 · $usages 处引用';
+  }
+
+  @override
+  String characterRefAndUsageNone(int refs) {
+    return '$refs 张参考图 · 未引用';
+  }
+
+  @override
+  String get characterNew => '新建角色';
+
+  @override
+  String get characterMenuEdit => '编辑';
+
+  @override
+  String get characterMenuRename => '改名';
+
+  @override
+  String get characterMenuDelete => '删除';
+
+  @override
+  String get characterLibraryEmpty => '还没有角色 · 从节点结果「存为角色」开始';
+
+  @override
+  String get characterDeleteTitle => '删除角色？';
+
+  @override
+  String characterDeleteBody(String name) {
+    return '「$name」将从角色库消失、不再注入生成。参考图文件保留在磁盘上，但应用内无法恢复。';
+  }
+
+  @override
+  String get characterRenameTitle => '重命名角色';
+
+  @override
+  String get characterEditTitle => '编辑角色';
+
+  @override
+  String get characterFieldName => '名称';
+
+  @override
+  String get characterFieldDescription => '描述';
+
+  @override
+  String get characterFieldReferences => '参考图';
+
+  @override
+  String get characterFieldReferencedBy => '被引用';
+
+  @override
+  String get characterReferencesHint => '顺序即注入次序 · 拖动重排';
+
+  @override
+  String characterReferencesCount(int count, int max) {
+    return '$count / $max';
+  }
+
+  @override
+  String get characterReferenceAdd => '添加';
+
+  @override
+  String get characterReferenceRemove => '删除参考图';
+
+  @override
+  String get characterReferenceLimitReached => '参考图已达上限';
+
+  @override
+  String get characterDescriptionHint => '描述随参考图一同注入提示词，用来补图片传达不了的细节。';
+
+  @override
+  String get characterStorageHint => '存在 characters/ 下的项目相对路径，随项目包一同导出。';
+
+  @override
+  String characterEditFootnote(int count) {
+    return '改动影响 $count 个引用节点的后续生成';
+  }
+
+  @override
+  String get characterEditFootnoteNone => '还没有节点引用它';
+
+  @override
+  String get characterManage => '管理';
+
+  @override
+  String get characterSave => '保存';
+
+  @override
+  String get characterNoReferences => '还没有参考图';
 }

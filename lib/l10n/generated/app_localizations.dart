@@ -1289,7 +1289,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchResultsLabel.
   ///
   /// In en, this message translates to:
-  /// **'Variants'**
+  /// **'Batch results'**
   String get batchResultsLabel;
 
   /// No description provided for @inspectorResultTitle.
@@ -3853,6 +3853,318 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Gallery › {kind} › {provider}'**
   String commandPaletteArtifactPath(String kind, String provider);
+
+  /// No description provided for @batchSlotCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} slot'**
+  String batchSlotCount(int count);
+
+  /// No description provided for @batchCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Compare'**
+  String get batchCompare;
+
+  /// No description provided for @batchBadgeChosen.
+  ///
+  /// In en, this message translates to:
+  /// **'Chosen'**
+  String get batchBadgeChosen;
+
+  /// No description provided for @batchStateGenerating.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating'**
+  String get batchStateGenerating;
+
+  /// No description provided for @batchActionPromote.
+  ///
+  /// In en, this message translates to:
+  /// **'Promote'**
+  String get batchActionPromote;
+
+  /// No description provided for @batchActionCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get batchActionCurrent;
+
+  /// No description provided for @batchActionRerun.
+  ///
+  /// In en, this message translates to:
+  /// **'Rerun'**
+  String get batchActionRerun;
+
+  /// No description provided for @batchActionCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get batchActionCancel;
+
+  /// No description provided for @batchRerunFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Rerun failed slots'**
+  String get batchRerunFailed;
+
+  /// No description provided for @batchPromoteHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Promoting writes that slot to the node\'s artifact; the others stay in the gallery and you can switch any time.'**
+  String get batchPromoteHint;
+
+  /// No description provided for @batchOverlayTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch results · {node}'**
+  String batchOverlayTitle(String node);
+
+  /// No description provided for @batchCurrentArtifact.
+  ///
+  /// In en, this message translates to:
+  /// **'Current artifact'**
+  String get batchCurrentArtifact;
+
+  /// No description provided for @batchSetArtifact.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as artifact'**
+  String get batchSetArtifact;
+
+  /// No description provided for @batchRerunThisSlot.
+  ///
+  /// In en, this message translates to:
+  /// **'Rerun this slot'**
+  String get batchRerunThisSlot;
+
+  /// No description provided for @batchGeneratingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating {percent}%'**
+  String batchGeneratingPercent(int percent);
+
+  /// No description provided for @batchModeSideBySide.
+  ///
+  /// In en, this message translates to:
+  /// **'Side by side'**
+  String get batchModeSideBySide;
+
+  /// No description provided for @batchModeStacked.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay'**
+  String get batchModeStacked;
+
+  /// No description provided for @batchModeStackedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Overlay comparison is not implemented'**
+  String get batchModeStackedUnavailable;
+
+  /// No description provided for @batchOverlayHint.
+  ///
+  /// In en, this message translates to:
+  /// **'←→ switch · ↵ promote · ⎘ rerun with this seed'**
+  String get batchOverlayHint;
+
+  /// No description provided for @batchDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get batchDone;
+
+  /// No description provided for @batchRerunWithSeed.
+  ///
+  /// In en, this message translates to:
+  /// **'Rerun with this seed'**
+  String get batchRerunWithSeed;
+
+  /// No description provided for @batchRerunWithSeedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No seed recorded for this slot'**
+  String get batchRerunWithSeedUnavailable;
+
+  /// No description provided for @batchCancelWholeBatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel the whole batch'**
+  String get batchCancelWholeBatch;
+
+  /// No description provided for @batchOpenCompare.
+  ///
+  /// In en, this message translates to:
+  /// **'Open full-size comparison'**
+  String get batchOpenCompare;
+
+  /// No description provided for @characterLibraryHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Project-wide · reused across canvases'**
+  String get characterLibraryHint;
+
+  /// No description provided for @characterRefAndUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'{refs} reference images · {usages} uses'**
+  String characterRefAndUsage(int refs, int usages);
+
+  /// No description provided for @characterRefAndUsageNone.
+  ///
+  /// In en, this message translates to:
+  /// **'{refs} reference images · unused'**
+  String characterRefAndUsageNone(int refs);
+
+  /// No description provided for @characterNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New character'**
+  String get characterNew;
+
+  /// No description provided for @characterMenuEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get characterMenuEdit;
+
+  /// No description provided for @characterMenuRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get characterMenuRename;
+
+  /// No description provided for @characterMenuDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get characterMenuDelete;
+
+  /// No description provided for @characterLibraryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No characters yet · start from “Save as character” on a node result'**
+  String get characterLibraryEmpty;
+
+  /// No description provided for @characterDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete character?'**
+  String get characterDeleteTitle;
+
+  /// No description provided for @characterDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'“{name}” disappears from the library and stops being injected into generation. Its reference image files stay on disk, but the app has no way to bring it back.'**
+  String characterDeleteBody(String name);
+
+  /// No description provided for @characterRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename character'**
+  String get characterRenameTitle;
+
+  /// No description provided for @characterEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit character'**
+  String get characterEditTitle;
+
+  /// No description provided for @characterFieldName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get characterFieldName;
+
+  /// No description provided for @characterFieldDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get characterFieldDescription;
+
+  /// No description provided for @characterFieldReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference images'**
+  String get characterFieldReferences;
+
+  /// No description provided for @characterFieldReferencedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Referenced by'**
+  String get characterFieldReferencedBy;
+
+  /// No description provided for @characterReferencesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Order is injection order · drag to reorder'**
+  String get characterReferencesHint;
+
+  /// No description provided for @characterReferencesCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} / {max}'**
+  String characterReferencesCount(int count, int max);
+
+  /// No description provided for @characterReferenceAdd.
+  ///
+  /// In en, this message translates to:
+  /// **'Add'**
+  String get characterReferenceAdd;
+
+  /// No description provided for @characterReferenceRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove reference image'**
+  String get characterReferenceRemove;
+
+  /// No description provided for @characterReferenceLimitReached.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference image limit reached'**
+  String get characterReferenceLimitReached;
+
+  /// No description provided for @characterDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The description is injected into the prompt along with the reference images — for the details a picture cannot carry.'**
+  String get characterDescriptionHint;
+
+  /// No description provided for @characterStorageHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Stored under characters/ as a project-relative path, and exported with the project package.'**
+  String get characterStorageHint;
+
+  /// No description provided for @characterEditFootnote.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes affect future generations of {count} referencing nodes'**
+  String characterEditFootnote(int count);
+
+  /// No description provided for @characterEditFootnoteNone.
+  ///
+  /// In en, this message translates to:
+  /// **'Not referenced by any node yet'**
+  String get characterEditFootnoteNone;
+
+  /// No description provided for @characterManage.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage'**
+  String get characterManage;
+
+  /// No description provided for @characterSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get characterSave;
+
+  /// No description provided for @characterNoReferences.
+  ///
+  /// In en, this message translates to:
+  /// **'No reference images yet'**
+  String get characterNoReferences;
 }
 
 class _AppLocalizationsDelegate
