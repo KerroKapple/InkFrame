@@ -74,7 +74,7 @@ void main() {
       expect(lens.markers.map((SceneMarker m) => m.atMs), <int>[0, kDefaultShotDurationMs]);
     });
 
-    test('未入链 = 有产物却不在任何叙事边上的 config 节点；无产物的不算', () {
+    test('未入链 = 有产物却不在任何叙事边上的 config 节点；无产物的不算；它们不进序列', () {
       final SequenceLens lens = buildSequenceLens(
         nodes: <CanvasNode>[
           _shot('a'),
@@ -82,10 +82,22 @@ void main() {
           _imageConfig('loose'),
           _imageResult('r-loose', source: 'loose'),
           _imageConfig('empty'),
+          _shot('lone'),
         ],
         edges: <CanvasEdge>[_narrative('e1', 'a', 'b')],
       );
       expect(lens.unchainedCount, 1);
+      // buildSequence 会把 loose / lone 追加在链尾；序列视图只认链上的镜——「未入链」与序列不重叠。
+      expect(lens.shots.map((SequenceShot s) => s.nodeId), <String>['a', 'b']);
+      expect(lens.totalMs, kDefaultShotDurationMs * 2);
+    });
+
+    test('没有任何叙事边 → 序列为空（孤立节点不追加成镜）', () {
+      final SequenceLens lens = buildSequenceLens(
+        nodes: <CanvasNode>[_shot('a'), _shot('b')],
+        edges: const <CanvasEdge>[],
+      );
+      expect(lens.isEmpty, isTrue);
     });
   });
 

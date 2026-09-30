@@ -173,6 +173,16 @@ const _shot = CanvasNode(
   typeConfig: <String, Object?>{'shot_notes': 'x'},
 );
 
+/// 叙事边 a→b 的另一端：两端都在场边才算链，序列 lens 只认链上的镜（P2）。
+const _shotB = CanvasNode(
+  id: 'b',
+  label: 'b',
+  type: CanvasNodeType.shot,
+  projectId: 'p1',
+  canvasId: 'c1',
+  typeConfig: <String, Object?>{'shot_notes': 'y'},
+);
+
 /// 播种外壳态（canvasId 是 ShellState 的派生投影，禁止 override 投影本身）。
 ///
 /// 打开画布的那一支必须同时带 project：_open 的 projectId 现在走
@@ -396,6 +406,7 @@ void main() {
     testWidgets('有 narrative 边 → 序列 lens 在树：叙事链首行 + 交付占位', (tester) async {
       await _pumpSequence(
         tester,
+        nodes: const <CanvasNode>[_shot, _shotB],
         edges: <CanvasEdge>[_edge('e1', EdgeType.narrative)],
       );
 

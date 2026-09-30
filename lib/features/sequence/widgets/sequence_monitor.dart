@@ -504,7 +504,7 @@ class _Overlay extends ConsumerWidget {
         children: <Widget>[
           Flexible(child: Text(parts.join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: s)),
           const SizedBox(width: InkSpacing.sm),
-          Flexible(
+          Expanded(
             child: Text(
               'src ${formatTimecode(offsetMs)} / ${formatTimecode(sourceMs)}',
               maxLines: 1,

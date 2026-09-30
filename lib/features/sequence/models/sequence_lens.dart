@@ -74,7 +74,22 @@ SequenceLens buildSequenceLens({
   required List<CanvasNode> nodes,
   required List<CanvasEdge> edges,
 }) {
-  final List<SequenceShot> shots = buildSequence(nodes: nodes, edges: edges);
+  final Map<String, CanvasNode> byId = <String, CanvasNode>{for (final n in nodes) n.id: n};
+  // 链上节点 = narrative 边两端都在场的节点。
+  final Set<String> onChain = <String>{};
+  for (final CanvasEdge e in edges) {
+    if (e.edgeType != EdgeType.narrative) continue;
+    if (!byId.containsKey(e.sourceNodeId) || !byId.containsKey(e.targetNodeId)) continue;
+    onChain..add(e.sourceNodeId)..add(e.targetNodeId);
+  }
+
+  // 序列 = 只认链上的镜。buildSequence 会把走不到链的节点按位置追加在末尾（SB-6 的「一个不丢」，
+  // 给对话框预览用），序列视图不要它们——它们就是「未入链」那一格数的东西，两边不能重叠
+  // （画廊的「已入序列」同判据，见 gallery_meta）。
+  final List<SequenceShot> shots = <SequenceShot>[
+    for (final SequenceShot s in buildSequence(nodes: nodes, edges: edges))
+      if (onChain.contains(s.nodeId)) s,
+  ];
   final List<int> starts = <int>[];
   int acc = 0;
   for (final SequenceShot s in shots) {
@@ -82,7 +97,6 @@ SequenceLens buildSequenceLens({
     acc += s.durationMs;
   }
 
-  final Map<String, CanvasNode> byId = <String, CanvasNode>{for (final n in nodes) n.id: n};
   final List<SceneMarker> markers = <SceneMarker>[];
   for (int i = 0; i < shots.length; i++) {
     final CanvasNode? n = byId[shots[i].nodeId];
@@ -91,14 +105,7 @@ SequenceLens buildSequenceLens({
     }
   }
 
-  // 未入链：有产物的 config 节点里，不在链（narrative 边两端都在场）上的。
-  final Set<String> ids = byId.keys.toSet();
-  final Set<String> onChain = <String>{};
-  for (final CanvasEdge e in edges) {
-    if (e.edgeType != EdgeType.narrative) continue;
-    if (!ids.contains(e.sourceNodeId) || !ids.contains(e.targetNodeId)) continue;
-    onChain..add(e.sourceNodeId)..add(e.targetNodeId);
-  }
+  // 未入链：有产物的 config 节点里，不在链上的。
   int unchained = 0;
   for (final CanvasNode n in nodes) {
     if (n.role != NodeRole.config || onChain.contains(n.id)) continue;
