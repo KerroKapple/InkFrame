@@ -4,6 +4,7 @@
 //                          imgA ──data(first_frame)──┘
 //     imgA 有 4 个批量 slot（#2 promoted）；imgB 有 1 个 result；video 有 1 个 result。
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/models/shot_language.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/gallery/models/gallery_graph.dart';
@@ -50,6 +51,10 @@ final GalleryGraph _graph = GalleryGraph(
         'provider_id': 'kling-v3',
         'prompt': '晨雾中的山径',
         'camera': 'pushIn',
+        'shot_size': 'mediumShot',
+        'camera_angle': 'eyeLevel',
+        'camera_motion_strength': 0.35,
+        'focal_length_mm': 35,
       }),
       _node('videoR', '', CanvasNodeType.video, role: NodeRole.result, source: 'video',
           cfg: <String, Object?>{'video_url': 'videos/v.mp4', 'duration_ms': 5000, 'thumbnail_url': 'thumbs/v.png'}),
@@ -85,6 +90,9 @@ void main() {
     expect(m.providerId, 'kling-v3');
     expect(m.prompt, '晨雾中的山径');
     expect(m.cameraName, 'pushIn');
+    // P3 镜头语言四字段跟着源 config 走；图像 config 没设 ⇒ empty。
+    expect(m.shotLanguage, const ShotLanguage(shotSize: ShotSize.mediumShot, cameraAngle: CameraAngle.eyeLevel, motionStrength: 0.35, focalLengthMm: 35));
+    expect(galleryMetaFor(_graph, index, byPath('images/b.png')).shotLanguage, ShotLanguage.empty);
     expect(m.baseStylePrefix, '水墨');
     expect(m.keyframes.map((k) => (k.role, k.sourceLabel)),
         <(EdgeRole, String)>[(EdgeRole.firstFrame, '镜头 01 · 图像'), (EdgeRole.lastFrame, '镜头 02 · 图像')]);

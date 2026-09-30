@@ -23,7 +23,9 @@ enum AspectRatio { r1x1, r16x9, r9x16, r4x3, r3x4, r21x9 }
 /// 分辨率枚举（PRD §10.1）。
 enum Resolution { p720, p1080, k2, k4 }
 
-/// 运镜枚举（PRD §10.1）。
+/// 运镜枚举（PRD §10.1；P3 扩到 13 项——PLAN §P3 的运镜方式表）。
+/// 成员名保持稳定（存进 type_config 的就是 .name）：pushIn = 推镜 Dolly In、pullOut = 拉镜 Dolly Out、
+/// orbit = 环绕 Arc；文案见 ARB。
 enum CameraMovement {
   static_,
   pushIn,
@@ -32,8 +34,12 @@ enum CameraMovement {
   panRight,
   tiltUp,
   tiltDown,
+  truckLeft,
+  truckRight,
+  tracking,
+  pedestalUp,
+  pedestalDown,
   orbit,
-  handheld,
 }
 
 @freezed

@@ -26,6 +26,7 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/interfaces/unit_of_work.dart';
 import '../../../core/models/app_preferences.dart';
 import '../../../core/models/provider_capabilities.dart';
+import '../../../core/models/shot_language.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../canvas/models/canvas_node.dart';
@@ -335,6 +336,11 @@ Future<WorkspaceFixtureIds> seedWorkspaceFixtureInto(RepositoryScope s) async {
         'provider_id': 'kling-v3',
         'duration_ms': 5000,
         'camera': CameraMovement.pushIn.name,
+        // P3：稿的检查器「镜头运动」组四行原文——中景 MS / 平视 Eye Level / 0.35 / 35mm。
+        ShotLanguage.keyShotSize: ShotSize.mediumShot.name,
+        ShotLanguage.keyCameraAngle: CameraAngle.eyeLevel.name,
+        ShotLanguage.keyMotionStrength: 0.35,
+        ShotLanguage.keyFocalLength: 35,
       },
       _ => <String, Object?>{
         'prompt': n.thumbLabel,

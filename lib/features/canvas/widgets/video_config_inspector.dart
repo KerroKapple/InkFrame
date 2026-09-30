@@ -2,7 +2,7 @@
 //
 //   模型     供应商 / 片长 / 预估费用
 //   关键帧   入边（起始帧 / 结束帧 / 参考帧 的连线 + 角色）
-//   镜头运动 运镜方式（provider 声明 supportedCameras 才有）
+//   镜头运动 运镜方式 / 景别 / 机位角度 / 运镜幅度 / 焦段（P3 镜头语言：全量枚举，不按 provider 能力位隐藏）
 // 之后是既有的角色区（maxRefImages>0 才挂）与生成状态。
 //
 // 提示词不在这里编辑——画布底部提示词条是唯一入口（稿）；本面板只读 node.promptText。
@@ -16,6 +16,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/preferences.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/models/provider_capabilities.dart';
+import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/services/cost_estimator.dart';
@@ -41,6 +42,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
   String? _providerId;
   int? _durationSec;
   CameraMovement? _camera;
+  ShotLanguage _lang = ShotLanguage.empty;
 
   InspectorSubmitController get _submitCtrl =>
       ref.read(inspectorSubmitControllerProvider(widget.node.id).notifier);
@@ -74,11 +76,10 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
         ? savedDurSec
         : (supportedDur.isNotEmpty ? supportedDur.first : null);
 
-    final supportedCam = selected?.supportedCameras ?? const <CameraMovement>[];
-    final savedCam = _parseCamera(tc['camera']);
-    _camera = (savedCam != null && supportedCam.contains(savedCam))
-        ? savedCam
-        : (supportedCam.isNotEmpty ? supportedCam.first : null);
+    // P3：运镜不再钳到 provider 的 supportedCameras——它是导演意图，落库 + 注入提示词；
+    // 是否作为参数下发由 GenerationController 按能力位决定。
+    _camera = parseCameraMovement(tc['camera']);
+    _lang = widget.node.shotLanguage;
   }
 
   List<ProviderCapabilities> _videoCaps() => ref
@@ -98,14 +99,6 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     );
   }
 
-  CameraMovement? _parseCamera(Object? raw) {
-    if (raw is! String || raw.isEmpty) return null;
-    for (final c in CameraMovement.values) {
-      if (c.name == raw) return c;
-    }
-    return null;
-  }
-
   void _submit() {
     final prompt = _prompt.trim();
     if (prompt.isEmpty || _providerId == null) return;
@@ -114,7 +107,14 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
       'provider_id': _providerId,
       if (_durationSec != null) 'duration_ms': _durationSec! * 1000,
       if (_camera != null) 'camera': _camera!.name,
+      ..._lang.toTypeConfigPatch(),
     });
+  }
+
+  /// 镜头语言四字段：改一项即落盘该项（空值写 null = 清除）。
+  void _saveLang(ShotLanguage next) {
+    setState(() => _lang = next);
+    _submitCtrl.saveConfig(next.toTypeConfigPatch());
   }
 
   @override
@@ -154,19 +154,15 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                         final newDuration = next.supportedDurations.isNotEmpty
                             ? next.supportedDurations.first
                             : null;
-                        final newCamera = next.supportedCameras.isNotEmpty
-                            ? next.supportedCameras.first
-                            : null;
+                        // 换 provider 不动运镜（导演意图与 provider 无关，P3）。
                         setState(() {
                           _providerId = v;
                           _durationSec = newDuration;
-                          _camera = newCamera;
                         });
                         _submitCtrl.saveConfig(<String, Object?>{
                           'provider_id': v,
                           if (newDuration != null)
                             'duration_ms': newDuration * 1000,
-                          if (newCamera != null) 'camera': newCamera.name,
                         });
                         // 记住上次使用（fire-and-forget，服务内部吞盘错误）。
                         ref.read(preferencesServiceProvider).update(
@@ -227,39 +223,86 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             ),
           ],
         ),
-        // 运镜：仅当当前 provider 真正声明了 supportedCameras 才展示——
-        // 否则整组只剩说明（当前所有 provider 均为空，避免一个永远空的死下拉）。
+        // 镜头运动（P3，稿的五行）：运镜方式 / 景别 / 机位角度 / 运镜幅度（滑杆）/ 焦段。
+        // 全部是导演意图：落库 + 英文注入提示词（shot_language_prompt.dart）；provider 不支持
+        // camera 能力位时 GenerationController 只注入不下发参数，这里不再按能力位隐藏。
         InspectorGroup(
           title: l.inspectorGroupCamera,
           children: [
-            if (selected != null && selected.supportedCameras.isNotEmpty)
-              InspectorRow(
-                label: l.inspectorVideoCameraLabel,
-                child: InspectorDropdown<CameraMovement>(
-                  value: _camera,
-                  items: [
-                    for (final c in selected.supportedCameras)
-                      DropdownMenuItem(
-                        value: c,
-                        child: Text(cameraMovementLabel(context, c)),
-                      ),
-                  ],
-                  onChanged: busy
-                      ? null
-                      : (v) {
-                          if (v == null) return;
-                          setState(() => _camera = v);
-                          _submitCtrl.saveConfig(<String, Object?>{
-                            'camera': v.name,
-                          });
-                        },
-                ),
-              )
-            else
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
-                child: InspectorValue(l.inspectorCameraUnsupported),
+            InspectorRow(
+              label: l.inspectorVideoCameraLabel,
+              child: InspectorDropdown<CameraMovement>(
+                value: _camera,
+                hint: l.inspectorShotLanguageUnset,
+                items: [
+                  for (final c in CameraMovement.values)
+                    DropdownMenuItem(
+                      value: c,
+                      child: Text(cameraMovementLabel(context, c)),
+                    ),
+                ],
+                onChanged: busy
+                    ? null
+                    : (v) {
+                        if (v == null) return;
+                        setState(() => _camera = v);
+                        _submitCtrl.saveConfig(<String, Object?>{
+                          'camera': v.name,
+                        });
+                      },
               ),
+            ),
+            InspectorRow(
+              label: l.inspectorShotSizeLabel,
+              child: InspectorDropdown<ShotSize>(
+                value: _lang.shotSize,
+                hint: l.inspectorShotLanguageUnset,
+                items: [
+                  for (final s in ShotSize.values)
+                    DropdownMenuItem(value: s, child: Text(shotSizeLabel(context, s))),
+                ],
+                onChanged: busy ? null : (v) => _saveLang(_lang.copyWith(shotSize: v)),
+              ),
+            ),
+            InspectorRow(
+              label: l.inspectorCameraAngleLabel,
+              child: InspectorDropdown<CameraAngle>(
+                value: _lang.cameraAngle,
+                hint: l.inspectorShotLanguageUnset,
+                items: [
+                  for (final a in CameraAngle.values)
+                    DropdownMenuItem(value: a, child: Text(cameraAngleLabel(context, a))),
+                ],
+                onChanged: busy ? null : (v) => _saveLang(_lang.copyWith(cameraAngle: v)),
+              ),
+            ),
+            InspectorRow(
+              label: l.inspectorMotionStrengthLabel,
+              child: InspectorSlider(
+                value: _lang.motionStrength,
+                divisions: (1 / kMotionStrengthStep).round(),
+                label: _lang.motionStrength == null
+                    ? l.inspectorShotLanguageUnset
+                    : motionStrengthLabel(_lang.motionStrength!),
+                onChanged: busy
+                    ? null
+                    : (v) => _saveLang(_lang.copyWith(
+                          motionStrength: (v / kMotionStrengthStep).round() * kMotionStrengthStep,
+                        )),
+              ),
+            ),
+            InspectorRow(
+              label: l.inspectorFocalLengthLabel,
+              child: InspectorDropdown<int>(
+                value: _lang.focalLengthMm,
+                hint: l.inspectorShotLanguageUnset,
+                items: [
+                  for (final mm in kFocalLengthsMm)
+                    DropdownMenuItem(value: mm, child: Text(focalLengthLabel(context, mm))),
+                ],
+                onChanged: busy ? null : (v) => _saveLang(_lang.copyWith(focalLengthMm: v)),
+              ),
+            ),
           ],
         ),
         // CH-2：角色区（CH-1 视频注入的用户入口）。门控对齐注入门：

@@ -13,6 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/shortcut_labels.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/models/provider_capabilities.dart';
+import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ws_primitives.dart';
@@ -94,11 +95,15 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
     final String providerName =
         providerId == null ? '' : (ref.watch(providerDisplayNamesProvider)[providerId] ?? providerId);
     final int? durationMs = node.durationMs;
-    final CameraMovement? camera = _cameraOf(node.cameraName);
+    final CameraMovement? camera = parseCameraMovement(node.cameraName);
+    final ShotLanguage lang = node.shotLanguage;
+    // 摘要顺序：服务商 · 片长 · 运镜 · 景别 · 焦段（机位角度 / 幅度只在检查器里看）。
     final List<String> summary = <String>[
       if (providerName.isNotEmpty) providerName,
       if (durationMs != null) '${(durationMs / 1000).round()}s',
       if (camera != null) cameraMovementLabel(context, camera),
+      if (lang.shotSize != null) shotSizeLabel(context, lang.shotSize!),
+      if (lang.focalLengthMm != null) focalLengthLabel(context, lang.focalLengthMm!),
     ];
     final String prefix =
         ref.watch(canvasBaseStyleProvider(widget.canvasId)).valueOrNull?.prefix.trim() ?? '';
@@ -199,13 +204,6 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
     );
   }
 
-  static CameraMovement? _cameraOf(String? name) {
-    if (name == null) return null;
-    for (final CameraMovement m in CameraMovement.values) {
-      if (m.name == name) return m;
-    }
-    return null;
-  }
 }
 
 /// 「基础风格：{prefix} 已附加」——点击打开基底风格编辑器；无前缀时只显示标签。

@@ -228,14 +228,14 @@ lib/
 │   ├── licenses.dart                  # LicenseRegistry entries for bundled non-pub artifacts (libmpv+FFmpeg, PostgreSQL, OFL fonts)
 │   ├── logging/                       # InkLogger interface
 │   ├── media/                         # png_dimensions.dart (XM-2: PNG header → pixel size, pure; no image decoder dependency)
-│   ├── models/                        # Domain models (freezed, immutable)
+│   ├── models/                        # Domain models (freezed, immutable) + shot_language.dart (P3 hand-written: ShotSize / CameraAngle / focal table / ShotLanguage ↔ type_config)
 │   ├── net/                           # proxy_env.dart (LB-24: HTTPS_PROXY/HTTP_PROXY/NO_PROXY 纯函数 + applyEnvProxy dio 接线)
 │   └── paths/                         # app_paths.dart (well-known dirs, platform-conventional root) + legacy_root_migrator.dart (DIR-1 one-shot move)
 ├── features/                          # Feature modules (vertical slices)
 │   ├── canvas/                        # Node canvas
 │   │   ├── models/
 │   │   ├── providers/                 # Riverpod ViewModels
-│   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart
+│   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart (运镜 / 景别 / 机位角度 / 焦段 → ARB 文案 + parseCameraMovement + shotLanguageSummary)
 │   │   └── widgets/
 │   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps InkShell). Screens 稿第 4 屏右：跨实体搜索，三组「镜头 · 当前画布 / 产物 / 动作」
 │   │   ├── palette_entry.dart         # PaletteEntry / PaletteChoice（hand-written value objects; run = ↵ 打开, locate = ⌘↵ 在画布中定位）
@@ -252,10 +252,10 @@ lib/
 │   │   ├── util/                      # gallery_meta.dart (pure: meta / lineage / narrative-chain marks) + gallery_time.dart
 │   │   └── widgets/                   # gallery_screen / gallery_filter_panel / gallery_grid + gallery_tile / gallery_info_panel / gallery_actions (save-as-character, locate-in-canvas)
 │   ├── generation/                    # Generation flow UI + state (no widgets/ — panel retired in #164)
-│   │   ├── generation_controller.dart
+│   │   ├── generation_controller.dart # P3: 镜头语言英文前缀注入 fullPrompt；camera 参数只在 provider 声明 supportedCameras 时下发
 │   │   ├── models/
 │   │   ├── providers/
-│   │   └── services/
+│   │   └── services/                  # prompt_assembler + shot_language_prompt.dart (P3: 镜头语言 → 英文提示词前缀，不 i18n) + cost_estimator
 │   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
 │   │   ├── settings_screen.dart       # SettingsScreen (dialog frame + nav + page bodies + footer 完成/导出诊断包); pages = 常规 / API 密钥 / 节点布局 / 存储 / 关于
 │   │   ├── providers/

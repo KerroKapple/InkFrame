@@ -1481,13 +1481,13 @@ abstract class AppLocalizations {
   /// No description provided for @cameraPushIn.
   ///
   /// In en, this message translates to:
-  /// **'Push in'**
+  /// **'Dolly in'**
   String get cameraPushIn;
 
   /// No description provided for @cameraPullOut.
   ///
   /// In en, this message translates to:
-  /// **'Pull out'**
+  /// **'Dolly out'**
   String get cameraPullOut;
 
   /// No description provided for @cameraPanLeft.
@@ -1514,17 +1514,149 @@ abstract class AppLocalizations {
   /// **'Tilt down'**
   String get cameraTiltDown;
 
+  /// No description provided for @cameraTruckLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck left'**
+  String get cameraTruckLeft;
+
+  /// No description provided for @cameraTruckRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Truck right'**
+  String get cameraTruckRight;
+
+  /// No description provided for @cameraTracking.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracking'**
+  String get cameraTracking;
+
+  /// No description provided for @cameraPedestalUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Pedestal up'**
+  String get cameraPedestalUp;
+
+  /// No description provided for @cameraPedestalDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Pedestal down'**
+  String get cameraPedestalDown;
+
   /// No description provided for @cameraOrbit.
   ///
   /// In en, this message translates to:
-  /// **'Orbit'**
+  /// **'Arc'**
   String get cameraOrbit;
 
-  /// No description provided for @cameraHandheld.
+  /// No description provided for @inspectorShotSizeLabel.
   ///
   /// In en, this message translates to:
-  /// **'Handheld'**
-  String get cameraHandheld;
+  /// **'Shot size'**
+  String get inspectorShotSizeLabel;
+
+  /// No description provided for @inspectorCameraAngleLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera angle'**
+  String get inspectorCameraAngleLabel;
+
+  /// No description provided for @inspectorMotionStrengthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Motion strength'**
+  String get inspectorMotionStrengthLabel;
+
+  /// No description provided for @inspectorFocalLengthLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Focal length'**
+  String get inspectorFocalLengthLabel;
+
+  /// No description provided for @inspectorShotLanguageUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'Not set'**
+  String get inspectorShotLanguageUnset;
+
+  /// No description provided for @shotSizeExtremeLongShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Extreme long shot ELS'**
+  String get shotSizeExtremeLongShot;
+
+  /// No description provided for @shotSizeLongShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Long shot LS'**
+  String get shotSizeLongShot;
+
+  /// No description provided for @shotSizeMediumShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium shot MS'**
+  String get shotSizeMediumShot;
+
+  /// No description provided for @shotSizeMediumCloseUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium close-up MCU'**
+  String get shotSizeMediumCloseUp;
+
+  /// No description provided for @shotSizeCloseUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Close-up CU'**
+  String get shotSizeCloseUp;
+
+  /// No description provided for @shotSizeExtremeCloseUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Extreme close-up ECU'**
+  String get shotSizeExtremeCloseUp;
+
+  /// No description provided for @cameraAngleEyeLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Eye level'**
+  String get cameraAngleEyeLevel;
+
+  /// No description provided for @cameraAngleHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High angle'**
+  String get cameraAngleHigh;
+
+  /// No description provided for @cameraAngleLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low angle'**
+  String get cameraAngleLow;
+
+  /// No description provided for @cameraAngleBirdsEye.
+  ///
+  /// In en, this message translates to:
+  /// **'Bird\'s eye'**
+  String get cameraAngleBirdsEye;
+
+  /// No description provided for @cameraAngleDutch.
+  ///
+  /// In en, this message translates to:
+  /// **'Dutch angle'**
+  String get cameraAngleDutch;
+
+  /// No description provided for @focalLengthMm.
+  ///
+  /// In en, this message translates to:
+  /// **'{mm}mm'**
+  String focalLengthMm(int mm);
+
+  /// No description provided for @galleryParamShotLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot language'**
+  String get galleryParamShotLanguage;
 
   /// No description provided for @inspectorVideoModeAuto.
   ///
