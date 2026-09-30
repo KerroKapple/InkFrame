@@ -1964,8 +1964,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sequenceArtifactMissing => '缺失';
 
   @override
-  String get sequenceChainNote =>
-      '顺序即画布上的 narrative 边。这里拖动排序会改写连线；裁切写回镜头节点的入出点。';
+  String get sequenceChainNote => '顺序即画布上的 narrative 边——改顺序要回画布改连线，这份清单是只读的。';
 
   @override
   String get sequenceDeliveryTab => '交付';
