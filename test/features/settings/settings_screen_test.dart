@@ -5,8 +5,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
+import 'package:inkframe/features/settings/widgets/about_section.dart';
 import 'package:inkframe/features/settings/widgets/api_keys_section.dart';
+import 'package:inkframe/features/settings/widgets/backup_section.dart';
+import 'package:inkframe/features/settings/widgets/canvas_appearance_section.dart';
+import 'package:inkframe/features/settings/widgets/custom_providers_section.dart';
+import 'package:inkframe/features/settings/widgets/diagnostics_section.dart';
+import 'package:inkframe/features/settings/widgets/language_section.dart';
 import 'package:inkframe/features/settings/widgets/startup_section.dart';
+import 'package:inkframe/features/settings/widgets/storage_path_section.dart';
+import 'package:inkframe/features/settings/widgets/theme_section.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 
@@ -54,6 +62,69 @@ void main() {
     expect(find.byType(ApiKeysSection), findsOneWidget);
     expect(find.byType(StartupSection), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 10)));
+
+  // 九个既有 section 的存在性断言（StartupSection 已在第一条覆盖，不重复）。
+  // 各 section 自身行为有独立单测，但从 _PageBody 的某页里删掉一个，那些单测照样
+  // 全绿——用户却再也进不去那块设置。一次只挂一页，所以逐页经左导航切过去再断言；
+  // 常规页排在最后，确保它也是「切回来」而不是默认落地时断言的。
+  // 每个 section 一条 expect，失败时 reason 直接点名缺的是哪一个。
+  const Map<SettingsPage, List<(Type, String)>> sectionsByPage =
+      <SettingsPage, List<(Type, String)>>{
+    SettingsPage.apiKeys: <(Type, String)>[
+      (ApiKeysSection, 'ApiKeysSection 缺席 → 无处填 provider API key'),
+      (CustomProvidersSection, 'CustomProvidersSection 缺席 → 无法管理自定义 OpenAI 兼容端点'),
+    ],
+    SettingsPage.nodeLayout: <(Type, String)>[
+      (CanvasAppearanceSection, 'CanvasAppearanceSection 缺席 → 无法调连线/卡片颜色'),
+    ],
+    SettingsPage.storage: <(Type, String)>[
+      (StoragePathSection, 'StoragePathSection 缺席 → 看不到数据库目录'),
+      (BackupSection, 'BackupSection 缺席 → 无法备份/还原数据库'),
+    ],
+    SettingsPage.about: <(Type, String)>[
+      (AboutSection, 'AboutSection 缺席 → 看不到版本/许可/更新检查'),
+      (DiagnosticsSection, 'DiagnosticsSection 缺席 → 打不开日志目录、导不出诊断包'),
+    ],
+    SettingsPage.general: <(Type, String)>[
+      (ThemeSection, 'ThemeSection 缺席 → 无法切换主题/文字缩放'),
+      (LanguageSection, 'LanguageSection 缺席 → 无法切换界面语言'),
+    ],
+  };
+
+  test('存在性断言表覆盖每一页、合计九个 section', () {
+    expect(sectionsByPage.keys.toSet(), SettingsPage.values.toSet(),
+        reason: '新增页却没进表 = 该页 section 无存在性断言');
+    expect(sectionsByPage.values.expand((l) => l).length, 9);
+  });
+
+  for (final MapEntry<SettingsPage, List<(Type, String)>> entry
+      in sectionsByPage.entries) {
+    testWidgets('左导航切到「${entry.key.name}」→ 该页 section 各在台',
+        (tester) async {
+      final paths = await setupTempPaths(
+          tester, 'ink_settings_presence_${entry.key.name}_');
+      await pumpInkShell(
+        tester,
+        paths: paths,
+        initial: const ShellState(overlay: ShellOverlay.settings),
+      );
+      if (entry.key == SettingsPage.general) {
+        // 常规页是默认页：先切走，再经导航切回来。
+        await tester.tap(find.byKey(SettingsScreen.navKey(SettingsPage.about)));
+        await tester.pump();
+        await tester.pump();
+        expect(find.byType(ThemeSection), findsNothing);
+      }
+
+      await tester.tap(find.byKey(SettingsScreen.navKey(entry.key)));
+      await tester.pump();
+      await tester.pump();
+
+      for (final (Type type, String reason) in entry.value) {
+        expect(find.byType(type), findsOneWidget, reason: reason);
+      }
+    }, timeout: const Timeout(Duration(seconds: 10)));
+  }
 
   testWidgets('✕ 关闭浮层', (tester) async {
     final paths = await setupTempPaths(tester, 'ink_settings_close_');
