@@ -367,17 +367,19 @@ class _SequenceMonitorState extends ConsumerState<SequenceMonitor> {
                       .seekGlobal((f * widget.lens.totalMs).round(), widget.lens),
                 ),
                 const SizedBox(height: InkSpacing.sm),
+                // 两侧时码各占一半余量（Expanded），传输键居中定宽。别用 Flexible + Spacer：
+                // Flexible 与 Spacer 平分 flex，最小窗口下时码只分到 ~50px 就被裁掉。
                 Row(
                   children: <Widget>[
-                    Flexible(
+                    Expanded(
                       child: Text(
                         formatTimecode(globalMs),
                         maxLines: 1,
                         overflow: TextOverflow.clip,
+                        softWrap: false,
                         style: t.mono.copyWith(color: c.fg1, height: 1.2),
                       ),
                     ),
-                    const Spacer(),
                     _TransportKey(
                       key: SequenceMonitor.prevKey,
                       icon: Icons.skip_previous,
@@ -399,12 +401,12 @@ class _SequenceMonitorState extends ConsumerState<SequenceMonitor> {
                       tooltip: l.sequencePreviewNext,
                       onTap: _index < _shots.length - 1 ? () => _step(1) : null,
                     ),
-                    const Spacer(),
-                    Flexible(
+                    Expanded(
                       child: Text(
                         formatTimecode(widget.lens.totalMs),
                         maxLines: 1,
                         overflow: TextOverflow.clip,
+                        softWrap: false,
                         textAlign: TextAlign.right,
                         style: t.mono.copyWith(color: c.fg4, height: 1.2),
                       ),
@@ -468,6 +470,10 @@ class _Overlay extends ConsumerWidget {
     required this.offsetMs,
     required this.sourceMs,
   });
+
+  /// 叠字行至少这么宽才画右段「src 时码 / 源长」（左段序号 + 右段 ~30 个等宽字符）。
+  static const double minWidthForSource = 320;
+
   final String canvasId;
   final int index;
   final SequenceShot shot;
@@ -496,24 +502,25 @@ class _Overlay extends ConsumerWidget {
       if (providerId != null) parts.add(ref.watch(providerDisplayNamesProvider)[providerId] ?? providerId);
     }
     final TextStyle s = t.mono.copyWith(color: c.fg1.withValues(alpha: 0.75));
+    final String src = 'src ${formatTimecode(offsetMs)} / ${formatTimecode(sourceMs)}';
     return Positioned(
       left: InkSpacing.s12,
       right: InkSpacing.s12,
       bottom: InkSpacing.s10,
-      child: Row(
-        children: <Widget>[
-          Flexible(child: Text(parts.join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: s)),
-          const SizedBox(width: InkSpacing.sm),
-          Expanded(
-            child: Text(
-              'src ${formatTimecode(offsetMs)} / ${formatTimecode(sourceMs)}',
-              maxLines: 1,
-              overflow: TextOverflow.clip,
-              textAlign: TextAlign.right,
-              style: s,
-            ),
-          ),
-        ],
+      // 画面很窄时（最小窗口下 16:9 框只有 ~180 宽）右段装不下就整段不画，别裁成半截时码。
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints box) {
+          final bool showSrc = box.maxWidth >= _Overlay.minWidthForSource;
+          return Row(
+            children: <Widget>[
+              Expanded(child: Text(parts.join(' · '), maxLines: 1, overflow: TextOverflow.ellipsis, style: s)),
+              if (showSrc) ...<Widget>[
+                const SizedBox(width: InkSpacing.sm),
+                Text(src, maxLines: 1, softWrap: false, style: s),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
