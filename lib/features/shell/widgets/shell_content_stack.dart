@@ -100,7 +100,7 @@ class _ShellContentStackState extends State<ShellContentStack> {
   Widget _buildTab(BuildContext context, ShellTab tab) => switch (tab) {
         ShellTab.studio => const StudioTab(),
         ShellTab.canvas => CanvasTab(isVisible: _isVisible(ShellTab.canvas)),
-        ShellTab.sequence => const SequenceTab(),
+        ShellTab.sequence => SequenceTab(isVisible: _isVisible(ShellTab.sequence)),
         ShellTab.gallery => GalleryTab(isVisible: _isVisible(ShellTab.gallery)),
         ShellTab.export => const ExportTab(),
       };

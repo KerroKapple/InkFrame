@@ -18,6 +18,7 @@ import 'package:flutter/services.dart' show ByteData, Uint8List;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../../../core/db/columns.dart';
 import '../../../core/di/database.dart';
 import '../../../core/di/file_resolver.dart';
 import '../../../core/di/preferences.dart';
@@ -41,6 +42,7 @@ import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
 import '../../studio/providers/workspace_projects_provider.dart';
 import '../models/gallery_fixture.dart';
+import '../models/sequence_fixture.dart';
 import '../models/studio_fixture.dart';
 import '../models/workspace_fixture.dart';
 
@@ -50,7 +52,8 @@ const int kCaptureDelayMs = int.fromEnvironment(
   defaultValue: 12000,
 );
 const bool kSeedFixture = bool.fromEnvironment('INKFRAME_SEED_FIXTURE');
-/// 截哪一屏：canvas（默认）/ gallery（再播 Screens 稿第 2 屏的 15 个产物并打开画廊标签）/ studio / settings（Studio + 设置浮层「API 密钥」页）。
+/// 截哪一屏：canvas（默认）/ gallery（再播 Screens 稿第 2 屏的 15 个产物并打开画廊标签）/ studio / settings（Studio + 设置浮层「API 密钥」页）
+/// / sequence（再播 Timeline 稿的 8 镜叙事链 + 3 个未入链产物，打开序列标签）。
 const String kCaptureScreen = String.fromEnvironment('INKFRAME_CAPTURE_SCREEN', defaultValue: 'canvas');
 /// 截图逻辑尺寸「宽x高」（PLAN_remaining：每屏两张，1600x1000 与 960x600）。
 const String kCaptureSize = String.fromEnvironment('INKFRAME_CAPTURE_SIZE', defaultValue: '1600x1000');
@@ -91,6 +94,7 @@ class _DevCaptureFrameState extends ConsumerState<DevCaptureFrame> {
     if (kSeedFixture) {
       final WorkspaceFixtureIds ids = await seedWorkspaceFixture(ref);
       if (kCaptureScreen == 'gallery') await seedGalleryFixture(ref, ids);
+      if (kCaptureScreen == 'sequence') await seedSequenceFixture(ref, ids);
       if (kCaptureScreen == 'studio') await seedStudioFixture(ref, ids);
       if (kCaptureScreen == 'settings') {
         // Screens 稿第 3 屏：设置浮层盖在 Studio 上，停在「API 密钥」页。
@@ -222,6 +226,110 @@ Future<void> seedGalleryFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
       );
   ref.read(gallerySelectionProvider(ids.projectId).notifier).state =
       GallerySelection.none.select(galleryItemKey(item(7))).toggle(galleryItemKey(item(2, video: true)));
+}
+
+/// Timeline 稿那一屏：铺一条 8 镜叙事链（名称 / 片长 / 占位取稿原文 `SequenceFixture.shots`）。
+/// 铺在「画布 03 · 备选结尾」（Workspace 夹具建好的空画布）而不是画布 02：叙事序会把走不到链的
+/// 节点按位置追加在末尾，画布 02 上那 4 镜 + 各自 config 会混进列表，就不再是稿的 8 镜。
+/// 每镜 = shot 节点 →narrative→ 图像 config（带 result 缩略图）→narrative→ 下一镜；占位镜没有 config。
+/// 「回望」那一镜给视频产物（列表出「视频」、导出 mp4 可用；文件不落盘——播放头停在首镜，监视器不会去开它）。
+/// 另放 3 个不在链上的图像产物 = 稿的「未入链 · 3」。然后打开该画布并切到序列标签。
+Future<void> seedSequenceFixture(WidgetRef ref, WorkspaceFixtureIds ids) async {
+  final UnitOfWork uow = await ref.read(unitOfWorkProvider.future);
+  final FileResolverService files = ref.read(fileResolverServiceProvider);
+  const List<SqShot> shots = SequenceFixture.shots;
+  const int videoIndex = 6;
+  final String targetName = WorkspaceFixture.canvases[2].name;
+  final List<Map<String, Object?>> canvases =
+      await ref.read(canvasRepositoryProvider.future).then((repo) => repo.listByProject(ids.projectId));
+  final String canvasId =
+      canvases.firstWhere((Map<String, Object?> row) => row[CanvasCol.name] == targetName)[CanvasCol.id]! as String;
+  Future<void> writeThumb(String rel, int gradient) async {
+    final File f = files.resolve(projectId: ids.projectId, canvasId: canvasId, relativePath: rel);
+    f.parent.createSync(recursive: true);
+    await f.writeAsBytes(await _gradientPng(InkPalette.thumbPlaceholderGradients[gradient % 8]));
+  }
+
+  await uow.run((RepositoryScope s) async {
+    String? prev;
+    for (int i = 0; i < shots.length; i++) {
+      final SqShot shot = shots[i];
+      final int ms = (shot.seconds * 1000).round();
+      final String shotId = await s.nodes.create(
+        canvasId: canvasId,
+        type: CanvasNodeType.shot.name,
+        nodeRole: NodeRole.config.name,
+        label: shot.name,
+        positionX: 320.0 * i,
+        positionY: 4000,
+        typeConfig: <String, Object?>{'shot_notes': shot.name, 'duration_ms': ms},
+      );
+      if (prev != null) {
+        await s.edges.create(canvasId: canvasId, sourceNodeId: prev, targetNodeId: shotId, edgeType: 'narrative');
+      }
+      prev = shotId;
+      if (shot.placeholder) continue;
+      final bool video = i == videoIndex;
+      final String stem = 'sq${i.toString().padLeft(2, '0')}';
+      final String cfg = await s.nodes.create(
+        canvasId: canvasId,
+        type: video ? CanvasNodeType.video.name : CanvasNodeType.image.name,
+        nodeRole: NodeRole.config.name,
+        label: shot.name,
+        positionX: 320.0 * i,
+        positionY: 4250,
+        typeConfig: <String, Object?>{
+          'provider_id': video ? 'kling-v3' : 'gemini-image',
+          'prompt': shot.name,
+          if (video) 'duration_ms': ms,
+          if (video) 'camera': CameraMovement.pushIn.name,
+        },
+      );
+      await s.nodes.create(
+        canvasId: canvasId,
+        type: video ? CanvasNodeType.video.name : CanvasNodeType.image.name,
+        nodeRole: NodeRole.result.name,
+        sourceNodeId: cfg,
+        positionX: 320.0 * i,
+        positionY: 4500,
+        typeConfig: video
+            ? <String, Object?>{'video_url': 'videos/$stem.mp4', 'duration_ms': ms, 'thumbnail_url': 'thumbs/$stem.png'}
+            : <String, Object?>{'image_url': 'thumbs/$stem.png'},
+      );
+      await s.edges.create(canvasId: canvasId, sourceNodeId: shotId, targetNodeId: cfg, edgeType: 'narrative');
+      prev = cfg;
+    }
+    // 未入链 · 3：有产物、不在任何叙事边上。
+    for (int i = 0; i < 3; i++) {
+      final String cfg = await s.nodes.create(
+        canvasId: canvasId,
+        type: CanvasNodeType.image.name,
+        nodeRole: NodeRole.config.name,
+        label: '未入链 ${i + 1}',
+        positionX: 320.0 * i,
+        positionY: 4800,
+        typeConfig: <String, Object?>{'provider_id': 'gemini-image', 'prompt': '未入链 ${i + 1}'},
+      );
+      await s.nodes.create(
+        canvasId: canvasId,
+        type: CanvasNodeType.image.name,
+        nodeRole: NodeRole.result.name,
+        sourceNodeId: cfg,
+        positionX: 320.0 * i,
+        positionY: 5050,
+        typeConfig: <String, Object?>{'image_url': 'thumbs/loose$i.png'},
+      );
+    }
+  });
+  for (int i = 0; i < shots.length; i++) {
+    if (shots[i].placeholder) continue;
+    await writeThumb('thumbs/sq${i.toString().padLeft(2, '0')}.png', i);
+  }
+  for (int i = 0; i < 3; i++) {
+    await writeThumb('thumbs/loose$i.png', i + 4);
+  }
+  ref.read(shellControllerProvider.notifier).openCanvas(canvasId, withProject: ProjectRef(id: ids.projectId, name: WorkspaceFixture.breadcrumb[1]));
+  ref.read(shellControllerProvider.notifier).goTab(ShellTab.sequence);
 }
 
 Future<Uint8List> _gradientPng((Color, Color) g) async {

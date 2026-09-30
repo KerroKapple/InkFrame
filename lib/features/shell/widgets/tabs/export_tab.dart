@@ -7,13 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../l10n/l10n_x.dart';
 import '../../../../theme/primitives/ink_ghost_button.dart';
-import '../../../canvas/models/canvas_edge.dart';
-import '../../../canvas/models/canvas_node.dart';
 import '../../../canvas/providers/canvas_edges_controller.dart';
 import '../../../canvas/providers/canvas_nodes_controller.dart';
 import '../../../canvas/providers/current_canvas_id.dart';
-import '../../../export/util/export_order.dart';
-import '../../../export/widgets/export_video_dialog.dart';
+import '../../../export/open_export_dialog.dart';
 import '../../models/shell_state.dart';
 import '../../providers/shell_controller.dart';
 import '../../util/tab_availability.dart';
@@ -37,9 +34,12 @@ class ExportTab extends ConsumerWidget {
             ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio),
       );
     }
+    // BOARD 210：可用性 = 有可导出的 video result【且】外壳有项目上下文——与 _open 里
+    // projectId 的来源同源，不再从节点数据摸 project_id。
     final bool enabled = ref.watch(
-      canvasNodesControllerProvider(canvasId).select(canExportVideo),
-    );
+          canvasNodesControllerProvider(canvasId).select(canExportVideo),
+        ) &&
+        ref.watch(shellControllerProvider.select((ShellState s) => s.project != null));
     // 【必须显式订阅边控制器】同 sequence_tab 的理由，症状不同且更阴：边是
     // autoDispose family，无人订阅时 _open 里 ref.read 拿到 AsyncLoading →
     // edges 落空 → orderVideoNodesForExport 静默退化成非叙事链序（EX-1′ 失效），
@@ -58,20 +58,7 @@ class ExportTab extends ConsumerWidget {
     );
   }
 
-  void _open(BuildContext context, WidgetRef ref, String canvasId) {
-    // EX-1′：默认序是 narrative 链序，需要全量节点 + 边（result 节点自己不在
-    // 链上，挂在 config 节点下）。
-    final videoNodes = orderVideoNodesForExport(
-      allNodes: ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
-          const <CanvasNode>[],
-      edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
-          const <CanvasEdge>[],
-    );
-    if (videoNodes.isEmpty) return; // 按压瞬间节点已变化：静默不弹
-    // projectId 走外壳的项目上下文，不再从 videoNodes.first.projectId 摸
-    // （spec §8.2）。理由同 sequence_tab._open。
-    final projectId = ref.read(shellControllerProvider).project?.id;
-    if (projectId == null) return; // 外壳尚无项目上下文：静默不弹
-    showExportVideoDialog(context, projectId: projectId, videoNodes: videoNodes);
-  }
+  /// 打开对话框走 export/open_export_dialog.dart 的唯一路径（序列标签的「导出 mp4」同源）。
+  void _open(BuildContext context, WidgetRef ref, String canvasId) =>
+      openExportVideoDialogForCanvas(context, ref, canvasId);
 }

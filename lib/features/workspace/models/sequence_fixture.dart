@@ -2,7 +2,7 @@
 //
 // 与 palette_fixture 同例：手写 const 值对象，只在呈现层被读；假数据必须是稿上原文。
 // 时间码按稿的 JS 算：24fps，tc = 00:00:SS:FF，短格式 SS:FF；片段 x/w = 秒 × 34px。
-// 接线后本文件整体删除。
+// 复刻页随 replica_main 常驻（视觉由静态复刻锁定）；接线截图（dev_capture.seedSequenceFixture）也读这里的镜名 / 片长。
 import 'dart:ui' show Size;
 
 import 'package:flutter/foundation.dart';

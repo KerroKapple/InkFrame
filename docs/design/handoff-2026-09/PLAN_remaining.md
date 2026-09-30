@@ -8,7 +8,7 @@
 
 ---
 
-## P1 · 风格泳道（feat/v1-lanes，进行中）
+## P1 · 风格泳道（✅ 已合入 #236，2026-09-29）
 
 稿：`InkFrame Lanes.html`。Workspace v2 上的 11px 灰字泳道画法作废。
 
@@ -19,7 +19,7 @@
 画布 golden 会红：预期，PR 说明重铸原因。
 无字段：无。差异升高先查 stylePrompt 撑破两行。
 
-## P2 · 序列 A（序列 lens，只读）
+## P2 · 序列 A（序列 lens，只读；feat/v1-sequence-a #237，静态复刻 2026-09-30 验收通过，接线中）
 
 稿：`InkFrame Timeline.html`（2026-09-25 默认 EDL 版）。
 接：叙事链列表（短时间码 MM:SS）· 节目监视器 · V1 只读轨 · 标记轨（场次标记由链推）· 播放头 · 34px/s 可缩放。
