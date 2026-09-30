@@ -286,6 +286,11 @@ class InkSpacing {
   static const double s2 = 2;
   static const double s3 = 3;
   static const double s6 = 6;
+  // P4 批量 / 角色稿的细档：5 = slot 元信息行 gap 与「已选」徽标内边距；
+  // 7 = 浮层「当前产物」徽标内边距；9 = 角色库行的缩略图↔文字↔⋯ 两处 gap。
+  static const double s5 = 5;
+  static const double s7 = 7;
+  static const double s9 = 9;
 }
 
 /// 圆角。README 四档：2（缩略图内格）/ 3（按钮、输入、片段）/ 4（图区、分组框）/ 6（浮层）。

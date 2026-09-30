@@ -40,6 +40,8 @@ class InkTypography {
     required this.dialogTitle,
     required this.mono,
     required this.monoSmall,
+    required this.nano,
+    required this.monoNano,
   });
 
   factory InkTypography.defaults({double scale = 1.0}) => InkTypography(
@@ -51,6 +53,8 @@ class InkTypography {
         dialogTitle: _sansStyle(17, FontWeight.w500, 1.3, scale),
         mono: _monoStyle(11, scale),
         monoSmall: _monoStyle(10, scale),
+        nano: _sansStyle(9, FontWeight.w400, 1.3, scale),
+        monoNano: _monoStyle(9, scale),
       );
 
   final TextStyle body; // 12/400 正文
@@ -61,6 +65,8 @@ class InkTypography {
   final TextStyle dialogTitle; // 17/500 对话框主标题
   final TextStyle mono; // 11 等宽：数值 / 时间码 / 路径 / ID
   final TextStyle monoSmall; // 10 等宽：徽标内数值 / 序号
+  final TextStyle nano; // 9/400 批量 slot 的「已选」徽标 / 失败文案（300px 栏内）
+  final TextStyle monoNano; // 9 等宽：批量 slot 的序号与 seed（300px 栏内）
 
   /// 全部八档（测试遍历用）。
   List<TextStyle> get all => <TextStyle>[
@@ -72,6 +78,8 @@ class InkTypography {
         dialogTitle,
         mono,
         monoSmall,
+        nano,
+        monoNano,
       ];
 
   InkTypography scaled(double scale) => InkTypography(
@@ -83,6 +91,8 @@ class InkTypography {
         dialogTitle: _scale(dialogTitle, 17, scale),
         mono: _scale(mono, 11, scale),
         monoSmall: _scale(monoSmall, 10, scale),
+        nano: _scale(nano, 9, scale),
+        monoNano: _scale(monoNano, 9, scale),
       );
 
   static TextStyle _sansStyle(

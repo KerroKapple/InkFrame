@@ -29,8 +29,11 @@ CanvasNode _node(String id, String label, CanvasNodeType type,
 CanvasEdge _edge(String id, String from, String to, EdgeType type, {EdgeRole role = EdgeRole.reference}) =>
     CanvasEdge(id: id, canvasId: 'c1', sourceNodeId: from, targetNodeId: to, edgeType: type, role: role);
 
+// 生产里 batch_results.node_id 存的是 **result 节点** id（GenerationController 预建 slot
+// 时传的是 rNode），不是 config 节点 id。夹具照生产形状来，否则「转正后画廊跟着变」
+// 这条线断了测试也发现不了（P4 之前就是这样：夹具按 config 键，代码按 config 查，双双错）。
 GalleryBatchSlot _slot(int i, {bool promoted = false}) => GalleryBatchSlot(
-      nodeId: 'imgA',
+      nodeId: 'imgAr',
       canvasId: 'c1',
       slotIndex: i,
       outputUrl: 'images/a$i.png',
@@ -44,6 +47,8 @@ final GalleryGraph _graph = GalleryGraph(
     'c1': <CanvasNode>[
       _node('shot', '镜头 01 · 分镜描述', CanvasNodeType.shot, cfg: <String, Object?>{'shot_notes': '晨雾'}),
       _node('imgA', '镜头 01 · 图像', CanvasNodeType.image, x: 100, cfg: <String, Object?>{'provider_id': 'gemini-image'}),
+      // 批量的 result 节点是个容器：转正前不持有任何 image_url，4 张在 slot 里。
+      _node('imgAr', '', CanvasNodeType.image, role: NodeRole.result, source: 'imgA'),
       _node('imgB', '镜头 02 · 图像', CanvasNodeType.image, x: 100, cfg: <String, Object?>{'provider_id': 'gemini-image'}),
       _node('imgBr', '', CanvasNodeType.image, role: NodeRole.result, source: 'imgB',
           cfg: <String, Object?>{'image_url': 'images/b.png'}),
@@ -68,7 +73,7 @@ final GalleryGraph _graph = GalleryGraph(
     ],
   },
   slotsByNode: <String, List<GalleryBatchSlot>>{
-    'imgA': <GalleryBatchSlot>[_slot(0), _slot(1, promoted: true), _slot(2), _slot(3)],
+    'imgAr': <GalleryBatchSlot>[_slot(0), _slot(1, promoted: true), _slot(2), _slot(3)],
   },
 );
 
@@ -139,6 +144,77 @@ void main() {
     final List<GalleryLineageRow> a = galleryLineageFor(_graph, index, byPath('images/a1.png'));
     expect(a.map((r) => r.kind), <GalleryLineageKind>[GalleryLineageKind.current]);
     expect(a.last.branches, 3, reason: '同 config 的其余 3 个 slot 折成分支');
+  });
+
+  test('P4 回归：slot 按 result 节点 id 存，查找必须经 result 中转', () {
+    // 这条钉的是生产形状：batch_results.node_id = result 节点 id。
+    // 直接 graph.slotsOf(config.id) 会是空 ⇒ 转正标记在画廊侧永远不生效。
+    expect(_graph.slotsOf('imgA'), isEmpty, reason: 'config id 上不该有 slot');
+    expect(_graph.slotsOf('imgAr'), hasLength(4), reason: 'slot 挂在 result 节点上');
+    final List<GalleryLineageRow> rows =
+        galleryLineageFor(_graph, index, byPath('videos/v.mp4'));
+    expect(rows.first.name, '镜头 01 · 图像 #2',
+        reason: '仍要能从 config 找到它名下 result 的那个 promoted slot');
+  });
+
+  test('同一 config 重跑过两批、两批各自转正 → 血缘取【新那批】的那一格', () {
+    // promoted 在 DB 上没有唯一约束，BatchResultsController.promote 只清**同一个
+    // result 节点**里的旧标记。同一 config 重跑一次就有两个容器，两边各转正一次就
+    // 有两行 promoted。原来 _chosenArtifactOf 撞到列表里第一个 promoted 就返回，
+    // 而列表序是 `z_index ASC, created_at ASC`——主序是 z_index，用户把某个 result
+    // 节点拖到最上层就能翻转「当前选定」，且默认顺序下拿到的是**旧**那批。
+    final CanvasNode cfg = _node('cfg', '镜头 09 · 图像', CanvasNodeType.image);
+    final CanvasNode newer = CanvasNode(
+      id: 'r2', label: '', type: CanvasNodeType.image, role: NodeRole.result,
+      canvasId: 'c9', sourceNodeId: 'cfg', typeConfig: const <String, Object?>{},
+      position: Offset.zero, createdAt: DateTime.utc(2026, 9, 2),
+    );
+    final CanvasNode older = CanvasNode(
+      id: 'r1', label: '', type: CanvasNodeType.image, role: NodeRole.result,
+      canvasId: 'c9', sourceNodeId: 'cfg', typeConfig: const <String, Object?>{},
+      position: Offset.zero, createdAt: DateTime.utc(2026, 9, 1),
+    );
+    final CanvasNode video = _node('v9', '镜头 09 · 图转视频', CanvasNodeType.video, x: 100);
+    final CanvasNode videoR = _node('v9r', '', CanvasNodeType.video,
+        role: NodeRole.result, source: 'v9',
+        cfg: <String, Object?>{'video_url': 'videos/v9.mp4'});
+    GalleryBatchSlot slot(String node, int i, {bool promoted = false}) =>
+        GalleryBatchSlot(
+          nodeId: node, canvasId: 'c9', slotIndex: i,
+          outputUrl: 'images/$node-$i.png',
+          createdAt: DateTime.utc(2026, 9, 1, i), promoted: promoted,
+        );
+    GalleryGraph graphWith(List<CanvasNode> ordered) => GalleryGraph(
+      canvases: const <GalleryCanvasInfo>[GalleryCanvasInfo(id: 'c9', name: '画布 09')],
+      nodesByCanvas: <String, List<CanvasNode>>{'c9': ordered},
+      edgesByCanvas: <String, List<CanvasEdge>>{
+        'c9': <CanvasEdge>[_edge('e9', 'cfg', 'v9', EdgeType.data, role: EdgeRole.firstFrame)],
+      },
+      slotsByNode: <String, List<GalleryBatchSlot>>{
+        'r1': <GalleryBatchSlot>[slot('r1', 0, promoted: true), slot('r1', 1)],
+        'r2': <GalleryBatchSlot>[slot('r2', 0), slot('r2', 1, promoted: true)],
+      },
+    );
+    GalleryLineageRow firstRowOf(GalleryGraph g) {
+      final GalleryIndex idx = GalleryIndex.build(g);
+      final GalleryItem v = galleryItemsFromGraph(g)
+          .firstWhere((GalleryItem i) => i.relativePath == 'videos/v9.mp4');
+      return galleryLineageFor(g, idx, v).first;
+    }
+
+    // ① 库里的默认顺序：`z_index ASC, created_at ASC` ⇒ 旧容器在前。
+    //    取列表里第一个 promoted 就会拿到**旧**那批，这正是原来的行为。
+    final GalleryLineageRow dbOrder =
+        firstRowOf(graphWith(<CanvasNode>[cfg, older, newer, video, videoR]));
+    expect(dbOrder.name, '镜头 09 · 图像 #2', reason: '新容器里转正的是 slot_index 1');
+    expect(dbOrder.thumbRelativePath, 'images/r2-1.png');
+    expect(dbOrder.resultCount, 4, reason: '两个容器各 2 格，产物总数照数');
+
+    // ② 用户把新容器拖到最上层（z_index 变了，列表序跟着变）——答案必须一样。
+    final GalleryLineageRow dragged =
+        firstRowOf(graphWith(<CanvasNode>[cfg, newer, older, video, videoR]));
+    expect(dragged.thumbRelativePath, 'images/r2-1.png',
+        reason: '「当前选定」不能被拖动节点层级改掉');
   });
 
   test('图里找不到节点 → meta 空、血缘空，不抛', () {

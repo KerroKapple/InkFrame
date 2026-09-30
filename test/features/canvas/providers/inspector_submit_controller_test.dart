@@ -34,9 +34,13 @@ class _FakeGenerationController implements GenerationController {
   final Future<String> Function(String nodeId)? onSubmit;
   final List<String> submitted = [];
 
+  /// 记录每次提交带的 seed 覆盖（P4「以该种子重跑」）；不带就是 null。
+  final List<int?> submittedSeeds = <int?>[];
+
   @override
-  Future<String> submitFromConfigNode(String configNodeId) {
+  Future<String> submitFromConfigNode(String configNodeId, {int? seedOverride}) {
     submitted.add(configNodeId);
+    submittedSeeds.add(seedOverride);
     return onSubmit?.call(configNodeId) ?? Future.value('job-1');
   }
 

@@ -161,7 +161,9 @@ class GenerationController {
 
   /// 从 config 节点发起一次生成。fire-and-forget：提交成功即返回 jobId，
   /// 后台 [_track] 推进 JobsRegistry 状态机；终态结果由 registry listener 反映。
-  Future<String> submitFromConfigNode(String configNodeId) async {
+  /// [seedOverride]（P4「以该种子重跑」）：这一次用指定的 seed，**不写回节点**——
+  /// 用户在检查器里填的 seed 是他自己的设置，重跑某个 slot 不该把它永久改掉。
+  Future<String> submitFromConfigNode(String configNodeId, {int? seedOverride}) async {
     final cfgRow = await nodes.findById(configNodeId);
     if (cfgRow == null) {
       throw const InvalidGenerationConfigError('config node not found');
@@ -187,7 +189,7 @@ class GenerationController {
     final resolution =
         _parseResolution(typeConfig['resolution']) ?? Resolution.p1080;
     final aspect = _parseAspect(typeConfig['aspect_ratio']) ?? AspectRatio.r1x1;
-    final seed = typeConfig['seed'] is int ? typeConfig['seed'] as int : null;
+    final seed = seedOverride ?? (typeConfig['seed'] is int ? typeConfig['seed'] as int : null);
     final negRaw = typeConfig['negative_prompt'];
     final negativePrompt = (negRaw is String && negRaw.trim().isNotEmpty)
         ? negRaw.trim()
@@ -218,12 +220,21 @@ class GenerationController {
       ShotLanguage.fromTypeConfig(typeConfig),
       camera: _parseCamera(typeConfig['camera']),
     );
+    // P4 角色描述：与参考图**同一道门**（见 _characterInjectionAllowed）——稿的文案是
+    // 「描述随参考图一同注入提示词」，注不进图就不该单独注文字。
+    final List<String> characterDescriptions = await _characterDescriptions(
+      typeConfig: typeConfig,
+      nodeType: nodeType,
+      providerId: providerId,
+      projectId: projectId,
+    );
     final fullPrompt = await _assembleFullPrompt(
       userPrompt: shotPrefix.isEmpty ? prompt : '$shotPrefix, $prompt',
       canvasId: canvasId,
       incoming: incoming,
       laneId: laneId,
       ignoreLaneStyle: ignoreLane,
+      characterDescriptions: characterDescriptions,
     );
 
     // 读入 data 连线作为参考图（PRD §8.2）。失败不阻断生成——refs 仍可为空。
@@ -679,20 +690,7 @@ class GenerationController {
     if (ids.isEmpty) return base;
 
     final caps = registry.get(providerId).capabilities;
-    // CH-1 双分支门：image 保持现规则（maxRefImages>0 且 imageToImage）；
-    // video 仅要求 maxRefImages>0——**不检查 modes**（r2v/omni 的参考图语义
-    // 不经 modes 表达，注入后 mode 推断沿现逻辑 → imageToVideo，下游不校验）。
-    switch (nodeType) {
-      case 'image':
-        if (caps.maxRefImages <= 0 ||
-            !caps.modes.contains(GenerationMode.imageToImage)) {
-          return base;
-        }
-      case 'video':
-        if (caps.maxRefImages <= 0) return base;
-      default:
-        return base;
-    }
+    if (!_characterInjectionAllowed(nodeType, caps)) return base;
 
     final relPaths = <String>[];
     for (final id in ids) {
@@ -733,6 +731,52 @@ class GenerationController {
     );
   }
 
+  /// CH-1 双分支门：image 保持现规则（maxRefImages>0 且 imageToImage）；
+  /// video 仅要求 maxRefImages>0——**不检查 modes**（r2v/omni 的参考图语义
+  /// 不经 modes 表达，注入后 mode 推断沿现逻辑 → imageToVideo，下游不校验）。
+  /// P4 起参考图与角色描述共用这一道门，别各写一份。
+  bool _characterInjectionAllowed(String nodeType, ProviderCapabilities caps) =>
+      switch (nodeType) {
+        'image' => caps.maxRefImages > 0 && caps.modes.contains(GenerationMode.imageToImage),
+        'video' => caps.maxRefImages > 0,
+        _ => false,
+      };
+
+  /// 挂载角色的非空 description，按 character_ids 顺序（= 注入次序）。
+  /// 读不到 / 读失败的角色静默跳过，与参考图那条路一致，不阻断生成。
+  Future<List<String>> _characterDescriptions({
+    required Map<String, Object?> typeConfig,
+    required String nodeType,
+    required String providerId,
+    required String? projectId,
+  }) async {
+    if (projectId == null) return const <String>[];
+    final ids = _readCharacterIds(typeConfig);
+    if (ids.isEmpty) return const <String>[];
+    if (!_characterInjectionAllowed(nodeType, registry.get(providerId).capabilities)) {
+      return const <String>[];
+    }
+
+    final out = <String>[];
+    for (final id in ids) {
+      Map<String, Object?>? row;
+      try {
+        row = await characters.findById(id);
+      } on InkError catch (e) {
+        logger?.warn(
+          _logModule,
+          'character description lookup failed (swallowed)',
+          extra: {'character_id': id, 'reason': e.toString()},
+        );
+        continue;
+      }
+      if (row == null) continue;
+      final String d = Character.fromRow(row).description.trim();
+      if (d.isNotEmpty) out.add(d);
+    }
+    return List<String>.unmodifiable(out);
+  }
+
   List<String> _readCharacterIds(Map<String, Object?> typeConfig) {
     final raw = typeConfig['character_ids'];
     if (raw is List) {
@@ -760,6 +804,7 @@ class GenerationController {
     required List<Map<String, Object?>> incoming,
     required String? laneId,
     required bool ignoreLaneStyle,
+    List<String> characterDescriptions = const <String>[],
   }) async {
     var basePrefix = '';
     var baseSuffix = '';
@@ -787,7 +832,12 @@ class GenerationController {
         );
       }
     }
-    final texts = await _resolveAssociatedTexts(incoming);
+    // 角色描述排在连线文本之后、用户提示词之前：它是「这个人一直长这样」的补充，
+    // 属于随上下文带进来的文本，不是用户这一次写的话。
+    final texts = <String>[
+      ...await _resolveAssociatedTexts(incoming),
+      ...characterDescriptions,
+    ];
     return assemblePrompt(
       baseStylePrefix: basePrefix,
       laneStylePrompt: laneStyle,

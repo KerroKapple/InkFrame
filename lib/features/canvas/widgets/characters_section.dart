@@ -5,6 +5,7 @@
 // 语义不落在 modes 里，见 generation_controller._injectCharacterRefs 拍板注释）。
 // InspectorNameDialog / CharacterChip 一并公开——_PresetsSection 亦复用。
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
@@ -23,6 +24,7 @@ import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/primitives/ink_dashed_slot.dart';
 import '../../../theme/tokens.dart';
+import '../../gallery/providers/gallery_graph_provider.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
@@ -30,6 +32,7 @@ import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/characters_controller.dart';
 import '../providers/inspector_submit_controller.dart';
+import '../providers/project_panel_tab.dart';
 
 /// 项目级角色一致性：把可复用角色挂到本 config 节点（写 type_config.character_ids），
 /// 并支持把已连的参考图「存为角色」。仅当 provider 支持参考图时真正生效（否则给提示）。
@@ -83,9 +86,22 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     setState(() {
       if (!_attachedIds.add(id)) _attachedIds.remove(id);
     });
-    _submitCtrl.saveConfig(<String, Object?>{
-      'character_ids': _attachedIds.toList(growable: false),
-    });
+    final String? projectId = widget.targetNode.projectId;
+    // 「M 处引用」（角色库行 / 编辑框「被引用」）是从 galleryGraphProvider 数出来的，
+    // 而那个投影只在画廊脏刷新时重读。挂/摘角色改的正是它数的那一列，落库后不定点
+    // 失效，左栏的计数就一直停在旧值，直到用户切一趟画廊再回来。
+    // 这里 invalidate 不违反「画廊不实时刷新」那条：挂角色发生在画布页，用户此刻
+    // 不可能正看着画廊；等他切过去时看到的本就该是新数。
+    unawaited(
+      _submitCtrl
+          .saveConfig(<String, Object?>{
+            'character_ids': _attachedIds.toList(growable: false),
+          })
+          .then((_) {
+            if (!mounted || projectId == null) return;
+            ref.invalidate(galleryGraphProvider(projectId));
+          }),
+    );
   }
 
   /// 角色首张参考图缩略图绝对路径；无图 / 越权路径 → null 不渲染。
@@ -137,9 +153,29 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          context.l10n.inspectorCharactersLabel,
-          style: typo.meta.copyWith(color: colors.fg3),
+        Row(
+          children: [
+            Text(
+              context.l10n.inspectorCharactersLabel,
+              style: typo.meta.copyWith(color: colors.fg3),
+            ),
+            const Spacer(),
+            // 「管理」= 去左栏角色页。挂载区本身保持原样，这里只多一条去处。
+            MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                key: const ValueKey<String>('characters-manage'),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => ref
+                    .read(projectPanelTabProvider.notifier)
+                    .select(ProjectPanelTab.characters),
+                child: Text(
+                  context.l10n.characterManage,
+                  style: typo.micro.copyWith(color: colors.accent),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: InkSpacing.xs),
         if (!_supportsRefs)
@@ -211,7 +247,9 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     final file = await openFile(acceptedTypeGroups: <XTypeGroup>[group]);
     if (file == null || !mounted) return;
     final name = await _promptName(context);
-    if (name == null || name.trim().isEmpty) return;
+    // 命名框开着的时候检查器可能已经被换掉（用户取消选中 / 选了别的节点）：
+    // 这之后再 ref.read 就是 ref-after-dispose（BOARD 2026-09-02 CH-2 评审 ③）。
+    if (name == null || name.trim().isEmpty || !mounted) return;
     try {
       final id = await ref
           .read(charactersControllerProvider(projectId).notifier)
@@ -219,11 +257,21 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
       if (mounted) _toggle(id);
     } on InkError catch (_) {
       // 导入失败不崩 UI，但要提示（此前静默吞错 = 假成功）。
-      if (!mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
-      );
+      _importFailed();
+    } on CharacterAssetError catch (_) {
+      // 捕获集 = createFromImage 的真实抛出集：仓储 InkError / 资产服务 /
+      // dart:io。后两类不是 InkError，漏掉就变成未捕获异步异常。
+      _importFailed();
+    } on FileSystemException catch (_) {
+      _importFailed();
     }
+  }
+
+  void _importFailed() {
+    if (!mounted) return;
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+    );
   }
 
   Future<void> _createFromReference(CanvasNode source) async {
@@ -243,7 +291,9 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
       return;
     }
     final name = await _promptName(context);
-    if (name == null || name.trim().isEmpty) return;
+    // 同 _importFromFile：命名框期间检查器可能已换掉，之后再 ref.read 就是
+    // ref-after-dispose（BOARD 2026-09-02 CH-2 评审 ③）。
+    if (name == null || name.trim().isEmpty || !mounted) return;
     try {
       final id = await ref
           .read(charactersControllerProvider(projectId).notifier)
@@ -251,10 +301,11 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
       if (mounted) _toggle(id);
     } on InkError catch (_) {
       // 导入/落库失败不崩 UI，但要提示（下次可重试）。
-      if (!mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
-      );
+      _importFailed();
+    } on CharacterAssetError catch (_) {
+      _importFailed();
+    } on FileSystemException catch (_) {
+      _importFailed();
     }
   }
 

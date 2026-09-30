@@ -6,6 +6,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/character_assets.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
@@ -20,10 +21,12 @@ import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/character_usage.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/primitives/ink_dashed_slot.dart';
 
+import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_character.dart';
 import '../../../_harness/fake_prompt_preset.dart';
 import '../../../_harness/fake_repositories.dart';
@@ -98,6 +101,19 @@ class _FakeCanvasRepo implements CanvasRepository {
   Future<int> restore(String id) async => 0;
   @override
   Future<int> hardDelete(String id) async => 0;
+}
+
+/// galleryGraphProvider 要先拿到项目下的画布才会去读节点；空表 ⇒ 引用计数恒 0。
+class _OneCanvasRepo extends _FakeCanvasRepo {
+  @override
+  Future<List<Map<String, Object?>>> listByProject(String projectId) async =>
+      <Map<String, Object?>>[
+        <String, Object?>{
+          'id': _kCanvasId,
+          'project_id': projectId,
+          'name': 'cv',
+        },
+      ];
 }
 
 class _FakeLaneRepo implements StyleLaneRepository {
@@ -181,7 +197,13 @@ void main() {
     );
   }
 
-  Future<void> pump(WidgetTester tester, CanvasNode node) async {
+  /// [withGalleryGraph] = 让 galleryGraphProvider 真能读出一张画布。默认的
+  /// `_FakeCanvasRepo.listByProject` 返回空表，引用计数恒为 0，测不出失效沿。
+  Future<void> pump(
+    WidgetTester tester,
+    CanvasNode node, {
+    bool withGalleryGraph = false,
+  }) async {
     await pumpInkApp(
       tester,
       Scaffold(
@@ -195,7 +217,13 @@ void main() {
         secureStorageServiceProvider.overrideWithValue(_FakeSecure()),
         nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
         edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
-        canvasRepositoryProvider.overrideWith((ref) async => _FakeCanvasRepo()),
+        batchResultRepositoryProvider.overrideWith(
+          (ref) async => FakeBatchResultRepo(),
+        ),
+        canvasRepositoryProvider.overrideWith(
+          (ref) async =>
+              withGalleryGraph ? _OneCanvasRepo() : _FakeCanvasRepo(),
+        ),
         styleLaneRepositoryProvider.overrideWith(
           (ref) async => _FakeLaneRepo(),
         ),
@@ -223,6 +251,49 @@ void main() {
     expect(find.text('Hero'), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('P4 挂角色后「M 处引用」立刻变：落库后定点失效 galleryGraphProvider', (
+    tester,
+  ) async {
+    // 引用计数走 characterUsageProvider → galleryGraphProvider，而那个投影只在
+    // 画廊脏刷新时重读。挂/摘角色改的正是它数的那一列，落库后不定点失效，左栏角色库
+    // 与编辑框「被引用」就一直停在旧值，直到用户切一趟画廊再回来。
+    charRepo.rows['char-1'] = <String, Object?>{
+      'id': 'char-1',
+      'project_id': _kProjectId,
+      'name': 'Hero',
+      'reference_image_paths': <String>['characters/hero-0.png'],
+    };
+    final node = await seedConfigNode();
+    await pump(tester, node, withGalleryGraph: true);
+
+    final ProviderContainer container = ProviderScope.containerOf(
+      tester.element(find.byType(ImageConfigInspector)),
+    );
+    final sub = container.listen(
+      characterUsageProvider(_kProjectId),
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    expect(
+      (await container.read(characterUsageProvider(_kProjectId).future))['char-1'],
+      isNull,
+      reason: '还没挂上，一处都不算',
+    );
+
+    await tester.ensureVisible(find.text('Hero'));
+    await tester.tap(find.text('Hero'));
+    await tester.pumpAndSettle();
+
+    expect(
+      (await container.read(
+        characterUsageProvider(_kProjectId).future,
+      ))['char-1'],
+      hasLength(1),
+      reason: '挂上就该数到 1，不必等用户切一趟画廊',
+    );
   });
 
   testWidgets('无角色 → InkDashedSlot 空态（导入 CTA）', (tester) async {

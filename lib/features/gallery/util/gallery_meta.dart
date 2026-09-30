@@ -246,8 +246,55 @@ List<CanvasEdge> _inputsOf(GalleryGraph graph, String canvasId, String configId)
   return l;
 }
 
-int _artifactCountOf(GalleryGraph graph, List<CanvasNode> nodes, CanvasNode config) =>
-    resultsFor(sourceNodeId: config.id, nodes: nodes).length + graph.slotsOf(config.id).length;
+/// 一个 config 名下的全部批量 slot。
+///
+/// **batch_results.node_id 存的是 result 节点 id，不是 config 节点 id**
+/// （见 GenerationController 预建 slot 那段：`batchResults.create(nodeId: rNode, …)`）。
+/// 所以要先经 result 节点中转一层——直接 `graph.slotsOf(config.id)` 永远是空，
+/// 「转正后画廊跟着变」那条线会静默失效（P4 修）。
+/// 注意不能借 [resultsFor]：它要求产物 url 非空，而批量的 result 节点在转正之前
+/// 正是「有行、无 url」的容器，会被整个跳过。
+/// 这个 config 名下的全部 result 容器，**新→旧**。
+///
+/// 不能借 [resultsFor]：它要求产物 url 非空，而批量的 result 节点在转正之前正是
+/// 「有行、无 url」的容器，会被整个跳过。排序规则照抄它（created_at 降序，缺戳的
+/// 垫底并整体反转）——列表原序是 `z_index ASC, created_at ASC`，主序是 z_index，
+/// 用户把某个 result 节点拖到最上层就会改变它在列表里的位置。
+List<CanvasNode> _resultContainersOf(List<CanvasNode> nodes, CanvasNode config) {
+  final List<CanvasNode> stamped = <CanvasNode>[];
+  final List<CanvasNode> unstamped = <CanvasNode>[];
+  for (final CanvasNode n in nodes) {
+    if (n.role != NodeRole.result || n.sourceNodeId != config.id) continue;
+    (n.createdAt == null ? unstamped : stamped).add(n);
+  }
+  stamped.sort((CanvasNode a, CanvasNode b) => b.createdAt!.compareTo(a.createdAt!));
+  return <CanvasNode>[...stamped, ...unstamped.reversed];
+}
+
+List<GalleryBatchSlot> _slotsOfConfig(
+  GalleryGraph graph,
+  List<CanvasNode> nodes,
+  CanvasNode config,
+) =>
+    <GalleryBatchSlot>[
+      for (final CanvasNode n in _resultContainersOf(nodes, config)) ...graph.slotsOf(n.id),
+    ];
+
+/// 这个 config 一共产出多少份产物。
+///
+/// 批量的 result 节点是个容器（转正后才持有某一张），它本身不算一份——否则
+/// 4 张的批量会数成 1 + 4 = 5。所以：**带 slot 的 result 节点按它的 slot 数计，
+/// 不带 slot 的按 1 计**。
+int _artifactCountOf(GalleryGraph graph, List<CanvasNode> nodes, CanvasNode config) {
+  int n = 0;
+  for (final CanvasNode r in nodes) {
+    if (r.role != NodeRole.result || r.sourceNodeId != config.id) continue;
+    final int slots = graph.slotsOf(r.id).length;
+    // 带 slot 的 result 节点是容器，本身不算一份；不带 slot 的按有没有 url 计。
+    n += slots > 0 ? slots : ((r.imageUrl != null || r.videoUrl != null) ? 1 : 0);
+  }
+  return n;
+}
 
 class _Chosen {
   const _Chosen({required this.label, required this.thumbPath, required this.count});
@@ -257,9 +304,14 @@ class _Chosen {
 }
 
 /// 上游 config「选定」的产物：有 promoted slot 用它（名后缀 #n），否则最新 result。
+///
+/// promoted 在 DB 上没有唯一约束，单选语义由 BatchResultsController.promote 维持——
+/// 但它只清**同一个 result 节点**内的旧标记。同一 config 重跑过就会有两个容器，两边
+/// 各自转正就有两行 promoted。所以这里取的是**最新容器**上的那一个：跟「否则用最新
+/// result」同一口径，也跟检查器里挂着「当前」徽标的那一格一致。
 _Chosen _chosenArtifactOf(GalleryGraph graph, List<CanvasNode> nodes, CanvasNode u) {
   final int count = _artifactCountOf(graph, nodes, u);
-  for (final GalleryBatchSlot s in graph.slotsOf(u.id)) {
+  for (final GalleryBatchSlot s in _slotsOfConfig(graph, nodes, u)) {
     if (s.promoted) {
       return _Chosen(label: '${u.label} #${s.slotIndex + 1}', thumbPath: s.outputUrl, count: count);
     }

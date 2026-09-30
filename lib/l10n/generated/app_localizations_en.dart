@@ -686,10 +686,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorPresetsNameHint => 'Preset name';
 
   @override
-  String get batchResultsLabel => 'Variants';
-
-  @override
-  String get inspectorResultTitle => 'Result';
+  String get batchResultsLabel => 'Batch results';
 
   @override
   String get inspectorShotTitle => 'Shot';
@@ -2136,4 +2133,211 @@ class AppLocalizationsEn extends AppLocalizations {
   String commandPaletteArtifactPath(String kind, String provider) {
     return 'Gallery › $kind › $provider';
   }
+
+  @override
+  String batchSlotCount(int count) {
+    return '$count slot';
+  }
+
+  @override
+  String get batchCompare => 'Compare';
+
+  @override
+  String get batchBadgeChosen => 'Chosen';
+
+  @override
+  String get batchStateGenerating => 'Generating';
+
+  @override
+  String get batchActionPromote => 'Promote';
+
+  @override
+  String get batchActionCurrent => 'Current';
+
+  @override
+  String get batchActionRerun => 'Rerun';
+
+  @override
+  String get batchActionCancel => 'Cancel';
+
+  @override
+  String get batchRerunFailed => 'Rerun failed slots';
+
+  @override
+  String get batchPromoteHint =>
+      'Promoting writes that slot to the node\'s artifact; the others stay in the gallery and you can switch any time.';
+
+  @override
+  String batchOverlayTitle(String node) {
+    return 'Batch results · $node';
+  }
+
+  @override
+  String get batchCurrentArtifact => 'Current artifact';
+
+  @override
+  String get batchSetArtifact => 'Set as artifact';
+
+  @override
+  String get batchRerunThisSlot => 'Rerun this slot';
+
+  @override
+  String batchGeneratingPercent(int percent) {
+    return 'Generating $percent%';
+  }
+
+  @override
+  String get batchModeSideBySide => 'Side by side';
+
+  @override
+  String get batchModeStacked => 'Overlay';
+
+  @override
+  String get batchModeStackedUnavailable =>
+      'Overlay comparison is not implemented';
+
+  @override
+  String get batchOverlayHint =>
+      '←→ switch · ↵ promote · ⎘ rerun with this seed';
+
+  @override
+  String get batchDone => 'Done';
+
+  @override
+  String get batchRerunWithSeed => 'Rerun with this seed';
+
+  @override
+  String get batchRerunWithSeedUnavailable => 'No seed recorded for this slot';
+
+  @override
+  String get batchCancelWholeBatch => 'Cancel the whole batch';
+
+  @override
+  String batchSlotBadge(int index) {
+    return 'slot #$index';
+  }
+
+  @override
+  String get batchRerunWholeBatchHint =>
+      'One rerun re-runs the whole batch and the new images land on a new node; a single slot cannot be re-run on its own.';
+
+  @override
+  String get batchOpenCompare => 'Open full-size comparison';
+
+  @override
+  String get characterLibraryHint => 'Project-wide · reused across canvases';
+
+  @override
+  String characterRefAndUsage(int refs, int usages) {
+    String _temp0 = intl.Intl.pluralLogic(
+      refs,
+      locale: localeName,
+      other: '$refs reference images',
+      one: '1 reference image',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      usages,
+      locale: localeName,
+      other: '$usages uses',
+      one: '1 use',
+    );
+    return '$_temp0 · $_temp1';
+  }
+
+  @override
+  String characterRefAndUsageNone(int refs) {
+    String _temp0 = intl.Intl.pluralLogic(
+      refs,
+      locale: localeName,
+      other: '$refs reference images',
+      one: '1 reference image',
+      zero: 'No reference images',
+    );
+    return '$_temp0 · unused';
+  }
+
+  @override
+  String get characterNew => 'New character';
+
+  @override
+  String get characterMenuEdit => 'Edit';
+
+  @override
+  String get characterMenuRename => 'Rename';
+
+  @override
+  String get characterMenuDelete => 'Delete';
+
+  @override
+  String get characterLibraryEmpty =>
+      'No characters yet · start from “Save as character” on a node result';
+
+  @override
+  String get characterDeleteTitle => 'Delete character?';
+
+  @override
+  String characterDeleteBody(String name) {
+    return '“$name” disappears from the library and stops being injected into generation. Its reference image files stay on disk, but the app has no way to bring it back.';
+  }
+
+  @override
+  String get characterRenameTitle => 'Rename character';
+
+  @override
+  String get characterEditTitle => 'Edit character';
+
+  @override
+  String get characterFieldName => 'Name';
+
+  @override
+  String get characterFieldDescription => 'Description';
+
+  @override
+  String get characterFieldReferences => 'Reference images';
+
+  @override
+  String get characterFieldReferencedBy => 'Referenced by';
+
+  @override
+  String get characterReferencesHint =>
+      'Order is injection order · drag to reorder';
+
+  @override
+  String characterReferencesCount(int count, int max) {
+    return '$count / $max';
+  }
+
+  @override
+  String get characterReferenceAdd => 'Add';
+
+  @override
+  String get characterReferenceRemove => 'Remove reference image';
+
+  @override
+  String get characterReferenceLimitReached => 'Reference image limit reached';
+
+  @override
+  String get characterDescriptionHint =>
+      'The description is injected into the prompt along with the reference images — for the details a picture cannot carry.';
+
+  @override
+  String get characterStorageHint =>
+      'Stored under characters/ as a project-relative path, and exported with the project package.';
+
+  @override
+  String characterEditFootnote(int count) {
+    return 'Changes affect future generations of $count referencing nodes';
+  }
+
+  @override
+  String get characterEditFootnoteNone => 'Not referenced by any node yet';
+
+  @override
+  String get characterManage => 'Manage';
+
+  @override
+  String get characterSave => 'Save';
+
+  @override
+  String get characterNoReferences => 'No reference images yet';
 }

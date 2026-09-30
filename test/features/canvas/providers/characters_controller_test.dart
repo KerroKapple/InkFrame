@@ -170,4 +170,149 @@ void main() {
         .valueOrNull!;
     expect(list.single.name, 'Old'); // 回滚
   });
+
+  // ---- P4：角色编辑框要的四个薄方法 --------------------------------------
+
+  Future<CharactersController> bootWithRefs(List<String> refs) {
+    repo.rows['c1'] = <String, Object?>{
+      'id': 'c1',
+      'project_id': 'p1',
+      'name': 'Hero',
+      'description': 'old',
+      'reference_image_paths': refs,
+    };
+    return boot('p1');
+  }
+
+  List<String> refsOf() => container
+      .read(charactersControllerProvider('p1'))
+      .valueOrNull!
+      .single
+      .referenceImagePaths;
+
+  test('setDescription：落库 + 乐观更新', () async {
+    final notifier = await bootWithRefs(<String>['characters/c1-0.png']);
+    await notifier.setDescription('c1', '中年男性，粗布行囊');
+    expect(repo.rows['c1']!['description'], '中年男性，粗布行囊');
+    expect(
+      container.read(charactersControllerProvider('p1')).valueOrNull!.single.description,
+      '中年男性，粗布行囊',
+    );
+  });
+
+  test('setDescription：repo 抛 InkError → 回滚', () async {
+    final notifier = await bootWithRefs(<String>[]);
+    repo.failUpdate = true;
+    await expectLater(notifier.setDescription('c1', 'new'), throwsA(isA<InkError>()));
+    expect(
+      container.read(charactersControllerProvider('p1')).valueOrNull!.single.description,
+      'old',
+    );
+  });
+
+  test('addReferenceImage：命名取「已用过的最大序号 +1」，不是 length', () async {
+    // 删掉中间一张后的典型残局：只剩 -0 与 -2；用 length(=2) 会撞上已存在的 c1-2，
+    // 而 File.copy 是静默覆盖。
+    final notifier =
+        await bootWithRefs(<String>['characters/c1-0.png', 'characters/c1-2.png']);
+    await notifier.addReferenceImage('c1', sourceAbsolutePath: '/src/new.png');
+    expect(assets.imported.single, 'characters/c1-3.png');
+    expect(refsOf(), <String>[
+      'characters/c1-0.png',
+      'characters/c1-2.png',
+      'characters/c1-3.png',
+    ]);
+    expect(repo.rows['c1']!['reference_image_paths'], hasLength(3));
+  });
+
+  test('addReferenceImage：空列表从 0 起', () async {
+    final notifier = await bootWithRefs(<String>[]);
+    await notifier.addReferenceImage('c1', sourceAbsolutePath: '/src/a.png');
+    expect(assets.imported.single, 'characters/c1-0.png');
+  });
+
+  test('addReferenceImage：落库失败 → 回滚 + 删掉刚落盘的图，不留孤儿', () async {
+    final notifier = await bootWithRefs(<String>['characters/c1-0.png']);
+    repo.failUpdate = true;
+    await expectLater(
+      notifier.addReferenceImage('c1', sourceAbsolutePath: '/src/new.png'),
+      throwsA(isA<InkError>()),
+    );
+    expect(refsOf(), <String>['characters/c1-0.png'], reason: '回滚');
+    expect(assets.deleted, contains('characters/c1-1.png'), reason: '孤儿文件要清掉');
+  });
+
+  test('removeReferenceImage：先落库再删文件', () async {
+    final notifier = await bootWithRefs(<String>[
+      'characters/c1-0.png',
+      'characters/c1-1.png',
+      'characters/c1-2.png',
+    ]);
+    await notifier.removeReferenceImage('c1', 1);
+    expect(refsOf(), <String>['characters/c1-0.png', 'characters/c1-2.png']);
+    expect(assets.deleted, <String>['characters/c1-1.png']);
+  });
+
+  test('removeReferenceImage：落库失败 → 回滚且不动磁盘', () async {
+    final notifier =
+        await bootWithRefs(<String>['characters/c1-0.png', 'characters/c1-1.png']);
+    repo.failUpdate = true;
+    await expectLater(notifier.removeReferenceImage('c1', 0), throwsA(isA<InkError>()));
+    expect(refsOf(), hasLength(2), reason: '回滚');
+    expect(assets.deleted, isEmpty, reason: '库没写成就不能删文件');
+  });
+
+  test('removeReferenceImage：越界下标是 no-op', () async {
+    final notifier = await bootWithRefs(<String>['characters/c1-0.png']);
+    await notifier.removeReferenceImage('c1', 5);
+    expect(refsOf(), hasLength(1));
+    expect(assets.deleted, isEmpty);
+  });
+
+  test('reorderReferenceImages：顺序即注入次序，落库', () async {
+    final notifier = await bootWithRefs(<String>[
+      'characters/c1-0.png',
+      'characters/c1-1.png',
+      'characters/c1-2.png',
+    ]);
+    await notifier.reorderReferenceImages('c1', 2, 0);
+    const List<String> expected = <String>[
+      'characters/c1-2.png',
+      'characters/c1-0.png',
+      'characters/c1-1.png',
+    ];
+    expect(refsOf(), expected);
+    expect(repo.rows['c1']!['reference_image_paths'], expected);
+  });
+
+  test('reorderReferenceImages：同位 / 越界是 no-op', () async {
+    final notifier =
+        await bootWithRefs(<String>['characters/c1-0.png', 'characters/c1-1.png']);
+    await notifier.reorderReferenceImages('c1', 1, 1);
+    await notifier.reorderReferenceImages('c1', 0, 9);
+    expect(refsOf(), <String>['characters/c1-0.png', 'characters/c1-1.png']);
+  });
+
+  test('nextReferenceIndex：只认自己 id 的编号，认不出就从 0 起', () {
+    expect(CharactersController.nextReferenceIndex('c1', <String>[]), 0);
+    expect(CharactersController.nextReferenceIndex('c1', <String>['characters/c1-0.png']), 1);
+    expect(
+      CharactersController.nextReferenceIndex('c1', <String>[
+        'characters/c1-0.png',
+        'characters/c1-7.jpg',
+        'characters/c1-2.png',
+      ]),
+      8,
+    );
+    expect(
+      CharactersController.nextReferenceIndex('c1', <String>['characters/other-9.png']),
+      0,
+      reason: '别人的编号不算数',
+    );
+    expect(
+      CharactersController.nextReferenceIndex('c1', <String>['characters/c1.png']),
+      0,
+      reason: '没有 -n 后缀的旧数据不算数',
+    );
+  });
 }
