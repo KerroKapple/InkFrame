@@ -3632,6 +3632,162 @@ abstract class AppLocalizations {
   /// **'{project} › {canvas} › {type}'**
   String commandPaletteShotPath(String project, String canvas, String type);
 
+  /// No description provided for @sequenceMonitorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Program monitor'**
+  String get sequenceMonitorTitle;
+
+  /// No description provided for @sequenceChainTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Narrative chain'**
+  String get sequenceChainTab;
+
+  /// No description provided for @sequenceUnchained.
+  ///
+  /// In en, this message translates to:
+  /// **'Unchained · {count}'**
+  String sequenceUnchained(int count);
+
+  /// No description provided for @sequenceColumnShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get sequenceColumnShot;
+
+  /// No description provided for @sequenceColumnDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Length'**
+  String get sequenceColumnDuration;
+
+  /// No description provided for @sequenceColumnArtifact.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get sequenceColumnArtifact;
+
+  /// No description provided for @sequenceArtifactVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'Video'**
+  String get sequenceArtifactVideo;
+
+  /// No description provided for @sequenceArtifactImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Image'**
+  String get sequenceArtifactImage;
+
+  /// No description provided for @sequenceArtifactMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Missing'**
+  String get sequenceArtifactMissing;
+
+  /// No description provided for @sequenceChainNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Order is the narrative edges on the canvas. Reordering here rewrites the links; trims write back to the shot\'s in/out points.'**
+  String get sequenceChainNote;
+
+  /// No description provided for @sequenceDeliveryTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery'**
+  String get sequenceDeliveryTab;
+
+  /// No description provided for @sequenceDeliveryTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Target software'**
+  String get sequenceDeliveryTargets;
+
+  /// No description provided for @sequenceTargetResolve.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolve'**
+  String get sequenceTargetResolve;
+
+  /// No description provided for @sequenceTargetPremiere.
+  ///
+  /// In en, this message translates to:
+  /// **'Premiere'**
+  String get sequenceTargetPremiere;
+
+  /// No description provided for @sequenceTargetFinalCut.
+  ///
+  /// In en, this message translates to:
+  /// **'Final Cut'**
+  String get sequenceTargetFinalCut;
+
+  /// No description provided for @sequenceTargetJianying.
+  ///
+  /// In en, this message translates to:
+  /// **'Jianying'**
+  String get sequenceTargetJianying;
+
+  /// No description provided for @sequenceDeliveryPlaceholder.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery arrives with P6'**
+  String get sequenceDeliveryPlaceholder;
+
+  /// No description provided for @sequenceTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sequence'**
+  String get sequenceTitle;
+
+  /// No description provided for @sequenceTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total '**
+  String get sequenceTotal;
+
+  /// No description provided for @sequenceCountSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{shots} shots · {placeholders} placeholder'**
+  String sequenceCountSummary(int shots, int placeholders);
+
+  /// No description provided for @sequenceMarkerTrack.
+  ///
+  /// In en, this message translates to:
+  /// **'Markers'**
+  String get sequenceMarkerTrack;
+
+  /// No description provided for @sequenceTrackV1.
+  ///
+  /// In en, this message translates to:
+  /// **'V1'**
+  String get sequenceTrackV1;
+
+  /// No description provided for @sequenceTrackV1Meta.
+  ///
+  /// In en, this message translates to:
+  /// **'Video · {count}'**
+  String sequenceTrackV1Meta(int count);
+
+  /// No description provided for @shellActionLocateInCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate in canvas'**
+  String get shellActionLocateInCanvas;
+
+  /// No description provided for @shellActionExportMp4.
+  ///
+  /// In en, this message translates to:
+  /// **'Export mp4'**
+  String get shellActionExportMp4;
+
+  /// No description provided for @statusBarSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'{project} · Narrative chain · {count} shots'**
+  String statusBarSequence(String project, int count);
+
   /// No description provided for @settingsNavGeneral.
   ///
   /// In en, this message translates to:

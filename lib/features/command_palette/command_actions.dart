@@ -73,8 +73,8 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
       ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
           const <CanvasNode>[],
     );
-    final canExport =
-        videoNodes.isNotEmpty && videoNodes.first.projectId != null;
+    // BOARD 210：projectId 看外壳的项目上下文，与 _openExport 同源；不再摸节点数据。
+    final canExport = videoNodes.isNotEmpty && s.project != null;
     return <CommandAction>[
       CommandAction(
         id: 'addImageNode',

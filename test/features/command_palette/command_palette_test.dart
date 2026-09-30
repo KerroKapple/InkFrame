@@ -329,11 +329,28 @@ void main() {
       canvasNodesControllerProvider
           .overrideWith(_ExportableNodesController.new),
     ]);
-    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    // BOARD 210：导出可用性 = 有 video result【且】外壳有项目上下文。
+    container.read(shellControllerProvider.notifier).openCanvas(
+          'c1',
+          withProject: const ProjectRef(id: 'p1', name: 'Alpha'),
+        );
     await _warmNodes(container, 'c1');
     await _pressCtrlK(tester);
 
     expect(find.text('Export video'), findsOneWidget);
+  });
+
+  testWidgets('BOARD 210：有 video result 但外壳无项目上下文 → 不出 Export video',
+      (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider
+          .overrideWith(_ExportableNodesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    await _warmNodes(container, 'c1');
+    await _pressCtrlK(tester);
+
+    expect(find.text('Export video'), findsNothing);
   });
 
   // fix round 18（R86）：⌘K 的 Export video 是 spec §8.2「projectId 走

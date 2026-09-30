@@ -120,6 +120,7 @@ SequenceShot _shotFor({
       notes: notes,
       relativePath: videoUrl,
       canvasId: artifact.canvasId,
+      thumbnailRelativePath: artifact.thumbnailUrl,
     );
   }
 
@@ -131,6 +132,7 @@ SequenceShot _shotFor({
     notes: notes,
     relativePath: artifact.imageUrl,
     canvasId: artifact.canvasId,
+    thumbnailRelativePath: artifact.thumbnailUrl ?? artifact.imageUrl,
   );
 }
 

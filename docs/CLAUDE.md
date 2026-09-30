@@ -242,7 +242,8 @@ lib/
 │   │   ├── palette_search.dart        # buildPaletteEntries — 镜头组只搜当前画布已加载节点（不为搜索读库）、产物组复用 galleryController、动作组 = buildCommandActions
 │   │   ├── command_actions.dart       # CommandAction + context-aware hardwired action list (≤6)
 │   │   └── widgets/                   # palette dialog / top-chrome chip / app-level shortcuts wrapper
-│   ├── export/                        # Video export UI (concat dialog; entry in canvas top chrome)
+│   ├── export/                        # Video export UI (concat dialog; entries: export tab / sequence tab「导出 mp4」/ ⌘K, all via open_export_dialog.dart — projectId + gating from ShellState.project, BOARD 210)
+│   │   ├── open_export_dialog.dart    # openExportVideoDialogForCanvas — the one path that orders by narrative chain and opens the dialog
 │   │   ├── providers/                 # ExportController (canvas→project path conversion)
 │   │   ├── util/                      # Output-name pre-validation + export_order.dart (EX-1′ narrative-chain default order)
 │   │   └── widgets/
@@ -273,7 +274,12 @@ lib/
 │   │   ├── models/                    # sequence_shot.dart (what each shot shows, and for how long)
 │   │   ├── providers/                 # script_import_controller.dart (ShotDrafts → shot chain in ONE transaction; failure leaves no residue)
 │   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist) + script_splitter.dart (SB-1 rule-based, no LLM); both pure
-│   │   └── widgets/                   # script_import_dialog.dart (paste + strategy + live preview) + sequence_preview_dialog.dart (playback + advance only)
+│   │   └── widgets/                   # script_import_dialog.dart (paste + strategy + live preview); the old sequence_preview_dialog moved into features/sequence (P2)
+│   ├── sequence/                      # 序列视图（P2，Timeline 稿）：只读序列 lens 常驻在序列标签——叙事链 320 | 节目监视器 | 交付占位 320；序列区 300（时间尺 / 场次标记 / V1 只读轨 / 播放头）
+│   │   ├── models/                    # sequence_lens.dart (buildSequenceLens: shots + startsMs + totalMs + 场次标记由链上 shot 节点推 + 未入链计数；locate / globalMs 纯函数)
+│   │   ├── providers/                 # sequence_lens_provider (watch 节点 + 边控制器) / sequence_playhead (index + offsetMs + seekToken：监视器 report 不动 token，用户 seek 才自增；不落库) / sequence_zoom (px/s，Ctrl+滚轮，8..160)
+│   │   ├── util/                      # timecode.dart (HH:MM:SS:FF / 短格式，24fps 常量——帧率无字段)
+│   │   └── widgets/                   # sequence_screen.dart (三栏 + 序列区；点 / 拖轨道 = seekGlobal，只改 Player 位置) + sequence_monitor.dart (media_kit Player：不自动播放；paused = !isTabVisible ⇒ 立即 pause、回来不续播)
 │   └── studio/                        # Project / workspace shell (Screens 稿第 1 屏：库 220 | 工具行 + 恢复条 + 4 列项目网格；first-run onboarding dialog; ON-1/ON-2)
 │       ├── studio_home_screen.dart    # + showStudioNewProjectDialog / createStudioSampleProject（标签栏「新建项目」与网格虚线格共用）
 │       ├── open_canvas.dart           # Open/create a canvas from Studio
