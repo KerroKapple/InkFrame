@@ -3,16 +3,16 @@
 // 稿是 content-box，每层的高都要把边框加回去：
 //   页签条 29 = height:28 + 1px 下沿；页签 28 = 1px 上边（当前步的琥珀线）+ 27 内容；
 //   分段控件 28 = 26 + 1px 边 ×2；设置行 26（min-height 生效，三种值形态自然高都更矮）；
-//   值盒 23 = height:22 + 1px 底线；分组 141/167/141 = 组头 26 + 组身 + 1px 下沿；
+//   值盒 23 = height:22 + 1px 底线；分组 141/115/141 = 组头 26 + 组身 + 1px 下沿；
 //   底部条 59 = padding 10×2 + 16 + gap 6 + 16 + 1px 上沿。
 // 竖向合账：29 + 520 + 59 = 608。
 //
-// **滚动区会裁掉一截**：内容实高 557.5（不含稿上那块「交付前检查」），可视只有 520。
-// 稿的 1600×1000 渲染图里，「占位镜头」整行看不见、「提示词」行底部被切 2.5px——
+// **滚动区会裁掉一截**：可视只有 520，内容更高，超出的部分稿上就看不见——
 // 复刻必须同样裁，不裁就对不上。
 //
-// 「交付前检查」块（稿 §7）**不画**：它整块滚出视口，参考图上一个像素都没有，
-// 画了既不影响比对、又等于凭空造一块没验证过的 UI。接线时按规格补。
+// 2026-10-08 稿把「媒体」组从 5 行减到 3 行（删了「手柄」「范围」，进不做清单），
+// 组高 167 → 115，滚动区内容短了 52px：原本整块滚出视口的「交付前检查」现在
+// **露出约 14.5px**，所以这一版把它画上了。
 import 'package:flutter/widgets.dart';
 
 import '../../theme/app_theme.dart';
@@ -31,6 +31,10 @@ const double _lhHint = 17;
 
 /// 等宽 11px 在稿里的 normal 用值。
 const double _lhMono11 = 16;
+
+/// 交付前检查：标记列 `line-height:1.45` × 11 = 15.938；条目文字 1.45 × 12 = 17.391。
+const double _lhCheck = 15.938;
+const double _lhCheckItem = 17.391;
 
 /// 行网格：标签列硬写死 92，gap 8，值列 1fr = 196。
 const double _kLabelColumn = 92;
@@ -134,6 +138,7 @@ class _ScrollArea extends StatelessWidget {
             children: <Widget>[
               const _TargetBlock(),
               for (final DvGroup g in DeliveryFixture.groups) _Group(group: g),
+              const _Preflight(),
             ],
           ),
         ),
@@ -404,6 +409,69 @@ class _Toggle extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 交付前检查。2026-10-08 稿把「媒体」组减到 3 行后，滚动区内容短了 52px，
+/// 这一块的起点从 586.5 提到 534.5——可视区到 549 为止，**只露出约 14.5px**
+/// （12 内边距 + 标题行的头 2.5px）。整块照规格画，露多少由 ClipRect 决定。
+class _Preflight extends StatelessWidget {
+  const _Preflight();
+
+  @override
+  Widget build(BuildContext context) {
+    final InkColors c = context.inkColors;
+    final InkTypography t = context.inkTypography;
+    return Padding(
+      padding: const EdgeInsets.all(InkSpacing.s12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Text(
+                DeliveryFixture.preflightTitle,
+                style: t.body.copyWith(color: c.fg4, height: _lhSans12 / 12),
+              ),
+              const Spacer(),
+              Text(
+                DeliveryFixture.preflightPending,
+                style: t.meta.copyWith(color: c.accent, height: _lhSans11 / 11),
+              ),
+            ],
+          ),
+          const SizedBox(height: InkSpacing.sm),
+          for (final DvCheck k in DeliveryFixture.preflight)
+            Row(
+              // 条目可能折行，标记要贴顶不是居中。
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                SizedBox(
+                  width: 14,
+                  child: Text(
+                    k.ok ? '✓' : '!',
+                    style: t.mono.copyWith(
+                      color: k.ok ? c.success : c.accent,
+                      height: _lhCheck / 11,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: InkSpacing.sm),
+                Expanded(
+                  child: Text(
+                    k.text,
+                    style: t.body.copyWith(
+                      // 「!」条比「✓」条亮一档——待处理的那条要先被看见。
+                      color: k.ok ? c.fg4 : c.fg2,
+                      height: _lhCheckItem / 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );

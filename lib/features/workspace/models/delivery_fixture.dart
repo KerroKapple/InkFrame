@@ -34,6 +34,14 @@ class DvRow {
   final bool on;
 }
 
+/// 交付前检查的一条。`ok` 为真是绿 `✓`，否则是琥珀 `!`（文字也跟着亮一档）。
+class DvCheck {
+  const DvCheck({required this.ok, required this.text});
+
+  final bool ok;
+  final String text;
+}
+
 /// 一个可折叠分组。稿上三个组都是展开态，折叠态没画。
 class DvGroup {
   const DvGroup({required this.title, required this.rows});
@@ -83,17 +91,20 @@ class DeliveryFixture {
       title: '工程文件',
       rows: <DvRow>[
         DvRow(label: '格式', value: 'EDL CMX3600', kind: DvRowKind.select),
-        DvRow(label: '帧率', value: '24 fps · 与序列一致', kind: DvRowKind.select),
+        // 2026-10-08 稿：帧率从下拉改成**只读等宽**「取自序列」——没有帧率字段，
+        // 给个能改的下拉是误导。
+        DvRow(label: '帧率', value: '24 fps · 取自序列', kind: DvRowKind.mono),
         DvRow(label: '时间码起点', value: '01:00:00:00', kind: DvRowKind.mono),
         DvRow(label: '轨道', value: 'V1 视频 · A1 音频分离', kind: DvRowKind.select),
       ],
     ),
     DvGroup(
       title: '媒体',
+      // 2026-10-08 稿删掉了「手柄」「范围」两行（进了 PLAN 的不做清单）：生成的
+      // 媒体是整条文件、两端没有余量可取，手柄无处可取，范围也就无从谈起。
+      // 组高因此 167 → 115，整栏内容短了 52px。
       rows: <DvRow>[
-        DvRow(label: '手柄', value: '±12 帧（0.5 s）', kind: DvRowKind.select),
         DvRow(label: '命名', value: '{序号3位}_{镜头名}.mp4', kind: DvRowKind.mono),
-        DvRow(label: '范围', value: '仅入出点 + 手柄', kind: DvRowKind.select),
         DvRow(label: '转码', value: '保持源 · 不重编码', kind: DvRowKind.select),
         DvRow(
           label: '相对路径',
@@ -128,11 +139,28 @@ class DeliveryFixture {
     ),
   ];
 
+  // ------------------------------------------------------ 交付前检查（部分可见）
+  //
+  // 2026-10-08 稿把「媒体」组从 5 行减到 3 行后，滚动区内容短了 52px，这一块的起点
+  // 从 586.5 提到 534.5——可视区到 549 为止，**它会露出约 14.5px**（12 内边距 +
+  // 标题行的头 2.5px）。旧稿里它整块滚出视口，所以上一版复刻没画。
+  static const String preflightTitle = '交付前检查';
+
+  /// 「!」条的条数。删掉手柄那条提示后从 2 变 1。
+  static const String preflightPending = '1 项待处理';
+
+  static const List<DvCheck> preflight = <DvCheck>[
+    DvCheck(ok: true, text: '8 镜帧率一致 24 fps，画幅 16:9'),
+    DvCheck(ok: true, text: '003 已裁切，手柄范围在源内'),
+    DvCheck(ok: false, text: '008 收尾空镜无视频产物，将导出为 4:16 空隙并加标记'),
+  ];
+
   // ---------------------------------------------------------------- 底部条
   static const String outputLabel = '输出';
 
-  /// 等宽。
-  static const String outputPath = '~/InkFrame/exports/山径破晓_v03/';
+  /// 等宽。2026-10-08 稿：输出目录保持 `<项目目录>/exports/`，
+  /// 版本号与导出历史后置（原来写的是 `~/InkFrame/exports/山径破晓_v03/`）。
+  static const String outputPath = '<项目目录>/exports/';
   static const String includeLabel = '包含';
 
   /// **无衬线**，不是等宽——和上一行的字体不一样，别顺手统一。
