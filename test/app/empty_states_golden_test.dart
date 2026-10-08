@@ -26,8 +26,7 @@ import 'package:inkframe/core/di/video_export.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
-import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
-import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_empty_state.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
@@ -119,17 +118,18 @@ void main() {
     );
   }, skip: _skipGolden);
 
-  testWidgets('Canvas empty 空态基线（无画布打开）', (tester) async {
+  // P7 起这张基线换了被摄物：原来拍的是 CanvasView 在 canvasId == null 时的那一支
+  // ——而外壳的 CanvasTab 早就在 null 时自己换上了空态，那一支生产路径根本到不了，
+  // 基线守的是一块死代码（已删）。现在拍真正的空画布态 CanvasEmptyState：用户新建
+  // 一张画布第一眼看到的就是它。基线因此必然重铸，PR 说明里写了原因。
+  testWidgets('Canvas empty 空态基线（画布里还没有节点）', (tester) async {
     await pumpGoldenScene(
       tester,
-      const CanvasView(),
+      CanvasEmptyState(canvasId: 'c1', onBackgroundTap: () {}),
       size: _surface,
-      overrides: <Override>[
-        currentCanvasIdProvider.overrideWith((_) => null),
-      ],
     );
     await expectLater(
-      find.byType(CanvasView),
+      find.byType(CanvasEmptyState),
       matchesGoldenFile('goldens/canvas_empty.png'),
     );
   }, skip: _skipGolden);

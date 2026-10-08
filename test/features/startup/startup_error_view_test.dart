@@ -31,6 +31,8 @@ import 'package:inkframe/l10n/generated/app_localizations_en.dart';
 import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:inkframe/storage/pg_controller.dart';
 import 'package:inkframe/theme/components/ink_button.dart';
+import 'package:inkframe/theme/components/ink_overlay_dialog.dart';
+import 'package:inkframe/theme/tokens.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../_harness/fake_secure_storage.dart';
@@ -174,6 +176,36 @@ void main() {
     // Retry + Open log directory 按钮。
     expect(find.text(l10n.commonRetry), findsOneWidget);
     expect(find.text(l10n.startupErrorOpenLogDir), findsOneWidget);
+  });
+
+  // P7：中性灰重画。启动失败页原来是一列裸文本躺在 Scaffold 默认底色上，
+  // 现在走与设置 / 回收站同一个浮层壳（surface1 整屏 + 居中面板）。
+  // 重画不许丢诊断：标题 / 正文 / 本地化错误 / 日志路径（仍可选中复制）四件都在。
+  testWidgets('重画后：整屏 surface1 + 共用浮层壳，四件诊断一条不少', (tester) async {
+    final AppPaths paths = _tempPaths();
+    await pumpInkApp(
+      tester,
+      StartupErrorView(error: LocalIOError(cause: StateError('pg boom'))),
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+      ],
+      surfaceSize: const Size(1200, 900),
+    );
+    await tester.pump();
+
+    expect(find.byType(InkOverlayDialog), findsOneWidget);
+    final ColoredBox backdrop = tester.widget<ColoredBox>(
+      find.byKey(StartupErrorView.backdropKey),
+    );
+    expect(backdrop.color, InkColors.dark().surface1);
+
+    expect(find.text(l10n.startupErrorTitle), findsOneWidget);
+    expect(find.text(l10n.startupErrorBody), findsOneWidget);
+    expect(find.text(l10n.errorLocalIO), findsOneWidget);
+    final SelectableText pathText =
+        tester.widget<SelectableText>(find.byType(SelectableText));
+    expect(pathText.data, paths.logs.path);
   });
 
   testWidgets('点击"打开日志目录" → FolderOpener.open(logs 路径)', (tester) async {

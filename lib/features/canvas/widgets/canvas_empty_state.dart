@@ -11,7 +11,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/tokens.dart';
+import '../../../theme/primitives/ink_amber_button.dart';
+import '../../../theme/primitives/ink_ghost_button.dart';
+import '../../shell/widgets/shell_empty_state.dart';
 import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
@@ -84,112 +86,50 @@ class CanvasEmptyState extends ConsumerWidget {
     );
   }
 
+
+  /// 外形走共用空态壳（中性灰语汇：72 圆底 + 标题 + 副文 + 动作行）。
+  /// 四个动作按设计系统的按钮画：主动作一颗琥珀，其余三颗幽灵按钮——
+  /// 原来用的 FilledButton / OutlinedButton 带 Material 自己的涟漪与主色，
+  /// 是这一屏里唯一一处「别人家的按钮」。
   Widget _body(BuildContext context, WidgetRef ref) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
     final l = context.l10n;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onBackgroundTap,
       child: Container(
-        color: colors.surface1,
-        alignment: Alignment.center,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 360),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              _Illustration(colors: colors),
-              const SizedBox(height: InkSpacing.lg),
-              Text(
-                l.canvasEmptyTitle,
-                style: typo.dialogTitle.copyWith(color: colors.fg1),
-                textAlign: TextAlign.center,
+        color: context.inkColors.surface1,
+        child: ShellEmptyState(
+          icon: Icons.add_photo_alternate_outlined,
+          title: l.canvasEmptyTitle,
+          body: l.canvasEmptySubtitle,
+          actions: <Widget>[
+            InkAmberButton(
+              label: l.canvasEmptyAddImage,
+              icon: Icons.add_photo_alternate_outlined,
+              onPressed: () => _addNode(context, ref, CanvasNodeType.image),
+            ),
+            InkGhostButton(
+              label: l.canvasEmptyAddVideo,
+              icon: Icons.videocam_outlined,
+              onPressed: () => _addNode(context, ref, CanvasNodeType.video),
+            ),
+            InkGhostButton(
+              label: l.canvasEmptyAddShot,
+              icon: Icons.movie_outlined,
+              onPressed: () => _addNode(context, ref, CanvasNodeType.shot),
+            ),
+            // SB-2：手上已有本子的人，空画布该给的是「粘进来」而不是「一个个建」。
+            InkGhostButton(
+              label: l.canvasEmptyImportScript,
+              icon: Icons.playlist_add,
+              onPressed: () => showScriptImportDialog(
+                context,
+                canvasId: canvasId,
+                origin: _pickPosition(ref, CanvasNodeType.shot),
               ),
-              const SizedBox(height: InkSpacing.sm),
-              Text(
-                l.canvasEmptySubtitle,
-                style: typo.body.copyWith(color: colors.fg3),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: InkSpacing.lg),
-              Wrap(
-                alignment: WrapAlignment.center,
-                spacing: InkSpacing.md,
-                runSpacing: InkSpacing.sm,
-                children: <Widget>[
-                  FilledButton.icon(
-                    onPressed: () =>
-                        _addNode(context, ref, CanvasNodeType.image),
-                    icon: const Icon(Icons.add_photo_alternate_outlined,
-                        size: 16),
-                    label: Text(l.canvasEmptyAddImage),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () =>
-                        _addNode(context, ref, CanvasNodeType.video),
-                    icon: const Icon(Icons.videocam_outlined, size: 16),
-                    label: Text(l.canvasEmptyAddVideo),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: () =>
-                        _addNode(context, ref, CanvasNodeType.shot),
-                    icon: const Icon(Icons.movie_outlined, size: 16),
-                    label: Text(l.canvasEmptyAddShot),
-                  ),
-                  // SB-2：手上已有本子的人，空画布该给的是「粘进来」而不是「一个个建」。
-                  OutlinedButton.icon(
-                    onPressed: () => showScriptImportDialog(
-                      context,
-                      canvasId: canvasId,
-                      origin: _pickPosition(ref, CanvasNodeType.shot),
-                    ),
-                    icon: const Icon(Icons.playlist_add, size: 16),
-                    label: Text(l.canvasEmptyImportScript),
-                  ),
-                ],
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _Illustration extends StatelessWidget {
-  const _Illustration({required this.colors});
-  final InkColors colors;
-
-  @override
-  Widget build(BuildContext context) {
-    // 简洁示意：双层圆框 + 加号图标，纯 token 配色，无外部资源。
-    return SizedBox(
-      width: 96,
-      height: 96,
-      child: Stack(
-        alignment: Alignment.center,
-        children: <Widget>[
-          Container(
-            width: 96,
-            height: 96,
-            decoration: BoxDecoration(
-              color: colors.surface2,
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.borderSubtle),
-            ),
-          ),
-          Container(
-            width: 64,
-            height: 64,
-            decoration: BoxDecoration(
-              color: colors.surface3,
-              shape: BoxShape.circle,
-              border: Border.all(color: colors.outline),
-            ),
-            child: Icon(Icons.add, color: colors.accent, size: 28),
-          ),
-        ],
       ),
     );
   }

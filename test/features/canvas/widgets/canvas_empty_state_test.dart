@@ -1,13 +1,21 @@
-// CanvasEmptyState 渲染测试：标题/副文/双 CTA + 背景点击触发回调。
+// CanvasEmptyState 渲染测试：标题/副文/四个动作 + 背景点击触发回调。
+//
+// P7 起外形走共用的 ShellEmptyState（中性灰语汇：72 圆底 + 标题 + 副文 + 动作行），
+// 动作按钮是设计系统的 InkAmberButton / InkGhostButton，不再是 Material 的
+// FilledButton / OutlinedButton——那两个带 Material 自己的涟漪、圆角和主色，
+// 在中性灰界面里是唯一一处「别人家的按钮」。
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_empty_state.dart';
+import 'package:inkframe/features/shell/widgets/shell_empty_state.dart';
 import 'package:inkframe/features/storyboard/widgets/script_import_dialog.dart';
+import 'package:inkframe/theme/primitives/ink_amber_button.dart';
+import 'package:inkframe/theme/primitives/ink_ghost_button.dart';
 
 import '../../../_harness/test_app.dart';
 
 void main() {
-  testWidgets('渲染插图 + 标题 + 副文 + 三 CTA', (tester) async {
+  testWidgets('渲染共用空态壳 + 标题 + 副文 + 四个动作', (tester) async {
     await pumpInkApp(
       tester,
       Scaffold(
@@ -16,16 +24,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.byType(ShellEmptyState), findsOneWidget);
     expect(find.text('This canvas is empty'), findsOneWidget);
     expect(find.text('Add your first node to start storyboarding.'),
         findsOneWidget);
     expect(find.text('Add image node'), findsOneWidget);
     expect(find.text('Add video node'), findsOneWidget);
     expect(find.text('Add shot node'), findsOneWidget);
-    expect(find.byIcon(Icons.add), findsOneWidget); // illustration center
-    expect(find.byIcon(Icons.add_photo_alternate_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.videocam_outlined), findsOneWidget);
-    expect(find.byIcon(Icons.movie_outlined), findsOneWidget);
+    expect(find.text('Import script'), findsOneWidget);
+    // 主动作一颗琥珀，其余三颗幽灵按钮；Material 按钮一个都不许剩。
+    expect(find.byType(InkAmberButton), findsOneWidget);
+    expect(find.byType(InkGhostButton), findsNWidgets(3));
+    expect(find.byType(FilledButton), findsNothing);
+    expect(find.byType(OutlinedButton), findsNothing);
   });
 
   // SB-2：空画布是「粘脚本」最自然的落点——手上有本子的人不该被逼着一个个建节点。

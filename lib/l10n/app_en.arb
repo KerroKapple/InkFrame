@@ -29,8 +29,6 @@
   "canvasNodeVideoType": "Video",
   "canvasNodeShotType": "Shot",
 
-  "canvasNoCanvasOpen": "No canvas is open",
-  "canvasCreateSampleCanvas": "Create sample canvas",
   "canvasLoadFailed": "Failed to load canvas",
   "canvasSampleProjectName": "Sample Project",
   "canvasSampleCanvasName": "Canvas 1",

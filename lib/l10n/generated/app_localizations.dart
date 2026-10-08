@@ -230,18 +230,6 @@ abstract class AppLocalizations {
   /// **'Shot'**
   String get canvasNodeShotType;
 
-  /// No description provided for @canvasNoCanvasOpen.
-  ///
-  /// In en, this message translates to:
-  /// **'No canvas is open'**
-  String get canvasNoCanvasOpen;
-
-  /// No description provided for @canvasCreateSampleCanvas.
-  ///
-  /// In en, this message translates to:
-  /// **'Create sample canvas'**
-  String get canvasCreateSampleCanvas;
-
   /// No description provided for @canvasLoadFailed.
   ///
   /// In en, this message translates to:

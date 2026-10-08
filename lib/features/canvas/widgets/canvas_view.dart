@@ -17,7 +17,6 @@ import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
-import '../providers/canvas_bootstrap_controller.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
@@ -38,6 +37,7 @@ import '../providers/canvas_lanes_controller.dart';
 import '../providers/lane_collapse_controller.dart';
 import '../util/lane_geometry.dart';
 import '../util/lane_pin_geometry.dart';
+import '../../shell/widgets/shell_empty_state.dart';
 import 'canvas_empty_state.dart';
 import 'canvas_grid_painter.dart';
 import 'edge_painter.dart';
@@ -59,7 +59,17 @@ class CanvasView extends ConsumerWidget {
     final canvasId = ref.watch(currentCanvasIdProvider);
     final colors = context.inkColors;
     if (canvasId == null) {
-      return _NoCanvasOpen(colors: colors);
+      // 生产路径里到不了这里：外壳的 CanvasTab 在 canvasId == null 时就换上了
+      // 同一个空态（还带「回到 Studio」CTA）。直接 mount CanvasView 的测试 /
+      // 工具会走到这一支，所以渲染的是同一块共用空态，而不是另造一块。
+      return ColoredBox(
+        color: colors.surface1,
+        child: ShellEmptyState(
+          icon: Icons.account_tree_outlined,
+          title: context.l10n.shellCanvasEmptyTitle,
+          body: context.l10n.shellCanvasEmptyBody,
+        ),
+      );
     }
 
     final nodesAsync = ref.watch(canvasNodesControllerProvider(canvasId));
@@ -157,57 +167,6 @@ class _LinkHintBanner extends StatelessWidget {
                 context.l10n.linkModeHint,
                 style: typo.body.copyWith(color: colors.fg1),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NoCanvasOpen extends ConsumerWidget {
-  const _NoCanvasOpen({required this.colors});
-  final InkColors colors;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final typo = context.inkTypography;
-    return Container(
-      color: colors.surface1,
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              context.l10n.canvasNoCanvasOpen,
-              style: typo.body.copyWith(color: colors.fg3),
-            ),
-            const SizedBox(height: InkSpacing.md),
-            FilledButton(
-              onPressed: () async {
-                final bootstrap = ref.read(canvasBootstrapControllerProvider);
-                final l10n = context.l10n;
-                final failedMsg = l10n.studioCreateSampleFailed;
-                try {
-                  await bootstrap.createSample(
-                    projectName: l10n.canvasSampleProjectName,
-                    canvasName: l10n.canvasSampleCanvasName,
-                    seed: (
-                      laneLabel: l10n.canvasSampleLaneLabel,
-                      laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
-                      nodeLabel: l10n.canvasSampleNodeLabel,
-                      nodePrompt: l10n.canvasSampleNodePrompt,
-                    ),
-                  );
-                } on InkError {
-                  // 捕获集 = createSample 真实抛出集；与另两入口对齐给用户提示。
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                    SnackBar(content: Text(failedMsg)),
-                  );
-                }
-              },
-              child: Text(context.l10n.canvasCreateSampleCanvas),
             ),
           ],
         ),

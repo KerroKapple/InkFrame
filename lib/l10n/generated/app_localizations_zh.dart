@@ -75,12 +75,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasNodeShotType => '分镜';
 
   @override
-  String get canvasNoCanvasOpen => '当前没有打开的画布';
-
-  @override
-  String get canvasCreateSampleCanvas => '新建示例画布';
-
-  @override
   String get canvasLoadFailed => '加载画布失败';
 
   @override

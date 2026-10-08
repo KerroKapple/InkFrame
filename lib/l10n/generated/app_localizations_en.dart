@@ -86,12 +86,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasNodeShotType => 'Shot';
 
   @override
-  String get canvasNoCanvasOpen => 'No canvas is open';
-
-  @override
-  String get canvasCreateSampleCanvas => 'Create sample canvas';
-
-  @override
   String get canvasLoadFailed => 'Failed to load canvas';
 
   @override
