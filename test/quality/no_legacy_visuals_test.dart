@@ -23,8 +23,8 @@ final RegExp _warmHex = RegExp(
 /// 衬线家族名 + Skia 通用族名。通用族名的理由见 lib/theme/typography.dart 头注：
 /// 它会在 widget test 里被解析成真实系统字体，让度量随机器漂。
 final RegExp _bannedFamily = RegExp(
-  r"Cormorant|Garamond|Noto Serif|Times New Roman|Georgia|Playfair|"
-  r"Merriweather|Source Serif|PT Serif|Libre Baskerville|"
+  r'Cormorant|Garamond|Noto Serif|Times New Roman|Georgia|Playfair|'
+  r'Merriweather|Source Serif|PT Serif|Libre Baskerville|'
   r"""['"]serif['"]|['"]sans-serif['"]""",
   caseSensitive: false,
 );

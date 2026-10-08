@@ -1,6 +1,6 @@
 // Workspace v2 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 底线字段 / 下拉 / 滑块 / 开关 / 方点。
 // 尺寸全部来自稿的 CSS（docs/design/handoff-2026-09/InkFrame Workspace v2.html）。
-// 静态复刻（features/workspace）与真实画布（features/canvas）共用。
+// 原为静态复刻与真实画布共用；复刻脚手架已随 P7 删除，现在只服务 features/。
 import 'package:flutter/widgets.dart';
 
 import '../app_theme.dart';
