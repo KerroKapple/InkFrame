@@ -462,18 +462,33 @@
   "studioCreateSampleFailed": "Couldn't create sample project",
 
   "onboardingTitle": "Welcome to InkFrame",
-  "onboardingStepIndicator": "Step {current} of {total}",
-  "@onboardingStepIndicator": {
-    "description": "Onboarding wizard progress indicator",
-    "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
-    }
-  },
+  "onboardingTabWelcome": "Welcome",
+  "onboardingTabKeys": "Set up a key",
+  "onboardingTabFirstProject": "First project",
   "onboardingSkip": "Skip",
   "onboardingNext": "Next",
   "onboardingStartEmpty": "Start empty",
-  "onboardingKeysConsoleHint": "Get an API key from your provider's console and paste it above — you can also add or change keys later in Settings.",
+  "onboardingFooterHint": "All of this can be changed later in Settings.",
+  "onboardingKeysTitle": "Set up one API key",
+  "onboardingKeysBody": "InkFrame uses your own API keys (BYOK) at no markup. One key is enough to get started — add the rest any time in Settings.",
+  "onboardingKeyLabel": "API Key",
+  "onboardingKeyVerify": "Verify",
+  "onboardingKeyVerified": "Verified · written to the system keychain",
+  "onboardingProviderComingSoon": "{name} (coming soon)",
+  "@onboardingProviderComingSoon": {
+    "description": "Label for a provider row drawn in the design that has no adapter in this build",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "onboardingProviderGemini": "Google Gemini",
+  "onboardingProviderGeminiNote": "Available worldwide, fastest way to a verified key",
+  "onboardingProviderFal": "fal.ai",
+  "onboardingProviderFalNote": "Images and video in one place, widest model range",
+  "onboardingProviderDashscope": "DashScope (Alibaba)",
+  "onboardingProviderDashscopeNote": "Direct access inside mainland China, Kling and Wanx",
+  "onboardingRegionGlobal": "Global",
+  "onboardingRegionChina": "China",
   "onboardingStepSampleTitle": "Start creating",
   "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty Studio.",
 

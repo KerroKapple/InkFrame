@@ -1057,9 +1057,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingTitle => '欢迎使用 InkFrame';
 
   @override
-  String onboardingStepIndicator(int current, int total) {
-    return '第 $current 步 / 共 $total 步';
-  }
+  String get onboardingTabWelcome => '欢迎';
+
+  @override
+  String get onboardingTabKeys => '配置密钥';
+
+  @override
+  String get onboardingTabFirstProject => '首个项目';
 
   @override
   String get onboardingSkip => '跳过';
@@ -1071,8 +1075,52 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingStartEmpty => '从空白开始';
 
   @override
-  String get onboardingKeysConsoleHint =>
-      '先到对应服务商控制台获取 API Key，粘贴到上方；也可以之后在设置中随时添加或修改。';
+  String get onboardingFooterHint => '以上都可以之后在设置里随时调整。';
+
+  @override
+  String get onboardingKeysTitle => '配置一个 API Key';
+
+  @override
+  String get onboardingKeysBody =>
+      'InkFrame 使用你自己的 API 密钥（BYOK），不加价。先配一个就能开始，其余随时在设置里补。';
+
+  @override
+  String get onboardingKeyLabel => 'API Key';
+
+  @override
+  String get onboardingKeyVerify => '验证';
+
+  @override
+  String get onboardingKeyVerified => '验证通过 · 已写入系统钥匙串';
+
+  @override
+  String onboardingProviderComingSoon(String name) {
+    return '$name（待支持）';
+  }
+
+  @override
+  String get onboardingProviderGemini => 'Google Gemini';
+
+  @override
+  String get onboardingProviderGeminiNote => '全球可用，最快验证闭环';
+
+  @override
+  String get onboardingProviderFal => 'fal.ai';
+
+  @override
+  String get onboardingProviderFalNote => '图像与视频一站，模型最全';
+
+  @override
+  String get onboardingProviderDashscope => 'DashScope（阿里）';
+
+  @override
+  String get onboardingProviderDashscopeNote => '国内直连，Kling 与 Wanx';
+
+  @override
+  String get onboardingRegionGlobal => '全球';
+
+  @override
+  String get onboardingRegionChina => '中国';
 
   @override
   String get onboardingStepSampleTitle => '开始创作';

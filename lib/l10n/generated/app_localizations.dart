@@ -2042,11 +2042,23 @@ abstract class AppLocalizations {
   /// **'Welcome to InkFrame'**
   String get onboardingTitle;
 
-  /// Onboarding wizard progress indicator
+  /// No description provided for @onboardingTabWelcome.
   ///
   /// In en, this message translates to:
-  /// **'Step {current} of {total}'**
-  String onboardingStepIndicator(int current, int total);
+  /// **'Welcome'**
+  String get onboardingTabWelcome;
+
+  /// No description provided for @onboardingTabKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up a key'**
+  String get onboardingTabKeys;
+
+  /// No description provided for @onboardingTabFirstProject.
+  ///
+  /// In en, this message translates to:
+  /// **'First project'**
+  String get onboardingTabFirstProject;
 
   /// No description provided for @onboardingSkip.
   ///
@@ -2066,11 +2078,95 @@ abstract class AppLocalizations {
   /// **'Start empty'**
   String get onboardingStartEmpty;
 
-  /// No description provided for @onboardingKeysConsoleHint.
+  /// No description provided for @onboardingFooterHint.
   ///
   /// In en, this message translates to:
-  /// **'Get an API key from your provider\'s console and paste it above — you can also add or change keys later in Settings.'**
-  String get onboardingKeysConsoleHint;
+  /// **'All of this can be changed later in Settings.'**
+  String get onboardingFooterHint;
+
+  /// No description provided for @onboardingKeysTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up one API key'**
+  String get onboardingKeysTitle;
+
+  /// No description provided for @onboardingKeysBody.
+  ///
+  /// In en, this message translates to:
+  /// **'InkFrame uses your own API keys (BYOK) at no markup. One key is enough to get started — add the rest any time in Settings.'**
+  String get onboardingKeysBody;
+
+  /// No description provided for @onboardingKeyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'API Key'**
+  String get onboardingKeyLabel;
+
+  /// No description provided for @onboardingKeyVerify.
+  ///
+  /// In en, this message translates to:
+  /// **'Verify'**
+  String get onboardingKeyVerify;
+
+  /// No description provided for @onboardingKeyVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Verified · written to the system keychain'**
+  String get onboardingKeyVerified;
+
+  /// Label for a provider row drawn in the design that has no adapter in this build
+  ///
+  /// In en, this message translates to:
+  /// **'{name} (coming soon)'**
+  String onboardingProviderComingSoon(String name);
+
+  /// No description provided for @onboardingProviderGemini.
+  ///
+  /// In en, this message translates to:
+  /// **'Google Gemini'**
+  String get onboardingProviderGemini;
+
+  /// No description provided for @onboardingProviderGeminiNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Available worldwide, fastest way to a verified key'**
+  String get onboardingProviderGeminiNote;
+
+  /// No description provided for @onboardingProviderFal.
+  ///
+  /// In en, this message translates to:
+  /// **'fal.ai'**
+  String get onboardingProviderFal;
+
+  /// No description provided for @onboardingProviderFalNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Images and video in one place, widest model range'**
+  String get onboardingProviderFalNote;
+
+  /// No description provided for @onboardingProviderDashscope.
+  ///
+  /// In en, this message translates to:
+  /// **'DashScope (Alibaba)'**
+  String get onboardingProviderDashscope;
+
+  /// No description provided for @onboardingProviderDashscopeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct access inside mainland China, Kling and Wanx'**
+  String get onboardingProviderDashscopeNote;
+
+  /// No description provided for @onboardingRegionGlobal.
+  ///
+  /// In en, this message translates to:
+  /// **'Global'**
+  String get onboardingRegionGlobal;
+
+  /// No description provided for @onboardingRegionChina.
+  ///
+  /// In en, this message translates to:
+  /// **'China'**
+  String get onboardingRegionChina;
 
   /// No description provided for @onboardingStepSampleTitle.
   ///
