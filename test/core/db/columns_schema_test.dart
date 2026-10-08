@@ -13,7 +13,7 @@ import '../../storage/schema/pg_test_harness.dart';
 void main() {
   // 每个表 → 该表必须存在的列常量集合（NodeCol.projectId 是 JOIN 列，排除）。
   final expected = <String, List<String>>{
-    'projects': [ProjectCol.id, ProjectCol.name, ProjectCol.coverNodeId, ProjectCol.createdAt, ProjectCol.updatedAt, ProjectCol.deletedAt],
+    'projects': [ProjectCol.id, ProjectCol.name, ProjectCol.coverNodeId, ProjectCol.createdAt, ProjectCol.updatedAt, ProjectCol.deletedAt, ProjectCol.deliverySettings],
     'canvases': [CanvasCol.id, CanvasCol.projectId, CanvasCol.name, CanvasCol.baseStylePrefix, CanvasCol.baseStyleSuffix, CanvasCol.viewportX, CanvasCol.viewportY, CanvasCol.viewportScale, CanvasCol.defaultNodeWidth, CanvasCol.laneDirection, CanvasCol.createdAt, CanvasCol.updatedAt, CanvasCol.deletedAt],
     'style_lanes': [StyleLaneCol.id, StyleLaneCol.canvasId, StyleLaneCol.label, StyleLaneCol.stylePrompt, StyleLaneCol.sortOrder, StyleLaneCol.tintColor, StyleLaneCol.size, StyleLaneCol.createdAt, StyleLaneCol.updatedAt, StyleLaneCol.deletedAt],
     'characters': [CharacterCol.id, CharacterCol.projectId, CharacterCol.name, CharacterCol.referenceImagePaths, CharacterCol.description, CharacterCol.sortOrder, CharacterCol.createdAt, CharacterCol.updatedAt, CharacterCol.deletedAt],
