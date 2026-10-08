@@ -56,14 +56,14 @@ BOARD 211。四字段进 video config 的 type_config：`shot_size`（景别）/
 控制器补四个薄方法：setDescription / addReferenceImage / removeReferenceImage / reorderReferenceImages。多图落盘 `{id}-{n}`。不改仓储、不加迁移。
 无字段：参考图「备注」文字（不做，格下只留序号）。
 
-## P5 · 首启向导（feat/v1-onboarding #241，静态复刻按新口径通过，接线中）
+## P5 · 首启向导（feat/v1-onboarding #241，✅ 已合入 main）
 
 稿：`InkFrame Screens.html` 屏 4 左。
 三步：欢迎 / 配置密钥 / 首个项目。第二步 Provider 单选（Gemini / fal.ai / DashScope）+ Key 输入 + 验证 + 成功态；第三步「空白 / 短剧示例」。
 底部「已检测：32 GB · 独显」无硬件探测，**不画**；改成「可在设置 › 性能中调整」一句。
 onboardingCompleted 语义不变；跳过按钮语义 = 完成但不配 Key，Studio 引导条接手。
 
-## P6 · 交付 B（feat/v1-delivery #243，静态复刻按新口径通过，接线中）
+## P6 · 交付 B（feat/v1-delivery #243，✅ 静态复刻 + 接线完成，待合入）
 
 依赖 P2 + P3。
 EDL CMX3600 写出器（V1 单轨、24fps、TC 起点 01:00:00:00 可改）· 媒体导出 `{序号3位}_{镜头名}.mp4` 保持源 · metadata.json（含 P3 四字段）· 交付设置按项目持久化 · 交付前检查四条 · 输出目录保持 <项目目录>/exports/，版本号与导出历史后置。
