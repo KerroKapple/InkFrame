@@ -6,7 +6,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
+
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
+import 'package:inkframe/core/di/asset_bundle.dart';
+import 'package:inkframe/core/di/paths.dart';
+import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/core/di/locale.dart';
 import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/providers.dart';
@@ -26,6 +31,7 @@ import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/tokens.dart';
 
+import '../../../_harness/fake_asset_bundle.dart';
 import '../../../_harness/fake_providers.dart';
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_secure_storage.dart';
@@ -523,6 +529,16 @@ void main() {
           prefs: prefs,
           secure: FakeSecureStorage(),
           extra: <Override>[
+            // 示例项目要往数据根写打包成片：钉临时根 + 空 bundle（成片本身由
+            // canvas_bootstrap_controller_test 覆盖，这里只看向导出口那条链）。
+            appPathsProvider.overrideWithValue(
+              DefaultAppPaths.forRoot(
+                Directory.systemTemp.createTempSync('ink_onboarding_sample_'),
+              ),
+            ),
+            assetBundleProvider.overrideWithValue(
+              FakeAssetBundle(const <String, List<int>>{}),
+            ),
             unitOfWorkProvider.overrideWith(
               (_) async => FakeUnitOfWork(FakeRepositoryScope(
                 projects: projects,

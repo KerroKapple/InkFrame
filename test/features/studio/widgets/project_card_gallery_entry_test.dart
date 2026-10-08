@@ -53,45 +53,4 @@ void main() {
     expect(s.tab, ShellTab.gallery);
     expect(s.project, const ProjectRef(id: 'p1', name: 'Alpha'));
   });
-
-  testWidgets('项目卡菜单 Built-in samples → 切到内置示例页', (tester) async {
-    await tester.binding.setSurfaceSize(const Size(1440, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer(
-      overrides: <Override>[
-        workspaceProjectsProvider.overrideWith(
-          (_) async => <ProjectWithCanvases>[
-            ProjectWithCanvases(
-              id: 'p1',
-              name: 'Alpha',
-              createdAt: DateTime.utc(2026, 5, 1),
-              canvases: const <CanvasRef>[],
-            ),
-          ],
-        ),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: container,
-        child: MaterialApp(
-          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: const StudioHomeScreen(),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(container.read(shellControllerProvider).overlay, isNull);
-    await tester.tap(find.byTooltip('Project options'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Built-in samples'));
-    await tester.pumpAndSettle();
-
-    expect(container.read(shellControllerProvider).overlay, ShellOverlay.showcase);
-  });
 }

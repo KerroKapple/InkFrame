@@ -60,7 +60,6 @@ List<PaletteEntry> buildPaletteEntries(BuildContext context, WidgetRef ref, Stri
 
 String _tabLabel(AppLocalizations l, ShellState s) => switch (s.overlay) {
       ShellOverlay.settings => l.settingsTitle,
-      ShellOverlay.showcase => l.showcaseEntryLabel,
       null => switch (s.tab) {
           ShellTab.studio => l.shellTabStudio,
           ShellTab.canvas => l.shellTabCanvas,

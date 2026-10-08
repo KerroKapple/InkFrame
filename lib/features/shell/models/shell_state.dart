@@ -23,7 +23,9 @@ import 'package:flutter/foundation.dart';
 enum ShellTab { studio, canvas, sequence, gallery, export }
 
 /// 浮层不是标签：它盖在标签宿主之上，关掉后回到原标签。
-enum ShellOverlay { settings, showcase }
+/// P7 删掉内置示例页后只剩设置一种——枚举留着是因为「浮层」这个位置本身是
+/// 结构的一部分（ShellState.overlay 的 null / 非 null 决定标签可见性）。
+enum ShellOverlay { settings }
 
 /// 项目引用。刻意用具名类而非记录 ({String id, String name})：
 /// 记录是结构化类型，任何 (id, name) 对（画布引用、角色引用、备份条目）

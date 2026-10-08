@@ -62,10 +62,10 @@ void main() {
 
     test('setProject 只换上下文，不动标签与浮层', () {
       const s = ShellState(
-        tab: ShellTab.canvas, overlay: ShellOverlay.showcase, canvasId: 'c1', project: p1);
+        tab: ShellTab.canvas, overlay: ShellOverlay.settings, canvasId: 'c1', project: p1);
       final n = s.setProject(p2);
       expect(n.tab, ShellTab.canvas);
-      expect(n.overlay, ShellOverlay.showcase);
+      expect(n.overlay, ShellOverlay.settings);
       expect(n.canvasId, 'c1');
       expect(n.project, p2);
     });
@@ -120,7 +120,6 @@ void main() {
     test('hasOverlay：有浮层为真，无浮层为假', () {
       expect(const ShellState().hasOverlay, isFalse);
       expect(const ShellState(overlay: ShellOverlay.settings).hasOverlay, isTrue);
-      expect(const ShellState(overlay: ShellOverlay.showcase).hasOverlay, isTrue);
     });
   });
 
@@ -130,8 +129,9 @@ void main() {
     final variants = <String, ShellState>{
       'tab': ShellState(
         tab: ShellTab.gallery, overlay: base.overlay, canvasId: base.canvasId, project: base.project),
+      // P7 起 ShellOverlay 只剩 settings，于是「只差 overlay」= 有浮层 vs 没浮层。
       'overlay': ShellState(
-        tab: base.tab, overlay: ShellOverlay.showcase, canvasId: base.canvasId, project: base.project),
+        tab: base.tab, canvasId: base.canvasId, project: base.project),
       'canvasId': ShellState(
         tab: base.tab, overlay: base.overlay, canvasId: 'c2', project: base.project),
       'project': ShellState(
