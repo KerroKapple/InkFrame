@@ -3818,11 +3818,365 @@ abstract class AppLocalizations {
   /// **'Jianying'**
   String get sequenceTargetJianying;
 
-  /// No description provided for @sequenceDeliveryPlaceholder.
+  /// No description provided for @deliveryTabClips.
   ///
   /// In en, this message translates to:
-  /// **'Delivery arrives with P6'**
-  String get sequenceDeliveryPlaceholder;
+  /// **'Clips'**
+  String get deliveryTabClips;
+
+  /// No description provided for @deliveryTabHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get deliveryTabHistory;
+
+  /// No description provided for @deliveryNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a project first'**
+  String get deliveryNoProject;
+
+  /// No description provided for @deliveryTargetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'EDL CMX3600 by default (PRD P1); FCPXML is pending.'**
+  String get deliveryTargetHint;
+
+  /// No description provided for @deliveryPendingFcpxml.
+  ///
+  /// In en, this message translates to:
+  /// **'FCPXML support is pending'**
+  String get deliveryPendingFcpxml;
+
+  /// No description provided for @deliveryPendingJianying.
+  ///
+  /// In en, this message translates to:
+  /// **'Jianying draft support is pending'**
+  String get deliveryPendingJianying;
+
+  /// No description provided for @deliveryGroupProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project file'**
+  String get deliveryGroupProject;
+
+  /// No description provided for @deliveryGroupMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Media'**
+  String get deliveryGroupMedia;
+
+  /// No description provided for @deliveryGroupMarkers.
+  ///
+  /// In en, this message translates to:
+  /// **'Markers & metadata'**
+  String get deliveryGroupMarkers;
+
+  /// No description provided for @deliveryRowFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Format'**
+  String get deliveryRowFormat;
+
+  /// No description provided for @deliveryRowFps.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame rate'**
+  String get deliveryRowFps;
+
+  /// No description provided for @deliveryRowTcStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Timecode start'**
+  String get deliveryRowTcStart;
+
+  /// No description provided for @deliveryRowTracks.
+  ///
+  /// In en, this message translates to:
+  /// **'Tracks'**
+  String get deliveryRowTracks;
+
+  /// No description provided for @deliveryRowNaming.
+  ///
+  /// In en, this message translates to:
+  /// **'Naming'**
+  String get deliveryRowNaming;
+
+  /// No description provided for @deliveryRowTranscode.
+  ///
+  /// In en, this message translates to:
+  /// **'Transcode'**
+  String get deliveryRowTranscode;
+
+  /// No description provided for @deliveryRowRelativePaths.
+  ///
+  /// In en, this message translates to:
+  /// **'Relative paths'**
+  String get deliveryRowRelativePaths;
+
+  /// No description provided for @deliveryRowSceneMarkers.
+  ///
+  /// In en, this message translates to:
+  /// **'Scenes → markers'**
+  String get deliveryRowSceneMarkers;
+
+  /// No description provided for @deliveryRowShotLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot language'**
+  String get deliveryRowShotLanguage;
+
+  /// No description provided for @deliveryRowPlaceholders.
+  ///
+  /// In en, this message translates to:
+  /// **'Placeholder shots'**
+  String get deliveryRowPlaceholders;
+
+  /// No description provided for @deliveryFormatEdlCmx3600.
+  ///
+  /// In en, this message translates to:
+  /// **'EDL CMX3600'**
+  String get deliveryFormatEdlCmx3600;
+
+  /// No description provided for @deliveryFormatPending.
+  ///
+  /// In en, this message translates to:
+  /// **'—'**
+  String get deliveryFormatPending;
+
+  /// No description provided for @deliveryFpsValue.
+  ///
+  /// In en, this message translates to:
+  /// **'24 fps · from the sequence'**
+  String get deliveryFpsValue;
+
+  /// No description provided for @deliveryTracksValue.
+  ///
+  /// In en, this message translates to:
+  /// **'V1 video'**
+  String get deliveryTracksValue;
+
+  /// No description provided for @deliveryNamingValue.
+  ///
+  /// In en, this message translates to:
+  /// **'[index3]_[shot].mp4'**
+  String get deliveryNamingValue;
+
+  /// No description provided for @deliveryTranscodeValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep source · no re-encode'**
+  String get deliveryTranscodeValue;
+
+  /// No description provided for @deliveryPlaceholderValue.
+  ///
+  /// In en, this message translates to:
+  /// **'Exported as gap + marker'**
+  String get deliveryPlaceholderValue;
+
+  /// No description provided for @deliveryRelativePathsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'On (folder stays portable)'**
+  String get deliveryRelativePathsOn;
+
+  /// No description provided for @deliveryRelativePathsOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off (absolute paths)'**
+  String get deliveryRelativePathsOff;
+
+  /// No description provided for @deliverySceneMarkersOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported as timeline markers'**
+  String get deliverySceneMarkersOn;
+
+  /// No description provided for @deliverySceneMarkersOff.
+  ///
+  /// In en, this message translates to:
+  /// **'No markers exported'**
+  String get deliverySceneMarkersOff;
+
+  /// No description provided for @deliveryShotLanguageOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Written to clip comments (size · motion)'**
+  String get deliveryShotLanguageOn;
+
+  /// No description provided for @deliveryShotLanguageOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Not written to clip comments'**
+  String get deliveryShotLanguageOff;
+
+  /// No description provided for @deliveryTcInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Timecode must be HH:MM:SS:FF'**
+  String get deliveryTcInvalid;
+
+  /// No description provided for @deliveryPreflightTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Pre-delivery checks'**
+  String get deliveryPreflightTitle;
+
+  /// No description provided for @deliveryPreflightPending.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} to resolve'**
+  String deliveryPreflightPending(int count);
+
+  /// No description provided for @deliveryPreflightReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready to deliver'**
+  String get deliveryPreflightReady;
+
+  /// No description provided for @deliveryCheckFrameRate.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} shots handled at a uniform 24 fps'**
+  String deliveryCheckFrameRate(int count);
+
+  /// No description provided for @deliveryCheckFrameSizeOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame size consistent · {ratio}'**
+  String deliveryCheckFrameSizeOk(String ratio);
+
+  /// No description provided for @deliveryCheckFrameSizeOkUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame size consistent · {ratio} ({count} shots without recorded size)'**
+  String deliveryCheckFrameSizeOkUnknown(String ratio, int count);
+
+  /// No description provided for @deliveryCheckFrameSizeUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Frame size not recorded (the probe wrote no dimensions) — not checked'**
+  String get deliveryCheckFrameSizeUnknown;
+
+  /// No description provided for @deliveryCheckFrameSizeMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed frame sizes {ratios} — your editor will letterbox them'**
+  String deliveryCheckFrameSizeMixed(String ratios);
+
+  /// No description provided for @deliveryCheckMissingNone.
+  ///
+  /// In en, this message translates to:
+  /// **'All {count} shots have a video artifact'**
+  String deliveryCheckMissingNone(int count);
+
+  /// No description provided for @deliveryCheckMissingItem.
+  ///
+  /// In en, this message translates to:
+  /// **'{index} {name} has no video artifact — exported as a {duration} gap with a marker'**
+  String deliveryCheckMissingItem(String index, String name, String duration);
+
+  /// No description provided for @deliveryCheckMissingMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more'**
+  String deliveryCheckMissingMore(int count);
+
+  /// No description provided for @deliveryCheckProjectOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Project context · {name}'**
+  String deliveryCheckProjectOk(String name);
+
+  /// No description provided for @deliveryCheckProjectMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No project context — open a project first'**
+  String get deliveryCheckProjectMissing;
+
+  /// No description provided for @deliveryCheckOutputOk.
+  ///
+  /// In en, this message translates to:
+  /// **'Output folder is writable'**
+  String get deliveryCheckOutputOk;
+
+  /// No description provided for @deliveryCheckOutputBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Output folder is not writable'**
+  String get deliveryCheckOutputBlocked;
+
+  /// No description provided for @deliveryOutputLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Output'**
+  String get deliveryOutputLabel;
+
+  /// No description provided for @deliveryIncludeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Includes'**
+  String get deliveryIncludeLabel;
+
+  /// No description provided for @deliveryIncludeSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} mp4 · 1 {ext} · metadata.json'**
+  String deliveryIncludeSummary(int count, String ext);
+
+  /// No description provided for @deliveryActionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Deliver to {target}'**
+  String deliveryActionLabel(String target);
+
+  /// No description provided for @deliveryActionProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivering {done}/{total}'**
+  String deliveryActionProgress(int done, int total);
+
+  /// No description provided for @deliveryActionRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivering'**
+  String get deliveryActionRunning;
+
+  /// No description provided for @deliveryActionEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No shots in the sequence yet'**
+  String get deliveryActionEmpty;
+
+  /// No description provided for @deliveryResultSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered to {dir}'**
+  String deliveryResultSuccess(String dir);
+
+  /// No description provided for @deliveryOpenFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get deliveryOpenFolder;
+
+  /// No description provided for @deliveryCopyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path'**
+  String get deliveryCopyPath;
+
+  /// No description provided for @deliveryRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get deliveryRetry;
+
+  /// No description provided for @deliveryResultDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss'**
+  String get deliveryResultDismiss;
 
   /// No description provided for @sequenceTitle.
   ///

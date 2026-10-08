@@ -9,6 +9,7 @@ import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/export/delivery_keys.dart';
 import 'package:inkframe/features/sequence/providers/sequence_playhead.dart';
 import 'package:inkframe/features/sequence/providers/sequence_zoom.dart';
 import 'package:inkframe/features/sequence/widgets/sequence_monitor.dart';
@@ -75,8 +76,10 @@ void main() {
       expect(find.byKey(SequenceScreen.clipKey(i)), findsOneWidget);
     }
     expect(find.byType(SequenceMonitor), findsOneWidget);
-    expect(find.byKey(SequenceScreen.deliveryPlaceholderKey), findsOneWidget);
-    expect(find.text('Delivery arrives with P6'), findsOneWidget);
+    // P6：右栏是真交付面板。本用例没播种项目上下文（ShellState.project == null），
+    // 所以面板只剩空态——「不 watch 仓储」那条门控的直接体现。
+    expect(find.byKey(DeliveryKeys.panel), findsOneWidget);
+    expect(find.byKey(DeliveryKeys.emptyState), findsOneWidget);
     expect(find.text('3 shots · 3 placeholder'), findsOneWidget);
     expect(find.text('Video · 3'), findsOneWidget);
     expect(find.text('00:00:06:00'), findsWidgets, reason: '总长 6s 出现在序列区头 / 监视器');

@@ -27,6 +27,43 @@ void main() {
     });
   });
 
+  group('parseEdlTimecode（时间码起点输入框的校验，P6）', () {
+    test('合法 HH:MM:SS:FF → 帧，与 formatEdlTimecode 互逆', () {
+      expect(parseEdlTimecode('01:00:00:00'), 24 * 3600);
+      expect(parseEdlTimecode('00:00:00:00'), 0);
+      expect(parseEdlTimecode('00:00:01:12'), 36);
+      expect(parseEdlTimecode('25:00:00:00'), 24 * 3600 * 25);
+      for (final int frames in <int>[0, 1, 36, 24 * 3600, 24 * 3600 * 25]) {
+        expect(parseEdlTimecode(formatEdlTimecode(frames)), frames);
+      }
+    });
+
+    test('格式不对 → null（不猜、不抛）', () {
+      for (final String bad in <String>[
+        '',
+        '1:00:00',
+        '01:00:00:00:00',
+        'aa:bb:cc:dd',
+        '01-00-00-00',
+        '01:00:00:',
+        '001:00:00:00',
+      ]) {
+        expect(parseEdlTimecode(bad), isNull, reason: bad);
+      }
+    });
+
+    test('越界的分 / 秒 / 帧 → null（24fps 下没有第 24 帧）', () {
+      expect(parseEdlTimecode('00:60:00:00'), isNull);
+      expect(parseEdlTimecode('00:00:60:00'), isNull);
+      expect(parseEdlTimecode('00:00:00:24'), isNull);
+      expect(parseEdlTimecode('00:00:00:23'), 23);
+    });
+
+    test('首尾空白容忍（粘贴常带空格）', () {
+      expect(parseEdlTimecode('  01:00:00:00 '), 24 * 3600);
+    });
+  });
+
   group('buildCmx3600', () {
     test('头两行固定：TITLE + FCM NON-DROP FRAME', () {
       final List<String> lines = buildCmx3600(

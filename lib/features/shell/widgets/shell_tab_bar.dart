@@ -28,13 +28,22 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
+import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_shell_tab_bar.dart';
 import '../../../theme/components/ws_primitives.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
 import '../../canvas/providers/canvas_transform_controller.dart';
+import '../../export/delivery_keys.dart';
+import '../../export/models/delivery_plan.dart';
 import '../../export/open_export_dialog.dart';
+import '../../export/providers/delivery_controller.dart';
+import '../../export/providers/delivery_plan_provider.dart';
+import '../../export/run_delivery.dart';
+import '../../export/util/delivery_check_labels.dart';
+import '../../export/util/delivery_preflight.dart';
+import '../../export/util/delivery_target_labels.dart';
 import '../../sequence/models/sequence_lens.dart';
 import '../../sequence/providers/sequence_lens_provider.dart';
 import '../../sequence/providers/sequence_playhead.dart';
@@ -50,6 +59,7 @@ import '../../studio/project_import_flow.dart';
 import '../../studio/providers/project_export_busy.dart';
 import '../../studio/studio_home_screen.dart' show showStudioNewProjectDialog;
 import '../models/shell_state.dart';
+import '../providers/active_project.dart';
 import '../providers/shell_controller.dart';
 import 'shell_breadcrumb.dart';
 
@@ -121,36 +131,58 @@ class ShellTabBar extends ConsumerWidget {
       );
     }
     if (s.tab == ShellTab.sequence && canvasId != null) {
-      // Timeline 稿：回到画布定位（次级）| 导出 mp4（次级）| 交付到 DaVinci Resolve（主）——交付随 P6，
-      // 不画哑键。导出的可用性 = 有可导出 video result 且外壳有项目上下文（BOARD 210）。
+      // Timeline 稿：回到画布定位（次级）| 导出 mp4（次级）| 交付到 {目标}（主，P6）。
+      // 导出的可用性 = 有可导出 video result 且外壳有项目上下文（BOARD 210）。
       final SequenceLens lens = ref.watch(sequenceLensProvider(canvasId));
       final int shotIndex = ref.watch(sequencePlayheadProvider(canvasId).select((SequencePlayhead p) => p.index));
       final bool canLocate = shotIndex < lens.shots.length;
       final bool canExport =
           ref.watch(canvasNodesControllerProvider(canvasId).select(canExportVideo)) && project != null;
+      // 交付进行中：除「序列」标签本身与主按钮外，整条标签栏锁住（任务书 §3）。
+      final bool busy = ref.watch(deliveryBusyProvider);
       return InkShellTabBar(
-        after: const ShellBreadcrumb(),
+        after: _lockable(busy, const ShellBreadcrumb()),
         actions: <Widget>[
-          _Action(
-            key: locateInCanvasKey,
-            label: l.shellActionLocateInCanvas,
-            onTap: !canLocate
-                ? () {}
-                : () {
-                    // 与 galleryLocateInCanvas 同序：先切标签再选中。
-                    nav.goTab(ShellTab.canvas);
-                    ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(lens.shots[shotIndex].nodeId);
-                  },
-            child: Opacity(opacity: canLocate ? 1 : 0.5, child: WsSecondaryButton(l.shellActionLocateInCanvas)),
+          _lockable(
+            busy,
+            _Action(
+              key: locateInCanvasKey,
+              label: l.shellActionLocateInCanvas,
+              onTap: !canLocate
+                  ? null
+                  : () {
+                      // 与 galleryLocateInCanvas 同序：先切标签再选中。
+                      nav.goTab(ShellTab.canvas);
+                      ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(lens.shots[shotIndex].nodeId);
+                    },
+              child: Opacity(opacity: canLocate ? 1 : 0.5, child: WsSecondaryButton(l.shellActionLocateInCanvas)),
+            ),
           ),
-          _Action(
-            key: exportMp4Key,
-            label: l.shellActionExportMp4,
-            onTap: !canExport ? () {} : () => openExportVideoDialogForCanvas(context, ref, canvasId),
-            child: Opacity(opacity: canExport ? 1 : 0.5, child: WsSecondaryButton(l.shellActionExportMp4)),
+          _lockable(
+            busy,
+            _Action(
+              key: exportMp4Key,
+              label: l.shellActionExportMp4,
+              onTap: !canExport ? null : () => openExportVideoDialogForCanvas(context, ref, canvasId),
+              child: Opacity(opacity: canExport ? 1 : 0.5, child: WsSecondaryButton(l.shellActionExportMp4)),
+            ),
           ),
+          _DeliverButton(canvasId: canvasId),
         ],
-        items: _items(l, s, nav),
+        items: _items(
+          l,
+          s,
+          nav,
+          lockedExcept: busy ? ShellTab.sequence : null,
+          trailingTab: ShellTab.sequence,
+          trailingOn: !busy
+              ? null
+              : _DeliveryProgressRing(
+                  fraction:
+                      (ref.watch(deliveryControllerProvider) as DeliveryRunning)
+                          .fraction,
+                ),
+        ),
       );
     }
     return InkShellTabBar(
@@ -191,7 +223,16 @@ class ShellTabBar extends ConsumerWidget {
     );
   }
 
-  static List<InkShellTabBarItem> _items(AppLocalizations l, ShellState s, ShellNavigator nav) =>
+  /// [lockedExcept] 非 null ⇒ 除它之外的每一格都**不可点 + 降 0.5**
+  /// （P6 交付进行中；onTap 给 null 而不是空闭包）。
+  static List<InkShellTabBarItem> _items(
+    AppLocalizations l,
+    ShellState s,
+    ShellNavigator nav, {
+    ShellTab? lockedExcept,
+    Widget? trailingOn,
+    ShellTab? trailingTab,
+  }) =>
       <InkShellTabBarItem>[
         for (final ShellTab t in ShellTab.values)
           InkShellTabBarItem(
@@ -199,9 +240,93 @@ class ShellTabBar extends ConsumerWidget {
             label: _labelOf(l, t),
             icon: _iconOf(t),
             selected: t == s.tab,
-            onTap: () => nav.goTab(t),
+            dimmed: lockedExcept != null && t != lockedExcept,
+            onTap: lockedExcept != null && t != lockedExcept
+                ? null
+                : () => nav.goTab(t),
+            trailing: t == trailingTab ? trailingOn : null,
           ),
       ];
+
+  /// 锁住一块：吞掉指针 + 降 0.5。标签栏里除「序列」格与主按钮之外的东西都走它。
+  static Widget _lockable(bool locked, Widget child) => !locked
+      ? child
+      : IgnorePointer(child: Opacity(opacity: 0.5, child: child));
+}
+
+/// 标签栏右侧的交付主按钮（P6 §3）。
+///
+/// 可用性与 Tooltip 全部来自 deliveryPreflightProvider —— 与面板里那份检查清单
+/// **同源**，不另算一遍（否则按钮亮着而清单写着阻断，用户只能靠猜）。
+class _DeliverButton extends ConsumerWidget {
+  const _DeliverButton({required this.canvasId});
+
+  final String canvasId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final AppLocalizations l = context.l10n;
+    final DeliveryPlan plan = ref.watch(deliveryPlanProvider(canvasId));
+    final DeliveryPreflight preflight = ref.watch(deliveryPreflightProvider(canvasId));
+    final DeliveryState delivery = ref.watch(deliveryControllerProvider);
+    final String projectName = ref.watch(activeProjectProvider)?.name ?? '';
+
+    if (delivery is DeliveryRunning) {
+      final String label = delivery.total > 0
+          ? l.deliveryActionProgress(delivery.done, delivery.total)
+          : l.deliveryActionRunning;
+      // 交付中：按钮不可点（onTap null，不是空闭包），文案变进度。
+      return _Action(
+        key: DeliveryKeys.deliverButton,
+        label: label,
+        onTap: null,
+        child: WsPrimaryButton(label, bordered: false),
+      );
+    }
+
+    final DeliveryCheck? blocking = preflight.firstBlocking;
+    final bool enabled = plan.shots.isNotEmpty && blocking == null;
+    final String label = l.deliveryActionLabel(
+      deliveryTargetLabel(l, plan.settings.target),
+    );
+    // 禁用时 Tooltip 写第一条阻断原因；没有阻断只是序列空 ⇒ 写「还没有镜」。
+    final String tooltip = enabled
+        ? label
+        : blocking != null
+            ? deliveryCheckHeadline(l, blocking, projectName: projectName)
+            : l.deliveryActionEmpty;
+    return Tooltip(
+      message: tooltip,
+      child: _Action(
+        key: DeliveryKeys.deliverButton,
+        label: label,
+        onTap: enabled ? () => runDeliveryForCanvas(ref, canvasId) : null,
+        child: Opacity(
+          opacity: enabled ? 1 : 0.5,
+          child: WsPrimaryButton(label, bordered: false),
+        ),
+      ),
+    );
+  }
+}
+
+/// 「序列」标签右侧的 12px 进度环（任务书 §3.4）。分母未知时转圈。
+class _DeliveryProgressRing extends StatelessWidget {
+  const _DeliveryProgressRing({required this.fraction});
+
+  final double? fraction;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        key: DeliveryKeys.progressRing,
+        width: 12,
+        height: 12,
+        child: CircularProgressIndicator(
+          strokeWidth: 1.5,
+          value: fraction,
+          color: context.inkColors.accent,
+        ),
+      );
 }
 
 /// 画廊标签的「存为角色」：作用于选中集的锚点，且锚点得是图片（GA-4 只收图片）。
@@ -253,16 +378,20 @@ class _GallerySaveAsCharacterState extends ConsumerState<_GallerySaveAsCharacter
 class _Action extends StatelessWidget {
   const _Action({super.key, required this.label, required this.onTap, required this.child});
   final String label;
-  final VoidCallback onTap;
+
+  /// null = 此刻不可点。**不要传空闭包**（test/quality/no_dead_interactive_test.dart）。
+  final VoidCallback? onTap;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
+    final bool enabled = onTap != null;
     return Semantics(
       button: true,
+      enabled: enabled,
       label: label,
       child: MouseRegion(
-        cursor: SystemMouseCursors.click,
+        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
         child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: child),
       ),
     );

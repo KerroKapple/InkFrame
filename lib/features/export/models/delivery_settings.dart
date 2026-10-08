@@ -15,25 +15,26 @@ import '../../sequence/util/timecode.dart' show kSequenceFps;
 /// 稿上的默认时间码起点 01:00:00:00。
 const int kDeliveryDefaultTcStartFrames = kSequenceFps * 3600;
 
-/// 目标软件。四段照稿画，但只有两段真有写出器。
+/// 目标软件。四段照稿画；**哪一段可选不由这里回答**。
+///
+/// 每段只声明它需要哪个写出器 id，可选性问 `DeliveryWriterRegistry`
+/// （见 delivery_writer_registry.dart 的头注：硬编码布尔 = 把真相抄成两份，
+/// 将来接上写出器会忘了改）。
 enum DeliveryTarget {
-  resolve('resolve'),
-  premiere('premiere'),
-  finalCut('final_cut'),
-  jianying('jianying');
+  resolve('resolve', 'edl-cmx3600'),
+  premiere('premiere', 'edl-cmx3600'),
+  finalCut('final_cut', 'fcpxml'),
+  jianying('jianying', 'jianying-draft');
 
-  const DeliveryTarget(this.wire);
+  const DeliveryTarget(this.wire, this.writerId);
 
   /// 落库 / JSON 用的英文字面量（内部协议，不随 UI 语言变）。
   final String wire;
 
-  /// 这一档会写出 EDL 吗。Resolve 与 Premiere 都吃 CMX3600。
-  bool get writesEdl =>
-      this == DeliveryTarget.resolve || this == DeliveryTarget.premiere;
-
-  /// 有没有写出器。Final Cut（FCPXML）与剪映（草稿 JSON）都还没有——
-  /// UI 必须把这两档标成「待支持」，不能让它们看起来能导。
-  bool get supported => writesEdl;
+  /// 这一段要的写出器 id。取值与 [DeliveryWriterIds] 对表——写成字面量是因为
+  /// 枚举的 const 构造不能引用另一个类的 static 字段，两边的一致性由
+  /// delivery_writer_registry_test.dart 钉死。
+  final String writerId;
 
   static DeliveryTarget fromWire(Object? wire) {
     for (final DeliveryTarget t in DeliveryTarget.values) {
@@ -51,7 +52,6 @@ class DeliverySettings {
     required this.relativePaths,
     required this.markersFromScenes,
     required this.shotLanguageInComments,
-    required this.promptInMetadata,
   });
 
   /// 稿上那一屏的初始态。
@@ -61,7 +61,6 @@ class DeliverySettings {
     relativePaths: true,
     markersFromScenes: true,
     shotLanguageInComments: true,
-    promptInMetadata: false,
   );
 
   final DeliveryTarget target;
@@ -78,8 +77,9 @@ class DeliverySettings {
   /// 镜头语言写进片段备注。
   final bool shotLanguageInComments;
 
-  /// 提示词写进 metadata.json。稿上唯一默认关着的开关。
-  final bool promptInMetadata;
+  // 【没有 promptInMetadata】2026-10-08 稿删掉了「提示词 → metadata.json」那一行：
+  // 提示词**恒写**，不给开关（PLAN 不做清单）。留着一个没有界面能改的持久化字段，
+  // 等于把一个永远为假的状态存进用户的库里。
 
   DeliverySettings copyWith({
     DeliveryTarget? target,
@@ -87,7 +87,6 @@ class DeliverySettings {
     bool? relativePaths,
     bool? markersFromScenes,
     bool? shotLanguageInComments,
-    bool? promptInMetadata,
   }) => DeliverySettings(
     target: target ?? this.target,
     timecodeStartFrames: timecodeStartFrames ?? this.timecodeStartFrames,
@@ -95,7 +94,6 @@ class DeliverySettings {
     markersFromScenes: markersFromScenes ?? this.markersFromScenes,
     shotLanguageInComments:
         shotLanguageInComments ?? this.shotLanguageInComments,
-    promptInMetadata: promptInMetadata ?? this.promptInMetadata,
   );
 
   Map<String, Object?> toMap() => <String, Object?>{
@@ -104,7 +102,6 @@ class DeliverySettings {
     'relative_paths': relativePaths,
     'markers_from_scenes': markersFromScenes,
     'shot_language_in_comments': shotLanguageInComments,
-    'prompt_in_metadata': promptInMetadata,
   };
 
   /// 容错解析：缺失 / 类型不符 / 非法值一律退默认，**绝不抛**。
@@ -126,7 +123,6 @@ class DeliverySettings {
       relativePaths: flag('relative_paths', true),
       markersFromScenes: flag('markers_from_scenes', true),
       shotLanguageInComments: flag('shot_language_in_comments', true),
-      promptInMetadata: flag('prompt_in_metadata', false),
     );
   }
 
@@ -138,8 +134,7 @@ class DeliverySettings {
           other.timecodeStartFrames == timecodeStartFrames &&
           other.relativePaths == relativePaths &&
           other.markersFromScenes == markersFromScenes &&
-          other.shotLanguageInComments == shotLanguageInComments &&
-          other.promptInMetadata == promptInMetadata;
+          other.shotLanguageInComments == shotLanguageInComments;
 
   @override
   int get hashCode => Object.hash(
@@ -148,6 +143,5 @@ class DeliverySettings {
     relativePaths,
     markersFromScenes,
     shotLanguageInComments,
-    promptInMetadata,
   );
 }

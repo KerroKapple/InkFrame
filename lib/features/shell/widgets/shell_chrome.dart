@@ -26,6 +26,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
 import '../../command_palette/widgets/command_palette_chip.dart';
+import '../../export/providers/delivery_controller.dart';
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
 
@@ -38,13 +39,18 @@ class ShellChrome extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // 交付进行中：设置浮层不开（任务书 §3「锁标签」）。⚙ 给 null 而不是空闭包
+    // ——它自己就会变灰 + 指针回普通箭头（_SettingsIconButton 的 enabled 支路）。
+    final bool deliveryBusy = ref.watch(deliveryBusyProvider);
     return InkWindowChrome(
       leading: const _Logo(),
       center: const _MenuLabels(),
       trailing: _ChromeTrailing(
-        onOpenSettings: () => ref
-            .read(shellControllerProvider.notifier)
-            .openOverlay(ShellOverlay.settings),
+        onOpenSettings: deliveryBusy
+            ? null
+            : () => ref
+                .read(shellControllerProvider.notifier)
+                .openOverlay(ShellOverlay.settings),
       ),
     );
   }

@@ -5,6 +5,7 @@
 // 不该让项目打不开，只该退回默认。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/export/models/delivery_settings.dart';
+import 'package:inkframe/features/export/models/delivery_writer_registry.dart';
 
 void main() {
   group('默认值 = 稿上那一屏的初始态', () {
@@ -17,8 +18,6 @@ void main() {
       expect(d.relativePaths, isTrue);
       expect(d.markersFromScenes, isTrue);
       expect(d.shotLanguageInComments, isTrue);
-      // 稿上只有这一个开关是关的。
-      expect(d.promptInMetadata, isFalse);
     });
   });
 
@@ -39,10 +38,23 @@ void main() {
 
     test('开关不是 bool → 退默认，不是当成真', () {
       final DeliverySettings d = DeliverySettings.fromMap(
-        const <String, Object?>{'prompt_in_metadata': 'yes', 'relative_paths': 1},
+        const <String, Object?>{
+          'markers_from_scenes': 'yes',
+          'relative_paths': 1,
+        },
       );
-      expect(d.promptInMetadata, isFalse);
+      expect(d.markersFromScenes, isTrue);
       expect(d.relativePaths, isTrue);
+    });
+
+    test('库里残留已废弃的键（prompt_in_metadata）→ 原样忽略，不抛', () {
+      // 稿 2026-10-08 删了这一行开关，提示词恒写。老库里可能还留着这个键。
+      expect(
+        DeliverySettings.fromMap(
+          const <String, Object?>{'prompt_in_metadata': true},
+        ),
+        DeliverySettings.defaults,
+      );
     });
 
     test('时间码起点为负 / 非数 → 退默认；合法值照收', () {
@@ -75,7 +87,6 @@ void main() {
       relativePaths: false,
       markersFromScenes: false,
       shotLanguageInComments: false,
-      promptInMetadata: true,
     );
     expect(DeliverySettings.fromMap(d.toMap()), d);
   });
@@ -89,7 +100,6 @@ void main() {
         'relative_paths',
         'markers_from_scenes',
         'shot_language_in_comments',
-        'prompt_in_metadata',
       },
     );
     expect(DeliverySettings.defaults.toMap()['target'], 'resolve');
@@ -98,27 +108,28 @@ void main() {
   group('copyWith', () {
     test('只改给到的那一项', () {
       final DeliverySettings d = DeliverySettings.defaults.copyWith(
-        promptInMetadata: true,
+        markersFromScenes: false,
       );
-      expect(d.promptInMetadata, isTrue);
+      expect(d.markersFromScenes, isFalse);
       expect(d.target, DeliveryTarget.resolve);
       expect(d.relativePaths, isTrue);
     });
   });
 
-  group('writesEdl：哪些目标软件走 EDL', () {
-    test('Resolve / Premiere 出 EDL', () {
-      expect(DeliveryTarget.resolve.writesEdl, isTrue);
-      expect(DeliveryTarget.premiere.writesEdl, isTrue);
+  group('可选性不住在枚举上：段只声明写出器 id，registry 回答有没有', () {
+    test('四段各声明一个 writerId；Resolve 与 Premiere 共用 EDL 写出器', () {
+      expect(DeliveryTarget.resolve.writerId, 'edl-cmx3600');
+      expect(DeliveryTarget.premiere.writerId, 'edl-cmx3600');
+      expect(DeliveryTarget.finalCut.writerId, 'fcpxml');
+      expect(DeliveryTarget.jianying.writerId, 'jianying-draft');
     });
 
-    test('Final Cut 与剪映都还没有写出器——不能让它们看起来能导', () {
-      expect(DeliveryTarget.finalCut.writesEdl, isFalse);
-      expect(DeliveryTarget.jianying.writesEdl, isFalse);
-      expect(DeliveryTarget.finalCut.supported, isFalse);
-      expect(DeliveryTarget.jianying.supported, isFalse);
-      expect(DeliveryTarget.resolve.supported, isTrue);
-      expect(DeliveryTarget.premiere.supported, isTrue);
+    test('「能不能导」由 registry 查 id 得出——出厂只有 EDL', () {
+      final DeliveryWriterRegistry reg = MapDeliveryWriterRegistry.production();
+      expect(reg.supports(DeliveryTarget.resolve), isTrue);
+      expect(reg.supports(DeliveryTarget.premiere), isTrue);
+      expect(reg.supports(DeliveryTarget.finalCut), isFalse);
+      expect(reg.supports(DeliveryTarget.jianying), isFalse);
     });
   });
 }

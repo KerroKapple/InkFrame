@@ -32,6 +32,9 @@ class SequenceShot {
     this.relativePath,
     this.canvasId,
     this.thumbnailRelativePath,
+    this.artifactNodeId,
+    this.width,
+    this.height,
   });
 
   /// 链上贡献这一镜的节点 id（shot 节点，或没有 shot 包裹时的 config 节点）。
@@ -59,6 +62,19 @@ class SequenceShot {
   /// 序列视图的叙事链行 / V1 片段用它，不为列表去解视频。
   final String? thumbnailRelativePath;
 
+  /// 贡献这一镜产物的 **result 节点 id**；无产物为 null。
+  ///
+  /// 为什么不让下游自己从 [nodeId] 反查：sequence_builder 会把后继 config 的产物
+  /// 「借」给前面的 shot（见该文件头注），借来的产物挂在**别人**名下，
+  /// `latestResultFor(sourceNodeId: shot.nodeId)` 查不到。P6 交付要按镜取
+  /// provider / seed / 提示词 / 像素尺寸，必须有这条回指。
+  final String? artifactNodeId;
+
+  /// 产物像素宽高（视频由 XM-1 抽帧探针写入 type_config）。
+  /// **抽帧失败时这两个字段就是缺的**——缺了算「未知」，不等于不一致（P6 画幅检查口径）。
+  final int? width;
+  final int? height;
+
   Duration get duration => Duration(milliseconds: durationMs);
 
   @override
@@ -72,7 +88,10 @@ class SequenceShot {
           notes == other.notes &&
           relativePath == other.relativePath &&
           canvasId == other.canvasId &&
-          thumbnailRelativePath == other.thumbnailRelativePath;
+          thumbnailRelativePath == other.thumbnailRelativePath &&
+          artifactNodeId == other.artifactNodeId &&
+          width == other.width &&
+          height == other.height;
 
   @override
   int get hashCode => Object.hash(
@@ -84,6 +103,9 @@ class SequenceShot {
         relativePath,
         canvasId,
         thumbnailRelativePath,
+        artifactNodeId,
+        width,
+        height,
       );
 
   @override

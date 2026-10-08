@@ -35,13 +35,26 @@ class InkShellTabBarItem {
     required this.icon,
     required this.selected,
     required this.onTap,
+    this.dimmed = false,
+    this.trailing,
   });
 
   final Key key;
   final String label;
   final IconData icon;
   final bool selected;
-  final VoidCallback onTap;
+
+  /// null = 这一格此刻不可点（**不是空闭包**，见
+  /// test/quality/no_dead_interactive_test.dart）。
+  final VoidCallback? onTap;
+
+  /// 降 0.5 不透明度。调用方用它表达"此刻锁住了"（P6：交付进行中锁其余标签）。
+  /// theme 层不知道锁的理由，只知道这一格要变暗。
+  final bool dimmed;
+
+  /// 标签右侧的小挂件（P6：交付进行中「序列」标签右边的 12px 进度环）。
+  /// 收 Widget 而不是领域类型——theme 层照旧不认识任何 feature 模型。
+  final Widget? trailing;
 }
 
 class InkShellTabBar extends StatelessWidget {
@@ -155,7 +168,7 @@ class _ShellTabState extends State<_ShellTab> {
         ? colors.fg1
         : (_hover ? colors.fg2 : colors.fg4);
 
-    final Widget content = widget.compact
+    final Widget label = widget.compact
         ? Icon(item.icon, size: 16, color: fg)
         : Text(
             item.label,
@@ -163,21 +176,36 @@ class _ShellTabState extends State<_ShellTab> {
                 ? typo.bodyStrong.copyWith(color: fg)
                 : typo.body.copyWith(color: fg),
           );
+    final Widget? trailing = item.trailing;
+    final Widget content = trailing == null
+        ? label
+        : Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              label,
+              const SizedBox(width: InkSpacing.s6),
+              trailing,
+            ],
+          );
+    final bool enabled = item.onTap != null;
 
     return Semantics(
       button: true,
+      enabled: enabled,
       selected: item.selected,
       label: item.label,
       child: Tooltip(
         message: item.label,
         child: MouseRegion(
-          cursor: SystemMouseCursors.click,
+          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
           onEnter: (_) => setState(() => _hover = true),
           onExit: (_) => setState(() => _hover = false),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: item.onTap,
-            child: Container(
+            child: Opacity(
+              opacity: item.dimmed ? 0.5 : 1,
+              child: Container(
               padding: const EdgeInsets.symmetric(horizontal: InkSpacing.md),
               alignment: Alignment.center,
               decoration: BoxDecoration(
@@ -190,7 +218,8 @@ class _ShellTabState extends State<_ShellTab> {
                   ),
                 ),
               ),
-              child: content,
+                child: content,
+              ),
             ),
           ),
         ),

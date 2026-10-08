@@ -14,10 +14,14 @@ import '../../../core/constants/shortcut_labels.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../export/providers/delivery_controller.dart';
 import '../palette_entry.dart';
 import '../palette_search.dart';
 
 Future<void> showCommandPalette(BuildContext context, WidgetRef ref) async {
+  // 交付进行中：⌘K 不开（任务书 P6 §3「锁标签」）。拦在这个唯一入口上——
+  // 快捷键与菜单栏那枚搜索 chip 都从这里进来，各自拦一次迟早漏一处。
+  if (ref.read(deliveryBusyProvider)) return;
   final FocusNode? before = primaryFocus;
   final PaletteChoice? choice = await showDialog<PaletteChoice>(
     context: context,

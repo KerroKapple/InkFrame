@@ -60,6 +60,22 @@ String formatEdlTimecode(int frames) {
       '${two(f % kSequenceFps)}';
 }
 
+/// `HH:MM:SS:FF` → 帧；格式不对一律 null（**不抛**，不猜用户想打什么）。
+///
+/// 时位不设上限（EDL 里 25 小时合法），分 / 秒 ≤ 59，帧位 ≤ fps-1
+/// ——写 `00:00:00:24` 在 24fps 下是不存在的那一帧。
+int? parseEdlTimecode(String raw) {
+  final RegExpMatch? m =
+      RegExp(r'^(\d{1,2}):(\d{1,2}):(\d{1,2}):(\d{1,2})$').firstMatch(raw.trim());
+  if (m == null) return null;
+  final int h = int.parse(m.group(1)!);
+  final int min = int.parse(m.group(2)!);
+  final int s = int.parse(m.group(3)!);
+  final int f = int.parse(m.group(4)!);
+  if (min > 59 || s > 59 || f >= kSequenceFps) return null;
+  return ((h * 3600 + min * 60 + s) * kSequenceFps) + f;
+}
+
 /// 毫秒 → 帧（就近取整；一帧都不到的片段至少给 1 帧，零长事件 NLE 会丢）。
 int edlFramesFromMs(int ms) {
   if (ms <= 0) return 0;

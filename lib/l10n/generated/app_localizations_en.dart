@@ -2114,7 +2114,214 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sequenceTargetJianying => 'Jianying';
 
   @override
-  String get sequenceDeliveryPlaceholder => 'Delivery arrives with P6';
+  String get deliveryTabClips => 'Clips';
+
+  @override
+  String get deliveryTabHistory => 'History';
+
+  @override
+  String get deliveryNoProject => 'Open a project first';
+
+  @override
+  String get deliveryTargetHint =>
+      'EDL CMX3600 by default (PRD P1); FCPXML is pending.';
+
+  @override
+  String get deliveryPendingFcpxml => 'FCPXML support is pending';
+
+  @override
+  String get deliveryPendingJianying => 'Jianying draft support is pending';
+
+  @override
+  String get deliveryGroupProject => 'Project file';
+
+  @override
+  String get deliveryGroupMedia => 'Media';
+
+  @override
+  String get deliveryGroupMarkers => 'Markers & metadata';
+
+  @override
+  String get deliveryRowFormat => 'Format';
+
+  @override
+  String get deliveryRowFps => 'Frame rate';
+
+  @override
+  String get deliveryRowTcStart => 'Timecode start';
+
+  @override
+  String get deliveryRowTracks => 'Tracks';
+
+  @override
+  String get deliveryRowNaming => 'Naming';
+
+  @override
+  String get deliveryRowTranscode => 'Transcode';
+
+  @override
+  String get deliveryRowRelativePaths => 'Relative paths';
+
+  @override
+  String get deliveryRowSceneMarkers => 'Scenes → markers';
+
+  @override
+  String get deliveryRowShotLanguage => 'Shot language';
+
+  @override
+  String get deliveryRowPlaceholders => 'Placeholder shots';
+
+  @override
+  String get deliveryFormatEdlCmx3600 => 'EDL CMX3600';
+
+  @override
+  String get deliveryFormatPending => '—';
+
+  @override
+  String get deliveryFpsValue => '24 fps · from the sequence';
+
+  @override
+  String get deliveryTracksValue => 'V1 video';
+
+  @override
+  String get deliveryNamingValue => '[index3]_[shot].mp4';
+
+  @override
+  String get deliveryTranscodeValue => 'Keep source · no re-encode';
+
+  @override
+  String get deliveryPlaceholderValue => 'Exported as gap + marker';
+
+  @override
+  String get deliveryRelativePathsOn => 'On (folder stays portable)';
+
+  @override
+  String get deliveryRelativePathsOff => 'Off (absolute paths)';
+
+  @override
+  String get deliverySceneMarkersOn => 'Imported as timeline markers';
+
+  @override
+  String get deliverySceneMarkersOff => 'No markers exported';
+
+  @override
+  String get deliveryShotLanguageOn =>
+      'Written to clip comments (size · motion)';
+
+  @override
+  String get deliveryShotLanguageOff => 'Not written to clip comments';
+
+  @override
+  String get deliveryTcInvalid => 'Timecode must be HH:MM:SS:FF';
+
+  @override
+  String get deliveryPreflightTitle => 'Pre-delivery checks';
+
+  @override
+  String deliveryPreflightPending(int count) {
+    return '$count to resolve';
+  }
+
+  @override
+  String get deliveryPreflightReady => 'Ready to deliver';
+
+  @override
+  String deliveryCheckFrameRate(int count) {
+    return '$count shots handled at a uniform 24 fps';
+  }
+
+  @override
+  String deliveryCheckFrameSizeOk(String ratio) {
+    return 'Frame size consistent · $ratio';
+  }
+
+  @override
+  String deliveryCheckFrameSizeOkUnknown(String ratio, int count) {
+    return 'Frame size consistent · $ratio ($count shots without recorded size)';
+  }
+
+  @override
+  String get deliveryCheckFrameSizeUnknown =>
+      'Frame size not recorded (the probe wrote no dimensions) — not checked';
+
+  @override
+  String deliveryCheckFrameSizeMixed(String ratios) {
+    return 'Mixed frame sizes $ratios — your editor will letterbox them';
+  }
+
+  @override
+  String deliveryCheckMissingNone(int count) {
+    return 'All $count shots have a video artifact';
+  }
+
+  @override
+  String deliveryCheckMissingItem(String index, String name, String duration) {
+    return '$index $name has no video artifact — exported as a $duration gap with a marker';
+  }
+
+  @override
+  String deliveryCheckMissingMore(int count) {
+    return '$count more';
+  }
+
+  @override
+  String deliveryCheckProjectOk(String name) {
+    return 'Project context · $name';
+  }
+
+  @override
+  String get deliveryCheckProjectMissing =>
+      'No project context — open a project first';
+
+  @override
+  String get deliveryCheckOutputOk => 'Output folder is writable';
+
+  @override
+  String get deliveryCheckOutputBlocked => 'Output folder is not writable';
+
+  @override
+  String get deliveryOutputLabel => 'Output';
+
+  @override
+  String get deliveryIncludeLabel => 'Includes';
+
+  @override
+  String deliveryIncludeSummary(int count, String ext) {
+    return '$count mp4 · 1 $ext · metadata.json';
+  }
+
+  @override
+  String deliveryActionLabel(String target) {
+    return 'Deliver to $target';
+  }
+
+  @override
+  String deliveryActionProgress(int done, int total) {
+    return 'Delivering $done/$total';
+  }
+
+  @override
+  String get deliveryActionRunning => 'Delivering';
+
+  @override
+  String get deliveryActionEmpty => 'No shots in the sequence yet';
+
+  @override
+  String deliveryResultSuccess(String dir) {
+    return 'Delivered to $dir';
+  }
+
+  @override
+  String get deliveryOpenFolder => 'Open folder';
+
+  @override
+  String get deliveryCopyPath => 'Copy path';
+
+  @override
+  String get deliveryRetry => 'Retry';
+
+  @override
+  String get deliveryResultDismiss => 'Dismiss';
 
   @override
   String get sequenceTitle => 'Sequence';
