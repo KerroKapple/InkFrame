@@ -876,6 +876,8 @@
   "settingsColumnKey": "Key",
   "settingsColumnStatus": "状态",
   "settingsFooterNote": "改动即时生效并写入钥匙串",
+  "settingsFooterNoteLive": "改动即时生效",
+  "settingsFooterNoteReadOnly": "本页只读",
   "settingsDone": "完成",
   "settingsEscHint": "Esc",
   "settingsCloseTooltip": "关闭设置",

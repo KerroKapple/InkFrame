@@ -2348,6 +2348,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Changes apply immediately and are written to the keychain';
 
   @override
+  String get settingsFooterNoteLive => 'Changes apply immediately';
+
+  @override
+  String get settingsFooterNoteReadOnly => 'This page is read-only';
+
+  @override
   String get settingsDone => 'Done';
 
   @override

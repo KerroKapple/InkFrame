@@ -2262,6 +2262,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsFooterNote => '改动即时生效并写入钥匙串';
 
   @override
+  String get settingsFooterNoteLive => '改动即时生效';
+
+  @override
+  String get settingsFooterNoteReadOnly => '本页只读';
+
+  @override
   String get settingsDone => '完成';
 
   @override

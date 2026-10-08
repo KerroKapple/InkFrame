@@ -27,6 +27,7 @@ import '../../theme/components/ink_overlay_dialog.dart';
 import '../../theme/tokens.dart';
 import '../shell/providers/shell_controller.dart';
 import 'providers/settings_page.dart';
+import 'util/settings_footer_note.dart';
 import 'util/shortcut_catalog.dart' show kOverlayDismissActivator;
 import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
@@ -102,7 +103,13 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           escHint: context.l10n.settingsEscHint,
           closeTooltip: context.l10n.settingsCloseTooltip,
           onClose: _close,
-          footerNote: context.l10n.settingsFooterNote,
+          // 底部条按当前页说话：只有「API 密钥」页写钥匙串，三个只读页什么都不写。
+          footerNote: switch (footerNoteKindOf(page)) {
+            SettingsFooterNoteKind.keychain => context.l10n.settingsFooterNote,
+            SettingsFooterNoteKind.live => context.l10n.settingsFooterNoteLive,
+            SettingsFooterNoteKind.readOnly =>
+              context.l10n.settingsFooterNoteReadOnly,
+          },
           footerActions: <Widget>[
             const DiagnosticsExportButton(variant: InkButtonVariant.secondary),
             KeyedSubtree(

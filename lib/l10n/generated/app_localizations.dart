@@ -4214,6 +4214,18 @@ abstract class AppLocalizations {
   /// **'Changes apply immediately and are written to the keychain'**
   String get settingsFooterNote;
 
+  /// Settings dialog footer note on pages whose changes are saved locally
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply immediately'**
+  String get settingsFooterNoteLive;
+
+  /// Settings dialog footer note on pages that only display values
+  ///
+  /// In en, this message translates to:
+  /// **'This page is read-only'**
+  String get settingsFooterNoteReadOnly;
+
   /// No description provided for @settingsDone.
   ///
   /// In en, this message translates to:
