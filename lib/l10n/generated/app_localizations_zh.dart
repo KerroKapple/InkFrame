@@ -2012,8 +2012,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sequenceArtifactMissing => '缺失';
 
   @override
-  String get sequenceChainNote =>
-      '顺序即画布上的 narrative 边。这里拖动排序会改写连线；裁切写回镜头节点的入出点。';
+  String get sequenceChainNote => '顺序即画布上的 narrative 边——改顺序要回画布改连线，这份清单是只读的。';
 
   @override
   String get sequenceDeliveryTab => '交付';
@@ -2034,7 +2033,210 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sequenceTargetJianying => '剪映';
 
   @override
-  String get sequenceDeliveryPlaceholder => '交付随 P6 到来';
+  String get deliveryTabClips => '片段';
+
+  @override
+  String get deliveryTabHistory => '历史';
+
+  @override
+  String get deliveryNoProject => '请先打开一个项目';
+
+  @override
+  String get deliveryTargetHint => '默认 EDL CMX3600（PRD P1），FCPXML 待支持。';
+
+  @override
+  String get deliveryPendingFcpxml => 'FCPXML 待支持';
+
+  @override
+  String get deliveryPendingJianying => '剪映草稿待支持';
+
+  @override
+  String get deliveryGroupProject => '工程文件';
+
+  @override
+  String get deliveryGroupMedia => '媒体';
+
+  @override
+  String get deliveryGroupMarkers => '标记与元数据';
+
+  @override
+  String get deliveryRowFormat => '格式';
+
+  @override
+  String get deliveryRowFps => '帧率';
+
+  @override
+  String get deliveryRowTcStart => '时间码起点';
+
+  @override
+  String get deliveryRowTracks => '轨道';
+
+  @override
+  String get deliveryRowNaming => '命名';
+
+  @override
+  String get deliveryRowTranscode => '转码';
+
+  @override
+  String get deliveryRowRelativePaths => '相对路径';
+
+  @override
+  String get deliveryRowSceneMarkers => '场次 → 标记';
+
+  @override
+  String get deliveryRowShotLanguage => '镜头语言';
+
+  @override
+  String get deliveryRowPlaceholders => '占位镜头';
+
+  @override
+  String get deliveryFormatEdlCmx3600 => 'EDL CMX3600';
+
+  @override
+  String get deliveryFormatPending => '—';
+
+  @override
+  String get deliveryFpsValue => '24 fps · 取自序列';
+
+  @override
+  String get deliveryTracksValue => 'V1 视频';
+
+  @override
+  String get deliveryNamingValue => '[序号3位]_[镜头名].mp4';
+
+  @override
+  String get deliveryTranscodeValue => '保持源 · 不重编码';
+
+  @override
+  String get deliveryPlaceholderValue => '导出为空隙 + 标记';
+
+  @override
+  String get deliveryRelativePathsOn => '开启（随文件夹搬迁）';
+
+  @override
+  String get deliveryRelativePathsOff => '关闭（写绝对路径）';
+
+  @override
+  String get deliverySceneMarkersOn => '导入为时间线标记';
+
+  @override
+  String get deliverySceneMarkersOff => '不导出标记';
+
+  @override
+  String get deliveryShotLanguageOn => '写入片段备注（景别·运镜）';
+
+  @override
+  String get deliveryShotLanguageOff => '不写入片段备注';
+
+  @override
+  String get deliveryTcInvalid => '时间码格式应为 HH:MM:SS:FF';
+
+  @override
+  String get deliveryPreflightTitle => '交付前检查';
+
+  @override
+  String deliveryPreflightPending(int count) {
+    return '$count 项待处理';
+  }
+
+  @override
+  String get deliveryPreflightReady => '可交付';
+
+  @override
+  String deliveryCheckFrameRate(int count) {
+    return '$count 镜按 24 fps 统一处理';
+  }
+
+  @override
+  String deliveryCheckFrameSizeOk(String ratio) {
+    return '画幅一致 $ratio';
+  }
+
+  @override
+  String deliveryCheckFrameSizeOkUnknown(String ratio, int count) {
+    return '画幅一致 $ratio（$count 镜未记录宽高）';
+  }
+
+  @override
+  String get deliveryCheckFrameSizeUnknown => '画幅未记录（抽帧没写宽高），不作一致性判定';
+
+  @override
+  String deliveryCheckFrameSizeMixed(String ratios) {
+    return '画幅不一致 $ratios，剪辑软件里会出黑边';
+  }
+
+  @override
+  String deliveryCheckMissingNone(int count) {
+    return '$count 镜都有视频产物';
+  }
+
+  @override
+  String deliveryCheckMissingItem(String index, String name, String duration) {
+    return '$index $name 无视频产物，将导出为 $duration 空隙并加标记';
+  }
+
+  @override
+  String deliveryCheckMissingMore(int count) {
+    return '另有 $count 个';
+  }
+
+  @override
+  String deliveryCheckProjectOk(String name) {
+    return '项目上下文 $name';
+  }
+
+  @override
+  String get deliveryCheckProjectMissing => '没有项目上下文，请先打开一个项目';
+
+  @override
+  String get deliveryCheckOutputOk => '输出目录可写';
+
+  @override
+  String get deliveryCheckOutputBlocked => '输出目录不可写';
+
+  @override
+  String get deliveryOutputLabel => '输出';
+
+  @override
+  String get deliveryIncludeLabel => '包含';
+
+  @override
+  String deliveryIncludeSummary(int count, String ext) {
+    return '$count mp4 · 1 $ext · metadata.json';
+  }
+
+  @override
+  String deliveryActionLabel(String target) {
+    return '交付到 $target';
+  }
+
+  @override
+  String deliveryActionProgress(int done, int total) {
+    return '交付中 $done/$total';
+  }
+
+  @override
+  String get deliveryActionRunning => '交付中';
+
+  @override
+  String get deliveryActionEmpty => '序列里还没有镜';
+
+  @override
+  String deliveryResultSuccess(String dir) {
+    return '已交付到 $dir';
+  }
+
+  @override
+  String get deliveryOpenFolder => '打开文件夹';
+
+  @override
+  String get deliveryCopyPath => '复制路径';
+
+  @override
+  String get deliveryRetry => '重试';
+
+  @override
+  String get deliveryResultDismiss => '关闭';
 
   @override
   String get sequenceTitle => '序列';

@@ -1,9 +1,9 @@
-// 序列视图（P2，Timeline 稿 2026-09-25 版）：只读序列 lens。
-//   上半：叙事链 320 | 节目监视器 | 交付占位 320（宽照稿，内容一行「交付随 P6 到来」+ 禁用分段）
+// 序列视图（P2，Timeline 稿；右栏 P6 接线）：只读序列 lens。
+//   上半：叙事链 320 | 节目监视器 | 交付面板 320（P6：DeliveryPanel，原占位已删）
 //   下半：序列区 300——头 28 | 轨道头 96 + 轨道区（时间尺 26 / 标记 22 / V1 96）
 // 只接已有后端的：链表（buildSequence）、监视器（Player 切走即停）、V1 只读轨、场次标记（由链推）、
-// 播放头（可拖，只改 Player 位置不写库）、34px/s 可缩放（Ctrl + 滚轮）。
-// 不接：拖拽排序（不画 ⠿ 拖柄）、裁切写回、A1 轨、交付面板。无字段不画：入出点 / 手柄 / 音轨 /
+// 播放头（可拖，只改 Player 位置不写库）、34px/s 可缩放（Ctrl + 滚轮）、交付面板（P6）。
+// 不接：拖拽排序（不画 ⠿ 拖柄）、裁切写回、A1 轨。无字段不画：入出点 / 手柄 / 音轨 /
 // 用户手打的标记 / 吸附 / 链接 V/A / 安全框 / 适合。裁切手柄的渲染支路在（trimmed），入出点字段来了即亮。
 import 'dart:io';
 import 'dart:ui' show PathMetric;
@@ -18,6 +18,7 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../export/widgets/delivery_panel.dart';
 import '../../storyboard/models/sequence_shot.dart';
 import '../models/sequence_lens.dart';
 import '../providers/sequence_lens_provider.dart';
@@ -37,7 +38,6 @@ class SequenceScreen extends ConsumerWidget {
   static const double sideWidth = 320;
   static const double sequenceAreaHeight = 300;
 
-  static const Key deliveryPlaceholderKey = Key('sequence.deliveryPlaceholder');
   static Key chainRowKey(int index) => Key('sequence.chainRow.$index');
   static Key clipKey(int index) => Key('sequence.clip.$index');
   static const Key tracksKey = Key('sequence.tracks');
@@ -56,7 +56,8 @@ class SequenceScreen extends ConsumerWidget {
               Expanded(
                 child: SequenceMonitor(canvasId: canvasId, projectId: projectId, lens: lens, paused: !isVisible),
               ),
-              const _DeliveryPlaceholder(),
+              // P6：交付面板（原 320 占位）。它自己管两态——没有项目上下文时只剩空态。
+              DeliveryPanel(canvasId: canvasId),
             ],
           ),
         ),
@@ -280,59 +281,6 @@ class _Thumb extends StatelessWidget {
                 errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
-    );
-  }
-}
-
-/// 拍板：交付面板位置的空态占位——页签 + 禁用的目标软件分段 + 「交付随 P6 到来」。
-class _DeliveryPlaceholder extends StatelessWidget {
-  const _DeliveryPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    final t = context.inkTypography;
-    final l = context.l10n;
-    final List<String> targets = <String>[l.sequenceTargetResolve, l.sequenceTargetPremiere, l.sequenceTargetFinalCut, l.sequenceTargetJianying];
-    return Container(
-      key: SequenceScreen.deliveryPlaceholderKey,
-      width: SequenceScreen.sideWidth + 1,
-      decoration: BoxDecoration(color: c.surface3, border: Border(left: BorderSide(color: c.borderStrong))),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          _PanelHeader(title: l.sequenceDeliveryTab),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(InkSpacing.s12, InkSpacing.s14, InkSpacing.s12, InkSpacing.s12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(l.sequenceDeliveryTargets, style: t.body.copyWith(color: c.fg6)),
-                const SizedBox(height: InkSpacing.s10),
-                Container(
-                  clipBehavior: Clip.hardEdge,
-                  decoration: BoxDecoration(border: Border.all(color: c.control), borderRadius: BorderRadius.circular(InkRadius.s3)),
-                  child: Row(
-                    children: <Widget>[
-                      for (int i = 0; i < targets.length; i++)
-                        Expanded(
-                          child: Container(
-                            height: 26,
-                            alignment: Alignment.center,
-                            decoration: i == targets.length - 1 ? null : BoxDecoration(border: Border(right: BorderSide(color: c.control))),
-                            child: Text(targets[i], style: t.body.copyWith(color: c.fg6)),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: InkSpacing.s10),
-                Text(l.sequenceDeliveryPlaceholder, style: t.meta.copyWith(color: c.fg6)),
-              ],
-            ),
-          ),
-        ],
-      ),
     );
   }
 }

@@ -17,7 +17,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
+
+import 'package:inkframe/core/di/paths.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/paths/app_paths.dart';
+import 'package:inkframe/features/export/delivery_keys.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
@@ -31,6 +36,7 @@ import 'package:inkframe/features/sequence/widgets/sequence_screen.dart';
 import 'package:inkframe/features/shell/widgets/tabs/sequence_tab.dart';
 import 'package:inkframe/theme/primitives/ink_ghost_button.dart';
 
+import '../../_harness/fake_repositories.dart';
 import '../../_harness/test_app.dart';
 
 class _FakeNodesController extends CanvasNodesController {
@@ -250,9 +256,26 @@ Future<void> _pumpSequence(
           .overrideWith(() => _FakeNodesController(nodes)),
       canvasEdgesControllerProvider
           .overrideWith(() => _FakeEdgesController(edges)),
+      // P6 交付面板在序列标签右栏：有项目上下文时它会读 projects 表（交付设置）、
+      // style_lanes 表（元数据里的风格提示词）与 AppPaths（输出目录是否可写）。
+      // 不封这三条，这个 boot 级用例会去起真内嵌 PG（见本文件头注第三条）。
+      appPathsProvider.overrideWithValue(_tempPaths()),
+      projectRepositoryProvider
+          .overrideWith((_) async => InMemoryProjectRepository()),
+      styleLaneRepositoryProvider
+          .overrideWith((_) async => InMemoryStyleLaneRepository()),
     ],
   );
   await tester.pumpAndSettle();
+}
+
+/// 每个用例一个独立临时根（交付面板只会在里面建 `projects/p1/exports/`）。
+AppPaths _tempPaths() {
+  final Directory tmp = Directory.systemTemp.createTempSync('ink_seq_');
+  addTearDown(() {
+    if (tmp.existsSync()) tmp.deleteSync(recursive: true);
+  });
+  return DefaultAppPaths.forRoot(tmp);
 }
 
 void main() {
@@ -412,8 +435,10 @@ void main() {
 
       expect(find.byType(SequenceScreen), findsOneWidget);
       expect(find.byKey(SequenceScreen.chainRowKey(0)), findsOneWidget);
-      expect(find.byKey(SequenceScreen.deliveryPlaceholderKey), findsOneWidget,
-          reason: '交付面板位置放空态占位（交付随 P6）');
+      expect(find.byKey(DeliveryKeys.panel), findsOneWidget,
+          reason: 'P6：交付面板接线后常驻在右栏');
+      expect(find.byKey(DeliveryKeys.preflight), findsOneWidget,
+          reason: '有项目上下文 ⇒ 不是空态，交付前检查在树上');
     });
 
     testWidgets('无边 → 引导文案（不是灰按钮），lens 不在树', (tester) async {

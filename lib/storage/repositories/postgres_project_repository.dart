@@ -1,6 +1,9 @@
 // PostgresProjectRepository —— projects 表实现。
+import 'dart:convert';
+
 import 'package:postgres/postgres.dart';
 
+import '../../core/db/columns.dart';
 import '../../core/interfaces/project_repository.dart';
 import '../base_repository.dart';
 
@@ -65,8 +68,21 @@ class PostgresProjectRepository with BaseRepository implements ProjectRepository
   @override
   Future<int> update(String id, Map<String, Object?> patch) {
     return guard('update', 'projects', () async {
-      final q = buildUpdate('projects', id, patch);
-      final r = await session.execute(Sql.named(q.sql), parameters: q.params);
+      // delivery_settings 是 JSONB：Map 要先显式 JSON 编码，参数再 cast ::jsonb，
+      // 否则驱动会按文本列发过去、PG 报类型不符（nodes.type_config 同样处理）。
+      final normalized = <String, Object?>{
+        for (final MapEntry<String, Object?> e in patch.entries)
+          e.key: e.key == ProjectCol.deliverySettings &&
+                  e.value is Map<String, Object?>
+              ? jsonEncode(e.value)
+              : e.value,
+      };
+      final q = buildUpdate('projects', id, normalized);
+      final sql = q.sql.replaceAll(
+        '${ProjectCol.deliverySettings} = @p_${ProjectCol.deliverySettings}',
+        '${ProjectCol.deliverySettings} = @p_${ProjectCol.deliverySettings}::jsonb',
+      );
+      final r = await session.execute(Sql.named(sql), parameters: q.params);
       return r.affectedRows;
     });
   }

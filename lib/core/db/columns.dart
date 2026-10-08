@@ -14,6 +14,9 @@ abstract final class ProjectCol {
   static const createdAt = 'created_at';
   static const updatedAt = 'updated_at';
   static const deletedAt = 'deleted_at';
+
+  /// P6 交付设置（JSONB，迁移 v8）。
+  static const deliverySettings = 'delivery_settings';
 }
 
 abstract final class CanvasCol {

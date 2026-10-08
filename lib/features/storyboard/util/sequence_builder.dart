@@ -121,6 +121,9 @@ SequenceShot _shotFor({
       relativePath: videoUrl,
       canvasId: artifact.canvasId,
       thumbnailRelativePath: artifact.thumbnailUrl,
+      artifactNodeId: artifact.id,
+      width: _positiveInt(artifact.typeConfig['width']),
+      height: _positiveInt(artifact.typeConfig['height']),
     );
   }
 
@@ -133,6 +136,9 @@ SequenceShot _shotFor({
     relativePath: artifact.imageUrl,
     canvasId: artifact.canvasId,
     thumbnailRelativePath: artifact.thumbnailUrl ?? artifact.imageUrl,
+    artifactNodeId: artifact.id,
+    width: _positiveInt(artifact.typeConfig['width']),
+    height: _positiveInt(artifact.typeConfig['height']),
   );
 }
 
