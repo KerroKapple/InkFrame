@@ -462,18 +462,33 @@
   "studioCreateSampleFailed": "创建示例项目失败",
 
   "onboardingTitle": "欢迎使用 InkFrame",
-  "onboardingStepIndicator": "第 {current} 步 / 共 {total} 步",
-  "@onboardingStepIndicator": {
-    "description": "Onboarding wizard progress indicator",
-    "placeholders": {
-      "current": { "type": "int" },
-      "total": { "type": "int" }
-    }
-  },
+  "onboardingTabWelcome": "欢迎",
+  "onboardingTabKeys": "配置密钥",
+  "onboardingTabFirstProject": "首个项目",
   "onboardingSkip": "跳过",
   "onboardingNext": "下一步",
   "onboardingStartEmpty": "从空白开始",
-  "onboardingKeysConsoleHint": "先到对应服务商控制台获取 API Key，粘贴到上方；也可以之后在设置中随时添加或修改。",
+  "onboardingFooterHint": "以上都可以之后在设置里随时调整。",
+  "onboardingKeysTitle": "配置一个 API Key",
+  "onboardingKeysBody": "InkFrame 使用你自己的 API 密钥（BYOK），不加价。先配一个就能开始，其余随时在设置里补。",
+  "onboardingKeyLabel": "API Key",
+  "onboardingKeyVerify": "验证",
+  "onboardingKeyVerified": "验证通过 · 已写入系统钥匙串",
+  "onboardingProviderComingSoon": "{name}（待支持）",
+  "@onboardingProviderComingSoon": {
+    "description": "Label for a provider row drawn in the design that has no adapter in this build",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "onboardingProviderGemini": "Google Gemini",
+  "onboardingProviderGeminiNote": "全球可用，最快验证闭环",
+  "onboardingProviderFal": "fal.ai",
+  "onboardingProviderFalNote": "图像与视频一站，模型最全",
+  "onboardingProviderDashscope": "DashScope（阿里）",
+  "onboardingProviderDashscopeNote": "国内直连，Kling 与 Wanx",
+  "onboardingRegionGlobal": "全球",
+  "onboardingRegionChina": "中国",
   "onboardingStepSampleTitle": "开始创作",
   "onboardingStepSampleBody": "创建一个示例项目快速了解画布，也可以从空白工作室开始。",
 

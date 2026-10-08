@@ -1102,9 +1102,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingTitle => 'Welcome to InkFrame';
 
   @override
-  String onboardingStepIndicator(int current, int total) {
-    return 'Step $current of $total';
-  }
+  String get onboardingTabWelcome => 'Welcome';
+
+  @override
+  String get onboardingTabKeys => 'Set up a key';
+
+  @override
+  String get onboardingTabFirstProject => 'First project';
 
   @override
   String get onboardingSkip => 'Skip';
@@ -1116,8 +1120,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingStartEmpty => 'Start empty';
 
   @override
-  String get onboardingKeysConsoleHint =>
-      'Get an API key from your provider\'s console and paste it above — you can also add or change keys later in Settings.';
+  String get onboardingFooterHint =>
+      'All of this can be changed later in Settings.';
+
+  @override
+  String get onboardingKeysTitle => 'Set up one API key';
+
+  @override
+  String get onboardingKeysBody =>
+      'InkFrame uses your own API keys (BYOK) at no markup. One key is enough to get started — add the rest any time in Settings.';
+
+  @override
+  String get onboardingKeyLabel => 'API Key';
+
+  @override
+  String get onboardingKeyVerify => 'Verify';
+
+  @override
+  String get onboardingKeyVerified =>
+      'Verified · written to the system keychain';
+
+  @override
+  String onboardingProviderComingSoon(String name) {
+    return '$name (coming soon)';
+  }
+
+  @override
+  String get onboardingProviderGemini => 'Google Gemini';
+
+  @override
+  String get onboardingProviderGeminiNote =>
+      'Available worldwide, fastest way to a verified key';
+
+  @override
+  String get onboardingProviderFal => 'fal.ai';
+
+  @override
+  String get onboardingProviderFalNote =>
+      'Images and video in one place, widest model range';
+
+  @override
+  String get onboardingProviderDashscope => 'DashScope (Alibaba)';
+
+  @override
+  String get onboardingProviderDashscopeNote =>
+      'Direct access inside mainland China, Kling and Wanx';
+
+  @override
+  String get onboardingRegionGlobal => 'Global';
+
+  @override
+  String get onboardingRegionChina => 'China';
 
   @override
   String get onboardingStepSampleTitle => 'Start creating';
