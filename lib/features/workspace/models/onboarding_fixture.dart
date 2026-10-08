@@ -62,7 +62,7 @@ class OnboardingFixture {
   /// `API` 前是一个半角空格。
   static const String title = '配置一个 API Key';
   static const String description =
-      'InkFrame 自带密钥（BYOK），不做差价。先配一个就能开始，其余随时在设置里补。';
+      'InkFrame 使用你自己的 API 密钥（BYOK），不加价。先配一个就能开始，其余随时在设置里补。';
 
   static const List<ObProvider> providers = <ObProvider>[
     ObProvider(
