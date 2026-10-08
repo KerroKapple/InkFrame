@@ -1,6 +1,7 @@
 // CharacterEditDialog：角色编辑框（P4），宽 560 content / 562 外框。
 //
-// 几何照搬静态复刻件 lib/features/workspace/batch_v2_screen.dart 的 03c 块：
+// 几何照搬静态复刻件 batch_v2_screen.dart 的 03c 块（复刻脚手架已随 P7 删除，
+// 稿是 docs/design/handoff-2026-09/InkFrame Batch and Characters.html）：
 // 标题栏 39（38 content + 1px 下沿）/ 正文 padding 16·14（内容宽 532）/ 四组间距 16 /
 // 名称字段 25（24 + 1px 底线）/ 描述最小实高 61（48 content + 6×2 + 1px 底线）/
 // 参考图格 96×96 + gap 4 + meta 行 14 / 被引用 chip 24（22 + 2px 边）/ 底部条 53。

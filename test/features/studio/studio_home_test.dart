@@ -3,7 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
+
+import 'package:inkframe/core/di/asset_bundle.dart';
 import 'package:inkframe/core/di/logger.dart';
+import 'package:inkframe/core/di/paths.dart';
+import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
@@ -16,6 +21,7 @@ import 'package:inkframe/features/studio/widgets/project_card.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
+import '../../_harness/fake_asset_bundle.dart';
 import '../../_harness/fake_repositories.dart';
 import '../../_harness/fake_unit_of_work.dart';
 import '../../_harness/test_app.dart';
@@ -164,6 +170,16 @@ void main() {
       workspaceProjectsProvider.overrideWith(
         (_) async => const <ProjectWithCanvases>[],
       ),
+      // 示例项目要往数据根写成片：必须钉临时根（appPathsProvider 本身就带
+      // 「没被 override」的硬断言，这里顺着它走），bundle 给空的——成片本身
+      // 由 canvas_bootstrap_controller_test 覆盖，这里只看建项目那条链。
+      appPathsProvider.overrideWithValue(
+        DefaultAppPaths.forRoot(
+          Directory.systemTemp.createTempSync('ink_studio_sample_'),
+        ),
+      ),
+      assetBundleProvider
+          .overrideWithValue(FakeAssetBundle(const <String, List<int>>{})),
       unitOfWorkProvider.overrideWith(
         (_) async => FakeUnitOfWork(FakeRepositoryScope(
           projects: projects,

@@ -87,7 +87,7 @@ flutter:
   assets:
     - assets/fonts/
     - assets/licenses/
-    - assets/showcase/
+    - assets/samples/
 
   fonts:
     # 界面无衬线字体（Noto Sans SC）不打包，走 typography.dart 的系统回落链。

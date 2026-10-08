@@ -6,7 +6,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
+
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
+import 'package:inkframe/core/di/asset_bundle.dart';
+import 'package:inkframe/core/di/paths.dart';
+import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/core/di/locale.dart';
 import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/providers.dart';
@@ -15,6 +20,9 @@ import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
+import 'package:inkframe/features/settings/providers/settings_page.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/util/onboarding_provider_choices.dart';
 import 'package:inkframe/features/studio/widgets/onboarding_dialog.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
@@ -23,6 +31,7 @@ import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/tokens.dart';
 
+import '../../../_harness/fake_asset_bundle.dart';
 import '../../../_harness/fake_providers.dart';
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_secure_storage.dart';
@@ -466,6 +475,30 @@ void main() {
       expect(secure.snapshot, isEmpty);
     });
 
+    // P7：底部那句「之后可在设置里调整」现在点得动。向导是 modal 路由、设置浮层
+    // 在它【之下】，所以这条跳转必须先走正常出口（落 onboardingCompleted）再开浮层
+    // ——否则浮层开在看不见的层里，而且标记被旁路、下次冷启又弹向导。
+    testWidgets('底部「打开设置 › 性能」：落标记、关向导、浮层开在性能页',
+        (WidgetTester tester) async {
+      final InMemoryPreferencesService prefs = InMemoryPreferencesService();
+      final ProviderContainer container = await _pumpAndOpen(
+        tester,
+        overrides: _overrides(prefs: prefs, secure: FakeSecureStorage()),
+      );
+      expect(container.read(shellControllerProvider).overlay, isNull);
+
+      await tester.tap(find.byKey(OnboardingDialog.settingsLinkKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome to InkFrame'), findsNothing, reason: '向导已关');
+      expect(prefs.current.onboardingCompleted, isTrue);
+      expect(
+        container.read(shellControllerProvider).overlay,
+        ShellOverlay.settings,
+      );
+      expect(container.read(settingsPageProvider), SettingsPage.performance);
+    });
+
     testWidgets('第 3 步「从空白开始」：落标记并关闭', (WidgetTester tester) async {
       final InMemoryPreferencesService prefs = InMemoryPreferencesService();
       await _pumpAndOpen(
@@ -496,6 +529,16 @@ void main() {
           prefs: prefs,
           secure: FakeSecureStorage(),
           extra: <Override>[
+            // 示例项目要往数据根写打包成片：钉临时根 + 空 bundle（成片本身由
+            // canvas_bootstrap_controller_test 覆盖，这里只看向导出口那条链）。
+            appPathsProvider.overrideWithValue(
+              DefaultAppPaths.forRoot(
+                Directory.systemTemp.createTempSync('ink_onboarding_sample_'),
+              ),
+            ),
+            assetBundleProvider.overrideWithValue(
+              FakeAssetBundle(const <String, List<int>>{}),
+            ),
             unitOfWorkProvider.overrideWith(
               (_) async => FakeUnitOfWork(FakeRepositoryScope(
                 projects: projects,

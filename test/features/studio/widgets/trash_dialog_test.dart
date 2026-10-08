@@ -1,5 +1,6 @@
 // TrashDialog + sidebar 回收站入口 widget 测试（LB-15）。
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
@@ -11,6 +12,7 @@ import 'package:inkframe/features/studio/widgets/library_sidebar.dart';
 import 'package:inkframe/features/studio/widgets/trash_dialog.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
+import 'package:inkframe/theme/components/ink_overlay_dialog.dart';
 
 import '../../../_harness/fake_repositories.dart';
 
@@ -40,6 +42,70 @@ Future<void> _pump(
 }
 
 void main() {
+  // P7：回收站从 AlertDialog 换成浮层壳（复用设置浮层的 InkOverlayDialog，
+  // 720×520，左侧无导航）。壳是共用的，所以这里只钉「用的是那个壳 + 稿的尺寸」，
+  // 标题栏 / 底部条自身的几何由 ink_overlay_dialog 一侧负责。
+  testWidgets('浮层壳 720×520：标题栏 41 高、与对话框同宽；不再是 AlertDialog',
+      (tester) async {
+    final repo = InMemoryProjectRepository();
+    await _pump(
+      tester,
+      const TrashDialog(),
+      overrides: [
+        projectRepositoryProvider.overrideWith((ref) async => repo),
+      ],
+    );
+
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(find.byType(InkOverlayDialog), findsOneWidget);
+    final Size bar = tester.getSize(find.byKey(TrashDialog.titleBarKey));
+    expect(bar.height, 41);
+    expect(bar.width, TrashDialog.dialogWidth);
+    expect(find.text('Trash'), findsOneWidget);
+    expect(find.text('Esc'), findsOneWidget);
+  });
+
+  testWidgets('✕ 与 Esc 都关掉浮层', (tester) async {
+    final repo = InMemoryProjectRepository();
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          projectRepositoryProvider.overrideWith((ref) async => repo),
+        ],
+        child: MaterialApp(
+          theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: Builder(
+              builder: (BuildContext context) => TextButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  builder: (_) => const TrashDialog(),
+                ),
+                child: const Text('open-trash'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('open-trash'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TrashDialog), findsOneWidget);
+    await tester.tap(find.byKey(TrashDialog.closeKey));
+    await tester.pumpAndSettle();
+    expect(find.byType(TrashDialog), findsNothing);
+
+    await tester.tap(find.text('open-trash'));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(TrashDialog), findsNothing, reason: 'Esc 是对话框路由的 Dismiss');
+  });
+
   testWidgets('空态文案', (tester) async {
     final repo = InMemoryProjectRepository();
     await _pump(

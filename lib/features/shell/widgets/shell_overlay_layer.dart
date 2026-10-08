@@ -15,7 +15,6 @@ import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
 import '../../settings/settings_screen.dart';
-import '../../showcase/widgets/built_in_showcase_screen.dart';
 import '../models/shell_state.dart';
 
 class ShellOverlayLayer extends StatelessWidget {
@@ -31,7 +30,6 @@ class ShellOverlayLayer extends StatelessWidget {
         ModalBarrier(dismissible: false, color: context.inkColors.scrim),
         switch (overlay) {
           ShellOverlay.settings => const SettingsScreen(),
-          ShellOverlay.showcase => const BuiltInShowcaseScreen(),
         },
       ],
     );

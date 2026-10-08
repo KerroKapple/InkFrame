@@ -79,7 +79,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | `widgets/shell_chrome.dart` | 全树唯一 `InkWindowChrome` 的宿主（logo / 面包屑 / ⌘K / ⚙） |
 | `widgets/shell_breadcrumb.dart` | `studio › project › canvas`（条件 watch） |
 | `widgets/shell_empty_state.dart` | 复用空态（图标 + 标题 + 可选副标题 + 可选 CTA） |
-| `widgets/shell_overlay_layer.dart` | 浮层槽分发（settings / showcase），**不保活** |
+| `widgets/shell_overlay_layer.dart` | 浮层槽分发（只有 settings——内置示例页已随 P7 删除），**不保活** |
 | `widgets/shell_tab_bar.dart` | 标签条接线层：ShellState → `InkShellTabBar` 的纯数据。呈现在 `lib/theme/components/ink_shell_tab_bar.dart`，**那一层不认识 `ShellTab`**（R47；`test/quality/no_reverse_layer_import_test.dart` 钉死） |
 | `widgets/tabs/*.dart` | 五个标签体（序列：`canvasId == null` 空态 → 无叙事边引导文案 → `SequenceScreen` 只读序列 lens，见上表；导出：空态 + 拉起既有对话框；画廊含脏刷新） |
 | `util/tab_availability.dart` | `hasNarrativeEdges` / `canExportVideo`——从已删除的 `canvas_top_chrome.dart` 原样搬运的纯判据 |

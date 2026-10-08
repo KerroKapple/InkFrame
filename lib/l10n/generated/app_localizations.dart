@@ -230,18 +230,6 @@ abstract class AppLocalizations {
   /// **'Shot'**
   String get canvasNodeShotType;
 
-  /// No description provided for @canvasNoCanvasOpen.
-  ///
-  /// In en, this message translates to:
-  /// **'No canvas is open'**
-  String get canvasNoCanvasOpen;
-
-  /// No description provided for @canvasCreateSampleCanvas.
-  ///
-  /// In en, this message translates to:
-  /// **'Create sample canvas'**
-  String get canvasCreateSampleCanvas;
-
   /// No description provided for @canvasLoadFailed.
   ///
   /// In en, this message translates to:
@@ -2654,48 +2642,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}'**
   String galleryItemCount(int count);
 
-  /// No description provided for @showcaseEntryLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Built-in samples'**
-  String get showcaseEntryLabel;
-
-  /// No description provided for @showcaseTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Built-in image samples'**
-  String get showcaseTitle;
-
-  /// No description provided for @showcaseSubtitle.
-  ///
-  /// In en, this message translates to:
-  /// **'AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.'**
-  String get showcaseSubtitle;
-
-  /// No description provided for @showcaseSquareTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Mountain study'**
-  String get showcaseSquareTitle;
-
-  /// No description provided for @showcaseSquareMeta.
-  ///
-  /// In en, this message translates to:
-  /// **'1:1 · Ink wash'**
-  String get showcaseSquareMeta;
-
-  /// No description provided for @showcaseWideTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Storyboard establishing shot'**
-  String get showcaseWideTitle;
-
-  /// No description provided for @showcaseWideMeta.
-  ///
-  /// In en, this message translates to:
-  /// **'16:9 · Ink wash'**
-  String get showcaseWideMeta;
-
   /// No description provided for @exportVideoTooltip.
   ///
   /// In en, this message translates to:
@@ -4268,6 +4214,18 @@ abstract class AppLocalizations {
   /// **'Changes apply immediately and are written to the keychain'**
   String get settingsFooterNote;
 
+  /// Settings dialog footer note on pages whose changes are saved locally
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply immediately'**
+  String get settingsFooterNoteLive;
+
+  /// Settings dialog footer note on pages that only display values
+  ///
+  /// In en, this message translates to:
+  /// **'This page is read-only'**
+  String get settingsFooterNoteReadOnly;
+
   /// No description provided for @settingsDone.
   ///
   /// In en, this message translates to:
@@ -4621,6 +4579,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No reference images yet'**
   String get characterNoReferences;
+
+  /// No description provided for @settingsNavShortcuts.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcuts'**
+  String get settingsNavShortcuts;
+
+  /// No description provided for @settingsNavPerformance.
+  ///
+  /// In en, this message translates to:
+  /// **'Performance'**
+  String get settingsNavPerformance;
+
+  /// No description provided for @settingsNavNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get settingsNavNetwork;
+
+  /// No description provided for @settingsShortcutsNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Key bindings are fixed in this version — this page lists what is actually bound.'**
+  String get settingsShortcutsNote;
+
+  /// No description provided for @settingsColumnAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get settingsColumnAction;
+
+  /// No description provided for @settingsColumnShortcut.
+  ///
+  /// In en, this message translates to:
+  /// **'Shortcut'**
+  String get settingsColumnShortcut;
+
+  /// No description provided for @settingsShortcutCommandPalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Command palette'**
+  String get settingsShortcutCommandPalette;
+
+  /// No description provided for @settingsShortcutOverlayDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Close overlay'**
+  String get settingsShortcutOverlayDismiss;
+
+  /// No description provided for @settingsShortcutCanvasDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete selected nodes'**
+  String get settingsShortcutCanvasDelete;
+
+  /// No description provided for @settingsShortcutCanvasEscape.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel linking / clear selection'**
+  String get settingsShortcutCanvasEscape;
+
+  /// No description provided for @settingsShortcutCanvasSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all nodes'**
+  String get settingsShortcutCanvasSelectAll;
+
+  /// No description provided for @settingsShortcutCanvasZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get settingsShortcutCanvasZoomIn;
+
+  /// No description provided for @settingsShortcutCanvasZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get settingsShortcutCanvasZoomOut;
+
+  /// No description provided for @settingsShortcutCanvasZoomReset.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset zoom'**
+  String get settingsShortcutCanvasZoomReset;
+
+  /// No description provided for @settingsPerformanceConcurrencyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Concurrency and quota'**
+  String get settingsPerformanceConcurrencyTitle;
+
+  /// No description provided for @settingsPerformanceGlobalLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Global concurrent jobs'**
+  String get settingsPerformanceGlobalLimit;
+
+  /// No description provided for @settingsPerformanceImageCache.
+  ///
+  /// In en, this message translates to:
+  /// **'Image cache limit'**
+  String get settingsPerformanceImageCache;
+
+  /// No description provided for @settingsPerformanceMegabytes.
+  ///
+  /// In en, this message translates to:
+  /// **'{mb} MB'**
+  String settingsPerformanceMegabytes(int mb);
+
+  /// No description provided for @settingsPerformanceDispatchNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Jobs actually dispatched = min(free global slots, free slots for that provider).'**
+  String get settingsPerformanceDispatchNote;
+
+  /// No description provided for @settingsPerformanceReadOnlyNote.
+  ///
+  /// In en, this message translates to:
+  /// **'These limits come from the built-in capability table and cannot be changed in this version.'**
+  String get settingsPerformanceReadOnlyNote;
+
+  /// No description provided for @settingsPerformanceProvidersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Per-provider limits'**
+  String get settingsPerformanceProvidersTitle;
+
+  /// No description provided for @settingsColumnConcurrency.
+  ///
+  /// In en, this message translates to:
+  /// **'Jobs'**
+  String get settingsColumnConcurrency;
+
+  /// No description provided for @settingsColumnQps.
+  ///
+  /// In en, this message translates to:
+  /// **'QPS'**
+  String get settingsColumnQps;
+
+  /// No description provided for @settingsNetworkEnvTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxy environment variables'**
+  String get settingsNetworkEnvTitle;
+
+  /// No description provided for @settingsNetworkEnvNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Proxies are read from the environment at process start — restart the app after changing them. Loopback addresses (localhost / 127.x) always connect directly, and credentials inside a proxy URL are never shown.'**
+  String get settingsNetworkEnvNote;
+
+  /// No description provided for @settingsNetworkUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'not set'**
+  String get settingsNetworkUnset;
+
+  /// No description provided for @settingsNetworkDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'empty — proxy disabled'**
+  String get settingsNetworkDisabled;
+
+  /// No description provided for @settingsNetworkEffectiveLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current state (https requests)'**
+  String get settingsNetworkEffectiveLabel;
+
+  /// No description provided for @settingsNetworkDirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Direct connection'**
+  String get settingsNetworkDirect;
+
+  /// No description provided for @settingsNetworkViaProxy.
+  ///
+  /// In en, this message translates to:
+  /// **'Via {target}'**
+  String settingsNetworkViaProxy(String target);
+
+  /// No description provided for @onboardingFooterSettingsLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings › Performance'**
+  String get onboardingFooterSettingsLink;
+
+  /// No description provided for @studioTrashFooterNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring takes effect immediately; trashed projects keep all their files.'**
+  String get studioTrashFooterNote;
+
+  /// No description provided for @studioTrashColumnName.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get studioTrashColumnName;
 }
 
 class _AppLocalizationsDelegate

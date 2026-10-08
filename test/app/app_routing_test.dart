@@ -14,7 +14,6 @@ import 'package:inkframe/features/gallery/widgets/gallery_screen.dart';
 import 'package:inkframe/features/settings/settings_screen.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
-import 'package:inkframe/features/showcase/widgets/built_in_showcase_screen.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
 
 import '../_harness/shell_app.dart';
@@ -86,56 +85,6 @@ void main() {
       onstage: false,
       hittable: false,
       reason: '从未激活过 studio 标签 ⇒ 槽内仍是 SizedBox.shrink',
-    );
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  // 评审 P1-2：ShellOverlay.showcase 此前 shell 路由零覆盖——把分支改成渲染别的
-  // 页，全量测试照样绿。本例与下一例把它钉死。
-  testWidgets('unlocked + showcase 浮层 → 示例页在台，Studio 保活离台', (tester) async {
-    final paths = await setupTempPaths(tester, 'ink_route_showcase_');
-    await pumpInkShell(
-      tester,
-      paths: paths,
-      initial: const ShellState(overlay: ShellOverlay.showcase),
-    );
-
-    expectShellSurface<BuiltInShowcaseScreen>(
-      mounted: true,
-      onstage: true,
-      hittable: true,
-    );
-    expectShellSurface<StudioHomeScreen>(
-      mounted: true,
-      onstage: true,
-      hittable: false,
-      reason: '浮层形态：标签体在台但被 ModalBarrier 挡住',
-    );
-  }, timeout: const Timeout(Duration(seconds: 10)));
-
-  // T6 fix round 1（R25）起本例断「浮层赢」；T7 把语义进一步说清楚：不是
-  // 「画布输了」，而是【浮层永远在上、画布保活在下】——所以画布必须 mounted。
-  testWidgets('浮层在上、画布保活在下：canvasId 非空 + showcase', (tester) async {
-    final paths = await setupTempPaths(tester, 'ink_route_showcase_prio_');
-    await pumpInkShell(
-      tester,
-      paths: paths,
-      initial: const ShellState(
-        tab: ShellTab.canvas,
-        overlay: ShellOverlay.showcase,
-        canvasId: 'cv-1',
-      ),
-    );
-
-    expectShellSurface<BuiltInShowcaseScreen>(
-      mounted: true,
-      onstage: true,
-      hittable: true,
-    );
-    expectShellSurface<CanvasScreen>(
-      mounted: true,
-      onstage: true,
-      hittable: false,
-      reason: '浮层盖住 ⇒ 画布点不穿，但仍在台（遮暗可见）、仍在树里（保活）',
     );
   }, timeout: const Timeout(Duration(seconds: 10)));
 

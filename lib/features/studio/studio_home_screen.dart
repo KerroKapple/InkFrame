@@ -124,8 +124,6 @@ class _StudioMainArea extends ConsumerWidget {
                   child: _StudioEmptyState(
                     onCreate: () => showStudioNewProjectDialog(context, ref),
                     onCreateSample: () => createStudioSampleProject(context, ref),
-                    onOpenShowcase: () =>
-                        ref.read(shellControllerProvider.notifier).openOverlay(ShellOverlay.showcase),
                     onImport: importBusy ? null : () => runProjectImportFlow(context, ref),
                   ),
                 );
@@ -338,13 +336,11 @@ class _StudioEmptyState extends StatelessWidget {
     required this.onCreate,
     required this.onImport,
     required this.onCreateSample,
-    required this.onOpenShowcase,
   });
 
   final VoidCallback onCreate;
   final VoidCallback? onImport;
   final VoidCallback onCreateSample;
-  final VoidCallback onOpenShowcase;
 
   @override
   Widget build(BuildContext context) {
@@ -412,13 +408,6 @@ class _StudioEmptyState extends StatelessWidget {
                 label: context.l10n.studioCreateSampleProject,
                 icon: Icons.auto_awesome_outlined,
                 onPressed: onCreateSample,
-              ),
-              const SizedBox(height: InkSpacing.sm),
-              // 零项目用户的内置示例入口——项目卡 ⋮ 菜单此时不存在（评审 P1-1）。
-              InkGhostButton(
-                label: context.l10n.showcaseEntryLabel,
-                icon: Icons.photo_library_outlined,
-                onPressed: onOpenShowcase,
               ),
             ],
           ),
@@ -626,8 +615,6 @@ class _ProjectGrid extends ConsumerWidget {
                   onOpenGallery: () => ref
                       .read(shellControllerProvider.notifier)
                       .openGallery(ProjectRef(id: p.id, name: p.name)),
-                  onOpenShowcase: () =>
-                      ref.read(shellControllerProvider.notifier).openOverlay(ShellOverlay.showcase),
                   onRename: () => _renameProject(context, ref, p),
                   onExport: () => _exportProject(context, ref, p),
                   onManageCanvases: () => showDialog<void>(

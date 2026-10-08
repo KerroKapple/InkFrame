@@ -35,20 +35,6 @@ class InkPalette {
     Color(0xFFE8D57C), // 芥黄
   ];
 
-  /// Workspace v2 稿上三种 160° 渐变缩略图占位（README §Assets：实现时换真实缩略图）。
-  /// 只供静态复刻用；接线后随 WorkspaceFixture 一起删除。
-  static const List<(Color, Color)> thumbPlaceholderGradients = <(Color, Color)>[
-    (Color(0xFF3B3A36), Color(0xFF23221F)),
-    (Color(0xFF34342F), Color(0xFF1F1E1B)),
-    (Color(0xFF2F2A22), Color(0xFF17150F)),
-    // Screens 稿（画廊 / Studio）再多五档，同一组 160° 渐变。
-    (Color(0xFF2C2E2A), Color(0xFF1A1B18)),
-    (Color(0xFF37312A), Color(0xFF201C18)),
-    (Color(0xFF30302C), Color(0xFF1B1B19)),
-    (Color(0xFF2A2F2C), Color(0xFF181B19)),
-    (Color(0xFF333029), Color(0xFF1E1C17)),
-  ];
-
   /// 画布卡片背景自定义色候选（暗色系中性偏色面，保证前景可读）。
   static const List<Color> canvasCardColorChoices = <Color>[
     Color(0xFF2A2320), // 暖炭

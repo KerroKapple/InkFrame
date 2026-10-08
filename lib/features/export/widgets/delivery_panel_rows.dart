@@ -1,5 +1,6 @@
 // 交付面板的行级构件（P6）。几何**逐个照抄静态复刻件**
-// （lib/features/workspace/delivery_v2_screen.dart，#243 已逐像素验收）：
+// （delivery_v2_screen.dart，#243 已逐像素验收；复刻脚手架已随 P7 删除，稿是
+// docs/design/handoff-2026-09/InkFrame Timeline.html 的交付面板）：
 //
 //   页签条 29 = height:28 + 1px 下沿；分段控件 28 = 26 + 1px 边 ×2；
 //   设置行 26；值盒 23 = height:22 + 1px 底线；分组 = 组头 26 + 组身 + 1px 下沿；

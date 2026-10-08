@@ -29,8 +29,6 @@
   "canvasNodeVideoType": "Video",
   "canvasNodeShotType": "Shot",
 
-  "canvasNoCanvasOpen": "No canvas is open",
-  "canvasCreateSampleCanvas": "Create sample canvas",
   "canvasLoadFailed": "Failed to load canvas",
   "canvasSampleProjectName": "Sample Project",
   "canvasSampleCanvasName": "Canvas 1",
@@ -604,13 +602,6 @@
     }
   },
 
-  "showcaseEntryLabel": "Built-in samples",
-  "showcaseTitle": "Built-in image samples",
-  "showcaseSubtitle": "AI-generated sample images bundled with the app for offline preview. They are not project generation records and need no API key.",
-  "showcaseSquareTitle": "Mountain study",
-  "showcaseSquareMeta": "1:1 · Ink wash",
-  "showcaseWideTitle": "Storyboard establishing shot",
-  "showcaseWideMeta": "16:9 · Ink wash",
 
   "exportVideoTooltip": "Export video",
   "exportVideoDisabledTooltip": "No video results on this canvas yet",
@@ -962,6 +953,14 @@
   "settingsColumnKey": "Key",
   "settingsColumnStatus": "Status",
   "settingsFooterNote": "Changes apply immediately and are written to the keychain",
+  "settingsFooterNoteLive": "Changes apply immediately",
+  "@settingsFooterNoteLive": {
+    "description": "Settings dialog footer note on pages whose changes are saved locally"
+  },
+  "settingsFooterNoteReadOnly": "This page is read-only",
+  "@settingsFooterNoteReadOnly": {
+    "description": "Settings dialog footer note on pages that only display values"
+  },
   "settingsDone": "Done",
   "settingsEscHint": "Esc",
   "settingsCloseTooltip": "Close settings",
@@ -1033,5 +1032,41 @@
   "characterEditFootnoteNone": "Not referenced by any node yet",
   "characterManage": "Manage",
   "characterSave": "Save",
-  "characterNoReferences": "No reference images yet"
+  "characterNoReferences": "No reference images yet",
+
+  "settingsNavShortcuts": "Shortcuts",
+  "settingsNavPerformance": "Performance",
+  "settingsNavNetwork": "Network",
+  "settingsShortcutsNote": "Key bindings are fixed in this version — this page lists what is actually bound.",
+  "settingsColumnAction": "Action",
+  "settingsColumnShortcut": "Shortcut",
+  "settingsShortcutCommandPalette": "Command palette",
+  "settingsShortcutOverlayDismiss": "Close overlay",
+  "settingsShortcutCanvasDelete": "Delete selected nodes",
+  "settingsShortcutCanvasEscape": "Cancel linking / clear selection",
+  "settingsShortcutCanvasSelectAll": "Select all nodes",
+  "settingsShortcutCanvasZoomIn": "Zoom in",
+  "settingsShortcutCanvasZoomOut": "Zoom out",
+  "settingsShortcutCanvasZoomReset": "Reset zoom",
+  "settingsPerformanceConcurrencyTitle": "Concurrency and quota",
+  "settingsPerformanceGlobalLimit": "Global concurrent jobs",
+  "settingsPerformanceImageCache": "Image cache limit",
+  "settingsPerformanceMegabytes": "{mb} MB",
+  "@settingsPerformanceMegabytes": { "placeholders": { "mb": { "type": "int" } } },
+  "settingsPerformanceDispatchNote": "Jobs actually dispatched = min(free global slots, free slots for that provider).",
+  "settingsPerformanceReadOnlyNote": "These limits come from the built-in capability table and cannot be changed in this version.",
+  "settingsPerformanceProvidersTitle": "Per-provider limits",
+  "settingsColumnConcurrency": "Jobs",
+  "settingsColumnQps": "QPS",
+  "settingsNetworkEnvTitle": "Proxy environment variables",
+  "settingsNetworkEnvNote": "Proxies are read from the environment at process start — restart the app after changing them. Loopback addresses (localhost / 127.x) always connect directly, and credentials inside a proxy URL are never shown.",
+  "settingsNetworkUnset": "not set",
+  "settingsNetworkDisabled": "empty — proxy disabled",
+  "settingsNetworkEffectiveLabel": "Current state (https requests)",
+  "settingsNetworkDirect": "Direct connection",
+  "settingsNetworkViaProxy": "Via {target}",
+  "@settingsNetworkViaProxy": { "placeholders": { "target": { "type": "String" } } },
+  "onboardingFooterSettingsLink": "Open Settings › Performance",
+  "studioTrashFooterNote": "Restoring takes effect immediately; trashed projects keep all their files.",
+  "studioTrashColumnName": "Project"
 }

@@ -22,6 +22,7 @@ import '../export/widgets/export_video_dialog.dart';
 import '../shell/models/shell_state.dart';
 import '../shell/providers/shell_controller.dart';
 import '../studio/project_import_flow.dart';
+import '../studio/studio_home_screen.dart' show createStudioSampleProject;
 
 /// 单个可执行命令：图标 + 已本地化 label + 执行闭包。
 @immutable
@@ -44,9 +45,9 @@ class CommandAction {
 /// - canvas 打开：三种新建节点 + 导出视频（有可导出 result 时）+ 返回/设置
 /// - gallery：返回 Studio + 设置
 /// - settings：返回 Studio
-/// - showcase：返回 Studio + 设置
-/// - studio 首页：导入项目 + 内置示例 + 设置（零项目空态下项目卡菜单不存在,
-///   导入必须能从这里够到——2026-08-31 审计 P0-3）
+/// - studio 首页：导入项目 + 短剧示例 + 设置（零项目空态下项目卡菜单不存在,
+///   导入必须能从这里够到——2026-08-31 审计 P0-3；P7 起「内置示例」浮层已并入
+///   短剧示例项目，这里跟着换成建示例项目）
 List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   final l = context.l10n;
   final s = ref.read(shellControllerProvider);
@@ -57,10 +58,6 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   if (s.overlay != null) {
     return switch (s.overlay!) {
       ShellOverlay.settings => <CommandAction>[_backToStudio(l)],
-      ShellOverlay.showcase => <CommandAction>[
-          _backToStudio(l),
-          _openSettings(l),
-        ],
     };
   }
   final canvasId = s.canvasId;
@@ -108,12 +105,12 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   if (s.tab == ShellTab.gallery && s.project != null) {
     return <CommandAction>[_backToStudio(l), _openSettings(l)];
   }
-  // studio：内置示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
+  // studio：短剧示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
   // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。2026-08-31 审计 P0：
   // 导入项目此前在这里完全够不到，见 studio/project_import_flow.dart。
   return <CommandAction>[
     _importProject(l),
-    _openShowcase(l),
+    _createSampleProject(l),
     _openSettings(l),
   ];
 }
@@ -190,15 +187,13 @@ CommandAction _backToStudio(AppLocalizations l) => CommandAction(
       },
     );
 
-CommandAction _openShowcase(AppLocalizations l) => CommandAction(
-      id: 'openShowcase',
-      icon: Icons.photo_library_outlined,
-      label: l.showcaseEntryLabel,
-      run: (context, ref) async {
-        ref
-            .read(shellControllerProvider.notifier)
-            .openOverlay(ShellOverlay.showcase);
-      },
+/// 短剧示例：原「内置示例」浮层的继任者——打包的两张成片现在是这个真项目里的
+/// 真产物（P7）。建完直接落在画布上，与 Studio 空态 / 网格虚线格同一条路径。
+CommandAction _createSampleProject(AppLocalizations l) => CommandAction(
+      id: 'createSampleProject',
+      icon: Icons.auto_awesome_outlined,
+      label: l.studioCreateSampleProject,
+      run: (context, ref) => createStudioSampleProject(context, ref),
     );
 
 CommandAction _importProject(AppLocalizations l) => CommandAction(

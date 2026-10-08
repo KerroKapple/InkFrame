@@ -68,7 +68,7 @@ void main() {
 
     readShellContainer(tester)
         .read(shellControllerProvider.notifier)
-        .openOverlay(ShellOverlay.showcase);
+        .openOverlay(ShellOverlay.settings);
     await tester.pump();
     await tester.pump();
 

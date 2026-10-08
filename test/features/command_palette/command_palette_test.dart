@@ -282,31 +282,6 @@ void main() {
     expect(container.read(projectImportBusyProvider), isFalse);
   });
 
-  testWidgets('showcase 上下文可返回 Studio 或打开设置', (tester) async {
-    final container = await _pumpShell(tester);
-    container
-        .read(shellControllerProvider.notifier)
-        .openOverlay(ShellOverlay.showcase);
-    await _pressCtrlK(tester);
-
-    expect(find.text('Back to Studio'), findsOneWidget);
-    expect(find.text('Open settings'), findsOneWidget);
-
-    await tester.tap(find.text('Back to Studio'));
-    await tester.pumpAndSettle();
-    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
-    // fix round 18（R88）：上面那条 tab 断言是**恒真**的——_pumpShell 的起始
-    // tab 本来就是 studio，而 openOverlay(showcase) 不动 tab。把 _backToStudio
-    // 的 run 改成空实现，它照绿。真正说明"返回 Studio"发生过的是浮层被关掉。
-    // 实跑：把 run 改成 `(context, ref) async {}` → 上面那条 tab 断言【仍绿】，
-    // 只有下面这条红（:270 Expected null, Actual ShellOverlay.showcase）。
-    expect(
-      container.read(shellControllerProvider).overlay,
-      isNull,
-      reason: 'goTab 必须顺带关掉浮层，否则用户点了「Back to Studio」还困在示例里',
-    );
-  });
-
   testWidgets('canvas 上下文动作集：三种新建节点 + 返回/设置；无可导出节点时不出 Export video',
       (tester) async {
     final container = await _pumpShell(tester, overrides: <Override>[

@@ -1,5 +1,9 @@
-// 外壳空态：四处复用（画布未打开 / 画廊未选项目 / 序列 / 导出）。
+// 外壳空态：五处复用（画布未打开 / 画廊未选项目 / 序列 / 导出 / 空画布）。
 // 视觉语汇沿用画廊空态：72 圆形 surface3 底 + 图标 + 标题 + 可选副标题 + 可选 CTA。
+//
+// P7：空画布（CanvasEmptyState）要四个并列动作，于是多一个 [actions] 口——
+// 给了 actions 就按 Wrap 排多颗按钮，单 CTA 的四处一行不改。两套空态各画一遍
+// 是上一轮视觉重做想消掉的事，别再分叉。
 import 'package:flutter/material.dart';
 
 import '../../../theme/app_theme.dart';
@@ -15,6 +19,7 @@ class ShellEmptyState extends StatelessWidget {
     this.ctaLabel,
     this.onCta,
     this.ctaTooltip,
+    this.actions = const <Widget>[],
   });
 
   final IconData icon;
@@ -25,6 +30,10 @@ class ShellEmptyState extends StatelessWidget {
   /// null ⇒ CTA 渲染为禁用态（仍然可见，用户看得到"为什么不能点"）。
   final VoidCallback? onCta;
   final String? ctaTooltip;
+
+  /// 多动作空态（空画布）：按 Wrap 居中排布，窄窗自动折行。
+  /// 与 [ctaLabel] 不互斥，但目前没有同时用两者的场景。
+  final List<Widget> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +78,15 @@ class ShellEmptyState extends StatelessWidget {
               ctaTooltip == null
                   ? cta
                   : Tooltip(message: ctaTooltip!, child: cta),
+            ],
+            if (actions.isNotEmpty) ...<Widget>[
+              const SizedBox(height: InkSpacing.lg),
+              Wrap(
+                alignment: WrapAlignment.center,
+                spacing: InkSpacing.sm,
+                runSpacing: InkSpacing.sm,
+                children: actions,
+              ),
             ],
           ],
         ),

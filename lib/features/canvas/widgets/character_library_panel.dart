@@ -1,6 +1,7 @@
 // CharacterLibraryPanel：左栏「角色」页的 body（P4）。
 //
-// 几何照搬静态复刻件 lib/features/workspace/batch_v2_screen.dart 的 03b 块：
+// 几何照搬静态复刻件 batch_v2_screen.dart 的 03b 块（复刻脚手架已随 P7 删除，
+// 稿是 docs/design/handoff-2026-09/InkFrame Batch and Characters.html）：
 // 说明行 10/8/4 内边距 → 行高 53（8 + 36 缩略 + 8 + 1px 下沿）→ 底部虚线「新建角色」格
 // （四边 margin 10，盒高 32 = 30 content + 上下各 1px 边）。复刻卡是 260 content，
 // 真实左栏是 240（241 − 1px 右沿），横向数字按 240 折算，纵向不变。

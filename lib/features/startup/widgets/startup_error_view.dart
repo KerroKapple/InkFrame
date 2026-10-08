@@ -23,6 +23,7 @@ import '../../../storage/pg_controller.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_error_banner.dart';
+import '../../../theme/components/ink_overlay_dialog.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/services/toast_service.dart';
 
@@ -31,6 +32,14 @@ class StartupErrorView extends ConsumerStatefulWidget {
 
   /// pgMigratedPoolProvider 的 AsyncError 值（DI 边界已翻成 InkError）。
   final Object error;
+
+  /// 稿的浮层尺寸（content-box）。高度写死而非跟内容走：错误文案长短不一，
+  /// 面板框跳动比留白难看；正文自己滚。
+  static const double panelWidth = 560;
+  static const double panelHeight = 420;
+
+  /// 整屏底色（测试锚点：重画的要点就是它不再是 Scaffold 默认底色）。
+  static const Key backdropKey = Key('startupError.backdrop');
 
   @override
   ConsumerState<StartupErrorView> createState() => _StartupErrorViewState();
@@ -73,29 +82,25 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
     final bool busy = _working || ref.watch(databaseRestoreBusyProvider);
 
     return Scaffold(
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(InkSpacing.xl),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 520),
+      // 整屏中性灰，面板居中——与设置 / 回收站同一个壳（标题进标题栏，没有 ✕：
+      // 启动失败时没有「关掉它回到别处」这回事）。动作放在正文而不是底部条：
+      // 三颗按钮在 1.4 字号档 / 窄窗下会撑破一行 Row，Wrap 才折得动。
+      body: ColoredBox(
+        key: StartupErrorView.backdropKey,
+        color: colors.surface1,
+        child: InkOverlayDialog(
+          title: context.l10n.startupErrorTitle,
+          width: StartupErrorView.panelWidth,
+          height: StartupErrorView.panelHeight,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(InkSpacing.s22),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Icon(
-                  Icons.error_outline,
-                  size: InkSpacing.xxl,
-                  color: colors.danger,
-                ),
-                const SizedBox(height: InkSpacing.md),
-                Text(
-                  context.l10n.startupErrorTitle,
-                  style: typo.dialogTitle.copyWith(color: colors.fg1),
-                ),
-                const SizedBox(height: InkSpacing.sm),
                 Text(
                   context.l10n.startupErrorBody,
-                  style: typo.body.copyWith(color: colors.fg2),
+                  style: typo.body.copyWith(color: colors.fg3, height: 1.5),
                 ),
                 const SizedBox(height: InkSpacing.md),
                 // DI 边界翻好的 InkError 走共享 l10nAsyncError 呈现（renderable，非白屏）。
@@ -103,13 +108,13 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                 const SizedBox(height: InkSpacing.md),
                 Text(
                   context.l10n.startupErrorLogPathLabel,
-                  style: typo.meta.copyWith(color: colors.fg3),
+                  style: typo.meta.copyWith(color: colors.fg6),
                 ),
-                const SizedBox(height: InkSpacing.xs),
+                const SizedBox(height: InkSpacing.s6),
                 // 可选中即可复制——即便「打开目录」在某些环境不可用，用户仍能拿到路径。
                 SelectableText(
                   logsPath,
-                  style: typo.monoSmall.copyWith(color: colors.fg2),
+                  style: typo.mono.copyWith(color: colors.fg2),
                 ),
                 const SizedBox(height: InkSpacing.lg),
                 Wrap(
