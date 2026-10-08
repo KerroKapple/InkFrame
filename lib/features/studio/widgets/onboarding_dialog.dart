@@ -25,7 +25,10 @@ import '../../../theme/components/ws_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../canvas/providers/canvas_bootstrap_controller.dart';
+import '../../settings/providers/settings_page.dart';
 import '../../settings/widgets/language_section.dart';
+import '../../shell/models/shell_state.dart';
+import '../../shell/providers/shell_controller.dart';
 import '../util/onboarding_provider_choices.dart';
 import 'onboarding_anchors.dart';
 import 'onboarding_keys_step.dart';
@@ -79,6 +82,9 @@ class OnboardingDialog extends ConsumerStatefulWidget {
   static const Key nextKey = Key('onboarding.next');
   static const Key startEmptyKey = Key('onboarding.startEmpty');
   static const Key createSampleKey = Key('onboarding.createSample');
+
+  /// 底部提示里的「打开设置 › 性能」链接。
+  static const Key settingsLinkKey = Key('onboarding.settingsLink');
 
   @override
   ConsumerState<OnboardingDialog> createState() => _OnboardingDialogState();
@@ -145,6 +151,21 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
     await _finish();
   }
 
+  /// 底部提示里的「打开设置 › 性能」：关向导 → 开设置浮层并落在性能页。
+  ///
+  /// 为什么要先关向导：向导是 barrierDismissible=false 的 modal 路由，设置浮层
+  /// 盖在外壳内容区里、位置在它【之下】——不关就等于把浮层开在看不见的层。
+  /// 关闭只走 _finish（落 onboardingCompleted），绝不旁路那个标记，否则下次冷启
+  /// 还会再弹一次向导。
+  ///
+  /// ref 的两次 read 都在首个 await 之前：_finish() 之后本 State 已被 pop 卸载。
+  Future<void> _openPerformanceSettings() async {
+    ref.read(settingsPageProvider.notifier).state = SettingsPage.performance;
+    final ShellNavigator nav = ref.read(shellControllerProvider.notifier);
+    await _finish();
+    nav.openOverlay(ShellOverlay.settings);
+  }
+
   /// 底部主按钮：末步建示例项目，其余步前进一格。
   Future<void> _primaryAction() async {
     if (_step == OnboardingDialog.stepCount - 1) {
@@ -205,6 +226,7 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
                   lastStep: lastStep,
                   onSecondary: _finish,
                   onPrimary: _primaryAction,
+                  onOpenSettings: _openPerformanceSettings,
                 ),
               ],
             ),
@@ -358,11 +380,13 @@ class _Footer extends StatelessWidget {
     required this.lastStep,
     required this.onSecondary,
     required this.onPrimary,
+    required this.onOpenSettings,
   });
 
   final bool lastStep;
   final Future<void> Function() onSecondary;
   final Future<void> Function() onPrimary;
+  final Future<void> Function() onOpenSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -382,13 +406,23 @@ class _Footer extends StatelessWidget {
       child: Row(
         children: <Widget>[
           Expanded(
-            child: Text(
-              // 稿这里写的是硬件探测结论（「已检测：32 GB · 独显…」）——本仓库没有
-              // 硬件探测，不画假数据，换成一句「之后可在设置里调整」。
-              l10n.onboardingFooterHint,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: t.meta.copyWith(color: c.fg6),
+            child: Row(
+              children: <Widget>[
+                // 稿这里写的是硬件探测结论（「已检测：32 GB · 独显…」）——本仓库
+                // 没有硬件探测，不画假数据，换成一句「之后可在设置里调整」。
+                Flexible(
+                  child: Text(
+                    l10n.onboardingFooterHint,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.meta.copyWith(color: c.fg6),
+                  ),
+                ),
+                const SizedBox(width: InkSpacing.s6),
+                // P7：性能页补上了，这句话终于指得到地方——点它直达
+                // 「设置 › 性能」。窄窗下先把上面那句省略号掉，链接不裁。
+                _SettingsLink(onTap: onOpenSettings),
+              ],
             ),
           ),
           const SizedBox(width: InkSpacing.s12),
@@ -427,6 +461,39 @@ class _Footer extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 底部那句提示后面的链接：「打开设置 › 性能」。11px 琥珀文字，不画按钮框
+/// ——它是一句话的延长，不是第三个动作按钮。
+class _SettingsLink extends StatelessWidget {
+  const _SettingsLink({required this.onTap});
+
+  final Future<void> Function() onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final InkColors c = context.inkColors;
+    final InkTypography t = context.inkTypography;
+    final String label = context.l10n.onboardingFooterSettingsLink;
+    return Semantics(
+      button: true,
+      label: label,
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          key: OnboardingDialog.settingsLinkKey,
+          behavior: HitTestBehavior.opaque,
+          onTap: onTap,
+          child: Text(
+            label,
+            maxLines: 1,
+            softWrap: false,
+            style: t.meta.copyWith(color: c.accent),
+          ),
+        ),
       ),
     );
   }

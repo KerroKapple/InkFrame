@@ -2600,4 +2600,105 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get characterNoReferences => 'No reference images yet';
+
+  @override
+  String get settingsNavShortcuts => 'Shortcuts';
+
+  @override
+  String get settingsNavPerformance => 'Performance';
+
+  @override
+  String get settingsNavNetwork => 'Network';
+
+  @override
+  String get settingsShortcutsNote =>
+      'Key bindings are fixed in this version — this page lists what is actually bound.';
+
+  @override
+  String get settingsColumnAction => 'Action';
+
+  @override
+  String get settingsColumnShortcut => 'Shortcut';
+
+  @override
+  String get settingsShortcutCommandPalette => 'Command palette';
+
+  @override
+  String get settingsShortcutOverlayDismiss => 'Close overlay';
+
+  @override
+  String get settingsShortcutCanvasDelete => 'Delete selected nodes';
+
+  @override
+  String get settingsShortcutCanvasEscape => 'Cancel linking / clear selection';
+
+  @override
+  String get settingsShortcutCanvasSelectAll => 'Select all nodes';
+
+  @override
+  String get settingsShortcutCanvasZoomIn => 'Zoom in';
+
+  @override
+  String get settingsShortcutCanvasZoomOut => 'Zoom out';
+
+  @override
+  String get settingsShortcutCanvasZoomReset => 'Reset zoom';
+
+  @override
+  String get settingsPerformanceConcurrencyTitle => 'Concurrency and quota';
+
+  @override
+  String get settingsPerformanceGlobalLimit => 'Global concurrent jobs';
+
+  @override
+  String get settingsPerformanceImageCache => 'Image cache limit';
+
+  @override
+  String settingsPerformanceMegabytes(int mb) {
+    return '$mb MB';
+  }
+
+  @override
+  String get settingsPerformanceDispatchNote =>
+      'Jobs actually dispatched = min(free global slots, free slots for that provider).';
+
+  @override
+  String get settingsPerformanceReadOnlyNote =>
+      'These limits come from the built-in capability table and cannot be changed in this version.';
+
+  @override
+  String get settingsPerformanceProvidersTitle => 'Per-provider limits';
+
+  @override
+  String get settingsColumnConcurrency => 'Jobs';
+
+  @override
+  String get settingsColumnQps => 'QPS';
+
+  @override
+  String get settingsNetworkEnvTitle => 'Proxy environment variables';
+
+  @override
+  String get settingsNetworkEnvNote =>
+      'Proxies are read from the environment at process start — restart the app after changing them. Loopback addresses (localhost / 127.x) always connect directly, and credentials inside a proxy URL are never shown.';
+
+  @override
+  String get settingsNetworkUnset => 'not set';
+
+  @override
+  String get settingsNetworkDisabled => 'empty — proxy disabled';
+
+  @override
+  String get settingsNetworkEffectiveLabel => 'Current state (https requests)';
+
+  @override
+  String get settingsNetworkDirect => 'Direct connection';
+
+  @override
+  String settingsNetworkViaProxy(String target) {
+    return 'Via $target';
+  }
+
+  @override
+  String get onboardingFooterSettingsLink => 'Open Settings › Performance';
 }

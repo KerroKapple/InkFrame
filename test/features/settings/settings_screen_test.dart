@@ -12,6 +12,9 @@ import 'package:inkframe/features/settings/widgets/canvas_appearance_section.dar
 import 'package:inkframe/features/settings/widgets/custom_providers_section.dart';
 import 'package:inkframe/features/settings/widgets/diagnostics_section.dart';
 import 'package:inkframe/features/settings/widgets/language_section.dart';
+import 'package:inkframe/features/settings/widgets/network_section.dart';
+import 'package:inkframe/features/settings/widgets/performance_section.dart';
+import 'package:inkframe/features/settings/widgets/shortcuts_section.dart';
 import 'package:inkframe/features/settings/widgets/startup_section.dart';
 import 'package:inkframe/features/settings/widgets/storage_path_section.dart';
 import 'package:inkframe/features/settings/widgets/theme_section.dart';
@@ -74,8 +77,17 @@ void main() {
       (ApiKeysSection, 'ApiKeysSection 缺席 → 无处填 provider API key'),
       (CustomProvidersSection, 'CustomProvidersSection 缺席 → 无法管理自定义 OpenAI 兼容端点'),
     ],
+    SettingsPage.shortcuts: <(Type, String)>[
+      (ShortcutsSection, 'ShortcutsSection 缺席 → 查不到键位清单'),
+    ],
+    SettingsPage.performance: <(Type, String)>[
+      (PerformanceSection, 'PerformanceSection 缺席 → 看不到并发与配额上限'),
+    ],
     SettingsPage.nodeLayout: <(Type, String)>[
       (CanvasAppearanceSection, 'CanvasAppearanceSection 缺席 → 无法调连线/卡片颜色'),
+    ],
+    SettingsPage.network: <(Type, String)>[
+      (NetworkSection, 'NetworkSection 缺席 → 看不到 env 代理当前状态'),
     ],
     SettingsPage.storage: <(Type, String)>[
       (StoragePathSection, 'StoragePathSection 缺席 → 看不到数据库目录'),
@@ -91,10 +103,11 @@ void main() {
     ],
   };
 
-  test('存在性断言表覆盖每一页、合计九个 section', () {
+  test('存在性断言表覆盖每一页、合计十二个 section', () {
     expect(sectionsByPage.keys.toSet(), SettingsPage.values.toSet(),
         reason: '新增页却没进表 = 该页 section 无存在性断言');
-    expect(sectionsByPage.values.expand((l) => l).length, 9);
+    // 九个既有 + P7 的快捷键 / 性能 / 网络三个。
+    expect(sectionsByPage.values.expand((l) => l).length, 12);
   });
 
   for (final MapEntry<SettingsPage, List<(Type, String)>> entry

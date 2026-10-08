@@ -2487,4 +2487,103 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get characterNoReferences => '还没有参考图';
+
+  @override
+  String get settingsNavShortcuts => '快捷键';
+
+  @override
+  String get settingsNavPerformance => '性能';
+
+  @override
+  String get settingsNavNetwork => '网络';
+
+  @override
+  String get settingsShortcutsNote => '本版键位固定，不支持自定义；这一页列的就是实际生效的绑定。';
+
+  @override
+  String get settingsColumnAction => '动作';
+
+  @override
+  String get settingsColumnShortcut => '快捷键';
+
+  @override
+  String get settingsShortcutCommandPalette => '命令面板';
+
+  @override
+  String get settingsShortcutOverlayDismiss => '关闭浮层';
+
+  @override
+  String get settingsShortcutCanvasDelete => '删除选中节点';
+
+  @override
+  String get settingsShortcutCanvasEscape => '取消连线 / 清空选择';
+
+  @override
+  String get settingsShortcutCanvasSelectAll => '全选节点';
+
+  @override
+  String get settingsShortcutCanvasZoomIn => '放大';
+
+  @override
+  String get settingsShortcutCanvasZoomOut => '缩小';
+
+  @override
+  String get settingsShortcutCanvasZoomReset => '缩放复位';
+
+  @override
+  String get settingsPerformanceConcurrencyTitle => '并发与配额';
+
+  @override
+  String get settingsPerformanceGlobalLimit => '全局并发上限';
+
+  @override
+  String get settingsPerformanceImageCache => '图像缓存上限';
+
+  @override
+  String settingsPerformanceMegabytes(int mb) {
+    return '$mb MB';
+  }
+
+  @override
+  String get settingsPerformanceDispatchNote =>
+      '实际可调度数 = min(全局剩余槽位, 该 Provider 剩余槽位)。';
+
+  @override
+  String get settingsPerformanceReadOnlyNote => '并发与配额来自内置能力表，本版不可调。';
+
+  @override
+  String get settingsPerformanceProvidersTitle => '各 Provider 上限';
+
+  @override
+  String get settingsColumnConcurrency => '并发';
+
+  @override
+  String get settingsColumnQps => 'QPS';
+
+  @override
+  String get settingsNetworkEnvTitle => '代理环境变量';
+
+  @override
+  String get settingsNetworkEnvNote =>
+      '代理只在进程启动时从环境变量读取——改完要重启应用才生效。本机地址（localhost / 127.x）恒直连；代理串里的凭据不会显示。';
+
+  @override
+  String get settingsNetworkUnset => '未设置';
+
+  @override
+  String get settingsNetworkDisabled => '空串 — 显式禁用该档';
+
+  @override
+  String get settingsNetworkEffectiveLabel => '当前状态（https 请求）';
+
+  @override
+  String get settingsNetworkDirect => '直连';
+
+  @override
+  String settingsNetworkViaProxy(String target) {
+    return '经 $target';
+  }
+
+  @override
+  String get onboardingFooterSettingsLink => '打开设置 › 性能';
 }

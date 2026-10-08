@@ -81,8 +81,12 @@ class _EditingAwareAction<T extends Intent> extends Action<T> {
 }
 
 // 键位映射：⌘ 与 Ctrl 变体同时注册，跨平台一致（桌面 macOS/Windows）。
+//
+// 公开（P7）：设置「快捷键」页的只读清单从这张表反推出来，不另抄一份——手抄的
+// 清单改了键位不会跟着改，用户照着列表按一个早就改掉的键。见
+// features/settings/util/shortcut_catalog.dart。
 final Map<ShortcutActivator, Intent>
-_kCanvasShortcuts = <ShortcutActivator, Intent>{
+kCanvasShortcuts = <ShortcutActivator, Intent>{
   const SingleActivator(LogicalKeyboardKey.delete):
       const DeleteSelectionIntent(),
   const SingleActivator(LogicalKeyboardKey.backspace):
@@ -187,7 +191,7 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   @override
   Widget build(BuildContext context) {
     return Shortcuts(
-      shortcuts: _kCanvasShortcuts,
+      shortcuts: kCanvasShortcuts,
       child: Actions(
         actions: <Type, Action<Intent>>{
           DeleteSelectionIntent: _EditingAwareAction<DeleteSelectionIntent>(

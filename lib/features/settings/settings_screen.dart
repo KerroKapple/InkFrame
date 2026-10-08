@@ -4,9 +4,13 @@
 // 展示由 ShellState.overlay == ShellOverlay.settings 驱动（shellControllerProvider）；
 // 遮罩 + 点穿拦截在 ShellOverlayLayer，本组件只画对话框本身。
 //
-// 导航只列有后端的页：常规（主题 / 语言 / 启动开关）、API 密钥（Key 表 + 自定义服务商）、
-// 节点布局（画布外观）、存储（目录 + 备份）、关于（版本 / 探测 / 诊断）。
-// 稿上的「快捷键 / 性能 / 网络」没有可配置的字段，不画；「语言」并入常规页（用户 2026-09-24）。
+// 导航按稿的顺序列八页：常规（主题 / 语言 / 启动开关）、API 密钥（Key 表 + 自定义
+// 服务商）、快捷键（只读清单）、性能（只读上限）、节点布局（画布外观）、网络（只读
+// env 代理）、存储（目录 + 备份）、关于（版本 / 探测 / 诊断）。「语言」并入常规页
+// （用户 2026-09-24）。
+// 快捷键 / 性能 / 网络三页是 P7 补的，**只读**：键位固定、并发来自内置能力表
+// （性能档位整章未实现，见 ARCHITECTURE §10）、代理只从环境变量读。「有后端才画」
+// 的口径下，这三页画的都是真实生效的值，不画拖不动的滑块或存不下去的输入框。
 //
 // Esc 分层：本组件自己持焦（post-frame 夺焦，晚于 ShellContentStack 的兜底夺焦 ⇒ 赢），
 // CallbackShortcuts 挂在焦点节点之上。设置内部用 showDialog 弹出的编辑框（自定义服务商）
@@ -14,7 +18,6 @@
 // 处理、根本到不了这里；关掉编辑框后焦点回到本子树，再按一次 Esc 才关浮层。
 // 打开 / 关闭浮层都不写路由：不清 canvasId、不切标签（ShellState.openOverlay / closeOverlay）。
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../l10n/l10n_x.dart';
@@ -23,6 +26,7 @@ import '../../theme/components/ink_button.dart';
 import '../../theme/tokens.dart';
 import '../shell/providers/shell_controller.dart';
 import 'providers/settings_page.dart';
+import 'util/shortcut_catalog.dart' show kOverlayDismissActivator;
 import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
 import 'widgets/backup_section.dart';
@@ -30,6 +34,9 @@ import 'widgets/canvas_appearance_section.dart';
 import 'widgets/custom_providers_section.dart';
 import 'widgets/diagnostics_section.dart';
 import 'widgets/language_section.dart';
+import 'widgets/network_section.dart';
+import 'widgets/performance_section.dart';
+import 'widgets/shortcuts_section.dart';
 import 'widgets/startup_section.dart';
 import 'widgets/storage_path_section.dart';
 import 'widgets/theme_section.dart';
@@ -78,8 +85,9 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     final c = context.inkColors;
     final SettingsPage page = ref.watch(settingsPageProvider);
     return CallbackShortcuts(
+      // 键位来自 util/shortcut_catalog.dart——「快捷键」页列的就是同一个常量。
       bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.escape): _close,
+        kOverlayDismissActivator: _close,
       },
       child: Focus(
         focusNode: _focusNode,
@@ -172,7 +180,10 @@ class _Nav extends StatelessWidget {
   static String _label(BuildContext context, SettingsPage p) => switch (p) {
         SettingsPage.general => context.l10n.settingsNavGeneral,
         SettingsPage.apiKeys => context.l10n.settingsApiKeysSection,
+        SettingsPage.shortcuts => context.l10n.settingsNavShortcuts,
+        SettingsPage.performance => context.l10n.settingsNavPerformance,
         SettingsPage.nodeLayout => context.l10n.settingsNavNodeLayout,
+        SettingsPage.network => context.l10n.settingsNavNetwork,
         SettingsPage.storage => context.l10n.settingsStorageSection,
         SettingsPage.about => context.l10n.settingsAboutSection,
       };
@@ -231,7 +242,10 @@ class _PageBody extends StatelessWidget {
     final (String title, String? note) = switch (page) {
       SettingsPage.general => (l.settingsNavGeneral, null),
       SettingsPage.apiKeys => (l.settingsApiKeysSection, l.settingsApiKeysHint),
+      SettingsPage.shortcuts => (l.settingsNavShortcuts, null),
+      SettingsPage.performance => (l.settingsNavPerformance, null),
       SettingsPage.nodeLayout => (l.settingsNavNodeLayout, null),
+      SettingsPage.network => (l.settingsNavNetwork, null),
       SettingsPage.storage => (l.settingsStorageSection, null),
       SettingsPage.about => (l.settingsAboutSection, null),
     };
@@ -273,7 +287,10 @@ class _PageBody extends StatelessWidget {
                     SizedBox(height: InkSpacing.xl),
                     CustomProvidersSection(),
                   ],
+                SettingsPage.shortcuts => const <Widget>[ShortcutsSection()],
+                SettingsPage.performance => const <Widget>[PerformanceSection()],
                 SettingsPage.nodeLayout => const <Widget>[CanvasAppearanceSection()],
+                SettingsPage.network => const <Widget>[NetworkSection()],
                 SettingsPage.storage => const <Widget>[
                     StoragePathSection(),
                     SizedBox(height: InkSpacing.xl),
