@@ -288,7 +288,7 @@ lib/
 │       ├── models/                    # project_with_canvases (createdAt + updatedAt; list sorted by updatedAt desc)
 │       ├── providers/                 # workspace_projects_provider / restore_last_session (startup guard) / trashed_items_providers
 │       ├── util/                      # last_session.dart — hasRestorableLastSession，启动守卫与首页恢复条共用的唯一判据 + onboarding_provider_choices.dart（向导第 2 步三行 Provider 的唯一判据：代表 providerId 按 SecureStorageKeys.scopeOf 的家族首个成员取、与设置页 Key 表同口径；scope 下无注册 Provider ⇒ 该行「待支持」禁用）
-│       └── widgets/                   # library_sidebar / project_card / studio_provider_banner (无 Key 引导条) / onboarding_dialog（Screens 稿第 4 屏左：642×492，43 步骤条「可回退到已完成步」| 正文 | 55 底部条；第 2 步 = Provider 单选 + Key 验证，存/校验复用 ApiKeyScopeController） / trash_dialog
+│       └── widgets/                   # library_sidebar / project_card / studio_provider_banner (无 Key 引导条) / onboarding_dialog（Screens 稿第 4 屏左：642×492，43 步骤条「可回退到已完成步」| 正文 | 55 底部条）+ onboarding_keys_step（第 2 步：Provider 单选 + Key 验证，存/校验复用 ApiKeyScopeController 不另造一套）+ onboarding_step_body（三步共用的正文壳）+ onboarding_anchors（两边都要用的测试锚点 Key——挂在任一侧都会把 import 绕成环，与 batch_slot_parts 同因；OnboardingDialog 上留同名转发常量） / trash_dialog| 正文 | 55 底部条；第 2 步 = Provider 单选 + Key 验证，存/校验复用 ApiKeyScopeController） / trash_dialog
 ├── providers/                         # AI provider adapters (see docs/PROVIDER-API.md)
 │   ├── provider_registry.dart         # providerId → factory mapping
 │   ├── rate_limiter.dart              # Per-provider token bucket
