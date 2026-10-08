@@ -63,7 +63,7 @@ BOARD 211。四字段进 video config 的 type_config：`shot_size`（景别）/
 底部「已检测：32 GB · 独显」无硬件探测，**不画**；改成「可在设置 › 性能中调整」一句。
 onboardingCompleted 语义不变；跳过按钮语义 = 完成但不配 Key，Studio 引导条接手。
 
-## P6 · 交付 B（feat/v1-delivery #243，✅ 静态复刻 + 接线完成，待合入）
+## P6 · 交付 B（feat/v1-delivery #243，✅ 已合入 main）
 
 依赖 P2 + P3。
 EDL CMX3600 写出器（V1 单轨、24fps、TC 起点 01:00:00:00 可改）· 媒体导出 `{序号3位}_{镜头名}.mp4` 保持源 · metadata.json（含 P3 四字段）· 交付设置按项目持久化 · 交付前检查四条 · 输出目录保持 <项目目录>/exports/，版本号与导出历史后置。
@@ -71,7 +71,7 @@ EDL CMX3600 写出器（V1 单轨、24fps、TC 起点 01:00:00:00 可改）· �
 断点 → 标记：无用户标记字段，只导场次边界，标偏离。
 导出进行中锁其余标签（替代原 barrierDismissible）。
 
-## P7 · 收尾（一个 PR）
+## P7 · 收尾（#245，✅ 已合入 main——七屏视觉重做至此全部落地）
 
 - 内置示例并入 Studio「新建项目 › 短剧示例」，删 built_in_showcase_screen 与 ShellOverlay.showcase。
 - 画布空状态按中性灰重画（canvas_empty golden 这次该变）。
