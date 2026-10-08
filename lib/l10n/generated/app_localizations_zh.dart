@@ -2586,4 +2586,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get onboardingFooterSettingsLink => '打开设置 › 性能';
+
+  @override
+  String get studioTrashFooterNote => '恢复即时生效；回收站里的项目仍保留全部文件。';
+
+  @override
+  String get studioTrashColumnName => '项目';
 }

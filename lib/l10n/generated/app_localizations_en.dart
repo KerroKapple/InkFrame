@@ -2701,4 +2701,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingFooterSettingsLink => 'Open Settings › Performance';
+
+  @override
+  String get studioTrashFooterNote =>
+      'Restoring takes effect immediately; trashed projects keep all their files.';
+
+  @override
+  String get studioTrashColumnName => 'Project';
 }

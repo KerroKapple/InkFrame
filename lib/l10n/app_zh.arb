@@ -990,5 +990,7 @@
   "settingsNetworkDirect": "直连",
   "settingsNetworkViaProxy": "经 {target}",
   "@settingsNetworkViaProxy": { "placeholders": { "target": { "type": "String" } } },
-  "onboardingFooterSettingsLink": "打开设置 › 性能"
+  "onboardingFooterSettingsLink": "打开设置 › 性能",
+  "studioTrashFooterNote": "恢复即时生效；回收站里的项目仍保留全部文件。",
+  "studioTrashColumnName": "项目"
 }

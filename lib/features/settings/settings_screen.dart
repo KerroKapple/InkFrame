@@ -23,6 +23,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/components/ink_button.dart';
+import '../../theme/components/ink_overlay_dialog.dart';
 import '../../theme/tokens.dart';
 import '../shell/providers/shell_controller.dart';
 import 'providers/settings_page.dart';
@@ -82,7 +83,6 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final c = context.inkColors;
     final SettingsPage page = ref.watch(settingsPageProvider);
     return CallbackShortcuts(
       // 键位来自 util/shortcut_catalog.dart——「快捷键」页列的就是同一个常量。
@@ -92,80 +92,39 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       child: Focus(
         focusNode: _focusNode,
         skipTraversal: true,
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(InkSpacing.md),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxWidth: SettingsScreen.dialogWidth + 2,
-                maxHeight: SettingsScreen.dialogHeight + 2,
-              ),
-              child: Container(
-                clipBehavior: Clip.antiAlias,
-                decoration: BoxDecoration(
-                  color: c.surface3,
-                  border: Border.all(color: c.control),
-                  borderRadius: BorderRadius.circular(InkRadius.bentoBtn),
-                  boxShadow: InkShadow.overlay,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: <Widget>[
-                    _TitleBar(onClose: _close),
-                    Expanded(
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: <Widget>[
-                          _Nav(
-                            selected: page,
-                            onSelect: (SettingsPage p) => ref.read(settingsPageProvider.notifier).state = p,
-                          ),
-                          Expanded(child: _PageBody(page: page)),
-                        ],
-                      ),
-                    ),
-                    _Footer(onDone: _close),
-                  ],
-                ),
+        // 壳（标题栏 / 底部条 / 边框阴影）在 theme 层，与回收站浮层共用。
+        child: InkOverlayDialog(
+          title: context.l10n.settingsTitle,
+          width: SettingsScreen.dialogWidth,
+          height: SettingsScreen.dialogHeight,
+          titleBarKey: SettingsScreen.titleBarKey,
+          closeKey: SettingsScreen.closeKey,
+          escHint: context.l10n.settingsEscHint,
+          closeTooltip: context.l10n.settingsCloseTooltip,
+          onClose: _close,
+          footerNote: context.l10n.settingsFooterNote,
+          footerActions: <Widget>[
+            const DiagnosticsExportButton(variant: InkButtonVariant.secondary),
+            KeyedSubtree(
+              key: SettingsScreen.doneKey,
+              child: InkButton(
+                label: context.l10n.settingsDone,
+                onPressed: _close,
               ),
             ),
+          ],
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              _Nav(
+                selected: page,
+                onSelect: (SettingsPage p) =>
+                    ref.read(settingsPageProvider.notifier).state = p,
+              ),
+              Expanded(child: _PageBody(page: page)),
+            ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// 稿：40 高 + 1px 下沿，surface2；「设置」500 | 撑开 | Esc 等宽 10 | ✕。
-class _TitleBar extends StatelessWidget {
-  const _TitleBar({required this.onClose});
-  final VoidCallback onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    final t = context.inkTypography;
-    return Container(
-      key: SettingsScreen.titleBarKey,
-      height: 41,
-      padding: const EdgeInsets.only(left: InkSpacing.md, right: InkSpacing.sm),
-      decoration: BoxDecoration(
-        color: c.surface2,
-        border: Border(bottom: BorderSide(color: c.borderStrong)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Text(context.l10n.settingsTitle, style: t.bodyStrong.copyWith(color: c.fg1)),
-          const Spacer(),
-          Text(context.l10n.settingsEscHint, style: t.monoSmall.copyWith(color: c.fg6)),
-          const SizedBox(width: InkSpacing.xs),
-          IconButton(
-            key: SettingsScreen.closeKey,
-            tooltip: context.l10n.settingsCloseTooltip,
-            icon: Icon(Icons.close, size: InkSpacing.md, color: c.fg5),
-            onPressed: onClose,
-          ),
-        ],
       ),
     );
   }
@@ -306,38 +265,6 @@ class _PageBody extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-/// 稿：44 高 + 上沿 1，surface2；11px 说明 | 撑开 | 导出诊断包（次级）| 完成（主）。
-class _Footer extends StatelessWidget {
-  const _Footer({required this.onDone});
-  final VoidCallback onDone;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    final t = context.inkTypography;
-    return Container(
-      height: 45,
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.md),
-      decoration: BoxDecoration(
-        color: c.surface2,
-        border: Border(top: BorderSide(color: c.borderStrong)),
-      ),
-      child: Row(
-        children: <Widget>[
-          Text(context.l10n.settingsFooterNote, style: t.meta.copyWith(color: c.fg6)),
-          const Spacer(),
-          const DiagnosticsExportButton(variant: InkButtonVariant.secondary),
-          const SizedBox(width: InkSpacing.s10),
-          KeyedSubtree(
-            key: SettingsScreen.doneKey,
-            child: InkButton(label: context.l10n.settingsDone, onPressed: onDone),
-          ),
-        ],
-      ),
     );
   }
 }

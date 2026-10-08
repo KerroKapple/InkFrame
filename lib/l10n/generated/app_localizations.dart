@@ -4807,6 +4807,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open Settings › Performance'**
   String get onboardingFooterSettingsLink;
+
+  /// No description provided for @studioTrashFooterNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Restoring takes effect immediately; trashed projects keep all their files.'**
+  String get studioTrashFooterNote;
+
+  /// No description provided for @studioTrashColumnName.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get studioTrashColumnName;
 }
 
 class _AppLocalizationsDelegate
