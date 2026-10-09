@@ -20,7 +20,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/providers/batch_job_progress.dart';
 import '../../generation/providers/batch_results_controller.dart';
@@ -242,7 +242,7 @@ class _BatchCompareOverlayState extends ConsumerState<BatchCompareOverlay> {
           BatchTappable(
             semanticLabel: l.batchDone,
             onTap: () => Navigator.of(context).pop(),
-            child: WsPrimaryButton(
+            child: InkPrimaryButton(
               l.batchDone,
               height: 26,
               horizontalPadding: InkSpacing.s14,
@@ -515,7 +515,7 @@ class _OverlaySlot extends ConsumerWidget {
         onTap: () => unawaited(
           runBatchSlotAction(context, ref, () => _controller(ref).promote(slot)),
         ),
-        child: WsSecondaryButton(l.batchSetArtifact, height: 26),
+        child: InkSecondaryButton(l.batchSetArtifact, height: 26),
       ),
       BatchSlotView.error when canRerun => BatchTappable(
         semanticLabel: l.batchRerunThisSlot,
@@ -530,7 +530,7 @@ class _OverlaySlot extends ConsumerWidget {
             () => _controller(ref).rerun(configNodeId: cfg),
           ),
         ),
-        child: WsSecondaryButton(l.batchRerunThisSlot, height: 26),
+        child: InkSecondaryButton(l.batchRerunThisSlot, height: 26),
       ),
       BatchSlotView.error => const SizedBox.shrink(),
       BatchSlotView.generating => BatchTappable(
@@ -544,7 +544,7 @@ class _OverlaySlot extends ConsumerWidget {
             () => _controller(ref).cancelBatch(slot.jobId),
           ),
         ),
-        child: WsSecondaryButton(l.batchActionCancel, height: 26),
+        child: InkSecondaryButton(l.batchActionCancel, height: 26),
       ),
     };
 

@@ -15,7 +15,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/providers/batch_results_controller.dart';
 import '../models/batch_result.dart';
@@ -148,7 +148,7 @@ class BatchResultsGrid extends ConsumerWidget {
                     .rerunFailed(configNodeId: configNodeId),
               ),
             ),
-            child: WsSecondaryButton(l.batchRerunFailed),
+            child: InkSecondaryButton(l.batchRerunFailed),
           ),
         ],
         const SizedBox(height: InkSpacing.sm),

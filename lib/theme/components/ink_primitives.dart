@@ -1,5 +1,5 @@
-// Workspace v2 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 底线字段 / 下拉 / 滑块 / 开关 / 方点。
-// 尺寸全部来自稿的 CSS（docs/design/handoff-2026-09/InkFrame Workspace v2.html）。
+// Ink 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 底线字段 / 下拉 / 滑块 / 开关 / 方点。
+// 尺寸全部来自 Workspace v2 稿的 CSS（docs/design/handoff-2026-09/InkFrame Workspace v2.html）。
 // 原为静态复刻与真实画布共用；复刻脚手架已随 P7 删除，现在只服务 features/。
 import 'package:flutter/widgets.dart';
 
@@ -7,8 +7,8 @@ import '../app_theme.dart';
 import '../tokens.dart';
 
 /// 28px 面板标题条：选中项 surface3 底 + 1px accent 上边，其余 fg5；右侧可挂动作。
-class WsPanelTabs extends StatelessWidget {
-  const WsPanelTabs({
+class InkPanelTabs extends StatelessWidget {
+  const InkPanelTabs({
     super.key,
     required this.tabs,
     this.active = 0,
@@ -87,8 +87,8 @@ class WsPanelTabs extends StatelessWidget {
 }
 
 /// 面板标题条右侧的「≡」。
-class WsPanelMenuGlyph extends StatelessWidget {
-  const WsPanelMenuGlyph({super.key});
+class InkPanelMenuGlyph extends StatelessWidget {
+  const InkPanelMenuGlyph({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -101,9 +101,9 @@ class WsPanelMenuGlyph extends StatelessWidget {
 }
 
 /// 次级按钮：透明底 + 1px controlStrong 边 + 3px 圆角。
-class WsSecondaryButton extends StatelessWidget {
+class InkSecondaryButton extends StatelessWidget {
   /// [height] 为稿上 content 高，实际 +2 边框。
-  const WsSecondaryButton(this.label, {super.key, this.height = 24});
+  const InkSecondaryButton(this.label, {super.key, this.height = 24});
   final String label;
   final double height;
 
@@ -124,9 +124,9 @@ class WsSecondaryButton extends StatelessWidget {
 }
 
 /// 主按钮：琥珀底 + onAccent 深色字 + 500 字重。
-class WsPrimaryButton extends StatelessWidget {
+class InkPrimaryButton extends StatelessWidget {
   /// [height] 为稿上 content 高，实际 +2 边框。
-  const WsPrimaryButton(
+  const InkPrimaryButton(
     this.label, {
     super.key,
     this.height = 24,
@@ -165,8 +165,8 @@ class WsPrimaryButton extends StatelessWidget {
 }
 
 /// 无底色 + 1px control 底线的 22px 字段容器。
-class WsUnderlineField extends StatelessWidget {
-  const WsUnderlineField({super.key, required this.child, this.width});
+class InkUnderlineField extends StatelessWidget {
+  const InkUnderlineField({super.key, required this.child, this.width});
   final Widget child;
   final double? width;
 
@@ -184,15 +184,15 @@ class WsUnderlineField extends StatelessWidget {
 }
 
 /// 下拉：底线字段 + 右侧 ▼。
-class WsSelect extends StatelessWidget {
-  const WsSelect(this.value, {super.key});
+class InkSelect extends StatelessWidget {
+  const InkSelect(this.value, {super.key});
   final String value;
 
   @override
   Widget build(BuildContext context) {
     final c = context.inkColors;
     final t = context.inkTypography;
-    return WsUnderlineField(
+    return InkUnderlineField(
       child: Row(
         children: <Widget>[
           Expanded(child: Text(value, style: t.body.copyWith(color: c.fg2), maxLines: 1, overflow: TextOverflow.ellipsis)),
@@ -204,14 +204,14 @@ class WsSelect extends StatelessWidget {
 }
 
 /// 只读等宽文本字段。
-class WsMonoField extends StatelessWidget {
-  const WsMonoField(this.value, {super.key});
+class InkMonoField extends StatelessWidget {
+  const InkMonoField(this.value, {super.key});
   final String value;
 
   @override
   Widget build(BuildContext context) {
     final c = context.inkColors;
-    return WsUnderlineField(
+    return InkUnderlineField(
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(value, style: context.inkTypography.mono.copyWith(color: c.fg2), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -221,8 +221,8 @@ class WsMonoField extends StatelessWidget {
 }
 
 /// 滑块：2px 轨道 + 琥珀已填充段 + 10px 圆钮 + 右侧 40px 等宽琥珀数值。
-class WsSlider extends StatelessWidget {
-  const WsSlider({super.key, required this.fraction, required this.value});
+class InkSlider extends StatelessWidget {
+  const InkSlider({super.key, required this.fraction, required this.value});
   final double fraction;
   final String value;
 
@@ -268,8 +268,8 @@ class WsSlider extends StatelessWidget {
 }
 
 /// 开关：26×14 胶囊，开启琥珀底、关闭 controlStrong，10px 圆钮。
-class WsToggle extends StatelessWidget {
-  const WsToggle({super.key, required this.on, required this.label});
+class InkToggle extends StatelessWidget {
+  const InkToggle({super.key, required this.on, required this.label});
   final bool on;
   final String label;
 
@@ -307,8 +307,8 @@ class WsToggle extends StatelessWidget {
 }
 
 /// 1px 圆角小方点（6 / 8 px）。
-class WsSquareDot extends StatelessWidget {
-  const WsSquareDot({super.key, required this.size, required this.color});
+class InkSquareDot extends StatelessWidget {
+  const InkSquareDot({super.key, required this.size, required this.color});
   final double size;
   final Color color;
 

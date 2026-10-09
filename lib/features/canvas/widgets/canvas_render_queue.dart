@@ -19,7 +19,7 @@ import '../../../core/di/job_queue.dart';
 import '../../../core/di/providers.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
@@ -68,7 +68,7 @@ class CanvasRenderQueue extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          WsPanelTabs(
+          InkPanelTabs(
             tabs: <String>[l.canvasRenderQueue, l.shellTabSequence, l.renderQueueTabExportHistory],
             badge: active.isEmpty ? null : '${active.length}',
             trailing: Padding(

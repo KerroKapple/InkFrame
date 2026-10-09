@@ -2,7 +2,7 @@
 //
 // 三标签「画布 / 资产 / 角色」——P4 起「角色」页有真内容（CharacterLibraryPanel）；
 // 「资产」仍无页面体，故只画不挂点击（不给它假的可点态）。
-// 页签条为什么在本文件里重画：theme 层的 WsPanelTabs 没有 onTap，而它是另一条线
+// 页签条为什么在本文件里重画：theme 层的 InkPanelTabs 没有 onTap，而它是另一条线
 // （批量复刻屏）也在用的共享件，这轮不动它；这里就地复刻同一几何并挂上点击。
 // 22px 筛选字段：只属于「画布」页（稿上角色页那个位置是说明行），随页签切换。
 // 画布树：activeProject 下的画布（workspaceProjectsProvider），行高 26，点击 openCanvas；
@@ -13,7 +13,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/active_project.dart';
@@ -69,7 +69,7 @@ class _CanvasProjectPanelState extends ConsumerState<CanvasProjectPanel> {
         children: <Widget>[
           _PanelTabs(
             active: tab.index,
-            trailing: const WsPanelMenuGlyph(),
+            trailing: const InkPanelMenuGlyph(),
             tabs: <(String, VoidCallback?)>[
               (
                 l.projectPanelCanvases,
@@ -144,7 +144,7 @@ class _CanvasesPage extends ConsumerWidget {
       children: <Widget>[
         Padding(
           padding: const EdgeInsets.fromLTRB(InkSpacing.sm, InkSpacing.sm, InkSpacing.sm, InkSpacing.xs),
-          child: WsUnderlineField(
+          child: InkUnderlineField(
             child: TextField(
               controller: filter,
               onChanged: (_) => onFilterChanged(),
@@ -189,7 +189,7 @@ class _CanvasesPage extends ConsumerWidget {
   }
 }
 
-/// 可点的页签条。几何与 theme 层的 WsPanelTabs 逐项一致（29 高 = 28 content + 1px 下沿，
+/// 可点的页签条。几何与 theme 层的 InkPanelTabs 逐项一致（29 高 = 28 content + 1px 下沿，
 /// 每格左右 12，选中 = surface3 底 + 1px accent 上边 + bodyStrong/fg1）；
 /// 差别只有一个：每格挂 onTap，null 即该页不可达（不做假可点）。
 class _PanelTabs extends StatelessWidget {
@@ -204,7 +204,7 @@ class _PanelTabs extends StatelessWidget {
     final c = context.inkColors;
     final t = context.inkTypography;
     return Container(
-      height: WsPanelTabs.height,
+      height: InkPanelTabs.height,
       decoration: BoxDecoration(
         color: c.surface2,
         border: Border(bottom: BorderSide(color: c.borderStrong)),
@@ -232,7 +232,7 @@ class _PanelTabs extends StatelessWidget {
                           behavior: HitTestBehavior.opaque,
                           onTap: tabs[i].$2,
                           child: Container(
-                            height: WsPanelTabs.height - 1,
+                            height: InkPanelTabs.height - 1,
                             padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
                             alignment: Alignment.center,
                             decoration: i == active
@@ -324,7 +324,7 @@ class _NodeRow extends StatelessWidget {
         color: selected ? c.surface5 : null,
         child: Row(
           children: <Widget>[
-            WsSquareDot(size: 6, color: selected ? c.accent : c.fg5),
+            InkSquareDot(size: 6, color: selected ? c.accent : c.fg5),
             const SizedBox(width: InkSpacing.sm),
             Expanded(
               child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,

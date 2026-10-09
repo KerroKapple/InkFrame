@@ -16,7 +16,7 @@ import '../../../core/models/provider_capabilities.dart';
 import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
@@ -125,7 +125,7 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
         children: <Widget>[
           Row(
             children: <Widget>[
-              WsSquareDot(size: 6, color: c.accent),
+              InkSquareDot(size: 6, color: c.accent),
               const SizedBox(width: InkSpacing.sm),
               Flexible(
                 child: Text(nodeDisplayName(context, node),
@@ -274,7 +274,7 @@ class _GenerateButton extends StatelessWidget {
           onTap: enabled ? onTap : null,
           child: Opacity(
             opacity: enabled ? 1 : 0.5,
-            child: WsPrimaryButton(
+            child: InkPrimaryButton(
               label,
               height: 28,
               horizontalPadding: InkSpacing.s14,
