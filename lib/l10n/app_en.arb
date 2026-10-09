@@ -603,8 +603,10 @@
   },
 
 
-  "exportVideoTooltip": "Export video",
-  "exportVideoDisabledTooltip": "No video results on this canvas yet",
+  "exportVideoLabel": "Export video",
+  "exportVideoReadyTooltip": "Join the video shots on this canvas into one mp4, in narrative-chain order",
+  "exportVideoNoResultsTooltip": "No video results on this canvas yet",
+  "exportVideoNoProjectTooltip": "No project context — reopen this canvas from Studio",
   "exportVideoDialogTitle": "Export video",
   "exportVideoDialogHint": "Selected clips are joined in list order.",
   "exportVideoOutputNameLabel": "Output file name (optional)",

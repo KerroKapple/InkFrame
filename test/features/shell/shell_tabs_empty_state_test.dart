@@ -191,17 +191,23 @@ const _shotB = CanvasNode(
 
 /// 播种外壳态（canvasId 是 ShellState 的派生投影，禁止 override 投影本身）。
 ///
-/// 打开画布的那一支必须同时带 project：_open 的 projectId 现在走
-/// ShellState.project（spec §8.2），而生产侧三个 openCanvas 调用点全都带
-/// withProject，所以"有 canvasId 却没有 project"不是可达态。
-Override _shellWith({String? canvasId}) => shellControllerProvider.overrideWith(
+/// 打开画布的那一支默认同时带 project：_open 的 projectId 现在走
+/// ShellState.project（spec §8.2），生产侧的 openCanvas 调用点基本都带
+/// withProject。[withProject] 传 false 用来造「有画布、无项目上下文」这一态：
+/// 它是 ShellState 构造得出来的合法态（`canvas_project_panel` 那个不带
+/// withProject 的调用点就依赖"沿用旧值"），导出按钮的第二条阻断判据
+/// （`s.project != null`）只在这一态下可观测。
+Override _shellWith({String? canvasId, bool withProject = true}) =>
+    shellControllerProvider.overrideWith(
       () => ShellNavigator(
         initial: canvasId == null
             ? const ShellState()
             : ShellState(
                 tab: ShellTab.canvas,
                 canvasId: canvasId,
-                project: const ProjectRef(id: 'p1', name: 'Alpha'),
+                project: withProject
+                    ? const ProjectRef(id: 'p1', name: 'Alpha')
+                    : null,
               ),
       ),
     );
@@ -224,12 +230,13 @@ Future<void> _pumpExport(
   WidgetTester tester,
   List<CanvasNode> nodes, {
   List<CanvasEdge> edges = const <CanvasEdge>[],
+  bool withProject = true,
 }) async {
   await pumpInkApp(
     tester,
     const Scaffold(body: ExportTab()),
     overrides: <Override>[
-      _shellWith(canvasId: 'c1'),
+      _shellWith(canvasId: 'c1', withProject: withProject),
       canvasNodesControllerProvider
           .overrideWith(() => _FakeNodesController(nodes)),
       canvasEdgesControllerProvider
@@ -285,7 +292,27 @@ void main() {
 
       expect(find.byIcon(Icons.movie_outlined), findsOneWidget);
       expect(_cta(tester, Icons.movie_outlined).onPressed, isNotNull);
-      expect(_tooltip(tester, Icons.movie_outlined), 'Export video');
+      expect(_cta(tester, Icons.movie_outlined).label, 'Export video',
+          reason: '按钮面上说「做什么」');
+      expect(
+        _tooltip(tester, Icons.movie_outlined),
+        'Join the video shots on this canvas into one mp4, '
+            'in narrative-chain order',
+        reason: '悬停说「点了会发生什么」——顺序是叙事链序，这是 tooltip 唯一'
+            '能告诉用户、按钮面上放不下的信息',
+      );
+    });
+
+    // BOARD 旧债：label 与 tooltip 曾经是同一个 ARB key（两处都写「导出视频」），
+    // 悬停提示零信息量。这条钉死"两者不同句"，而不只是各自取值对不对——
+    // 把两个键的取值改回同一句时它必须红。
+    testWidgets('可用态下 label 与 tooltip 不是同一句', (tester) async {
+      await _pumpExport(tester, <CanvasNode>[_videoResult('n1')]);
+
+      expect(
+        _tooltip(tester, Icons.movie_outlined),
+        isNot(_cta(tester, Icons.movie_outlined).label),
+      );
     });
 
     testWidgets('无 video result（仅 config / 无 videoUrl）→ 禁用 + 说明 tooltip',
@@ -312,6 +339,28 @@ void main() {
       expect(
         _tooltip(tester, Icons.movie_outlined),
         'No video results on this canvas yet',
+      );
+      expect(_cta(tester, Icons.movie_outlined).label, 'Export video',
+          reason: '禁用时按钮面文案不变——变的只是 tooltip 讲的原因');
+    });
+
+    // 门控是两条合取（有 video result 【且】外壳有项目上下文，BOARD 210），
+    // 所以禁用态有两种原因。Tooltip 必须讲【第一条阻断原因】（交付面板主按钮
+    // 同款做法）：此前两种原因共用一句「画布上还没有视频生成结果」，在"有产物、
+    // 但没有项目上下文"这一态下那句话是**假的**，用户照着它去生成只会更困惑。
+    testWidgets('有 video result 但无项目上下文 → 禁用 + tooltip 讲项目原因',
+        (tester) async {
+      await _pumpExport(
+        tester,
+        <CanvasNode>[_videoResult('n1')],
+        withProject: false,
+      );
+
+      expect(_cta(tester, Icons.movie_outlined).onPressed, isNull);
+      expect(
+        _tooltip(tester, Icons.movie_outlined),
+        'No project context — reopen this canvas from Studio',
+        reason: '有产物却说"还没有视频生成结果"是撒谎，必须报真正的阻断原因',
       );
     });
 

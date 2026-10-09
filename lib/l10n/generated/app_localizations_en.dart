@@ -1432,11 +1432,19 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get exportVideoTooltip => 'Export video';
+  String get exportVideoLabel => 'Export video';
 
   @override
-  String get exportVideoDisabledTooltip =>
+  String get exportVideoReadyTooltip =>
+      'Join the video shots on this canvas into one mp4, in narrative-chain order';
+
+  @override
+  String get exportVideoNoResultsTooltip =>
       'No video results on this canvas yet';
+
+  @override
+  String get exportVideoNoProjectTooltip =>
+      'No project context — reopen this canvas from Studio';
 
   @override
   String get exportVideoDialogTitle => 'Export video';

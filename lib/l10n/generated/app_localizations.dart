@@ -2642,17 +2642,29 @@ abstract class AppLocalizations {
   /// **'{count, plural, =0{No assets} =1{1 asset} other{{count} assets}}'**
   String galleryItemCount(int count);
 
-  /// No description provided for @exportVideoTooltip.
+  /// No description provided for @exportVideoLabel.
   ///
   /// In en, this message translates to:
   /// **'Export video'**
-  String get exportVideoTooltip;
+  String get exportVideoLabel;
 
-  /// No description provided for @exportVideoDisabledTooltip.
+  /// No description provided for @exportVideoReadyTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Join the video shots on this canvas into one mp4, in narrative-chain order'**
+  String get exportVideoReadyTooltip;
+
+  /// No description provided for @exportVideoNoResultsTooltip.
   ///
   /// In en, this message translates to:
   /// **'No video results on this canvas yet'**
-  String get exportVideoDisabledTooltip;
+  String get exportVideoNoResultsTooltip;
+
+  /// No description provided for @exportVideoNoProjectTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'No project context — reopen this canvas from Studio'**
+  String get exportVideoNoProjectTooltip;
 
   /// No description provided for @exportVideoDialogTitle.
   ///

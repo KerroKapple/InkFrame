@@ -568,8 +568,10 @@
   },
 
 
-  "exportVideoTooltip": "导出视频",
-  "exportVideoDisabledTooltip": "画布上还没有视频生成结果",
+  "exportVideoLabel": "导出视频",
+  "exportVideoReadyTooltip": "按叙事链顺序把画布上的视频镜头拼成一个 mp4",
+  "exportVideoNoResultsTooltip": "画布上还没有视频生成结果",
+  "exportVideoNoProjectTooltip": "没有项目上下文——请从 Studio 重新打开这个画布",
   "exportVideoDialogTitle": "导出视频",
   "exportVideoDialogHint": "选中的视频将按列表顺序拼接。",
   "exportVideoOutputNameLabel": "输出文件名（可选）",
