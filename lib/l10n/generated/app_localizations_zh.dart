@@ -1381,10 +1381,16 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get exportVideoTooltip => '导出视频';
+  String get exportVideoLabel => '导出视频';
 
   @override
-  String get exportVideoDisabledTooltip => '画布上还没有视频生成结果';
+  String get exportVideoReadyTooltip => '按叙事链顺序把画布上的视频镜头拼成一个 mp4';
+
+  @override
+  String get exportVideoNoResultsTooltip => '画布上还没有视频生成结果';
+
+  @override
+  String get exportVideoNoProjectTooltip => '没有项目上下文——请从 Studio 重新打开这个画布';
 
   @override
   String get exportVideoDialogTitle => '导出视频';

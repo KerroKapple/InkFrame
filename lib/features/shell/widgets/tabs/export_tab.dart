@@ -36,10 +36,14 @@ class ExportTab extends ConsumerWidget {
     }
     // BOARD 210：可用性 = 有可导出的 video result【且】外壳有项目上下文——与 _open 里
     // projectId 的来源同源，不再从节点数据摸 project_id。
-    final bool enabled = ref.watch(
-          canvasNodesControllerProvider(canvasId).select(canExportVideo),
-        ) &&
-        ref.watch(shellControllerProvider.select((ShellState s) => s.project != null));
+    // 两条判据分开留着：禁用态的 tooltip 要讲【第一条阻断原因】（交付面板主按钮
+    // 同款做法），合成一个 bool 就报不出是哪一条挡的。
+    final bool hasVideoResult = ref.watch(
+      canvasNodesControllerProvider(canvasId).select(canExportVideo),
+    );
+    final bool hasProject = ref
+        .watch(shellControllerProvider.select((ShellState s) => s.project != null));
+    final bool enabled = hasVideoResult && hasProject;
     // 【必须显式订阅边控制器】同 sequence_tab 的理由，症状不同且更阴：边是
     // autoDispose family，无人订阅时 _open 里 ref.read 拿到 AsyncLoading →
     // edges 落空 → orderVideoNodesForExport 静默退化成非叙事链序（EX-1′ 失效），
@@ -48,9 +52,15 @@ class ExportTab extends ConsumerWidget {
     ref.watch(canvasEdgesControllerProvider(canvasId).select((_) => true));
     return Center(
       child: Tooltip(
-        message: enabled ? l.exportVideoTooltip : l.exportVideoDisabledTooltip,
+        // label 说「做什么」，tooltip 说「点了会发生什么 / 为什么现在不能点」。
+        // 两者曾经共用 exportVideoTooltip 一个键，于是悬停提示零信息量（BOARD 旧债）。
+        message: !hasVideoResult
+            ? l.exportVideoNoResultsTooltip
+            : !hasProject
+                ? l.exportVideoNoProjectTooltip
+                : l.exportVideoReadyTooltip,
         child: InkGhostButton(
-          label: l.exportVideoTooltip,
+          label: l.exportVideoLabel,
           icon: Icons.movie_outlined,
           onPressed: enabled ? () => _open(context, ref, canvasId) : null,
         ),

@@ -7,6 +7,7 @@
 // 1.0/1.3 下五个 chip 的自然宽度之和 + 左右 gutter，断言它不超过阈值。文案变长
 // 或字重变化导致 chip 撑破阈值时这条会红——阈值与实际渲染宽度不会静默脱钩。
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
@@ -18,6 +19,15 @@ import 'package:inkframe/theme/tokens.dart';
 import '../../_harness/test_app.dart';
 
 Finder _tab(ShellTab t) => find.byKey(ShellTabBar.keyOf(t));
+
+FocusNode _tabFocus(WidgetTester tester, ShellTab t) => tester
+    .widget<FocusableActionDetector>(
+      find.descendant(
+        of: _tab(t),
+        matching: find.byType(FocusableActionDetector),
+      ),
+    )
+    .focusNode!;
 
 Future<double> _naturalChipRunWidth(
   WidgetTester tester, {
@@ -83,6 +93,43 @@ void main() {
     await tester.tap(_tab(ShellTab.gallery));
     await tester.pump();
     expect(container.read(shellControllerProvider).tab, ShellTab.gallery);
+  });
+
+  // 键盘用户的那一条路：Tab 进标签条 → Enter 切标签。这条跨两层
+  // （theme 层的 chip 可聚焦/可激活 + 本层的 onTap 接到 nav.goTab），
+  // 所以放在接线层测，不只在 theme 层测组件回调被调用。
+  testWidgets('键盘可达：Tab 走到「画廊」格，按 Enter 即切标签', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: Column(children: <Widget>[ShellTabBar()])),
+      surfaceSize: const Size(1440, 400),
+    );
+    final ProviderContainer container = ProviderScope.containerOf(
+      tester.element(find.byType(ShellTabBar)),
+      listen: false,
+    );
+    await tester.pump();
+    expect(container.read(shellControllerProvider).tab, ShellTab.studio);
+
+    // 标签条里唯一可聚焦的东西就是五个 chip（右侧动作是 GestureDetector），
+    // 声明序 == 渲染序 == 焦点遍历序 ⇒ 第 4 次 Tab 落在 gallery。
+    for (int i = 0; i < 4; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+    }
+    expect(
+      _tabFocus(tester, ShellTab.gallery).hasPrimaryFocus,
+      isTrue,
+      reason: 'chip 可聚焦且遍历序与渲染序一致，键盘才能预期地走到某一格',
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(
+      container.read(shellControllerProvider).tab,
+      ShellTab.gallery,
+      reason: '回车必须和鼠标点击走同一条 nav.goTab——否则键盘用户到了也按不动',
+    );
   });
 
   testWidgets('阈值实测：en / zh × textScale 1.0/1.3 的自然宽度都装得下',

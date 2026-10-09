@@ -95,7 +95,7 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
         CommandAction(
           id: 'exportVideo',
           icon: Icons.file_download_outlined,
-          label: l.exportVideoTooltip,
+          label: l.exportVideoLabel,
           run: (c, r) async => _openExport(c, r, canvasId),
         ),
       _backToStudio(l),

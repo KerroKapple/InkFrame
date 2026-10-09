@@ -17,10 +17,28 @@
 // 阈值取值是实测得来的，钉住它的断言在
 // test/features/shell/shell_tab_bar_test.dart（那里才拿得到真实 en/zh 文案）：
 // 「五个标签的自然宽度之和 + 左右 gutter ≤ compactBelow」。
+//
+// 【键盘可达】chip 走 FocusableActionDetector：可 Tab 聚焦、Enter / Space 激活、
+// 聚焦时画一圈 accent 焦点环。标签条是全应用最高频交互，此前它是裸
+// GestureDetector + Semantics，键盘用户根本到不了（BOARD 旧债）。
+// 用例在 test/theme/ink_shell_tab_bar_test.dart「键盘可达性」组，
+// 端到端那条（Tab 到画廊格 + Enter 真切标签）在
+// test/features/shell/shell_tab_bar_test.dart。
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../app_theme.dart';
 import '../tokens.dart';
+
+/// Enter / Space → 激活。**不依赖 WidgetsApp 的默认 shortcuts 表**：theme 层
+/// 是可复用组件，不该假设宿主一定是 MaterialApp；显式写出来也让"哪些键能激活"
+/// 变成读得到的契约而不是框架默认值。
+const Map<ShortcutActivator, Intent> _kActivateChip =
+    <ShortcutActivator, Intent>{
+  SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
+  SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
+  SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
+};
 
 /// 标签栏的一格。**纯数据，刻意不含任何领域类型**——带上 ShellTab 就等于
 /// theme 层又认识 feature 的领域模型了。
@@ -157,7 +175,17 @@ class _ShellTab extends StatefulWidget {
 }
 
 class _ShellTabState extends State<_ShellTab> {
+  /// 由本 State 持有，而不是让 FocusableActionDetector 自己造一个内部节点：
+  /// 测试要断言"焦点此刻落在哪一格"，拿得到节点才测得了。
+  final FocusNode _focus = FocusNode();
   bool _hover = false;
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -188,6 +216,7 @@ class _ShellTabState extends State<_ShellTab> {
             ],
           );
     final bool enabled = item.onTap != null;
+    final VoidCallback? onTap = item.onTap;
 
     return Semantics(
       button: true,
@@ -196,29 +225,59 @@ class _ShellTabState extends State<_ShellTab> {
       label: item.label,
       child: Tooltip(
         message: item.label,
+        // hover 仍走外层 MouseRegion（光标 + hover 色与改造前逐字相同）；
+        // FocusableActionDetector 只负责"焦点与键盘激活"这一件新事。
         child: MouseRegion(
           cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
           onEnter: (_) => setState(() => _hover = true),
           onExit: (_) => setState(() => _hover = false),
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: item.onTap,
-            child: Opacity(
-              opacity: item.dimmed ? 0.5 : 1,
-              child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: InkSpacing.md),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                // 选中项在纯图标条上只靠琥珀下边框太弱 ⇒ compact 下给 surface5 底。
-                color: widget.compact && item.selected ? colors.surface5 : null,
-                border: Border(
-                  bottom: BorderSide(
-                    color: item.selected ? colors.accent : Colors.transparent,
-                    width: 2,
+          child: FocusableActionDetector(
+            focusNode: _focus,
+            // onTap == null ⇒ 既不可点也不可聚焦：Tab 直接跳过这一格，
+            // 不会出现"聚焦上去按回车什么都不发生"的假可达。
+            enabled: enabled,
+            onShowFocusHighlight: (bool v) {
+              if (v != _focused) setState(() => _focused = v);
+            },
+            shortcuts: _kActivateChip,
+            actions: <Type, Action<Intent>>{
+              ActivateIntent: CallbackAction<ActivateIntent>(
+                // 与鼠标点击**同一个回调**：键盘与指针不可能走岔。
+                onInvoke: (ActivateIntent intent) {
+                  onTap?.call();
+                  return null;
+                },
+              ),
+            },
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: item.onTap,
+              child: Opacity(
+                opacity: item.dimmed ? 0.5 : 1,
+                child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: InkSpacing.md),
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  // 选中项在纯图标条上只靠琥珀下边框太弱 ⇒ compact 下给 surface5 底。
+                  color: widget.compact && item.selected ? colors.surface5 : null,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: item.selected ? colors.accent : Colors.transparent,
+                      width: 2,
+                    ),
                   ),
                 ),
-              ),
-                child: content,
+                // 焦点环走【前景装饰】：foregroundDecoration 不进
+                // Container 的 _paddingIncludingDecoration，所以加环不会把 chip
+                // 撑宽/撑高，既有视觉与宽度阈值实测都不动。颜色取 accent token
+                // （与选中态同色但形状不同：选中是 2px 下边框，焦点是一圈 1px 环）。
+                foregroundDecoration: !_focused
+                    ? null
+                    : BoxDecoration(
+                        border: Border.all(color: colors.accent, width: 1),
+                      ),
+                  child: content,
+                ),
               ),
             ),
           ),

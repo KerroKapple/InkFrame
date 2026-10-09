@@ -43,6 +43,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | 导出的 `projectId` 与**门控**都取自 `ShellState.project`，不从节点数据摸。写点：`export/open_export_dialog.dart`（导出标签 / 序列标签「导出 mp4」共用）+ `command_palette/command_actions.dart`；门控 = `canExportVideo(nodes) && shell.project != null`（BOARD 210，P2 收掉） | 启用判据与 projectId 来源必须同源：旧写法门控看 `nodes.first.projectId`、动作看外壳态，外壳里项目上下文完好但原序首个 video 的 `project_id` 为空时"功能莫名其妙没了"（R86 / BOARD 210） | `shell_tabs_empty_state_test.dart` 的点击类用例（夹具 `_shellWith` 带 `ProjectRef`）+ `command_palette_test.dart` 的 R86 与「无项目上下文不出 Export video」用例 |
 | 四处空态的「去 Studio」CTA 真的能走（不是哑键、不自跳），正文各标签不串 | D12：空态必须是**可行动的引导**，用户不能觉得卡死。该空态在 T7 之前的生产代码里根本不可达，本 PR 让它第一次真正可达 | `test/features/shell/shell_empty_state_cta_test.dart`（四标签各一例；文案与 CTA 两半各有独立变异证明，见该文件头注） |
 | 标签条在浮层打开时仍可见、仍可点（点任一标签 = 关浮层 + 切标签） | 关浮层的途径之一（其余：Esc / ✕ / 完成 / ⌘K） | `test/features/shell/shell_tab_bar_overlay_test.dart` |
+| 标签 chip **键盘可达**：可 Tab 聚焦、Enter / Space 激活（与鼠标点击同一个回调）、`onTap == null` 的格不可聚焦；焦点环走 `accent` token 且画在 `foregroundDecoration` 上（不参与布局 ⇒ 不动宽度阈值） | 标签条是全应用最高频交互，键盘用户此前根本到不了（chip 是裸 `GestureDetector` + `Semantics`）。激活必须复用同一个 `onTap`，否则键盘与指针两条路会走岔 | `test/theme/ink_shell_tab_bar_test.dart`「键盘可达性」五条 + `test/features/shell/shell_tab_bar_test.dart`「Tab 到画廊格按 Enter 即切标签」（跨层那条） |
 | 浮层打开时标签体**仍在台上**（遮暗可见），但点不穿、不持焦 | 浮层形态（Screens 稿第 3 屏）：原界面在下面看得见。点穿由 `ShellOverlayLayer` 的 `ModalBarrier` 拦，失焦由 `ShellContentStack` 的显式 `ExcludeFocus` 保证——这两件事以前是外层 IndexedStack 代劳的 | `test/app/app_routing_test.dart`（`onstage: true, hittable: false`）+ `test/features/shell/shell_focus_test.dart` V2 |
 | 浮层 Esc 分层：编辑框开着只关编辑框，没有编辑框才关浮层；开关浮层不写路由（不清 canvasId、不切标签） | 设置浮层自己持焦并挂 `CallbackShortcuts`；`showDialog` 的编辑框在 Navigator 另一条路由上，Esc 到不了浮层。D11 那条债由此解决 | `test/features/settings/settings_overlay_test.dart` |
 | **同一时刻只保活一个 `canvasId`**：五槽保活是按 `ShellTab` 分的，不是按 `canvasId` 分的。`canvas` 那一槽从头到尾只有一个 `KeyedSubtree('shellTabBody-canvas')`，`CanvasTab` 内部 `watch(currentCanvasIdProvider)` 变了就在同一个槽位里换内容 | 从画布 A 切到画布 B 不是"多开一个保活槽"，是把槽位里的树换成 B；A 的滚动位置/本地 UI 态随之丢弃——这是当前设计的边界，不是 bug | `shell_keep_alive_host_test.dart`（五槽 == 五个 `ShellTab`，与 `canvasId` 无关） |
@@ -69,7 +70,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 
 | 路径 | 职责 |
 |---|---|
-| `models/shell_state.dart` | `ShellTab` / `ShellOverlay` / `ProjectRef` / `ShellState`（手写不可变值对象，7 个具名迁移，无 copyWith） |
+| `models/shell_state.dart` | `ShellTab` / `ShellOverlay` / `ProjectRef` / `ShellState`（手写不可变值对象，6 个具名迁移，无 copyWith） |
 | `providers/shell_controller.dart` | `ShellNavigator` + `shellControllerProvider`——外壳状态的唯一写入口 |
 | `providers/active_project.dart` | `activeProjectProvider`（`ShellState.project` 的只读投影） |
 | `providers/gallery_dirty.dart` | `galleryDirtyProvider`——任一 job 转 `JobSucceeded` 即置脏；画廊标签由不可见→可见时刷一次再清脏（T9）。**不是实时刷新**：用户正看着画廊时不动，切走再切回才更新 |

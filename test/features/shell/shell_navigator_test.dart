@@ -92,10 +92,13 @@ void main() {
   });
 
   // R17 fix round 1：ShellNavigator 是从 T6 起所有导航接线的唯一入口，
-  // 委托接错是静默失效——setProject/openCanvas/resetSession 此前只被
-  // ShellState 自身的同名方法测试间接覆盖，navigator 这一层的委托线本身
-  // 缺直接用例。变异已证实：把 openCanvas 错接成 closeOverlay，
-  // 22 条旧用例全绿——这三条补上后堵住这个缺口。
+  // 委托接错是静默失效——openCanvas/resetSession 此前只被 ShellState 自身的
+  // 同名方法测试间接覆盖，navigator 这一层的委托线本身缺直接用例。变异已证实：
+  // 把 openCanvas 错接成 closeOverlay，22 条旧用例全绿——补上后堵住这个缺口。
+  //
+  // 原本这里还有第三条「setProject 委托」。那个迁移是死 API（lib/ 下只有定义、
+  // 消费点全在测试里），已随它的定义一起删——留着就是让测试替一个没人调用的
+  // 方法续命。守这件事的是 test/quality/shell_transition_reachability_test.dart。
 
   test('openCanvas 委托：canvasId 写入传入值，且落在 canvas 标签', () {
     final c = makeContainer(const ShellState(tab: ShellTab.studio, project: p1));
@@ -106,20 +109,6 @@ void main() {
     expect(c.read(shellControllerProvider).tab, ShellTab.canvas,
         reason: 'openCanvas 特有的状态变化：必须落在 canvas 标签');
     expect(c.read(shellControllerProvider).project, p1);
-  });
-
-  test('setProject 委托：只换 project，不动 tab 与 canvasId', () {
-    const p2 = ProjectRef(id: 'p2', name: 'Beta');
-    final c = makeContainer(
-        const ShellState(tab: ShellTab.canvas, canvasId: 'c1', project: p1));
-    final nav = c.read(shellControllerProvider.notifier);
-    nav.setProject(p2);
-    expect(c.read(shellControllerProvider).project, p2,
-        reason: 'setProject 特有的状态变化：project 必须换成传入值');
-    expect(c.read(shellControllerProvider).tab, ShellTab.canvas,
-        reason: 'setProject 不该动 tab——否则会和 openGallery/openCanvas 撞车');
-    expect(c.read(shellControllerProvider).canvasId, 'c1',
-        reason: 'setProject 不该动 canvasId——否则会当场毁掉画布保活');
   });
 
   test('resetSession 委托：从非平凡起始态回到 isPristine', () {

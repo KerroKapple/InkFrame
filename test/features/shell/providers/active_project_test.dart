@@ -29,7 +29,10 @@ void main() {
     );
   });
 
-  test('setProject 后投影跟着变', () {
+  // 原本这条走 setProject——那个迁移是死 API（lib/ 下只有定义），已删。
+  // 本条测的是投影【跟着真相源变】，换成任一真实在用的换项目迁移都成立，
+  // 这里取 openGallery（Studio 点项目卡走的就是它）。
+  test('openGallery 换项目后投影跟着变', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
 
@@ -37,7 +40,7 @@ void main() {
 
     container
         .read(shellControllerProvider.notifier)
-        .setProject(const ProjectRef(id: 'p2', name: 'Beta'));
+        .openGallery(const ProjectRef(id: 'p2', name: 'Beta'));
 
     expect(
       container.read(activeProjectProvider),
