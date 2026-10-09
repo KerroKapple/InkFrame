@@ -1,4 +1,4 @@
-// ShellState 的 7 个具名迁移 + 字段级相等性 + isPristine 真值表。
+// ShellState 的 6 个具名迁移 + 字段级相等性 + isPristine 真值表。
 // 手写值对象、无 freezed：== / hashCode 漏一个字段的症状是静默丢导航，
 // 没有任何现有测试会红，所以这里表驱动逐字段钉死。
 import 'package:flutter_test/flutter_test.dart';
@@ -58,16 +58,6 @@ void main() {
       expect(n.canvasId, 'c1');
       expect(n.overlay, isNull,
           reason: 'M-5：起点已经打开了浮层，这里才能真正观测到 openGallery 清浮层的动作');
-    });
-
-    test('setProject 只换上下文，不动标签与浮层', () {
-      const s = ShellState(
-        tab: ShellTab.canvas, overlay: ShellOverlay.settings, canvasId: 'c1', project: p1);
-      final n = s.setProject(p2);
-      expect(n.tab, ShellTab.canvas);
-      expect(n.overlay, ShellOverlay.settings);
-      expect(n.canvasId, 'c1');
-      expect(n.project, p2);
     });
 
     test('openOverlay 只加浮层，其余全保留', () {

@@ -82,7 +82,14 @@ class ShellState {
   bool get isPristine =>
       canvasId == null && overlay == null && tab == ShellTab.studio;
 
-  // ===== 7 个具名迁移：全量构造，不存在"忘了清某个字段" =====
+  // ===== 6 个具名迁移：全量构造，不存在"忘了清某个字段" =====
+  //
+  // 【没有 setProject()】——"只换项目、不动标签"这条语义曾经存在过（spec §5.1
+  // 列了它），但从未有任何 UI 动作对应它：切项目一律走 openGallery(ProjectRef)
+  // 或 openCanvas(id, withProject:)。它在 lib/ 下只有定义、全部消费点都在测试里，
+  // 已删。真出现项目切换器这类"原地换项目"的交互时再加回来 + 接上调用点。
+  // 守这条的是 test/quality/shell_transition_reachability_test.dart：
+  // 任何只有定义没有生产调用点的迁移当场红。
 
   ShellState goTab(ShellTab next) =>
       ShellState(tab: next, canvasId: canvasId, project: project);
@@ -102,9 +109,6 @@ class ShellState {
 
   ShellState openGallery(ProjectRef p) =>
       ShellState(tab: ShellTab.gallery, canvasId: canvasId, project: p);
-
-  ShellState setProject(ProjectRef p) => ShellState(
-        tab: tab, overlay: overlay, canvasId: canvasId, project: p);
 
   ShellState openOverlay(ShellOverlay o) => ShellState(
         tab: tab, overlay: o, canvasId: canvasId, project: project);

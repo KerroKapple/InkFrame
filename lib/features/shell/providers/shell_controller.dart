@@ -8,7 +8,7 @@
 // 播种通道失效。此处显式记录豁免理由，不沉默跳过。
 //
 // 写权限天然被收口：ShellState 字段全 final，迁移全在本类内，外部只有
-// read(shellControllerProvider.notifier).<七个方法之一>。因此不需要任何
+// read(shellControllerProvider.notifier).<六个方法之一>。因此不需要任何
 // 正则质量测试来"禁止绕过"。
 //
 // 导航器不做 IO：偏好落盘（lastCanvasId / lastProjectId）留在 open_canvas.dart
@@ -55,7 +55,6 @@ class ShellNavigator extends Notifier<ShellState> {
   void openCanvas(String id, {ProjectRef? withProject}) =>
       _set(state.openCanvas(id, withProject: withProject));
   void openGallery(ProjectRef p) => _set(state.openGallery(p));
-  void setProject(ProjectRef p) => _set(state.setProject(p));
   void openOverlay(ShellOverlay o) => _set(state.openOverlay(o));
   void closeOverlay() => _set(state.closeOverlay());
 
