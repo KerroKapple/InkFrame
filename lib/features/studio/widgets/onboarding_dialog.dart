@@ -21,7 +21,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../canvas/providers/canvas_bootstrap_controller.dart';
@@ -449,7 +449,7 @@ class _Footer extends StatelessWidget {
                     : OnboardingDialog.nextKey,
                 behavior: HitTestBehavior.opaque,
                 onTap: onPrimary,
-                child: WsPrimaryButton(
+                child: InkPrimaryButton(
                   lastStep
                       ? l10n.studioCreateSampleProject
                       : l10n.onboardingNext,

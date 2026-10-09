@@ -12,7 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/providers.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
@@ -52,9 +52,9 @@ class CanvasInspectorPanel extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          WsPanelTabs(
+          InkPanelTabs(
             tabs: <String>[l.inspectorTabProperties, l.inspectorTabStatus, l.inspectorTabHistory],
-            trailing: const WsPanelMenuGlyph(),
+            trailing: const InkPanelMenuGlyph(),
           ),
           Expanded(
             child: node == null
@@ -116,7 +116,7 @@ class _NodeSummary extends ConsumerWidget {
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.borderStrong))),
       child: Row(
         children: <Widget>[
-          WsSquareDot(size: 8, color: c.accent),
+          InkSquareDot(size: 8, color: c.accent),
           const SizedBox(width: InkSpacing.s10),
           Expanded(
             child: Column(

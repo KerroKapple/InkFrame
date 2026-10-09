@@ -18,7 +18,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/components/ink_error_banner.dart';
-import '../../theme/components/ws_primitives.dart';
+import '../../theme/components/ink_primitives.dart';
 import '../../theme/primitives/ink_amber_button.dart';
 import '../../theme/primitives/ink_compact_text_field.dart';
 import '../../theme/primitives/ink_ghost_button.dart';
@@ -212,7 +212,7 @@ class _ResumeBar extends ConsumerWidget {
                 key: resumeKey,
                 behavior: HitTestBehavior.opaque,
                 onTap: () => ref.read(shellControllerProvider.notifier).openCanvas(canvasId, withProject: pref),
-                child: WsPrimaryButton(
+                child: InkPrimaryButton(
                   l.studioResumeAction,
                   height: 26,
                   bordered: false,

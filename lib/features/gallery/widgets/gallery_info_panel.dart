@@ -13,7 +13,7 @@ import '../../../core/models/provider_capabilities.dart' show CameraMovement;
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../canvas/util/camera_labels.dart';
@@ -116,7 +116,7 @@ class _GalleryInfoPanelState extends ConsumerState<GalleryInfoPanel> {
                               ),
                       child: Opacity(
                         opacity: item == null ? 0.5 : 1,
-                        child: WsSecondaryButton(l.galleryLocateInCanvas, height: 26),
+                        child: InkSecondaryButton(l.galleryLocateInCanvas, height: 26),
                       ),
                     ),
                   ),
@@ -130,7 +130,7 @@ class _GalleryInfoPanelState extends ConsumerState<GalleryInfoPanel> {
   }
 }
 
-/// 28px 标签条：选中项 surface3 底 + 1px 琥珀上沿（与 WsPanelTabs 同形，多了点击）。
+/// 28px 标签条：选中项 surface3 底 + 1px 琥珀上沿（与 InkPanelTabs 同形，多了点击）。
 class _Tabs extends StatelessWidget {
   const _Tabs({required this.active, required this.labels, required this.keys, required this.onTap});
   final int active;
@@ -143,7 +143,7 @@ class _Tabs extends StatelessWidget {
     final c = context.inkColors;
     final t = context.inkTypography;
     return Container(
-      height: WsPanelTabs.height,
+      height: InkPanelTabs.height,
       decoration: BoxDecoration(
         color: c.surface2,
         border: Border(bottom: BorderSide(color: c.borderStrong)),

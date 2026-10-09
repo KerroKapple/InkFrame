@@ -16,7 +16,7 @@ import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../settings/providers/api_key_scope_controller.dart';
@@ -466,7 +466,7 @@ class _KeyField extends StatelessWidget {
                   child: Opacity(
                     opacity: canVerify ? 1 : 0.5,
                     // 稿：验证按钮 28 = content 26 + 1px 边 ×2。
-                    child: WsSecondaryButton(
+                    child: InkSecondaryButton(
                       l10n.onboardingKeyVerify,
                       height: 26,
                     ),

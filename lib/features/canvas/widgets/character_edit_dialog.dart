@@ -27,7 +27,7 @@ import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../models/canvas_node.dart';
@@ -430,13 +430,13 @@ class _CharacterEditDialogState extends ConsumerState<CharacterEditDialog> {
         _TapWrap(
           tapKey: const ValueKey<String>('character-cancel'),
           onTap: () => Navigator.of(context).pop(),
-          child: WsSecondaryButton(l.commonCancel, height: 26),
+          child: InkSecondaryButton(l.commonCancel, height: 26),
         ),
         const SizedBox(width: InkSpacing.sm),
         _TapWrap(
           tapKey: const ValueKey<String>('character-save'),
           onTap: _save,
-          child: WsPrimaryButton(
+          child: InkPrimaryButton(
             l.characterSave,
             height: 26,
             horizontalPadding: InkSpacing.s14,

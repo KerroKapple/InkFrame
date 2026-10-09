@@ -30,7 +30,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_shell_tab_bar.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
@@ -111,13 +111,13 @@ class ShellTabBar extends ConsumerWidget {
             key: importPackageKey,
             label: l.studioImportPackage,
             onTap: importBusy ? () {} : () => runProjectImportFlow(context, ref),
-            child: Opacity(opacity: importBusy ? 0.5 : 1, child: WsSecondaryButton(l.studioImportPackage)),
+            child: Opacity(opacity: importBusy ? 0.5 : 1, child: InkSecondaryButton(l.studioImportPackage)),
           ),
           _Action(
             key: newProjectKey,
             label: l.studioNewProject,
             onTap: () => showStudioNewProjectDialog(context, ref),
-            child: WsPrimaryButton(l.studioNewProject, bordered: false),
+            child: InkPrimaryButton(l.studioNewProject, bordered: false),
           ),
         ],
         items: _items(l, s, nav),
@@ -155,7 +155,7 @@ class ShellTabBar extends ConsumerWidget {
                       nav.goTab(ShellTab.canvas);
                       ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(lens.shots[shotIndex].nodeId);
                     },
-              child: Opacity(opacity: canLocate ? 1 : 0.5, child: WsSecondaryButton(l.shellActionLocateInCanvas)),
+              child: Opacity(opacity: canLocate ? 1 : 0.5, child: InkSecondaryButton(l.shellActionLocateInCanvas)),
             ),
           ),
           _lockable(
@@ -164,7 +164,7 @@ class ShellTabBar extends ConsumerWidget {
               key: exportMp4Key,
               label: l.shellActionExportMp4,
               onTap: !canExport ? null : () => openExportVideoDialogForCanvas(context, ref, canvasId),
-              child: Opacity(opacity: canExport ? 1 : 0.5, child: WsSecondaryButton(l.shellActionExportMp4)),
+              child: Opacity(opacity: canExport ? 1 : 0.5, child: InkSecondaryButton(l.shellActionExportMp4)),
             ),
           ),
           _DeliverButton(canvasId: canvasId),
@@ -204,19 +204,19 @@ class ShellTabBar extends ConsumerWidget {
                     nodeSize: defaultNodeSize(CanvasNodeType.shot),
                   ),
                 ),
-                child: WsSecondaryButton(l.shellActionImportScript),
+                child: InkSecondaryButton(l.shellActionImportScript),
               ),
               _Action(
                 key: sequencePreviewKey,
                 label: l.shellActionSequencePreview,
                 onTap: () => nav.goTab(ShellTab.sequence),
-                child: WsSecondaryButton(l.shellActionSequencePreview),
+                child: InkSecondaryButton(l.shellActionSequencePreview),
               ),
               _Action(
                 key: exportVideoKey,
                 label: l.shellActionExportVideo,
                 onTap: () => nav.goTab(ShellTab.export),
-                child: WsPrimaryButton(l.shellActionExportVideo),
+                child: InkPrimaryButton(l.shellActionExportVideo),
               ),
             ],
       items: _items(l, s, nav),
@@ -280,7 +280,7 @@ class _DeliverButton extends ConsumerWidget {
         key: DeliveryKeys.deliverButton,
         label: label,
         onTap: null,
-        child: WsPrimaryButton(label, bordered: false),
+        child: InkPrimaryButton(label, bordered: false),
       );
     }
 
@@ -303,7 +303,7 @@ class _DeliverButton extends ConsumerWidget {
         onTap: enabled ? () => runDeliveryForCanvas(ref, canvasId) : null,
         child: Opacity(
           opacity: enabled ? 1 : 0.5,
-          child: WsPrimaryButton(label, bordered: false),
+          child: InkPrimaryButton(label, bordered: false),
         ),
       ),
     );
@@ -368,7 +368,7 @@ class _GallerySaveAsCharacterState extends ConsumerState<_GallerySaveAsCharacter
                     if (mounted) setState(() => _busy = false);
                   }
                 },
-          child: Opacity(opacity: enabled ? 1 : 0.5, child: WsSecondaryButton(l.gallerySaveAsCharacter)),
+          child: Opacity(opacity: enabled ? 1 : 0.5, child: InkSecondaryButton(l.gallerySaveAsCharacter)),
         ),
       ),
     );

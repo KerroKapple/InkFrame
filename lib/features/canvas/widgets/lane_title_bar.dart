@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ws_primitives.dart';
+import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/tokens.dart';
 import '../models/style_lane.dart';
 import '../util/lane_tint.dart';
@@ -91,7 +91,7 @@ class LaneTitleBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          WsSquareDot(size: 8, color: tint ?? colors.fg6),
+          InkSquareDot(size: 8, color: tint ?? colors.fg6),
           const SizedBox(width: InkSpacing.sm),
           Expanded(child: title),
           const SizedBox(width: InkSpacing.sm),
