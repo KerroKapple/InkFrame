@@ -4,6 +4,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/l10n/l10n_x.dart';
 
 import '../_harness/test_app.dart';
@@ -125,6 +126,56 @@ void main() {
         ),
       );
       expect(s, 'An unknown error occurred.');
+    });
+  });
+
+  group('l10nKeyRejectReason：被拒原因 → 分流文案', () {
+    Future<String> resolveReason(
+      WidgetTester tester,
+      KeyInvalidReason reason, {
+      Locale locale = const Locale('en'),
+    }) async {
+      late String resolved;
+      await pumpInkApp(
+        tester,
+        Builder(
+          builder: (ctx) {
+            resolved = l10nKeyRejectReason(ctx.l10n, reason);
+            return Text(resolved);
+          },
+        ),
+        locale: locale,
+      );
+      return resolved;
+    }
+
+    // 这一条就是本卡的全部意义：三种成因的文案必须两两不同，
+    // 否则「余额不足」仍会被读成「换一把 Key」。
+    testWidgets('三种 reason 的英文文案两两不同且非空', (tester) async {
+      final texts = <String>[];
+      for (final reason in KeyInvalidReason.values) {
+        texts.add(await resolveReason(tester, reason));
+      }
+      expect(texts.every((t) => t.isNotEmpty), isTrue);
+      expect(texts.toSet().length, KeyInvalidReason.values.length);
+    });
+
+    testWidgets('余额不足文案不提「换 Key」，只提充值', (tester) async {
+      final quota =
+          await resolveReason(tester, KeyInvalidReason.insufficientBalance);
+      final invalid = await resolveReason(tester, KeyInvalidReason.invalidKey);
+      expect(quota, contains('balance'));
+      expect(quota, isNot(invalid));
+      expect(invalid.toLowerCase(), contains('invalid'));
+    });
+
+    testWidgets('zh 覆盖三种 reason，且与 en 不同', (tester) async {
+      for (final reason in KeyInvalidReason.values) {
+        final zh = await resolveReason(tester, reason, locale: const Locale('zh'));
+        final en = await resolveReason(tester, reason);
+        expect(zh, isNotEmpty);
+        expect(zh, isNot(en));
+      }
     });
   });
 }

@@ -205,8 +205,16 @@ class AppLocalizationsEn extends AppLocalizations {
       'Saved. The key couldn\'t be verified right now (network or service issue) — it will be checked on first use.';
 
   @override
-  String get settingsApiKeyRejected =>
-      'The provider rejected this key. It was not saved.';
+  String get settingsApiKeyRejectedInvalid =>
+      'The provider rejected this key as invalid. It was not saved.';
+
+  @override
+  String get settingsApiKeyRejectedQuota =>
+      'The key is accepted but the account balance is insufficient. It was not saved — top up the account; replacing the key will not help.';
+
+  @override
+  String get settingsApiKeyRejectedPolicy =>
+      'The provider blocked the check on content-policy grounds. The key was not saved.';
 
   @override
   String get settingsApiKeyCleared => 'Cleared';

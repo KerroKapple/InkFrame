@@ -452,11 +452,23 @@ abstract class AppLocalizations {
   /// **'Saved. The key couldn\'t be verified right now (network or service issue) — it will be checked on first use.'**
   String get settingsApiKeySavedUnverified;
 
-  /// No description provided for @settingsApiKeyRejected.
+  /// No description provided for @settingsApiKeyRejectedInvalid.
   ///
   /// In en, this message translates to:
-  /// **'The provider rejected this key. It was not saved.'**
-  String get settingsApiKeyRejected;
+  /// **'The provider rejected this key as invalid. It was not saved.'**
+  String get settingsApiKeyRejectedInvalid;
+
+  /// No description provided for @settingsApiKeyRejectedQuota.
+  ///
+  /// In en, this message translates to:
+  /// **'The key is accepted but the account balance is insufficient. It was not saved — top up the account; replacing the key will not help.'**
+  String get settingsApiKeyRejectedQuota;
+
+  /// No description provided for @settingsApiKeyRejectedPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider blocked the check on content-policy grounds. The key was not saved.'**
+  String get settingsApiKeyRejectedPolicy;
 
   /// No description provided for @settingsApiKeyCleared.
   ///

@@ -78,7 +78,9 @@
   "settingsApiKeyNotSet": "Not set",
   "settingsApiKeySaved": "Saved",
   "settingsApiKeySavedUnverified": "Saved. The key couldn't be verified right now (network or service issue) — it will be checked on first use.",
-  "settingsApiKeyRejected": "The provider rejected this key. It was not saved.",
+  "settingsApiKeyRejectedInvalid": "The provider rejected this key as invalid. It was not saved.",
+  "settingsApiKeyRejectedQuota": "The key is accepted but the account balance is insufficient. It was not saved — top up the account; replacing the key will not help.",
+  "settingsApiKeyRejectedPolicy": "The provider blocked the check on content-policy grounds. The key was not saved.",
   "settingsApiKeyCleared": "Cleared",
 
   "settingsCustomProvidersSection": "Custom Providers",
