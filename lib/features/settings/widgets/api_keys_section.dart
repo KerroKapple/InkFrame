@@ -17,6 +17,7 @@ import '../../../core/constants/secure_storage_keys.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/models/custom_provider_config.dart';
+import '../../../core/models/key_validation_result.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -120,15 +121,17 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
       final outcome = await notifier.save(v);
       if (!mounted) return;
       switch (outcome) {
-        case ApiKeySaveOutcome.saved:
+        case ApiKeySaved():
           _ctrl.clear();
           _showToast(context.l10n.settingsApiKeySaved);
-        case ApiKeySaveOutcome.savedUnverified:
+        case ApiKeySavedUnverified():
           _ctrl.clear();
           _showToast(context.l10n.settingsApiKeySavedUnverified);
-        case ApiKeySaveOutcome.rejected:
+        case ApiKeyRejected(reason: final KeyInvalidReason reason):
           // 不清输入框——用户可直接修改重试。
-          _showToast(context.l10n.settingsApiKeyRejected);
+          // 按成因分流：余额不足说「去充值」，不说「Key 无效」——后者会让用户
+          // 把一把本来有效的 Key 换掉。
+          _showToast(l10nKeyRejectReason(context.l10n, reason));
       }
     } on InkError catch (e) {
       if (!mounted) return;

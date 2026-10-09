@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/models/key_validation_result.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
@@ -42,6 +43,14 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
   OnboardingProviderSlot? _selected;
   _VerifyOutcome _outcome = _VerifyOutcome.idle;
 
+  /// 失败时的呈现载荷，两者互斥：
+  /// - [_rejectReason] 非空 = 服务商明确拒绝，有人话可说（无效 / 余额 / 内容策略）；
+  /// - [_errorCode] 非空 = 存储层等本地失败，没有对应人话，照旧给错误码原串，
+  ///   让用户原样贴给支持。
+  /// 之所以不把被拒也显示成错误码：余额不足显示 `invalid_key` 会直接把用户
+  /// 引向「换一把 Key」，而真正要做的是充值。
+  KeyInvalidReason? _rejectReason;
+
   /// 失败时的错误码原串（InkErrorCode.wire）。内部标识符，不进 ARB。
   String? _errorCode;
   bool _busy = false;
@@ -62,6 +71,7 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
       _ctrl.clear();
       _outcome = _VerifyOutcome.idle;
       _errorCode = null;
+      _rejectReason = null;
     });
   }
 
@@ -77,18 +87,19 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
       setState(() {
         _busy = false;
         _errorCode = null;
+        _rejectReason = null;
         switch (outcome) {
-          case ApiKeySaveOutcome.saved:
+          case ApiKeySaved():
             _outcome = _VerifyOutcome.verified;
             _ctrl.clear();
-          case ApiKeySaveOutcome.savedUnverified:
+          case ApiKeySavedUnverified():
             _outcome = _VerifyOutcome.savedUnverified;
             _ctrl.clear();
-          case ApiKeySaveOutcome.rejected:
-            // 不清输入框——用户可直接改错重试。rejected 即 KeyInvalid：控制器没把
-            // reason 透出来，对用户而言就是「这把 Key 被拒」，故记 invalid_key。
+          case ApiKeyRejected(reason: final KeyInvalidReason reason):
+            // 不清输入框——用户可直接改错重试。reason 直接存下来，由结果行按
+            // 成因分流文案：余额不足要说「去充值」，不能说「Key 无效」。
             _outcome = _VerifyOutcome.failed;
-            _errorCode = InkErrorCode.invalidKey.wire;
+            _rejectReason = reason;
         }
       });
     } on InkError catch (e) {
@@ -97,6 +108,7 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
       setState(() {
         _busy = false;
         _outcome = _VerifyOutcome.failed;
+        _rejectReason = null;
         _errorCode = e.code.wire;
       });
     }
@@ -142,6 +154,7 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
     setState(() {
       _outcome = _VerifyOutcome.idle;
       _errorCode = null;
+      _rejectReason = null;
     });
   }
 
@@ -163,11 +176,20 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
   }) {
     final InkColors c = context.inkColors;
     final AppLocalizations l10n = context.l10n;
+    final KeyInvalidReason? rejected = _rejectReason;
     return switch (_outcome) {
+      // 被拒：有明确成因，给人话（与设置页共用同一份文案）。
+      _VerifyOutcome.failed when rejected != null => (
+          glyph: '✕',
+          color: c.danger,
+          text: l10nKeyRejectReason(l10n, rejected),
+          mono: false,
+        ),
       _VerifyOutcome.failed => (
           glyph: '✕',
           color: c.danger,
-          // 错误码原串：内部标识符，等宽呈现，便于用户原样贴给支持。
+          // 本地失败（存储层等）没有对应人话：错误码原串，内部标识符，
+          // 等宽呈现，便于用户原样贴给支持。
           text: _errorCode ?? InkErrorCode.unknown.wire,
           mono: true,
         ),

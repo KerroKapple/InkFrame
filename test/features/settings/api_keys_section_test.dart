@@ -84,7 +84,7 @@ void main() {
     expect(find.text('Set'), findsOneWidget);
   });
 
-  testWidgets('Save（验证拒绝）不落盘，保持未配置并提示', (tester) async {
+  testWidgets('Save（验证拒绝 invalidKey）不落盘，保持未配置并提示「无效」', (tester) async {
     final secure = _FakeSecure();
     await pumpInkApp(
       tester,
@@ -106,13 +106,75 @@ void main() {
     expect(await secure.retrieve(storedKey), isNull);
     expect(find.text('Not set'), findsOneWidget);
     expect(
-      find.text('The provider rejected this key. It was not saved.'),
+      find.text('The provider rejected this key as invalid. It was not saved.'),
       findsOneWidget,
     );
     // 输入框保留原文，便于用户修改重试。
     expect(
       tester.widget<TextField>(find.byType(TextField)).controller!.text,
       'sk-bad',
+    );
+  });
+
+  // 本卡的回归点：余额不足的 toast 不能再说「Key 无效」——那会让用户白白换 Key。
+  testWidgets('Save（验证拒绝 insufficientBalance）提示余额不足，不提无效 Key',
+      (tester) async {
+    final secure = _FakeSecure();
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: _overrides(
+        secure,
+        onValidate: (_) async => const KeyValidationResult.invalid(
+          reason: KeyInvalidReason.insufficientBalance,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'sk-broke');
+    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(await secure.retrieve(SecureStorageKeys.providerApiKey(_id)), isNull);
+    expect(
+      find.text(
+        'The key is accepted but the account balance is insufficient. '
+        'It was not saved — top up the account; replacing the key will not help.',
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('The provider rejected this key as invalid. It was not saved.'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('Save（验证拒绝 contentPolicy）提示内容策略', (tester) async {
+    final secure = _FakeSecure();
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: _overrides(
+        secure,
+        onValidate: (_) async => const KeyValidationResult.invalid(
+          reason: KeyInvalidReason.contentPolicy,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), 'sk-policy');
+    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    expect(await secure.retrieve(SecureStorageKeys.providerApiKey(_id)), isNull);
+    expect(
+      find.text(
+        'The provider blocked the check on content-policy grounds. '
+        'The key was not saved.',
+      ),
+      findsOneWidget,
     );
   });
 

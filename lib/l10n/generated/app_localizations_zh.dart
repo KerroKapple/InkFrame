@@ -192,7 +192,14 @@ class AppLocalizationsZh extends AppLocalizations {
       '已保存。暂时无法验证 Key（网络或服务暂不可用），首次生成时会实际校验。';
 
   @override
-  String get settingsApiKeyRejected => '服务商拒绝了该 Key，未保存。';
+  String get settingsApiKeyRejectedInvalid => '服务商判定该 Key 无效，未保存。';
+
+  @override
+  String get settingsApiKeyRejectedQuota =>
+      '该 Key 本身能通过鉴权，但账户余额不足，未保存。请去充值——换一把 Key 不解决问题。';
+
+  @override
+  String get settingsApiKeyRejectedPolicy => '服务商以内容策略为由拦下了这次校验，该 Key 未保存。';
 
   @override
   String get settingsApiKeyCleared => '已清除';

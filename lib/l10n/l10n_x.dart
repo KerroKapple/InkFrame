@@ -3,6 +3,7 @@ import 'package:flutter/widgets.dart';
 
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/database_restore_service.dart';
+import '../core/models/key_validation_result.dart';
 import 'generated/app_localizations.dart';
 
 extension AppL10nX on BuildContext {
@@ -26,6 +27,21 @@ String l10nRestoreFailure(AppLocalizations l10n, RestoreOutcome outcome) {
     RestoreOutcome.failedVersionNewer => l10n.restoreFailedVersionNewer,
     RestoreOutcome.abortedPreBackup => l10n.restoreAbortedPreBackup,
     RestoreOutcome.failed || RestoreOutcome.restored => l10n.restoreFailed,
+  };
+}
+
+/// Key 被拒原因 → 文案（首启向导第 2 步 / 设置页 Key 表共用）。
+///
+/// 为什么单独一个映射而不复用 l10nErrorCode：同一个成因在「保存 Key」语境下
+/// 要说的话不一样。errorInsufficientBalance 只说"余额不足"，这里必须明说
+/// 「未保存 + 去充值，换 Key 没用」——否则用户照旧去换一把好 Key。
+///
+/// 两处消费侧都走这一个函数，文案不会在两屏之间漂。
+String l10nKeyRejectReason(AppLocalizations l10n, KeyInvalidReason reason) {
+  return switch (reason) {
+    KeyInvalidReason.invalidKey => l10n.settingsApiKeyRejectedInvalid,
+    KeyInvalidReason.insufficientBalance => l10n.settingsApiKeyRejectedQuota,
+    KeyInvalidReason.contentPolicy => l10n.settingsApiKeyRejectedPolicy,
   };
 }
 

@@ -70,7 +70,9 @@
   "settingsApiKeyNotSet": "未配置",
   "settingsApiKeySaved": "已保存",
   "settingsApiKeySavedUnverified": "已保存。暂时无法验证 Key（网络或服务暂不可用），首次生成时会实际校验。",
-  "settingsApiKeyRejected": "服务商拒绝了该 Key，未保存。",
+  "settingsApiKeyRejectedInvalid": "服务商判定该 Key 无效，未保存。",
+  "settingsApiKeyRejectedQuota": "该 Key 本身能通过鉴权，但账户余额不足，未保存。请去充值——换一把 Key 不解决问题。",
+  "settingsApiKeyRejectedPolicy": "服务商以内容策略为由拦下了这次校验，该 Key 未保存。",
   "settingsApiKeyCleared": "已清除",
 
   "settingsCustomProvidersSection": "自定义服务商",

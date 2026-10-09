@@ -1,7 +1,7 @@
 // OnboardingDialog（ON-1，Screens 稿第 4 屏左）widget 测试。
 //
 // 钉行为而非存在性：步骤条的「只有当前步填琥珀」「已到过的步才可点」、
-// Provider 行的「无适配器那行点不动」、Key 验证三态（落盘 / 不落盘 + 错误码原串 /
+// Provider 行的「无适配器那行点不动」、Key 验证三态（落盘 / 不落盘 + 被拒原因分流 /
 // 离线照常落盘），以及两个出口都必须落 onboardingCompleted。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -36,6 +36,16 @@ import '../../../_harness/fake_providers.dart';
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_secure_storage.dart';
 import '../../../_harness/fake_unit_of_work.dart';
+
+/// 被拒三种原因的英文文案（en ARB 原文）。测试里按字面钉，文案改了必须一起改。
+const String _rejectedInvalidText =
+    'The provider rejected this key as invalid. It was not saved.';
+const String _rejectedQuotaText =
+    'The key is accepted but the account balance is insufficient. '
+    'It was not saved — top up the account; replacing the key will not help.';
+const String _rejectedPolicyText =
+    'The provider blocked the check on content-policy grounds. '
+    'The key was not saved.';
 
 /// 按仓库真实注册顺序做的最小注册表：Gemini + DashScope 家族两员；fal.ai 缺席。
 const String _geminiId = 'gemini-image';
@@ -362,7 +372,7 @@ void main() {
       expect(_keyUnderlineColor(tester), colors.control);
     });
 
-    testWidgets('验证被拒：不落盘、底线转 danger、下方一行是错误码原串',
+    testWidgets('验证被拒（invalidKey）：不落盘、底线转 danger、下方一行说「无效」',
         (WidgetTester tester) async {
       final FakeSecureStorage secure = FakeSecureStorage();
       await _pumpAndOpen(
@@ -383,9 +393,56 @@ void main() {
 
       expect(secure.snapshot, isEmpty);
       expect(_keyUnderlineColor(tester), colors.danger);
-      expect(find.text('invalid_key'), findsOneWidget);
+      expect(find.text(_rejectedInvalidText), findsOneWidget);
       // 输入保留，便于改错重试。
       expect(_inputText(tester), 'sk-bad');
+    });
+
+    // 本卡的回归点：余额不足以前也显示 invalid_key，用户只能理解成「换 Key」。
+    testWidgets('验证被拒（insufficientBalance）：结果行说余额不足，不说无效 Key',
+        (WidgetTester tester) async {
+      final FakeSecureStorage secure = FakeSecureStorage();
+      await _pumpAndOpen(
+        tester,
+        overrides: _overrides(
+          prefs: InMemoryPreferencesService(),
+          secure: secure,
+          onValidate: (_) async => const KeyValidationResult.invalid(
+            reason: KeyInvalidReason.insufficientBalance,
+          ),
+        ),
+      );
+      await _gotoKeysStep(tester);
+
+      await _typeKey(tester, 'sk-broke');
+      await tester.tap(find.byKey(OnboardingDialog.verifyKey));
+      await tester.pumpAndSettle();
+
+      expect(secure.snapshot, isEmpty);
+      expect(_keyUnderlineColor(tester), colors.danger);
+      expect(find.text(_rejectedQuotaText), findsOneWidget);
+      expect(find.text(_rejectedInvalidText), findsNothing);
+      expect(find.text('invalid_key'), findsNothing);
+    });
+
+    testWidgets('验证被拒（contentPolicy）：结果行说内容策略', (WidgetTester tester) async {
+      await _pumpAndOpen(
+        tester,
+        overrides: _overrides(
+          prefs: InMemoryPreferencesService(),
+          secure: FakeSecureStorage(),
+          onValidate: (_) async => const KeyValidationResult.invalid(
+            reason: KeyInvalidReason.contentPolicy,
+          ),
+        ),
+      );
+      await _gotoKeysStep(tester);
+
+      await _typeKey(tester, 'sk-policy');
+      await tester.tap(find.byKey(OnboardingDialog.verifyKey));
+      await tester.pumpAndSettle();
+
+      expect(find.text(_rejectedPolicyText), findsOneWidget);
     });
 
     testWidgets('失败后改动输入：底线回 control、错误行消失', (WidgetTester tester) async {
@@ -404,12 +461,12 @@ void main() {
       await _typeKey(tester, 'sk-bad');
       await tester.tap(find.byKey(OnboardingDialog.verifyKey));
       await tester.pumpAndSettle();
-      expect(find.text('invalid_key'), findsOneWidget);
+      expect(find.text(_rejectedInvalidText), findsOneWidget);
 
       await _typeKey(tester, 'sk-bad2');
       await tester.pumpAndSettle();
 
-      expect(find.text('invalid_key'), findsNothing);
+      expect(find.text(_rejectedInvalidText), findsNothing);
       expect(_keyUnderlineColor(tester), colors.control);
     });
 
