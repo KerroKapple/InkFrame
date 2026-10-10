@@ -25,6 +25,22 @@ final canvasTransformControllerProvider =
 
 /// 画布视口尺寸（由舞台层 LayoutBuilder 上报），按 canvasId 分族——与
 /// canvasTransformControllerProvider 对称，避免第二个被布局的画布状表面覆盖它。
+///
+/// 【订阅锚不在本文件，在 CanvasShortcuts】本 provider 的全部读点都在回调里
+/// （⌘± 缩放、新建节点落点），没有一个是 watch；autoDispose 于是会在
+/// LayoutBuilder 上报完 setSize 的下一拍就把 entry 回收并复位 Size.zero，
+/// 让缩放围绕 (0,0) 而非视口中心（D2）。
+///
+/// 这件事原先靠 `ref.keepAlive()` 挡住，代价是 family + keepAlive ⇒ 每个开过的
+/// canvasId 都永久留一个 entry（进程级泄漏）。现在改由 CanvasShortcuts.build
+/// 的一条 watch 做订阅锚：它与画布标签同生共死，换画布时旧 canvasId 的 watcher
+/// 当场断开 ⇒ 旧 entry 随之回收，"与 transform 对称"这句话在 dispose 语义上
+/// 才真正成立。
+///
+/// 两个方向各有护栏（canvas_shortcuts_test.dart）：锚掉了 ⇒ D2「⌘+ 围绕视口
+/// 中心」红；keepAlive 回来 ⇒「切换画布 → 旧画布的视口尺寸 entry 被回收」红。
+/// 外壳侧「切走标签 / 浮层遮挡后尺寸不丢」由 shell_canvas_viewport_retention_test
+/// 钉住——那是保活槽的性质，画布级 pump 测不到。
 final canvasViewportSizeProvider =
     AutoDisposeNotifierProviderFamily<CanvasViewportSize, Size, String>(
       CanvasViewportSize.new,
@@ -33,16 +49,7 @@ final canvasViewportSizeProvider =
 
 class CanvasViewportSize extends AutoDisposeFamilyNotifier<Size, String> {
   @override
-  Size build(String canvasId) {
-    // 无人 watch（仅缩放处 read），不 keepAlive 会在 setSize 后随即自毁并复位
-    // Size.zero，令快捷键缩放读到 0×0 → 围绕 (0,0) 而非视口中心（D2）。
-    //
-    // 债：family 上的 keepAlive 意味着每个开过的 canvasId 都永久留一个 entry
-    // ——"与 transform 对称"这句话在 dispose 语义上并不成立。后续让缩放路径
-    // 改 watch 后去掉 keepAlive。见 docs/BOARD.md。
-    ref.keepAlive();
-    return Size.zero;
-  }
+  Size build(String canvasId) => Size.zero;
 
   void setSize(Size size) {
     if (size == state) return;

@@ -190,6 +190,20 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
 
   @override
   Widget build(BuildContext context) {
+    // 【这两条 watch 不是渲染用的，是生命周期用的】视口尺寸 provider 的全部读点
+    // 都在回调里（本层 _zoom、各处新建节点落点），一个 watcher 都没有 ⇒
+    // autoDispose 会在 LayoutBuilder 上报完 setSize 的下一拍就回收它并复位
+    // Size.zero，⌘± 于是围绕 (0,0) 而不是视口中心（D2）。
+    //
+    // 锚挂在本层而不是回 keepAlive：本层是缩放的消费方，且与画布标签同生共死
+    // ——换画布时旧 canvasId 的 watcher 当场断开 ⇒ 旧 entry 随之回收，
+    // 不再"每开过一张画布就永久多留一份视口尺寸"（BOARD 债）。
+    //
+    // 锚挂在本层而不是舞台层也是刻意的：本层的孩子是上游传进来的同一个 widget
+    // 实例，重建到这里即止（Element.updateChild 认 identical 直接跳过），
+    // 上报尺寸不会连带重建整张舞台。
+    final String? canvasId = ref.watch(currentCanvasIdProvider);
+    if (canvasId != null) ref.watch(canvasViewportSizeProvider(canvasId));
     return Shortcuts(
       shortcuts: kCanvasShortcuts,
       child: Actions(
