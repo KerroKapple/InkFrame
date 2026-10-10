@@ -22,7 +22,7 @@
 // ink_activatable.dart）：可 Tab 聚焦、Enter / NumpadEnter / Space 激活、聚焦时画
 // 一圈 accent 焦点环。标签条是全应用最高频交互，此前它是裸 GestureDetector +
 // Semantics，键盘用户根本到不了（BOARD 旧债）。
-// 这套原先就写在本文件里（#249）；#251 抽成共用件，`InkGhostButton` 与标签栏右侧
+// 这套原先就写在本文件里（#249）；2026-10-10 抽成共用件，`InkGhostButton` 与标签栏右侧
 // 那排动作一起换过去——一个外壳上不该有两套可达性语义。
 // 用例在 test/theme/ink_shell_tab_bar_test.dart「键盘可达性」组，
 // 端到端那条（Tab 到画廊格 + Enter 真切标签）在

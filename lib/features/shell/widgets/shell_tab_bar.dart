@@ -25,7 +25,7 @@
 // 【右侧动作的可达性】每个动作的点击壳都是 theme 层的 InkActivatable（与标签
 // chip 同一件）：可 Tab 聚焦、Enter / Space 激活、聚焦画 accent 环、onTap == null
 // 即不可聚焦。#249 只改了 chip，这排动作还是裸 GestureDetector，同一条标签栏上
-// 两套语义；#251 抽出共用件后一起换过来（BOARD 210）。
+// 两套语义；2026-10-10 抽出共用件后一起换过来（BOARD 210）。
 // 用例：test/features/shell/shell_tab_bar_actions_a11y_test.dart。
 import 'dart:math';
 
