@@ -21,6 +21,12 @@
 // 【Key 是跨层契约】ValueKey('shellTab-<name>') 在这里构造、由 theme 层原样落到
 // chip 上。改这个取值会让 tapShellTab() 与整个 shell_tab_bar_test.dart 全体
 // churn，不要"顺手规范化"。
+//
+// 【右侧动作的可达性】每个动作的点击壳都是 theme 层的 InkActivatable（与标签
+// chip 同一件）：可 Tab 聚焦、Enter / Space 激活、聚焦画 accent 环、onTap == null
+// 即不可聚焦。#249 只改了 chip，这排动作还是裸 GestureDetector，同一条标签栏上
+// 两套语义；#251 抽出共用件后一起换过来（BOARD 210）。
+// 用例：test/features/shell/shell_tab_bar_actions_a11y_test.dart。
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -31,6 +37,8 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_shell_tab_bar.dart';
 import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/primitives/ink_activatable.dart';
+import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
@@ -110,7 +118,9 @@ class ShellTabBar extends ConsumerWidget {
           _Action(
             key: importPackageKey,
             label: l.studioImportPackage,
-            onTap: importBusy ? () {} : () => runProjectImportFlow(context, ref),
+            // 在途 ⇒ null（既不可点也不可聚焦）。原先是空闭包：点得动、看着可点、
+            // 什么都不发生——接上键盘可达后还会变成"能聚焦、按回车没反应"的假可达。
+            onTap: importBusy ? null : () => runProjectImportFlow(context, ref),
             child: Opacity(opacity: importBusy ? 0.5 : 1, child: InkSecondaryButton(l.studioImportPackage)),
           ),
           _Action(
@@ -248,10 +258,17 @@ class ShellTabBar extends ConsumerWidget {
           ),
       ];
 
-  /// 锁住一块：吞掉指针 + 降 0.5。标签栏里除「序列」格与主按钮之外的东西都走它。
+  /// 锁住一块：吞掉指针 + **排除焦点** + 降 0.5。标签栏里除「序列」格与主按钮
+  /// 之外的东西都走它。
+  ///
+  /// 【ExcludeFocus 不是多余的】动作接上键盘可达之后，IgnorePointer 只挡指针、
+  /// 完全不挡 Tab / 回车——键盘用户能在交付途中按回车把标签切走。「锁住」必须
+  /// 两条路一起封。用例：shell_tab_bar_actions_a11y_test.dart「交付锁也锁键盘」。
   static Widget _lockable(bool locked, Widget child) => !locked
       ? child
-      : IgnorePointer(child: Opacity(opacity: 0.5, child: child));
+      : ExcludeFocus(
+          child: IgnorePointer(child: Opacity(opacity: 0.5, child: child)),
+        );
 }
 
 /// 标签栏右侧的交付主按钮（P6 §3）。
@@ -349,51 +366,44 @@ class _GallerySaveAsCharacterState extends ConsumerState<_GallerySaveAsCharacter
     final l = context.l10n;
     final GalleryItem? anchor = ref.watch(galleryAnchorItemProvider(widget.project.id));
     final bool enabled = !_busy && anchor != null && anchor.kind == GalleryItemKind.image;
-    return Semantics(
-      button: true,
-      enabled: enabled,
+    // 走 _Action（即 InkActivatable）而不是自己再排一遍
+    // Semantics + MouseRegion + GestureDetector——那份手抄件正是两套可达性语义的来源。
+    return _Action(
+      key: _GallerySaveAsCharacter.key_,
       label: l.gallerySaveAsCharacter,
-      child: MouseRegion(
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          key: _GallerySaveAsCharacter.key_,
-          behavior: HitTestBehavior.opaque,
-          onTap: !enabled
-              ? null
-              : () async {
-                  setState(() => _busy = true);
-                  try {
-                    await gallerySaveAsCharacter(context, ref, projectId: widget.project.id, item: anchor);
-                  } finally {
-                    if (mounted) setState(() => _busy = false);
-                  }
-                },
-          child: Opacity(opacity: enabled ? 1 : 0.5, child: InkSecondaryButton(l.gallerySaveAsCharacter)),
-        ),
-      ),
+      onTap: !enabled
+          ? null
+          : () async {
+              setState(() => _busy = true);
+              try {
+                await gallerySaveAsCharacter(context, ref, projectId: widget.project.id, item: anchor);
+              } finally {
+                if (mounted) setState(() => _busy = false);
+              }
+            },
+      child: Opacity(opacity: enabled ? 1 : 0.5, child: InkSecondaryButton(l.gallerySaveAsCharacter)),
     );
   }
 }
 
+/// 标签栏右侧一个动作的点击壳。可达性（聚焦 / Enter / Space / 光标 / Semantics /
+/// 焦点环）全部来自 theme 层的 [InkActivatable]——与标签 chip 同一件，一个外壳上
+/// 不该有两套可达性语义（BOARD 210）。本件只做"把 label 与 child 递进去"。
 class _Action extends StatelessWidget {
   const _Action({super.key, required this.label, required this.onTap, required this.child});
   final String label;
 
-  /// null = 此刻不可点。**不要传空闭包**（test/quality/no_dead_interactive_test.dart）。
+  /// null = 此刻不可点，**并且不可聚焦**。不要传空闭包
+  /// （test/quality/no_dead_interactive_test.dart）。
   final VoidCallback? onTap;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    final bool enabled = onTap != null;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      child: MouseRegion(
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: child),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => InkActivatable(
+        onTap: onTap,
+        semanticLabel: label,
+        // 子件是稿尺寸的呈现件（InkSecondaryButton / InkPrimaryButton，3px 圆角）。
+        focusRingRadius: BorderRadius.circular(InkRadius.s3),
+        builder: (BuildContext context, bool hovered, bool focused) => child,
+      );
 }
