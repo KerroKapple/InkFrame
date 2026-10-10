@@ -13,11 +13,24 @@ import 'dart:async';
 import 'package:flutter/services.dart';
 import 'package:golden_toolkit/golden_toolkit.dart';
 
+import '_harness/screenshot.dart';
+
+/// 截图跑（`--dart-define=INKFRAME_SHOT=true`）时改装**真的中文字体**。
+///
+/// 为什么要开关而不是一直装真字体：上面那个 Roboto 别名是刻意的——它保证所有
+/// 测试的文字度量稳定且跨机器一致。装了真中文字体，字宽立刻变，依赖文字宽度的
+/// 布局断言和 golden 会整片漂。而截图是给人看的、必须有中文字形，两个诉求互斥，
+/// 所以由这一处按开关决定「Noto Sans SC」到底指谁，不让两个 FontLoader 抢注册。
+const bool _kShotRun = bool.fromEnvironment('INKFRAME_SHOT');
+
 Future<void> testExecutable(FutureOr<void> Function() testMain) async {
   return GoldenToolkit.runWithConfiguration(
     () async {
       await loadAppFonts();
-      await _aliasUiFontToRoboto();
+      // 真字体装不上（本机没有）就退回别名，测试照跑——截图用例自己会 skip。
+      if (!_kShotRun || await loadRealCjkFont() == null) {
+        await _aliasUiFontToRoboto();
+      }
       await testMain();
     },
     config: GoldenToolkitConfiguration(

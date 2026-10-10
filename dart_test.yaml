@@ -16,3 +16,7 @@ tags:
     # 指向真 PG bin 目录（双门控——INKFRAME_PG_BIN 是生产查找路径，可能常驻导出）。
     # 自建临时集群走完 initdb(SCRAM)→pg_ctl→迁移→pg_dump→pg_restore 对换→stop。
     # 未设置时用例内 markTestSkipped（CI 会编译执行后自跳过，绿色带 skip）。
+  screenshot:
+    # 出图不比对：和 golden 同一条渲染路径，但只把 PNG 落到 build/screenshots/。
+    # 需要本机/CI 有真的中文字体（见 test/_harness/screenshot.dart 的探测清单），
+    # 找不到就 markTestSkipped——出一张方框图比没有图更坏。
