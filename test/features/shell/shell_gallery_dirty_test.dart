@@ -7,9 +7,9 @@
 // 【实测变异，逐条】
 //  1. 「脏 + 上升沿 → 刷」：把 gallery_tab.dart 的 ref.invalidate(...) 那行删掉
 //     ⇒ Expected: <2> Actual: <1>
-//  2. 「刷完清脏」：把 ref.read(galleryDirtyProvider.notifier).clear() 那行删掉
+//  2. 「刷完清脏」：把 gallery_tab.dart 的 `dirty.clear(project.id);` 那行删掉
 //     ⇒ Expected: false Actual: <true>（同用例前一条断言仍绿）
-//  3. 「不脏不刷」：把 `if (!ref.read(galleryDirtyProvider)) return;` 删掉
+//  3. 「不脏不刷」：把 `if (!dirty.isDirtyFor(project.id)) return;` 删掉
 //     ⇒ Expected: <1> Actual: <2>
 //  4. 「不可见不刷」：把 didUpdateWidget 的
 //     `if (old.isVisible || !widget.isVisible) return;` 改成 `if (old.isVisible)
