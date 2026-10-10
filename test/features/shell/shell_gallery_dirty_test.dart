@@ -17,6 +17,9 @@
 //  5. 「脏标记 provider 必须有订阅者」：删掉 build 里的
 //     `ref.watch(galleryDirtyProvider);` ⇒ Expected: true Actual: <false>
 //     （它是懒的，没订阅者就没被实例化，job 成功那一刻根本没人在听）
+//  6. 「按项目分」：把 gallery_dirty.dart 的 `job.projectId` 改成写死 null
+//     （= 旧的全局语义，通配位恒置）⇒「别的项目生成完成 → 当前项目的画廊不刷」
+//     Expected: false Actual: <true>
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -78,16 +81,28 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  void succeedOneJob(ProviderContainer container, String jobId) {
+  /// 一条成功 job。[projectId] 缺省是外壳里那个项目（'p1'）；传 null 模拟
+  /// 「节点行没有 project_id」那一格（生产不可达，读路径 JOIN canvases 带出
+  /// 非空 project_id），用来验证兜底语义。
+  void succeedOneJob(
+    ProviderContainer container,
+    String jobId, {
+    String? projectId = 'p1',
+  }) {
     container.read(jobsRegistryProvider.notifier).upsert(
           JobState.succeeded(
             jobId: jobId,
             providerId: 'fake',
             canvasId: 'c1',
+            projectId: projectId,
             artifactPath: 'images/a.png',
           ),
         );
   }
+
+  /// 「该项目的画廊脏了吗」——脏标记现在按项目记账（见 gallery_dirty.dart）。
+  bool dirtyFor(ProviderContainer container, String projectId) =>
+      container.read(galleryDirtyProvider.notifier).isDirtyFor(projectId);
 
   ProviderContainer newContainer(WidgetTester tester) {
     final ProviderContainer c = ProviderContainer(overrides: overrides());
@@ -102,7 +117,7 @@ void main() {
 
     succeedOneJob(container, 'j1');
     expect(
-      container.read(galleryDirtyProvider),
+      dirtyFor(container, 'p1'),
       isTrue,
       reason: 'JobSucceeded 必须把画廊置脏——没订阅者的话这里就已经是 false',
     );
@@ -112,7 +127,7 @@ void main() {
 
     expect(_builds, 2, reason: '不可见→可见且脏 ⇒ invalidate 一次');
     expect(
-      container.read(galleryDirtyProvider),
+      dirtyFor(container, 'p1'),
       isFalse,
       reason: '刷过就得清脏，否则每次切回画廊都白刷一次',
     );
@@ -138,20 +153,72 @@ void main() {
     await pumpTab(tester, container, visible: false);
     succeedOneJob(container, 'j1');
     await pumpTab(tester, container, visible: true);
-    expect(container.read(galleryDirtyProvider), isFalse, reason: '前置：已清脏');
+    expect(dirtyFor(container, 'p1'), isFalse, reason: '前置：已清脏');
 
     container.read(jobsRegistryProvider.notifier).upsert(
           const JobState.queued(
             jobId: 'j2',
             providerId: 'fake',
             canvasId: 'c1',
+            projectId: 'p1',
           ),
         );
 
     expect(
-      container.read(galleryDirtyProvider),
+      dirtyFor(container, 'p1'),
       isFalse,
       reason: '一条新 job 入队不是新产物——已记账的成功 job 不该二次置脏',
+    );
+  });
+
+  // 脏标记按项目记账：A 项目生成完成，切到 B 项目的画廊不该触发刷新。
+  // 用户层面原本无感（skipLoadingOnRefresh 就地换数据），但语义上「别人家的
+  // 产物把我这边标脏」是错的——真要做产物数量 / 徽标之类的派生显示就会出错。
+  //
+  // 【实测变异】gallery_dirty.dart 的 `job.projectId` 写死成 null（= 旧的
+  // 全局语义）⇒ Expected: <1> Actual: <2>
+  testWidgets('别的项目生成完成 → 当前项目的画廊不刷', (tester) async {
+    final ProviderContainer container = newContainer(tester);
+    await pumpTab(tester, container, visible: false);
+    expect(_builds, 1, reason: '前置：首次物化跑一次 build');
+
+    succeedOneJob(container, 'jOther', projectId: 'p2');
+    expect(
+      dirtyFor(container, 'p1'),
+      isFalse,
+      reason: 'p2 的产物与 p1 的画廊无关，不该把 p1 标脏',
+    );
+    expect(
+      dirtyFor(container, 'p2'),
+      isTrue,
+      reason: '标记本身要记下来——用户切到 p2 时那边才该刷',
+    );
+
+    await pumpTab(tester, container, visible: true);
+
+    expect(_builds, 1, reason: '当前项目不脏 ⇒ 切回画廊不刷');
+  });
+
+  // 兜底语义：成功 job 没带 projectId（生产不可达——读路径 JOIN canvases
+  // 带出非空 project_id）时宁可多刷一次，也不能静默漏刷让用户盯着旧数据。
+  testWidgets('成功 job 没带 projectId → 退回全局语义，照旧刷一次', (tester) async {
+    final ProviderContainer container = newContainer(tester);
+    await pumpTab(tester, container, visible: false);
+
+    succeedOneJob(container, 'jUnknown', projectId: null);
+    expect(
+      dirtyFor(container, 'p1'),
+      isTrue,
+      reason: '不知道是哪个项目 ⇒ 任何项目都当脏，漏刷比多刷严重得多',
+    );
+
+    await pumpTab(tester, container, visible: true);
+
+    expect(_builds, 2, reason: '兜底位必须真的能触发刷新');
+    expect(
+      dirtyFor(container, 'p1'),
+      isFalse,
+      reason: '兜底位刷过一次就算交付；留着的话每次切回画廊都白刷',
     );
   });
 

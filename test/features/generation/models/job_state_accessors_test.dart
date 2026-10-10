@@ -83,6 +83,41 @@ void main() {
     });
   });
 
+  // projectId 进六个变体是「画廊脏标记按项目分」的前提：registry 是全 app 级
+  // 内存镜像，条目上只有 canvasId 时，任何一条成功 job 都只能当全局脏标记用。
+  group('projectId 访问器', () {
+    test('缺省为 null（六变体）', () {
+      expect(all.map((s) => s.projectId).toList(), List.filled(6, null));
+    });
+
+    test('六变体上各取本体值', () {
+      final withProject = <JobState>[
+        const JobState.queued(
+            jobId: 'j', providerId: 'p', canvasId: 'c', projectId: 'pq'),
+        const JobState.submitting(
+            jobId: 'j', providerId: 'p', canvasId: 'c', projectId: 'ps'),
+        const JobState.running(
+            jobId: 'j', providerId: 'p', canvasId: 'c', projectId: 'pr'),
+        const JobState.succeeded(
+            jobId: 'j',
+            providerId: 'p',
+            canvasId: 'c',
+            projectId: 'pok',
+            artifactPath: 'a'),
+        const JobState.failed(
+            jobId: 'j',
+            providerId: 'p',
+            canvasId: 'c',
+            projectId: 'pf',
+            error: NetworkError(code: InkErrorCode.networkTimeout)),
+        const JobState.cancelled(
+            jobId: 'j', providerId: 'p', canvasId: 'c', projectId: 'pc'),
+      ];
+      expect(withProject.map((s) => s.projectId).toList(),
+          ['pq', 'ps', 'pr', 'pok', 'pf', 'pc']);
+    });
+  });
+
   group('progressValue 哨兵', () {
     test('JobSubmitting / JobCancelled → 0.0', () {
       const sub = JobState.submitting(jobId: 'j', providerId: 'p', canvasId: 'c');

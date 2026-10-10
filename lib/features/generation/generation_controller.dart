@@ -386,6 +386,7 @@ class GenerationController {
           jobId: jobId,
           providerId: providerId,
           canvasId: canvasId,
+          projectId: projectId,
           sourceNodeId: configNodeId,
           resultNodeId: resultNodeId,
         ),
@@ -394,6 +395,7 @@ class GenerationController {
         _track(
           handle,
           canvasId: canvasId,
+          projectId: projectId,
           resultNodeId: resultNodeId,
           providerId: providerId,
           sourceNodeId: configNodeId,
@@ -446,6 +448,9 @@ class GenerationController {
   Future<void> _track(
     JobHandle handle, {
     required String canvasId,
+    // 与 canvasId 一同原样带下来（不在这里重查节点行）：registry 的消费方
+    // 要能分辨"这条产物属于哪个项目"，见 JobState 文件头。
+    required String? projectId,
     required String resultNodeId,
     required String providerId,
     required String sourceNodeId,
@@ -458,6 +463,7 @@ class GenerationController {
             jobId: handle.jobId,
             providerId: providerId,
             canvasId: canvasId,
+            projectId: projectId,
             sourceNodeId: sourceNodeId,
             resultNodeId: resultNodeId,
             progress: s.progress,
@@ -474,6 +480,7 @@ class GenerationController {
             jobId: handle.jobId,
             providerId: providerId,
             canvasId: canvasId,
+            projectId: projectId,
             sourceNodeId: sourceNodeId,
             resultNodeId: resultNodeId,
             artifactPath: path,
@@ -491,6 +498,7 @@ class GenerationController {
               jobId: handle.jobId,
               providerId: providerId,
               canvasId: canvasId,
+              projectId: projectId,
               sourceNodeId: sourceNodeId,
               resultNodeId: resultNodeId,
             ),
@@ -512,6 +520,7 @@ class GenerationController {
               jobId: handle.jobId,
               providerId: providerId,
               canvasId: canvasId,
+              projectId: projectId,
               sourceNodeId: sourceNodeId,
               resultNodeId: resultNodeId,
               error: status.error,
@@ -533,6 +542,7 @@ class GenerationController {
           jobId: handle.jobId,
           providerId: providerId,
           canvasId: canvasId,
+          projectId: projectId,
           sourceNodeId: sourceNodeId,
           resultNodeId: resultNodeId,
           error: UnknownError(cause: e, stackTrace: st),
