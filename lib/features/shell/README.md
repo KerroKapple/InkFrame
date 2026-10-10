@@ -65,6 +65,12 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 - **没有"关闭当前画布"**：`ShellState` 没有任何能清 `canvasId` 的公共动词
   （`resetSession()` 除外）。老代码里"清 canvasId"的真实意图都是"回 Studio"，
   正确替代是 `goTab(studio)`。
+  2026-10-10 复核把 BOARD 上那张「待补卡」**判定不做**并关闭：产品里没有任何
+  「关闭画布」入口，而加一个没有调用方的具名迁移会被 #249 立的死 API 闸
+  （`test/quality/shell_transition_reachability_test.dart`）当场判死。
+  真有入口要求它时的入场条件：同一个 PR 里接上调用点 + 一条"调用后画布保活槽
+  真被销毁"的显式断言。（另见 BOARD 新列的一条**不同**的真 bug：删掉正在打开的
+  画布 / 项目后 `canvasId` / `project` 悬空——那条的正解不只是一个动词。）
 
 ## 目录
 
@@ -73,7 +79,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | `models/shell_state.dart` | `ShellTab` / `ShellOverlay` / `ProjectRef` / `ShellState`（手写不可变值对象，6 个具名迁移，无 copyWith） |
 | `providers/shell_controller.dart` | `ShellNavigator` + `shellControllerProvider`——外壳状态的唯一写入口 |
 | `providers/active_project.dart` | `activeProjectProvider`（`ShellState.project` 的只读投影） |
-| `providers/gallery_dirty.dart` | `galleryDirtyProvider`——任一 job 转 `JobSucceeded` 即置脏；画廊标签由不可见→可见时刷一次再清脏（T9）。**不是实时刷新**：用户正看着画廊时不动，切走再切回才更新 |
+| `providers/gallery_dirty.dart` | `galleryDirtyProvider`——任一 job 转 `JobSucceeded` 即把**它所属项目**（`JobState.projectId`）的画廊置脏；画廊标签由不可见→可见时，若**当前项目**脏就刷一次再清该项目的脏（T9）。状态是 `Set<String?>`，集合里的 `null` 是"不知道是哪个项目"的通配位（生产不可达，退回全局语义：宁多刷不漏刷）。**不是实时刷新**：用户正看着画廊时不动，切走再切回才更新 |
 | `widgets/ink_shell.dart` | 外壳根：唯一 Scaffold + chrome + 标签条 + 内容区 |
 | `widgets/shell_content_stack.dart` | 两级 IndexedStack + `_shellFocus` 兜底焦点 |
 | `widgets/shell_keep_alive_host.dart` | 懒物化 + 物化后常驻的五槽宿主 |
