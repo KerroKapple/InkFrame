@@ -1066,6 +1066,42 @@ void main() {
         reason: 'queued→running→succeeded 全程应带发起节点 id',
       );
     });
+
+    // 画廊脏标记要按项目分，前提是 registry 的条目知道自己属于哪个项目。
+    // projectId 与 GenerationTask 同源（都取自 config 节点行的 project_id，
+    // 读路径 JOIN canvases 带出），不另查一次。
+    test('JobState 事件全程携带 config 节点所在项目的 projectId', () async {
+      final cfg = await seedConfigNode();
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
+
+      expect(jobsRegistry.events, isNotEmpty);
+      expect(
+        jobsRegistry.events.every((e) => e.projectId == 'proj-1'),
+        isTrue,
+        reason: 'queued→running→succeeded 全程应带项目 id，'
+            '否则画廊只能当全局脏标记用',
+      );
+    });
+
+    // 不编一个假的出来：行里没有 project_id 就如实为 null，由下游
+    // （galleryDirtyProvider）决定怎么兜——那里退回旧的全局语义。
+    test('config 节点行没有 project_id → JobState.projectId 为 null', () async {
+      final cfg = await seedConfigNode(projectId: null);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      await pumpEventQueue();
+
+      expect(jobsRegistry.events, isNotEmpty);
+      expect(
+        jobsRegistry.events.every((e) => e.projectId == null),
+        isTrue,
+        reason: '拿不到就是拿不到，不许回填一个猜的项目 id',
+      );
+    });
   });
 
   group('批量 slot 预建（M2 生产侧）', () {

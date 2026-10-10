@@ -11,11 +11,18 @@
 // 就写不出来——settings 是 ShellOverlay 不是 ShellTab，两者类型不同，
 // 编译器直接拒绝，不需要靠"无 copyWith"来挡；换成真正被挡住的那种态。）
 //
-// 【没有 closeCanvas()】——本 PR 不提供任何能清 canvasId 的公共动词
-// （resetSession 除外）。老代码里那些"清 canvasId"写点的真实意图都是"回 Studio"，
-// 正确替代是 goTab(studio)。这让"某处顺手清 canvasId 毁掉画布保活"
-// 在类型层面不可达。真需要"关闭画布"菜单时，另加具名迁移 + 一条
-// "调用后保活被销毁"的显式断言。
+// 【没有 closeCanvas()】——不提供任何能清 canvasId 的公共动词（resetSession
+// 除外）。老代码里那些"清 canvasId"写点的真实意图都是"回 Studio"，正确替代是
+// goTab(studio)。这让"某处顺手清 canvasId 毁掉画布保活"在类型层面不可达。
+//
+// 【2026-10-10 复核：这条 BOARD 待补卡已判定不做，别再加】产品里没有任何
+// 「关闭画布」入口，加一个没有调用方的具名迁移正是 #249 退役 setProject 时
+// 付过代价的那个错误（"有测试养着的死 API"）——而且 #249 立的源码级闸
+// test/quality/shell_transition_reachability_test.dart 会当场把它判死。
+// 真有入口要求它时，入场条件是：同一个 PR 里接上调用点 + 一条"调用后画布
+// 保活槽真被销毁"的显式断言。
+// 另见 docs/BOARD.md 新列的那条真 bug：删掉正在打开的画布 / 项目后
+// canvasId / project 悬空——那条的正解不只是一个动词，不要当成本条的替身来做。
 import 'package:flutter/foundation.dart';
 
 /// 声明序 == 标签条渲染序 == 保活宿主 children 序。三者由

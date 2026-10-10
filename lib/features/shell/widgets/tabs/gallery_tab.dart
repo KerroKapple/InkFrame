@@ -4,8 +4,8 @@
 // GalleryScreen——GalleryScreen 的构造签名【不动】（6 个 pump 点 + 1 个 golden
 // 用例直接 pump 它）。
 //
-// 另一半职责：脏刷新。isVisible 由 false → true 且 galleryDirtyProvider 为真
-// 时，invalidate 一次 galleryGraphProvider(projectId) 再清脏。
+// 另一半职责：脏刷新。isVisible 由 false → true 且 galleryDirtyProvider 标记了
+// **当前项目**时，invalidate 一次 galleryGraphProvider(projectId) 再清该项目的脏。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -53,19 +53,17 @@ class _GalleryTabState extends ConsumerState<GalleryTab> {
       // 可见性【只在 didUpdateWidget 那一处判断】——这里再判一次会让
       // "不可见就别刷" 这条语义有两个来源，变异任何一处都打不红测试。
       if (!mounted) return;
-      if (!ref.read(galleryDirtyProvider)) return;
+      // 【F4 修订：没有项目就什么都不做，也不清标记】脏标记现在是按项目记的，
+      // 它属于某个具体项目的画廊。没有项目上下文时既没有 entry 可 invalidate，
+      // 也不该把别的项目的标记当成"这一次（并不存在的）刷新"给清掉。
       final ProjectRef? project = ref.read(activeProjectProvider);
-      if (project != null) {
-        // 图是唯一读库入口；controller 也显式失效——它可能被测试 / 未来实现替换成不 watch 图的版本。
-        ref.invalidate(galleryGraphProvider(project.id));
-        ref.invalidate(galleryControllerProvider(project.id));
-      }
-      // 【F4：project == null 时脏标记被无刷新地丢掉，这是安全的】
-      // 没有项目就没有 entry 可 invalidate；而 galleryControllerProvider 是
-      // AutoDisposeFamily，用户之后选中任何项目时，那个 entry 本来就是全新
-      // 构建的（第一次 build 就会读到最新数据）。留着脏标记只会让下一次切入
-      // 画廊白刷一次刚建好的 entry。
-      ref.read(galleryDirtyProvider.notifier).clear();
+      if (project == null) return;
+      final GalleryDirty dirty = ref.read(galleryDirtyProvider.notifier);
+      if (!dirty.isDirtyFor(project.id)) return;
+      // 图是唯一读库入口；controller 也显式失效——它可能被测试 / 未来实现替换成不 watch 图的版本。
+      ref.invalidate(galleryGraphProvider(project.id));
+      ref.invalidate(galleryControllerProvider(project.id));
+      dirty.clear(project.id);
     });
   }
 

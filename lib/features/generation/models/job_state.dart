@@ -14,6 +14,14 @@
 //
 // 不持久化——持久化在 jobs 表（lib/storage/repositories/postgres_job_repository.dart）。
 // 本 sealed 仅供 Riverpod ViewModel 推 UI 用。
+//
+// 【六个变体为什么都带 projectId，且为什么可空】jobsRegistry 是全 app 级内存
+// 镜像；条目只带 canvasId 时，任何消费方都只能把"有新产物"当**全局**事实用
+// （画廊脏标记因此会被别的项目的 job 置脏，见 shell/providers/gallery_dirty.dart）。
+// projectId 与 GenerationTask 同源——都取自 config 节点行的 project_id，
+// 节点读路径统一 JOIN canvases 带出，生产里恒非空；类型可空只是因为
+// RowReader 证明不了这件事。拿不到就如实留 null，不回填一个猜的值，
+// 兜底怎么兜由消费方各自决定（画廊脏标记：退回全局语义，宁多刷不漏刷）。
 
 import 'package:freezed_annotation/freezed_annotation.dart';
 
@@ -28,6 +36,7 @@ sealed class JobState with _$JobState {
     required String jobId,
     required String providerId,
     required String canvasId,
+    String? projectId,
     String? sourceNodeId,
     String? resultNodeId,
   }) = JobQueued;
@@ -37,6 +46,7 @@ sealed class JobState with _$JobState {
     required String jobId,
     required String providerId,
     required String canvasId,
+    String? projectId,
     String? sourceNodeId,
     String? resultNodeId,
   }) = JobSubmitting;
@@ -46,6 +56,7 @@ sealed class JobState with _$JobState {
     required String jobId,
     required String providerId,
     required String canvasId,
+    String? projectId,
     String? sourceNodeId,
     String? resultNodeId,
     @Default(0.0) double progress,
@@ -56,6 +67,7 @@ sealed class JobState with _$JobState {
     required String jobId,
     required String providerId,
     required String canvasId,
+    String? projectId,
     String? sourceNodeId,
     String? resultNodeId,
     required String artifactPath,
@@ -66,6 +78,7 @@ sealed class JobState with _$JobState {
     required String jobId,
     required String providerId,
     required String canvasId,
+    String? projectId,
     String? sourceNodeId,
     String? resultNodeId,
     required InkError error,
@@ -76,6 +89,7 @@ sealed class JobState with _$JobState {
     required String jobId,
     required String providerId,
     required String canvasId,
+    String? projectId,
     String? sourceNodeId,
     String? resultNodeId,
   }) = JobCancelled;

@@ -255,6 +255,51 @@ void main() {
     );
   });
 
+  // ===== 视口尺寸 provider 的生命周期：订阅锚在本层，不再 keepAlive =====
+  //
+  // 旧实现靠 ref.keepAlive() 挡住"没人 watch ⇒ setSize 后随即自毁复位 Size.zero"，
+  // 代价是 family + keepAlive ⇒ **每个开过的 canvasId 永久留一个 entry**（进程级
+  // 泄漏，BOARD 债）。现在订阅锚挪到 CanvasShortcuts.build 的那条 watch 上：
+  // 它与画布标签同生共死，换画布时旧 canvasId 的 watcher 当场断开 ⇒ entry 随之回收。
+  //
+  // 上面那条 D2 用例是另一半护栏：锚掉了 ⇒ 尺寸被复位 ⇒ 缩放围绕 (0,0) 当场红。
+  // 本用例咬的是反方向——锚在、但范围过大（keepAlive 回来）就永不回收。
+  //
+  // 【实测变异】把 CanvasViewportSize.build 里的 ref.keepAlive() 加回来
+  //   ⇒ Expected: Size(0.0, 0.0)  Actual: Size(800.0, 600.0)
+  testWidgets('切换画布 → 旧画布的视口尺寸 entry 被回收，不再常驻', (tester) async {
+    final container = await _pump(
+      tester,
+      nodes: twoNodes,
+      surfaceSize: const Size(800, 600),
+    );
+    // 预热并保活 c2 的节点：理由同 D3——切换瞬间若出现 loading 空档，
+    // pumpAndSettle 会卡在 CircularProgressIndicator 上。
+    final sub = container.listen(
+      canvasNodesControllerProvider('c2'),
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(sub.close);
+    await tester.pumpAndSettle();
+
+    expect(
+      container.read(canvasViewportSizeProvider('c1')),
+      isNot(Size.zero),
+      reason: '前置：c1 在台上，视口已上报',
+    );
+
+    container.read(shellControllerProvider.notifier).openCanvas('c2');
+    await tester.pumpAndSettle();
+
+    expect(
+      container.read(canvasViewportSizeProvider('c1')),
+      Size.zero,
+      reason: 'c1 已无人订阅 ⇒ entry 必须随之回收；再读是全新实例（Size.zero）。'
+          '读回旧尺寸说明 entry 还在，即每开一张画布就永久多留一份视口尺寸',
+    );
+  });
+
   // ===== D3：切换画布不继承旧画布的 pan/zoom（transform 按 canvasId 隔离）=====
   testWidgets('切换画布 → InteractiveViewer 变换复位为初始相机', (tester) async {
     final container = await _pump(tester, nodes: twoNodes);
