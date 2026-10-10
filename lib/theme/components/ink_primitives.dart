@@ -5,8 +5,9 @@
 // 【2026-10-10 删了四件】`InkSelect` / `InkMonoField` / `InkSlider` / `InkToggle`
 // 是复刻件退场后留下的死件——`lib/` 下零消费点、`test/` 下也零引用。判据不是肉眼
 // grep，是 test/quality/no_dead_theme_component_test.dart：那道闸把本目录与
-// primitives/ 的 29 个公开件逐个找消费点，一跑就点出 8 个，其中这四个是本次范围
-// （另外四个记在 BOARD）——其余 21 个各有消费点，证明"死"不是闸口径太严。
+// primitives/ 的公开件逐个找消费点，首跑（删之前，30 个公开件）点出 8 个，其中
+// 这四个是本次范围（另外四个记在 BOARD）——剩下 22 个各有消费点，证明"死"是这
+// 几个独有的事实，不是闸口径太严把一批都误判了。
 // `InkUnderlineField` **留着**：`InkSelect` / `InkMonoField` 曾复用它，但
 // `canvas_project_panel.dart` 现在直接在用。
 import 'package:flutter/widgets.dart';
