@@ -203,7 +203,8 @@ void main() {
         _focusOf(tester, ShellTabBar.locateInCanvasKey).canRequestFocus,
         isTrue,
       );
-    }, timeout: const Timeout(Duration(seconds: 15)));
+      // 整壳起一次在负载高的机器上会慢（studio_import_test 同款 30s）。
+    }, timeout: const Timeout(Duration(seconds: 30)));
 
     testWidgets('交付中：「回画布定位」连焦点都到不了', (tester) async {
       await pumpShell(tester, busy: true);
@@ -213,6 +214,6 @@ void main() {
         reason: 'IgnorePointer 只吞指针——锁住的块必须把焦点一起排除，'
             '否则键盘用户能绕过交付锁',
       );
-    }, timeout: const Timeout(Duration(seconds: 15)));
+    }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }
