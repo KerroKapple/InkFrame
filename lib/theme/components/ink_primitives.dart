@@ -1,6 +1,15 @@
-// Ink 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 底线字段 / 下拉 / 滑块 / 开关 / 方点。
+// Ink 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 底线字段 / 方点。
 // 尺寸全部来自 Workspace v2 稿的 CSS（docs/design/handoff-2026-09/InkFrame Workspace v2.html）。
 // 原为静态复刻与真实画布共用；复刻脚手架已随 P7 删除，现在只服务 features/。
+//
+// 【2026-10-10 删了四件】`InkSelect` / `InkMonoField` / `InkSlider` / `InkToggle`
+// 是复刻件退场后留下的死件——`lib/` 下零消费点、`test/` 下也零引用。判据不是肉眼
+// grep，是 test/quality/no_dead_theme_component_test.dart：那道闸把本目录与
+// primitives/ 的公开件逐个找消费点，首跑（删之前，30 个公开件）点出 8 个，其中
+// 这四个是本次范围（另外四个记在 BOARD）——剩下 22 个各有消费点，证明"死"是这
+// 几个独有的事实，不是闸口径太严把一批都误判了。
+// `InkUnderlineField` **留着**：`InkSelect` / `InkMonoField` 曾复用它，但
+// `canvas_project_panel.dart` 现在直接在用。
 import 'package:flutter/widgets.dart';
 
 import '../app_theme.dart';
@@ -179,129 +188,6 @@ class InkUnderlineField extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
       decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.control))),
       child: child,
-    );
-  }
-}
-
-/// 下拉：底线字段 + 右侧 ▼。
-class InkSelect extends StatelessWidget {
-  const InkSelect(this.value, {super.key});
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    final t = context.inkTypography;
-    return InkUnderlineField(
-      child: Row(
-        children: <Widget>[
-          Expanded(child: Text(value, style: t.body.copyWith(color: c.fg2), maxLines: 1, overflow: TextOverflow.ellipsis)),
-          Text('▼', style: t.micro.copyWith(color: c.fg6)),
-        ],
-      ),
-    );
-  }
-}
-
-/// 只读等宽文本字段。
-class InkMonoField extends StatelessWidget {
-  const InkMonoField(this.value, {super.key});
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    return InkUnderlineField(
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(value, style: context.inkTypography.mono.copyWith(color: c.fg2), maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
-    );
-  }
-}
-
-/// 滑块：2px 轨道 + 琥珀已填充段 + 10px 圆钮 + 右侧 40px 等宽琥珀数值。
-class InkSlider extends StatelessWidget {
-  const InkSlider({super.key, required this.fraction, required this.value});
-  final double fraction;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: SizedBox(
-            height: 10,
-            child: LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints box) {
-                final double x = box.maxWidth * fraction;
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: <Widget>[
-                    Positioned(left: 0, right: 0, top: 4, height: 2, child: ColoredBox(color: c.controlStrong)),
-                    Positioned(left: 0, width: x, top: 4, height: 2, child: ColoredBox(color: c.accent)),
-                    Positioned(
-                      left: x - 5,
-                      top: 0,
-                      child: Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(color: c.fg1, shape: BoxShape.circle),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-        const SizedBox(width: InkSpacing.sm),
-        SizedBox(
-          width: 40,
-          child: Text(value, textAlign: TextAlign.right, style: context.inkTypography.mono.copyWith(color: c.accent)),
-        ),
-      ],
-    );
-  }
-}
-
-/// 开关：26×14 胶囊，开启琥珀底、关闭 controlStrong，10px 圆钮。
-class InkToggle extends StatelessWidget {
-  const InkToggle({super.key, required this.on, required this.label});
-  final bool on;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    return Row(
-      children: <Widget>[
-        Container(
-          width: 26,
-          height: 14,
-          decoration: BoxDecoration(
-            color: on ? c.accent : c.controlStrong,
-            borderRadius: BorderRadius.circular(InkRadius.pill),
-          ),
-          child: Stack(
-            children: <Widget>[
-              Positioned(
-                left: on ? 14 : 2,
-                top: 2,
-                child: Container(
-                  width: 10,
-                  height: 10,
-                  decoration: BoxDecoration(color: c.fg1, shape: BoxShape.circle),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(width: InkSpacing.sm),
-        Text(label, style: context.inkTypography.meta.copyWith(color: c.fg5)),
-      ],
     );
   }
 }

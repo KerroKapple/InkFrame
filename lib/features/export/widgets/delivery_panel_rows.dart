@@ -214,10 +214,13 @@ class DeliveryMonoValue extends StatelessWidget {
 /// 开关行的值 = 26×14 胶囊 + 注解文字（比只读值暗两档）。
 /// 胶囊与文字整块可点——14px 高的胶囊单独做点击区太小。
 ///
-/// 几何与 `ink_primitives.dart` 的 `InkToggle` 相同，但**不引用它**：那件把标签
-/// 放在一个无约束 Row 里，196px 的值列放不下英文注解（"Written to clip comments
-/// (size · motion)" 要 228px）就会 RenderFlex overflow。这里的标签要能省略号收尾，
-/// 所以自己排（复刻件同样没引用 InkToggle，理由相同）。
+/// 几何照 Workspace v2 稿的开关（26×14 胶囊 + 10px 圆钮），但标签自己排：稿上那
+/// 件把标签放在一个无约束 Row 里，196px 的值列放不下英文注解（"Written to clip
+/// comments (size · motion)" 要 228px）就会 RenderFlex overflow；这里的标签要能
+/// 省略号收尾。
+///
+/// （theme 层曾有一件同几何的 `InkToggle`，本文件与复刻件都没引用它，理由就是上面
+/// 这条；它随 2026-10-10 的死件清理删掉了。）
 class DeliveryToggleValue extends StatelessWidget {
   const DeliveryToggleValue({
     super.key,

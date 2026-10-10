@@ -18,27 +18,20 @@
 // test/features/shell/shell_tab_bar_test.dart（那里才拿得到真实 en/zh 文案）：
 // 「五个标签的自然宽度之和 + 左右 gutter ≤ compactBelow」。
 //
-// 【键盘可达】chip 走 FocusableActionDetector：可 Tab 聚焦、Enter / Space 激活、
-// 聚焦时画一圈 accent 焦点环。标签条是全应用最高频交互，此前它是裸
-// GestureDetector + Semantics，键盘用户根本到不了（BOARD 旧债）。
+// 【键盘可达】chip 的点击壳是 InkActivatable（lib/theme/primitives/
+// ink_activatable.dart）：可 Tab 聚焦、Enter / NumpadEnter / Space 激活、聚焦时画
+// 一圈 accent 焦点环。标签条是全应用最高频交互，此前它是裸 GestureDetector +
+// Semantics，键盘用户根本到不了（BOARD 旧债）。
+// 这套原先就写在本文件里（#249）；2026-10-10 抽成共用件，`InkGhostButton` 与标签栏右侧
+// 那排动作一起换过去——一个外壳上不该有两套可达性语义。
 // 用例在 test/theme/ink_shell_tab_bar_test.dart「键盘可达性」组，
 // 端到端那条（Tab 到画廊格 + Enter 真切标签）在
 // test/features/shell/shell_tab_bar_test.dart。
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../app_theme.dart';
+import '../primitives/ink_activatable.dart';
 import '../tokens.dart';
-
-/// Enter / Space → 激活。**不依赖 WidgetsApp 的默认 shortcuts 表**：theme 层
-/// 是可复用组件，不该假设宿主一定是 MaterialApp；显式写出来也让"哪些键能激活"
-/// 变成读得到的契约而不是框架默认值。
-const Map<ShortcutActivator, Intent> _kActivateChip =
-    <ShortcutActivator, Intent>{
-  SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
-  SingleActivator(LogicalKeyboardKey.numpadEnter): ActivateIntent(),
-  SingleActivator(LogicalKeyboardKey.space): ActivateIntent(),
-};
 
 /// 标签栏的一格。**纯数据，刻意不含任何领域类型**——带上 ShellTab 就等于
 /// theme 层又认识 feature 的领域模型了。
@@ -160,7 +153,9 @@ class InkShellTabBar extends StatelessWidget {
   }
 }
 
-class _ShellTab extends StatefulWidget {
+/// 一格 chip。可达性（聚焦 / 键盘激活 / hover / 光标 / Semantics）全在
+/// [InkActivatable] 里，本件只负责"长什么样"——所以它是无状态的。
+class _ShellTab extends StatelessWidget {
   const _ShellTab({
     super.key,
     required this.item,
@@ -171,32 +166,32 @@ class _ShellTab extends StatefulWidget {
   final bool compact;
 
   @override
-  State<_ShellTab> createState() => _ShellTabState();
-}
-
-class _ShellTabState extends State<_ShellTab> {
-  /// 由本 State 持有，而不是让 FocusableActionDetector 自己造一个内部节点：
-  /// 测试要断言"焦点此刻落在哪一格"，拿得到节点才测得了。
-  final FocusNode _focus = FocusNode();
-  bool _hover = false;
-  bool _focused = false;
-
-  @override
-  void dispose() {
-    _focus.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final InkColors colors = context.inkColors;
-    final typo = context.inkTypography;
-    final InkShellTabBarItem item = widget.item;
-    final Color fg = item.selected
-        ? colors.fg1
-        : (_hover ? colors.fg2 : colors.fg4);
+    return InkActivatable(
+      onTap: item.onTap,
+      semanticLabel: item.label,
+      selected: item.selected,
+      tooltip: item.label,
+      // 环由本件自己画在下面那个 Container 的 foregroundDecoration 上，而不是让
+      // 包装件在外面套一层：它得和 2px 琥珀下边框共用同一个盒才对得齐。
+      paintFocusRing: false,
+      builder: (BuildContext context, bool hovered, bool focused) =>
+          _body(context, colors: colors, hovered: hovered, focused: focused),
+    );
+  }
 
-    final Widget label = widget.compact
+  Widget _body(
+    BuildContext context, {
+    required InkColors colors,
+    required bool hovered,
+    required bool focused,
+  }) {
+    final typo = context.inkTypography;
+    final Color fg =
+        item.selected ? colors.fg1 : (hovered ? colors.fg2 : colors.fg4);
+
+    final Widget label = compact
         ? Icon(item.icon, size: 16, color: fg)
         : Text(
             item.label,
@@ -215,73 +210,28 @@ class _ShellTabState extends State<_ShellTab> {
               trailing,
             ],
           );
-    final bool enabled = item.onTap != null;
-    final VoidCallback? onTap = item.onTap;
 
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      selected: item.selected,
-      label: item.label,
-      child: Tooltip(
-        message: item.label,
-        // hover 仍走外层 MouseRegion（光标 + hover 色与改造前逐字相同）；
-        // FocusableActionDetector 只负责"焦点与键盘激活"这一件新事。
-        child: MouseRegion(
-          cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-          onEnter: (_) => setState(() => _hover = true),
-          onExit: (_) => setState(() => _hover = false),
-          child: FocusableActionDetector(
-            focusNode: _focus,
-            // onTap == null ⇒ 既不可点也不可聚焦：Tab 直接跳过这一格，
-            // 不会出现"聚焦上去按回车什么都不发生"的假可达。
-            enabled: enabled,
-            onShowFocusHighlight: (bool v) {
-              if (v != _focused) setState(() => _focused = v);
-            },
-            shortcuts: _kActivateChip,
-            actions: <Type, Action<Intent>>{
-              ActivateIntent: CallbackAction<ActivateIntent>(
-                // 与鼠标点击**同一个回调**：键盘与指针不可能走岔。
-                onInvoke: (ActivateIntent intent) {
-                  onTap?.call();
-                  return null;
-                },
-              ),
-            },
-            child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: item.onTap,
-              child: Opacity(
-                opacity: item.dimmed ? 0.5 : 1,
-                child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: InkSpacing.md),
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  // 选中项在纯图标条上只靠琥珀下边框太弱 ⇒ compact 下给 surface5 底。
-                  color: widget.compact && item.selected ? colors.surface5 : null,
-                  border: Border(
-                    bottom: BorderSide(
-                      color: item.selected ? colors.accent : Colors.transparent,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                // 焦点环走【前景装饰】：foregroundDecoration 不进
-                // Container 的 _paddingIncludingDecoration，所以加环不会把 chip
-                // 撑宽/撑高，既有视觉与宽度阈值实测都不动。颜色取 accent token
-                // （与选中态同色但形状不同：选中是 2px 下边框，焦点是一圈 1px 环）。
-                foregroundDecoration: !_focused
-                    ? null
-                    : BoxDecoration(
-                        border: Border.all(color: colors.accent, width: 1),
-                      ),
-                  child: content,
-                ),
-              ),
+    return Opacity(
+      opacity: item.dimmed ? 0.5 : 1,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: InkSpacing.md),
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          // 选中项在纯图标条上只靠琥珀下边框太弱 ⇒ compact 下给 surface5 底。
+          color: compact && item.selected ? colors.surface5 : null,
+          border: Border(
+            bottom: BorderSide(
+              color: item.selected ? colors.accent : Colors.transparent,
+              width: 2,
             ),
           ),
         ),
+        // 焦点环走【前景装饰】：foregroundDecoration 不进
+        // Container 的 _paddingIncludingDecoration，所以加环不会把 chip
+        // 撑宽/撑高，既有视觉与宽度阈值实测都不动。样式取自 inkFocusRing
+        // （accent token 的唯一出处，与另外两处共用）。
+        foregroundDecoration: inkFocusRing(colors, focused: focused),
+        child: content,
       ),
     );
   }
