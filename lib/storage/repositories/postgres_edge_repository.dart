@@ -78,7 +78,8 @@ class PostgresEdgeRepository with BaseRepository implements EdgeRepository {
       final r = await session.execute(
         Sql.named(
           '$_selectAlive '
-          'WHERE e.source_node_id = @sid AND e.deleted_at IS NULL',
+          'WHERE e.source_node_id = @sid AND e.deleted_at IS NULL '
+          'ORDER BY e.sort_order ASC, e.created_at ASC, e.id ASC',
         ),
         parameters: <String, Object?>{'sid': sourceNodeId},
       );
@@ -92,7 +93,8 @@ class PostgresEdgeRepository with BaseRepository implements EdgeRepository {
       final r = await session.execute(
         Sql.named(
           '$_selectAlive '
-          'WHERE e.target_node_id = @tid AND e.deleted_at IS NULL',
+          'WHERE e.target_node_id = @tid AND e.deleted_at IS NULL '
+          'ORDER BY e.sort_order ASC, e.created_at ASC, e.id ASC',
         ),
         parameters: <String, Object?>{'tid': targetNodeId},
       );
