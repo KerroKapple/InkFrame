@@ -634,6 +634,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorCharactersUnsupported => '当前模型不使用参考图，角色不会生效';
 
   @override
+  String inspectorCharactersOverLimit(int requested, int max, String names) {
+    return '参考图超出上限（$requested/$max），以下角色不会被完整使用：$names';
+  }
+
+  @override
   String get inspectorCharactersSaveFromReference => '把参考图存为角色';
 
   @override

@@ -279,6 +279,14 @@
   "inspectorCharactersLabel": "角色",
   "inspectorCharactersEmpty": "还没有角色",
   "inspectorCharactersUnsupported": "当前模型不使用参考图，角色不会生效",
+  "inspectorCharactersOverLimit": "参考图超出上限（{requested}/{max}），以下角色不会被完整使用：{names}",
+  "@inspectorCharactersOverLimit": {
+    "placeholders": {
+      "requested": { "type": "int" },
+      "max": { "type": "int" },
+      "names": { "type": "String" }
+    }
+  },
   "inspectorCharactersSaveFromReference": "把参考图存为角色",
   "inspectorCharactersSaveFromReferenceHint": "把「{source}」的图存成新角色",
   "@inspectorCharactersSaveFromReferenceHint": {

@@ -665,6 +665,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'This model ignores reference images';
 
   @override
+  String inspectorCharactersOverLimit(int requested, int max, String names) {
+    return 'Reference images over limit ($requested/$max); these characters won\'t be fully used: $names';
+  }
+
+  @override
   String get inspectorCharactersSaveFromReference =>
       'Save reference as character';
 

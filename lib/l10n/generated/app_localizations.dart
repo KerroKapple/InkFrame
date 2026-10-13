@@ -1238,6 +1238,12 @@ abstract class AppLocalizations {
   /// **'This model ignores reference images'**
   String get inspectorCharactersUnsupported;
 
+  /// No description provided for @inspectorCharactersOverLimit.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference images over limit ({requested}/{max}); these characters won\'t be fully used: {names}'**
+  String inspectorCharactersOverLimit(int requested, int max, String names);
+
   /// No description provided for @inspectorCharactersSaveFromReference.
   ///
   /// In en, this message translates to:

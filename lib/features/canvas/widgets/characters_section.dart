@@ -33,6 +33,7 @@ import '../providers/canvas_nodes_controller.dart';
 import '../providers/characters_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../providers/project_panel_tab.dart';
+import '../util/ref_image_budget.dart';
 
 /// 项目级角色一致性：把可复用角色挂到本 config 节点（写 type_config.character_ids），
 /// 并支持把已连的参考图「存为角色」。仅当 provider 支持参考图时真正生效（否则给提示）。
@@ -117,20 +118,11 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     }
   }
 
-  /// 本 config 节点第一条**带 image_url 的 data 入边**的源节点（"存为角色"来源）。
-  ///
-  /// 【为什么不看 role】（CH-2 残留①）边的 role 说的是「这张图在生成里当什么用」
-  /// ——首帧、尾帧还是参考图；而"存为角色"只是「把这张图留下来复用」，跟它在本次
-  /// 生成里的用途无关。此前这里要求 role==reference，而 image→video 的默认连线是
-  /// first_frame（`link_action_controller._defaultRole`），于是正常连法下按钮恒灰，
-  /// 用户必须先把边切成 reference 才存得了——等于这个功能在默认路径上不存在。
-  ///
-  /// 选第一条有图的入边 = 检查器「关键帧」组里最上面那一行：两处读的是同一份
-  /// `canvasEdgesControllerProvider`，而它的顺序来自 `ORDER BY sort_order, created_at`，
-  /// 所以"存哪一张"是用户看得到的，不是隐式优先级。
-  CanvasNode? _saveSource() {
+  /// 入边的两个判据一次算完（同一份 edges/nodes，别各 watch 一遍各扫一遍）。
+  /// 两个字段各自的"为什么"写在 [_InputsView] 上。
+  _InputsView _inputsView() {
     final canvasId = widget.targetNode.canvasId;
-    if (canvasId == null) return null;
+    if (canvasId == null) return const _InputsView(null, 0);
     final edges =
         ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[];
@@ -138,15 +130,43 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
         ref.watch(canvasNodesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasNode>[];
     final nodesById = {for (final n in nodes) n.id: n};
+
+    CanvasNode? saveSource;
+    var edgeRefCount = 0;
     for (final e in edges) {
       if (e.targetNodeId != widget.targetNode.id ||
           e.edgeType != EdgeType.data) {
         continue;
       }
       final src = nodesById[e.sourceNodeId];
-      if (src != null && (src.imageUrl?.isNotEmpty ?? false)) return src;
+      if (src == null || !(src.imageUrl?.isNotEmpty ?? false)) continue;
+      saveSource ??= src;
+      // 配额只认 reference：首/尾帧走 firstFramePath/lastFramePath 两个独立字段，
+      // 不进 refImagePaths（全家 refImagesIncludeKeyframes=false），不挤角色图。
+      // 只数"真有图"的边——没有图的边在生成侧也解析不出参考图，不该占格子。
+      if (e.role == EdgeRole.reference) edgeRefCount++;
     }
-    return null;
+    return _InputsView(saveSource, edgeRefCount);
+  }
+
+  /// 挂载角色对参考图配额的消耗（按 `character_ids` 顺序 = 注入次序）。
+  /// 口径与 `GenerationController._injectCharacterRefs` 同源，见 util/ref_image_budget.dart。
+  RefImageBudgetPlan _refBudget(List<Character> all, int edgeRefCount) {
+    final byId = {for (final c in all) c.id: c};
+    return planRefImageBudget(
+      limit: widget.selectedCaps?.maxRefImages ?? 0,
+      edgeRefCount: edgeRefCount,
+      characters: <CharacterRefDemand>[
+        for (final id in _attachedIds)
+          if (byId[id] case final Character c)
+            CharacterRefDemand(
+              id: c.id,
+              // 名字为空回落到 id，与 chip 的显示同口径。
+              name: c.name.isNotEmpty ? c.name : c.id,
+              imagePaths: c.referenceImagePaths,
+            ),
+      ],
+    );
   }
 
   @override
@@ -157,7 +177,13 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     final typo = context.inkTypography;
     final charactersAsync = ref.watch(charactersControllerProvider(projectId));
     final characters = charactersAsync.valueOrNull ?? const <Character>[];
-    final saveSource = _saveSource();
+    final inputs = _inputsView();
+    final saveSource = inputs.saveSource;
+    // 配额提示只在真会注入时说（不支持参考图时已有 inspectorCharactersUnsupported）。
+    final budget = _supportsRefs
+        ? _refBudget(characters, inputs.edgeRefCount)
+        : null;
+    final shortfall = budget?.shortfall ?? const <CharacterRefOutcome>[];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -192,6 +218,21 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
             padding: const EdgeInsets.only(bottom: InkSpacing.xs),
             child: Text(
               context.l10n.inspectorCharactersUnsupported,
+              style: typo.meta.copyWith(color: colors.accent),
+            ),
+          ),
+        // CH-2 残留②：合计超限时提交前就点名——此前 provider 的 take() 从尾部
+        // 截断（掉的恰是角色图），而这里一个字都不说，用户以为挂上了。
+        if (shortfall.isNotEmpty && budget != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: InkSpacing.xs),
+            child: Text(
+              key: const ValueKey<String>('characters-over-limit'),
+              context.l10n.inspectorCharactersOverLimit(
+                budget.requested,
+                budget.limit,
+                shortfall.map((o) => o.name).join(' / '),
+              ),
               style: typo.meta.copyWith(color: colors.accent),
             ),
           ),
@@ -338,6 +379,28 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
       cancelLabel: ctx.l10n.commonCancel,
     ),
   );
+}
+
+/// data 入边扫一遍得到的两个判据。
+@immutable
+class _InputsView {
+  const _InputsView(this.saveSource, this.edgeRefCount);
+
+  /// 第一条**带 image_url 的 data 入边**的源节点（"存为角色"的来源）。
+  ///
+  /// 【为什么不看 role】（CH-2 残留①）边的 role 说的是「这张图在生成里当什么用」
+  /// ——首帧、尾帧还是参考图；而"存为角色"只是「把这张图留下来复用」，跟它在本次
+  /// 生成里的用途无关。此前这里要求 role==reference，而 image→video 的默认连线是
+  /// first_frame（`link_action_controller._defaultRole`），于是正常连法下按钮恒灰，
+  /// 用户必须先把边切成 reference 才存得了——等于这个功能在默认路径上不存在。
+  ///
+  /// 选第一条有图的入边 = 检查器「关键帧」组里最上面那一行：两处读的是同一份
+  /// `canvasEdgesControllerProvider`，而它的顺序来自 `ORDER BY sort_order, created_at`，
+  /// 所以"存哪一张"是用户看得到的，不是隐式优先级。
+  final CanvasNode? saveSource;
+
+  /// 占参考图配额的入边张数（只数 reference，见 util/ref_image_budget.dart 头注）。
+  final int edgeRefCount;
 }
 
 /// 命名对话框。TextEditingController 生命周期归 dialog 自身——退场动画期间
