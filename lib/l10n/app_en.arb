@@ -263,6 +263,7 @@
     }
   },
   "nodeDeleteFailed": "Failed to delete node",
+  "edgeDeleteFailed": "Failed to delete link",
   "nodeMoveFailed": "Failed to move node",
   "edgeDeleted": "Link deleted",
   "undoFailed": "Couldn't undo",

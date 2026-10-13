@@ -360,7 +360,10 @@ class _CanvasStage extends ConsumerWidget {
         onUndo: () => _restoreEdge(context, edgesCtrl, removed),
       );
     } on InkError catch (_) {
-      // 删失败：EdgesController 已回滚内存，SelectedEdge 已清，用户可重试。
+      // 删失败：EdgesController 已回滚内存，SelectedEdge 已清。回滚让连线**冒回来**，
+      // 可那只是现象——不说一声，用户只看到「删掉的线又回来了」，不知道是没删成。
+      // 删节点 / 删泳道失败都有提示，删连线原来是唯一不说的那个。
+      if (context.mounted) showCanvasSnack(context, context.l10n.edgeDeleteFailed);
     }
   }
 

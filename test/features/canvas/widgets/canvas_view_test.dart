@@ -85,6 +85,16 @@ class _SeededEdgesController extends CanvasEdgesController {
   }
 }
 
+/// 删连线必失败：真控制器在 DB 失败时会回滚内存再上抛 InkError——这里直接抛，
+/// state 原样不动（等价于回滚之后的样子）。
+class _FailingRemoveEdgesController extends _SeededEdgesController {
+  _FailingRemoveEdgesController(super.seed);
+
+  @override
+  Future<CanvasEdge?> removeEdge(String id) async =>
+      throw const LocalIOError(extra: <String, Object?>{'op': 'softDelete'});
+}
+
 /// 级联 undo 测试用：删节点时连带软删其关联边（token 记 edge id），restore 时
 /// 连带复原——复刻真控制器 removeNode 级联 + restore + invalidate 的净效果。
 class _CascadeNodesController extends CanvasNodesController {
@@ -666,6 +676,33 @@ void main() {
 
       expect(fakeEdges.restoreCalls, hasLength(1));
       expect(fakeEdges.restoreCalls.first.id, 'e1');
+    });
+
+    // 删连线失败要说一声。控制器回滚让连线**冒回来**，可那只是现象——不说，用户
+    // 只看到「删掉的线又回来了」。删节点 / 删泳道失败都有提示，删连线原来没有。
+    testWidgets('删除连线失败 → 提示失败，不弹「已删除」也不给 Undo', (tester) async {
+      const edge = CanvasEdge(
+        id: 'e1',
+        canvasId: 'c1',
+        sourceNodeId: 'a',
+        targetNodeId: 'b',
+        edgeType: EdgeType.data,
+      );
+      await pumpWith(tester,
+          nodes: _FakeNodesController(twoNodes),
+          edges: _FailingRemoveEdgesController(const <CanvasEdge>[edge]));
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(CanvasView)),
+      );
+
+      container.read(selectedEdgeControllerProvider('c1').notifier).select('e1');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byIcon(Icons.close));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Failed to delete link'), findsOneWidget);
+      expect(find.text('Link deleted'), findsNothing);
+      expect(find.text('Undo'), findsNothing, reason: '没删成，没有可撤销的东西');
     });
 
     testWidgets('删除有边节点 → Undo 同时复原节点与其级联边', (tester) async {
