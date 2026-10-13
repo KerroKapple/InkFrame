@@ -534,6 +534,7 @@
   "laneDialogSave": "保存",
   "laneDialogCancel": "取消",
   "laneDirectionToggle": "切换泳道方向",
+  "laneDirectionUnavailable": "泳道方向读取失败——重新打开画布前不能切换",
   "laneUntitled": "未命名泳道",
   "laneCreateFailed": "创建泳道失败",
   "laneUpdateFailed": "更新泳道失败",

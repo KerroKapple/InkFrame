@@ -1250,6 +1250,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneDirectionToggle => '切换泳道方向';
 
   @override
+  String get laneDirectionUnavailable => '泳道方向读取失败——重新打开画布前不能切换';
+
+  @override
   String get laneUntitled => '未命名泳道';
 
   @override
