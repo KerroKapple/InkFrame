@@ -87,8 +87,8 @@ final pgPoolProvider = FutureProvider<Pool<void>>(
 /// 首次读：启动 PG → 建池 → DatabaseBootstrap.run()（pgcrypto + 迁移链；
 /// 底层 PG 异常在储层边界收口，见 storage/database_bootstrap.dart）。
 ///
-/// LB-09：DI 边界只把**已知的启动失败**（PG 生命周期 / 引导 / 迁移，含
-/// SchemaDowngradeError——它 extends SchemaMigrationError）翻成可渲染的
+/// LB-09：DI 边界只把**已知的启动失败**（找不到内置 PG 程序 / PG 生命周期 / 引导 /
+/// 迁移，含 SchemaDowngradeError——它 extends SchemaMigrationError）翻成可渲染的
 /// [LocalIOError]，AsyncError 因此携带 InkError，供启动失败 surface 经
 /// l10nAsyncError 本地化呈现，而非白屏泄漏裸错误。
 ///
@@ -101,6 +101,16 @@ final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
       final pool = await ref.watch(pgPoolProvider.future);
       await DatabaseBootstrap(pool).run();
       return pool;
+    } on PgBinaryNotFoundError catch (e, st) {
+      // 找不到内置 PG 程序：安装不完整、被安全软件隔离、或开发机没 fetch-binaries。
+      // 它是 StateError 的子类，原来不在任何分支里，按「泛化 StateError 不翻译」原样
+      // 透出——被当成程序 bug，启动页只能说「出了点问题」。它是已知的、用户能处理的
+      // 启动失败：唯一有用的指引是「重新安装」。
+      throw LocalIOError(
+        cause: e,
+        stackTrace: st,
+        extra: const <String, Object?>{'reason': kDbBinariesMissingReason},
+      );
     } on PgLifecycleError catch (e, st) {
       throw LocalIOError(cause: e, stackTrace: st);
     } on DatabaseBootstrapError catch (e, st) {
@@ -163,3 +173,6 @@ LocalIOError schemaFailureToInkError(SchemaMigrationError e, StackTrace st) =>
             : kDbMigrationFailedReason,
       },
     );
+
+/// 找不到内置 PG 程序时，[LocalIOError] 的 `extra['reason']`。
+const String kDbBinariesMissingReason = 'db_binaries_missing';
