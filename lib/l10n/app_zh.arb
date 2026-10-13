@@ -254,6 +254,7 @@
     }
   },
   "nodeDeleteFailed": "节点删除失败",
+  "edgeDeleteFailed": "连线删除失败",
   "nodeMoveFailed": "节点移动失败",
   "edgeDeleted": "连线已删除",
   "undoFailed": "撤销失败",

@@ -596,6 +596,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nodeDeleteFailed => '节点删除失败';
 
   @override
+  String get edgeDeleteFailed => '连线删除失败';
+
+  @override
   String get nodeMoveFailed => '节点移动失败';
 
   @override

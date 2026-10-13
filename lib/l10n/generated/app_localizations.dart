@@ -1166,6 +1166,12 @@ abstract class AppLocalizations {
   /// **'Failed to delete node'**
   String get nodeDeleteFailed;
 
+  /// No description provided for @edgeDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to delete link'**
+  String get edgeDeleteFailed;
+
   /// No description provided for @nodeMoveFailed.
   ///
   /// In en, this message translates to:
