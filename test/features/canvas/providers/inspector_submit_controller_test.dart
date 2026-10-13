@@ -241,6 +241,24 @@ void main() {
     );
   });
 
+  test('同一 node 上两个不同防抖字段按键合并，不互相顶掉（BOARD 第 198 行）', () async {
+    final container = makeContainer(_FakeGenerationController());
+    container.listen(inspectorSubmitControllerProvider('n1'), (_, _) {});
+    final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+    ctrl.saveDebounced(const <String, Object?>{'shot_notes': 'a note'});
+    ctrl.savePromptDebounced('a prompt');
+    expect(repo.patches, isEmpty, reason: '防抖窗口内不应落盘');
+
+    await Future<void>.delayed(
+      InspectorSubmitController.debounceDuration + const Duration(milliseconds: 100),
+    );
+
+    expect(repo.patches, [
+      {'shot_notes': 'a note', 'prompt': 'a prompt'},
+    ], reason: '第二个字段不得把第一个还没落盘的 patch 整个顶掉');
+  });
+
   test('saveConfig：立即落盘一次', () async {
     final container = makeContainer(_FakeGenerationController());
     final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);

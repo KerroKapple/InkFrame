@@ -60,12 +60,18 @@ void main() {
   /// 两件单品拼起来测：ShotConfigInspector 负责输入与落盘，
   /// InspectorAutoSaveRow 负责把失败上屏。生产里由检查器面板把二者放在一起
   /// （最后一条用例断言的就是那条接线）。
+  ///
+  /// 宽度钉在检查器面板的真实宽度：失败行是「图标 + 原因 + 重试按钮」一行，
+  /// 在 800 的默认画布上测不出它在 301 里会不会溢出（溢出在 debug 下直接抛）。
   const Widget composed = Scaffold(
-    body: Column(
-      children: <Widget>[
-        ShotConfigInspector(node: shotNode),
-        InspectorAutoSaveRow(nodeId: shotNodeId),
-      ],
+    body: SizedBox(
+      width: CanvasInspectorPanel.width,
+      child: Column(
+        children: <Widget>[
+          ShotConfigInspector(node: shotNode),
+          InspectorAutoSaveRow(nodeId: shotNodeId),
+        ],
+      ),
     ),
   );
 

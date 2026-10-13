@@ -8,6 +8,9 @@
 //   - 失败携带结构化 InspectorSubmitError，文案由 view 层映射 ARB
 //   - 自动保存失败独立发布到 inspectorAutoSaveStatusProvider（见下方注释）
 //
+// 同一节点的 type_config 写入（自动保存 + submit 的终稿）全部走一条串行链
+// _serialized：落库顺序 = 发起顺序，在途的旧 patch 盖不到终稿头上。
+//
 // JobState 绑定点（agent-generation slice 落地后接线）：
 //   jobStateProvider(nodeId) 可在 build 中 watch 并派生 running 进度，
 //   届时 InspectorSubmitRunning.progress 接真实值。
@@ -146,6 +149,9 @@ class InspectorSubmitController
   Timer? _debounce;
   KeepAliveLink? _debounceKeepAlive;
 
+  /// 挂起中的防抖 patch（按键合并，每键留最新值）。计时器触发时整张写出。
+  final Map<String, Object?> _pendingDebounced = <String, Object?>{};
+
   /// autoDispose family 下，await 期间 provider 可能已被回收——之后再触 ref
   /// 会抛 StateError。沿用画布各控制器的口径：await 之后的 ref 访问先查本标志。
   bool _alive = false;
@@ -192,6 +198,11 @@ class InspectorSubmitController
 
   @override
   InspectorSubmitState build(String configNodeId) {
+    // 退避表按「第几次重试」索引，两个常量必须同时改，否则越界。
+    assert(
+      retryBackoff.length == maxAutoRetries,
+      'retryBackoff must carry one delay per automatic retry',
+    );
     _alive = true;
     ref.onDispose(() {
       _alive = false;
@@ -231,10 +242,11 @@ class InspectorSubmitController
     }
   }
 
-  /// 取消挂起的防抖计时器并释放其 keepAlive（不落盘）。
+  /// 取消挂起的防抖计时器、丢掉已累积的 patch 并释放其 keepAlive（不落盘）。
   void _cancelPendingDebounce() {
     _debounce?.cancel();
     _debounce = null;
+    _pendingDebounced.clear();
     _debounceKeepAlive?.close();
     _debounceKeepAlive = null;
   }
@@ -363,7 +375,12 @@ class InspectorSubmitController
     }
   }
 
-  /// 通用防抖保存：连续调用只落最后一次 patch。
+  /// 通用防抖保存：连续调用**按键合并**，每个键落最后一次值，窗口静默后一次写出。
+  ///
+  /// 合并而不是整笔替换（BOARD 第 198 行）：同一 node 上第二次 saveDebounced
+  /// 若把第一次还没落盘的 patch 整个顶掉，另一个字段的编辑就凭空消失。今天两个
+  /// 防抖调用点（prompt / shot_notes）分属不相交的节点类型碰不到，但「每键留
+  /// 最新值」与失败重试用的 [_unsaved] 是同一条规则，一个类里不该有两套。
   ///
   /// 挂起期间用 [Ref.keepAlive] 挂起本 provider 的 autoDispose——否则切换
   /// Inspector 选中的节点会在计时器触发前就把它回收，编辑内容直接丢失
@@ -373,19 +390,19 @@ class InspectorSubmitController
   /// 该 widget 发起的任何 ref 访问，与 provider 容器是否还活着无关），所以
   /// debounce 必须整个挂在 controller（跟着 provider 容器的生命周期走）上，
   /// 而不是 widget 的 State 上。
-  ///
-  /// 每个 node 只有一个挂起中的 Timer/patch 槽位：同一 node 上第二次
-  /// saveDebounced/savePromptDebounced 调用会在第一次落盘前把它替换掉。
-  /// 因此同一 node 上两个不同的防抖字段会互相打架——目前不是活 bug（prompt
-  /// 与 shot_notes 分属不相交的节点类型），但后续若有 node 类型要同时防抖
-  /// 两个字段，需要另外处理。
   void saveDebounced(Map<String, Object?> patch) {
-    _cancelPendingDebounce();
-    _debounceKeepAlive = ref.keepAlive();
+    _pendingDebounced.addAll(patch);
+    _debounce?.cancel();
+    // 一串输入只取一次保活凭据，而不是每次按键换一个。
+    _debounceKeepAlive ??= ref.keepAlive();
     _debounce = Timer(debounceDuration, () {
-      final link = _debounceKeepAlive;
+      final Map<String, Object?> merged =
+          Map<String, Object?>.of(_pendingDebounced);
+      _pendingDebounced.clear();
+      _debounce = null;
+      final KeepAliveLink? link = _debounceKeepAlive;
       _debounceKeepAlive = null;
-      unawaited(saveConfig(patch).whenComplete(() => link?.close()));
+      unawaited(saveConfig(merged).whenComplete(() => link?.close()));
     });
   }
 
