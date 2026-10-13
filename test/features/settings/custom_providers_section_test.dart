@@ -161,7 +161,7 @@ void main() {
     expect(store.entries, isEmpty);
   });
 
-  testWidgets('损坏文件:列表 error 呈现不崩;写拒绝 → snackbar', (tester) async {
+  testWidgets('损坏文件:列表 error 呈现不崩;读拒绝 → 读失败 snackbar', (tester) async {
     final store = _FakeStore()..broken = true;
     await _pump(tester, store);
 
@@ -171,12 +171,47 @@ void main() {
       findsOneWidget,
     );
 
-    // 添加入口仍可点;list() 拒绝 → snackbar 提示
+    // 添加入口仍可点；此处失败的是 `list()`——**读**，不是写。
+    //
+    // 这条断言原来写的是 `Couldn't save`，把错位的文案钉死了（GAP-1 评审 P3②）：
+    // 用户只是点开「添加」，什么都还没填、更没保存，弹出来却是「保存失败」，
+    // 第一反应是「我刚填的被弄丢了」。文案错位比没有文案更坏。
     await tester.tap(find.text('Add custom provider…'));
     await tester.pumpAndSettle();
     expect(
-      find.textContaining("Couldn't save"),
+      find.textContaining("Couldn't read custom_providers.json"),
       findsOneWidget,
+    );
+    expect(
+      find.textContaining("Couldn't save"),
+      findsNothing,
+      reason: '读失败不该说成保存失败',
+    );
+  });
+
+  // 反向：真的写失败时，仍然是「保存失败」那一句。
+  testWidgets('读得到但写拒绝 → 保存失败 snackbar（不是读失败）', (tester) async {
+    final store = _FakeStore();
+    await _pump(tester, store);
+
+    await tester.tap(find.text('Add custom provider…'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+        find.byType(TextField).at(0), 'relay-2');
+    await tester.enterText(
+        find.byType(TextField).at(1), 'Relay 2');
+    await tester.enterText(
+        find.byType(TextField).at(2), 'https://relay2.example.com/v1');
+    await tester.enterText(find.byType(TextField).at(3), 'flux-pro');
+    // 表单读过一次之后才让 store 坏掉——这样失败的一定是 upsert。
+    store.broken = true;
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining("Couldn't save"), findsOneWidget);
+    expect(
+      find.textContaining("Couldn't read custom_providers.json"),
+      findsNothing,
     );
   });
 }

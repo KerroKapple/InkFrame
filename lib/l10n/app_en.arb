@@ -117,6 +117,7 @@
   },
   "settingsCustomProviderDeleteConfirm": "Delete",
   "settingsCustomProviderSaveFailed": "Couldn't save. If custom_providers.json is corrupted, fix or remove it and retry.",
+  "settingsCustomProviderLoadFailed": "Couldn't read custom_providers.json. If it's corrupted, fix or remove it and retry.",
 
   "settingsThemeSection": "Theme",
   "settingsCanvasSection": "Canvas",

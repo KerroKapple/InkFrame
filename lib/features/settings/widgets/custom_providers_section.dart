@@ -215,7 +215,11 @@ Future<void> _openEditor(
   required CustomProviderConfig? existing,
 }) async {
   final l10n = context.l10n;
-  final failedMsg = l10n.settingsCustomProviderSaveFailed;
+  // 读失败与写失败是两句话。合用一个 `failedMsg` 时，点开「编辑」只是读不到
+  // 配置文件，弹出来却是「保存失败」——用户还没保存任何东西，第一反应是
+  // 「我刚填的被弄丢了」。文案错位比没有文案更坏。
+  final loadFailedMsg = l10n.settingsCustomProviderLoadFailed;
+  final saveFailedMsg = l10n.settingsCustomProviderSaveFailed;
   final store = ref.read(customProviderStoreProvider);
   final dirty = ref.read(customProvidersDirtyProvider.notifier);
   // 冲突校验基线：现存文件条目（编辑时剔除自身）+ 内置 providerId。
@@ -225,7 +229,7 @@ Future<void> _openEditor(
   } on InkError {
     if (!context.mounted) return;
     ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(failedMsg)));
+        ?.showSnackBar(SnackBar(content: Text(loadFailedMsg)));
     return;
   }
   final takenIds = {
@@ -250,7 +254,7 @@ Future<void> _openEditor(
   } on InkError {
     if (!context.mounted) return;
     ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(failedMsg)));
+        ?.showSnackBar(SnackBar(content: Text(saveFailedMsg)));
     return;
   }
   dirty.state = true;
