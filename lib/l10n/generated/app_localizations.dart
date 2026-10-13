@@ -866,6 +866,12 @@ abstract class AppLocalizations {
   /// **'Restore latest backup'**
   String get startupErrorRestoreLatest;
 
+  /// No description provided for @startupErrorDbAuthFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t sign in to the local database: the saved database password doesn\'t match. This usually means the system credential store was cleared, or this data folder came from another computer. Your data is still on disk.'**
+  String get startupErrorDbAuthFailed;
+
   /// No description provided for @settingsDiagnosticsSection.
   ///
   /// In en, this message translates to:

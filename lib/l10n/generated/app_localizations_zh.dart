@@ -425,6 +425,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get startupErrorRestoreLatest => '从最近备份还原';
 
   @override
+  String get startupErrorDbAuthFailed =>
+      '无法登录本地数据库：本机保存的数据库口令对不上。通常是系统凭据被清除，或这个数据目录来自另一台电脑。你的数据仍在磁盘上。';
+
+  @override
   String get settingsDiagnosticsSection => '诊断';
 
   @override

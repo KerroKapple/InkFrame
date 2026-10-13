@@ -16,6 +16,7 @@ import '../../../core/di/database_backup.dart';
 import '../../../core/di/database_restore.dart';
 import '../../../core/di/folder_opener.dart';
 import '../../../core/di/paths.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/database_backup_service.dart';
 import '../../../core/interfaces/database_restore_service.dart';
 import '../../../l10n/l10n_x.dart';
@@ -80,6 +81,10 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
     final String logsPath = ref.watch(appPathsProvider).logs.path;
     final BackupFileInfo? latest = _latestRestorable;
     final bool busy = _working || ref.watch(databaseRestoreBusyProvider);
+    // 嵌入式库的口令与系统凭据里那份对不上（SQLSTATE 28P01，见 core/di/database.dart）。
+    final Object e = widget.error;
+    final bool dbAuthFailed =
+        e is LocalIOError && e.extra['reason'] == kDbAuthFailedReason;
 
     return Scaffold(
       // 整屏中性灰，面板居中——与设置 / 回收站同一个壳（标题进标题栏，没有 ✕：
@@ -104,7 +109,12 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                 ),
                 const SizedBox(height: InkSpacing.md),
                 // DI 边界翻好的 InkError 走共享 l10nAsyncError 呈现（renderable，非白屏）。
-                InkErrorBanner(message: l10nAsyncError(context, widget.error)),
+                // 唯一的例外是口令对不上：泛化文案会说「磁盘 I/O 错误」，方向完全错了。
+                InkErrorBanner(
+                  message: dbAuthFailed
+                      ? context.l10n.startupErrorDbAuthFailed
+                      : l10nAsyncError(context, widget.error),
+                ),
                 const SizedBox(height: InkSpacing.md),
                 Text(
                   context.l10n.startupErrorLogPathLabel,
@@ -127,7 +137,9 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                       // 重启/还原进行中禁用，防重复触发并发 stop/start。
                       onPressed: busy ? null : _reboot,
                     ),
-                    if (latest != null)
+                    // 口令对不上时不给「从最新备份还原」：还原用的是同一份口令连库，
+                    // 必然以同样的认证失败告终——一颗注定失败的按钮比没有按钮更坏。
+                    if (latest != null && !dbAuthFailed)
                       InkButton(
                         label: context.l10n.startupErrorRestoreLatest,
                         variant: InkButtonVariant.secondary,

@@ -451,6 +451,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get startupErrorRestoreLatest => 'Restore latest backup';
 
   @override
+  String get startupErrorDbAuthFailed =>
+      'Couldn\'t sign in to the local database: the saved database password doesn\'t match. This usually means the system credential store was cleared, or this data folder came from another computer. Your data is still on disk.';
+
+  @override
   String get settingsDiagnosticsSection => 'Diagnostics';
 
   @override

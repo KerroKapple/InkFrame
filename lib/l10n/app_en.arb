@@ -175,6 +175,7 @@
   "restoreAbortedPreBackup": "Safety backup failed — restore cancelled",
   "restoreInProgress": "Restoring…",
   "startupErrorRestoreLatest": "Restore latest backup",
+  "startupErrorDbAuthFailed": "Couldn't sign in to the local database: the saved database password doesn't match. This usually means the system credential store was cleared, or this data folder came from another computer. Your data is still on disk.",
 
   "settingsDiagnosticsSection": "Diagnostics",
   "settingsDiagnosticsHint": "Logs and configuration for bug reports — API keys are never included.",
