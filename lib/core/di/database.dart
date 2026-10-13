@@ -104,9 +104,7 @@ final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
     } on PgLifecycleError catch (e, st) {
       throw LocalIOError(cause: e, stackTrace: st);
     } on DatabaseBootstrapError catch (e, st) {
-      // TODO(LB-07): SCRAM 28P01（引导期 ServerException code '28P01'，此处已被
-      //   收口成 DatabaseBootstrapError）应走"重置数据库口令"引导分支，而非泛化 LocalIOError。
-      throw LocalIOError(cause: e, stackTrace: st);
+      throw bootstrapFailureToInkError(e, st);
     } on SchemaMigrationError catch (e, st) {
       // SchemaDowngradeError 亦属此族（extends SchemaMigrationError）。
       throw LocalIOError(cause: e, stackTrace: st);
@@ -114,3 +112,27 @@ final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
   },
   name: 'pgMigratedPoolProvider',
 );
+
+/// 数据库口令对不上时，[LocalIOError] 的 `extra['reason']`。启动失败页据此换文案。
+const String kDbAuthFailedReason = 'db_auth_failed';
+
+/// 引导失败 → 用户可读的 InkError。
+///
+/// 口令对不上（SQLSTATE 28P01）单独标 [kDbAuthFailedReason]。原来一律泛化成
+/// LocalIOError，启动失败页于是显示「本地磁盘 I/O 错误，请检查空间与权限」——
+/// 方向完全错了：磁盘好好的，是系统凭据里那份口令丢了或对不上。
+///
+/// 这里只做到「说实话」。真正的出路（「重置数据库口令」引导流程：临时改认证方式重设
+/// 口令）涉及安全取舍，记在 BOARD 待拍板，不在这里做。
+LocalIOError bootstrapFailureToInkError(
+  DatabaseBootstrapError e,
+  StackTrace st,
+) =>
+    LocalIOError(
+      cause: e,
+      stackTrace: st,
+      extra: <String, Object?>{
+        if (e.sqlState == kPgSqlStateInvalidPassword)
+          'reason': kDbAuthFailedReason,
+      },
+    );

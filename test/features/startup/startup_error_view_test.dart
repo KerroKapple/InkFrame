@@ -375,6 +375,44 @@ void main() {
     expect(flow.lastRequire, isFalse, reason: '启动面=best-effort 预备份');
   });
 
+  // 嵌入式库的口令与系统凭据里那份对不上（SQLSTATE 28P01）。原来一律显示「本地磁盘
+  // I/O 错误，请检查空间与权限」——方向完全错了；而「从最近备份还原」用的是同一份
+  // 口令连库，必然以同样的认证失败告终。
+  testWidgets('口令对不上 → 说实话的文案，不给注定失败的「从最近备份还原」',
+      (tester) async {
+    final AppPaths paths = _tempPaths();
+    await pumpInkApp(
+      tester,
+      StartupErrorView(
+        error: LocalIOError(
+          cause: StateError('28P01'),
+          extra: const <String, Object?>{'reason': kDbAuthFailedReason},
+        ),
+      ),
+      overrides: <Override>[
+        appPathsProvider.overrideWithValue(paths),
+        folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+        // 明明有可还原的备份——按钮仍然不该出现。
+        databaseBackupServiceProvider.overrideWithValue(_FakeBackupService([
+          _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily),
+        ])),
+        databaseRestoreFlowProvider.overrideWithValue(_FakeRestoreFlow()),
+        toastServiceProvider.overrideWithValue(_RecordingToast()),
+      ],
+      surfaceSize: const Size(1200, 900),
+    );
+    await tester.pump();
+
+    expect(find.text(l10n.startupErrorDbAuthFailed), findsOneWidget);
+    expect(find.text(l10n.errorLocalIO), findsNothing,
+        reason: '磁盘好好的，是口令对不上——别把人往「检查空间与权限」上引');
+    expect(find.text(l10n.startupErrorRestoreLatest), findsNothing,
+        reason: '还原用同一份口令连库，这颗按钮必然失败');
+    // 另外两颗照常：重试（用户可能刚把凭据恢复回去）、打开日志目录。
+    expect(find.text(l10n.commonRetry), findsOneWidget);
+    expect(find.text(l10n.startupErrorOpenLogDir), findsOneWidget);
+  });
+
   testWidgets('LB-22：只有 prerestore 备份 → 按钮不渲染；flow 失败 → toast + 按钮复位',
       (tester) async {
     final AppPaths paths = _tempPaths();

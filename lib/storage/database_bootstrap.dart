@@ -16,8 +16,19 @@ import 'migrations/migration_runner.dart';
 /// 未预期的服务器错误）。StateError 系，与 [SchemaMigrationError] 同族，
 /// 由 DI/app 边界统一翻 LocalIOError（见 LB-09）。
 class DatabaseBootstrapError extends StateError {
-  DatabaseBootstrapError(super.message);
+  DatabaseBootstrapError(super.message, {this.sqlState});
+
+  /// 底层 [ServerException] 的 SQLSTATE（如 `28P01`）。原来只埋在 message 字符串里，
+  /// 上层想按错误种类分流（口令对不上 ≠ 磁盘坏了）就只能解析文本——现在结构化带出。
+  final String? sqlState;
 }
+
+/// SQLSTATE 28P01 invalid_password：SCRAM 口令对不上。
+///
+/// 嵌入式 PG 的口令随机生成、存在系统凭据里（LB-07）。凭据丢了（用户清过系统凭据
+/// 管理器、或这个数据目录来自另一台电脑），库还在、口令却再也对不上——引导期第一条
+/// 语句（建 pgcrypto 扩展）就会以它失败。2026-10-13 用 SCRAM 临时集群实测确认。
+const String kPgSqlStateInvalidPassword = '28P01';
 
 /// 池就绪后一次性引导：pgcrypto 扩展 + schema 迁移链。
 class DatabaseBootstrap {
@@ -43,6 +54,7 @@ class DatabaseBootstrap {
       if (e.code == '23505') return;
       throw DatabaseBootstrapError(
         'pgcrypto extension bootstrap failed [${e.code}]: ${e.message}',
+        sqlState: e.code,
       );
     }
   }
@@ -55,6 +67,7 @@ class DatabaseBootstrap {
     } on ServerException catch (e) {
       throw DatabaseBootstrapError(
         'schema migration failed [${e.code}]: ${e.message}',
+        sqlState: e.code,
       );
     }
   }
