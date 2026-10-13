@@ -25,6 +25,11 @@ enum RestoreOutcome {
 
   /// 其它失败（非法名 / 文件缺失 / 进程失败 / 维护 SQL 失败）——原库未动。
   failed,
+
+  /// pg_restore 超过看门狗时限被终止——原库未动（灌的是 scratch 库）。
+  /// 与 [failed] 分开的理由同 `BackupOutcome.failedTimedOut`：三十分钟之后的
+  /// 失败若与秒级失败同一句话，用户会原样重试，再等三十分钟。
+  failedTimedOut,
 }
 
 abstract class DatabaseRestoreService {

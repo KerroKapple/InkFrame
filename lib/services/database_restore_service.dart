@@ -211,7 +211,9 @@ class PgSwapRestoreService implements DatabaseRestoreService {
             'stream_error': result.streamError.toString(),
         });
         await _dropTmpQuietly(session);
-        return RestoreOutcome.failed;
+        return result.timedOut
+            ? RestoreOutcome.failedTimedOut
+            : RestoreOutcome.failed;
       }
 
       // 对换：目标库在则先退役（自愈：不在=上次夹缝崩溃，直接换上）。

@@ -764,6 +764,12 @@ abstract class AppLocalizations {
   /// **'Backup failed — see the log folder for details'**
   String get settingsBackupFailed;
 
+  /// No description provided for @settingsBackupTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Backup took too long and was stopped — your database may be very large or the disk slow, so retrying right away will likely time out again'**
+  String get settingsBackupTimedOut;
+
   /// No description provided for @settingsBackupsEmpty.
   ///
   /// In en, this message translates to:
@@ -823,6 +829,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Restore failed — your data was not changed'**
   String get restoreFailed;
+
+  /// No description provided for @restoreFailedTimedOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Restore took too long and was stopped — your data was not changed. The backup may be very large or the disk slow, so retrying right away will likely time out again'**
+  String get restoreFailedTimedOut;
 
   /// No description provided for @restoreFailedCorrupt.
   ///

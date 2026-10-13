@@ -175,7 +175,7 @@ void main() {
           reason: '失败必须清掉半成品 .partial，免占保留位/误判当日已有');
     });
 
-    test('pg_dump 挂死 → 看门狗超时 kill → failed 且清 .partial（债153）', () async {
+    test('pg_dump 挂死 → 看门狗超时 kill → failedTimedOut 且清 .partial（债153 / BOARD 170）', () async {
       final runner = FakeProcessStarter(hang: true);
       final svc = PgDumpBackupService(
         paths: paths,
@@ -187,7 +187,10 @@ void main() {
 
       final outcome = await svc.backup(conn);
 
-      expect(outcome, BackupOutcome.failed);
+      // 原来断言的是 `failed`——把「超时 = 普通失败」钉死了（BOARD 170）。
+      // 等了十分钟才失败，若与秒级失败同一句话，用户的下一步一定是原样再点
+      // 一次。超时必须是单独的结果，UI 才说得出「立刻重试多半还会超时」。
+      expect(outcome, BackupOutcome.failedTimedOut);
       expect(runner.last!.killed, isTrue, reason: '超时必须 kill 挂死子进程');
       final f = File(p.join(paths.backups.path, 'inkframe-2026-07-15.dump'));
       expect(f.existsSync(), isFalse);

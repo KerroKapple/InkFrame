@@ -183,7 +183,7 @@ void main() {
     expect(order.last, 'DROP DATABASE IF EXISTS "inkframe_restore_tmp" WITH (FORCE)');
   });
 
-  test('pg_restore 挂死 → 看门狗超时 kill → failed、drop tmp、原库未动（债153）', () async {
+  test('pg_restore 挂死 → 看门狗超时 kill → failedTimedOut、drop tmp、原库未动（债153 / BOARD 170）', () async {
     final name = seedBackup(autoMeta: true);
     final runner = FakeProcessStarter(
       hang: true,
@@ -202,7 +202,8 @@ void main() {
 
     final outcome = await svc.restore(conn, name);
 
-    expect(outcome, RestoreOutcome.failed);
+    // 原来断言 `failed`，把「超时 = 普通失败」钉死了（BOARD 170）。
+    expect(outcome, RestoreOutcome.failedTimedOut);
     expect(runner.last!.killed, isTrue, reason: '超时必须 kill 挂死子进程');
     expect(order.where((s) => s.startsWith('ALTER DATABASE')), isEmpty,
         reason: '--single-transaction + 未到对换步：原库未动');

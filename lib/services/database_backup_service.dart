@@ -266,7 +266,7 @@ class PgDumpBackupService implements DatabaseBackupService {
           'stream_error': result.streamError.toString(),
       });
       _deleteQuietly(partial); // 清半成品，免占保留位。
-      return BackupOutcome.failed;
+      return result.timedOut ? BackupOutcome.failedTimedOut : BackupOutcome.failed;
     }
 
     // 原子发布：rename 到最终名。失败清 .partial（未发布=下次重试）。

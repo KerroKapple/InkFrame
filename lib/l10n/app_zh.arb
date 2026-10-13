@@ -137,6 +137,7 @@
   "settingsBackupDone": "已创建备份",
   "settingsBackupNoBinaries": "未找到内置 PostgreSQL 工具——请重新安装 InkFrame",
   "settingsBackupFailed": "备份失败——详情见日志目录",
+  "settingsBackupTimedOut": "备份耗时过长，已中止——可能是数据库很大或磁盘较慢，立刻重试多半还会超时",
   "settingsBackupsEmpty": "暂无备份",
   "settingsBackupMetaLine": "{size} · {date}",
   "@settingsBackupMetaLine": {
@@ -159,6 +160,7 @@
   },
   "restoreDone": "还原完成",
   "restoreFailed": "还原失败——你的数据未被改动",
+  "restoreFailedTimedOut": "还原耗时过长，已中止——你的数据未被改动。可能是备份很大或磁盘较慢，立刻重试多半还会超时",
   "restoreFailedCorrupt": "备份文件校验未通过",
   "restoreFailedVersionNewer": "该备份来自更高版本的 InkFrame",
   "restoreAbortedPreBackup": "安全备份失败——已取消还原",
