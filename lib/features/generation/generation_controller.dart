@@ -734,6 +734,24 @@ class GenerationController {
     for (final abs in extraAbs) {
       if (!merged.contains(abs)) merged.add(abs);
     }
+    // CH-2 残留②：合计超限时 provider 自己 take(maxRefImages) 从**尾部**截断，掉的
+    // 恰是刚追加进去的角色图。截断顺序不在这里改（拍板与理由见
+    // features/canvas/util/ref_image_budget.dart 头注），但必须留下线索：
+    // 检查器已在提交前点名被丢的角色，这条日志是事后排障时"用户确实挂了角色、
+    // 只是配额不够"的证据——否则日志里看不出任何异常，只是少了几张图。
+    if (merged.length > caps.maxRefImages) {
+      logger?.warn(
+        _logModule,
+        'ref images exceed provider limit; provider truncates the tail (character refs)',
+        extra: {
+          'provider_id': providerId,
+          'limit': caps.maxRefImages,
+          'requested': merged.length,
+          'from_edges': base.refImagePaths.length,
+          'character_ids': ids,
+        },
+      );
+    }
     return _RefImages(
       refImagePaths: List.unmodifiable(merged),
       firstFramePath: base.firstFramePath,

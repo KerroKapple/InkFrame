@@ -240,6 +240,8 @@ void main() {
     await tester.tap(find.text(l.characterMenuRename));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '  山中老者  ');
+    // 确认键的可用态随输入重算（InkNameDialog）——不 pump 就还停在禁用态。
+    await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
 
@@ -267,6 +269,7 @@ void main() {
     await tester.tap(find.text(l.characterMenuRename));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '山中老者');
+    await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
 
@@ -336,6 +339,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('character-new')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '行者');
+    await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
 
@@ -368,6 +372,7 @@ void main() {
     await tester.tap(find.byKey(const ValueKey<String>('character-new')));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(TextField), '行者');
+    await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
 

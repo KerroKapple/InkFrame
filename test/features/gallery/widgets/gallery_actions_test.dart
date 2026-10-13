@@ -11,6 +11,7 @@ import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_actions.dart';
+import 'package:inkframe/theme/components/ink_name_dialog.dart';
 
 import '../../../_harness/fake_character.dart';
 import '../../../_harness/test_app.dart';
@@ -79,6 +80,8 @@ void main() {
     );
     await tester.tap(find.text('go'));
     await tester.pumpAndSettle();
+    // CH-2 残留④：命名框是收口后的那一份共用件，画廊这端不再自带私有副本。
+    expect(find.byType(InkNameDialog), findsOneWidget);
     await tester.enterText(find.byType(TextField), 'Hero');
     await tester.pump();
     await tester.tap(find.text('Save')); // 对话框确认键（inspectorCharactersSave）

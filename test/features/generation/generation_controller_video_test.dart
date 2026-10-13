@@ -16,6 +16,7 @@ import 'package:inkframe/core/interfaces/job_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
+import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
@@ -28,6 +29,7 @@ import '../../_harness/fake_batch_result.dart';
 import '../../_harness/fake_character.dart';
 import '../../_harness/fake_providers.dart';
 import '../../_harness/fake_unit_of_work.dart';
+import '../../helpers/recording_logger.dart';
 
 // ---- fakes ------------------------------------------------------------
 
@@ -328,8 +330,10 @@ void main() {
   GenerationController buildCtrl({
     FakeCharacterRepo? characters,
     FakeCharacterAssetService? characterAssets,
+    LoggerService? logger,
   }) =>
       GenerationController(
+        logger: logger,
         nodes: nodes,
         edges: edges,
         jobs: jobs,
@@ -462,6 +466,99 @@ void main() {
       );
     },
   );
+
+  test(
+    'CH-2 残留②：边连 + 角色合计超 maxRefImages → 落一条 warn（截断顺序不变）',
+    () async {
+      registry = CachingProviderRegistry({
+        providerId: () => FakeProvider(
+          capabilities: fakeVideoCapabilities(
+            id: providerId,
+            modes: const <GenerationMode>[GenerationMode.imageToVideo],
+            maxRefImages: 2,
+          ),
+        ),
+      });
+      final characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+        'char-1': <String, Object?>{
+          'id': 'char-1',
+          'project_id': 'proj-1',
+          'name': 'Hero',
+          'reference_image_paths': <String>[
+            'characters/hero-0.png',
+            'characters/hero-1.png',
+          ],
+        },
+      });
+      seedRefImageNode(id: 'imgRef', imageUrl: 'images/ref.png');
+      final cfg = await seedVideoConfigNode(
+        durationMs: 5000,
+        characterIds: <String>['char-1'],
+      );
+      seedDataEdge(sourceId: 'imgRef', targetId: cfg);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+      final RecordingLogger logger = RecordingLogger();
+
+      await buildCtrl(
+        characters: characters,
+        characterAssets: FakeCharacterAssetService(),
+        logger: logger,
+      ).submitFromConfigNode(cfg);
+
+      // 1 条边连参考图 + 角色 2 张 = 3 > 上限 2。
+      expect(
+        queue.lastTask!.refImagePaths,
+        hasLength(3),
+        reason: '截断仍归 provider 的 take()——这里不改顺序，只留线索（见 ref_image_budget 头注）',
+      );
+      final List<LogRecord> warns = logger
+          .byLevel(InkLogLevel.warn)
+          .where((LogRecord r) => r.msg.contains('exceed provider limit'))
+          .toList();
+      expect(warns, hasLength(1), reason: '超限必须留下日志线索，否则事后只看到"少了几张图"');
+      expect(warns.single.extra?['limit'], 2);
+      expect(warns.single.extra?['requested'], 3);
+      expect(warns.single.extra?['from_edges'], 1);
+    },
+  );
+
+  test('未超限 → 不落超限 warn（不许见谁都喊）', () async {
+    registry = CachingProviderRegistry({
+      providerId: () => FakeProvider(
+        capabilities: fakeVideoCapabilities(
+          id: providerId,
+          modes: const <GenerationMode>[GenerationMode.imageToVideo],
+          maxRefImages: 3,
+        ),
+      ),
+    });
+    final characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'char-1': <String, Object?>{
+        'id': 'char-1',
+        'project_id': 'proj-1',
+        'reference_image_paths': <String>['characters/hero-0.png'],
+      },
+    });
+    final cfg = await seedVideoConfigNode(
+      durationMs: 5000,
+      characterIds: <String>['char-1'],
+    );
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+    final RecordingLogger logger = RecordingLogger();
+
+    await buildCtrl(
+      characters: characters,
+      characterAssets: FakeCharacterAssetService(),
+      logger: logger,
+    ).submitFromConfigNode(cfg);
+
+    expect(
+      logger
+          .byLevel(InkLogLevel.warn)
+          .where((LogRecord r) => r.msg.contains('exceed provider limit')),
+      isEmpty,
+    );
+  });
 
   test('CH-1 i2v 风格（maxRefImages=0）→ 零注入，mode 保持 textToVideo', () async {
     registry = CachingProviderRegistry({

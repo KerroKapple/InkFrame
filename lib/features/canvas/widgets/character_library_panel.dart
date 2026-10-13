@@ -24,13 +24,13 @@ import '../../../core/interfaces/character_asset_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
+import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
 import '../providers/character_usage.dart';
 import '../providers/characters_controller.dart';
 import 'character_edit_dialog.dart';
-import 'characters_section.dart';
 
 /// 行内缩略图边长（稿：36×36，1px 内沿 outline）。
 const double _kRowThumb = 36;
@@ -310,7 +310,7 @@ class _CharacterLibraryRowState extends ConsumerState<CharacterLibraryRow> {
   Future<void> _rename() async {
     final String? name = await showDialog<String>(
       context: context,
-      builder: (BuildContext ctx) => InspectorNameDialog(
+      builder: (BuildContext ctx) => InkNameDialog(
         title: ctx.l10n.characterRenameTitle,
         hint: ctx.l10n.characterFieldName,
         confirmLabel: ctx.l10n.characterSave,
@@ -438,7 +438,7 @@ Future<void> createCharacterFromFile(
   if (file == null || !context.mounted) return;
   final String? name = await showDialog<String>(
     context: context,
-    builder: (BuildContext ctx) => InspectorNameDialog(
+    builder: (BuildContext ctx) => InkNameDialog(
       title: ctx.l10n.characterNew,
       hint: ctx.l10n.characterFieldName,
       confirmLabel: ctx.l10n.characterSave,

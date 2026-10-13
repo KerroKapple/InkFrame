@@ -288,7 +288,22 @@
   "inspectorCharactersLabel": "Characters",
   "inspectorCharactersEmpty": "No characters yet",
   "inspectorCharactersUnsupported": "This model ignores reference images",
+  "inspectorCharactersOverLimit": "Reference images over limit ({requested}/{max}); these characters won't be fully used: {names}",
+  "@inspectorCharactersOverLimit": {
+    "placeholders": {
+      "requested": { "type": "int" },
+      "max": { "type": "int" },
+      "names": { "type": "String" }
+    }
+  },
   "inspectorCharactersSaveFromReference": "Save reference as character",
+  "inspectorCharactersSaveFromReferenceHint": "Saves the image from “{source}” as a new character",
+  "@inspectorCharactersSaveFromReferenceHint": {
+    "placeholders": {
+      "source": { "type": "String" }
+    }
+  },
+  "inspectorCharactersSaveFromReferenceDisabled": "Connect an image node to this node first",
   "inspectorCharactersImportFile": "Import image file",
   "inspectorCharactersDialogTitle": "New character",
   "inspectorCharactersNameHint": "Character name",

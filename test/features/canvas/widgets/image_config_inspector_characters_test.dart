@@ -318,6 +318,8 @@ void main() {
 
     // 名称对话框
     await tester.enterText(find.byType(TextField).last, 'My preset');
+    // 确认键的可用态随输入重算（InkNameDialog）——不 pump 就还停在禁用态。
+    await tester.pump();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
@@ -384,6 +386,7 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField).last, 'Hero');
+    await tester.pump();
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
