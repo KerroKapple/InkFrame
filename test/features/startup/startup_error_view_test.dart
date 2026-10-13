@@ -447,6 +447,24 @@ void main() {
         reason: '还原可能把升级后的改动悄悄回滚掉');
   });
 
+  // 找不到内置 PG 程序（安装不完整 / 被安全软件隔离）。原来连「磁盘 I/O 错误」都不是
+  // ——它不在任何已知分支里，按程序 bug 原样透出，启动页只能说「出了点问题」。
+  testWidgets('找不到内置 PG 程序 → 「请重新安装」，不给必然失败的还原', (tester) async {
+    await pumpWithBackup(
+      tester,
+      LocalIOError(
+        cause: StateError('no packaged PG'),
+        extra: const <String, Object?>{'reason': kDbBinariesMissingReason},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text(l10n.settingsBackupNoBinaries), findsOneWidget);
+    expect(find.text(l10n.errorUnknown), findsNothing);
+    expect(find.text(l10n.startupErrorRestoreLatest), findsNothing,
+        reason: '还原要用的 pg_restore 就在缺掉的那套程序里');
+  });
+
   // 反向：迁移失败时失败的那一步已回滚，还原是无害的选项——按钮照常给。不是所有
   // 特定失败都该藏按钮。
   testWidgets('前向迁移失败 → 专门文案，「还原」照常给', (tester) async {

@@ -89,14 +89,18 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
       kDbAuthFailedReason => context.l10n.startupErrorDbAuthFailed,
       kDbNewerThanAppReason => context.l10n.startupErrorDbNewerThanApp,
       kDbMigrationFailedReason => context.l10n.startupErrorDbMigrationFailed,
+      // 与设置页备份区同一句（缺的是同一套内置 PG 工具），不另起文案。
+      kDbBinariesMissingReason => context.l10n.settingsBackupNoBinaries,
       _ => l10nAsyncError(context, widget.error),
     };
     // 「从最近备份还原」不是总该给：
     // - 口令对不上：还原用同一份口令连库，必然以同样的认证失败告终；
     // - 库比应用新：最近一份能还原的若恰好是升级前的旧备份，一键还原会把升级后的
     //   改动全部回滚掉，用户却不知道。正解是装回最新版。
-    final bool restoreOffered =
-        reason != kDbAuthFailedReason && reason != kDbNewerThanAppReason;
+    // - 找不到内置 PG 程序：还原要用的 pg_restore 就在缺掉的那套程序里。
+    final bool restoreOffered = reason != kDbAuthFailedReason &&
+        reason != kDbNewerThanAppReason &&
+        reason != kDbBinariesMissingReason;
 
     return Scaffold(
       // 整屏中性灰，面板居中——与设置 / 回收站同一个壳（标题进标题栏，没有 ✕：

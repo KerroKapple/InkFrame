@@ -6,6 +6,7 @@ import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/storage/database_bootstrap.dart';
 import 'package:inkframe/storage/migrations/migration_runner.dart';
+import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:inkframe/storage/pg_controller.dart';
 
 void main() {
@@ -55,6 +56,30 @@ void main() {
     await expectLater(
       container.read(pgMigratedPoolProvider.future),
       throwsA(isA<LocalIOError>()),
+    );
+  });
+
+  // 找不到内置 PG 程序（安装不完整 / 被安全软件隔离 / 开发机没 fetch-binaries）。
+  // 它是 StateError 的子类、又不在任何已知分支里——原来按下面那条「泛化 StateError
+  // 不翻译」原样透出，被当成程序 bug：启动页只能显示「出了点问题」，用户拿不到
+  // 唯一有用的指引「请重新安装」。它不是 bug，是已知的、用户能处理的启动失败。
+  test('PgBinaryNotFoundError → LocalIOError(reason: db_binaries_missing)', () async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        pgPoolProvider.overrideWith(
+          (ref) async => throw PgBinaryNotFoundError('no packaged PG'),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    await expectLater(
+      container.read(pgMigratedPoolProvider.future),
+      throwsA(isA<LocalIOError>().having(
+        (LocalIOError e) => e.extra['reason'],
+        'reason',
+        kDbBinariesMissingReason,
+      )),
     );
   });
 
