@@ -22,6 +22,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_input.dart';
+import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/services/cost_estimator.dart';
 import '../../generation/services/prompt_assembler.dart';
@@ -535,7 +536,7 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
   Future<String?> _promptPresetName(BuildContext context) =>
       showDialog<String>(
         context: context,
-        builder: (ctx) => InspectorNameDialog(
+        builder: (ctx) => InkNameDialog(
           title: ctx.l10n.inspectorPresetsDialogTitle,
           hint: ctx.l10n.inspectorPresetsNameHint,
           confirmLabel: ctx.l10n.inspectorCharactersSave,

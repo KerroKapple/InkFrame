@@ -3,7 +3,8 @@
 // ref 支持判定按调用方口径参数化：image 要求 maxRefImages>0 且 imageToImage;
 // video 对齐 CH-1 注入门只要 maxRefImages>0（不检查 modes——r2v/omni 的参考图
 // 语义不落在 modes 里，见 generation_controller._injectCharacterRefs 拍板注释）。
-// InspectorNameDialog / CharacterChip 一并公开——_PresetsSection 亦复用。
+// CharacterChip 一并公开——_PresetsSection 亦复用。命名框已收口到
+// theme/components/ink_name_dialog.dart（CH-2 残留④），本文件不再自带一份。
 
 import 'dart:async';
 import 'dart:io';
@@ -21,7 +22,7 @@ import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
-import '../../../theme/components/ink_input.dart';
+import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/primitives/ink_dashed_slot.dart';
 import '../../../theme/tokens.dart';
 import '../../gallery/providers/gallery_graph_provider.dart';
@@ -372,7 +373,7 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
 
   Future<String?> _promptName(BuildContext context) => showDialog<String>(
     context: context,
-    builder: (ctx) => InspectorNameDialog(
+    builder: (ctx) => InkNameDialog(
       title: ctx.l10n.inspectorCharactersDialogTitle,
       hint: ctx.l10n.inspectorCharactersNameHint,
       confirmLabel: ctx.l10n.inspectorCharactersSave,
@@ -401,54 +402,6 @@ class _InputsView {
 
   /// 占参考图配额的入边张数（只数 reference，见 util/ref_image_budget.dart 头注）。
   final int edgeRefCount;
-}
-
-/// 命名对话框。TextEditingController 生命周期归 dialog 自身——退场动画期间
-/// TextField 仍引用 controller，调用方在 showDialog 返回后立即 dispose 会炸。
-class InspectorNameDialog extends StatefulWidget {
-  const InspectorNameDialog({
-    super.key,
-    required this.title,
-    required this.hint,
-    required this.confirmLabel,
-    required this.cancelLabel,
-  });
-
-  final String title;
-  final String hint;
-  final String confirmLabel;
-  final String cancelLabel;
-
-  @override
-  State<InspectorNameDialog> createState() => _InspectorNameDialogState();
-}
-
-class _InspectorNameDialogState extends State<InspectorNameDialog> {
-  final TextEditingController _ctrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: Text(widget.title),
-      content: InkInput(controller: _ctrl, hintText: widget.hint),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(widget.cancelLabel),
-        ),
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(_ctrl.text),
-          child: Text(widget.confirmLabel),
-        ),
-      ],
-    );
-  }
 }
 
 /// 角色 chip 缩略图边长（正方形裁切）。

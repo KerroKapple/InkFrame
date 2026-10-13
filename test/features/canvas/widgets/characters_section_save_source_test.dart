@@ -17,6 +17,7 @@ import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/characters_section.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
+import 'package:inkframe/theme/components/ink_name_dialog.dart';
 
 import '../../../_harness/fake_character.dart';
 import '../../../_harness/fake_providers.dart';
@@ -222,6 +223,38 @@ void main() {
       assets.sources,
       <String>['/abs/$_kProjectId/$_kCanvasId/images/first.png'],
       reason: '选的是第一条有图的入边——与检查器「关键帧」组的行序同一个排序',
+    );
+  });
+
+  testWidgets('命名框是收口后的那一份共用件（CH-2 残留④）', (WidgetTester tester) async {
+    final CanvasNode node = await seedTarget();
+    await seedInput(node.id, role: 'first_frame', imageUrl: 'images/hero.png');
+    final AppLocalizations l = await pump(tester, node);
+
+    await tester.tap(find.text(l.inspectorCharactersSaveFromReference));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byType(InkNameDialog),
+      findsOneWidget,
+      reason: '三份近似件收成一份，检查器这端走的就是它',
+    );
+    expect(
+      tester
+          .widget<ButtonStyleButton>(
+            find
+                .ancestor(
+                  of: find.text(l.inspectorCharactersSave),
+                  // find.byType 不认子类，确认键是 FilledButton。
+                  matching: find.byWidgetPredicate(
+                    (Widget w) => w is ButtonStyleButton,
+                  ),
+                )
+                .first,
+          )
+          .onPressed,
+      isNull,
+      reason: '空名字时确认键禁用——此前检查器那份恒可点，点下去才被调用方 trim 掉',
     );
   });
 

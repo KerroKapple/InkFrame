@@ -13,8 +13,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart' show CharacterAssetError;
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
-import '../../../theme/app_theme.dart';
-import '../../../theme/components/ink_input.dart';
+import '../../../theme/components/ink_name_dialog.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
 import '../../canvas/providers/characters_controller.dart';
 import '../../shell/models/shell_state.dart';
@@ -50,9 +49,16 @@ Future<void> gallerySaveAsCharacter(
   required String projectId,
   required GalleryItem item,
 }) async {
+  // 命名框是收口后的共用件（CH-2 残留④）：文案仍是 inspector 那组 ARB 键，
+  // 画廊这端只是不再自带一份近似实现。
   final String? name = await showDialog<String>(
     context: context,
-    builder: (_) => const GalleryCharacterNameDialog(),
+    builder: (BuildContext ctx) => InkNameDialog(
+      title: ctx.l10n.inspectorCharactersDialogTitle,
+      hint: ctx.l10n.inspectorCharactersNameHint,
+      confirmLabel: ctx.l10n.inspectorCharactersSave,
+      cancelLabel: ctx.l10n.commonCancel,
+    ),
   );
   if (name == null || name.trim().isEmpty || !context.mounted) return;
   // await 前预取（PLAYBOOK §5.1：跨异步边界不再碰 context）。
@@ -85,45 +91,3 @@ Future<void> gallerySaveAsCharacter(
   }
 }
 
-/// 角色命名对话框（复用 inspector 的 ARB 键；返回名字或 null=取消）。
-class GalleryCharacterNameDialog extends StatefulWidget {
-  const GalleryCharacterNameDialog({super.key});
-
-  @override
-  State<GalleryCharacterNameDialog> createState() => _GalleryCharacterNameDialogState();
-}
-
-class _GalleryCharacterNameDialogState extends State<GalleryCharacterNameDialog> {
-  final TextEditingController _ctrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l = context.l10n;
-    final colors = context.inkColors;
-    return AlertDialog(
-      backgroundColor: colors.surface1,
-      title: Text(l.inspectorCharactersDialogTitle),
-      content: InkInput(
-        controller: _ctrl,
-        hintText: l.inspectorCharactersNameHint,
-        onChanged: (_) => setState(() {}),
-      ),
-      actions: <Widget>[
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text(l.commonCancel),
-        ),
-        FilledButton(
-          onPressed: _ctrl.text.trim().isEmpty ? null : () => Navigator.of(context).pop(_ctrl.text),
-          child: Text(l.inspectorCharactersSave),
-        ),
-      ],
-    );
-  }
-}
