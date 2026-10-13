@@ -90,4 +90,3 @@ Future<void> gallerySaveAsCharacter(
     sub.close();
   }
 }
-
