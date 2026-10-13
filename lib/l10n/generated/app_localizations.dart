@@ -2717,7 +2717,7 @@ abstract class AppLocalizations {
   /// No description provided for @exportVideoDialogHint.
   ///
   /// In en, this message translates to:
-  /// **'Selected clips are joined in list order.'**
+  /// **'Selected clips are joined in list order. Re-runs of the same shot are listed too — only the newest take of each is selected.'**
   String get exportVideoDialogHint;
 
   /// No description provided for @exportVideoOutputNameLabel.
@@ -2749,6 +2749,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel export'**
   String get exportVideoCancelExport;
+
+  /// No description provided for @exportVideoOlderTake.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier take'**
+  String get exportVideoOlderTake;
 
   /// No description provided for @exportVideoMoveUp.
   ///

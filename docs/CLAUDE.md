@@ -245,7 +245,7 @@ lib/
 │   ├── export/                        # Video export UI (concat dialog; entries: export tab / sequence tab「导出 mp4」/ ⌘K, all via open_export_dialog.dart — projectId + gating from ShellState.project, BOARD 210)
 │   │   ├── open_export_dialog.dart    # openExportVideoDialogForCanvas — the one path that orders by narrative chain and opens the dialog
 │   │   ├── providers/                 # ExportController (canvas→project path conversion)
-│   │   ├── util/                      # Output-name pre-validation + export_order.dart (EX-1′ narrative-chain default order)
+│   │   ├── util/                      # Output-name pre-validation + export_order.dart (EX-1′ narrative-chain default order) + export_take_selection.dart (BOARD 194 默认勾选 = 每镜最新 take；候选集不收窄)
 │   │   └── widgets/
 │   ├── gallery/                       # Project-wide generated-asset gallery (Screens 稿第 2 屏：筛选 220 | 网格 | 信息 320)
 │   │   ├── models/                    # gallery_item (freezed) + gallery_graph / gallery_selection (hand-written)

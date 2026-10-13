@@ -1417,7 +1417,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportVideoDialogTitle => '导出视频';
 
   @override
-  String get exportVideoDialogHint => '选中的视频将按列表顺序拼接。';
+  String get exportVideoDialogHint =>
+      '选中的视频将按列表顺序拼接。同一镜重跑的旧 take 也会列出，默认只勾每镜最新的那一条。';
 
   @override
   String get exportVideoOutputNameLabel => '输出文件名（可选）';
@@ -1434,6 +1435,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get exportVideoCancelExport => '取消导出';
+
+  @override
+  String get exportVideoOlderTake => '旧 take';
 
   @override
   String get exportVideoMoveUp => '上移';
