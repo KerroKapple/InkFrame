@@ -569,6 +569,7 @@
   "laneDialogSave": "Save",
   "laneDialogCancel": "Cancel",
   "laneDirectionToggle": "Toggle lane direction",
+  "laneDirectionUnavailable": "Couldn't read the lane direction — switching is off until the canvas reloads",
   "laneUntitled": "Untitled lane",
   "laneCreateFailed": "Failed to create lane",
   "laneUpdateFailed": "Failed to update lane",

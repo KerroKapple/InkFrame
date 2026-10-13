@@ -22,12 +22,22 @@ class LaneToolbar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final dir = ref.watch(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
-        LaneDirection.horizontal;
+    final AsyncValue<LaneDirection> dirAsync =
+        ref.watch(canvasLaneDirectionProvider(canvasId));
+    final dir = dirAsync.valueOrNull ?? LaneDirection.horizontal;
+    // 【不知道当前方向时，切换键必须不可点】GAP-3 评审 P3①。
+    //
+    // 读失败时上面那行会回落成 horizontal，切换就恒定写 vertical：如果库里本来
+    // 就是 vertical，用户点多少次都是"写 vertical → 读又失败 → 显示 horizontal"，
+    // 永远到不了 horizontal。二元域里不会损坏数据，但这个键在撒谎——它按一个
+    // 没读到的值决定往哪边翻。所以：拿不到值（加载中或读失败）就禁用。
+    // 只在读失败时换 tooltip 说明原因；加载中通常一帧就过去，没人看得到。
+    final bool dirKnown = dirAsync.hasValue;
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final l10n = context.l10n;
     final bool horizontal = dir == LaneDirection.horizontal;
+    final Color dirInk = dirKnown ? colors.fg3 : colors.fg6;
 
     return Container(
       clipBehavior: Clip.hardEdge,
@@ -53,18 +63,20 @@ class LaneToolbar extends ConsumerWidget {
           ),
           // 方向切换：图标随当前方向变 + 文字标签（稿）。
           _Key(
-            tooltip: l10n.laneDirectionToggle,
-            onTap: () => _onToggleDirection(context, ref, dir),
+            tooltip: dirAsync.hasError && !dirKnown
+                ? l10n.laneDirectionUnavailable
+                : l10n.laneDirectionToggle,
+            onTap: dirKnown ? () => _onToggleDirection(context, ref, dir) : null,
             child: Container(
               height: height,
               padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
               child: Row(
                 children: <Widget>[
-                  Icon(horizontal ? Icons.swap_vert : Icons.swap_horiz, size: InkSpacing.s12, color: colors.fg3),
+                  Icon(horizontal ? Icons.swap_vert : Icons.swap_horiz, size: InkSpacing.s12, color: dirInk),
                   const SizedBox(width: InkSpacing.s6),
                   Text(
                     horizontal ? l10n.laneDirectionHorizontal : l10n.laneDirectionVertical,
-                    style: typo.meta.copyWith(color: colors.fg3, height: 1.0),
+                    style: typo.meta.copyWith(color: dirInk, height: 1.0),
                   ),
                 ],
               ),
@@ -129,7 +141,10 @@ class LaneToolbar extends ConsumerWidget {
 class _Key extends StatelessWidget {
   const _Key({required this.tooltip, required this.onTap, required this.child});
   final String tooltip;
-  final VoidCallback onTap;
+
+  /// null ⇒ 禁用：不响应点击、光标不变手形、语义上报 disabled。禁用态给 null，
+  /// 不要给空闭包（test/quality/no_dead_interactive_test.dart）。
+  final VoidCallback? onTap;
   final Widget child;
 
   @override
@@ -137,9 +152,12 @@ class _Key extends StatelessWidget {
         message: tooltip,
         child: Semantics(
           button: true,
+          enabled: onTap != null,
           label: tooltip,
           child: MouseRegion(
-            cursor: SystemMouseCursors.click,
+            cursor: onTap != null
+                ? SystemMouseCursors.click
+                : SystemMouseCursors.basic,
             child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: child),
           ),
         ),

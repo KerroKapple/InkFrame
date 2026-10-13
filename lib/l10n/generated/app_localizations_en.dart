@@ -1308,6 +1308,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get laneDirectionToggle => 'Toggle lane direction';
 
   @override
+  String get laneDirectionUnavailable =>
+      'Couldn\'t read the lane direction — switching is off until the canvas reloads';
+
+  @override
   String get laneUntitled => 'Untitled lane';
 
   @override

@@ -2408,6 +2408,12 @@ abstract class AppLocalizations {
   /// **'Toggle lane direction'**
   String get laneDirectionToggle;
 
+  /// No description provided for @laneDirectionUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read the lane direction — switching is off until the canvas reloads'**
+  String get laneDirectionUnavailable;
+
   /// No description provided for @laneUntitled.
   ///
   /// In en, this message translates to:
