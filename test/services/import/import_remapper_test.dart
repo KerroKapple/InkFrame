@@ -221,6 +221,28 @@ void main() {
     expect(plan.droppedColumnCount, 2);
   });
 
+  // v8 加的 projects.delivery_settings 曾不在白名单里：导出（SELECT *）带着它，
+  // 导入把它当未知列丢掉——导出再导入一个项目，交付设置静默清零。
+  test('交付设置随项目导入，不被当未知列丢掉', () {
+    final data = _fullData();
+    // 夹具里的 project 是全字符串 map，塞不进嵌套值——重建一个宽类型的。
+    data['project'] = <String, Object?>{
+      ...(data['project'] as Map).cast<String, Object?>(),
+      'delivery_settings': <String, Object?>{
+        'target': 'final_cut',
+        'relative_paths': false,
+      },
+    };
+
+    final plan = remapArchiveData(data, newId: _seq());
+
+    expect(plan.project['delivery_settings'], <String, Object?>{
+      'target': 'final_cut',
+      'relative_paths': false,
+    });
+    expect(plan.droppedColumnCount, 0, reason: '它不是未知列，不该进丢弃计数');
+  });
+
   test('characters 路径：characters/ 原样、canvases/{旧}/ 前缀重写', () {
     final plan = remapArchiveData(_fullData(), newId: _seq());
     final paths =
