@@ -613,6 +613,12 @@
   "exportVideoCopyPath": "复制路径",
   "exportVideoPathCopied": "路径已复制到剪贴板",
   "exportVideoFfmpegMissing": "未检测到 ffmpeg——安装后重试（可用 INKFRAME_FFMPEG 环境变量指定路径）",
+  "exportVideoOutputReplaceFailed": "无法覆盖同名视频——它可能正在播放器里打开着。渲染好的视频已保存为 {name}：关掉占用它的程序后重新导出，或自己把它改名为 .mp4。",
+  "@exportVideoOutputReplaceFailed": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
 
   "startupErrorTitle": "InkFrame 无法启动",
   "startupErrorBody": "内嵌数据库启动或升级失败。磁盘上的项目数据安全无损。请查看下方日志后重试。",

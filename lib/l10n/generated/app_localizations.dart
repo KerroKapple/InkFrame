@@ -2810,6 +2810,12 @@ abstract class AppLocalizations {
   /// **'ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)'**
   String get exportVideoFfmpegMissing;
 
+  /// No description provided for @exportVideoOutputReplaceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t replace the existing video — it may be open in a video player. Your render is safe as {name}: close that app and export again, or rename it to .mp4 yourself.'**
+  String exportVideoOutputReplaceFailed(String name);
+
   /// Full-screen startup failure surface title shown when the embedded database fails to start or migrate
   ///
   /// In en, this message translates to:

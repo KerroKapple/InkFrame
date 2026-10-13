@@ -281,6 +281,48 @@ void main() {
       expect(oldFinal.readAsBytesSync(), const <int>[9, 9]);
     });
 
+    // 目标替换失败（BOARD 171）。Windows 上最常见的原因：上一次的同名导出正在
+    // 播放器里开着，文件被锁，删不掉也覆盖不了。走到 rename 这一步时 ffmpeg 已经
+    // exit 0、`.partial` 是**完整的成片**——原来的外层 catch 会把它一并删掉，
+    // 整轮渲染白跑，用户只拿到一句泛化的 export_io_failed。
+    //
+    // 这里用「同名目录」稳定复现 rename 失败：跨平台（CI 的 ubuntu 也跑得了），
+    // 不依赖真实文件锁。`File.existsSync` 对目录为假，所以前一行的删除是 no-op，
+    // 失败一定发生在 rename 本身——正是要钉的那一步。
+    test('rename 到最终名失败 ⇒ 成片 .partial 保留 + output_replace_failed', () async {
+      final svc = buildService();
+      final Directory blocker = Directory(
+        resolver
+            .resolveInProject(
+              projectId: projectId,
+              relativePath: 'exports/locked.mp4',
+            )
+            .path,
+      )..createSync(recursive: true);
+
+      await expectLater(
+        svc.concat(
+          projectId: projectId,
+          inputRelativePaths: const <String>[relA],
+          outputBaseName: 'locked',
+        ),
+        throwsA(
+          isA<LocalIOError>()
+              .having((e) => e.extra['reason'], 'reason', 'output_replace_failed')
+              .having(
+                (e) => e.extra['partial_relative_path'],
+                'partial_relative_path',
+                'exports/locked.mp4.partial',
+              ),
+        ),
+      );
+      expect(
+        File('${blocker.path}.partial').existsSync(),
+        isTrue,
+        reason: 'ffmpeg 已 exit 0，.partial 是完整成片——删掉它等于让整轮渲染白跑',
+      );
+    });
+
     test('exit 0 但无产物 → ffmpeg_failed（防 rename 空转假成功）', () async {
       starter.createOutput = false;
       final svc = buildService();

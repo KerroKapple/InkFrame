@@ -58,6 +58,10 @@ abstract class VideoExportService {
   /// - ffmpeg 非零退出 → LocalIOError(extra.reason='ffmpeg_failed'，stderr 进
   ///   extra；`.partial` 半成品会被清理)
   /// - 导出目录创建 / 临时 list 写入失败 → LocalIOError(extra.reason='export_io_failed')
+  /// - ffmpeg 已 exit 0、但 `.partial` → 最终名的替换失败（典型：同名旧导出正被
+  ///   播放器占用）→ LocalIOError(extra.reason='output_replace_failed'，
+  ///   extra.partial_relative_path 指向**保留下来的完整成片**)。这一支**不清
+  ///   `.partial`**——产物已完整，同「已成功不误删」
   /// - stdout 流读取 / 进度回调异常 → UnknownError(extra.reason=
   ///   'export_stream_failed'；先 kill 防孤儿再收敛，绝不让 busy 态永挂)
   Future<String> concat({

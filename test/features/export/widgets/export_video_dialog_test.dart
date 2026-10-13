@@ -463,6 +463,35 @@ void main() {
     expect(find.text('Export video'), findsOneWidget);
   });
 
+  // BOARD 171：成片已渲染好、只是覆盖不了同名旧文件（典型是它在播放器里开着）。
+  // 通用文案「本地磁盘读写错误」会让用户以为白跑了一轮、再渲一遍——而成片
+  // 其实就在旁边。专门文案必须说出它的文件名。
+  testWidgets('output_replace_failed → 说出保留下来的成片文件名，不走通用文案',
+      (tester) async {
+    final service = _FakeVideoExportService(
+      error: const LocalIOError(
+        extra: <String, Object?>{
+          'reason': 'output_replace_failed',
+          'partial_relative_path': 'exports/ep01.mp4.partial',
+        },
+      ),
+    );
+    await _pumpDialog(tester, service: service);
+
+    await tester.tap(find.text('Export'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ep01.mp4.partial'), findsOneWidget,
+        reason: '用户得知道成片在哪，才不会再渲一遍');
+    expect(find.textContaining('may be open in a video player'), findsOneWidget);
+    expect(
+      find.text('Local disk I/O error. Check space and permissions.'),
+      findsNothing,
+      reason: '通用文案会让人以为这一轮白跑了',
+    );
+    expect(find.byType(InkErrorBanner), findsOneWidget);
+  });
+
   testWidgets('其他 LocalIOError → 通用 errorLocalIO 文案内嵌 banner，可重试', (tester) async {
     final service = _FakeVideoExportService(
       error: const LocalIOError(
