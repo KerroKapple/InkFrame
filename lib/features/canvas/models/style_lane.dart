@@ -1,6 +1,7 @@
 // StyleLane：风格泳道 UI 模型（手写不可变，对齐 CanvasNode 风格，不引 freezed）。
 import 'package:flutter/foundation.dart';
 
+import '../../../core/constants/lane_defaults.dart';
 import '../../../core/db/columns.dart';
 import '../../../core/db/row_reader.dart';
 
@@ -13,7 +14,7 @@ class StyleLane {
     this.stylePrompt = '',
     this.sortOrder = 0,
     this.tintColor,
-    this.size = 400.0,
+    this.size = kDefaultLaneSize,
   });
 
   final String id;
@@ -65,6 +66,6 @@ class StyleLane {
         stylePrompt: row.optString(StyleLaneCol.stylePrompt) ?? '',
         sortOrder: row.optInt(StyleLaneCol.sortOrder) ?? 0,
         tintColor: row.optString(StyleLaneCol.tintColor),
-        size: row.optDouble(StyleLaneCol.size) ?? 400.0,
+        size: row.optDouble(StyleLaneCol.size) ?? kDefaultLaneSize,
       );
 }

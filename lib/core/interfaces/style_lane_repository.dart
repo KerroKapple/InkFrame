@@ -1,4 +1,6 @@
 // StyleLaneRepository 契约：style_lanes 表。
+import '../constants/lane_defaults.dart';
+
 abstract class StyleLaneRepository {
   Future<String> create({
     required String canvasId,
@@ -6,7 +8,7 @@ abstract class StyleLaneRepository {
     String stylePrompt = '',
     int sortOrder = 0,
     String? tintColor,
-    double size = 400.0,
+    double size = kDefaultLaneSize,
   });
 
   Future<Map<String, Object?>?> findById(String id);
