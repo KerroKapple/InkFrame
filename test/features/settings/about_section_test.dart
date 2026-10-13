@@ -79,6 +79,31 @@ class _FakeFfmpegLocator implements FfmpegLocator {
   void invalidate() {}
 }
 
+/// 带命中缓存的 fake——真 locator 就是这个行为（命中缓存、miss 不缓存）。
+///
+/// 上面那个无缓存 fake 看不出「设置页有没有强制重探」：两种实现在它下面都绿。
+/// 要钉住「卸掉 ffmpeg 后重进设置页不再报可用」，fake 必须自己会缓存。
+class _CachingFakeFfmpegLocator implements FfmpegLocator {
+  _CachingFakeFfmpegLocator(this.onDisk);
+
+  /// 当前"磁盘上"有没有；测试中途可改，模拟用户在应用运行期间卸载。
+  String? onDisk;
+  String? _cached;
+  int probes = 0;
+
+  @override
+  Future<String?> locate() async {
+    final String? hit = _cached;
+    if (hit != null) return hit;
+    probes++;
+    _cached = onDisk; // 命中才留下；onDisk 为 null 时等于不缓存
+    return onDisk;
+  }
+
+  @override
+  void invalidate() => _cached = null;
+}
+
 /// 全用例公共 override：secure storage OK + ffmpeg found（另有专测覆盖 miss）。
 List<Override> _baseOverrides({String? ffmpegPath = 'ffmpeg'}) => <Override>[
       secureStorageServiceProvider.overrideWithValue(_OkSecure()),
@@ -134,6 +159,50 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.textContaining(r'C:\tools\ffmpeg.exe'), findsOneWidget);
+  });
+
+  // PATH 命中返回的是可执行名、不是路径。套进「可用（{path}）」会显示成
+  // 「可用（ffmpeg）」，读起来像 ffmpeg 装在一个叫 ffmpeg 的地方。
+  testWidgets('ffmpeg 在 PATH 上命中：说「在 PATH 上找到」，不把可执行名当路径',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+      overrides: _baseOverrides(ffmpegPath: kFfmpegOnPathExe),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('found on PATH'), findsOneWidget);
+    expect(
+      find.textContaining('Available (ffmpeg)'),
+      findsNothing,
+      reason: 'kFfmpegOnPathExe 是交给系统解析的可执行名，不是路径',
+    );
+  });
+
+  // 设置页的职责是显示**当下**的事实。locator 对命中是 app 级缓存的，只有导出
+  // 失败那条路径会 invalidate——所以「装好后重进设置页即重探」只对 miss 成立，
+  // 反过来卸掉之后这一行会一直说「可用」，直到用户真去导出才发现。
+  test('设置页探测每次强制重探：卸掉 ffmpeg 后不再报可用', () async {
+    final locator = _CachingFakeFfmpegLocator(kFfmpegOnPathExe);
+    final container = ProviderContainer(overrides: <Override>[
+      ffmpegLocatorProvider.overrideWithValue(locator),
+    ]);
+    addTearDown(container.dispose);
+
+    expect(await container.read(ffmpegProbeProvider.future), kFfmpegOnPathExe);
+
+    // 用户在应用运行期间把 ffmpeg 卸了，然后重新打开设置页
+    //（autoDispose 的 provider 重建 == 重进页面）。
+    locator.onDisk = null;
+    container.invalidate(ffmpegProbeProvider);
+
+    expect(
+      await container.read(ffmpegProbeProvider.future),
+      isNull,
+      reason: '不强制重探的话 locator 的命中缓存会一直报旧值',
+    );
+    expect(locator.probes, 2, reason: '两次打开设置页 = 两次真探测');
   });
 
   testWidgets('ffmpeg 未找到（Windows）：winget 指引 + INKFRAME_FFMPEG 兜底',

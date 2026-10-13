@@ -950,6 +950,12 @@ abstract class AppLocalizations {
   /// **'Available ({path})'**
   String settingsAboutFfmpegAvailable(String path);
 
+  /// No description provided for @settingsAboutFfmpegAvailableOnPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Available (found on PATH)'**
+  String get settingsAboutFfmpegAvailableOnPath;
+
   /// No description provided for @settingsAboutFfmpegMissingWindows.
   ///
   /// In en, this message translates to:
