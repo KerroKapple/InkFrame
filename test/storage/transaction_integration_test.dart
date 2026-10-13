@@ -5,38 +5,29 @@ library;
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/storage/postgres_unit_of_work.dart';
-import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
-import 'package:inkframe/storage/repositories/postgres_character_repository.dart';
-import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
-import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
-import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
-import 'package:inkframe/storage/repositories/postgres_prompt_preset_repository.dart';
-import 'package:inkframe/storage/repositories/postgres_style_lane_repository.dart';
 import 'package:postgres/postgres.dart';
 
 import 'schema/pg_test_harness.dart';
 
 class _Skip implements Exception {}
 
-/// 与生产 DI 同构的工作单元装配（lib/core/di/repositories.dart）。
-PostgresUnitOfWork _uow(SessionExecutor exec) => PostgresUnitOfWork(
-      exec,
-      (s) => RepositoryScopeData(
-        nodes: PostgresNodeRepository(s),
-        edges: PostgresEdgeRepository(s),
-        canvas: PostgresCanvasRepository(s),
-        projects: PostgresProjectRepository(s),
-        jobs: PostgresJobRepository(s),
-        styleLanes: PostgresStyleLaneRepository(s),
-        batchResults: PostgresBatchResultRepository(s),
-        characters: PostgresCharacterRepository(s),
-        promptPresets: PostgresPromptPresetRepository(s),
-      ),
-    );
+/// **就是**生产的工作单元装配（`postgresRepositoryScope`），不是副本。
+///
+/// 此前这里手抄了一份「与生产同构」的装配：生产里某个仓储接错会话，它的写入
+/// 逃出事务、回滚不掉——而这个测试拿的是自己的副本，永远发现不了。
+PostgresUnitOfWork _uow(SessionExecutor exec) =>
+    PostgresUnitOfWork(exec, postgresRepositoryScope);
+
+/// 某张表的行数（裸 SQL：要验的是"库里到底剩了什么"，不经仓储的过滤口径）。
+Future<int> _count(Session conn, String table) async {
+  final r = await conn.execute('SELECT count(*) FROM $table');
+  return (r.first[0]! as num).toInt();
+}
 
 void main() {
   late PgTestHarness? harness;
@@ -98,6 +89,79 @@ void main() {
       expect(all, hasLength(1));
       final cs = await canvases.listByProject(all.single['id']!.toString());
       expect(cs, hasLength(1));
+    } on _Skip {
+      return;
+    }
+  });
+
+  // ON-2b 评审 P3①（BOARD 196）：与 `createSample` 同构的四步——项目 → 画布 →
+  // 泳道 → 节点。上面两条只走了 projects + canvas 两个仓储；泳道和节点各是一个
+  // 独立仓储，任何一个接错会话，就会在「第四步失败」时留下半截示例项目。
+  test('示例项目同构四步：第四步失败 ⇒ 项目 / 画布 / 泳道一行不剩', () async {
+    try {
+      final h = req();
+      final uow = _uow(h.conn);
+
+      await expectLater(
+        uow.run((scope) async {
+          final pid = await scope.projects.create(name: 'Sample');
+          final cid = await scope.canvas.create(projectId: pid, name: 'C');
+          await scope.styleLanes.create(canvasId: cid, label: 'L');
+          // 第四步：不存在的 canvas_id ⇒ FK 违例 ⇒ 整个事务回滚。
+          await scope.nodes.create(
+            canvasId: '00000000-0000-0000-0000-000000000000',
+            type: 'image',
+            nodeRole: 'config',
+          );
+        }),
+        throwsA(isA<LocalIOError>()),
+      );
+
+      expect(
+        <String, int>{
+          'projects': await _count(h.conn, 'projects'),
+          'canvases': await _count(h.conn, 'canvases'),
+          'style_lanes': await _count(h.conn, 'style_lanes'),
+          'nodes': await _count(h.conn, 'nodes'),
+        },
+        <String, int>{
+          'projects': 0,
+          'canvases': 0,
+          'style_lanes': 0,
+          'nodes': 0,
+        },
+        reason: '有表留下了行 ⇒ 那个仓储的写入逃出了事务（接错会话）',
+      );
+    } on _Skip {
+      return;
+    }
+  });
+
+  test('示例项目同构四步：全部成功 ⇒ 四张表各一行', () async {
+    try {
+      final h = req();
+      final uow = _uow(h.conn);
+
+      await uow.run((scope) async {
+        final pid = await scope.projects.create(name: 'Sample');
+        final cid = await scope.canvas.create(projectId: pid, name: 'C');
+        final lid = await scope.styleLanes.create(canvasId: cid, label: 'L');
+        await scope.nodes.create(
+          canvasId: cid,
+          type: 'image',
+          nodeRole: 'config',
+          laneId: lid,
+        );
+      });
+
+      for (final String table in <String>[
+        'projects',
+        'canvases',
+        'style_lanes',
+        'nodes',
+      ]) {
+        expect(await _count(h.conn, table), 1, reason: '$table 应恰好一行');
+      }
     } on _Skip {
       return;
     }
