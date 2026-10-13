@@ -117,13 +117,23 @@ class CustomProvidersFileService
     }
 
     // 各字段规则统一走 custom_provider_validation 纯函数（与设置页内联
-    // 校验同一事实源）；告警顺序与 seenIds 语义保持原样。
+    // 校验同一事实源）；告警顺序保持原样。
     final id = field('id')!;
     if (kCustomProviderIdPattern.hasMatch(id) == false) {
       _warnEntry(index, 'invalid_id', id: id);
       return null;
     }
-    if (!seenIds.add(id)) {
+    // 【只查不占位】`seenIds` 的登记挪到本函数末尾、条目**被完整接受之后**。
+    //
+    // 原来是 `seenIds.add(id)` 当场占位，于是一条因 template / base_url 不合法
+    // 被拒的条目会把那个 id 占住，后面同 id 的**合法**条目反被判成 duplicate_id
+    // ——用户的 Provider 不出现，日志还给出一个误导的结论。
+    // （`conflicts_with_builtin_provider` 分支原来专门 `seenIds.remove(id)` 来
+    // 绕这件事，那正是症状：问题被按分支局部补过一次，没有修到根上。）
+    //
+    // 查仍然留在这里，是为了保住告警顺序：同 id 的第二条**合法**条目，首要诊断
+    // 就是 duplicate_id，不该先报它后面那些字段的问题。
+    if (seenIds.contains(id)) {
       _warnEntry(index, 'duplicate_id', id: id);
       return null;
     }
@@ -153,9 +163,9 @@ class CustomProvidersFileService
     );
     if (_reservedProviderIds.contains(config.providerId)) {
       _warnEntry(index, 'conflicts_with_builtin_provider', id: id);
-      seenIds.remove(id);
-      return null;
+      return null; // 没占位，也就不用再 remove 回来
     }
+    seenIds.add(id); // 被完整接受了，才算"见过这个 id"
     return config;
   }
 

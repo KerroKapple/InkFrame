@@ -1116,24 +1116,38 @@ class _EdgeLaneErrorSlot extends ConsumerStatefulWidget {
 }
 
 class _EdgeLaneErrorSlotState extends ConsumerState<_EdgeLaneErrorSlot> {
-  // 已被用户忽略的错误对象；仅当出现新错误时横幅重新弹出。
-  Object? _dismissed;
+  /// 每个错误源各记一条「已被用户忽略的那个错误对象」，顺序同 [_errorsOf]。
+  ///
+  /// 【为什么不能是一个字段】三个源会同时有错。原来是单个 `_dismissed` 配上
+  /// `edgesError ?? lanesError ?? directionError`：关掉 edges 的错之后，只要它
+  /// 还没恢复，`??` 链就一直短路在它身上，而它恰好 `identical` 于 `_dismissed`
+  /// ⇒ 这期间并发出现的 lanes / direction 错**永远上不了屏**。按源分别记账、
+  /// 取第一个「有错且未被忽略」的，才是三个源各自独立的语义。
+  ///
+  /// 定长三格而不是不断增长的集合：忽略只对「当下这个错误对象」生效，源一恢复
+  /// 旧对象就再也不会出现，留着只是攒垃圾。
+  final List<Object?> _dismissed = <Object?>[null, null, null];
+
+  List<Object?> _errorsOf(WidgetRef ref) => <Object?>[
+        ref.watch(canvasEdgesControllerProvider(widget.canvasId)).error,
+        ref.watch(canvasLanesControllerProvider(widget.canvasId)).error,
+        ref.watch(canvasLaneDirectionProvider(widget.canvasId)).error,
+      ];
 
   @override
   Widget build(BuildContext context) {
-    final edgesError = ref
-        .watch(canvasEdgesControllerProvider(widget.canvasId))
-        .error;
-    final lanesError = ref
-        .watch(canvasLanesControllerProvider(widget.canvasId))
-        .error;
-    final directionError = ref
-        .watch(canvasLaneDirectionProvider(widget.canvasId))
-        .error;
-    final error = edgesError ?? lanesError ?? directionError;
-    if (error == null || identical(error, _dismissed)) {
-      return const SizedBox.shrink();
+    final List<Object?> errors = _errorsOf(ref);
+    int? at;
+    for (var i = 0; i < errors.length; i++) {
+      final Object? e = errors[i];
+      if (e != null && !identical(e, _dismissed[i])) {
+        at = i;
+        break;
+      }
     }
+    if (at == null) return const SizedBox.shrink();
+    final int source = at;
+    final Object error = errors[source]!;
     final colors = context.inkColors;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1145,7 +1159,7 @@ class _EdgeLaneErrorSlotState extends ConsumerState<_EdgeLaneErrorSlot> {
         IconButton(
           tooltip: context.l10n.commonClose,
           icon: Icon(Icons.close, size: InkSpacing.md, color: colors.danger),
-          onPressed: () => setState(() => _dismissed = error),
+          onPressed: () => setState(() => _dismissed[source] = error),
         ),
       ],
     );

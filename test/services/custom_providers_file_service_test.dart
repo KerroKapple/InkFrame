@@ -165,6 +165,79 @@ void main() {
     expect(warnReasons(), ['conflicts_with_builtin_provider']);
   });
 
+  // 「被拒的条目不占 id」——GAP-1 评审 P3 残留④。
+  //
+  // 原来 `seenIds.add(id)` 在 template / base_url 校验**之前**占位，于是一条
+  // 因为模板写错被拒的条目会把那个 id 占住，后面同 id 的**合法**条目反被判成
+  // duplicate_id：用户的 Provider 不出现，日志还给出一个误导的结论。
+  group('被拒条目不占 id（GAP-1 P3④）', () {
+    test('先一条模板非法、再一条同 id 的合法条目 ⇒ 后者被接受', () async {
+      writeConfig([
+        entry(id: 'relay', template: 'no-such-template'),
+        entry(id: 'relay', displayName: 'Relay 修好的那条'),
+      ]);
+      final svc = build();
+      await svc.load();
+
+      expect(
+        svc.configs.map((c) => c.id).toList(),
+        <String>['relay'],
+        reason: '第一条被拒了，它不该把 id 占住把合法的那条顶掉',
+      );
+      expect(
+        warnReasons(),
+        <String>['unknown_template'],
+        reason: '只该有第一条的告警；多出 duplicate_id 就是误导的诊断',
+      );
+    });
+
+    test('与内置 provider 冲突的条目也不占 id', () async {
+      writeConfig([
+        entry(id: 'clash'),
+        entry(id: 'clash', displayName: '换个名字的同 id'),
+      ]);
+      final svc = build(reserved: {'custom:clash'});
+      await svc.load();
+
+      // 两条都因为撞内置而被拒，所以两条告警都该是 conflicts，不是第二条变 duplicate。
+      expect(svc.configs, isEmpty);
+      expect(
+        warnReasons(),
+        <String>[
+          'conflicts_with_builtin_provider',
+          'conflicts_with_builtin_provider',
+        ],
+        reason: '这一支原来靠 seenIds.remove(id) 局部绕过，现在根上就不占位',
+      );
+    });
+
+    // 反向：去重本身不能被改坏。
+    test('两条都合法的同 id ⇒ 第二条仍判 duplicate_id', () async {
+      writeConfig([
+        entry(id: 'relay'),
+        entry(id: 'relay', modelId: 'other-model'),
+      ]);
+      final svc = build();
+      await svc.load();
+
+      expect(svc.configs.map((c) => c.id).toList(), <String>['relay']);
+      expect(warnReasons(), <String>['duplicate_id']);
+    });
+
+    // 反向：同 id 的第二条合法条目，首要诊断必须是 duplicate_id——
+    // 不该先报它后面那些字段的问题（告警顺序是契约）。
+    test('已接受的 id + 第二条既重复又字段非法 ⇒ 报 duplicate_id', () async {
+      writeConfig([
+        entry(id: 'relay'),
+        entry(id: 'relay', baseUrl: 'not a url'),
+      ]);
+      final svc = build();
+      await svc.load();
+
+      expect(warnReasons(), <String>['duplicate_id']);
+    });
+  });
+
   test('重复 load 以最后一次为准（无累积）', () async {
     writeConfig([entry()]);
     final svc = build();
