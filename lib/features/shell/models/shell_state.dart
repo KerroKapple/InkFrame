@@ -136,9 +136,16 @@ class ShellState {
 
   /// 外壳正指着的项目已经不在库里了（被删）：项目与画布一起清。
   ///
-  /// 【为什么连带清 canvasId】canvasId 恒属于 project——openCanvas 的三个调用点
-  /// 全部带 withProject，两者是一起写进去的。只清 project 只是把悬空从一个字段
-  /// 挪到另一个字段：画布仍在保活槽里打开着，而它所属的项目已经进了回收站。
+  /// 【为什么连带清 canvasId】canvasId 恒属于 project。换项目的 openCanvas
+  /// 调用点都带 withProject，把两者一起写进去；唯一不带的那个（左栏项目面板）
+  /// 是在同一项目内换画布，`withProject ?? project` 原样留住项目——两种都让
+  /// canvasId 属于 project。只清 project 只是把悬空从一个字段挪到另一个字段：
+  /// 画布仍在保活槽里打开着，而它所属的项目已经进了回收站。
+  ///
+  /// 这段话里的事实判断由闸守：`shell_transition_reachability_test.dart` 的
+  /// 第二条钉死「不带 withProject 的调用点集合 == 写明理由的豁免名单」。
+  /// 上一版注释写的是「三个调用点全部带 withProject」，到 2026-10-13 已经是
+  /// 六个、其中一个不带——没有闸的事实陈述就是这样烂的。
   ShellState closeProject() => ShellState(tab: tab, overlay: overlay);
 
   /// 还原备份后：库换了，全清。
