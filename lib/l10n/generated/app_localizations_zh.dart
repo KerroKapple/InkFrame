@@ -357,6 +357,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsBackupFailed => '备份失败——详情见日志目录';
 
   @override
+  String get settingsBackupTimedOut => '备份耗时过长，已中止——可能是数据库很大或磁盘较慢，立刻重试多半还会超时';
+
+  @override
   String get settingsBackupsEmpty => '暂无备份';
 
   @override
@@ -401,6 +404,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get restoreFailed => '还原失败——你的数据未被改动';
+
+  @override
+  String get restoreFailedTimedOut =>
+      '还原耗时过长，已中止——你的数据未被改动。可能是备份很大或磁盘较慢，立刻重试多半还会超时';
 
   @override
   String get restoreFailedCorrupt => '备份文件校验未通过';

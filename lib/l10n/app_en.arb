@@ -145,6 +145,7 @@
   "settingsBackupDone": "Backup created",
   "settingsBackupNoBinaries": "Bundled PostgreSQL tools not found — reinstall InkFrame to restore them",
   "settingsBackupFailed": "Backup failed — see the log folder for details",
+  "settingsBackupTimedOut": "Backup took too long and was stopped — your database may be very large or the disk slow, so retrying right away will likely time out again",
   "settingsBackupsEmpty": "No backups yet",
   "settingsBackupMetaLine": "{size} · {date}",
   "@settingsBackupMetaLine": {
@@ -168,6 +169,7 @@
   },
   "restoreDone": "Restore complete",
   "restoreFailed": "Restore failed — your data was not changed",
+  "restoreFailedTimedOut": "Restore took too long and was stopped — your data was not changed. The backup may be very large or the disk slow, so retrying right away will likely time out again",
   "restoreFailedCorrupt": "Backup file failed verification",
   "restoreFailedVersionNewer": "This backup was made by a newer version of InkFrame",
   "restoreAbortedPreBackup": "Safety backup failed — restore cancelled",

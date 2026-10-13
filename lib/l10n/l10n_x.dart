@@ -26,6 +26,8 @@ String l10nRestoreFailure(AppLocalizations l10n, RestoreOutcome outcome) {
     RestoreOutcome.failedCorrupt => l10n.restoreFailedCorrupt,
     RestoreOutcome.failedVersionNewer => l10n.restoreFailedVersionNewer,
     RestoreOutcome.abortedPreBackup => l10n.restoreAbortedPreBackup,
+    // 超时单独一句：三十分钟之后的失败若与秒级失败同一句话，用户会原样重试。
+    RestoreOutcome.failedTimedOut => l10n.restoreFailedTimedOut,
     RestoreOutcome.failed || RestoreOutcome.restored => l10n.restoreFailed,
   };
 }

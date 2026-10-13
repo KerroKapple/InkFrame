@@ -266,6 +266,37 @@ void main() {
     expect(toast.shown.single.kind, ToastKind.error);
   });
 
+  // BOARD 170：看门狗超时与秒级失败必须是两句话。等了十分钟 / 三十分钟才失败，
+  // 若和秒级失败同一句「失败——详情见日志」，用户的下一步一定是原样再点一次。
+  testWidgets('立即备份超时 → 专门文案（不是通用「备份失败」）', (tester) async {
+    backup.nowOutcome = BackupOutcome.failedTimedOut;
+    await pump(tester);
+
+    await tester.tap(find.text('Back up now'));
+    await tester.pumpAndSettle();
+
+    expect(toast.shown.single.message, contains('took too long'));
+    expect(toast.shown.single.message, contains('will likely time out again'),
+        reason: '要告诉用户立刻重试多半没用，否则他会原样再等一轮');
+    expect(toast.shown.single.kind, ToastKind.error);
+  });
+
+  testWidgets('还原超时 → 专门文案，并且说清数据未被改动', (tester) async {
+    backup.backups = [_info('inkframe-2026-07-15.dump', BackupKind.daily)];
+    await pump(tester);
+
+    flow.outcome = RestoreOutcome.failedTimedOut;
+    await tester.tap(find.text('Restore'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Restore').last);
+    await tester.pumpAndSettle();
+
+    expect(toast.shown.single.message, contains('took too long'));
+    expect(toast.shown.single.message, contains('your data was not changed'),
+        reason: '三十分钟之后最想知道的是「我的数据还在不在」');
+    expect(toast.shown.single.kind, ToastKind.error);
+  });
+
   testWidgets('还原全程 barrier 模态罩住（restoreInProgress），点外部不消失，完成后收起',
       (tester) async {
     backup.backups = [_info('inkframe-2026-07-15.dump', BackupKind.daily)];

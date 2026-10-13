@@ -156,6 +156,7 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
     final service = ref.read(databaseBackupServiceProvider);
     final doneMsg = context.l10n.settingsBackupDone;
     final failedMsg = context.l10n.settingsBackupFailed;
+    final timedOutMsg = context.l10n.settingsBackupTimedOut;
     final noBinMsg = context.l10n.settingsBackupNoBinaries;
     setState(() => _backingUp = true);
     try {
@@ -182,6 +183,10 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
           toast.show(doneMsg, kind: ToastKind.success);
         case BackupOutcome.skippedNoBinaries:
           toast.show(noBinMsg, kind: ToastKind.error);
+        case BackupOutcome.failedTimedOut:
+          // 超时单独一句：十分钟之后的失败若与秒级失败同一句话，用户的下一步
+          // 一定是原样再点一次——再等十分钟。
+          toast.show(timedOutMsg, kind: ToastKind.error);
         case BackupOutcome.failed:
         case BackupOutcome.skippedAlreadyToday: // backupNow 契约上不产生。
           toast.show(failedMsg, kind: ToastKind.error);

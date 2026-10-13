@@ -380,6 +380,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Backup failed — see the log folder for details';
 
   @override
+  String get settingsBackupTimedOut =>
+      'Backup took too long and was stopped — your database may be very large or the disk slow, so retrying right away will likely time out again';
+
+  @override
   String get settingsBackupsEmpty => 'No backups yet';
 
   @override
@@ -424,6 +428,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get restoreFailed => 'Restore failed — your data was not changed';
+
+  @override
+  String get restoreFailedTimedOut =>
+      'Restore took too long and was stopped — your data was not changed. The backup may be very large or the disk slow, so retrying right away will likely time out again';
 
   @override
   String get restoreFailedCorrupt => 'Backup file failed verification';
