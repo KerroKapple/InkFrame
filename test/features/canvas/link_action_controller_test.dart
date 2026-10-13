@@ -17,6 +17,10 @@ class _FakeEdgesController extends CanvasEdgesController {
   final List<(String, String)> calls = <(String, String)>[];
   final List<EdgeRole> roles = <EdgeRole>[];
 
+  /// 每次 addEdge 有没有收到解析器。真控制器在串行队列**里面**调它——
+  /// 调用方传算好的 role 就会把竞态修复退回去，所以这一项要被钉住。
+  final List<bool> gotResolver = <bool>[];
+
   @override
   Future<List<CanvasEdge>> build(String canvasId) async => existing;
 
@@ -26,10 +30,14 @@ class _FakeEdgesController extends CanvasEdgesController {
     required String targetNodeId,
     EdgeType edgeType = EdgeType.data,
     EdgeRole role = EdgeRole.reference,
+    EdgeRole Function(List<CanvasEdge> current)? roleResolver,
     int sortOrder = 0,
   }) async {
     calls.add((sourceNodeId, targetNodeId));
-    roles.add(role);
+    gotResolver.add(roleResolver != null);
+    // 真控制器把"队列跑到这一刻的边集合"喂给解析器；这里用 existing 代表它。
+    final EdgeRole resolved = roleResolver?.call(existing) ?? role;
+    roles.add(resolved);
     final e = error;
     if (e != null) throw e;
     return CanvasEdge(
@@ -38,7 +46,7 @@ class _FakeEdgesController extends CanvasEdgesController {
       sourceNodeId: sourceNodeId,
       targetNodeId: targetNodeId,
       edgeType: edgeType,
-      role: role,
+      role: resolved,
       sortOrder: sortOrder,
     );
   }
@@ -206,6 +214,12 @@ void main() {
           .linkTo('vid1');
 
       expect(fake.roles, [EdgeRole.firstFrame]);
+      expect(
+        fake.gotResolver,
+        <bool>[true],
+        reason: '必须传解析器，不能传当场算好的 role——"目标有没有首帧入边"'
+            '要在边控制器的串行队列里判，否则两次并发连线都判"还没有" ⇒ 双首帧',
+      );
     });
 
     test('video 已有 first_frame 入边 → 回落 reference', () async {

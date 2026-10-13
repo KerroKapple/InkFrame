@@ -45,10 +45,22 @@ class LinkActionController
       return;
     }
     try {
+      // 节点类型的判断在队列外做（节点早就建好了，不参与竞态，而且这里还活着
+      // ——ref.read 安全）；"目标有没有首帧入边"必须进队列里算，见下。
+      final bool wantsFirstFrame = _firstFrameCandidate(sourceId, targetNodeId);
       await ref.read(canvasEdgesControllerProvider(arg).notifier).addEdge(
             sourceNodeId: sourceId,
             targetNodeId: targetNodeId,
-            role: _defaultRole(sourceId, targetNodeId),
+            // 传解析器而不是算好的值：默认首帧的前提是"目标此刻还没有首帧入边"，
+            // 在队列外读边快照的话，第一条首帧边写入在途时连第二条，两次都判
+            // "还没有" ⇒ 双首帧。解析器只吃传进来的列表、不碰 ref，所以队列跑到
+            // 它的时候即使本 notifier 已 autoDispose 也不会抛。
+            roleResolver: wantsFirstFrame
+                ? (List<CanvasEdge> current) =>
+                    _hasFirstFrame(current, targetNodeId)
+                        ? EdgeRole.reference
+                        : EdgeRole.firstFrame
+                : null,
           );
       state = LinkActionEvent(LinkActionResult.created);
     } on InkError catch (e) {
@@ -62,13 +74,15 @@ class LinkActionController
     }
   }
 
-  /// 智能默认 role：image 连 video 十有八九是图生视频首帧意图——
-  /// 目标 video 尚无 first_frame 入边时默认 [EdgeRole.firstFrame]；
-  /// 其余（图生图参考、非图像源、已有首帧、状态未就绪）一律 reference。
+  /// 智能默认 role 的**第一半**：image 连 video 十有八九是图生视频首帧意图。
+  ///
+  /// 只判节点类型。这一半不参与竞态（节点早就建好了），所以留在队列外算。
+  /// 第二半「目标此刻有没有首帧入边」在 [_hasFirstFrame]，由 addEdge 在串行
+  /// 队列里调。状态未就绪（nodes 还在 loading）⇒ false ⇒ 退回 reference。
   /// 用户可在 Inspector 入边区（NodeInputsSection）随时改。
-  EdgeRole _defaultRole(String sourceId, String targetId) {
+  bool _firstFrameCandidate(String sourceId, String targetId) {
     final nodes = ref.read(canvasNodesControllerProvider(arg)).valueOrNull;
-    if (nodes == null) return EdgeRole.reference;
+    if (nodes == null) return false;
     CanvasNode? byId(String id) {
       for (final n in nodes) {
         if (n.id == id) return n;
@@ -76,18 +90,19 @@ class LinkActionController
       return null;
     }
 
-    if (byId(targetId)?.type != CanvasNodeType.video ||
-        byId(sourceId)?.type != CanvasNodeType.image) {
-      return EdgeRole.reference;
-    }
-    final edges = ref.read(canvasEdgesControllerProvider(arg)).valueOrNull ??
-        const <CanvasEdge>[];
-    final hasFirstFrame = edges.any(
-      (e) =>
-          e.targetNodeId == targetId &&
-          e.edgeType == EdgeType.data &&
-          e.role == EdgeRole.firstFrame,
-    );
-    return hasFirstFrame ? EdgeRole.reference : EdgeRole.firstFrame;
+    return byId(targetId)?.type == CanvasNodeType.video &&
+        byId(sourceId)?.type == CanvasNodeType.image;
   }
+
+  /// 智能默认 role 的**第二半**：[targetId] 在 [edges] 里已经有首帧入边了吗。
+  ///
+  /// 纯函数，只吃传进来的列表——由 `CanvasEdgesController.addEdge` 在它的串行
+  /// 队列**内部**调用，看到的是队头之前所有变更落完之后的边集合。
+  static bool _hasFirstFrame(List<CanvasEdge> edges, String targetId) =>
+      edges.any(
+        (e) =>
+            e.targetNodeId == targetId &&
+            e.edgeType == EdgeType.data &&
+            e.role == EdgeRole.firstFrame,
+      );
 }

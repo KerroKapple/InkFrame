@@ -164,18 +164,22 @@ class _FakeEdgesController extends CanvasEdgesController {
     required String targetNodeId,
     EdgeType edgeType = EdgeType.data,
     EdgeRole role = EdgeRole.reference,
+    EdgeRole Function(List<CanvasEdge> current)? roleResolver,
     int sortOrder = 0,
   }) async {
     calls.add((sourceNodeId, targetNodeId));
     final e = error;
     if (e != null) throw e;
+    // 真控制器在串行队列里用队列当下的边集合求值；这个 fake 没有边，传空表。
+    final EdgeRole resolved =
+        roleResolver?.call(const <CanvasEdge>[]) ?? role;
     return CanvasEdge(
       id: 'e1',
       canvasId: arg,
       sourceNodeId: sourceNodeId,
       targetNodeId: targetNodeId,
       edgeType: edgeType,
-      role: role,
+      role: resolved,
       sortOrder: sortOrder,
     );
   }

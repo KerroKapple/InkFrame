@@ -603,7 +603,9 @@ class GenerationController {
 
     final List<String> refs = [];
     String? firstFrame;
+    String? firstFrameSrc;
     String? lastFrame;
+    String? lastFrameSrc;
     var failedResolves = 0;
 
     for (final row in incoming) {
@@ -650,9 +652,19 @@ class GenerationController {
 
       switch (role) {
         case 'first_frame':
-          firstFrame ??= absPath;
+          if (firstFrame == null) {
+            firstFrame = absPath;
+            firstFrameSrc = srcId;
+          } else {
+            _warnDuplicateFrameRole('first_frame', firstFrameSrc, srcId);
+          }
         case 'last_frame':
-          lastFrame ??= absPath;
+          if (lastFrame == null) {
+            lastFrame = absPath;
+            lastFrameSrc = srcId;
+          } else {
+            _warnDuplicateFrameRole('last_frame', lastFrameSrc, srcId);
+          }
         default:
           refs.add(absPath);
       }
@@ -674,6 +686,25 @@ class GenerationController {
       refImagePaths: List.unmodifiable(refs),
       firstFramePath: firstFrame,
       lastFramePath: lastFrame,
+    );
+  }
+
+  /// 同一节点上出现两条同角色（首帧 / 尾帧）入边：`GenerationTask` 那边只有一个
+  /// 字段装得下，另一条必然被丢掉。丢图一定要留痕。
+  ///
+  /// 这正是「静默吞掉用户给的参考图」那一类——用户在入边区看到两条「首帧」，
+  /// 发出去的只有一张图，界面上没有任何迹象。写侧的单选约束
+  /// （`CanvasEdgesController.updateRole`）之后这不该再发生，剩下的来源是**存量
+  /// 数据**和撤销夹缝，所以这里不抢着"修"，只把事实记下来。
+  /// 用哪一条由 `EdgeRepository.listIncoming` 的确定序决定（见那里的契约注释）。
+  void _warnDuplicateFrameRole(String role, String? used, String dropped) {
+    logger?.warn(
+      _logModule,
+      'duplicate $role in-edge; only one can be sent',
+      extra: <String, Object?>{
+        'used_source_node_id': used,
+        'dropped_source_node_id': dropped,
+      },
     );
   }
 

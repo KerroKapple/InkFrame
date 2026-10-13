@@ -707,6 +707,59 @@ void main() {
     expect(task.firstFramePath, contains('images/first.png'));
   });
 
+  // 同一个 config 节点上两条 first_frame 入边：`GenerationTask.firstFramePath`
+  // 只有一个值装得下，另一条的图必然被丢掉。写侧（CanvasEdgesController 的单选
+  // 约束）之后这只剩存量数据这一个来源，但**丢掉用户明确指定的图不能无声无息**
+  // ——这正是本仓反复出现的那一类：界面上两条都写着「首帧」，发出去只有一张。
+  test('两条 first_frame 入边 → 用序上的第一条 + 落一条点名两边的 warn', () async {
+    useVideoProvider(first: true);
+    final cfg = await seedVideoConfigNode();
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk-test');
+    seedRefImageNode(id: 'ffA', imageUrl: 'images/a.png');
+    seedRefImageNode(id: 'ffB', imageUrl: 'images/b.png');
+    seedDataEdge(sourceId: 'ffA', targetId: cfg, role: 'first_frame');
+    seedDataEdge(sourceId: 'ffB', targetId: cfg, role: 'first_frame');
+    final RecordingLogger logger = RecordingLogger();
+
+    await buildCtrl(logger: logger).submitFromConfigNode(cfg);
+
+    expect(
+      queue.lastTask!.firstFramePath,
+      contains('images/a.png'),
+      reason: '用哪一条由 listIncoming 的序决定（真库侧的 ORDER BY 由 '
+          'repository_sql_templates_test 钉死）——不能在两次运行之间漂',
+    );
+    final List<LogRecord> warns = logger
+        .byLevel(InkLogLevel.warn)
+        .where((LogRecord r) => r.msg.contains('duplicate first_frame'))
+        .toList();
+    expect(warns, hasLength(1), reason: '丢图必须留痕，否则事后只看到"发出去的图不对"');
+    expect(warns.single.extra?['used_source_node_id'], 'ffA');
+    expect(warns.single.extra?['dropped_source_node_id'], 'ffB');
+  });
+
+  test('只有一条 first_frame → 不落重复 warn（不许见谁都喊）', () async {
+    useVideoProvider(first: true);
+    final cfg = await seedVideoConfigNode();
+    await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk-test');
+    seedRefImageNode(id: 'ff', imageUrl: 'images/first.png');
+    seedRefImageNode(id: 'ref', imageUrl: 'images/ref.png');
+    seedDataEdge(sourceId: 'ff', targetId: cfg, role: 'first_frame');
+    seedDataEdge(sourceId: 'ref', targetId: cfg); // reference，不是单选的
+    final RecordingLogger logger = RecordingLogger();
+
+    await buildCtrl(logger: logger).submitFromConfigNode(cfg);
+
+    expect(
+      logger
+          .byLevel(InkLogLevel.warn)
+          .where((LogRecord r) => r.msg.contains('duplicate'))
+          .toList(),
+      isEmpty,
+      reason: '两张参考图是合法的；单选只约束首 / 尾帧',
+    );
+  });
+
   test('provider 不支持首帧 + first_frame 边 → InvalidGenerationConfigError，无副作用', () async {
     useVideoProvider(); // supportsFirstFrame: false
     final cfg = await seedVideoConfigNode();
