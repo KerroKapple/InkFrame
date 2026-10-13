@@ -3,13 +3,17 @@
 //   - 参数正确绑定
 //   - JobRepository.transitionStatus 使用 ANY(@from)
 //   - PurgeExpired / PurgePerCanvasCap 包含 PRD §21 retention 字面量
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_character_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_prompt_preset_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_style_lane_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_video_backfill_repository.dart';
 import 'package:postgres/postgres.dart';
@@ -65,21 +69,23 @@ void main() {
       expect(spy.lastParams?['suf'], 'suf');
     });
 
+    // 列名带了 `c.` 限定：读路径 JOIN projects 过滤项目软删后，created_at /
+    // name / id / deleted_at 在两张表里都存在，裸写会被 PG 判 ambiguous。
     test('listByProject 过滤 + order ASC', () async {
       final spy = _SpySession();
       await PostgresCanvasRepository(spy).listByProject('p1');
-      expect(spy.lastSql, contains('project_id = @pid'));
-      expect(spy.lastSql, contains('ORDER BY created_at ASC'));
+      expect(spy.lastSql, contains('c.project_id = @pid'));
+      expect(spy.lastSql, contains('ORDER BY c.created_at ASC'));
     });
 
     test('listByProjects 单条 ANY(@pids) 批量查询（反 N+1）', () async {
       final spy = _SpySession();
       await PostgresCanvasRepository(spy)
           .listByProjects(const ['p1', 'p2']);
-      expect(spy.lastSql, contains('project_id = ANY(@pids)'));
-      expect(spy.lastSql, contains('deleted_at IS NULL'));
+      expect(spy.lastSql, contains('c.project_id = ANY(@pids)'));
+      expect(spy.lastSql, contains('c.deleted_at IS NULL'));
       expect(spy.lastSql,
-          contains('ORDER BY project_id ASC, created_at ASC'));
+          contains('ORDER BY c.project_id ASC, c.created_at ASC'));
       expect(spy.lastParams?['pids'], const ['p1', 'p2']);
     });
   });
@@ -226,6 +232,124 @@ void main() {
       expect(spy.lastSql, isNot(contains('deleted_at')));
       await PostgresBatchResultRepository(spy).listAllOutputUrls();
       expect(spy.lastSql, isNot(contains('deleted_at')));
+    });
+  });
+
+  // ===== 项目软删过滤（BOARD 206：#254 那个洞的上一级同款）=====
+  //
+  // 项目软删【不级联】到 canvases / characters / prompt_presets
+  // （projects.softDelete 只碰 projects 那一行），于是这三张表的行在项目被删后
+  // 仍 `deleted_at IS NULL`。只过滤自身软删的读路径会把回收站里项目的画布 /
+  // 角色 / 预设照常读出来。
+  //
+  // 这个洞接上 #254 的 closeProject() 之后在产品里**已不可达**（画布/角色/预设的
+  // projectId 全部来自已过滤软删的 projects.listAll() 或 ShellState.project，
+  // 而后者在项目被删时当场清掉）。补它是纵深防御：那条不可达性是五个 UI 事实的
+  // 合取，每一条都会悄悄烂掉——同一轮里就逮到 BOARD 另一条「openCanvas 三个
+  // 调用点全部带 withProject」早已过期（实际五个，其中一个不带）。SQL 层是这条
+  // 不变量唯一不会随 UI 改动而腐烂的地方。
+  //
+  // 判据同 #254：`JOIN projects` + **同一条 JOIN 子句上**的 `p.deleted_at IS NULL`
+  // （拆成两条 expect 会让无关位置的同名串混过去）。
+  group('项目域读路径必带项目软删过滤', () {
+    const String joinAlive = 'JOIN projects p ON p.id =';
+    const String aliveOnly = 'AND p.deleted_at IS NULL';
+
+    final Map<String, Future<void> Function(_SpySession)> reads =
+        <String, Future<void> Function(_SpySession)>{
+      'canvases.findById': (s) => PostgresCanvasRepository(s).findById('c1'),
+      'canvases.listByProject': (s) =>
+          PostgresCanvasRepository(s).listByProject('p1'),
+      'canvases.listByProjects': (s) =>
+          PostgresCanvasRepository(s).listByProjects(const ['p1', 'p2']),
+      'characters.findById': (s) =>
+          PostgresCharacterRepository(s).findById('ch1'),
+      'characters.listByProject': (s) =>
+          PostgresCharacterRepository(s).listByProject('p1'),
+      'prompt_presets.findById': (s) =>
+          PostgresPromptPresetRepository(s).findById('pp1'),
+      'prompt_presets.listByProject': (s) =>
+          PostgresPromptPresetRepository(s).listByProject('p1'),
+    };
+
+    reads.forEach((String name, Future<void> Function(_SpySession) run) {
+      test('$name 只读活项目', () async {
+        final spy = _SpySession();
+        await run(spy);
+        final String sql = spy.lastSql!;
+        expect(
+          RegExp('$joinAlive [a-z]+\\.project_id $aliveOnly').hasMatch(sql),
+          isTrue,
+          reason: '$name 的 SQL 必须 JOIN projects 并在 JOIN 条件上带 '
+              'p.deleted_at IS NULL，否则已软删项目的行照常读出：\n$sql',
+        );
+      });
+    });
+
+    // 反向护栏 ①：回收站是软删行的唯一出口。给它加「项目必须活」会让
+    // 「项目和画布都在回收站」时那些画布永远取不回来——比本洞坏得多。
+    test('回收站读路径绝不过滤项目软删（反向）', () async {
+      final spy = _SpySession();
+      await PostgresCanvasRepository(spy).listTrashedByProject('p1');
+      expect(spy.lastSql, contains('deleted_at IS NOT NULL'));
+      expect(spy.lastSql, isNot(contains('JOIN projects')),
+          reason: '回收站读路径一旦要求项目活着，回收站里项目的画布就再也恢复不了');
+      await PostgresProjectRepository(spy).listTrashed();
+      expect(spy.lastSql, isNot(contains('JOIN projects')));
+    });
+
+    // 反向护栏 ②：归档导出是全保真（含软删行 + FK 闭包），契约写在
+    // core/interfaces/project_archive_reader.dart。它有自己的 9 条 SQL，
+    // 不走上面这三个仓储——上表长大时别顺手把它也"修"了。
+    // 这里用源码文本断言：导出读的是单事务快照，spy 要同时是 SessionExecutor，
+    // 为一条反向护栏造那套机器不值得。
+    test('归档导出的 SQL 绝不过滤软删（反向，源码级）', () {
+      final String src = File(
+        'lib/storage/repositories/postgres_project_archive_reader.dart',
+      ).readAsStringSync();
+      expect(src, contains('FROM canvases WHERE project_id = @p'));
+      expect(src, contains('FROM characters WHERE project_id = @p'));
+      expect(src, contains('FROM prompt_presets WHERE project_id = @p'));
+      expect(src, isNot(contains('JOIN projects')),
+          reason: '全保真导出必须带上软删行，否则导出包缺行、导入侧 FK 闭包断裂');
+      expect(src, isNot(contains('deleted_at')),
+          reason: '同上：导出不看 deleted_at，软删行照样写进包里');
+    });
+
+    // 自证：上面那张表必须覆盖这三个仓储的【全部】项目域读路径。
+    // 不自证的闸最后都会变成常绿装饰——有人加一条 listByOwner，表不动，
+    // 七条 expect 照样全过，新读路径带着洞上线。Dart 测试里没有可用的运行期
+    // 反射，所以从源码签名反推：判据是方法名以 find / list 起头。
+    test('读路径清单 == 源码里的全部读方法（自证）', () {
+      // 源码文件名 → 上表里用的表名前缀。
+      const Map<String, String> files = <String, String>{
+        'canvas': 'canvases',
+        'character': 'characters',
+        'prompt_preset': 'prompt_presets',
+      };
+      // 刻意不进上表的读路径。每一条都必须有自己的反向护栏（见上面两条）。
+      const Set<String> exempt = <String>{'canvases.listTrashedByProject'};
+
+      final Set<String> fromSource = <String>{};
+      files.forEach((String file, String table) {
+        final String src = File(
+          'lib/storage/repositories/postgres_${file}_repository.dart',
+        ).readAsStringSync();
+        for (final RegExpMatch m in RegExp(
+          r'^  Future<.*> ((?:find|list)\w*)\(',
+          multiLine: true,
+        ).allMatches(src)) {
+          fromSource.add('$table.${m.group(1)}');
+        }
+      });
+
+      expect(
+        fromSource,
+        unorderedEquals(reads.keys.toSet().union(exempt)),
+        reason: '这三个仓储新增 / 改名了读方法，但项目软删过滤的清单没跟上。'
+            '要么把它加进上面的 reads 表，要么连同反向护栏一起加进 exempt——'
+            '别让它默默成为第四条漏过滤的读路径',
+      );
     });
   });
 

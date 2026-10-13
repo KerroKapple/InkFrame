@@ -339,6 +339,78 @@ void main() {
     }
   });
 
+  // BOARD 206：上面那条的【上一级】同款——项目软删不级联到 canvases /
+  // characters / prompt_presets，所以这三张表的读路径必须 JOIN projects 过滤。
+  // 真 PG 这一条钉的同样是「级联不存在」这个事实（内存 fake 测不到它），
+  // 并且顺带钉死「回收站仍看得见」与「恢复后原样回来」两条反向要求。
+  test('项目软删后：canvases / characters / prompt_presets 的读路径全部读不到',
+      () async {
+    try {
+      final h = req();
+      final projects = PostgresProjectRepository(h.conn);
+      final canvases = PostgresCanvasRepository(h.conn);
+      final characters = PostgresCharacterRepository(h.conn);
+      final presets = PostgresPromptPresetRepository(h.conn);
+
+      final pid = await projects.create(name: 'Doomed');
+      final cid = await canvases.create(projectId: pid, name: 'C');
+      final chid = await characters.create(projectId: pid, name: 'hero');
+      final ppid = await presets.create(projectId: pid, name: 'preset');
+
+      // 前置：活项目下全部读得到（没有这一步，下面的 isEmpty 可能只是没建成）。
+      expect(await canvases.findById(cid), isNotNull);
+      expect(await canvases.listByProject(pid), hasLength(1));
+      expect(await canvases.listByProjects([pid]), hasLength(1));
+      expect(await characters.findById(chid), isNotNull);
+      expect(await characters.listByProject(pid), hasLength(1));
+      expect(await presets.findById(ppid), isNotNull);
+      expect(await presets.listByProject(pid), hasLength(1));
+
+      expect(await projects.softDelete(pid), 1);
+
+      // 子行自己的 deleted_at 仍是 NULL——项目软删不级联，这正是洞的来源。
+      final survivors = await h.conn.execute(
+        Sql.named(
+          'SELECT (SELECT count(*) FROM canvases '
+          'WHERE project_id = @p AND deleted_at IS NULL), '
+          '(SELECT count(*) FROM characters '
+          'WHERE project_id = @p AND deleted_at IS NULL), '
+          '(SELECT count(*) FROM prompt_presets '
+          'WHERE project_id = @p AND deleted_at IS NULL)',
+        ),
+        parameters: <String, Object?>{'p': pid},
+      );
+      // 按位取，不走 toColumnMap——三个子查询的列名都是 count，会互相覆盖。
+      expect(
+        <Object?>[survivors.first[0], survivors.first[1], survivors.first[2]],
+        <Object?>[1, 1, 1],
+        reason: '前提事实：项目软删不级联到这三张表，所以过滤必须在读路径上做',
+      );
+
+      expect(await canvases.findById(cid), isNull);
+      expect(await canvases.listByProject(pid), isEmpty);
+      expect(await canvases.listByProjects([pid]), isEmpty);
+      expect(await characters.findById(chid), isNull);
+      expect(await characters.listByProject(pid), isEmpty);
+      expect(await presets.findById(ppid), isNull);
+      expect(await presets.listByProject(pid), isEmpty);
+
+      // 反向①：回收站仍看得见这个项目（它是软删行的唯一出口）。
+      expect(
+        (await projects.listTrashed()).map((r) => r['id'].toString()),
+        contains(pid),
+      );
+
+      // 反向②：恢复项目 → 内容原样回来（过滤不能退化成"删了就没了"）。
+      expect(await projects.restore(pid), 1);
+      expect(await canvases.listByProject(pid), hasLength(1));
+      expect(await characters.listByProject(pid), hasLength(1));
+      expect(await presets.listByProject(pid), hasLength(1));
+    } on _Skip {
+      return;
+    }
+  });
+
   test('EdgeRepository 全链路 + listOutgoing/Incoming', () async {
     try {
       final h = req();
