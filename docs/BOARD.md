@@ -160,7 +160,7 @@
 | 补两档设计令牌（图标尺寸/控件高度） | 🅿️ | P2 一致性 |
 | **build_runner 全量构建损坏**（analyzer 7.4.5 无法序列化 Dart 3.11 dot-shorthand,riverpod_generator 崩溃挂死;靠 asset graph 缓存掩盖,定向 `--build-filter` 可用） | 🅿️ | **调研已完成**（[BLOCKERS-2026-07-06.md](BLOCKERS-2026-07-06.md) §2）：唯一瓶颈 freezed 3.2.5 与 riverpod_generator 4.0.4 的 analyzer 约束相斥,freezed 3.2.6 stable 一出即与 Riverpod 3 迁移合并立项（同时解掉 custom_lint 卡点,见 §1）;盯 freezed#1353 |
 | M2 Inspector 区 widget 级测试——参考图区/角色区/失败提示已补（PR #138）,预设点选应用与成本文案断言随 GAP-7 收口 | ✅ | #198：点选→字段+落库双断言;perCall 成本精确文案 |
-| characters / prompt_presets 仓储真库 CRUD 集成测试 | 🅿️ | 仅作 UoW 装配件出现;对齐 postgres_repositories_integration_test |
+| characters / prompt_presets 仓储真库 CRUD 集成测试 | ✅ | **BOARD 过期了——两条全链路 CRUD 早在 #188（LB-11，债#20）就已落地**（`postgres_repositories_integration_test` 的「CharacterRepository / PromptPresetRepository 全链路 CRUD + 软删 / 恢复 / 硬删」），这一行一直没回填。<br>**2026-10-13 核对时补了一个真缺口**：角色那条只写不读参考图，`update` 也只改了 `name`——仓储里专为 `reference_image_paths` 写的「List → `jsonEncode` + `::jsonb`」更新分支，**从没在真库上走过**（全仓真 PG 用例只在创建 / 导入时碰这一列）。而它正是角色编辑框「增删、拖动排序参考图」走的路。补三处断言：创建读回 · 更新（重排 + 新增，顺序保住）读回 · 同一 patch 混改普通列与 JSONB 列。实测（scratchpad 一次性 PG 集群，验完删除）：去掉那段分支 ⇒ 新用例红（`LocalIOError`：List 被驱动推成 PG 数组、写不进 JSONB 列）;**main 上原来的用例跑同一变异 ⇒ 照样全绿**|
 | Inspector/网格 AsyncValue error 态吞没（镜像模式统一改 `.when`） | ✅ | LB-06/#166 主体 + #199 余量收口（24 站点审计:唯一真吞错=方向读错已修;library_sidebar 判良性降级加注释;InkAsyncSlot 判 YAGNI 不建）——**GAP-3 卡关闭** |
 | 软删项目「可恢复」无 UI 入口（restore/listTrashed 仓储层已就绪） | ✅ | LB-15/#190：sidebar 回收站对话框（项目级）+ 管理画布已删区（画布级）;永久删除仍显式排除 |
 | slot 状态字符串常量化（'generating' 等散落约 10+ 处,全仓既有约定） | ✅ | LB-01/#156：`core/constants/job_statuses.dart` 单一真相源 |

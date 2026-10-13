@@ -963,10 +963,45 @@ void main() {
       final loaded = await repo.findById(id);
       expect(loaded?[CharacterCol.name], 'hero');
       expect(loaded?[CharacterCol.description], 'lead');
+      // 创建时的 JSONB 往返：原来只写不读，写坏了也看不出来。
+      expect(loaded?[CharacterCol.referenceImagePaths],
+          <String>['images/a.png', 'images/b.png']);
       expect(await repo.listByProject(pid), hasLength(1));
 
       expect(await repo.update(id, {CharacterCol.name: 'hero2'}), 1);
       expect((await repo.findById(id))?[CharacterCol.name], 'hero2');
+
+      // 改参考图——角色编辑框里「增删、拖动排序」走的就是这一条。仓储为这一列
+      // 专门写了「List → jsonEncode + ::jsonb」的分支：List 不经这一步，驱动会把
+      // 它推成 PG 数组，写进 JSONB 列直接报错（2026-10-13 真 PG 实测）。此前所有
+      // 真 PG 用例只在**创建 / 导入**时碰这一列，更新路径从没在真库上走过。
+      expect(
+        await repo.update(id, <String, Object?>{
+          CharacterCol.referenceImagePaths: <String>[
+            'images/b.png', // 拖到最前
+            'images/a.png',
+            'images/c.png', // 新增
+          ],
+        }),
+        1,
+      );
+      expect(
+        (await repo.findById(id))?[CharacterCol.referenceImagePaths],
+        <String>['images/b.png', 'images/a.png', 'images/c.png'],
+        reason: '顺序要原样保住——拖动排序改的就是顺序',
+      );
+
+      // 同一个 patch 里混改普通列与 JSONB 列：分支只该改写 JSONB 那一列的绑定。
+      expect(
+        await repo.update(id, <String, Object?>{
+          CharacterCol.name: 'hero3',
+          CharacterCol.referenceImagePaths: <String>['images/c.png'],
+        }),
+        1,
+      );
+      final mixed = await repo.findById(id);
+      expect(mixed?[CharacterCol.name], 'hero3');
+      expect(mixed?[CharacterCol.referenceImagePaths], <String>['images/c.png']);
 
       expect(await repo.softDelete(id), 1);
       expect(await repo.listByProject(pid), isEmpty);
