@@ -1,6 +1,6 @@
 // R21（fix round 2）源码级契约测试：ShellNavigator 永不被 invalidate / refresh。
 //
-// 背景：ShellState 值对象层用「无 copyWith、无 closeCanvas」把"清 canvasId"
+// 背景：ShellState 值对象层用「无 copyWith + 导航类迁移一律不碰 canvasId」把"清 canvasId"
 // 挡在类型层面之外（见 shell_state.dart 头部注释），但这条不变式只在值对象的
 // 具名迁移方法面上成立。Riverpod 的 provider 生命周期是另一层：任何地方写
 // `ref.invalidate(shellControllerProvider)` 或 `ref.refresh(shellControllerProvider)`

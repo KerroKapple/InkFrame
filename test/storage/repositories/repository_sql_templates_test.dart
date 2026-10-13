@@ -11,6 +11,7 @@ import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_style_lane_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_video_backfill_repository.dart';
 import 'package:postgres/postgres.dart';
 
 void main() {
@@ -169,6 +170,65 @@ void main() {
     });
   });
 
+  // ===== 画布软删过滤（BOARD「删掉正在打开的画布 / 项目后外壳上下文悬空」第 3 件）=====
+  //
+  // 画布软删【不级联】到 nodes / edges / style_lanes（softDelete 只碰 canvases
+  // 那一行），于是这三张表的行在画布被删后仍 `deleted_at IS NULL`。只过滤自身
+  // 软删的读路径会把已删画布的内容照常读出来——界面上完全看不出它已被删，
+  // 用户的改动会一直写进一张已删画布。
+  //
+  // 表驱动：新增 / 改写任何一条 canvas 域读路径而忘了带画布软删过滤，这里当场红。
+  // 判据是 `JOIN canvases` + 同一行上的 `c.deleted_at IS NULL`（分成两条 expect
+  // 会让 `JOIN canvases c ON c.id = x` 配一句无关的 `c.deleted_at IS NULL` 也过）。
+  group('canvas 域读路径必带画布软删过滤', () {
+    const String joinAlive = 'JOIN canvases c ON c.id =';
+    const String aliveOnly = 'AND c.deleted_at IS NULL';
+
+    final Map<String, Future<void> Function(_SpySession)> reads =
+        <String, Future<void> Function(_SpySession)>{
+      'nodes.findById': (s) => PostgresNodeRepository(s).findById('n1'),
+      'nodes.listByCanvas': (s) => PostgresNodeRepository(s).listByCanvas('c1'),
+      'nodes.listOrphanResults': (s) =>
+          PostgresNodeRepository(s).listOrphanResults('c1'),
+      'edges.findById': (s) => PostgresEdgeRepository(s).findById('e1'),
+      'edges.listByCanvas': (s) => PostgresEdgeRepository(s).listByCanvas('c1'),
+      'edges.listOutgoing': (s) => PostgresEdgeRepository(s).listOutgoing('a'),
+      'edges.listIncoming': (s) => PostgresEdgeRepository(s).listIncoming('b'),
+      'style_lanes.findById': (s) =>
+          PostgresStyleLaneRepository(s).findById('l1'),
+      'style_lanes.listByCanvas': (s) =>
+          PostgresStyleLaneRepository(s).listByCanvas('c1'),
+      'batch_results.listSuccessByProject': (s) =>
+          PostgresBatchResultRepository(s).listSuccessByProject('p1'),
+      'video_backfill.listMissingDuration': (s) =>
+          PostgresVideoBackfillRepository(s).listMissingDuration(),
+    };
+
+    reads.forEach((String name, Future<void> Function(_SpySession) run) {
+      test('$name 只读活画布', () async {
+        final spy = _SpySession();
+        await run(spy);
+        final String sql = spy.lastSql!;
+        expect(
+          RegExp('$joinAlive [a-z]+\\.canvas_id $aliveOnly').hasMatch(sql),
+          isTrue,
+          reason: '$name 的 SQL 必须 JOIN canvases 并在 JOIN 条件上带 '
+              'c.deleted_at IS NULL，否则已软删画布的行照常读出：\n$sql',
+        );
+      });
+    });
+
+    // 反向护栏：这两条是孤儿回收的「被引用集」，软删行必须算被引用（安全#2）。
+    // 上面那张表长大时顺手给它们也加过滤，等于悄悄把用户还能恢复的产物删掉。
+    test('孤儿回收引用集绝不过滤软删（反向）', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).listAllMediaUrls();
+      expect(spy.lastSql, isNot(contains('deleted_at')));
+      await PostgresBatchResultRepository(spy).listAllOutputUrls();
+      expect(spy.lastSql, isNot(contains('deleted_at')));
+    });
+  });
+
   group('EdgeRepository SQL', () {
     test('create 绑定 UNIQUE 关键参数', () async {
       final spy = _SpySession(returnRows: const [
@@ -203,10 +263,12 @@ void main() {
   });
 
   group('StyleLaneRepository SQL', () {
+    // 列名带了 `l.` 限定：读路径 JOIN canvases 过滤画布软删后，
+    // 裸 sort_order 在两张表里都不存在歧义，但限定是必须保持的书写纪律。
     test('listByCanvas 按 sort_order ASC', () async {
       final spy = _SpySession();
       await PostgresStyleLaneRepository(spy).listByCanvas('c');
-      expect(spy.lastSql, contains('ORDER BY sort_order ASC'));
+      expect(spy.lastSql, contains('ORDER BY l.sort_order ASC'));
     });
   });
 

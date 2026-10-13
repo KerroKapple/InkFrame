@@ -57,9 +57,15 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
 
   // 读路径统一 JOIN canvases 带出 project_id（CR-01）：
   // 生成链路 / CanvasNode.fromRow 依赖行内 project_id 解析产物落盘路径。
+  //
+  // JOIN 条件上的 `c.deleted_at IS NULL` 不是装饰：画布软删【不级联】到 nodes
+  // （canvases.softDelete 只碰 canvases 那一行），所以只过滤 n.deleted_at 的
+  // 读路径会把已删画布的节点照常读出来——画面上完全看不出它已被删，用户的
+  // 改动会一直写进一张已删画布。过滤必须在读路径上做，写在 JOIN 条件而不是
+  // WHERE 里，是为了让每个复用本前缀的查询自动继承，漏不掉。
   static const _selectWithProject =
       'SELECT n.*, c.project_id FROM nodes n '
-      'JOIN canvases c ON c.id = n.canvas_id';
+      'JOIN canvases c ON c.id = n.canvas_id AND c.deleted_at IS NULL';
 
   @override
   Future<Map<String, Object?>?> findById(String id) {

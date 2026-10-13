@@ -1,4 +1,4 @@
-// ShellState 的 6 个具名迁移 + 字段级相等性 + isPristine 真值表。
+// ShellState 的 8 个具名迁移 + 字段级相等性 + isPristine 真值表。
 // 手写值对象、无 freezed：== / hashCode 漏一个字段的症状是静默丢导航，
 // 没有任何现有测试会红，所以这里表驱动逐字段钉死。
 import 'package:flutter_test/flutter_test.dart';
@@ -83,6 +83,49 @@ void main() {
       const s = ShellState(
         tab: ShellTab.gallery, overlay: ShellOverlay.settings, canvasId: 'c1', project: p1);
       expect(s.resetSession(), const ShellState());
+    });
+
+    // ===== 上下文失效（BOARD「删掉正在打开的画布 / 项目后外壳上下文悬空」）=====
+    // 这两条是**失效**而非导航：只负责让外壳不再指着一个已经不存在的对象，
+    // 标签与浮层一律不动（删除入口是 Studio 里的对话框，用户没有要求换页）。
+
+    test('closeCanvas 只清 canvasId，项目 / 标签 / 浮层全不动', () {
+      const s = ShellState(
+        tab: ShellTab.canvas,
+        overlay: ShellOverlay.settings,
+        canvasId: 'c1',
+        project: p1,
+      );
+      final n = s.closeCanvas();
+      expect(n.canvasId, isNull);
+      expect(n.project, p1,
+          reason: '删掉一张画布不等于离开这个项目——画廊还该留在原项目上');
+      expect(n.tab, ShellTab.canvas,
+          reason: '失效不是导航：canvasId == null 是合法态，画布标签自己出空态');
+      expect(n.overlay, ShellOverlay.settings,
+          reason: '不顺手关浮层——那是 goTab 的语义，不是本迁移的');
+    });
+
+    test('closeProject 清项目【并连带清 canvasId】', () {
+      const s = ShellState(
+        tab: ShellTab.gallery,
+        overlay: ShellOverlay.settings,
+        canvasId: 'c1',
+        project: p1,
+      );
+      final n = s.closeProject();
+      expect(n.project, isNull);
+      expect(n.canvasId, isNull,
+          reason: 'canvasId 恒属于 project（openCanvas 三个调用点都带 withProject）：'
+              '只清 project 等于把悬空从一个字段挪到另一个字段');
+      expect(n.tab, ShellTab.gallery);
+      expect(n.overlay, ShellOverlay.settings);
+    });
+
+    test('closeCanvas / closeProject 在已空态上幂等（值相等 ⇒ navigator 层不通知）', () {
+      const empty = ShellState(tab: ShellTab.gallery);
+      expect(empty.closeCanvas(), empty);
+      expect(empty.closeProject(), empty);
     });
   });
 

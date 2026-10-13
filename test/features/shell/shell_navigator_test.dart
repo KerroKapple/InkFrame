@@ -111,6 +111,29 @@ void main() {
     expect(c.read(shellControllerProvider).project, p1);
   });
 
+  test('closeCanvas 委托：只清 canvasId，不碰项目与标签', () {
+    final c = makeContainer(
+        const ShellState(tab: ShellTab.canvas, canvasId: 'c1', project: p1));
+    final nav = c.read(shellControllerProvider.notifier);
+    nav.closeCanvas();
+    expect(c.read(shellControllerProvider).canvasId, isNull);
+    expect(c.read(shellControllerProvider).project, p1);
+    expect(c.read(shellControllerProvider).tab, ShellTab.canvas,
+        reason: '错接成 goTab(studio) 也能让 canvasId 看起来"没事"——'
+            '这条同时钉死"标签没被顺手切走"');
+  });
+
+  test('closeProject 委托：项目与 canvasId 一起清', () {
+    final c = makeContainer(
+        const ShellState(tab: ShellTab.gallery, canvasId: 'c1', project: p1));
+    final nav = c.read(shellControllerProvider.notifier);
+    nav.closeProject();
+    expect(c.read(shellControllerProvider).project, isNull);
+    expect(c.read(shellControllerProvider).canvasId, isNull,
+        reason: '错接成 closeCanvas 时 project 会留着——这条把两个迁移区分开');
+    expect(c.read(shellControllerProvider).tab, ShellTab.gallery);
+  });
+
   test('resetSession 委托：从非平凡起始态回到 isPristine', () {
     final c = makeContainer(const ShellState(
       tab: ShellTab.gallery,

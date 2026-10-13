@@ -750,8 +750,16 @@ class _ProjectGrid extends ConsumerWidget {
     if (confirmed != true) return;
     if (!context.mounted) return;
     final failedMsg = context.l10n.studioDeleteFailed;
+    // 删的是不是外壳正指着的那个项目——【在首个 await 之前】读完并把导航器
+    // 握在手里：导航器是容器级对象，本 widget 被 unmount 后仍有效，而
+    // `if (!context.mounted) return` 放在清理之前会留出"卡片先没了、上下文
+    // 没清"的窗口，悬空照旧。无条件清则会把用户正在看的别的项目关掉。
+    final nav = ref.read(shellControllerProvider.notifier);
+    final bool wasActive = ref.read(shellControllerProvider).project?.id == p.id;
     try {
       await ref.read(studioProjectsControllerProvider).deleteProject(p.id);
+      // 画廊 / 序列 / 导出 / 面包屑 / ⌘K 全读 ShellState.project：不清就全体悬空。
+      if (wasActive) nav.closeProject();
     } on InkError {
       if (!context.mounted) return;
       ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -870,8 +878,15 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
     );
     if (confirmed != true || !mounted) return;
     final failedMsg = context.l10n.studioDeleteCanvasFailed;
+    // 同 _deleteProject 的理由：判据与导航器都在首个 await 之前取好。本对话框
+    // 比项目卡更容易在 await 期间消失（用户可以直接关掉它），而清理绝不能
+    // 跟着对话框一起被跳过。
+    final nav = ref.read(shellControllerProvider.notifier);
+    final bool wasOpen = ref.read(shellControllerProvider).canvasId == c.id;
     try {
       await ref.read(studioProjectsControllerProvider).deleteCanvas(c.id);
+      // 不清的话：标签 chip 恒可点 ⇒ 用户点回「画布」标签继续编辑一张已删画布。
+      if (wasOpen) nav.closeCanvas();
       if (!mounted) return;
       // 删除迁入已删区：同对话框正 watch 着 trashed family，不失效会显示
       // 「刚删的画布不在回收站」（#190 评审 P2-1）。

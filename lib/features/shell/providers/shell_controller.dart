@@ -58,6 +58,13 @@ class ShellNavigator extends Notifier<ShellState> {
   void openOverlay(ShellOverlay o) => _set(state.openOverlay(o));
   void closeOverlay() => _set(state.closeOverlay());
 
+  /// 删掉了外壳正指着的画布 / 项目之后的上下文失效。调用点各一个，都在
+  /// studio_home_screen.dart 的删除入口里——语义见 shell_state.dart 的同名方法。
+  /// 调用方自己判"删的是不是正指着的那个"：无条件清会把用户正在编辑的画布
+  /// 连带关掉。
+  void closeCanvas() => _set(state.closeCanvas());
+  void closeProject() => _set(state.closeProject());
+
   /// 还原备份后：四项归零，并让画廊整族失效——保活后画廊标签会捧着
   /// 还原前那个库的产物继续显示，且 project.id 可能在新库里已不存在。
   void resetSession() {

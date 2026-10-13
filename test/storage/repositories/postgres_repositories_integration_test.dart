@@ -245,6 +245,71 @@ void main() {
     }
   });
 
+  // BOARD「删掉正在打开的画布 / 项目后外壳上下文悬空」第 3 件：画布软删
+  // 【不级联】到 nodes / edges / style_lanes，所以只过滤自身 deleted_at 的读
+  // 路径会把已删画布的内容照常读出来——界面上完全看不出它已被删。
+  // 真 PG 这一条钉的是「级联不存在」这个事实（内存 fake 测不到它）。
+  test('画布软删后：nodes / edges / style_lanes 的读路径全部读不到它的内容',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final canvasRepo = PostgresCanvasRepository(h.conn);
+      final cid = await canvasRepo.create(projectId: pid, name: 'Doomed');
+      final nodes = PostgresNodeRepository(h.conn);
+      final edges = PostgresEdgeRepository(h.conn);
+      final lanes = PostgresStyleLaneRepository(h.conn);
+
+      final lane = await lanes.create(canvasId: cid, label: 'L');
+      final a = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'config', laneId: lane);
+      final b = await nodes.create(
+          canvasId: cid, type: 'image', nodeRole: 'result', sourceNodeId: a);
+      final e = await edges.create(
+          canvasId: cid, sourceNodeId: a, targetNodeId: b, edgeType: 'data');
+
+      // 前置：活画布下全部读得到（没有这一步，下面的 isEmpty 可能只是没建成）。
+      expect(await nodes.listByCanvas(cid), hasLength(2));
+      expect(await nodes.findById(a), isNotNull);
+      expect(await edges.listByCanvas(cid), hasLength(1));
+      expect(await edges.listOutgoing(a), hasLength(1));
+      expect(await edges.listIncoming(b), hasLength(1));
+      expect(await edges.findById(e), isNotNull);
+      expect(await lanes.listByCanvas(cid), hasLength(1));
+      expect(await lanes.findById(lane), isNotNull);
+
+      expect(await canvasRepo.softDelete(cid), 1);
+
+      // 子行自己的 deleted_at 仍是 NULL——软删不级联，这正是洞的来源。
+      final survivors = await h.conn.execute(
+        "SELECT count(*) FROM nodes WHERE canvas_id = '$cid' "
+        'AND deleted_at IS NULL',
+      );
+      expect(survivors.first[0], 2,
+          reason: '前提事实：画布软删不级联到 nodes，所以过滤必须在读路径上做');
+
+      expect(await nodes.listByCanvas(cid), isEmpty,
+          reason: '画布编辑器 / 画廊的主读路径——漏了这条，用户的改动会一直写进已删画布');
+      expect(await nodes.findById(a), isNull);
+      expect(await nodes.findById(b), isNull);
+      expect(await nodes.listOrphanResults(cid), isEmpty);
+      expect(await edges.listByCanvas(cid), isEmpty);
+      expect(await edges.listOutgoing(a), isEmpty);
+      expect(await edges.listIncoming(b), isEmpty);
+      expect(await edges.findById(e), isNull);
+      expect(await lanes.listByCanvas(cid), isEmpty);
+      expect(await lanes.findById(lane), isNull);
+
+      // 恢复画布 → 内容原样回来（过滤不能退化成"删了就没了"）。
+      expect(await canvasRepo.restore(cid), 1);
+      expect(await nodes.listByCanvas(cid), hasLength(2));
+      expect(await edges.listByCanvas(cid), hasLength(1));
+      expect(await lanes.listByCanvas(cid), hasLength(1));
+    } on _Skip {
+      return;
+    }
+  });
+
   test('EdgeRepository 全链路 + listOutgoing/Incoming', () async {
     try {
       final h = req();
