@@ -280,6 +280,13 @@
   "inspectorCharactersEmpty": "还没有角色",
   "inspectorCharactersUnsupported": "当前模型不使用参考图，角色不会生效",
   "inspectorCharactersSaveFromReference": "把参考图存为角色",
+  "inspectorCharactersSaveFromReferenceHint": "把「{source}」的图存成新角色",
+  "@inspectorCharactersSaveFromReferenceHint": {
+    "placeholders": {
+      "source": { "type": "String" }
+    }
+  },
+  "inspectorCharactersSaveFromReferenceDisabled": "先把一个图片节点连到本节点",
   "inspectorCharactersImportFile": "从文件导入图片",
   "inspectorCharactersDialogTitle": "新建角色",
   "inspectorCharactersNameHint": "角色名称",

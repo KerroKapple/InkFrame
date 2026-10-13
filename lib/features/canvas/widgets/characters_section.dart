@@ -117,8 +117,18 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     }
   }
 
-  /// 本 config 节点第一条 reference data 边上、带 image_url 的源节点（"存为角色"来源）。
-  CanvasNode? _referenceSource() {
+  /// 本 config 节点第一条**带 image_url 的 data 入边**的源节点（"存为角色"来源）。
+  ///
+  /// 【为什么不看 role】（CH-2 残留①）边的 role 说的是「这张图在生成里当什么用」
+  /// ——首帧、尾帧还是参考图；而"存为角色"只是「把这张图留下来复用」，跟它在本次
+  /// 生成里的用途无关。此前这里要求 role==reference，而 image→video 的默认连线是
+  /// first_frame（`link_action_controller._defaultRole`），于是正常连法下按钮恒灰，
+  /// 用户必须先把边切成 reference 才存得了——等于这个功能在默认路径上不存在。
+  ///
+  /// 选第一条有图的入边 = 检查器「关键帧」组里最上面那一行：两处读的是同一份
+  /// `canvasEdgesControllerProvider`，而它的顺序来自 `ORDER BY sort_order, created_at`，
+  /// 所以"存哪一张"是用户看得到的，不是隐式优先级。
+  CanvasNode? _saveSource() {
     final canvasId = widget.targetNode.canvasId;
     if (canvasId == null) return null;
     final edges =
@@ -130,8 +140,7 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     final nodesById = {for (final n in nodes) n.id: n};
     for (final e in edges) {
       if (e.targetNodeId != widget.targetNode.id ||
-          e.edgeType != EdgeType.data ||
-          e.role != EdgeRole.reference) {
+          e.edgeType != EdgeType.data) {
         continue;
       }
       final src = nodesById[e.sourceNodeId];
@@ -148,7 +157,7 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
     final typo = context.inkTypography;
     final charactersAsync = ref.watch(charactersControllerProvider(projectId));
     final characters = charactersAsync.valueOrNull ?? const <Character>[];
-    final refSource = _referenceSource();
+    final saveSource = _saveSource();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,12 +225,23 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
         const SizedBox(height: InkSpacing.xs),
         Align(
           alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: refSource == null
-                ? null
-                : () => _createFromReference(refSource),
-            icon: const Icon(Icons.person_add_alt_1, size: 16),
-            label: Text(context.l10n.inspectorCharactersSaveFromReference),
+          // 可用时说清存的是哪一张，不可用时说清缺什么——禁用态不再只是"静静变灰"。
+          // Tooltip 包在按钮外面：onPressed==null 的按钮自己不报 hover，套在外层才提示得出来。
+          child: Tooltip(
+            message: saveSource == null
+                ? context.l10n.inspectorCharactersSaveFromReferenceDisabled
+                : context.l10n.inspectorCharactersSaveFromReferenceHint(
+                    saveSource.label.isNotEmpty
+                        ? saveSource.label
+                        : saveSource.id,
+                  ),
+            child: TextButton.icon(
+              onPressed: saveSource == null
+                  ? null
+                  : () => _createFromReference(saveSource),
+              icon: const Icon(Icons.person_add_alt_1, size: 16),
+              label: Text(context.l10n.inspectorCharactersSaveFromReference),
+            ),
           ),
         ),
         Align(

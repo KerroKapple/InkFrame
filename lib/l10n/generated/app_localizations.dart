@@ -1244,6 +1244,18 @@ abstract class AppLocalizations {
   /// **'Save reference as character'**
   String get inspectorCharactersSaveFromReference;
 
+  /// No description provided for @inspectorCharactersSaveFromReferenceHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Saves the image from “{source}” as a new character'**
+  String inspectorCharactersSaveFromReferenceHint(String source);
+
+  /// No description provided for @inspectorCharactersSaveFromReferenceDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect an image node to this node first'**
+  String get inspectorCharactersSaveFromReferenceDisabled;
+
   /// No description provided for @inspectorCharactersImportFile.
   ///
   /// In en, this message translates to:

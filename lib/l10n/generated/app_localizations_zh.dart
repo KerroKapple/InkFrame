@@ -637,6 +637,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorCharactersSaveFromReference => '把参考图存为角色';
 
   @override
+  String inspectorCharactersSaveFromReferenceHint(String source) {
+    return '把「$source」的图存成新角色';
+  }
+
+  @override
+  String get inspectorCharactersSaveFromReferenceDisabled => '先把一个图片节点连到本节点';
+
+  @override
   String get inspectorCharactersImportFile => '从文件导入图片';
 
   @override

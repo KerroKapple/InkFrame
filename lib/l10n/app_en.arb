@@ -289,6 +289,13 @@
   "inspectorCharactersEmpty": "No characters yet",
   "inspectorCharactersUnsupported": "This model ignores reference images",
   "inspectorCharactersSaveFromReference": "Save reference as character",
+  "inspectorCharactersSaveFromReferenceHint": "Saves the image from “{source}” as a new character",
+  "@inspectorCharactersSaveFromReferenceHint": {
+    "placeholders": {
+      "source": { "type": "String" }
+    }
+  },
+  "inspectorCharactersSaveFromReferenceDisabled": "Connect an image node to this node first",
   "inspectorCharactersImportFile": "Import image file",
   "inspectorCharactersDialogTitle": "New character",
   "inspectorCharactersNameHint": "Character name",

@@ -669,6 +669,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Save reference as character';
 
   @override
+  String inspectorCharactersSaveFromReferenceHint(String source) {
+    return 'Saves the image from “$source” as a new character';
+  }
+
+  @override
+  String get inspectorCharactersSaveFromReferenceDisabled =>
+      'Connect an image node to this node first';
+
+  @override
   String get inspectorCharactersImportFile => 'Import image file';
 
   @override
