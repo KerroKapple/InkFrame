@@ -20,6 +20,13 @@ Map<String, dynamic> _data() => <String, dynamic>{
         'id': 'P', 'name': 'demo', 'cover_node_id': 'n2',
         'created_at': '2026-01-01T00:00:00.000Z',
         'updated_at': '2026-01-01T00:00:00.000Z',
+        // v8 列，刻意用**非默认**值：导入若把它丢了，库里会回落成默认 '{}'，
+        // 这里就能分辨出「保留了」还是「被清零了」。
+        'delivery_settings': <String, Object?>{
+          'target': 'final_cut',
+          'timecode_start_frames': 0,
+          'relative_paths': false,
+        },
       },
       'canvases': [
         {'id': 'c1', 'project_id': 'P', 'name': 'A',
@@ -94,6 +101,16 @@ void main() {
       final snap = await reader.snapshot(plan.newProjectId);
 
       expect(snap.project?['name'], 'demo');
+      // 交付设置往返（v8 列）：导出带着它，导入不许丢，JSONB 编码要对。
+      expect(
+        snap.project?['delivery_settings'],
+        <String, Object?>{
+          'target': 'final_cut',
+          'timecode_start_frames': 0,
+          'relative_paths': false,
+        },
+        reason: '导出再导入之后交付设置被清零了',
+      );
       expect((snap.project?['created_at'] as DateTime).toUtc(),
           DateTime.utc(2026, 1, 1));
       // cover 补丁生效且指向新 id。

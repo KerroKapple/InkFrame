@@ -24,10 +24,17 @@ class PostgresProjectImportWriter
   @override
   final Session session;
 
+  /// 要 `jsonEncode` + `::jsonb` 的列。**必须与迁移里声明为 JSONB 的列逐一对应**，
+  /// 由 test/quality/import_schema_sync_test 对着全部迁移钉死。
+  ///
+  /// 漏登的后果取决于值的形状（2026-10-13 真 PG 实测）：Map 值碰巧能被驱动推成
+  /// JSONB，漏了也写得进去；**List 值会被推成 PG 数组，写进 JSONB 列直接报错**，
+  /// 整个导入失败（撤掉 `referenceImagePaths` 即复现）。所以不按形状挑着登，全登。
   static const Set<String> _jsonbCols = <String>{
     NodeCol.typeConfig,
     JobCol.parameters,
     CharacterCol.referenceImagePaths,
+    ProjectCol.deliverySettings, // v8
   };
 
   @override

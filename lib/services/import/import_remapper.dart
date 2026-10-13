@@ -15,6 +15,11 @@ export '../../core/models/import_plan_data.dart' show ImportPlanData;
 const Set<String> _projectCols = {
   ProjectCol.id, ProjectCol.name, ProjectCol.coverNodeId,
   ProjectCol.createdAt, ProjectCol.updatedAt, ProjectCol.deletedAt,
+  // v8 加的列，加的时候没人同步到这里——导出（SELECT *）带着它，导入把它当
+  // 未知列丢掉，交付设置静默清零。里面只有目标软件 / 时间码起点 / 三个开关，
+  // 不含任何 id，不需要 UUID 重映射。test/quality/import_schema_sync_test 从此
+  // 逼每张表的白名单与 columns.dart 对齐。
+  ProjectCol.deliverySettings,
 };
 const Set<String> _canvasCols = {
   CanvasCol.id, CanvasCol.projectId, CanvasCol.name,
