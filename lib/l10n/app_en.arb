@@ -67,6 +67,13 @@
   },
   "inspectorStatusErrorTitle": "Generation failed",
   "inspectorRetry": "Retry",
+  "inspectorAutoSaveRetrying": "Couldn't save — retrying…",
+  "inspectorAutoSaveFailed": "Changes not saved: {reason}",
+  "@inspectorAutoSaveFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
 
   "settingsTitle": "Settings",
   "settingsApiKeysSection": "API keys",

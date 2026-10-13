@@ -86,8 +86,8 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
     return sec == null ? null : sec * 1000;
   }
 
-  /// 立即落盘（下拉是离散选择，不需要防抖）。saveConfig 内部已吞异常，
-  /// 自动保存是 best-effort。
+  /// 立即落盘（下拉是离散选择，不需要防抖）。saveConfig 不抛——失败会翻成
+  /// InspectorAutoSaveState，由检查器底部的 InspectorAutoSaveRow 上屏 + 重试。
   void _save(Map<String, Object?> patch) {
     unawaited(
       ref

@@ -28,6 +28,37 @@ class _FakeNodeRepository implements NodeRepository {
       throw UnimplementedError('${invocation.memberName}');
 }
 
+/// 可按调用序号闸住 `patchTypeConfig` 的仓储——让 await **真的停在中间**。
+///
+/// 关键设计：patch 在闸开之后才记进 [patches]，所以 [patches] 的顺序就是
+/// **落库顺序**。「终稿有没有被旧 patch 盖掉」只能靠落库顺序断言，断言「写了
+/// 哪些」是测不出这个 bug 的。
+class _GatedNodeRepository implements NodeRepository {
+  final List<Map<String, Object?>> patches = <Map<String, Object?>>[];
+
+  /// 已进入 patchTypeConfig 的调用数（含卡在闸上的）。
+  int started = 0;
+
+  final Map<int, Completer<void>> _gates = <int, Completer<void>>{};
+
+  /// 让第 [callIndex] 次调用（1 起）卡住，返回它的闸。
+  Completer<void> gate(int callIndex) =>
+      _gates[callIndex] = Completer<void>();
+
+  @override
+  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async {
+    started++;
+    final Completer<void>? g = _gates[started];
+    if (g != null) await g.future;
+    patches.add(Map<String, Object?>.of(patch));
+    return 1;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
 class _FakeGenerationController implements GenerationController {
   _FakeGenerationController({this.onSubmit});
 
@@ -210,6 +241,24 @@ void main() {
     );
   });
 
+  test('同一 node 上两个不同防抖字段按键合并，不互相顶掉（BOARD 第 198 行）', () async {
+    final container = makeContainer(_FakeGenerationController());
+    container.listen(inspectorSubmitControllerProvider('n1'), (_, _) {});
+    final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+    ctrl.saveDebounced(const <String, Object?>{'shot_notes': 'a note'});
+    ctrl.savePromptDebounced('a prompt');
+    expect(repo.patches, isEmpty, reason: '防抖窗口内不应落盘');
+
+    await Future<void>.delayed(
+      InspectorSubmitController.debounceDuration + const Duration(milliseconds: 100),
+    );
+
+    expect(repo.patches, [
+      {'shot_notes': 'a note', 'prompt': 'a prompt'},
+    ], reason: '第二个字段不得把第一个还没落盘的 patch 整个顶掉');
+  });
+
   test('saveConfig：立即落盘一次', () async {
     final container = makeContainer(_FakeGenerationController());
     final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
@@ -218,5 +267,99 @@ void main() {
     expect(repo.patches, [
       {'camera': 'orbit'},
     ]);
+  });
+
+  // 「在途写入」与 submit() 竞序（2026-08-31 审计 W3 P1；BOARD 第 196 行）。
+  //
+  // #232 只修了「挂起未发射」被 dispose 丢弃那一种。这一组测的是**已经发射**
+  // 的那一种：防抖计时器已触发、saveConfig 正 await 仓储时，submit 把完整
+  // finalConfig 也发下去——两条 UPDATE 并发，到达顺序没人保证，旧 patch 晚到
+  // 就把终稿 prompt 盖掉。已经发出去的 UPDATE 取消不了，所以唯一的修法是
+  // 不并发：同一节点的 type_config 写入排队。
+  group('type_config 写入串行化', () {
+    late _GatedNodeRepository gated;
+
+    ProviderContainer makeGatedContainer(GenerationController gen) {
+      final container = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) => Future.value(gated)),
+        generationControllerProvider.overrideWith((ref) => Future.value(gen)),
+      ]);
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    setUp(() => gated = _GatedNodeRepository());
+
+    test('在途的旧 patch 不得覆盖 submit 的终稿（真让 await 停在中间）', () async {
+      const Map<String, Object?> finalConfig = <String, Object?>{
+        'prompt': 'final draft',
+        'provider_id': 'p',
+      };
+      // submitFromConfigNode 发起时，库里最后一笔写入是什么——生成读的就是它。
+      List<Map<String, Object?>>? landedAtSubmit;
+      final gen = _FakeGenerationController(onSubmit: (_) async {
+        landedAtSubmit = List<Map<String, Object?>>.of(gated.patches);
+        return 'job-1';
+      });
+      final container = makeGatedContainer(gen);
+      final ctrl =
+          container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      // ① 防抖的旧 patch 发射出去，卡在仓储里（第 1 次调用）。
+      final Completer<void> stale = gated.gate(1);
+      ctrl.savePromptDebounced('stale draft');
+      await Future<void>.delayed(
+        InspectorSubmitController.debounceDuration +
+            const Duration(milliseconds: 100),
+      );
+      expect(gated.started, 1, reason: '旧 patch 必须已经发射');
+      expect(gated.patches, isEmpty, reason: '确认它真的停在 await 中间');
+
+      // ② 此刻 submit 落完整终稿。
+      final Future<void> submitted = ctrl.submit(finalConfig);
+      // 给未修版本足够时间走完整条 submit（它根本不等在途的旧写入）。
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      // ③ 现在才放旧 patch 过闸。
+      stale.complete();
+      await submitted;
+
+      expect(gated.patches.length, 2, reason: '两笔都要落，不能有一笔被偷偷丢掉');
+      expect(
+        gated.patches.last,
+        finalConfig,
+        reason: '终稿必须是最后落盘的那一笔——旧 patch 晚到覆盖终稿就是这张卡的 bug',
+      );
+      expect(landedAtSubmit?.last, finalConfig,
+          reason: '发起生成时库里就该已经是终稿，生成读到的不能是旧 prompt');
+      expect(
+        container.read(inspectorSubmitControllerProvider('n1')),
+        isA<InspectorSubmitIdle>(),
+      );
+    });
+
+    test('两笔自动保存按发起顺序落盘，后发起的不插队', () async {
+      final container = makeGatedContainer(_FakeGenerationController());
+      final ctrl =
+          container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      final Completer<void> first = gated.gate(1);
+      unawaited(ctrl.saveConfig(const <String, Object?>{'prompt': 'first'}));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(gated.started, 1);
+
+      unawaited(ctrl.saveConfig(const <String, Object?>{'prompt': 'second'}));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(gated.patches, isEmpty,
+          reason: '第二笔必须排在第一笔后面，不能并发下发');
+
+      first.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+
+      expect(gated.patches, [
+        {'prompt': 'first'},
+        {'prompt': 'second'},
+      ], reason: '同一个键被连写两次时，最终生效的必须是后发起的那个值');
+    });
   });
 }

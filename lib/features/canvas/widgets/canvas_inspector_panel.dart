@@ -17,6 +17,7 @@ import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
+import 'inspector_auto_save_row.dart';
 import 'node_card.dart';
 import 'node_inspector_router.dart';
 
@@ -77,6 +78,10 @@ class CanvasInspectorPanel extends ConsumerWidget {
                     ],
                   ),
           ),
+          // 自动保存失败面：Clean 时不占位，失败时说清原因 + 「重试」。
+          // 挂在这一层而不是各检查器里——所有自动保存入口都要求「恰好选中一个
+          // 节点」，而本面板正是那个条件下常驻在屏上的那一层。
+          if (node != null) InspectorAutoSaveRow(nodeId: node.id),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12, vertical: InkSpacing.s10),
             decoration: BoxDecoration(
