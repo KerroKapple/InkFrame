@@ -1539,6 +1539,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'ffmpeg not found — install it and retry (set the INKFRAME_FFMPEG environment variable to use a custom location)';
 
   @override
+  String exportVideoOutputReplaceFailed(String name) {
+    return 'Couldn\'t replace the existing video — it may be open in a video player. Your render is safe as $name: close that app and export again, or rename it to .mp4 yourself.';
+  }
+
+  @override
   String get startupErrorTitle => 'InkFrame couldn\'t start';
 
   @override

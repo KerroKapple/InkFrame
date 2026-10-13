@@ -447,10 +447,21 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
     }
   }
 
-  /// ffmpeg 缺失是可行动的环境问题，通用 errorLocalIO 文案有误导——走专门文案。
+  /// 可行动的失败走专门文案，通用 errorLocalIO 文案会误导：
+  /// - ffmpeg 缺失：环境问题，告诉用户怎么装。
+  /// - 目标替换失败：成片**已经渲染好、留在原地**，只是覆盖不了同名旧文件
+  ///  （典型是它正在播放器里开着）。通用文案「本地磁盘读写错误」会让用户以为
+  ///   白跑了一轮、再渲一遍——而成片其实就在旁边。必须说出它在哪。
   String _failureText(InkError e) {
     if (e is LocalIOError && e.extra['reason'] == 'ffmpeg_not_found') {
       return context.l10n.exportVideoFfmpegMissing;
+    }
+    if (e is LocalIOError && e.extra['reason'] == 'output_replace_failed') {
+      final Object? rel = e.extra['partial_relative_path'];
+      // 项目相对路径恒为 `/` 分隔（FileResolver 的约定），取末段即文件名。
+      if (rel is String && rel.isNotEmpty) {
+        return context.l10n.exportVideoOutputReplaceFailed(rel.split('/').last);
+      }
     }
     return l10nError(context, e);
   }

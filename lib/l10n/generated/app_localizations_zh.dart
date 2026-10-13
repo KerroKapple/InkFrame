@@ -1474,6 +1474,11 @@ class AppLocalizationsZh extends AppLocalizations {
       '未检测到 ffmpeg——安装后重试（可用 INKFRAME_FFMPEG 环境变量指定路径）';
 
   @override
+  String exportVideoOutputReplaceFailed(String name) {
+    return '无法覆盖同名视频——它可能正在播放器里打开着。渲染好的视频已保存为 $name：关掉占用它的程序后重新导出，或自己把它改名为 .mp4。';
+  }
+
+  @override
   String get startupErrorTitle => 'InkFrame 无法启动';
 
   @override

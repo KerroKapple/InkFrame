@@ -165,7 +165,30 @@ class FfmpegVideoExportService implements VideoExportService {
         );
       }
       _deleteIfExists(outputFile); // Windows rename 到既有目标可能拒绝，先清。
-      partialFile.renameSync(outputFile.path);
+      try {
+        partialFile.renameSync(outputFile.path);
+      } on FileSystemException catch (e, st) {
+        // 【走到这里时成片已经完整，绝不删】ffmpeg exit 0、`.partial` 存在——
+        // 这是一份渲染好的视频，只差最后一步改名。外层那个 catch 会把 `.partial`
+        // 一并清掉：整轮渲染（可能好几分钟）白跑，用户只拿到一句泛化的「导出
+        // 失败」。这与本接口「已成功不误删」的契约正面冲突。
+        //
+        // Windows 上最常见的原因：上一次的同名导出正在播放器里开着，文件被锁，
+        // 上面那行删不掉（只 warn）、这里也覆盖不了。「看一眼上次的导出 → 改一下
+        // → 同名再导」是正常工作流，不是边角。
+        //
+        // 所以单独抛一个能行动的错误：成片留在原地，告诉用户它在哪。抛的是
+        // LocalIOError 而不是 FileSystemException，外层那个 catch 接不到它。
+        throw LocalIOError(
+          cause: e,
+          stackTrace: st,
+          extra: <String, Object?>{
+            'reason': 'output_replace_failed',
+            'partial_relative_path': '$outputRelative.partial',
+            'message': e.message,
+          },
+        );
+      }
       // 成功收口到 1.0（分母略大或流末行缺失时补齐终值）。
       if (onProgress != null && totalUs != null && last < 1.0) {
         onProgress(1.0);
