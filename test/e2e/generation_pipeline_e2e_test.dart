@@ -71,17 +71,6 @@ class _InMemoryJobRepository implements JobRepository {
     return 1;
   }
 
-  @override
-  Future<List<Map<String, Object?>>> listByStatus(List<String> statuses) async {
-    return rows.values
-        .where((r) => statuses.contains(r['status']))
-        .map((r) => Map<String, Object?>.from(r))
-        .toList(growable: false);
-  }
-
-  @override
-  Future<Map<String, Object?>?> findById(String id) async => rows[id];
-
   // ---- 本链路未触达的方法 ------------------------------------------------
   @override
   Future<String> create({
@@ -97,10 +86,6 @@ class _InMemoryJobRepository implements JobRepository {
     int maxRetries = 3,
     DateTime? timeoutAt,
   }) =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<Map<String, Object?>>> listByCanvas(String canvasId, {int limit = 200}) =>
       throw UnimplementedError();
 
   @override

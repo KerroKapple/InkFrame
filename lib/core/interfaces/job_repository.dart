@@ -1,4 +1,12 @@
 // JobRepository 契约：jobs 表——生成任务真相源（PRD §4.5.1）。
+//
+// 【刻意没有读路径】曾有 findById / listByStatus / listByCanvas 三条，在 lib/ 下
+// 零消费点、只被测试养着（listByStatus 的位置早被 bulkTransition 的单条 UPDATE
+// 顶掉——启动孤儿回收不再先读一遍再逐行改）。已退役。
+// 真要复活（任务面板 / 诊断页）得在同一个 PR 里接上调用点，并当场定夺「是
+// JOIN canvases … AND c.deleted_at IS NULL，还是沿用队列恢复看全库的语义」
+// ——jobs 表自己没有 deleted_at 列，这个取舍绕不开。
+// 守这条的是 test/quality/job_repository_reachability_test.dart。
 abstract class JobRepository {
   Future<String> create({
     required String canvasId,
@@ -12,15 +20,6 @@ abstract class JobRepository {
     int batchSize = 1,
     DateTime? timeoutAt,
   });
-
-  Future<Map<String, Object?>?> findById(String id);
-
-  /// 按 status 过滤，用于 JobQueueService.init 的崩溃回收
-  /// （pending/submitted/polling → cancelled_on_exit；恢复语义为 cancel-on-restart）。
-  Future<List<Map<String, Object?>>> listByStatus(List<String> statuses);
-
-  /// 按画布列出，created_at DESC。
-  Future<List<Map<String, Object?>>> listByCanvas(String canvasId, {int limit = 200});
 
   Future<int> update(String id, Map<String, Object?> patch);
 

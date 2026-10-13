@@ -20,7 +20,36 @@ import 'package:inkframe/storage/repositories/postgres_project_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_prompt_preset_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_style_lane_repository.dart';
 
+import 'package:postgres/postgres.dart';
+
 import '../schema/pg_test_harness.dart';
+
+/// jobs 表读校验走裸 SQL，不走仓储。
+///
+/// 为什么：JobRepository 的三条读路径（findById / listByStatus / listByCanvas）
+/// 在 lib/ 下零调用点，已随本窗退役——它们当初唯一的消费者就是这几条断言。
+/// 本测试要验的是「写 / 跃迁 / 清理有没有真的落到库里」，直接读表即可；
+/// 为了写断言而在生产接口上养一条没人调的读 API，正是 #249 / #251 判死过两次
+/// 的那类债。守这条的是 test/quality/job_repository_reachability_test.dart。
+Future<Map<String, Object?>?> _jobRow(PgTestHarness h, String id) async {
+  final r = await h.conn.execute(
+    Sql.named('SELECT * FROM jobs WHERE id = @id'),
+    parameters: <String, Object?>{'id': id},
+  );
+  return r.isEmpty ? null : r.first.toColumnMap();
+}
+
+Future<int> _jobCount(
+  PgTestHarness h,
+  String whereSql,
+  Map<String, Object?> params,
+) async {
+  final r = await h.conn.execute(
+    Sql.named('SELECT count(*) FROM jobs WHERE $whereSql'),
+    parameters: params,
+  );
+  return (r.first[0]! as int);
+}
 
 void main() {
   late PgTestHarness? harness;
@@ -363,8 +392,8 @@ void main() {
         userPrompt: 'up',
         parameters: {'model': 'k'},
       );
-      expect((await repo.findById(id))?['status'], 'pending');
-      expect(await repo.listByCanvas(cid), hasLength(1));
+      expect((await _jobRow(h, id))?['status'], 'pending');
+      expect(await _jobCount(h, 'canvas_id = @cid', {'cid': cid}), 1);
 
       // pending → submitted via transition
       expect(
@@ -376,8 +405,8 @@ void main() {
         ),
         1,
       );
-      expect((await repo.findById(id))?['status'], 'submitted');
-      expect((await repo.findById(id))?['remote_task_id'], 'rid');
+      expect((await _jobRow(h, id))?['status'], 'submitted');
+      expect((await _jobRow(h, id))?['remote_task_id'], 'rid');
 
       // 误跃迁：from 不匹配 → 0 行
       expect(
@@ -390,7 +419,7 @@ void main() {
       );
 
       await repo.update(id, {'progress': 0.5, 'parameters': {'model': 'k2'}});
-      expect(await repo.listByStatus(const ['submitted']), hasLength(1));
+      expect(await _jobCount(h, 'status = @s', {'s': 'submitted'}), 1);
 
       // purge：status 不是终态 → 0 行；status=success + completed_at 足够老 → 1 行
       expect(await repo.purgeExpired(retention: const Duration(days: 30)), 0);
@@ -465,8 +494,8 @@ void main() {
       );
 
       expect(await jobs.purgeExpired(retention: const Duration(days: 30)), 1);
-      expect(await jobs.findById(keep), isNotNull, reason: 'success slot 保护');
-      expect(await jobs.findById(drop), isNull, reason: '无 success slot → 清除');
+      expect(await _jobRow(h, keep), isNotNull, reason: 'success slot 保护');
+      expect(await _jobRow(h, drop), isNull, reason: '无 success slot → 清除');
     } on _Skip {
       return;
     }
@@ -514,8 +543,8 @@ void main() {
       await h.conn.execute("UPDATE jobs SET status='success'");
 
       expect(await jobs.purgePerCanvasCap(cap: 0), 1);
-      expect(await jobs.findById(keep), isNotNull, reason: 'success slot 保护');
-      expect(await jobs.findById(drop), isNull, reason: '无 success slot → 超限清除');
+      expect(await _jobRow(h, keep), isNotNull, reason: 'success slot 保护');
+      expect(await _jobRow(h, drop), isNull, reason: '无 success slot → 超限清除');
     } on _Skip {
       return;
     }
@@ -751,7 +780,7 @@ void main() {
       await persister.init();
 
       // 在途 job 先被取消（recovery）……
-      expect((await jobs.findById(job))?['status'], 'cancelled',
+      expect((await _jobRow(h, job))?['status'], 'cancelled',
           reason: '在途 job 启动时被 bulkTransition 取消');
       // ……随后空壳无在途 job 保护，被清扫进回收站。
       expect(await nodes.findById(crashed), isNull,
