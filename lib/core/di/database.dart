@@ -107,7 +107,7 @@ final pgMigratedPoolProvider = FutureProvider<Pool<void>>(
       throw bootstrapFailureToInkError(e, st);
     } on SchemaMigrationError catch (e, st) {
       // SchemaDowngradeError 亦属此族（extends SchemaMigrationError）。
-      throw LocalIOError(cause: e, stackTrace: st);
+      throw schemaFailureToInkError(e, st);
     }
   },
   name: 'pgMigratedPoolProvider',
@@ -134,5 +134,32 @@ LocalIOError bootstrapFailureToInkError(
       extra: <String, Object?>{
         if (e.sqlState == kPgSqlStateInvalidPassword)
           'reason': kDbAuthFailedReason,
+      },
+    );
+
+/// 库比应用新（旧版应用打开了新版库）时，[LocalIOError] 的 `extra['reason']`。
+const String kDbNewerThanAppReason = 'db_newer_than_app';
+
+/// 前向迁移失败时，[LocalIOError] 的 `extra['reason']`。
+const String kDbMigrationFailedReason = 'db_migration_failed';
+
+/// 迁移失败 → 用户可读的 InkError。
+///
+/// 两种情况原来都泛化成 LocalIOError，启动失败页一律说「本地磁盘 I/O 错误，请检查
+/// 空间与权限」：
+/// - **库比应用新**（[SchemaDowngradeError]）：用户装回了旧版本——比如新版有 bug 想
+///   回退。正解是装回最新版，跟磁盘毫无关系。而且这时页上的「从最近备份还原」不只
+///   没用、还有风险：最近一份能还原的若恰好是升级前的旧备份，一键还原会把升级后的
+///   所有改动回滚掉，用户却不知道。启动页据此隐藏它。
+/// - **前向迁移失败**：失败的那一步在单事务里回滚了（MigrationRunner 逐版本 runTx），
+///   数据停在上一个完整版本。这是程序问题，用户能做的是把日志交给开发者。
+LocalIOError schemaFailureToInkError(SchemaMigrationError e, StackTrace st) =>
+    LocalIOError(
+      cause: e,
+      stackTrace: st,
+      extra: <String, Object?>{
+        'reason': e is SchemaDowngradeError
+            ? kDbNewerThanAppReason
+            : kDbMigrationFailedReason,
       },
     );

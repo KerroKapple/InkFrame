@@ -81,10 +81,22 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
     final String logsPath = ref.watch(appPathsProvider).logs.path;
     final BackupFileInfo? latest = _latestRestorable;
     final bool busy = _working || ref.watch(databaseRestoreBusyProvider);
-    // 嵌入式库的口令与系统凭据里那份对不上（SQLSTATE 28P01，见 core/di/database.dart）。
+    // DI 边界给几种特定的启动失败打了 reason（core/di/database.dart）。泛化文案
+    // 「本地磁盘 I/O 错误，请检查空间与权限」对它们都是错的方向。
     final Object e = widget.error;
-    final bool dbAuthFailed =
-        e is LocalIOError && e.extra['reason'] == kDbAuthFailedReason;
+    final Object? reason = e is LocalIOError ? e.extra['reason'] : null;
+    final String message = switch (reason) {
+      kDbAuthFailedReason => context.l10n.startupErrorDbAuthFailed,
+      kDbNewerThanAppReason => context.l10n.startupErrorDbNewerThanApp,
+      kDbMigrationFailedReason => context.l10n.startupErrorDbMigrationFailed,
+      _ => l10nAsyncError(context, widget.error),
+    };
+    // 「从最近备份还原」不是总该给：
+    // - 口令对不上：还原用同一份口令连库，必然以同样的认证失败告终；
+    // - 库比应用新：最近一份能还原的若恰好是升级前的旧备份，一键还原会把升级后的
+    //   改动全部回滚掉，用户却不知道。正解是装回最新版。
+    final bool restoreOffered =
+        reason != kDbAuthFailedReason && reason != kDbNewerThanAppReason;
 
     return Scaffold(
       // 整屏中性灰，面板居中——与设置 / 回收站同一个壳（标题进标题栏，没有 ✕：
@@ -109,12 +121,8 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                 ),
                 const SizedBox(height: InkSpacing.md),
                 // DI 边界翻好的 InkError 走共享 l10nAsyncError 呈现（renderable，非白屏）。
-                // 唯一的例外是口令对不上：泛化文案会说「磁盘 I/O 错误」，方向完全错了。
-                InkErrorBanner(
-                  message: dbAuthFailed
-                      ? context.l10n.startupErrorDbAuthFailed
-                      : l10nAsyncError(context, widget.error),
-                ),
+                // 例外见上：几种特定失败换成说实话的文案。
+                InkErrorBanner(message: message),
                 const SizedBox(height: InkSpacing.md),
                 Text(
                   context.l10n.startupErrorLogPathLabel,
@@ -137,9 +145,8 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
                       // 重启/还原进行中禁用，防重复触发并发 stop/start。
                       onPressed: busy ? null : _reboot,
                     ),
-                    // 口令对不上时不给「从最新备份还原」：还原用的是同一份口令连库，
-                    // 必然以同样的认证失败告终——一颗注定失败的按钮比没有按钮更坏。
-                    if (latest != null && !dbAuthFailed)
+                    // 何时不给「从最新备份还原」见上面 restoreOffered 的注释。
+                    if (latest != null && restoreOffered)
                       InkButton(
                         label: context.l10n.startupErrorRestoreLatest,
                         variant: InkButtonVariant.secondary,

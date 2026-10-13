@@ -455,6 +455,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t sign in to the local database: the saved database password doesn\'t match. This usually means the system credential store was cleared, or this data folder came from another computer. Your data is still on disk.';
 
   @override
+  String get startupErrorDbNewerThanApp =>
+      'This database was created by a newer version of InkFrame, and this version can\'t open it. To protect your data, older versions never modify a newer database. Please install the latest InkFrame.';
+
+  @override
+  String get startupErrorDbMigrationFailed =>
+      'Updating the database structure failed. The failed step was rolled back, so your data is intact. Please send the logs in the log folder to the developers.';
+
+  @override
   String get settingsDiagnosticsSection => 'Diagnostics';
 
   @override

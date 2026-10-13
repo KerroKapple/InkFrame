@@ -429,6 +429,14 @@ class AppLocalizationsZh extends AppLocalizations {
       '无法登录本地数据库：本机保存的数据库口令对不上。通常是系统凭据被清除，或这个数据目录来自另一台电脑。你的数据仍在磁盘上。';
 
   @override
+  String get startupErrorDbNewerThanApp =>
+      '这个数据库由更新版本的 InkFrame 创建，当前版本打不开。为保护你的数据，旧版本不会改动新版本的数据库。请安装最新版本的 InkFrame。';
+
+  @override
+  String get startupErrorDbMigrationFailed =>
+      '数据库结构升级失败。失败的那一步已回滚，你的数据完好。请把日志目录里的日志发给开发者。';
+
+  @override
   String get settingsDiagnosticsSection => '诊断';
 
   @override
