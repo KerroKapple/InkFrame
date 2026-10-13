@@ -1,6 +1,7 @@
 // PostgresStyleLaneRepository —— style_lanes 表实现。
 import 'package:postgres/postgres.dart';
 
+import '../../core/constants/lane_defaults.dart';
 import '../../core/interfaces/style_lane_repository.dart';
 import '../base_repository.dart';
 
@@ -19,7 +20,7 @@ class PostgresStyleLaneRepository
     String stylePrompt = '',
     int sortOrder = 0,
     String? tintColor,
-    double size = 400.0,
+    double size = kDefaultLaneSize,
   }) {
     return guard('create', 'style_lanes', () async {
       final r = await session.execute(
