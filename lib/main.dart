@@ -49,6 +49,7 @@ import 'services/error_hooks.dart';
 import 'services/file_preferences_service.dart';
 import 'services/image_cache_config.dart';
 import 'services/lifecycle_timer.dart';
+import 'services/provider_failure_logger.dart';
 import 'theme/tokens.dart';
 
 void main() {
@@ -185,6 +186,10 @@ void main() {
       });
 
       final ProviderContainer container = ProviderContainer(
+        // provider 失败的日志出口：上屏文案把非 InkError 归一成 errorUnknown，
+        // 没有这一层的话真出问题时日志里一点线索都没有（见
+        // provider_failure_logger.dart 头注）。
+        observers: <ProviderObserver>[ProviderFailureLogger(fileLogger)],
         overrides: <Override>[
           appPathsProvider.overrideWithValue(paths),
           preferencesServiceProvider.overrideWithValue(prefsService),

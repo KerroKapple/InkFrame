@@ -303,6 +303,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t save. If custom_providers.json is corrupted, fix or remove it and retry.';
 
   @override
+  String get settingsCustomProviderLoadFailed =>
+      'Couldn\'t read custom_providers.json. If it\'s corrupted, fix or remove it and retry.';
+
+  @override
   String get settingsThemeSection => 'Theme';
 
   @override

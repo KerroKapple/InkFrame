@@ -620,6 +620,12 @@ abstract class AppLocalizations {
   /// **'Couldn\'t save. If custom_providers.json is corrupted, fix or remove it and retry.'**
   String get settingsCustomProviderSaveFailed;
 
+  /// No description provided for @settingsCustomProviderLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t read custom_providers.json. If it\'s corrupted, fix or remove it and retry.'**
+  String get settingsCustomProviderLoadFailed;
+
   /// No description provided for @settingsThemeSection.
   ///
   /// In en, this message translates to:

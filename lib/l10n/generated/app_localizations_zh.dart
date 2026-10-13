@@ -284,6 +284,10 @@ class AppLocalizationsZh extends AppLocalizations {
       '保存失败。若 custom_providers.json 已损坏，请修复或删除后重试。';
 
   @override
+  String get settingsCustomProviderLoadFailed =>
+      '读取 custom_providers.json 失败。若文件已损坏，请修复或删除后重试。';
+
+  @override
   String get settingsThemeSection => '主题';
 
   @override
