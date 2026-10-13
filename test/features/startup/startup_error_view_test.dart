@@ -413,6 +413,57 @@ void main() {
     expect(find.text(l10n.startupErrorOpenLogDir), findsOneWidget);
   });
 
+  Future<void> pumpWithBackup(WidgetTester tester, Object error) => pumpInkApp(
+        tester,
+        StartupErrorView(error: error),
+        overrides: <Override>[
+          appPathsProvider.overrideWithValue(_tempPaths()),
+          folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
+          databaseBackupServiceProvider.overrideWithValue(_FakeBackupService([
+            _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily),
+          ])),
+          databaseRestoreFlowProvider.overrideWithValue(_FakeRestoreFlow()),
+          toastServiceProvider.overrideWithValue(_RecordingToast()),
+        ],
+        surfaceSize: const Size(1200, 900),
+      );
+
+  // 用户装回了旧版本（比如新版有 bug 想回退）。正解是装回最新版——跟磁盘无关。
+  // 还原按钮这里不只是没用：最近一份能还原的若恰好是升级前的旧备份，一键还原会把
+  // 升级后的所有改动回滚掉，用户却不知道。
+  testWidgets('库比应用新 → 「请安装最新版」，不给可能回滚数据的「还原」', (tester) async {
+    await pumpWithBackup(
+      tester,
+      LocalIOError(
+        cause: StateError('downgrade'),
+        extra: const <String, Object?>{'reason': kDbNewerThanAppReason},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text(l10n.startupErrorDbNewerThanApp), findsOneWidget);
+    expect(find.text(l10n.errorLocalIO), findsNothing);
+    expect(find.text(l10n.startupErrorRestoreLatest), findsNothing,
+        reason: '还原可能把升级后的改动悄悄回滚掉');
+  });
+
+  // 反向：迁移失败时失败的那一步已回滚，还原是无害的选项——按钮照常给。不是所有
+  // 特定失败都该藏按钮。
+  testWidgets('前向迁移失败 → 专门文案，「还原」照常给', (tester) async {
+    await pumpWithBackup(
+      tester,
+      LocalIOError(
+        cause: StateError('migration'),
+        extra: const <String, Object?>{'reason': kDbMigrationFailedReason},
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text(l10n.startupErrorDbMigrationFailed), findsOneWidget);
+    expect(find.text(l10n.errorLocalIO), findsNothing);
+    expect(find.text(l10n.startupErrorRestoreLatest), findsOneWidget);
+  });
+
   testWidgets('LB-22：只有 prerestore 备份 → 按钮不渲染；flow 失败 → toast + 按钮复位',
       (tester) async {
     final AppPaths paths = _tempPaths();
