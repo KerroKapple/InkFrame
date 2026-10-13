@@ -2,6 +2,7 @@
 
 import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -1191,57 +1192,90 @@ void main() {
   });
 
   group('InMemoryJobQueueService.cancel perf invariant', () {
-    // 真正的护栏：N=10000 个 pending 全部 cancel 必须在 500ms 内。
-    // 实测 O(1) 实现 ~250ms；500ms = 2x 余量（CI 抖动）。
-    // O(n) 退化（旧版本 toList+rebuild）会到 ~2500ms+，5x 信噪比。
-    // 上限对 CI runner 宽松到 flake-free。
-    const n = 10000;
+    // 护栏要防的是「cancel 退化成 O(n)」（旧版 toList + rebuild）。
+    //
+    // 【为什么不再断言墙钟绝对值】原来是「N=10000 全部 cancel < 500ms」，注释写着
+    // 「实测 ~250ms，2× 余量，对 CI runner 宽松到 flake-free」。CI 实测把它证伪了：
+    // head 那条依次跑出 322 / 349 / 352 / 458 / 512ms——第五次越线，把一个与
+    // JobQueue 毫不相干的 PR 打红。两个原因：
+    //   1. head 是组里第一条，计时里**混进了 JIT 首次编译 cancel 路径**的成本——
+    //      同一次运行里 tail / random 稳定在 ~200ms，head 稳定慢 1.5–2.5×。
+    //   2. 共享 runner 的快慢本身会漂，绝对阈值迟早被机器噪声穿过。
+    //
+    // 现在：先预热，再比**规模比**——同一种 cancel 顺序，N 放大 10 倍，总耗时放大
+    // 多少倍。每次 cancel O(1) ⇒ 约 10×；退化成 O(n) ⇒ 总耗时 O(n²)。机器快慢在
+    // 比值里约掉。用微秒计，免得快机器上小规模那次量化成 0ms。
+    //
+    // 阈值是**实测**定的，不是估的（2026-10-13，本机各跑多轮）：
+    //   O(1) 现实现          6.4 – 11.2
+    //   O(n) 变异（每次 cancel 把队列 toList 再重建，即旧版写法）   30.7 – 49.8
+    // 几何中点约 18，两边各留约 1.7× 余量。O(n) 一侧没到理论的 100×，是因为每次
+    // cancel 的固定开销（写库、发事件）在小规模时冲淡了平方项。
+    //
+    // 每个规模测 [reps] 次取**最小值**：计时噪声（GC、调度）只会加时间不会减，
+    // 取 min 就滤掉了尖峰。CI 上见过单次 2× 的尖峰（random 一条从约 190ms 跳到
+    // 356ms）——它若正好落在大规模那次，O(1) 的比值会被推过阈值。
+    const int small = 1000;
+    const int big = 10000; // = 10 × small
+    const int reps = 3;
+    const double maxRatio = 18;
 
-    test('cancel head→tail N=10000 < 500ms', () async {
+    Future<int> cancelAllMicros(
+      int n,
+      List<String> Function(List<String> ids) order,
+    ) async {
       final svc = _buildBenchSvc();
       final ids = await _seedPending(svc, n);
       final sw = Stopwatch()..start();
-      for (final id in ids) {
+      for (final id in order(ids)) {
         await svc.cancel(id);
       }
       sw.stop();
-      // ignore: avoid_print
-      print('[perf-invariant] head N=$n: ${sw.elapsedMilliseconds}ms');
-      expect(sw.elapsedMilliseconds, lessThan(500),
-          reason: 'cancel head-first 退化到 O(n) 了');
       svc.dispose();
-    }, timeout: const Timeout(Duration(seconds: 30)));
+      return sw.elapsedMicroseconds;
+    }
 
-    test('cancel tail→head N=10000 < 500ms', () async {
-      final svc = _buildBenchSvc();
-      final ids = await _seedPending(svc, n);
-      final order = ids.reversed.toList();
-      final sw = Stopwatch()..start();
-      for (final id in order) {
-        await svc.cancel(id);
-      }
-      sw.stop();
-      // ignore: avoid_print
-      print('[perf-invariant] tail N=$n: ${sw.elapsedMilliseconds}ms');
-      expect(sw.elapsedMilliseconds, lessThan(500),
-          reason: 'cancel tail-first 退化到 O(n) 了');
-      svc.dispose();
-    }, timeout: const Timeout(Duration(seconds: 30)));
+    setUpAll(() async {
+      // 预热：让 cancel 路径先被 JIT 编译过，计时不再混进编译成本。
+      await cancelAllMicros(small, (List<String> ids) => ids);
+    });
 
-    test('cancel random N=10000 < 500ms', () async {
-      final svc = _buildBenchSvc();
-      final ids = await _seedPending(svc, n);
-      final order = ids.toList()..shuffle();
-      final sw = Stopwatch()..start();
-      for (final id in order) {
-        await svc.cancel(id);
+    final List<(String, List<String> Function(List<String>))> orders =
+        <(String, List<String> Function(List<String>))>[
+      ('head→tail', (List<String> ids) => ids),
+      ('tail→head', (List<String> ids) => ids.reversed.toList()),
+      // 固定种子：随机顺序也要可复现，红了能原样重跑。
+      ('random', (List<String> ids) => ids.toList()..shuffle(Random(42))),
+    ];
+
+    Future<int> minMicros(
+      int n,
+      List<String> Function(List<String> ids) order,
+    ) async {
+      int best = 1 << 62;
+      for (var i = 0; i < reps; i++) {
+        best = min(best, await cancelAllMicros(n, order));
       }
-      sw.stop();
-      // ignore: avoid_print
-      print('[perf-invariant] random N=$n: ${sw.elapsedMilliseconds}ms');
-      expect(sw.elapsedMilliseconds, lessThan(500),
-          reason: 'cancel random-order 退化到 O(n) 了');
-      svc.dispose();
-    }, timeout: const Timeout(Duration(seconds: 30)));
+      return best;
+    }
+
+    for (final (String name, List<String> Function(List<String>) order)
+        in orders) {
+      test('cancel $name：N 放大 10 倍，耗时随之线性而非平方增长（O(1) 而非 O(n)）',
+          () async {
+        final int tSmall = await minMicros(small, order);
+        final int tBig = await minMicros(big, order);
+        final double ratio = tBig / (tSmall == 0 ? 1 : tSmall);
+        // ignore: avoid_print
+        print('[perf-invariant] $name N=$small: ${tSmall ~/ 1000}ms, '
+            'N=$big: ${tBig ~/ 1000}ms, ratio=${ratio.toStringAsFixed(1)}');
+        expect(
+          ratio,
+          lessThan(maxRatio),
+          reason: 'cancel $name 的耗时随规模超线性增长——退化到 O(n) 了'
+              '（实测 O(1) 约 6–11×，O(n) 约 30–50×）',
+        );
+      }, timeout: const Timeout(Duration(seconds: 60)));
+    }
   });
 }
