@@ -6,6 +6,7 @@
 // ViewModels / Controllers 只依赖抽象接口；单测用 Riverpod override 打 mock。
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:postgres/postgres.dart' show Session;
 
 import '../interfaces/batch_result_repository.dart';
 import '../interfaces/canvas_repository.dart';
@@ -84,13 +85,17 @@ final promptPresetRepositoryProvider = FutureProvider<PromptPresetRepository>((
   return PostgresPromptPresetRepository(pool);
 }, name: 'promptPresetRepositoryProvider');
 
-/// 事务工作单元——多步写入原子化（仓储绑定到同一 runTx 事务）。
-/// 具体仓储的装配（new）在此 DI 层完成，PostgresUnitOfWork 只依赖工厂抽象。
-final unitOfWorkProvider = FutureProvider<UnitOfWork>((ref) async {
-  final pool = await ref.watch(pgMigratedPoolProvider.future);
-  return PostgresUnitOfWork(
-    pool,
-    (s) => RepositoryScopeData(
+/// 事务作用域的装配：把每个仓储都绑定到**同一个**会话 [s]。
+///
+/// 事务的全部意义就在这一行行 `(s)` 上：哪个仓储接成了别的会话（典型是顺手
+/// 接成连接池），它的写入就**逃出事务**——前面几步回滚了，这一步还留着。
+///
+/// 抽成顶层函数，是为了让生产（[unitOfWorkProvider]）与真 PG 回滚测
+/// （test/storage/transaction_integration_test.dart）用**同一份**装配。此前测试里
+/// 手抄了一份「与生产同构」的副本——生产这边接错了，测试拿的是自己的副本，
+/// 永远发现不了。「每个仓储都绑在 [s] 上」由
+/// test/core/di/repository_scope_wiring_test.dart 逐个断言，不需要真 PG。
+RepositoryScope postgresRepositoryScope(Session s) => RepositoryScopeData(
       nodes: PostgresNodeRepository(s),
       edges: PostgresEdgeRepository(s),
       canvas: PostgresCanvasRepository(s),
@@ -100,6 +105,11 @@ final unitOfWorkProvider = FutureProvider<UnitOfWork>((ref) async {
       batchResults: PostgresBatchResultRepository(s),
       characters: PostgresCharacterRepository(s),
       promptPresets: PostgresPromptPresetRepository(s),
-    ),
-  );
+    );
+
+/// 事务工作单元——多步写入原子化（仓储绑定到同一 runTx 事务）。
+/// 具体仓储的装配（new）在此 DI 层完成，PostgresUnitOfWork 只依赖工厂抽象。
+final unitOfWorkProvider = FutureProvider<UnitOfWork>((ref) async {
+  final pool = await ref.watch(pgMigratedPoolProvider.future);
+  return PostgresUnitOfWork(pool, postgresRepositoryScope);
 }, name: 'unitOfWorkProvider');
