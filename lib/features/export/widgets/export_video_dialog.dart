@@ -1,4 +1,5 @@
-// 导出视频对话框：video result 勾选（默认全选）+ 手动排序（默认序由
+// 导出视频对话框：video result 勾选（默认**每镜最新一条**，见
+// `util/export_take_selection.dart`）+ 手动排序（默认序由
 // `util/export_order.dart` 按 narrative 链算好后传入，无链退回 position.x）
 // + 输出名预校验 + concat 触发与成败反馈。
 import 'dart:io';
@@ -19,6 +20,7 @@ import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../providers/export_controller.dart';
 import '../util/export_file_name.dart';
+import '../util/export_take_selection.dart';
 
 /// 行首缩略图尺寸（16:9，够认出镜头又不撑高行）。
 const double _kThumbWidth = 64;
@@ -57,6 +59,13 @@ class _ExportVideoDialog extends ConsumerStatefulWidget {
 
 class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
   late final List<CanvasNode> _rows;
+
+  /// 每镜最新 take 的 id（BOARD 194）。两处用：默认勾选集 = 它；不在其中的行
+  /// 就是被顶下去的旧 take，给「旧 take」标记。
+  ///
+  /// 与 [_selected] 分开存是刻意的：勾选态会被用户改，而「这行是不是旧 take」
+  /// 是关于数据的事实，不随勾选变。
+  late final Set<String> _latestTakes;
   late final Set<String> _selected;
   final TextEditingController _nameCtrl = TextEditingController();
 
@@ -66,7 +75,9 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
     // 顺序由调用方 orderVideoNodesForExport 定（narrative 链序，无链退回
     // position.x）——这里只照单全收，用户仍可手动上下移。
     _rows = <CanvasNode>[...widget.videoNodes];
-    _selected = <String>{for (final n in _rows) n.id};
+    // **只改默认勾选，不改候选集**：旧 take 照样列出、照样能手动勾回去。
+    _latestTakes = latestTakeNodeIds(_rows);
+    _selected = <String>{..._latestTakes};
   }
 
   @override
@@ -241,11 +252,23 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
-                title,
-                style: typo.body.copyWith(color: colors.fg1),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              Row(
+                children: <Widget>[
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: typo.body.copyWith(color: colors.fg1),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  // 默认没勾的那几行得说清为什么：同一镜有更新的 take 把它顶下去了
+                  // （勾回来仍然可以）。标记跟的是数据事实，不跟勾选态。
+                  if (!_latestTakes.contains(node.id)) ...<Widget>[
+                    const SizedBox(width: InkSpacing.xs),
+                    _olderTakeBadge(context),
+                  ],
+                ],
               ),
               Text(
                 fileName,
@@ -281,6 +304,27 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
           onPressed: canMoveDown ? () => _move(index, 1) : null,
         ),
       ],
+    );
+  }
+
+  /// 「旧 take」标记（BOARD 194）：同镜有更新 take 的行上挂一个弱化徽标。
+  /// 形制与画廊瓦片的角标同源（micro + InkRadius.xs），但用 surface2/fg3 而非
+  /// accent——它是「这行被顶下去了」的说明，不是高亮。
+  Widget _olderTakeBadge(BuildContext context) {
+    final colors = context.inkColors;
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: InkSpacing.xs,
+        vertical: InkSpacing.s2,
+      ),
+      decoration: BoxDecoration(
+        color: colors.surface2,
+        borderRadius: BorderRadius.circular(InkRadius.xs),
+      ),
+      child: Text(
+        context.l10n.exportVideoOlderTake,
+        style: context.inkTypography.micro.copyWith(color: colors.fg3),
+      ),
     );
   }
 

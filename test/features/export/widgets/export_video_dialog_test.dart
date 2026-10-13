@@ -99,6 +99,8 @@ CanvasNode _videoResult(
   double x,
   String file, {
   String? thumbnail,
+  String? source,
+  DateTime? createdAt,
 }) =>
     CanvasNode(
       id: 'node-$label',
@@ -107,13 +109,32 @@ CanvasNode _videoResult(
       role: NodeRole.result,
       projectId: 'p1',
       canvasId: 'c1',
-      sourceNodeId: 'cfg-$label',
+      // 默认一镜一 take（每行自己一个源）；传 [source] 才构造"同一镜的多个 take"。
+      sourceNodeId: source ?? 'cfg-$label',
+      createdAt: createdAt,
       typeConfig: <String, Object?>{
         'video_url': 'videos/$file',
         'thumbnail_url': ?thumbnail,
       },
       position: Offset(x, 0),
     );
+
+/// 一个上游 config 节点（本身不可导出，只为让 `orderVideoNodesForExport`
+/// 走真实的"按链排 config、再映射到各自产物"路径）。
+CanvasNode _shotConfig(String id, {double x = 0}) => CanvasNode(
+      id: id,
+      label: id,
+      type: CanvasNodeType.video,
+      projectId: 'p1',
+      canvasId: 'c1',
+      position: Offset(x, 0),
+    );
+
+/// 各行复选框的勾选态，**按展示序**。
+List<bool?> _checkboxValues(WidgetTester tester) => tester
+    .widgetList<Checkbox>(find.byType(Checkbox))
+    .map((Checkbox c) => c.value)
+    .toList();
 
 Future<void> _pumpDialog(
   WidgetTester tester, {
@@ -247,7 +268,9 @@ void main() {
     expect(find.byIcon(Icons.movie_outlined), findsWidgets);
   });
 
-  testWidgets('列表按 position.x 升序展示 + 默认全选', (tester) async {
+  // 每行各属一镜（源互不相同）时，默认勾选 = 全选——去重只针对"同一镜的多个 take"，
+  // 不该把普通画布的默认勾选改掉。
+  testWidgets('列表按 position.x 升序展示 + 一镜一 take 时默认全选', (tester) async {
     final service = _FakeVideoExportService();
     await _pumpDialog(tester, service: service);
 
@@ -261,6 +284,90 @@ void main() {
     for (final cb in tester.widgetList<Checkbox>(find.byType(Checkbox))) {
       expect(cb.value, isTrue);
     }
+    expect(find.text('Earlier take'), findsNothing, reason: '没有被顶下去的 take');
+  });
+
+  // BOARD 194：同一镜重跑过的旧 take 不再默认勾选。
+  //
+  // 改的是**默认勾选**而不是候选集：旧 take 照样列出、照样能手动勾回去——
+  // 用户想导出旧版本时不需要绕路（候选集收窄就没有退路了）。
+  group('同一镜的多个 take（BOARD 194）', () {
+    Future<void> pumpTwoTakes(
+      WidgetTester tester,
+      _FakeVideoExportService service,
+    ) =>
+        _pumpDialog(
+          tester,
+          service: service,
+          nodes: <CanvasNode>[
+            _shotConfig('cfg-s1'),
+            // 刻意让旧 take 的 position.x 更小：按 x 排会把旧的排前面，
+            // 链序 + resultsFor 则是"新→旧成组"。
+            _videoResult('old', 100, 'old.mp4',
+                source: 'cfg-s1', createdAt: DateTime.utc(2026, 1, 1)),
+            _videoResult('new', 200, 'new.mp4',
+                source: 'cfg-s1', createdAt: DateTime.utc(2026, 8, 7)),
+          ],
+        );
+
+    testWidgets('默认只勾最新那个,旧 take 仍列出（不收窄候选集）', (tester) async {
+      final service = _FakeVideoExportService();
+      await pumpTwoTakes(tester, service);
+
+      // 候选集不收窄：两行都在。
+      expect(find.text('new'), findsOneWidget);
+      expect(find.text('old'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('new')).dy,
+        lessThan(tester.getTopLeft(find.text('old')).dy),
+        reason: '链序把最新 take 排在本镜组首位',
+      );
+
+      // 默认勾选只有最新那个。
+      expect(_checkboxValues(tester), <bool?>[true, false]);
+    });
+
+    testWidgets('默认勾选直接导出 → 只含最新 take（现象即此卡）', (tester) async {
+      final service = _FakeVideoExportService();
+      await pumpTwoTakes(tester, service);
+
+      await tester.tap(find.text('Export'));
+      await tester.pumpAndSettle();
+
+      expect(service.lastInputs, <String>['canvases/c1/videos/new.mp4']);
+    });
+
+    testWidgets('旧 take 能手动勾回来 → 导出两条都在', (tester) async {
+      final service = _FakeVideoExportService();
+      await pumpTwoTakes(tester, service);
+
+      await tester.tap(find.byType(Checkbox).at(1));
+      await tester.pump();
+      expect(_checkboxValues(tester), <bool?>[true, true]);
+      // 标记是关于数据的事实（"同镜有更新的 take"），不跟勾选态——勾回来之后
+      // 它仍然是旧 take，标记不该消失。
+      expect(find.text('Earlier take'), findsOneWidget);
+
+      await tester.tap(find.text('Export'));
+      await tester.pumpAndSettle();
+
+      expect(service.lastInputs, <String>[
+        'canvases/c1/videos/new.mp4',
+        'canvases/c1/videos/old.mp4',
+      ]);
+    });
+
+    testWidgets('被顶下去的那行有「旧 take」标记,最新那行没有', (tester) async {
+      final service = _FakeVideoExportService();
+      await pumpTwoTakes(tester, service);
+
+      // 标记只有一个——挂在旧 take 那行（y 坐标与 'old' 同高）。
+      expect(find.text('Earlier take'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Earlier take')).dy,
+        greaterThan(tester.getTopLeft(find.text('new')).dy),
+      );
+    });
   });
 
   testWidgets('全选直接导出：按 x 序透传项目相对路径，文件名留空 → null', (tester) async {

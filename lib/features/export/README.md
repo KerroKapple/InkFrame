@@ -29,10 +29,19 @@ widgets/    纯 UI（读 provider、走 token/l10n）
   Windows 非法字符 `* ? " < > |`/Windows 保留名，含 `con.backup` 带扩展名
   形态），非法即禁用导出按钮，避免提交后才收 PathSecurityError。
   两侧规则逐字等价是契约，改一侧必改另一侧。
+- `export_take_selection.dart` — `latestTakeNodeIds`：**默认勾选**集（BOARD 194）
+  = 每个 source 节点名下最新那一个 take（判据 `created_at`，复用
+  `canvas/util/node_artifacts.dart`）。`sourceNodeId` 为空的孤儿产物各自成镜、
+  全部入选。**只改默认勾选，不改候选集**——旧 take 照样列出、可手动勾回。
+  为什么不用 promoted 选 take：那是 slot 级标记（只在一个容器内单选、只写
+  `image_url`），而批量被收口成「仅图片」，video take 在数据上不可能有 slot。
+  完整论证在文件头。
 
 ## widgets
 - `export_video_dialog.dart` — 导出对话框：video result 节点列表
-  （默认按 `position.x` 升序=分镜从左到右，默认全选）+ 复选/上移下移手动排序 +
+  （默认序=narrative 链序，无链退回 `position.x` 升序=分镜从左到右；
+  默认勾选=每镜最新一个 take，旧 take 列出但不勾并带「旧 take」标记）
+  + 复选/上移下移手动排序 +
   输出文件名（留空=服务端时间戳默认名；同名已存在给覆盖警示行，不阻断）+
   busy 态（EX-3：分母=Σ所选 `duration_ms` 时 determinate 进度条，任一缺失
   → indeterminate；「取消导出」按钮 → `cancelExport()`，取消收敛回可编辑态，
@@ -62,9 +71,24 @@ video result 节点挂在 config 节点下（`sourceNodeId`），自己不在 na
 `canvas/util/node_artifacts.dart` 映射到各自产物。画布没有 narrative 边时，
 结果等价于旧的 position.x 升序。
 
-**只改顺序，不改候选集**：同一镜重跑的多个 take 仍全部列出（成组跟在该镜位置、
-新→旧）。默认全选因此仍会重复导出该镜——这是本卡之前就有的行为，收窄默认选中
-属产品行为变更，见 BOARD 债表。
+**候选集不收窄**：同一镜重跑的多个 take 仍全部列出（成组跟在该镜位置、新→旧）。
+
+## 默认勾选（BOARD 194）
+EX-1′ 只定了序，默认全选于是会把同一镜的多个 take 一起导出，用户必须手动取消
+勾选旧 take。现在默认勾选 = **每镜最新一个 take**（`util/export_take_selection.dart`
+的 `latestTakeNodeIds`，判据 `created_at`）；旧 take 仍在列表里、带「旧 take」标记、
+一键就能勾回来——**改的是默认勾选，不是候选集**，所以「我就是想导出上一版」不是死路。
+
+默认勾选算在**对话框内**（而不是像排序那样算在调用方）：它只需要 video result
+子集，而对话框是两个入口（导出标签走 `open_export_dialog.dart`、⌘K 走
+`command_actions._openExport`）唯一的汇合点，放这里两条入口自动一致。
+
+**为什么是「最新」而不是「promoted」**：promoted 住在 `batch_results` 行上、键是
+容器 result 节点，`promote()` 只清同一容器内的旧标记、只写 `image_url`；而批量在
+`generation_controller` 被收口成「仅图片节点」。⇒ video take 在数据上不可能有 slot，
+promoted 在导出路径上无定义。全仓「一镜取哪个产物」的既有判官是
+`canvas/util/node_artifacts.dart`（序列播放 / P6 交付计划 / 画廊选定产物 / ⌘K 产物组
+都走它），导出默认勾选是唯一漏网的一处，这里是补齐口径而非新规则。
 
 ## 本切片不做（后续切片）
 转码与分辨率归一（EX-2，依赖 D-M4-6 拍板）/ 导出历史列表 /
