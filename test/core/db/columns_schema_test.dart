@@ -31,7 +31,15 @@ void main() {
   });
   tearDown(() async => harness?.close());
 
-  test('每个表的列常量都存在于真库 information_schema', () async {
+  // 【双向】原来只查「每个常量都是真列」，没查「每个真列都有常量」。迁移加了列却
+  // 没补常量，这条测不出来——而 columns.dart 是导入白名单的真相源
+  // （test/quality/import_schema_sync_test），常量缺一个，白名单闸就跟着漏一个，
+  // 这一列在「导出再导入」之后静默消失（v8 的 delivery_settings 就是这样丢的，
+  // 只不过那次漏在白名单这一环）。
+  //
+  // 按 current_schema() 过滤：harness 每条用例建一个独立 schema，CI 并行时同一个库里
+  // 有很多份同名表；只按 table_name 查会把别的 schema 的列并进来。
+  test('每张表：真库的列 == 列常量（双向）', () async {
     final h = harness;
     if (h == null) {
       markTestSkipped('TEST_PG_URL 未设置，跳过');
@@ -40,15 +48,68 @@ void main() {
     for (final entry in expected.entries) {
       final r = await h.conn.execute(
         Sql.named(
-          'SELECT column_name FROM information_schema.columns WHERE table_name = @t',
+          'SELECT column_name FROM information_schema.columns '
+          'WHERE table_schema = current_schema() AND table_name = @t',
         ),
         parameters: <String, Object?>{'t': entry.key},
       );
       final actual = r.map((row) => row[0]! as String).toSet();
-      for (final col in entry.value) {
-        expect(actual, contains(col),
-            reason: '${entry.key} 缺列常量 "$col"（schema 漂移或常量写错）');
-      }
+      expect(actual, isNotEmpty, reason: '${entry.key} 在当前 schema 里不存在');
+      final declared = entry.value.toSet();
+      expect(
+        actual,
+        unorderedEquals(declared),
+        reason: '${entry.key}：\n'
+            '库里有、常量里没有 ⇒ ${actual.difference(declared)}'
+            '（迁移加了列没补常量——导入白名单闸因此看不见它）\n'
+            '常量里有、库里没有 ⇒ ${declared.difference(actual)}'
+            '（常量写错或列已被删）',
+      );
     }
+  });
+
+  // 自证：上面 expected 这张手抄表必须覆盖 columns.dart 里每个列类的**全部**常量。
+  // 否则往 ProjectCol 加一个常量、这张表不动，它就从来没跟真库对过。不需要真 PG。
+  test('expected 覆盖 columns.dart 每个列类的全部常量（自证）', () {
+    const Map<String, String> tableOf = <String, String>{
+      'ProjectCol': 'projects',
+      'CanvasCol': 'canvases',
+      'StyleLaneCol': 'style_lanes',
+      'CharacterCol': 'characters',
+      'PromptPresetCol': 'prompt_presets',
+      'NodeCol': 'nodes',
+      'EdgeCol': 'edges',
+      'JobCol': 'jobs',
+      'BatchResultCol': 'batch_results',
+      'SchemaVersionCol': 'schema_version',
+    };
+    // 刻意不对真列的常量。
+    const Set<String> notRealColumns = <String>{
+      'project_id@nodes', // NodeCol.projectId：JOIN canvases 带出的派生列
+    };
+    final String src = File('lib/core/db/columns.dart').readAsStringSync();
+    final Set<String> classes = <String>{
+      for (final RegExpMatch m
+          in RegExp(r'class\s+(\w+Col)\s*\{').allMatches(src))
+        m.group(1)!,
+    };
+    expect(classes, unorderedEquals(<String>{...tableOf.keys, 'CommonCol'}),
+        reason: 'columns.dart 多了 / 少了列类，tableOf 没跟上');
+
+    tableOf.forEach((String cls, String table) {
+      final RegExpMatch body =
+          RegExp(r'class\s+' + cls + r'\s*\{([\s\S]*?)\n\}').firstMatch(src)!;
+      final Set<String> fromSource = <String>{
+        for (final RegExpMatch c in RegExp(r"static const \w+\s*=\s*'([^']+)'")
+            .allMatches(body.group(1)!))
+          if (!notRealColumns.contains('${c.group(1)}@$table')) c.group(1)!,
+      };
+      expect(
+        expected[table]!.toSet(),
+        unorderedEquals(fromSource),
+        reason: '$cls 的常量与 expected[$table] 不一致：新常量没登进 expected，'
+            '它就从来没跟真库对过',
+      );
+    });
   });
 }
