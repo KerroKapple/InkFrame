@@ -454,6 +454,13 @@ void main() {
             .overrideWith(() => _FakeNodesController(twoNodes)),
         canvasEdgesControllerProvider.overrideWith(() => _ErrorEdgesController()),
         canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
+        // 方向也要密封——本例要验的是"只有边失败"。漏了它，不触 PG 的方向
+        // provider 自己就会落 AsyncError，关掉边的横幅后它会接着上屏。
+        // 这条 override 原来是缺的：旧代码的单 `_dismissed` + `??` 链恰好把
+        // 方向的错一起压住了，于是漏写从未暴露（GAP-3 P3② 修好后当场红）。
+        canvasLaneDirectionProvider('c1').overrideWith(
+          (_) async => LaneDirection.horizontal,
+        ),
         fileResolverServiceProvider.overrideWithValue(_StubResolver()),
       ],
     );
@@ -470,6 +477,63 @@ void main() {
     );
 
     // 关闭横幅 → 消失，节点仍在。
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+    expect(find.byType(InkErrorBanner), findsNothing);
+    expect(find.byType(NodeCard), findsNWidgets(2));
+  });
+
+  // GAP-3 评审 P3 残留②：关掉一个源的错不该把**别的源**的错一起压住。
+  //
+  // 原来是单个 `_dismissed` 配 `edgesError ?? lanesError ?? directionError`：
+  // 忽略 edges 的错之后，只要它还没恢复，`??` 链就一直短路在它身上、而它恰好
+  // identical 于 `_dismissed` ⇒ 这期间并发存在的方向错**永远上不了屏**。
+  testWidgets('关掉边的错 → 并发的方向错随即上屏（三源各自独立记账）', (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
+      overrides: <Override>[
+        currentCanvasIdProvider.overrideWith((ref) => 'c1'),
+        canvasNodesControllerProvider
+            .overrideWith(() => _FakeNodesController(twoNodes)),
+        // 两个源同时有错，且文案不同——好分辨横幅上是哪一条。
+        canvasEdgesControllerProvider.overrideWith(() => _ErrorEdgesController()),
+        canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
+        canvasLaneDirectionProvider('c1').overrideWith(
+          (_) async => throw const NetworkError(
+            code: InkErrorCode.networkOffline,
+          ),
+        ),
+        fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    // 先上屏的是边的错（三源按 edges → lanes → direction 取第一个未忽略的）。
+    expect(
+      find.text('Local disk I/O error. Check space and permissions.'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byTooltip('Close'));
+    await tester.pumpAndSettle();
+
+    // 边的错仍未恢复，但方向的错必须接着上屏——这正是修好的那条。
+    expect(find.byType(InkErrorBanner), findsOneWidget,
+        reason: '忽略只对被点掉的那个错误对象生效，不该连带压住别的源');
+    expect(
+      find.text(
+        "Couldn't reach the provider. Check your network connection, then retry.",
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.text('Local disk I/O error. Check space and permissions.'),
+      findsNothing,
+      reason: '被忽略的那条不该再回来',
+    );
+
+    // 再关一次 → 两个源都被忽略，横幅收起；节点全程不受影响。
     await tester.tap(find.byTooltip('Close'));
     await tester.pumpAndSettle();
     expect(find.byType(InkErrorBanner), findsNothing);
