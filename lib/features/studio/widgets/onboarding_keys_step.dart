@@ -18,6 +18,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../settings/providers/api_key_scope_controller.dart';
@@ -474,25 +475,24 @@ class _KeyField extends StatelessWidget {
               ),
             ),
             const SizedBox(width: InkSpacing.s10),
-            Semantics(
-              button: true,
-              enabled: canVerify,
-              label: l10n.onboardingKeyVerify,
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  key: OnboardingAnchors.verify,
-                  behavior: HitTestBehavior.opaque,
-                  // 空输入 / 正在验证时不捕获点击（同时压到 0.5 透明度）。
-                  onTap: canVerify ? onVerify : null,
-                  child: Opacity(
-                    opacity: canVerify ? 1 : 0.5,
-                    // 稿：验证按钮 28 = content 26 + 1px 边 ×2。
-                    child: InkSecondaryButton(
-                      l10n.onboardingKeyVerify,
-                      height: 26,
-                    ),
-                  ),
+            // 点击壳走 theme 层的 InkActivatable（与标签 chip / InkGhostButton
+            // 同一件）：可 Tab 聚焦、Enter / Space 与鼠标走同一条 onVerify。此前
+            // 是手搓的 Semantics + MouseRegion + GestureDetector（BOARD 214）。
+            InkActivatable(
+              key: OnboardingAnchors.verify,
+              semanticLabel: l10n.onboardingKeyVerify,
+              // 子件是 3px 圆角的次按钮。
+              focusRingRadius: BorderRadius.circular(InkRadius.s3),
+              // 空输入 / 正在验证时给 null 而不是空闭包 ⇒ 既不捕获点击，也不可
+              // 聚焦（同时压到 0.5 透明度）。
+              onTap: canVerify ? onVerify : null,
+              builder: (BuildContext context, bool hovered, bool focused) =>
+                  Opacity(
+                opacity: canVerify ? 1 : 0.5,
+                // 稿：验证按钮 28 = content 26 + 1px 边 ×2。
+                child: InkSecondaryButton(
+                  l10n.onboardingKeyVerify,
+                  height: 26,
                 ),
               ),
             ),

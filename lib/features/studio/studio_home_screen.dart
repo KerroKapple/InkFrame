@@ -30,6 +30,7 @@ import '../gallery/util/gallery_time.dart';
 import '../generation/models/job_state.dart';
 import '../generation/providers/jobs_registry.dart';
 import '../settings/providers/shell_keep_last_canvas_controller.dart';
+import '../../theme/primitives/ink_activatable.dart';
 import '../shell/models/shell_state.dart';
 import '../shell/providers/shell_controller.dart';
 import 'controllers/studio_projects_controller.dart';
@@ -49,6 +50,10 @@ const String _logModule = 'studio.home';
 
 class StudioHomeScreen extends ConsumerWidget {
   const StudioHomeScreen({super.key});
+
+  /// 恢复条「继续」的测试锚点。挂在公开类上（而不是私有 `_ResumeBar` 的静态常量
+  /// 上）才让可达性用例拿得到它——测试代码引用不到私有类的成员。
+  static const Key resumeKey = Key('studio.resume.continue');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -153,8 +158,6 @@ class _ResumeBar extends ConsumerWidget {
   const _ResumeBar({required this.projects});
   final List<ProjectWithCanvases> projects;
 
-  static const Key resumeKey = Key('studio.resume.continue');
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // 开关经 controller 订阅（设置里改了立刻生效）；id 从当前偏好读。
@@ -203,22 +206,21 @@ class _ResumeBar extends ConsumerWidget {
             style: t.mono.copyWith(color: c.fg6),
           ),
           const Spacer(),
-          Semantics(
-            button: true,
-            label: l.studioResumeAction,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                key: resumeKey,
-                behavior: HitTestBehavior.opaque,
-                onTap: () => ref.read(shellControllerProvider.notifier).openCanvas(canvasId, withProject: pref),
-                child: InkPrimaryButton(
-                  l.studioResumeAction,
-                  height: 26,
-                  bordered: false,
-                  horizontalPadding: InkSpacing.s14,
-                ),
-              ),
+          // 点击壳走 theme 层的 InkActivatable（与标签 chip / InkGhostButton 同
+          // 一件）：可 Tab 聚焦、Enter / Space 与鼠标走同一条 openCanvas。此前是
+          // 手搓的 Semantics + MouseRegion + GestureDetector——首页最常用的那个
+          // 动作键盘到不了（BOARD 214）。
+          InkActivatable(
+            key: StudioHomeScreen.resumeKey,
+            semanticLabel: l.studioResumeAction,
+            // 子件是 3px 圆角的主按钮；环走前景装饰，不参与布局 ⇒ 不撑宽恢复条。
+            focusRingRadius: BorderRadius.circular(InkRadius.s3),
+            onTap: () => ref.read(shellControllerProvider.notifier).openCanvas(canvasId, withProject: pref),
+            builder: (BuildContext context, bool hovered, bool focused) => InkPrimaryButton(
+              l.studioResumeAction,
+              height: 26,
+              bordered: false,
+              horizontalPadding: InkSpacing.s14,
             ),
           ),
         ],

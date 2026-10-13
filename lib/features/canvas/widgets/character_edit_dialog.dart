@@ -28,6 +28,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../models/canvas_node.dart';
@@ -429,12 +430,14 @@ class _CharacterEditDialogState extends ConsumerState<CharacterEditDialog> {
         const Spacer(),
         _TapWrap(
           tapKey: const ValueKey<String>('character-cancel'),
+          label: l.commonCancel,
           onTap: () => Navigator.of(context).pop(),
           child: InkSecondaryButton(l.commonCancel, height: 26),
         ),
         const SizedBox(width: InkSpacing.sm),
         _TapWrap(
           tapKey: const ValueKey<String>('character-save'),
+          label: l.characterSave,
           onTap: _save,
           child: InkPrimaryButton(
             l.characterSave,
@@ -642,25 +645,34 @@ class _ReferenceTile extends ConsumerWidget {
 }
 
 /// 把纯呈现的 Ws*Button 变成可点控件（shell_tab_bar.dart 已确立的包法）。
+/// 底部条两颗按钮（取消 / 保存）的点击壳。
+///
+/// 可达性全部来自 theme 层的 [InkActivatable]（与标签 chip / InkGhostButton 同
+/// 一件）：可 Tab 聚焦、Enter / Space 与鼠标走同一条回调、聚焦画一圈 accent 环。
+/// 此前是裸 MouseRegion + GestureDetector，连 Semantics 都没有——键盘既到不了
+/// 「取消」也到不了「保存」（BOARD 214）。本件只做"把 key / 文案 / 子件递进去"。
 class _TapWrap extends StatelessWidget {
   const _TapWrap({
     required this.tapKey,
+    required this.label,
     required this.onTap,
     required this.child,
   });
 
   final Key tapKey;
+
+  /// 无障碍标签。子件里的文字与它是同一句，但 Semantics 要显式说出来。
+  final String label;
   final VoidCallback onTap;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) => MouseRegion(
-    cursor: SystemMouseCursors.click,
-    child: GestureDetector(
-      key: tapKey,
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: child,
-    ),
+  Widget build(BuildContext context) => InkActivatable(
+    key: tapKey,
+    onTap: onTap,
+    semanticLabel: label,
+    // 子件是稿尺寸的 Ink{Primary,Secondary}Button，3px 圆角。
+    focusRingRadius: BorderRadius.circular(InkRadius.s3),
+    builder: (BuildContext context, bool hovered, bool focused) => child,
   );
 }
