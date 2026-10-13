@@ -96,52 +96,23 @@ sealed class JobState with _$JobState {
 }
 
 extension JobStateX on JobState {
-  String get canvasId => switch (this) {
-        JobQueued(:final canvasId) => canvasId,
-        JobSubmitting(:final canvasId) => canvasId,
-        JobRunning(:final canvasId) => canvasId,
-        JobSucceeded(:final canvasId) => canvasId,
-        JobFailed(:final canvasId) => canvasId,
-        JobCancelled(:final canvasId) => canvasId,
-      };
-
-  String get jobId => switch (this) {
-        JobQueued(:final jobId) => jobId,
-        JobSubmitting(:final jobId) => jobId,
-        JobRunning(:final jobId) => jobId,
-        JobSucceeded(:final jobId) => jobId,
-        JobFailed(:final jobId) => jobId,
-        JobCancelled(:final jobId) => jobId,
-      };
-
-  String get providerId => switch (this) {
-        JobQueued(:final providerId) => providerId,
-        JobSubmitting(:final providerId) => providerId,
-        JobRunning(:final providerId) => providerId,
-        JobSucceeded(:final providerId) => providerId,
-        JobFailed(:final providerId) => providerId,
-        JobCancelled(:final providerId) => providerId,
-      };
-
-  /// 发起该 job 的 config 节点 id（用于 Inspector 按节点回读进度）。可为 null。
-  String? get sourceNodeId => switch (this) {
-        JobQueued(:final sourceNodeId) => sourceNodeId,
-        JobSubmitting(:final sourceNodeId) => sourceNodeId,
-        JobRunning(:final sourceNodeId) => sourceNodeId,
-        JobSucceeded(:final sourceNodeId) => sourceNodeId,
-        JobFailed(:final sourceNodeId) => sourceNodeId,
-        JobCancelled(:final sourceNodeId) => sourceNodeId,
-      };
-
-  /// 该 job 的 result 节点 id（批量网格定点刷新用）。可为 null。
-  String? get resultNodeId => switch (this) {
-        JobQueued(:final resultNodeId) => resultNodeId,
-        JobSubmitting(:final resultNodeId) => resultNodeId,
-        JobRunning(:final resultNodeId) => resultNodeId,
-        JobSucceeded(:final resultNodeId) => resultNodeId,
-        JobFailed(:final resultNodeId) => resultNodeId,
-        JobCancelled(:final resultNodeId) => resultNodeId,
-      };
+  // 【这里刻意没有 jobId / providerId / canvasId / projectId / sourceNodeId /
+  // resultNodeId 的访问器，别再补回来】六个变体都带这六个字段、且类型一致，
+  // freezed 3 因此把它们生成成**共享 mixin 上的实例 getter**——见
+  // job_state.freezed.dart 的 `mixin _$JobState { String get jobId; ... }`，
+  // 由上面的 `sealed class JobState with _$JobState` 直接带上。
+  //
+  // 而 Dart 的成员解析规则是**实例成员优先于扩展成员**：只要接收者的静态类型上
+  // 有同名实例成员，扩展里的同名成员就永远不会被选中——不是"被覆盖"，是根本
+  // 不可达。在这个扩展里再手写一遍六臂 switch，写出来的就是死代码，而且两道
+  // 常规防线都看不见它：analyzer 没有"扩展成员被遮蔽"这条诊断，单测也照常绿
+  // （测到的是生成码那一份）。本仓库为此真实留过 5 个这样的 getter。
+  //
+  // 加新的共享字段时同理——不要在这里补 getter，直接从 mixin 来。
+  // 回归闸：test/quality/no_shadowed_extension_member_test.dart。
+  //
+  // 反过来说，下面这几个成员必须留在扩展里：它们是跨变体的**派生判据**，
+  // 不是字段，freezed 不生成。
 
   /// 是否处于终态——UI 用来决定能否取消 / 重试。
   bool get isTerminal => switch (this) {

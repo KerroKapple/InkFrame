@@ -1,8 +1,16 @@
-// JobStateX 访问器全变体覆盖：jobId / providerId / canvasId 三个 switch 在
-// 六个变体上各取一次（含 JobFailed），并补 JobCancelled 的 progressValue。
+// JobState 共享字段契约的全变体覆盖：jobId / providerId / canvasId /
+// resultNodeId / projectId 在六个变体上各取一次（含 JobFailed），
+// 并补 JobCancelled 的 progressValue 哨兵。
 //
-// 补 job_state_test.dart：原测只在部分变体上读访问器，failed 臂与
+// 补 job_state_test.dart：原测只在部分变体上读这些字段，failed 臂与
 // cancelled 的 progressValue 哨兵未被触达。
+//
+// 【本文件测的是生成码，不是扩展】这几个字段六变体同名同类型，freezed 把它们
+// 生成到共享 `mixin _$JobState` 上，`s.jobId` 解析到的就是那一份。本文件的价值
+// 在于钉死**字段契约**——某个变体漏掉一个字段，它就会从共享 mixin 上掉下来，
+// 全部消费点编译失败；而不是在"测一个手写的六臂 switch"（那一份曾真实存在，
+// 被共享 mixin 遮蔽成死代码，已删；闸见
+// test/quality/no_shadowed_extension_member_test.dart）。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
@@ -33,7 +41,7 @@ void main() {
     const JobState.cancelled(jobId: 'jc', providerId: 'pc', canvasId: 'cc'),
   ];
 
-  group('JobStateX 访问器对每个变体都返回各自的值', () {
+  group('共享字段在每个变体上都返回各自的值', () {
     test('jobId 在六变体上各取本体值（含 failed 臂）', () {
       expect(all.map((s) => s.jobId).toList(),
           ['jq', 'js', 'jr', 'jok', 'jf', 'jc']);
@@ -50,7 +58,7 @@ void main() {
     });
   });
 
-  group('resultNodeId 访问器', () {
+  group('resultNodeId 共享字段', () {
     test('缺省为 null（六变体）', () {
       expect(all.map((s) => s.resultNodeId).toList(), List.filled(6, null));
     });
@@ -85,7 +93,7 @@ void main() {
 
   // projectId 进六个变体是「画廊脏标记按项目分」的前提：registry 是全 app 级
   // 内存镜像，条目上只有 canvasId 时，任何一条成功 job 都只能当全局脏标记用。
-  group('projectId 访问器', () {
+  group('projectId 共享字段', () {
     test('缺省为 null（六变体）', () {
       expect(all.map((s) => s.projectId).toList(), List.filled(6, null));
     });

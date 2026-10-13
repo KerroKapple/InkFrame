@@ -1,4 +1,12 @@
 // JobState sealed union + extension 行为单测。
+//
+// 两组的分界是**成员从哪里来**，不是"读哪个字段"：
+//   - `JobState sealed` 组 = 六个变体共有的字段契约。这些字段由 freezed 生成到
+//     共享 `mixin _$JobState` 上，`s.jobId` 读到的是**生成码**那一份。
+//   - `JobStateX` 组 = 扩展里的跨变体派生判据（isTerminal / isRetryable /
+//     progressValue 等），freezed 不生成、只能手写。
+// 曾经扩展里也手写过一份字段访问器，被共享 mixin 遮蔽成死代码（实例成员优先于
+// 扩展成员），已删；闸见 test/quality/no_shadowed_extension_member_test.dart。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
@@ -56,15 +64,28 @@ void main() {
         expect(s.canvasId, c);
       }
     });
-  });
 
-  group('JobStateX', () {
-    test('jobId / providerId 通过 extension 暴露', () {
+    test('jobId / providerId 由共享 mixin 暴露', () {
       const r = JobState.running(jobId: 'abc', providerId: 'gemini-image', canvasId: 'cv');
       expect(r.jobId, 'abc');
       expect(r.providerId, 'gemini-image');
     });
 
+    test('sourceNodeId：可选字段，默认 null，各变体可读', () {
+      const withNode = JobState.running(
+        jobId: 'j',
+        providerId: 'p',
+        canvasId: 'cv',
+        sourceNodeId: 'cfg-7',
+      );
+      const withoutNode =
+          JobState.queued(jobId: 'j', providerId: 'p', canvasId: 'cv');
+      expect(withNode.sourceNodeId, 'cfg-7');
+      expect(withoutNode.sourceNodeId, isNull);
+    });
+  });
+
+  group('JobStateX', () {
     test('isTerminal / isActive 区分终态与活跃态', () {
       const q = JobState.queued(jobId: 'j', providerId: 'p', canvasId: 'cv');
       const s = JobState.submitting(jobId: 'j', providerId: 'p', canvasId: 'cv');
@@ -146,19 +167,6 @@ void main() {
       const b = JobState.running(jobId: 'j', providerId: 'p', canvasId: 'cv', progress: -0.3);
       expect(a.progressValue, 1.0);
       expect(b.progressValue, 0.0);
-    });
-
-    test('sourceNodeId：可选字段，默认 null，各变体可读', () {
-      const withNode = JobState.running(
-        jobId: 'j',
-        providerId: 'p',
-        canvasId: 'cv',
-        sourceNodeId: 'cfg-7',
-      );
-      const withoutNode =
-          JobState.queued(jobId: 'j', providerId: 'p', canvasId: 'cv');
-      expect(withNode.sourceNodeId, 'cfg-7');
-      expect(withoutNode.sourceNodeId, isNull);
     });
   });
 }
