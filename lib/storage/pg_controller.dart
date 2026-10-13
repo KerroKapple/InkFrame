@@ -35,6 +35,7 @@ import '../core/interfaces/secure_storage_service.dart';
 import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
 import 'pg_binary_locator.dart';
+import 'pg_log_rotation.dart';
 
 /// 嵌入式 PG 超级用户名——initdb 与连接串共用，禁止散落字面量。
 const String kPgSuperuser = 'inkframe';
@@ -364,6 +365,19 @@ class PgController {
     }
     if (!_paths.config.existsSync()) {
       _paths.config.createSync(recursive: true);
+    }
+
+    // pg.log 轮转（BOARD 185）。必须在这里：上面的「复用存活实例」分支已经
+    // 先返回了，走到这一行可以确定没有我们的 postmaster 拿着 pg.log；一旦
+    // pg_ctl start 起来，它就被占住了（Windows 上改名会失败）。
+    switch (rotatePgLogIfLarge(logFile, nowUtc: DateTime.now().toUtc())) {
+      case PgLogRotation.rotated:
+        _logger?.info(_logModule, 'pg.log rotated');
+      case PgLogRotation.failed:
+        // 别的进程开着它（编辑器 / 杀软）。轮转是卫生，不挡启动；下次再试。
+        _logger?.warn(_logModule, 'pg.log rotation skipped (file in use)');
+      case PgLogRotation.notNeeded:
+        break;
     }
 
     final result = await _runner.pgCtlStart(
