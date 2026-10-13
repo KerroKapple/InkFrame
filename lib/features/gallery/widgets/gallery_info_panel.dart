@@ -14,6 +14,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../canvas/util/camera_labels.dart';
@@ -98,27 +99,26 @@ class _GalleryInfoPanelState extends ConsumerState<GalleryInfoPanel> {
             ),
             child: Row(
               children: <Widget>[
-                Semantics(
-                  button: true,
-                  enabled: item != null,
-                  label: l.galleryLocateInCanvas,
-                  child: MouseRegion(
-                    cursor: item == null ? SystemMouseCursors.basic : SystemMouseCursors.click,
-                    child: GestureDetector(
-                      key: GalleryInfoPanel.locateKey,
-                      behavior: HitTestBehavior.opaque,
-                      onTap: item == null
-                          ? null
-                          : () => galleryLocateInCanvas(
-                                ref,
-                                project: ProjectRef(id: projectId, name: widget.projectName),
-                                item: item,
-                              ),
-                      child: Opacity(
-                        opacity: item == null ? 0.5 : 1,
-                        child: InkSecondaryButton(l.galleryLocateInCanvas, height: 26),
-                      ),
-                    ),
+                // 点击壳走 theme 层的 InkActivatable（与标签 chip / InkGhostButton
+                // 同一件）：可 Tab 聚焦、Enter / Space 与鼠标走同一条定位。此前是
+                // 手搓的 Semantics + MouseRegion + GestureDetector——与 BOARD 214
+                // 点名的那 8 处同形，顺同一次收口一起换，不留"最后一处"。
+                InkActivatable(
+                  key: GalleryInfoPanel.locateKey,
+                  semanticLabel: l.galleryLocateInCanvas,
+                  // 子件是 3px 圆角的次按钮。
+                  focusRingRadius: BorderRadius.circular(InkRadius.s3),
+                  // 没有锚点产物时给 null 而不是空闭包 ⇒ 不可点也不可聚焦。
+                  onTap: item == null
+                      ? null
+                      : () => galleryLocateInCanvas(
+                            ref,
+                            project: ProjectRef(id: projectId, name: widget.projectName),
+                            item: item,
+                          ),
+                  builder: (BuildContext context, bool hovered, bool focused) => Opacity(
+                    opacity: item == null ? 0.5 : 1,
+                    child: InkSecondaryButton(l.galleryLocateInCanvas, height: 26),
                   ),
                 ),
               ],

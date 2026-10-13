@@ -31,6 +31,7 @@ import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/tokens.dart';
 
+import '../../../_harness/a11y.dart';
 import '../../../_harness/fake_asset_bundle.dart';
 import '../../../_harness/fake_providers.dart';
 import '../../../_harness/fake_repositories.dart';
@@ -658,6 +659,74 @@ void main() {
 
       expect(container.read(localeControllerProvider)?.languageCode, 'zh');
       expect(prefs.current.localeCode, 'zh');
+    });
+  });
+
+  // 向导里两颗按钮的点击壳此前是手搓的 Semantics + MouseRegion + GestureDetector
+  // ——首次启动第一眼看到的那块界面，键盘一个按钮都到不了（BOARD 214）。换成
+  // theme 层的 InkActivatable 后在这里钉住：能 Tab 到、Enter 走同一条动作、
+  // 「验证」禁用时连焦点都到不了。
+  //
+  // 挂在本文件而不是新开一个：向导的宿主（真 Navigator + 5 个 override）已经在
+  // 这里，另起一份只会把同一套 fake 抄第二遍。
+  group('可达性：底部主按钮与「验证」走 InkActivatable', () {
+    testWidgets('「下一步」能 Tab 到，Enter 走的是同一条 onPrimary', (
+      WidgetTester tester,
+    ) async {
+      await _pumpAndOpen(
+        tester,
+        overrides: _overrides(
+          prefs: InMemoryPreferencesService(),
+          secure: FakeSecureStorage(),
+        ),
+      );
+
+      final FocusNode node = activatableFocus(tester, OnboardingDialog.nextKey);
+      expect(
+        await tabUntilFocused(tester, node),
+        isTrue,
+        reason: '首启第一眼那块界面的主按钮不可聚焦 ⇒ 键盘用户走不完向导',
+      );
+
+      await activateByKey(tester, node);
+      await tester.pumpAndSettle();
+
+      // 翻到了第 2 步（配置密钥）= onPrimary 真的被执行了。
+      expect(find.byKey(OnboardingDialog.verifyKey), findsOneWidget);
+    });
+
+    testWidgets('「验证」空输入 → 不可聚焦；输入后可聚焦且 Enter 走同一条验证', (
+      WidgetTester tester,
+    ) async {
+      final FakeSecureStorage secure = FakeSecureStorage();
+      await _pumpAndOpen(
+        tester,
+        overrides: _overrides(
+          prefs: InMemoryPreferencesService(),
+          secure: secure,
+        ),
+      );
+      await _gotoKeysStep(tester);
+
+      expect(
+        activatableFocus(tester, OnboardingDialog.verifyKey).canRequestFocus,
+        isFalse,
+        reason: '空输入时「验证」是真禁用——不该能被聚焦，否则回车一次什么都不发生',
+      );
+
+      await _typeKey(tester, 'sk-good');
+      final FocusNode node =
+          activatableFocus(tester, OnboardingDialog.verifyKey);
+      expect(await tabUntilFocused(tester, node), isTrue);
+
+      await activateByKey(tester, node);
+      await tester.pumpAndSettle();
+
+      expect(
+        secure.snapshot[_geminiStorageKey],
+        'sk-good',
+        reason: '回车必须和鼠标点击走同一条验证 + 落盘',
+      );
     });
   });
 }

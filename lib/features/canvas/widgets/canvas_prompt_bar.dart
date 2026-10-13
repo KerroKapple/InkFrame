@@ -17,6 +17,7 @@ import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
@@ -38,6 +39,10 @@ class CanvasPromptBar extends ConsumerWidget {
 
   /// 「基础风格」入口的测试锚点。
   static const Key baseStyleKey = Key('canvas.promptBar.baseStyle');
+
+  /// 「生成」按钮的测试锚点。挂在公开类上（而不是私有 `_GenerateButton` 的静态
+  /// 常量上）才让可达性用例拿得到它——测试代码引用不到私有类的成员。
+  static const Key generateKey = Key('canvas.promptBar.generate');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -250,40 +255,40 @@ class _BaseStyleChip extends ConsumerWidget {
   }
 }
 
+/// 画布唯一的生成入口。
+///
+/// 点击壳走 theme 层的 [InkActivatable]（与标签 chip / InkGhostButton 同一件）：
+/// 可 Tab 聚焦、Enter / Space 与鼠标走同一条回调、聚焦画一圈 accent 环。此前是
+/// 手搓的 Semantics + MouseRegion + GestureDetector——⌘↵ 之外键盘到不了它
+/// （BOARD 214）。
 class _GenerateButton extends StatelessWidget {
   const _GenerateButton({required this.enabled, required this.label, required this.onTap});
   final bool enabled;
   final String label;
   final VoidCallback onTap;
 
-  static const Key key_ = Key('canvas.promptBar.generate');
-
   @override
   Widget build(BuildContext context) {
     final c = context.inkColors;
     final t = context.inkTypography;
-    return Semantics(
-      button: true,
-      enabled: enabled,
-      label: label,
-      child: MouseRegion(
-        cursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
-        child: GestureDetector(
-          key: key_,
-          behavior: HitTestBehavior.opaque,
-          onTap: enabled ? onTap : null,
-          child: Opacity(
-            opacity: enabled ? 1 : 0.5,
-            child: InkPrimaryButton(
-              label,
-              height: 28,
-              horizontalPadding: InkSpacing.s14,
-              bordered: false,
-              trailing: Opacity(
-                opacity: 0.7,
-                child: Text(submitShortcutLabel(), style: t.monoSmall.copyWith(color: c.onAccent)),
-              ),
-            ),
+    return InkActivatable(
+      key: CanvasPromptBar.generateKey,
+      semanticLabel: label,
+      // 禁用（提示词为空 / 在途）时给 null 而不是空闭包 ⇒ 连焦点都到不了，
+      // 不会出现"聚焦上去按回车什么都不发生"的假可达。
+      onTap: enabled ? onTap : null,
+      // 子件是 3px 圆角的主按钮；环走前景装饰，不参与布局 ⇒ 不撑宽提示词条。
+      focusRingRadius: BorderRadius.circular(InkRadius.s3),
+      builder: (BuildContext context, bool hovered, bool focused) => Opacity(
+        opacity: enabled ? 1 : 0.5,
+        child: InkPrimaryButton(
+          label,
+          height: 28,
+          horizontalPadding: InkSpacing.s14,
+          bordered: false,
+          trailing: Opacity(
+            opacity: 0.7,
+            child: Text(submitShortcutLabel(), style: t.monoSmall.copyWith(color: c.onAccent)),
           ),
         ),
       ),

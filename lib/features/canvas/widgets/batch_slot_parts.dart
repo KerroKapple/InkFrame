@@ -10,6 +10,7 @@ import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/generation_controller.dart';
 import '../../generation/services/toast_service.dart';
@@ -104,6 +105,22 @@ Future<void> runBatchSlotAction(
 
 /// 可点文字/盒子的统一包装：onTap 为 null 时**不挂任何手势**（禁用态就是不可点），
 /// 有 tooltip 就带 tooltip。空回调占位是被 no_dead_interactive_test 禁止的。
+///
+/// 【可达性】可点时点击壳走 theme 层的 [InkActivatable]——与标签 chip /
+/// InkGhostButton 同一件：可 Tab 聚焦、Enter / Space 激活、聚焦画一圈 accent 环。
+/// 此前是裸 MouseRegion + GestureDetector，对比浮层与检查器网格里**所有** slot
+/// 动作（「完成」/「设为产物」/「重跑此 slot」/「取消」/「⎘ 以该种子重跑」/ 网格
+/// 动作词）键盘一个都到不了（BOARD 214）。
+///
+/// [onTap] 原样递进去 ⇒ 键盘与指针走的是同一条回调，`runBatchSlotAction` 那条
+/// 「失败落 toast」的链路一字未动。
+///
+/// 【为什么禁用态不交给 InkActivatable 自己处理】它支持 `onTap: null`，但那是
+/// "灰着的按钮"语义：留一个 opaque 的 GestureDetector（吞指针）+ 一个
+/// `Semantics(button: true, enabled: false)`（对外宣称"我是按钮，只是现在按不动"）。
+/// 本件的禁用态不是那回事——网格里的「当前」是**状态词**、浮层里无 seed 的 ⎘ 是
+/// 置灰图标，两样说法对它们都是错的。既有用例「『当前』不是按钮：不挂手势」
+/// （batch_results_grid_test.dart）钉的就是这件事，所以禁用态照旧原样返回子件。
 class BatchTappable extends StatelessWidget {
   const BatchTappable({
     super.key,
@@ -120,17 +137,17 @@ class BatchTappable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final VoidCallback? tap = onTap;
     Widget body = child;
-    if (onTap != null) {
-      body = MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: onTap,
-          child: body,
-        ),
+    if (tap != null) {
+      body = InkActivatable(
+        onTap: tap,
+        semanticLabel: semanticLabel,
+        // 子件的外形：Ink{Primary,Secondary}Button 与 ⎘ 盒都是 3px 圆角；网格里的
+        // 动作词没有盒，环就贴着文字本身的框（3px 在那个尺寸上近似方角）。
+        focusRingRadius: BorderRadius.circular(InkRadius.s3),
+        builder: (BuildContext context, bool hovered, bool focused) => child,
       );
-      body = Semantics(button: true, label: semanticLabel, child: body);
     }
     final String? message = tooltip;
     return message == null ? body : Tooltip(message: message, child: body);

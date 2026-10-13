@@ -22,6 +22,7 @@ import 'package:inkframe/features/gallery/widgets/gallery_tile.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 
+import '../../../_harness/a11y.dart';
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/test_app.dart';
@@ -295,5 +296,41 @@ void main() {
     expect(s.tab, ShellTab.canvas);
     expect(s.canvasId, isNotNull);
     expect(s.project?.id, 'p1');
+  });
+
+  // 「在画布中定位」的点击壳此前是手搓的 Semantics + MouseRegion + GestureDetector
+  // ——键盘到不了（BOARD 214 的同一片；那张卡点名了 8 处，这是同形的第 9 处）。
+  // 换成 theme 层的 InkActivatable 后钉两件：选中产物后能 Tab 到 + Enter 走同一条
+  // 定位；没有选中产物时（onTap == null）连焦点都到不了。
+  group('可达性：「在画布中定位」走 InkActivatable', () {
+    testWidgets('选中产物 → 能 Tab 到，Enter 走的是同一条定位', (tester) async {
+      await seedAssets();
+      await pump(tester);
+      await tester.tap(tileNamed('镜头 01 · 图像'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pumpAndSettle();
+
+      final FocusNode node =
+          activatableFocus(tester, GalleryInfoPanel.locateKey);
+      expect(await tabUntilFocused(tester, node), isTrue);
+
+      await activateByKey(tester, node);
+      await tester.pumpAndSettle();
+
+      final ShellState s = _read(tester, shellControllerProvider);
+      expect(s.tab, ShellTab.canvas, reason: '回车必须和鼠标点击走同一条定位');
+      expect(s.project?.id, 'p1');
+    });
+
+    testWidgets('未选中产物（禁用）→ 不可聚焦', (tester) async {
+      await seedAssets();
+      await pump(tester);
+
+      expect(
+        activatableFocus(tester, GalleryInfoPanel.locateKey).canRequestFocus,
+        isFalse,
+        reason: '没有锚点产物时这颗点不动，就不该能被聚焦',
+      );
+    });
   });
 }

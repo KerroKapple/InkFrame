@@ -14,6 +14,7 @@ import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/widgets/character_edit_dialog.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 
+import '../../../_harness/a11y.dart';
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_character.dart';
 import '../../../_harness/fake_repositories.dart';
@@ -526,5 +527,65 @@ void main() {
     await _open(tester, repo: repo, assets: FakeCharacterAssetService());
 
     expect(find.text(_l(tester).characterEditFootnoteNone), findsOneWidget);
+  });
+
+  // 底部条两颗按钮（取消 / 保存）此前的点击壳是 `_TapWrap`——裸 MouseRegion +
+  // GestureDetector，连 Semantics 都没有：键盘既到不了「取消」也到不了「保存」
+  // （BOARD 214）。`_TapWrap` 改为委托给 theme 层的 InkActivatable 后钉在这里。
+  //
+  // 两颗都没有禁用态（onTap 恒非空），所以只有"可聚焦 + 回车走同一条动作"两问；
+  // 「禁用不可聚焦」在有禁用态的那几处（提示词条「生成」/ 向导「验证」/ 批量
+  // 状态词）各自钉了。
+  group('可达性：底部条两颗按钮走 InkActivatable', () {
+    testWidgets('「保存」能 Tab 到，Enter 走的是同一条 _save（写库 + 关框）', (
+      WidgetTester tester,
+    ) async {
+      final _SpyCharacterRepo repo = _SpyCharacterRepo(
+        <String, Map<String, Object?>>{_kCharacterId: _row()},
+      );
+      await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+      await tester.enterText(
+        find.byKey(const ValueKey<String>('character-name-field')),
+        '夜莺',
+      );
+      await tester.pumpAndSettle();
+
+      final FocusNode node = activatableFocus(
+        tester,
+        const ValueKey<String>('character-save'),
+      );
+      expect(
+        await tabUntilFocused(tester, node),
+        isTrue,
+        reason: '对话框的确认键不可聚焦 ⇒ 键盘用户填完字没法提交',
+      );
+
+      await activateByKey(tester, node);
+      await tester.pumpAndSettle();
+
+      expect(repo.rows[_kCharacterId]!['name'], '夜莺');
+      expect(find.byType(CharacterEditDialog), findsNothing);
+    });
+
+    testWidgets('「取消」能 Tab 到，Enter 关框且一次 update 都不发', (
+      WidgetTester tester,
+    ) async {
+      final _SpyCharacterRepo repo = _SpyCharacterRepo(
+        <String, Map<String, Object?>>{_kCharacterId: _row()},
+      );
+      await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+
+      final FocusNode node = activatableFocus(
+        tester,
+        const ValueKey<String>('character-cancel'),
+      );
+      expect(await tabUntilFocused(tester, node), isTrue);
+
+      await activateByKey(tester, node);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CharacterEditDialog), findsNothing);
+      expect(repo.patches, isEmpty, reason: '取消就是取消——回车也不该写库');
+    });
   });
 }

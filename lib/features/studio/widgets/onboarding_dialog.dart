@@ -22,6 +22,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../canvas/providers/canvas_bootstrap_controller.dart';
@@ -436,28 +437,28 @@ class _Footer extends StatelessWidget {
             onTap: onSecondary,
           ),
           const SizedBox(width: InkSpacing.s10),
-          Semantics(
-            button: true,
-            label: lastStep
+          // 点击壳走 theme 层的 InkActivatable（与标签 chip / InkGhostButton 同
+          // 一件）：可 Tab 聚焦、Enter / Space 与鼠标走同一条 onPrimary。此前是
+          // 手搓的 Semantics + MouseRegion + GestureDetector——首次启动第一眼看到
+          // 的那块界面，键盘走不完向导（BOARD 214）。
+          InkActivatable(
+            key: lastStep
+                ? OnboardingDialog.createSampleKey
+                : OnboardingDialog.nextKey,
+            semanticLabel: lastStep
                 ? l10n.studioCreateSampleProject
                 : l10n.onboardingNext,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: GestureDetector(
-                key: lastStep
-                    ? OnboardingDialog.createSampleKey
-                    : OnboardingDialog.nextKey,
-                behavior: HitTestBehavior.opaque,
-                onTap: onPrimary,
-                child: InkPrimaryButton(
-                  lastStep
-                      ? l10n.studioCreateSampleProject
-                      : l10n.onboardingNext,
-                  height: 26,
-                  bordered: false,
-                  horizontalPadding: InkSpacing.md,
-                ),
-              ),
+            // 子件是 3px 圆角的主按钮；环走前景装饰，不参与布局 ⇒ 不撑宽底部条。
+            focusRingRadius: BorderRadius.circular(InkRadius.s3),
+            onTap: onPrimary,
+            builder: (BuildContext context, bool hovered, bool focused) =>
+                InkPrimaryButton(
+              lastStep
+                  ? l10n.studioCreateSampleProject
+                  : l10n.onboardingNext,
+              height: 26,
+              bordered: false,
+              horizontalPadding: InkSpacing.md,
             ),
           ),
         ],
