@@ -46,6 +46,8 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | 标签 chip **键盘可达**：可 Tab 聚焦、Enter / Space 激活（与鼠标点击同一个回调）、`onTap == null` 的格不可聚焦；焦点环走 `accent` token 且画在 `foregroundDecoration` 上（不参与布局 ⇒ 不动宽度阈值） | 标签条是全应用最高频交互，键盘用户此前根本到不了（chip 是裸 `GestureDetector` + `Semantics`）。激活必须复用同一个 `onTap`，否则键盘与指针两条路会走岔 | `test/theme/ink_shell_tab_bar_test.dart`「键盘可达性」五条 + `test/features/shell/shell_tab_bar_test.dart`「Tab 到画廊格按 Enter 即切标签」（跨层那条） |
 | 浮层打开时标签体**仍在台上**（遮暗可见），但点不穿、不持焦 | 浮层形态（Screens 稿第 3 屏）：原界面在下面看得见。点穿由 `ShellOverlayLayer` 的 `ModalBarrier` 拦，失焦由 `ShellContentStack` 的显式 `ExcludeFocus` 保证——这两件事以前是外层 IndexedStack 代劳的 | `test/app/app_routing_test.dart`（`onstage: true, hittable: false`）+ `test/features/shell/shell_focus_test.dart` V2 |
 | 浮层 Esc 分层：编辑框开着只关编辑框，没有编辑框才关浮层；开关浮层不写路由（不清 canvasId、不切标签） | 设置浮层自己持焦并挂 `CallbackShortcuts`；`showDialog` 的编辑框在 Navigator 另一条路由上，Esc 到不了浮层。D11 那条债由此解决 | `test/features/settings/settings_overlay_test.dart` |
+| **删掉外壳正指着的画布 / 项目后，外壳不再指着它**：`_ManageCanvasesDialog._delete` 与 `_ProjectGrid._deleteProject` 删成功后按 id 比对，命中才调 `closeCanvas()` / `closeProject()`（判据与导航器都在首个 `await` 之前取好——放在 `mounted` 守卫之后会留出"对话框先关、上下文没清"的窗口） | 标签 chip 恒可点（只有交付锁会禁用），不清就能点回「画布」标签继续编辑一张刚删掉的画布；`project` 那一半更响：画廊 / 序列 / 导出 / 面包屑 / ⌘K 全读 `ShellState.project`。另一半防线在数据层（画布软删过滤，见下） | `test/features/studio/studio_delete_clears_shell_context_test.dart`（接线 4 条，含两条"删别的不动"反向）+ `test/features/shell/shell_close_context_test.dart`（效果 2 条，第一条即"保活槽真被销毁"） |
+| canvas 域的读路径（`nodes` / `edges` / `style_lanes`）全部 `JOIN canvases … AND c.deleted_at IS NULL` | 画布软删**不级联**到子表，只过滤子行自身 `deleted_at` 会把已删画布的内容照常读出来——画面上完全看不出它已被删。反向：孤儿回收的两个「引用集」(`listAllMediaUrls` / `listAllOutputUrls`) 与归档导出的 9 条查询**绝不能**加这个过滤 | `test/storage/repositories/repository_sql_templates_test.dart`「canvas 域读路径必带画布软删过滤」（表驱动 11 条 + 1 条反向）+ `postgres_repositories_integration_test.dart`（pg-tagged，真 PG 钉"级联不存在"这个前提事实） |
 | **同一时刻只保活一个 `canvasId`**：五槽保活是按 `ShellTab` 分的，不是按 `canvasId` 分的。`canvas` 那一槽从头到尾只有一个 `KeyedSubtree('shellTabBody-canvas')`，`CanvasTab` 内部 `watch(currentCanvasIdProvider)` 变了就在同一个槽位里换内容 | 从画布 A 切到画布 B 不是"多开一个保活槽"，是把槽位里的树换成 B；A 的滚动位置/本地 UI 态随之丢弃——这是当前设计的边界，不是 bug | `shell_keep_alive_host_test.dart`（五槽 == 五个 `ShellTab`，与 `canvasId` 无关） |
 
 ## 已知且接受的副作用（隐藏标签仍会 build / layout）
@@ -62,21 +64,25 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 
 - **点遮罩不关浮层**：设置里可能有没提交的输入，关闭只走 Esc / ✕ / 完成 / 点标签 / ⌘K。
   （D11「浮层没有 Esc」已在视觉重做设置浮层时解决，见不变量表与 `docs/BOARD.md`。）
-- **没有"关闭当前画布"**：`ShellState` 没有任何能清 `canvasId` 的公共动词
-  （`resetSession()` 除外）。老代码里"清 canvasId"的真实意图都是"回 Studio"，
-  正确替代是 `goTab(studio)`。
-  2026-10-10 复核把 BOARD 上那张「待补卡」**判定不做**并关闭：产品里没有任何
-  「关闭画布」入口，而加一个没有调用方的具名迁移会被 #249 立的死 API 闸
-  （`test/quality/shell_transition_reachability_test.dart`）当场判死。
-  真有入口要求它时的入场条件：同一个 PR 里接上调用点 + 一条"调用后画布保活槽
-  真被销毁"的显式断言。（另见 BOARD 新列的一条**不同**的真 bug：删掉正在打开的
-  画布 / 项目后 `canvasId` / `project` 悬空——那条的正解不只是一个动词。）
+- **仍然没有"关闭当前画布"这个用户动作**：产品里没有「关闭画布」入口，导航类
+  迁移（`goTab` 等）也永不碰 `canvasId`——老代码里"清 canvasId"的真实意图都是
+  "回 Studio"，正确替代仍是 `goTab(studio)`。2026-10-10 复核据此把 BOARD 那张
+  「待补卡」判定不做并关闭。
+  `closeCanvas()` / `closeProject()` 是**另一件事**：上下文**失效**，不是导航。
+  它们解决的是 BOARD 上那条真 bug——删掉正在打开的画布 / 项目之后，外壳继续
+  指着一个已经不在库里的对象（标签 chip 恒可点，于是用户能点回「画布」标签
+  继续编辑一张刚删掉的画布）。两者各有且只有一个生产调用点，都在
+  `studio_home_screen.dart` 的删除入口里（`_ManageCanvasesDialog._delete` /
+  `_ProjectGrid._deleteProject`），于是 #249 的死 API 闸
+  （`test/quality/shell_transition_reachability_test.dart`）判活；#251 给这张卡
+  写的入场条件（接上调用点 + 一条"调用后画布保活槽真被销毁"的显式断言）由
+  `test/features/shell/shell_close_context_test.dart` 第一条满足。
 
 ## 目录
 
 | 路径 | 职责 |
 |---|---|
-| `models/shell_state.dart` | `ShellTab` / `ShellOverlay` / `ProjectRef` / `ShellState`（手写不可变值对象，6 个具名迁移，无 copyWith） |
+| `models/shell_state.dart` | `ShellTab` / `ShellOverlay` / `ProjectRef` / `ShellState`（手写不可变值对象，8 个具名迁移——含 `closeCanvas` / `closeProject` 两条上下文失效，无 copyWith） |
 | `providers/shell_controller.dart` | `ShellNavigator` + `shellControllerProvider`——外壳状态的唯一写入口 |
 | `providers/active_project.dart` | `activeProjectProvider`（`ShellState.project` 的只读投影） |
 | `providers/gallery_dirty.dart` | `galleryDirtyProvider`——任一 job 转 `JobSucceeded` 即把**它所属项目**（`JobState.projectId`）的画廊置脏；画廊标签由不可见→可见时，若**当前项目**脏就刷一次再清该项目的脏（T9）。状态是 `Set<String?>`，集合里的 `null` 是"不知道是哪个项目"的通配位（生产不可达，退回全局语义：宁多刷不漏刷）。**不是实时刷新**：用户正看着画廊时不动，切走再切回才更新 |

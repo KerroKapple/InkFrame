@@ -40,12 +40,18 @@ class PostgresStyleLaneRepository
     });
   }
 
+  // 读路径统一 JOIN canvases 只为过滤画布软删（投影保持 l.*，不带出任何列）。
+  // 理由同 postgres_node_repository 的 _selectWithProject：画布软删不级联到
+  // style_lanes，只看自身 deleted_at 会把已删画布的泳道读出来。
+  static const _selectAlive = 'SELECT l.* FROM style_lanes l '
+      'JOIN canvases c ON c.id = l.canvas_id AND c.deleted_at IS NULL';
+
   @override
   Future<Map<String, Object?>?> findById(String id) {
     return guard('findById', 'style_lanes', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM style_lanes WHERE id = @id AND deleted_at IS NULL',
+          '$_selectAlive WHERE l.id = @id AND l.deleted_at IS NULL',
         ),
         parameters: <String, Object?>{'id': id},
       );
@@ -58,8 +64,9 @@ class PostgresStyleLaneRepository
     return guard('listByCanvas', 'style_lanes', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM style_lanes WHERE canvas_id = @cid AND deleted_at IS NULL '
-          'ORDER BY sort_order ASC, created_at ASC',
+          '$_selectAlive '
+          'WHERE l.canvas_id = @cid AND l.deleted_at IS NULL '
+          'ORDER BY l.sort_order ASC, l.created_at ASC',
         ),
         parameters: <String, Object?>{'cid': canvasId},
       );

@@ -38,11 +38,19 @@ class PostgresEdgeRepository with BaseRepository implements EdgeRepository {
     });
   }
 
+  // 读路径统一 JOIN canvases 只为过滤画布软删（不带出任何列——投影保持 e.*，
+  // 行形状与过去逐字节相同）。理由同 postgres_node_repository 的 _selectWithProject：
+  // 画布软删不级联到 edges，只看 edges 自身 deleted_at 会把已删画布的边读出来。
+  static const _selectAlive = 'SELECT e.* FROM edges e '
+      'JOIN canvases c ON c.id = e.canvas_id AND c.deleted_at IS NULL';
+
   @override
   Future<Map<String, Object?>?> findById(String id) {
     return guard('findById', 'edges', () async {
       final r = await session.execute(
-        Sql.named('SELECT * FROM edges WHERE id = @id AND deleted_at IS NULL'),
+        Sql.named(
+          '$_selectAlive WHERE e.id = @id AND e.deleted_at IS NULL',
+        ),
         parameters: <String, Object?>{'id': id},
       );
       return firstRow(r);
@@ -54,8 +62,9 @@ class PostgresEdgeRepository with BaseRepository implements EdgeRepository {
     return guard('listByCanvas', 'edges', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM edges WHERE canvas_id = @cid AND deleted_at IS NULL '
-          'ORDER BY sort_order ASC, created_at ASC',
+          '$_selectAlive '
+          'WHERE e.canvas_id = @cid AND e.deleted_at IS NULL '
+          'ORDER BY e.sort_order ASC, e.created_at ASC',
         ),
         parameters: <String, Object?>{'cid': canvasId},
       );
@@ -68,7 +77,8 @@ class PostgresEdgeRepository with BaseRepository implements EdgeRepository {
     return guard('listOutgoing', 'edges', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM edges WHERE source_node_id = @sid AND deleted_at IS NULL',
+          '$_selectAlive '
+          'WHERE e.source_node_id = @sid AND e.deleted_at IS NULL',
         ),
         parameters: <String, Object?>{'sid': sourceNodeId},
       );
@@ -81,7 +91,8 @@ class PostgresEdgeRepository with BaseRepository implements EdgeRepository {
     return guard('listIncoming', 'edges', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM edges WHERE target_node_id = @tid AND deleted_at IS NULL',
+          '$_selectAlive '
+          'WHERE e.target_node_id = @tid AND e.deleted_at IS NULL',
         ),
         parameters: <String, Object?>{'tid': targetNodeId},
       );

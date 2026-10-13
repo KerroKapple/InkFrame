@@ -11,18 +11,20 @@
 // 就写不出来——settings 是 ShellOverlay 不是 ShellTab，两者类型不同，
 // 编译器直接拒绝，不需要靠"无 copyWith"来挡；换成真正被挡住的那种态。）
 //
-// 【没有 closeCanvas()】——不提供任何能清 canvasId 的公共动词（resetSession
-// 除外）。老代码里那些"清 canvasId"写点的真实意图都是"回 Studio"，正确替代是
-// goTab(studio)。这让"某处顺手清 canvasId 毁掉画布保活"在类型层面不可达。
+// 【导航不清 canvasId】——切标签那一类迁移永不碰 canvasId（老代码里那些"清
+// canvasId"写点的真实意图都是"回 Studio"，正确替代是 goTab(studio)）。这让
+// "某处顺手清 canvasId 毁掉画布保活"在导航面上不可达。
 //
-// 【2026-10-10 复核：这条 BOARD 待补卡已判定不做，别再加】产品里没有任何
-// 「关闭画布」入口，加一个没有调用方的具名迁移正是 #249 退役 setProject 时
-// 付过代价的那个错误（"有测试养着的死 API"）——而且 #249 立的源码级闸
-// test/quality/shell_transition_reachability_test.dart 会当场把它判死。
-// 真有入口要求它时，入场条件是：同一个 PR 里接上调用点 + 一条"调用后画布
-// 保活槽真被销毁"的显式断言。
-// 另见 docs/BOARD.md 新列的那条真 bug：删掉正在打开的画布 / 项目后
-// canvasId / project 悬空——那条的正解不只是一个动词，不要当成本条的替身来做。
+// 【closeCanvas / closeProject 是失效，不是导航】它们存在的唯一理由是：删掉
+// 正在打开的画布 / 项目之后，外壳不能继续指着一个已经不在库里的对象（BOARD
+// 那条真 bug——标签 chip 恒可点，于是用户能点回「画布」标签继续编辑一张刚删
+// 掉的画布）。两者各有且只有一个生产调用点，都在 studio_home_screen.dart 的
+// 删除入口里，由 test/quality/shell_transition_reachability_test.dart 守着
+// ——#251 给这张卡写的入场条件（"同一个 PR 里接上调用点 + 一条调用后画布保活槽
+// 真被销毁的显式断言"）就是这么满足的，断言在
+// test/features/shell/shell_close_context_test.dart 第一条。
+// closeCanvas() 确实会卸载 CanvasScreen、丢掉视口与选中——那正是删掉画布之后
+// 应该发生的事。**别把它当成"回 Studio"的捷径用**：那条路还是 goTab(studio)。
 import 'package:flutter/foundation.dart';
 
 /// 声明序 == 标签条渲染序 == 保活宿主 children 序。三者由
@@ -89,7 +91,7 @@ class ShellState {
   bool get isPristine =>
       canvasId == null && overlay == null && tab == ShellTab.studio;
 
-  // ===== 6 个具名迁移：全量构造，不存在"忘了清某个字段" =====
+  // ===== 8 个具名迁移：全量构造，不存在"忘了清某个字段" =====
   //
   // 【没有 setProject()】——"只换项目、不动标签"这条语义曾经存在过（spec §5.1
   // 列了它），但从未有任何 UI 动作对应它：切项目一律走 openGallery(ProjectRef)
@@ -122,6 +124,22 @@ class ShellState {
 
   ShellState closeOverlay() =>
       ShellState(tab: tab, canvasId: canvasId, project: project);
+
+  /// 外壳正指着的画布已经不在库里了（被删）：只清 canvasId。
+  ///
+  /// 标签与浮层【刻意不动】——这是失效而非导航：`canvasId == null` 本就是合法
+  /// 态（画布标签自己出"从 Studio 选一个画布"的空态），顺手切标签会把用户从他
+  /// 正在看的那一页上踢走。项目上下文也不动：删一张画布不等于离开这个项目，
+  /// 画廊还该留在原项目上。
+  ShellState closeCanvas() =>
+      ShellState(tab: tab, overlay: overlay, project: project);
+
+  /// 外壳正指着的项目已经不在库里了（被删）：项目与画布一起清。
+  ///
+  /// 【为什么连带清 canvasId】canvasId 恒属于 project——openCanvas 的三个调用点
+  /// 全部带 withProject，两者是一起写进去的。只清 project 只是把悬空从一个字段
+  /// 挪到另一个字段：画布仍在保活槽里打开着，而它所属的项目已经进了回收站。
+  ShellState closeProject() => ShellState(tab: tab, overlay: overlay);
 
   /// 还原备份后：库换了，全清。
   ShellState resetSession() => const ShellState();
