@@ -52,48 +52,6 @@ class PostgresJobRepository with BaseRepository implements JobRepository {
   }
 
   @override
-  Future<Map<String, Object?>?> findById(String id) {
-    return guard('findById', 'jobs', () async {
-      final r = await session.execute(
-        Sql.named('SELECT * FROM jobs WHERE id = @id'),
-        parameters: <String, Object?>{'id': id},
-      );
-      return firstRow(r);
-    });
-  }
-
-  @override
-  Future<List<Map<String, Object?>>> listByStatus(List<String> statuses) {
-    if (statuses.isEmpty) return Future.value(const []);
-    return guard('listByStatus', 'jobs', () async {
-      final r = await session.execute(
-        Sql.named(
-          'SELECT * FROM jobs WHERE status = ANY(@ss) ORDER BY created_at ASC',
-        ),
-        parameters: <String, Object?>{'ss': statuses},
-      );
-      return allRows(r);
-    });
-  }
-
-  @override
-  Future<List<Map<String, Object?>>> listByCanvas(
-    String canvasId, {
-    int limit = 200,
-  }) {
-    return guard('listByCanvas', 'jobs', () async {
-      final r = await session.execute(
-        Sql.named(
-          'SELECT * FROM jobs WHERE canvas_id = @cid '
-          'ORDER BY created_at DESC LIMIT @lim',
-        ),
-        parameters: <String, Object?>{'cid': canvasId, 'lim': limit},
-      );
-      return allRows(r);
-    });
-  }
-
-  @override
   Future<int> update(String id, Map<String, Object?> patch) {
     if (patch.isEmpty) return Future.value(0);
     return guard('update', 'jobs', () async {

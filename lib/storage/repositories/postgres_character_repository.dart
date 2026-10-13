@@ -43,13 +43,18 @@ class PostgresCharacterRepository
     });
   }
 
+  /// 活项目下的角色读前缀。理由与 `postgres_canvas_repository._selectAlive`
+  /// 同一条：项目软删不级联到 characters，过滤只能在读路径上做，且写在
+  /// **JOIN 条件**而非 WHERE——复用本前缀的查询自动继承。投影 `ch.*` 与
+  /// 原来的 `SELECT *` 逐列相同，行形状不变。
+  static const _selectAlive = 'SELECT ch.* FROM characters ch '
+      'JOIN projects p ON p.id = ch.project_id AND p.deleted_at IS NULL';
+
   @override
   Future<Map<String, Object?>?> findById(String id) {
     return guard('findById', 'characters', () async {
       final r = await session.execute(
-        Sql.named(
-          'SELECT * FROM characters WHERE id = @id AND deleted_at IS NULL',
-        ),
+        Sql.named('$_selectAlive WHERE ch.id = @id AND ch.deleted_at IS NULL'),
         parameters: <String, Object?>{'id': id},
       );
       return firstRow(r);
@@ -61,8 +66,9 @@ class PostgresCharacterRepository
     return guard('listByProject', 'characters', () async {
       final r = await session.execute(
         Sql.named(
-          'SELECT * FROM characters WHERE project_id = @pid AND deleted_at IS NULL '
-          'ORDER BY sort_order ASC, created_at ASC',
+          '$_selectAlive '
+          'WHERE ch.project_id = @pid AND ch.deleted_at IS NULL '
+          'ORDER BY ch.sort_order ASC, ch.created_at ASC',
         ),
         parameters: <String, Object?>{'pid': projectId},
       );

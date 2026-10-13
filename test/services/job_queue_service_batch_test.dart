@@ -128,11 +128,6 @@ class _FakeJobRepo implements JobRepository {
   }
 
   @override
-  Future<List<Map<String, Object?>>> listByStatus(List<String> s) async =>
-      rows.values.where((r) => s.contains(r['status'])).toList();
-  @override
-  Future<Map<String, Object?>?> findById(String id) async => rows[id];
-  @override
   Future<int> purgeExpired({required Duration retention}) async => 0;
   @override
   Future<int> purgePerCanvasCap({required int cap}) async => 0;
@@ -150,10 +145,6 @@ class _FakeJobRepo implements JobRepository {
     int maxRetries = 3,
     DateTime? timeoutAt,
   }) =>
-      throw UnimplementedError();
-  @override
-  Future<List<Map<String, Object?>>> listByCanvas(String c,
-          {int limit = 200}) =>
       throw UnimplementedError();
   @override
   Future<int> hardDelete(String id) => throw UnimplementedError();

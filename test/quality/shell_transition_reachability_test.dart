@@ -91,4 +91,72 @@ void main() {
           '"有测试的死 API" 是本闸专治的那种债。',
     );
   });
+
+  // 「canvasId 恒属于 state.project」这条不变量的自证闸。
+  //
+  // 由来：`shell_state.dart` 的 `closeProject()` 注释曾写「openCanvas 的三个
+  // 调用点全部带 withProject」——写的那天是真的，到 2026-10-13 已经是六个、
+  // 其中一个不带。那句话是 closeProject() 连带清 canvasId 的**全部理由**，
+  // 它悄悄烂掉了，而 BOARD 还照着它记了一条「withProject 改成必传」的建议
+  // （前提已不成立：真改必传，左栏面板就得重传一份自己并不拥有的 ProjectRef）。
+  //
+  // 要钉的不变量不是「全部都带」，而是两种调用各自成立：
+  //   带 withProject  ⇒ 在换项目，project 与 canvasId 一起写进去；
+  //   不带            ⇒ 在同项目内换画布，`withProject ?? project` 原样留住。
+  // 两种都让 canvasId 属于 state.project。所以闸钉的是**豁免名单本身**：
+  // 不带 withProject 的调用点集合必须恰好等于下面这份写明理由的清单。
+  //
+  // 口径限制：按文本抽参数（从命中行起拼到圆括号配平），不是静态分析。
+  // 把 `withProject` 写成变量再展开（`...args`）这类写法抓不到——Dart 没有
+  // 这种写法，真出现了也该当场在评审里被问住。
+  test('openCanvas 的调用点要么带 withProject，要么在同项目豁免名单里', () {
+    const Map<String, String> exempt = <String, String>{
+      'lib/features/canvas/widgets/canvas_project_panel.dart':
+          '左栏项目面板在【同一项目内】换画布——沿用 state.project 正是要的语义；'
+              '要求它重传一份自己并不拥有的 ProjectRef 只会多一个传错的机会',
+    };
+
+    final Set<String> without = <String>{};
+    int total = 0;
+    final RegExp call = RegExp(r'\.openCanvas\s*\(');
+    for (final FileSystemEntity e in Directory('lib').listSync(recursive: true)) {
+      if (e is! File) continue;
+      final String path = e.path.replaceAll(r'\', '/');
+      if (!path.endsWith('.dart') || _isGenerated(path)) continue;
+      if (path.endsWith(_stateFile) || path.endsWith(_navFile)) continue;
+      final List<String> lines = e.readAsLinesSync();
+      for (var i = 0; i < lines.length; i++) {
+        if (_isComment(lines[i]) || !call.hasMatch(lines[i])) continue;
+        total++;
+        // 参数可能跨行：从命中行起往下拼，到圆括号配平为止。
+        final StringBuffer args = StringBuffer();
+        int depth = 0;
+        for (var j = i; j < lines.length; j++) {
+          args.write('${lines[j]}\n');
+          for (final int c in lines[j].codeUnits) {
+            if (c == 0x28) depth++;
+            if (c == 0x29) depth--;
+          }
+          if (depth <= 0) break;
+        }
+        if (!args.toString().contains('withProject')) {
+          // 名单按文件记（同一文件里多个同类调用是同一条理由）。
+          without.add(path.substring(path.indexOf('lib/')));
+        }
+      }
+    }
+
+    // 正控：抽空了就是正则失效，不是"真没有调用点"。
+    expect(total, greaterThanOrEqualTo(5),
+        reason: 'openCanvas 生产调用点只抽到 $total 个 ⇒ 正则失效，本闸形同不存在');
+    expect(
+      without,
+      exempt.keys.toSet(),
+      reason: '不带 withProject 的 openCanvas 调用点与豁免名单不一致。\n'
+          '新增的调用点：要么带上 withProject（换项目），要么连同"为什么同项目"'
+          '的理由加进本测试的 exempt 表。\n'
+          '名单里却没命中的：说明那个调用点改带 withProject 了，把它从表里删掉'
+          '——留着空条目会让下一个人以为这个豁免还在用。',
+    );
+  });
 }

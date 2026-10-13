@@ -145,15 +145,6 @@ class _FakeJobRepo implements JobRepository {
   }
 
   @override
-  Future<Map<String, Object?>?> findById(String id) async => null;
-  @override
-  Future<List<Map<String, Object?>>> listByStatus(List<String> s) async => [];
-  @override
-  Future<List<Map<String, Object?>>> listByCanvas(
-    String c, {
-    int limit = 200,
-  }) async => [];
-  @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
   Future<int> transitionStatus({

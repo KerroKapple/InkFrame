@@ -231,14 +231,6 @@ class FakeJobRepository implements JobRepository {
   }
 
   @override
-  Future<List<Map<String, Object?>>> listByStatus(List<String> statuses) async {
-    return rows.values
-        .where((r) => statuses.contains(r['status']))
-        .map((r) => Map<String, Object?>.from(r))
-        .toList(growable: false);
-  }
-
-  @override
   Future<int> bulkTransition({
     required List<String> fromStatuses,
     required String toStatus,
@@ -256,9 +248,6 @@ class FakeJobRepository implements JobRepository {
     return n;
   }
 
-  @override
-  Future<Map<String, Object?>?> findById(String id) async => rows[id];
-
   // ---- 不被本测试覆盖的方法 ----------------------------------------------
 
   @override
@@ -275,10 +264,6 @@ class FakeJobRepository implements JobRepository {
     int maxRetries = 3,
     DateTime? timeoutAt,
   }) =>
-      throw UnimplementedError();
-
-  @override
-  Future<List<Map<String, Object?>>> listByCanvas(String canvasId, {int limit = 200}) =>
       throw UnimplementedError();
 
   /// purge 调用审计（init 接线断言用）。
