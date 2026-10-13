@@ -11,6 +11,10 @@
 // 同一节点的 type_config 写入（自动保存 + submit 的终稿）全部走一条串行链
 // _serialized：落库顺序 = 发起顺序，在途的旧 patch 盖不到终稿头上。
 //
+// 本控制器实现 [PendingWriteFlushable] 并把自己注册进 [PendingWriteRegistry]：
+// 退出序列在关连接池之前会叫它把挂起内容冲掉（BOARD 第 201 行）。注册方向是
+// feature → core，退出路径不认识检查器。
+//
 // JobState 绑定点（agent-generation slice 落地后接线）：
 //   jobStateProvider(nodeId) 可在 build 中 watch 并派生 running 进度，
 //   届时 InspectorSubmitRunning.progress 接真实值。
@@ -21,9 +25,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/secure_storage_keys.dart';
 import '../../../core/di/logger.dart';
+import '../../../core/di/pending_writes.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/di/secure_storage.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/pending_write_flush.dart';
 import '../../generation/generation_controller.dart';
 
 /// 日志 module 名（英文内部常量，不 i18n）。
@@ -145,7 +151,8 @@ final inspectorSubmitControllerProvider = AutoDisposeNotifierProviderFamily<
 );
 
 class InspectorSubmitController
-    extends AutoDisposeFamilyNotifier<InspectorSubmitState, String> {
+    extends AutoDisposeFamilyNotifier<InspectorSubmitState, String>
+    implements PendingWriteFlushable {
   Timer? _debounce;
   KeepAliveLink? _debounceKeepAlive;
 
@@ -168,6 +175,13 @@ class InspectorSubmitController
 
   /// 本次失败回合里已失败的次数。成功落盘即归零。
   int _failedAttempts = 0;
+
+  /// 当前这一笔写入是退出路径冲刷出来的（[flushPendingWrites]）。
+  ///
+  /// 唯一作用是让失败记账说真话：退出时容器马上要 dispose，退避计时器永远不会
+  /// 再触发，所以这种失败一律按「已用尽」处理——否则日志会留下一句
+  /// 「will retry」的谎话，而那条日志正是这一笔丢失的唯一线索。
+  bool _exitFlush = false;
 
   /// 写入串行链的尾巴：同一节点的 type_config 写入**落库顺序 = 发起顺序**。
   ///
@@ -204,8 +218,15 @@ class InspectorSubmitController
       'retryBackoff must carry one delay per automatic retry',
     );
     _alive = true;
+    // 注册进退出冲刷注册表：退出序列在关连接池之前会把挂起内容冲掉
+    // （BOARD 第 201 行）。register 幂等，注销与 onDispose 对称——注册表只
+    // 认抽象接口，不会因此持有一个已销毁控制器的悬空引用。
+    final PendingWriteRegistry flushRegistry =
+        ref.read(pendingWriteRegistryProvider);
+    flushRegistry.register(this);
     ref.onDispose(() {
       _alive = false;
+      flushRegistry.unregister(this);
       _cancelPendingDebounce();
       _retry?.cancel();
       _retry = null;
@@ -257,6 +278,51 @@ class InspectorSubmitController
   /// [InspectorAutoSaveState] 发布给 UI，并按退避自动重试；重试用尽后把
   /// 「未保存 + 重试」留给用户（[retryUnsaved]）。
   Future<void> saveConfig(Map<String, Object?> patch) => _attemptWrite(patch);
+
+  /// 挂起写入 = 未发射的防抖 patch + 失败等重试的 `_unsaved`。
+  ///
+  /// #256 引入 `_unsaved` 之后这个判据就是两个 Map 的 isEmpty，便宜到可以在退出
+  /// 路径上对每个注册对象问一次——这也正是这张卡从「不做」翻成「做」的前提
+  /// （#232 时代还没有 `_unsaved`，当时只能去探私有计时器）。
+  ///
+  /// 不含「已发射、正在 await」的那一笔：`Pool.close(force: false)` 会等在用连接
+  /// 归还，在途 UPDATE 自己会落地。
+  @override
+  bool get hasPendingWrites =>
+      _pendingDebounced.isNotEmpty || _unsaved.isNotEmpty;
+
+  /// 退出序列的冲刷口（BOARD 第 201 行）：把挂起内容合成一笔立刻写出去。
+  ///
+  /// 为什么必须由退出序列来叫，而不是在 onDispose 里补一次：`container.dispose()`
+  /// 那一刻连接池已经关了（`AppTeardown` 的顺序是 Pool.close → PgController.stop
+  /// → container.dispose），`Pool` 关的第一件事就是关掉内部 semaphore，之后的
+  /// execute 直接抛——在 onDispose 里补写等于写进一个已经关掉的池子。
+  ///
+  /// 不抛（契约要求）：[_attemptWrite] 自己收 InkError 并记日志。
+  @override
+  Future<void> flushPendingWrites() async {
+    // 退避计时器不会再有机会触发（容器马上 dispose），先停掉，免得它在冲刷
+    // 在途时又排一笔重复写入。
+    _retry?.cancel();
+    _retry = null;
+    // `_unsaved` 在前、`_pendingDebounced` 在后：同一个键取更新的那份——防抖里
+    // 存的是用户最后敲进去的值，`_unsaved` 里是上一次写失败留下的旧值。
+    final Map<String, Object?> merged = <String, Object?>{
+      ..._unsaved,
+      ..._pendingDebounced,
+    };
+    _cancelPendingDebounce();
+    if (merged.isEmpty) return;
+    // finally 复位：这个标志只许盖住**这一笔**写入的失败记账。留成常开模式等于
+    // 把「自动重试」永久关掉——实践上退出之后没人再写，但一个会悄悄改变正常路径
+    // 行为的粘滞开关不该存在。
+    _exitFlush = true;
+    try {
+      await _attemptWrite(merged);
+    } finally {
+      _exitFlush = false;
+    }
+  }
 
   /// 用户点「重试」：重置退避计数，立刻再试一次未落盘的更改。
   Future<void> retryUnsaved() async {
@@ -311,7 +377,9 @@ class InspectorSubmitController
     _unsaved.addAll(patch); // 每键保留最新值：重试写的是新值，不是旧值
     _unsavedKeepAlive ??= ref.keepAlive();
     _failedAttempts++;
-    final bool exhausted = _failedAttempts > maxAutoRetries;
+    // 退出路径上「还会重试」是谎话：容器马上 dispose，退避计时器永远不会触发。
+    // 直接按「已用尽」记账 → error 级日志 + Failed 态，而不是 warn「will retry」。
+    final bool exhausted = _exitFlush || _failedAttempts > maxAutoRetries;
     _publish(exhausted
         ? InspectorAutoSaveFailed(error)
         : InspectorAutoSaveRetrying(_failedAttempts));
