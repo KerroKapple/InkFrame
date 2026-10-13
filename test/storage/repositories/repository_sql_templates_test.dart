@@ -384,6 +384,30 @@ void main() {
       await PostgresEdgeRepository(spy).listIncoming('b');
       expect(spy.lastSql, contains('target_node_id = @tid'));
     });
+
+    // 确定序是接口契约（见 edge_repository.dart 的 listIncoming 头注），不是
+    // 实现细节：生成侧对首帧 / 尾帧取「遇到的第一条」，同节点万一有两条同角色
+    // 入边（存量数据 / 撤销夹缝），无序就意味着"用哪张图"在两次运行之间漂。
+    // 末尾的 `e.id` 不是装饰——sort_order 与 created_at 都可能并列，少了它就
+    // 不是全序，顺序仍可能漂。
+    test('listIncoming / listOutgoing 必须有全序的 ORDER BY', () async {
+      const String fullOrder =
+          'ORDER BY e.sort_order ASC, e.created_at ASC, e.id ASC';
+      for (final (String name, Future<void> Function(_SpySession) run) in <
+          (String, Future<void> Function(_SpySession))>[
+        ('listIncoming', (s) => PostgresEdgeRepository(s).listIncoming('b')),
+        ('listOutgoing', (s) => PostgresEdgeRepository(s).listOutgoing('a')),
+      ]) {
+        final spy = _SpySession();
+        await run(spy);
+        expect(
+          spy.lastSql,
+          contains(fullOrder),
+          reason: '$name 少了全序 ORDER BY ⇒ PG 返回顺序未定义，'
+              '重复的首帧入边会让"用哪张图"在两次运行之间漂：\n${spy.lastSql}',
+        );
+      }
+    });
   });
 
   group('StyleLaneRepository SQL', () {
