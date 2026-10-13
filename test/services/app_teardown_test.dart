@@ -1,5 +1,8 @@
 // AppTeardown 单测：窗口关闭路径的有序回收。
-// 顺序契约：JobQueue.dispose → Pool.close → PgController.stop → container.dispose。
+// 顺序契约：flushPendingWrites → JobQueue.dispose → Pool.close →
+//          PgController.stop → container.dispose。
+// 冲刷排第一的理由见 app_teardown.dart 头注；跨层的端到端回归在
+// exit_flush_pending_writes_test.dart。
 import 'dart:async';
 import 'dart:io';
 
@@ -7,8 +10,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:inkframe/core/di/database.dart';
 import 'package:inkframe/core/di/job_queue.dart';
+import 'package:inkframe/core/di/pending_writes.dart';
 import 'package:inkframe/core/di/window_state.dart';
 import 'package:inkframe/core/interfaces/job_queue_service.dart';
+import 'package:inkframe/core/interfaces/pending_write_flush.dart';
 import 'package:inkframe/core/interfaces/window_state.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/app_teardown.dart';
@@ -39,6 +44,9 @@ void main() {
       overrides: <Override>[
         windowStateServiceProvider
             .overrideWithValue(windowState ?? _NoopWindowState()),
+        pendingWriteRegistryProvider.overrideWithValue(
+          _RecordingFlushRegistry(() => order.add('flush')),
+        ),
         jobQueueServiceProvider.overrideWith(
           (ref) async => _FakeJobQueue(() => order.add('jobQueue.dispose')),
         ),
@@ -55,9 +63,11 @@ void main() {
     );
   }
 
-  test('全部已初始化 → 按 JobQueue → Connection → PG 顺序回收并 dispose 容器', () async {
+  test('全部已初始化 → 按 flush → JobQueue → Connection → PG 顺序回收并 dispose 容器',
+      () async {
     final container = buildContainer();
-    // 模拟 app 正常运行：三层全部已被解析
+    // 模拟 app 正常运行：四层全部已被解析
+    container.read(pendingWriteRegistryProvider);
     await container.read(jobQueueServiceProvider.future);
     await container.read(pgPoolProvider.future);
     container.read(pgControllerProvider);
@@ -65,7 +75,10 @@ void main() {
     final teardown = AppTeardown();
     await teardown.run(container);
 
-    expect(order, <String>['jobQueue.dispose', 'pool.close', 'pg.stop']);
+    expect(order,
+        <String>['flush', 'jobQueue.dispose', 'pool.close', 'pg.stop'],
+        reason: '挂起写入必须在 Pool.close 之前冲掉（BOARD 第 201 行）；'
+            '且排在 JobQueue 之前——用户数据先拿最健康的池子');
     // 容器已 dispose：再读 provider 必抛
     expect(() => container.read(pgControllerProvider), throwsStateError);
   });
@@ -136,6 +149,34 @@ void main() {
     expect(order, <String>['pg.stop']);
   });
 
+  test('冲刷注册表抛出（实现方失手）不阻断后续 PG 回收', () async {
+    final container = ProviderContainer(
+      overrides: <Override>[
+        windowStateServiceProvider.overrideWithValue(_NoopWindowState()),
+        pendingWriteRegistryProvider.overrideWithValue(
+          _RecordingFlushRegistry(() => throw StateError('flush blew up')),
+        ),
+        pgPoolProvider.overrideWith(
+          (ref) async => _FakePool(() => order.add('pool.close')),
+        ),
+        pgControllerProvider.overrideWithValue(
+          _RecordingPgController(
+            root: tempRoot,
+            onStop: () => order.add('pg.stop'),
+          ),
+        ),
+      ],
+    );
+    container.read(pendingWriteRegistryProvider);
+    await container.read(pgPoolProvider.future);
+    container.read(pgControllerProvider);
+
+    await AppTeardown().run(container);
+
+    expect(order, <String>['pool.close', 'pg.stop'],
+        reason: '冲刷失败绝不能把 postmaster 留成孤儿');
+  });
+
   test('退出路径捕获窗口状态一次（重复/并发 run 也只捕获一次）', () async {
     final windowState = _CountingWindowState();
     final container = buildContainer(windowState);
@@ -151,6 +192,21 @@ void main() {
 
     expect(windowState.captureCount, 1);
   });
+}
+
+/// 记录「冲刷被叫到」的注册表：只为钉住它在顺序里的位置，不关心冲了什么。
+class _RecordingFlushRegistry implements PendingWriteRegistry {
+  _RecordingFlushRegistry(this.onFlush);
+  final void Function() onFlush;
+
+  @override
+  void register(PendingWriteFlushable target) {}
+
+  @override
+  void unregister(PendingWriteFlushable target) {}
+
+  @override
+  Future<void> flushAll() async => onFlush();
 }
 
 /// 无副作用窗口状态：默认容器用它，绝不触真实 window_manager / screen_retriever。

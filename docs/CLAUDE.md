@@ -234,7 +234,7 @@ lib/
 ├── features/                          # Feature modules (vertical slices)
 │   ├── canvas/                        # Node canvas
 │   │   ├── models/
-│   │   ├── providers/                 # Riverpod ViewModels; P4 起还有 project_panel_tab.dart（左栏三页签选中态，非 autoDispose——「管理」链接要跨子树把左栏切到角色页）+ character_usage.dart（角色 id → 引用它的 config 节点，只数 config、跨全项目画布、按节点 id 去重；数据源复用 galleryGraphProvider，挂/摘角色后由 CharactersSection 定点 invalidate）+ canvas_bootstrap_controller.dart（短剧示例：单事务建项目/画布/泳道/config 节点，并把 assets/samples/ 的两张打包成片落盘 + 种成 result 节点——P7 把内置示例页并进来了；成片 best-effort，读不出来就少种两个节点）
+│   │   ├── providers/                 # Riverpod ViewModels; P4 起还有 project_panel_tab.dart（左栏三页签选中态，非 autoDispose——「管理」链接要跨子树把左栏切到角色页）+ character_usage.dart（角色 id → 引用它的 config 节点，只数 config、跨全项目画布、按节点 id 去重；数据源复用 galleryGraphProvider，挂/摘角色后由 CharactersSection 定点 invalidate）+ canvas_bootstrap_controller.dart（短剧示例：单事务建项目/画布/泳道/config 节点，并把 assets/samples/ 的两张打包成片落盘 + 种成 result 节点——P7 把内置示例页并进来了；成片 best-effort，读不出来就少种两个节点）+ inspector_submit_controller.dart（提交四态 + type_config 单写入链 + 自动保存失败态；并实现 `PendingWriteFlushable`、在 build 里注册进 `pendingWriteRegistryProvider`——退出序列在关连接池之前冲一次挂起的防抖 patch 与 `_unsaved`，BOARD 第 201 行）
 │   │   ├── util/                      # incl. narrative_order.dart (SB-5 chain ordering) + node_artifacts.dart (node → latest result) + camera_labels.dart (运镜 / 景别 / 机位角度 / 焦段 → ARB 文案 + parseCameraMovement + shotLanguageSummary) + batch_slot_view.dart (P4: slot 行 → 四种呈现态 promoted/success/error/generating 的唯一判据 + canPromote/aspectRatio) + ref_image_budget.dart (CH-2②: 参考图配额纯判据——边连 reference 入边 + 挂载角色图合计 vs maxRefImages，算出"谁被截掉几张"；检查器提交前点名、生成侧落 warn 用同一口径。首/尾帧不占配额)
 │   │   └── widgets/                   # P4 批量：batch_results_grid.dart（检查器内联 2×N 网格，宿主 image_result_inspector.dart 只剩一层 s12 内边距——宽度跟面板走）/ batch_compare_overlay.dart（全屏并排对比；「叠加对比」是禁用标签，不做清单）/ batch_slot_parts.dart（BatchSlotImage + BatchTappable + runBatchSlotAction——slot 动作的统一执行口，只捕具体失败类型并落 toast）。P4 角色：character_library_panel.dart（左栏角色页，行 = 缩略图 + 名 + 「N 张参考图 · M 处引用」+ ⋯ 菜单）/ character_edit_dialog.dart（改名 + 描述 + 参考图增删拖排 + 「被引用」）
 │   ├── command_palette/               # ⌘K/Ctrl+K command palette (PL-1; app-level, wraps InkShell). Screens 稿第 4 屏右：跨实体搜索，三组「镜头 · 当前画布 / 产物 / 动作」
@@ -332,7 +332,8 @@ lib/
     ├── import/                        # LB-12 pure layers: archive_import_guard.dart (zip-slip/limits/manifest gates) + import_remapper.dart (UUID remap + FK/JSONB rewrite)
     ├── project_archive_service.dart   # ZipProjectArchiveService (whole-project zip export: manifest+data.json+files/, full-fidelity incl. soft-deleted rows; LB-11)
     ├── video_metadata_backfill_service.dart  # XM-1b startup housekeeping: probe legacy videos missing duration_ms, patch type_config (+thumbnail if absent)
-    ├── app_teardown.dart              # Ordered shutdown (capture window state → JobQueue → Pool → PG)
+    ├── app_teardown.dart              # Ordered shutdown (capture window state → flush pending writes → JobQueue → Pool → PG)
+    ├── pending_write_registry.dart    # InMemoryPendingWriteRegistry（退出前把「用户已改、还没落盘」的挂起写入冲掉；2s 总预算封顶，超时只记日志不阻断退出。feature 侧实现 core/interfaces/pending_write_flush.dart 的 PendingWriteFlushable 并自己注册——teardown 只认这一个抽象，不反向依赖 features；BOARD 第 201 行）
     ├── window_state_service.dart      # DefaultWindowStateService + clampBoundsToVisible pure fn (window size/pos/maximized memory; multi-monitor clamp; PL-6)
     ├── window_manager_adapters.dart   # WindowManagerWindowController + ScreenRetrieverDisplayQuery (real plugin seams behind WindowController/DisplayQuery)
     ├── crash_reporter.dart            # FileCrashReporter (uncaught-error crash file + keep-3 rotation, no context/extra)
