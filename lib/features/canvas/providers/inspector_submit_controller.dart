@@ -163,6 +163,18 @@ class InspectorSubmitController
   /// 本次失败回合里已失败的次数。成功落盘即归零。
   int _failedAttempts = 0;
 
+  /// 写入串行链的尾巴：同一节点的 type_config 写入**落库顺序 = 发起顺序**。
+  ///
+  /// 为什么必须排队而不是「提交时取消在途写入」（BOARD 第 196 行）：计时器已
+  /// 触发、自动保存正 await 仓储时，那条 UPDATE 已经发出去了，取消不了。若此刻
+  /// submit 把终稿并发下发，两条 UPDATE 的到达顺序没人保证——旧 patch 晚到就把
+  /// 终稿 prompt 盖掉。不并发，顺序就是确定的；代价是 submit 最多多等一个
+  /// 在途写入的往返。
+  ///
+  /// 链永不断：[_serialized] 的闸在 finally 里 complete，所以某一笔写入失败
+  /// （或抛非 InkError）都不会把后续写入永久挂死；错误照常冒给那一笔的调用方。
+  Future<void> _writeTail = Future<void>.value();
+
   static const debounceDuration = Duration(milliseconds: 500);
 
   /// 自动重试上限（首次尝试之外再试几次）。
@@ -205,6 +217,20 @@ class InspectorSubmitController
   bool get isBusy =>
       state is InspectorSubmitSubmitting || state is InspectorSubmitRunning;
 
+  /// 把 [body] 排到写入链尾。排队号在本方法同步段就取好（调用方在第一个
+  /// await 之前就进了队），所以队列顺序严格等于发起顺序。
+  Future<void> _serialized(Future<void> Function() body) async {
+    final Future<void> previous = _writeTail;
+    final Completer<void> gate = Completer<void>();
+    _writeTail = gate.future;
+    await previous;
+    try {
+      await body();
+    } finally {
+      gate.complete();
+    }
+  }
+
   /// 取消挂起的防抖计时器并释放其 keepAlive（不落盘）。
   void _cancelPendingDebounce() {
     _debounce?.cancel();
@@ -244,9 +270,11 @@ class InspectorSubmitController
     if (!_alive) return;
     final KeepAliveLink link = ref.keepAlive();
     try {
-      final nodes = await ref.read(nodeRepositoryProvider.future);
-      if (!_alive) return;
-      await nodes.patchTypeConfig(arg, patch);
+      await _serialized(() async {
+        final nodes = await ref.read(nodeRepositoryProvider.future);
+        if (!_alive) return;
+        await nodes.patchTypeConfig(arg, patch);
+      });
       if (!_alive) return;
       _onWriteSucceeded(patch.keys);
     } on InkError catch (e) {
@@ -369,30 +397,51 @@ class InspectorSubmitController
   ///
   /// fire-and-forget：提交成功即回 idle；进度看画布渲染队列面板，
   /// 终态结果/失败由 CanvasScreen 的 registry listener 反映。
+  ///
+  /// 终稿写入与自动保存走**同一条**串行链（[_serialized]）：已经发射的在途
+  /// 自动保存会排在终稿**之前**落库，旧 patch 再也盖不到终稿头上
+  /// （BOARD 第 196 行）。顺带保证 `submitFromConfigNode` 读到的那一行就是终稿。
   Future<void> submit(Map<String, Object?> finalConfig) async {
     if (isBusy) return;
-    // 即将写完整 finalConfig：丢弃挂起的局部 patch，不需要它再补落一次。
+    // 还没发射的防抖 patch 直接丢掉：终稿是检查器按当前 provider 能力裁剪过的
+    // 完整快照，补落一笔旧的局部 patch 只会把刚被刻意省掉的键又写回去。
     _cancelPendingDebounce();
     // 提交期间挂起 autoDispose：widget 中途关闭也要把状态机走完。
     final link = ref.keepAlive();
     state = const InspectorSubmitSubmitting();
     try {
-      final nodes = await ref.read(nodeRepositoryProvider.future);
-      await nodes.patchTypeConfig(arg, finalConfig);
-      state = const InspectorSubmitRunning();
+      await _serialized(() async {
+        final nodes = await ref.read(nodeRepositoryProvider.future);
+        if (!_alive) return;
+        await nodes.patchTypeConfig(arg, finalConfig);
+      });
+      if (!_alive) return;
+      _setSubmitState(const InspectorSubmitRunning());
       final controller = await ref.read(generationControllerProvider.future);
+      if (!_alive) return;
       await controller.submitFromConfigNode(arg);
-      state = const InspectorSubmitIdle();
+      _setSubmitState(const InspectorSubmitIdle());
     } on MissingApiKeyError {
-      state = const InspectorSubmitFailure(InspectorMissingApiKey());
+      _setSubmitState(const InspectorSubmitFailure(InspectorMissingApiKey()));
     } on InvalidGenerationConfigError catch (e) {
-      state = InspectorSubmitFailure(InspectorInvalidConfig(e.reason));
+      _setSubmitState(
+        InspectorSubmitFailure(InspectorInvalidConfig(e.reason)),
+      );
     } on ProviderNotRegisteredError {
-      state = const InspectorSubmitFailure(InspectorProviderNotRegistered());
+      _setSubmitState(
+        const InspectorSubmitFailure(InspectorProviderNotRegistered()),
+      );
     } on InkError catch (e) {
-      state = InspectorSubmitFailure(InspectorInkFailure(e));
+      _setSubmitState(InspectorSubmitFailure(InspectorInkFailure(e)));
     } finally {
       link.close();
     }
+  }
+
+  /// await 之后写提交状态的唯一入口：控制器已销毁就什么都不做
+  /// （`state =` 在 dispose 后会抛 StateError）。
+  void _setSubmitState(InspectorSubmitState next) {
+    if (!_alive) return;
+    state = next;
   }
 }
