@@ -472,6 +472,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get settingsAboutFfmpegAvailableOnPath => '可用（在 PATH 上找到）';
+
+  @override
   String get settingsAboutFfmpegMissingWindows =>
       '未检测到——视频导出不可用。可通过 winget 安装（winget install ffmpeg），或用 INKFRAME_FFMPEG 环境变量指定路径';
 

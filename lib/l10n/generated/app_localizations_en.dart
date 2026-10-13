@@ -499,6 +499,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get settingsAboutFfmpegAvailableOnPath => 'Available (found on PATH)';
+
+  @override
   String get settingsAboutFfmpegMissingWindows =>
       'Not found — video export is disabled. Install via winget (winget install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location';
 

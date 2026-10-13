@@ -17,6 +17,7 @@ import '../../../core/di/video_export.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/secure_storage_service.dart';
 import '../../../core/models/update_check_result.dart';
+import '../../../services/ffmpeg_locator.dart' show FfmpegLocator, kFfmpegOnPathExe;
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
@@ -34,10 +35,21 @@ final secureStorageProbeProvider = FutureProvider.autoDispose<SecureStorageProbe
   name: 'secureStorageProbeProvider',
 );
 
-/// ON-3：ffmpeg 探测行。locator 对 miss 不缓存 + 本 provider autoDispose——
-/// 用户装好 ffmpeg 后重进设置页即重探，无需重启。null=未找到。
+/// ON-3：ffmpeg 探测行。null=未找到。
+///
+/// 【每次进页都强制重探】locator 对**命中**是 app 级缓存的，只有导出失败那条
+/// 路径会 `invalidate()`。所以「装好 ffmpeg 后重进设置页即重探」只对 miss 成立；
+/// 反过来——用户把 ffmpeg 卸掉之后重进设置页，这一行仍然显示「可用」，直到他
+/// 真去导出才发现。设置页的职责就是显示**当下**的事实。
+///
+/// 代价是每次打开设置页多跑一次 `ffmpeg -version`（几十毫秒），换这一行不骗人。
+/// invalidate 动的是共享 locator，但那只会让导出侧下次多探一次，无副作用。
 final ffmpegProbeProvider = FutureProvider.autoDispose<String?>(
-  (ref) => ref.watch(ffmpegLocatorProvider).locate(),
+  (ref) {
+    final FfmpegLocator locator = ref.watch(ffmpegLocatorProvider);
+    locator.invalidate();
+    return locator.locate();
+  },
   name: 'ffmpegProbeProvider',
 );
 
@@ -66,6 +78,17 @@ Future<SecureStorageProbe> _probeSecureStorage(
     return SecureStorageProbe(available: false, errorMessage: e.toString());
   }
 }
+
+/// ffmpeg 命中的呈现：PATH 命中与绝对路径命中是两句话。
+///
+/// locator 在 PATH 命中时返回的是 [kFfmpegOnPathExe]（交给系统解析的可执行名，
+/// **不是路径**）。套进「可用（{path}）」会显示成「可用（ffmpeg）」，读起来像
+/// ffmpeg 装在一个叫 ffmpeg 的地方。绝对路径命中（INKFRAME_FFMPEG）才有路径
+/// 可显示。
+String _ffmpegFoundText(BuildContext context, String located) =>
+    located == kFfmpegOnPathExe
+        ? context.l10n.settingsAboutFfmpegAvailableOnPath
+        : context.l10n.settingsAboutFfmpegAvailable(located);
 
 /// ffmpeg 未找到的平台化指引；mac/win 之外复用导出对话框文案防双源。
 String _ffmpegMissingText(BuildContext context) =>
@@ -158,7 +181,7 @@ class AboutSection extends ConsumerWidget {
                 label: context.l10n.settingsAboutFfmpegLabel,
                 value: ffmpegAsync.when(
                   data: (path) => path != null
-                      ? context.l10n.settingsAboutFfmpegAvailable(path)
+                      ? _ffmpegFoundText(context, path)
                       : _ffmpegMissingText(context),
                   loading: () => context.l10n.settingsAboutFfmpegProbing,
                   // locator 已吞 ProcessException;兜底按未找到呈现

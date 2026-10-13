@@ -13,6 +13,19 @@ void main() {
       runner = _FakeRunner();
     });
 
+    // 返回值**恰好**是 kFfmpegOnPathExe：设置页据此区分「PATH 命中」与
+    // 「绝对路径命中」（显示「在 PATH 上找到」而不是「可用（ffmpeg）」）。
+    // 这条断言是那个判断的地基——改了这里的字面值，状态行会静默退回去把
+    // 可执行名当路径显示。
+    test('PATH 命中 → 返回值恰为 kFfmpegOnPathExe', () async {
+      runner.okExes.add(kFfmpegOnPathExe);
+      final locator = DefaultFfmpegLocator(
+        runner: runner,
+        environment: const <String, String>{},
+      );
+      expect(await locator.locate(), kFfmpegOnPathExe);
+    });
+
     test('PATH 上 ffmpeg -version 退出 0 → 返回 ffmpeg', () async {
       runner.okExes.add('ffmpeg');
       final locator = DefaultFfmpegLocator(

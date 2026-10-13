@@ -206,6 +206,7 @@
       "path": { "type": "String" }
     }
   },
+  "settingsAboutFfmpegAvailableOnPath": "Available (found on PATH)",
   "settingsAboutFfmpegMissingWindows": "Not found — video export is disabled. Install via winget (winget install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location",
   "settingsAboutFfmpegMissingMac": "Not found — video export is disabled. Install via Homebrew (brew install ffmpeg), or set the INKFRAME_FFMPEG environment variable to a custom location",
   "settingsAboutLicensesButton": "Open-source licenses",
