@@ -392,6 +392,18 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get inspectorRetry;
 
+  /// No description provided for @inspectorAutoSaveRetrying.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t save — retrying…'**
+  String get inspectorAutoSaveRetrying;
+
+  /// No description provided for @inspectorAutoSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes not saved: {reason}'**
+  String inspectorAutoSaveFailed(String reason);
+
   /// No description provided for @settingsTitle.
   ///
   /// In en, this message translates to:

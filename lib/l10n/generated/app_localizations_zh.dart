@@ -160,6 +160,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorRetry => '重试';
 
   @override
+  String get inspectorAutoSaveRetrying => '保存失败，正在重试…';
+
+  @override
+  String inspectorAutoSaveFailed(String reason) {
+    return '更改未保存：$reason';
+  }
+
+  @override
   String get settingsTitle => '设置';
 
   @override

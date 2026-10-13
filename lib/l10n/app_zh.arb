@@ -59,6 +59,13 @@
   },
   "inspectorStatusErrorTitle": "生成失败",
   "inspectorRetry": "重试",
+  "inspectorAutoSaveRetrying": "保存失败，正在重试…",
+  "inspectorAutoSaveFailed": "更改未保存：{reason}",
+  "@inspectorAutoSaveFailed": {
+    "placeholders": {
+      "reason": { "type": "String" }
+    }
+  },
 
   "settingsTitle": "设置",
   "settingsApiKeysSection": "API 密钥",

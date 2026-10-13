@@ -173,6 +173,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorRetry => 'Retry';
 
   @override
+  String get inspectorAutoSaveRetrying => 'Couldn\'t save — retrying…';
+
+  @override
+  String inspectorAutoSaveFailed(String reason) {
+    return 'Changes not saved: $reason';
+  }
+
+  @override
   String get settingsTitle => 'Settings';
 
   @override
