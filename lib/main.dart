@@ -166,7 +166,8 @@ void main() {
           'window_manager', windowManager.ensureInitialized);
 
       // 启动即加载持久化偏好（主题/语言/对比度/缩放），供控制器 build 期 seed。
-      final FilePreferencesService prefsService = FilePreferencesService(paths);
+      final FilePreferencesService prefsService =
+          FilePreferencesService(paths, logger: fileLogger);
 
       // 自定义 Provider 配置：容器构建前完成加载（providerRegistryProvider /
       // providerCapabilitiesListProvider 构建时同步读取；会话内不变，改 json 重启生效）。
