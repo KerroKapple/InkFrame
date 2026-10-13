@@ -9,6 +9,7 @@ import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/storage/pg_binary_locator.dart';
 import 'package:inkframe/storage/pg_controller.dart';
+import 'package:inkframe/storage/pg_log_rotation.dart';
 import 'package:path/path.dart' as p;
 
 import '../_harness/fake_secure_storage.dart';
@@ -95,6 +96,36 @@ void main() {
       expect(rt.port, 54321);
       expect(rt.host, '127.0.0.1');
       expect(ctl.portFile.readAsStringSync().trim(), '54321');
+    });
+
+    // BOARD 185 的**装配用例**：轮转函数本身另有单测（pg_log_rotation_test），
+    // 这里证明 start() 真的在对的时机调了它——pg_ctl start 被调用的那一刻，旧的
+    // 超限 pg.log 必须已经滚走。晚一步，postmaster 就拿住了文件（Windows 上改名
+    // 会失败），轮转从此永远做不成。
+    test('start 在 pg_ctl start 之前把超限的 pg.log 轮转掉', () async {
+      File(p.join(paths.database.path, 'PG_VERSION')).writeAsStringSync('17');
+      final File pgLog = File(p.join(paths.logs.path, 'pg.log'))
+        ..writeAsBytesSync(List<int>.filled(kPgLogMaxBytes, 0x61));
+      bool? pgLogStillThereAtStart;
+      runner.onPgCtlStart = () {
+        pgLogStillThereAtStart = pgLog.existsSync();
+        File(p.join(paths.database.path, 'postmaster.pid'))
+            .writeAsStringSync('9999\n');
+      };
+      final ctl = buildController(portPicker: () async => 54321);
+
+      await ctl.start();
+
+      expect(pgLogStillThereAtStart, isFalse,
+          reason: 'pg_ctl start 时旧 pg.log 必须已经滚走，之后就被 postmaster 占住了');
+      expect(
+        paths.logs
+            .listSync()
+            .whereType<File>()
+            .where((f) => RegExp(r'^pg\.[0-9T]+\.log$')
+                .hasMatch(p.basename(f.path))),
+        hasLength(1),
+      );
     });
 
     test('start 单飞：并发两次只跑一次 pg_ctl，拿同一 runtime（LB-22）', () async {
