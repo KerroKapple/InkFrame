@@ -108,6 +108,20 @@ void main() {
       expect(_bounds(smooth).bottom, greaterThan(4));
     });
 
+    test('镜像的 x 分量也算数：上一段控制点与当前点 x 不同时，曲线总长与显式 C 一致', () {
+      // 上面几组的镜像点 x 恰好等于当前点 x，只换 y 分量测不出 x 被丢掉。
+      // 这里上一段第二控制点 (5,10) 与当前点 (10,0) 的 x 不同，镜像点是 (15,-10)；
+      // bounds 两种口径下都看不出 x 的差别（y 极值不变），所以比轮廓长度。
+      expect(
+        _length('M0 0C0 10 5 10 10 0S20 -10 20 0'),
+        closeTo(_length('M0 0C0 10 5 10 10 0C15 -10 20 -10 20 0'), 1e-6),
+      );
+      expect(
+        _length('M0 0C0 10 5 10 10 0S20 -10 20 0'),
+        isNot(closeTo(_length('M0 0C0 10 5 10 10 0C10 -10 20 -10 20 0'), 0.05)),
+      );
+    });
+
     test('相对 s：镜像点同样从上一段的绝对控制点算，其余坐标相对当前点', () {
       expect(
         _bounds('M0 0c0 -10 10 -10 10 0s10 0 10 0'),
@@ -138,6 +152,18 @@ void main() {
       const String smooth = 'M0 0Q5 10 10 0T20 0';
       expect(_bounds(smooth), _bounds('M0 0Q5 10 10 0Q15 -10 20 0'));
       expect(_bounds(smooth).top, lessThan(-4));
+    });
+
+    test('镜像的 x 分量也算数：曲线总长与显式 Q 一致', () {
+      // 上一段控制点 (2,10) 关于当前点 (10,0) 的镜像是 (18,-10)，x 与当前点不同。
+      expect(
+        _length('M0 0Q2 10 10 0T20 0'),
+        closeTo(_length('M0 0Q2 10 10 0Q18 -10 20 0'), 1e-6),
+      );
+      expect(
+        _length('M0 0Q2 10 10 0T20 0'),
+        isNot(closeTo(_length('M0 0Q2 10 10 0Q10 -10 20 0'), 0.05)),
+      );
     });
 
     test('连续 T：每一段镜像的都是上一段（含 T 推出来的）控制点', () {
