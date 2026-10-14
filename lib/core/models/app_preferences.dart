@@ -1,4 +1,4 @@
-// AppPreferences：应用级 UI 偏好（主题/对比度/缩放/语言/上次会话）。
+// AppPreferences：应用级 UI 偏好（主题/对比度/缩放/语言/上次会话/通知）。
 //
 // 持久化到 <root>/config/preferences.json——属应用配置、非项目数据，刻意不入 PG。
 // 用手写不可变类（与 canvas 模型同例外）：避免为一个配置 DTO 引 freezed/json 代码生成。
@@ -25,6 +25,9 @@ class AppPreferences {
     this.shellKeepLastCanvas = true,
     this.canvasEdgeColor,
     this.canvasCardColor,
+    this.notificationSound = 'inkframe',
+    this.notificationSoundFile,
+    this.toastDwell = 'standard',
   });
 
   /// 'dark' | 'light' | 'system'
@@ -68,6 +71,15 @@ class AppPreferences {
   final int? canvasEdgeColor;
   final int? canvasCardColor;
 
+  /// 通知提示音：'inkframe' | 'system' | 'custom' | 'off'（NotificationSound.name）。
+  final String notificationSound;
+
+  /// 自定义提示音在 config/sounds/ 下的文件名（导入时复制进来）；null = 还没选。
+  final String? notificationSoundFile;
+
+  /// 通知卡停留时长：'standard' | 'long' | 'never'（ToastDwell.name）。
+  final String toastDwell;
+
   AppPreferences copyWith({
     String? themePreference,
     bool? highContrast,
@@ -89,6 +101,10 @@ class AppPreferences {
     bool clearCanvasEdgeColor = false,
     int? canvasCardColor,
     bool clearCanvasCardColor = false,
+    String? notificationSound,
+    String? notificationSoundFile,
+    bool clearNotificationSoundFile = false,
+    String? toastDwell,
   }) {
     return AppPreferences(
       themePreference: themePreference ?? this.themePreference,
@@ -113,6 +129,11 @@ class AppPreferences {
       canvasCardColor: clearCanvasCardColor
           ? null
           : (canvasCardColor ?? this.canvasCardColor),
+      notificationSound: notificationSound ?? this.notificationSound,
+      notificationSoundFile: clearNotificationSoundFile
+          ? null
+          : (notificationSoundFile ?? this.notificationSoundFile),
+      toastDwell: toastDwell ?? this.toastDwell,
     );
   }
 
@@ -133,11 +154,16 @@ class AppPreferences {
         'shell_keep_last_canvas': shellKeepLastCanvas,
         'canvas_edge_color': canvasEdgeColor,
         'canvas_card_color': canvasCardColor,
+        'notification_sound': notificationSound,
+        'notification_sound_file': notificationSoundFile,
+        'toast_dwell': toastDwell,
       };
 
   /// 容错解析：缺失/类型不符/非法值一律退默认，绝不抛——损坏的偏好文件不该炸启动。
   factory AppPreferences.fromMap(Map<String, Object?> m) {
     const allowedTheme = <String>{'dark', 'light', 'system'};
+    const allowedSound = <String>{'inkframe', 'system', 'custom', 'off'};
+    const allowedDwell = <String>{'standard', 'long', 'never'};
     final pref = m['theme_preference'];
     final hc = m['high_contrast'];
     final ts = m['text_scale'];
@@ -153,6 +179,9 @@ class AppPreferences {
     final sklc = m['shell_keep_last_canvas'];
     final cec = m['canvas_edge_color'];
     final ccc = m['canvas_card_color'];
+    final ns = m['notification_sound'];
+    final nsf = m['notification_sound_file'];
+    final td = m['toast_dwell'];
     return AppPreferences(
       themePreference:
           pref is String && allowedTheme.contains(pref) ? pref : 'dark',
@@ -171,6 +200,10 @@ class AppPreferences {
       shellKeepLastCanvas: sklc is bool ? sklc : true,
       canvasEdgeColor: cec is int ? cec : null,
       canvasCardColor: ccc is int ? ccc : null,
+      notificationSound:
+          ns is String && allowedSound.contains(ns) ? ns : 'inkframe',
+      notificationSoundFile: nsf is String && nsf.isNotEmpty ? nsf : null,
+      toastDwell: td is String && allowedDwell.contains(td) ? td : 'standard',
     );
   }
 
@@ -193,7 +226,10 @@ class AppPreferences {
           other.onboardingCompleted == onboardingCompleted &&
           other.shellKeepLastCanvas == shellKeepLastCanvas &&
           other.canvasEdgeColor == canvasEdgeColor &&
-          other.canvasCardColor == canvasCardColor;
+          other.canvasCardColor == canvasCardColor &&
+          other.notificationSound == notificationSound &&
+          other.notificationSoundFile == notificationSoundFile &&
+          other.toastDwell == toastDwell;
 
   @override
   int get hashCode => Object.hash(
@@ -213,5 +249,8 @@ class AppPreferences {
         shellKeepLastCanvas,
         canvasEdgeColor,
         canvasCardColor,
+        notificationSound,
+        notificationSoundFile,
+        toastDwell,
       );
 }

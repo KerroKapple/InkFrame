@@ -2769,4 +2769,122 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get studioTrashColumnName => 'Project';
+
+  @override
+  String get toastDismiss => 'Dismiss notification';
+
+  @override
+  String get toastRegion => 'Notifications';
+
+  @override
+  String toastMore(int count) {
+    return '$count more · View all';
+  }
+
+  @override
+  String get notificationsOpen => 'Notifications';
+
+  @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get notificationsEmpty => 'No notifications yet';
+
+  @override
+  String get notificationsClear => 'Clear';
+
+  @override
+  String get notificationsSession => 'This session';
+
+  @override
+  String get notificationsJustNow => 'Just now';
+
+  @override
+  String notificationsMinutesAgo(int minutes) {
+    return '$minutes min ago';
+  }
+
+  @override
+  String jobNotifySucceeded(String name) {
+    return '$name is ready';
+  }
+
+  @override
+  String get jobNotifySucceededGeneric => 'Generation finished';
+
+  @override
+  String jobNotifyFailed(String name) {
+    return '$name failed';
+  }
+
+  @override
+  String get jobNotifyFailedGeneric => 'Generation failed';
+
+  @override
+  String get toastActionView => 'View';
+
+  @override
+  String get settingsNotificationsSection => 'Notifications';
+
+  @override
+  String get settingsNotificationSound => 'Sound';
+
+  @override
+  String get settingsNotificationSoundInkframe => 'InkFrame default';
+
+  @override
+  String get settingsNotificationSoundSystem => 'System sound';
+
+  @override
+  String get settingsNotificationSoundCustom => 'Custom…';
+
+  @override
+  String get settingsNotificationSoundOff => 'Off';
+
+  @override
+  String get settingsNotificationSoundPreview => 'Preview';
+
+  @override
+  String get settingsNotificationSoundInkframeHint =>
+      'A short two-note chime, played only when something finishes in the background (a generation, an export) — never for things you just did yourself.';
+
+  @override
+  String get settingsNotificationSoundSystemHint =>
+      'Plays your system notification sound. Pick a different sound or change the volume in the system sound settings.';
+
+  @override
+  String get settingsNotificationSoundCustomHint =>
+      'WAV, MP3, OGG or M4A up to 2 MB. Only the first 4 seconds play. The file is copied into InkFrame\'s data folder, so moving the original is fine.';
+
+  @override
+  String get settingsNotificationSoundChooseFile => 'Choose file…';
+
+  @override
+  String get settingsNotificationSoundReplaceFile => 'Replace…';
+
+  @override
+  String get settingsNotificationSoundNoFile => 'No file chosen';
+
+  @override
+  String get settingsNotificationSoundTooLarge =>
+      'That file is larger than 2 MB.';
+
+  @override
+  String get settingsNotificationSoundImportFailed =>
+      'Couldn\'t use that file.';
+
+  @override
+  String get settingsNotificationSoundFileType => 'Audio';
+
+  @override
+  String get settingsNotificationDwell => 'Keep on screen';
+
+  @override
+  String get settingsNotificationDwellStandard => 'Standard';
+
+  @override
+  String get settingsNotificationDwellLong => 'Longer';
+
+  @override
+  String get settingsNotificationDwellNever => 'Until dismissed';
 }

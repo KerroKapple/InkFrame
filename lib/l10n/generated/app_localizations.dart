@@ -4903,6 +4903,216 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Project'**
   String get studioTrashColumnName;
+
+  /// No description provided for @toastDismiss.
+  ///
+  /// In en, this message translates to:
+  /// **'Dismiss notification'**
+  String get toastDismiss;
+
+  /// No description provided for @toastRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get toastRegion;
+
+  /// No description provided for @toastMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} more · View all'**
+  String toastMore(int count);
+
+  /// No description provided for @notificationsOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsOpen;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @notificationsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get notificationsEmpty;
+
+  /// No description provided for @notificationsClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get notificationsClear;
+
+  /// No description provided for @notificationsSession.
+  ///
+  /// In en, this message translates to:
+  /// **'This session'**
+  String get notificationsSession;
+
+  /// No description provided for @notificationsJustNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get notificationsJustNow;
+
+  /// No description provided for @notificationsMinutesAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min ago'**
+  String notificationsMinutesAgo(int minutes);
+
+  /// No description provided for @jobNotifySucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is ready'**
+  String jobNotifySucceeded(String name);
+
+  /// No description provided for @jobNotifySucceededGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation finished'**
+  String get jobNotifySucceededGeneric;
+
+  /// No description provided for @jobNotifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} failed'**
+  String jobNotifyFailed(String name);
+
+  /// No description provided for @jobNotifyFailedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation failed'**
+  String get jobNotifyFailedGeneric;
+
+  /// No description provided for @toastActionView.
+  ///
+  /// In en, this message translates to:
+  /// **'View'**
+  String get toastActionView;
+
+  /// No description provided for @settingsNotificationsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get settingsNotificationsSection;
+
+  /// No description provided for @settingsNotificationSound.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound'**
+  String get settingsNotificationSound;
+
+  /// No description provided for @settingsNotificationSoundInkframe.
+  ///
+  /// In en, this message translates to:
+  /// **'InkFrame default'**
+  String get settingsNotificationSoundInkframe;
+
+  /// No description provided for @settingsNotificationSoundSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System sound'**
+  String get settingsNotificationSoundSystem;
+
+  /// No description provided for @settingsNotificationSoundCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom…'**
+  String get settingsNotificationSoundCustom;
+
+  /// No description provided for @settingsNotificationSoundOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get settingsNotificationSoundOff;
+
+  /// No description provided for @settingsNotificationSoundPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get settingsNotificationSoundPreview;
+
+  /// No description provided for @settingsNotificationSoundInkframeHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A short two-note chime, played only when something finishes in the background (a generation, an export) — never for things you just did yourself.'**
+  String get settingsNotificationSoundInkframeHint;
+
+  /// No description provided for @settingsNotificationSoundSystemHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Plays your system notification sound. Pick a different sound or change the volume in the system sound settings.'**
+  String get settingsNotificationSoundSystemHint;
+
+  /// No description provided for @settingsNotificationSoundCustomHint.
+  ///
+  /// In en, this message translates to:
+  /// **'WAV, MP3, OGG or M4A up to 2 MB. Only the first 4 seconds play. The file is copied into InkFrame\'s data folder, so moving the original is fine.'**
+  String get settingsNotificationSoundCustomHint;
+
+  /// No description provided for @settingsNotificationSoundChooseFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose file…'**
+  String get settingsNotificationSoundChooseFile;
+
+  /// No description provided for @settingsNotificationSoundReplaceFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace…'**
+  String get settingsNotificationSoundReplaceFile;
+
+  /// No description provided for @settingsNotificationSoundNoFile.
+  ///
+  /// In en, this message translates to:
+  /// **'No file chosen'**
+  String get settingsNotificationSoundNoFile;
+
+  /// No description provided for @settingsNotificationSoundTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'That file is larger than 2 MB.'**
+  String get settingsNotificationSoundTooLarge;
+
+  /// No description provided for @settingsNotificationSoundImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t use that file.'**
+  String get settingsNotificationSoundImportFailed;
+
+  /// No description provided for @settingsNotificationSoundFileType.
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get settingsNotificationSoundFileType;
+
+  /// No description provided for @settingsNotificationDwell.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep on screen'**
+  String get settingsNotificationDwell;
+
+  /// No description provided for @settingsNotificationDwellStandard.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get settingsNotificationDwellStandard;
+
+  /// No description provided for @settingsNotificationDwellLong.
+  ///
+  /// In en, this message translates to:
+  /// **'Longer'**
+  String get settingsNotificationDwellLong;
+
+  /// No description provided for @settingsNotificationDwellNever.
+  ///
+  /// In en, this message translates to:
+  /// **'Until dismissed'**
+  String get settingsNotificationDwellNever;
 }
 
 class _AppLocalizationsDelegate
