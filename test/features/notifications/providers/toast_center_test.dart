@@ -324,6 +324,27 @@ void main() {
       });
     });
 
+    test('被折叠的那张换了新内容：挪到最新位置露出来；正在显示的原地换、不跳位', () {
+      fakeAsync((async) {
+        final ProviderContainer c = _container();
+        for (final String k in <String>['x', 'a', 'b', 'c']) {
+          _center(c).show('$k failed', kind: ToastKind.error, dedupeKey: k);
+        }
+        final int xId = _state(c).live.first.id;
+        expect(_state(c).visibleIds, isNot(contains(xId)), reason: '前置：x 已被折叠');
+
+        _center(c).show('x failed again', kind: ToastKind.error, dedupeKey: 'x');
+        expect(_activeTitles(c), <String>['a failed', 'b failed', 'c failed', 'x failed again']);
+        expect(_state(c).visibleIds, contains(xId),
+            reason: '否则提示音响了、铃铛点红了，栈上却看不到任何变化');
+
+        // c 正在显示：原地换，顺序不动。
+        _center(c).show('c failed again', kind: ToastKind.error, dedupeKey: 'c');
+        expect(_activeTitles(c), <String>['a failed', 'b failed', 'c failed again', 'x failed again']);
+        c.dispose();
+      });
+    });
+
     test('替换重新计时', () {
       fakeAsync((async) {
         final ProviderContainer c = _container();
@@ -481,6 +502,39 @@ void main() {
         _center(c).markAllRead();
         expect(_state(c).unreadCount, 0);
         expect(_state(c).hasUnreadError, isFalse);
+        c.dispose();
+      });
+    });
+
+    test('清空历史连同折叠在「还有 N 条」里的卡；正在显示的、折叠着的进度卡（连同它那一行历史）照留', () {
+      fakeAsync((async) {
+        final ProviderContainer c = _container();
+        _center(c).show('working', kind: ToastKind.progress);
+        _center(c).show('old', kind: ToastKind.error);
+        for (final String t in <String>['a', 'b', 'c']) {
+          _center(c).show(t, kind: ToastKind.error);
+        }
+        expect(_state(c).overflowCount, 2, reason: '前置：working 与 old 被折叠');
+
+        _center(c).clearHistory();
+        expect(_activeTitles(c), <String>['working', 'a', 'b', 'c']);
+        expect(_state(c).overflowCount, 1);
+        expect(_historyTitles(c), <String>['working'],
+            reason: '「还有 1 条」点开，面板里得看得到它');
+        expect(_state(c).unreadCount, 0);
+        c.dispose();
+      });
+    });
+
+    test('铃铛承接不了历史面板时（上面压了对话框 / 没有铃铛），开着的历史立即关掉', () {
+      fakeAsync((async) {
+        final ProviderContainer c = _container();
+        _center(c).setHistoryHostReady(true);
+        _center(c).openHistory();
+        expect(_state(c).historyOpen, isTrue);
+
+        _center(c).setHistoryHostReady(false);
+        expect(_state(c).historyOpen, isFalse);
         c.dispose();
       });
     });

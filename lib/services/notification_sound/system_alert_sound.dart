@@ -2,11 +2,13 @@
 //
 // NotificationSoundPlayer 只认这个抽象；生产实现 PlatformSystemAlertSound 在 main.dart 装配。
 //
-// - Windows：winmm 的 PlaySoundW("Notification.Default", SND_ALIAS | SND_ASYNC | SND_NODEFAULT)，
+// - Windows：winmm 的 PlaySoundW("Notification.Default", SND_ALIAS | SND_ASYNC | SND_NODEFAULT |
+//   SND_SYSTEM)，
 //   即「声音」控制面板里「通知」那一项——用户换的声音、设成「无」都跟着走。
 //   SND_NODEFAULT：这一项没设声音时就不响，不退回系统默认的「叮」。
 //   SND_ASYNC：立即返回，不卡 UI 线程；PlaySound 异步播放时自己复制一份名字，
-//   所以调用一返回就可以释放那段 UTF-16。
+//   所以调用一返回就可以释放那段 UTF-16。SND_SYSTEM：归到「系统声音」音频会话，音量合成器里的系统声音
+//   音量 / 静音对它生效。
 // - macOS：SystemSound.play(SystemSoundType.alert)，引擎侧就是 NSBeep()——用户在
 //   「声音 › 提醒音」里选的那个，音量跟「提醒音量」走。
 // - 其它平台：没有对应的「用户选的提示音」，不出声。
@@ -50,6 +52,10 @@ class PlatformSystemAlertSound implements SystemAlertSound {
   static const int _sndNoDefault = 0x0002;
   static const int _sndAlias = 0x00010000;
 
+  /// 归到「系统声音」那一路音频会话：音量合成器里把系统声音静音 / 调小，这里跟着走（设置里写的就是
+  /// 「换声音、调音量都在系统声音设置里」）。不带它就按 InkFrame 自己的音量响。
+  static const int _sndSystem = 0x00200000;
+
   /// 第一次播放时才打开 winmm.dll、查 PlaySoundW，之后复用。
   _PlaySoundDart? _playSound;
 
@@ -72,7 +78,7 @@ class PlatformSystemAlertSound implements SystemAlertSound {
       final int ok = playSound(
         alias,
         nullptr,
-        _sndAlias | _sndAsync | _sndNoDefault,
+        _sndAlias | _sndAsync | _sndNoDefault | _sndSystem,
       );
       if (ok == 0) {
         // 「通知」一项被设成「无」时也会走到这里——那是用户的选择，不算故障，记 info。

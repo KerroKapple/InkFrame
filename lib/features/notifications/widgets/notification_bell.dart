@@ -13,6 +13,8 @@
 //   （面板开着时持焦）、再点一次铃铛
 //
 // 交付进行中（deliveryBusyProvider）不锁铃铛：看历史不改任何东西，与 ⚙ 的「不许开设置」不是一回事。
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -53,6 +55,12 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
   /// 面板先被「外面」关掉，铃铛的点击又把它打开。
   final Object _tapGroup = Object();
 
+  /// 上次上报给 ToastCenter 的「能不能承接历史面板」（null = 还没报过）。
+  bool? _hostReported;
+
+  /// 卸载时要报「不能承接」：dispose 里 ref 已不可用，在 initState 取好。
+  late final ToastCenter _center = ref.read(toastCenterProvider.notifier);
+
   @override
   void initState() {
     super.initState();
@@ -79,8 +87,22 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
 
   @override
   void dispose() {
+    // 树正在收尾，不在这一刻改 provider：帧后再报。
+    final ToastCenter center = _center;
+    WidgetsBinding.instance.addPostFrameCallback((_) => center.setHistoryHostReady(false));
     _panelFocus.dispose();
     super.dispose();
+  }
+
+  /// 能不能承接历史面板：铃铛所在的路由在最上层。面板挂在根 Overlay 里本路由的后面——上面一旦压着
+  /// 对话框，面板就画在遮罩底下、点不到，还会把焦点从对话框抢走。ModalRoute.of 建立依赖：路由压上 /
+  /// 弹走对话框时本组件重建，这里随之重报。
+  void _reportHost(bool canHost) {
+    if (canHost == _hostReported) return;
+    _hostReported = canHost;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _center.setHistoryHostReady(canHost);
+    });
   }
 
   void _toggle() {
@@ -94,6 +116,7 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
 
   @override
   Widget build(BuildContext context) {
+    _reportHost(ModalRoute.of(context)?.isCurrent ?? true);
     final InkColors c = context.inkColors;
     final bool open = ref.watch(
       toastCenterProvider.select((ToastCenterState s) => s.historyOpen),
@@ -119,7 +142,12 @@ class _NotificationBellState extends ConsumerState<NotificationBell> {
           child: InkActivatable(
             key: NotificationBell.buttonKey,
             onTap: _toggle,
-            semanticLabel: context.l10n.notificationsOpen,
+            // 未读 / 有未读失败不只靠点的颜色（读屏拿不到颜色），一并写进语义标签。
+            semanticLabel: !unread
+                ? context.l10n.notificationsOpen
+                : (unreadError
+                    ? context.l10n.notificationsOpenUnreadFailure
+                    : context.l10n.notificationsOpenUnread),
             focusRingRadius: BorderRadius.circular(InkRadius.s3),
             builder: (BuildContext context, bool hovered, bool focused) {
               final bool lit = hovered || open;
@@ -204,11 +232,36 @@ class _HistoryOverlay extends ConsumerWidget {
   }
 }
 
-class _HistoryPanel extends ConsumerWidget {
+class _HistoryPanel extends ConsumerStatefulWidget {
   const _HistoryPanel();
 
+  /// 面板开着时多久刷新一次「N 分钟前」——按分钟显示，半分钟一次足够跟上。
+  static const Duration refreshEvery = Duration(seconds: 30);
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_HistoryPanel> createState() => _HistoryPanelState();
+}
+
+class _HistoryPanelState extends ConsumerState<_HistoryPanel> {
+  // 面板开着、又没有新通知时，没有任何东西触发重建，相对时间会停在打开那一刻。
+  late final Timer _tick = Timer.periodic(_HistoryPanel.refreshEvery, (_) {
+    if (mounted) setState(() {});
+  });
+
+  @override
+  void initState() {
+    super.initState();
+    _tick;
+  }
+
+  @override
+  void dispose() {
+    _tick.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final InkColors c = context.inkColors;
     final InkTypography t = context.inkTypography;
     final AppLocalizations l = context.l10n;

@@ -13,6 +13,7 @@
 - **Video export**: external ffmpeg binary (runtime probe via `FfmpegLocator`; not bundled)
 - **Window chrome**: window_manager (frameless shell); screen_retriever (multi-monitor enumeration for window-state restore clamp)
 - **File import**: file_selector
+- **FFI**: ffi（Windows「系统提示音」直接调 winmm 的 PlaySoundW，见 services/notification_sound/system_alert_sound.dart）
 - **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager); Debug+macOS falls back to a plaintext dev file (see Provider API Keys)
 - **Platforms**: macOS + Windows
 
@@ -261,7 +262,7 @@ lib/
 │   ├── notifications/                 # 右下角通知卡 + 铃铛历史 + 生成完成 / 失败通知（ToastService 的实现；卡片层挂在 MaterialApp.builder，画在所有路由之上）
 │   │   ├── models/                    # toast_entry.dart（一张卡的不可变快照，也是历史里的一行）+ notification_prefs.dart（提示音 / 停留时长偏好字符串 → 枚举）
 │   │   ├── providers/                 # toast_center.dart（ToastCenter：按类型计时、悬停 / 窗口失焦停表、dedupeKey 原地替换、最多 3 张在场其余折叠、本次会话历史 100 条 + 未读、chime 时按设置响一声）+ toast_service_provider.dart（以 core 契约类型暴露 ToastCenter）
-│   │   └── widgets/                   # toast_layer.dart（builder 层：右下角卡片栈 + 进退场动画 +「还有 N 条」）/ job_notification_listener.dart（jobsRegistry 新终态 → 完成 / 失败卡，不为通知查库）/ notification_bell.dart（外壳 chrome 的铃铛 + OverlayPortal 历史下拉）
+│   │   └── widgets/                   # toast_layer.dart（builder 层：右下角卡片栈 + 进退场动画 +「还有 N 条」）/ job_notification_listener.dart（jobsRegistry 新终态 → 完成 / 失败卡；只有视频成片缺首帧缩略时才查一次库取 thumbnail_url；「查看」走挂起定位请求 canvasFocusRequestProvider）/ notification_bell.dart（外壳 chrome 的铃铛 + OverlayPortal 历史下拉；铃铛按自己所在路由是否在最上层上报 historyHostReady——上面压着对话框 / 没有铃铛时卡片栈的「还有 N 条」不可点）
 │   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
 │   │   ├── settings_screen.dart       # SettingsScreen (壳走 theme 层的 InkOverlayDialog + 左导航 + 各页正文 + 底部条 完成/导出诊断包); pages = 常规 / API 密钥 / 快捷键 / 性能 / 节点布局 / 网络 / 存储 / 关于（后三页里快捷键 / 性能 / 网络是 P7 补的只读页）
 │   │   ├── providers/
@@ -342,6 +343,9 @@ lib/
     ├── window_state_service.dart      # DefaultWindowStateService + clampBoundsToVisible pure fn (window size/pos/maximized memory; multi-monitor clamp; PL-6)
     ├── window_manager_adapters.dart   # WindowManagerWindowController + ScreenRetrieverDisplayQuery (real plugin seams behind WindowController/DisplayQuery)
     ├── crash_reporter.dart            # FileCrashReporter (uncaught-error crash file + keep-3 rotation, no context/extra)
+    ├── notification_sound/            # 提示音出声：notification_sound_player.dart（NotificationSoundService 实现：InkFrame 默认 / 系统 / 自定义 / 关闭四档，1200ms 节流）+ audio_clip_player.dart（media_kit 播 asset 或自定义文件，最长 4 秒）+ system_alert_sound.dart（Windows PlaySoundW 别名 Notification.Default / macOS NSBeep）
+    ├── file_notification_sound_store.dart  # 自定义提示音文件：config/sounds 下复制一份（扩展名白名单、≤2MB、先写 .partial 再改名），按文件名解析
+    ├── silent_notification_sound_service.dart  # 默认的静音实现（main.dart 覆盖成真播放器；测试默认不出声）
     ├── error_hooks.dart               # installErrorHooks + reportUncaught (FlutterError/PlatformDispatcher/zone → logger + CrashReporter)
     ├── lifecycle_timer.dart           # LifecycleTimer (startup stage timing → app.lifecycle {stage, ms}; see docs/perf-baseline.md)
     ├── image_cache_config.dart        # configureImageCache (LB-23: ImageCache 上限 256MB; main bootstrap 调用一次)

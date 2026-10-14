@@ -121,7 +121,8 @@ class _ToastStack extends ConsumerWidget {
           alignment: Alignment.centerRight,
           child: _MorePill(
             label: context.l10n.toastMore(more),
-            onTap: center.openHistory,
+            // 铃铛承接不了历史面板时（上面压着对话框 / 启动失败页没有铃铛）不可点，见 historyHostReady。
+            onTap: s.historyHostReady ? center.openHistory : null,
           ),
         ),
       for (final ToastEntry e in shown)
@@ -282,7 +283,7 @@ class _MorePill extends StatelessWidget {
   const _MorePill({required this.label, required this.onTap});
 
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

@@ -2883,6 +2883,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get notificationsOpen => '通知';
 
   @override
+  String get notificationsOpenUnread => '通知，有未读';
+
+  @override
+  String get notificationsOpenUnreadFailure => '通知，有未读的失败';
+
+  @override
   String get notificationsTitle => '通知';
 
   @override

@@ -1109,6 +1109,8 @@
   "toastMore": "还有 {count} 条 · 查看全部",
   "@toastMore": { "placeholders": { "count": { "type": "int" } } },
   "notificationsOpen": "通知",
+  "notificationsOpenUnread": "通知，有未读",
+  "notificationsOpenUnreadFailure": "通知，有未读的失败",
   "notificationsTitle": "通知",
   "notificationsEmpty": "还没有通知",
   "notificationsClear": "清空",

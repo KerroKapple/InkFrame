@@ -32,7 +32,7 @@ import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
-import '../../canvas/providers/canvas_selection_controller.dart';
+import '../../canvas/providers/canvas_focus_request.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
 import '../../shell/models/shell_state.dart';
@@ -182,8 +182,10 @@ class _JobNotificationListenerState
     }
   }
 
-  /// 「查看」：打开产物所在画布并选中 result 节点（与画廊「在画布中定位」同一做法，
-  /// gallery_actions.dart）。拿不到项目名就不给按钮。
+  /// 「查看」：打开产物所在画布，挂起定位请求——画布挂上来后单选 result 节点并移到视口中心（与画廊
+  /// 「在画布中定位」同一条路，canvas_focus_request.dart）。不能在切画布的同一刻直接写选中：目标画布
+  /// 这时往往还没挂载（人在别的画布 / 标签上），它的选中 provider 没有订阅者，写进去帧末就被回收。
+  /// 拿不到项目名就不给按钮。
   ToastAction? _viewAction(JobSucceeded job) {
     final String? nodeId = job.resultNodeId;
     final ProjectRef? project = _projectRef(job.projectId);
@@ -195,8 +197,8 @@ class _JobNotificationListenerState
           .read(shellControllerProvider.notifier)
           .openCanvas(canvasId, withProject: project);
       ref
-          .read(canvasSelectionControllerProvider(canvasId).notifier)
-          .select(nodeId);
+          .read(canvasFocusRequestProvider.notifier)
+          .request(canvasId: canvasId, nodeId: nodeId);
     });
   }
 

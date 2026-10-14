@@ -62,6 +62,7 @@ class ToastCenterState {
     this.history = const <ToastEntry>[],
     this.unreadIds = const <int>{},
     this.historyOpen = false,
+    this.historyHostReady = false,
   });
 
   /// 右下角的卡，旧 → 新；含正在淡出的。
@@ -75,6 +76,12 @@ class ToastCenterState {
 
   /// 铃铛下拉是否开着。
   final bool historyOpen;
+
+  /// 铃铛此刻能不能承接历史面板：铃铛挂着、且它所在的路由在最上层（上面没压对话框）。
+  /// 由铃铛上报（NotificationBell）。不能时卡片栈上「还有 N 条 · 查看全部」不可点——面板挂在根 Overlay
+  /// 里铃铛那层路由的后面，上面压着对话框时会画在遮罩底下、还抢走对话框的焦点；启动失败页没有铃铛，
+  /// 开了历史就再没有东西能关掉它（卡片栈一直藏着、计时一直停着）。
+  final bool historyHostReady;
 
   int get unreadCount => unreadIds.length;
 
@@ -120,12 +127,14 @@ class ToastCenterState {
     List<ToastEntry>? history,
     Set<int>? unreadIds,
     bool? historyOpen,
+    bool? historyHostReady,
   }) =>
       ToastCenterState(
         live: live ?? this.live,
         history: history ?? this.history,
         unreadIds: unreadIds ?? this.unreadIds,
         historyOpen: historyOpen ?? this.historyOpen,
+        historyHostReady: historyHostReady ?? this.historyHostReady,
       );
 }
 
@@ -215,10 +224,19 @@ class ToastCenter extends Notifier<ToastCenterState> implements ToastService {
         dedupeKey: dedupeKey,
         dwell: dwell,
       );
+      // 正在显示的那张：原地换内容，不跳位。被折叠的那张：挪到最新的位置露出来——否则提示音响了、铃铛点
+      // 也红了，卡片栈上却看不到任何变化（一次全新的失败反倒看得见）。
+      final bool collapsed = !s.visibleIds.contains(old.id);
       live = List<ToastEntry>.unmodifiable(
-        <ToastEntry>[
-          for (final ToastEntry e in s.live) e.id == old.id ? entry : e,
-        ],
+        collapsed
+            ? <ToastEntry>[
+                for (final ToastEntry e in s.live)
+                  if (e.id != old.id) e,
+                entry,
+              ]
+            : <ToastEntry>[
+                for (final ToastEntry e in s.live) e.id == old.id ? entry : e,
+              ],
       );
     } else {
       entry = ToastEntry(
@@ -277,14 +295,50 @@ class ToastCenter extends Notifier<ToastCenterState> implements ToastService {
     _syncTicker();
   }
 
-  /// 清空历史（右下角在场的卡不受影响）。
+  /// 铃铛上报能不能承接历史面板（见 [ToastCenterState.historyHostReady]）。变成不能时，开着的历史立即关掉。
+  void setHistoryHostReady(bool ready) {
+    final ToastCenterState s = state;
+    if (s.historyHostReady == ready) return;
+    state = s.copyWith(
+      historyHostReady: ready,
+      historyOpen: ready ? s.historyOpen : false,
+    );
+    _syncTicker();
+  }
+
+  /// 清空历史，连同折叠在「还有 N 条」里的卡：它们就是历史里的那几条，清空后面板空了，栈上却还留着
+  /// 「还有 N 条 · 查看全部」，点开又是空的——两头都看不到。正在显示的卡照留（各自还在计时）。
+  /// 折叠着的进度卡也照留（任务还在跑，完成时要原地变成成功卡），连同它在历史里的那一行——
+  /// 栈上「还有 N 条」数的正是它们，点开面板得看得到。
   void clearHistory() {
     final ToastCenterState s = state;
-    if (s.history.isEmpty && s.unreadIds.isEmpty) return;
+    final Set<int> visible = s.visibleIds;
+    final Set<int> keptCollapsed = <int>{
+      for (final ToastEntry e in s.live)
+        if (!e.leaving && !visible.contains(e.id) && e.kind == ToastKind.progress) e.id,
+    };
+    final List<ToastEntry> live = <ToastEntry>[
+      for (final ToastEntry e in s.live)
+        if (e.leaving || visible.contains(e.id) || keptCollapsed.contains(e.id)) e,
+    ];
+    final List<ToastEntry> history = <ToastEntry>[
+      for (final ToastEntry h in s.history)
+        if (keptCollapsed.contains(h.id)) h,
+    ];
+    if (history.length == s.history.length &&
+        s.unreadIds.isEmpty &&
+        live.length == s.live.length) {
+      return;
+    }
+    for (final ToastEntry e in s.live) {
+      if (!live.contains(e)) _remaining.remove(e.id);
+    }
     state = s.copyWith(
-      history: const <ToastEntry>[],
+      live: List<ToastEntry>.unmodifiable(live),
+      history: List<ToastEntry>.unmodifiable(history),
       unreadIds: const <int>{},
     );
+    _syncTicker();
   }
 
   void markAllRead() {

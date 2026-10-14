@@ -113,10 +113,30 @@ void main() {
       reason: '「还有 N 条」在卡片栈上方',
     );
 
+    // 铃铛挂着、所在路由在最上层时才承接得了历史面板（本外壳没挂铃铛，这里替它上报）。
+    c.read(toastCenterProvider.notifier).setHistoryHostReady(true);
+    await tester.pump();
     await tester.tap(find.byKey(ToastLayer.moreKey));
     await tester.pump();
     expect(c.read(toastCenterProvider).historyOpen, isTrue,
         reason: '点它打开铃铛历史');
+  });
+
+  testWidgets('没有承接得了历史面板的铃铛（启动失败页 / 上面压着对话框）：「还有 N 条」点了不开历史，卡片栈照常显示',
+      (tester) async {
+    final ProviderContainer c = await _pumpLayer(tester);
+    for (int i = 0; i < 5; i++) {
+      _toasts(c).show('e$i');
+    }
+    await tester.pump();
+    await tester.pump(_settle);
+    expect(c.read(toastCenterProvider).historyHostReady, isFalse, reason: '前置：没有铃铛上报');
+
+    await tester.tap(find.byKey(ToastLayer.moreKey));
+    await tester.pump();
+    expect(c.read(toastCenterProvider).historyOpen, isFalse,
+        reason: '否则卡片栈藏起来、计时停住，却没有任何东西能把历史关掉');
+    expect(find.byType(InkToastCard), findsNWidgets(3));
   });
 
   testWidgets('对话框开着时卡片仍在遮罩之上：可命中，点按钮不会落到遮罩上',
