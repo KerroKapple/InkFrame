@@ -37,6 +37,7 @@ import 'widgets/custom_providers_section.dart';
 import 'widgets/diagnostics_section.dart';
 import 'widgets/language_section.dart';
 import 'widgets/network_section.dart';
+import 'widgets/notifications_section.dart';
 import 'widgets/performance_section.dart';
 import 'widgets/shortcuts_section.dart';
 import 'widgets/startup_section.dart';
@@ -247,6 +248,9 @@ class _PageBody extends StatelessWidget {
                     SizedBox(height: InkSpacing.xl),
                     // 稿上没有这一行：启动开关按稿的分组行样式补在语言下面（用户 2026-09-24）。
                     StartupSection(),
+                    SizedBox(height: InkSpacing.xl),
+                    // 通知：提示音 + 通知卡停留时长，同一种分组框，接在启动开关下面。
+                    NotificationsSection(),
                   ],
                 SettingsPage.apiKeys => const <Widget>[
                     ApiKeysSection(),

@@ -32,6 +32,7 @@ import 'core/di/crash_reporter.dart';
 import 'core/di/custom_providers.dart';
 import 'core/di/database.dart';
 import 'core/di/logger.dart';
+import 'core/di/notification_sound.dart';
 import 'core/di/paths.dart';
 import 'core/di/preferences.dart';
 import 'core/di/providers.dart';
@@ -49,6 +50,9 @@ import 'services/error_hooks.dart';
 import 'services/file_preferences_service.dart';
 import 'services/image_cache_config.dart';
 import 'services/lifecycle_timer.dart';
+import 'services/notification_sound/audio_clip_player.dart';
+import 'services/notification_sound/notification_sound_player.dart';
+import 'services/notification_sound/system_alert_sound.dart';
 import 'services/provider_failure_logger.dart';
 import 'theme/tokens.dart';
 
@@ -198,6 +202,19 @@ void main() {
           crashReporterProvider.overrideWithValue(crashReporter),
           customProviderSourceProvider.overrideWithValue(customProviders),
           customProviderStoreProvider.overrideWithValue(customProviders),
+          // 通知提示音：默认的安静实现换成真正出声的。provider 懒建，mpv 播放器又在
+          // 第一次出声时才起——从没响过就什么都不占。容器销毁（AppTeardown 最后一步）
+          // 时随之释放。
+          notificationSoundServiceProvider.overrideWith((ref) {
+            final NotificationSoundPlayer player = NotificationSoundPlayer(
+              clips: MediaKitAudioClipPlayer(logger: fileLogger),
+              systemSound: PlatformSystemAlertSound(logger: fileLogger),
+              clock: clock,
+              logger: fileLogger,
+            );
+            ref.onDispose(() => unawaited(player.dispose()));
+            return player;
+          }),
         ],
       );
       final AppTeardown teardown = AppTeardown();
