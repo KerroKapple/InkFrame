@@ -26,6 +26,7 @@ import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
+import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/fake_unit_of_work.dart';
 
@@ -354,6 +355,34 @@ void main() {
 
   // ── 泳道钉在视口层：缩放/平移只动泳道内的内容，泳道本身不动 ─────────────
 
+  // 舞台顶部那一条（InkToolbarSize.stageTopInset）归浮动工具条：默认相机下泳道标题栏都得在它
+  // 下面，否则窄窗口里居中的工具条会盖住标题栏右端的折叠 / 编辑键。横向道的标题栏随泳道栈走
+  //（靠初始相机让位），竖向道的标题栏钉在视口顶（靠钉住的 top 让位）——两条路各测一次。
+  Future<void> expectTitleBarsBelowToolbarBand(WidgetTester tester) async {
+    final Finder bars = find.byType(LaneTitleBar);
+    expect(bars, findsWidgets);
+    for (int i = 0; i < bars.evaluate().length; i++) {
+      expect(
+        tester.getTopLeft(bars.at(i)).dy,
+        greaterThanOrEqualTo(InkToolbarSize.stageTopInset),
+        reason: '第 ${i + 1} 条泳道的标题栏压进了工具条那一条',
+      );
+    }
+  }
+
+  testWidgets('默认相机下横向泳道的标题栏在工具条那一条之下', (tester) async {
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+    await expectTitleBarsBelowToolbarBand(tester);
+  });
+
+  testWidgets('竖向泳道的标题栏钉在视口顶，同样让出工具条那一条', (tester) async {
+    _FakeCanvasRepository.direction = 'vertical';
+    await tester.pumpWidget(_buildTestApp(container));
+    await tester.pumpAndSettle();
+    await expectTitleBarsBelowToolbarBand(tester);
+  });
+
   testWidgets('泳道背景/标题栏在 InteractiveViewer 之外（视口层，不随缩放）',
       (tester) async {
     await tester.pumpWidget(_buildTestApp(container));
@@ -375,11 +404,17 @@ void main() {
       findsNothing,
     );
 
-    // 围绕世界原点缩放到 2x（worldT 不变）：标题栏屏幕位置不变、厚度不缩放。
+    // 围绕世界原点缩放到 2x（worldT 不变——初始相机把世界原点放在 (0, stageTopInset)，
+    // 这里保持住它）：标题栏屏幕位置不变、厚度不缩放。
     final beforeTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
     container.read(canvasTransformControllerProvider('cv1')).value =
         Matrix4.identity()
-          ..translateByDouble(-2 * kStageHalf, -2 * kStageHalf, 0.0, 1.0)
+          ..translateByDouble(
+            -2 * kStageHalf,
+            -2 * kStageHalf + InkToolbarSize.stageTopInset,
+            0.0,
+            1.0,
+          )
           ..scaleByDouble(2.0, 2.0, 1.0, 1.0);
     await tester.pump();
     final afterTop = tester.getTopLeft(find.byType(LaneTitleBar).first);
@@ -399,13 +434,17 @@ void main() {
     await tester.pumpWidget(_buildTestApp(container));
     await tester.pumpAndSettle();
 
-    // 相机向左上平移 600/400：世界 (-500,-300) 应落到屏幕 (100,100)。
+    // 相机向左上平移 600/400：世界 (-500,-300) 应落到屏幕 (100, 100 + stageTopInset)
+    //（初始相机已把世界原点往下让出浮动工具条那一条）。
     container.read(canvasTransformControllerProvider('cv1')).value =
         initialCanvasTransform()..translateByDouble(600.0, 400.0, 0.0, 1.0);
     await tester.pump();
 
     final card = find.byKey(const ValueKey('node-card-n3'));
-    expect(tester.getTopLeft(card), const Offset(100, 100));
+    expect(
+      tester.getTopLeft(card),
+      const Offset(100, 100 + InkToolbarSize.stageTopInset),
+    );
 
     // 负坐标区不再是点击死区：tap 命中并进入选中集。
     await tester.tap(card);
@@ -420,9 +459,9 @@ void main() {
     await tester.pumpWidget(_buildTestApp(container));
     await tester.pumpAndSettle();
 
-    // n2 在 lane-2（起始边 400）内，世界 y=500；初始相机下屏幕 y=500。
+    // n2 在 lane-2（起始边 400）内，世界 y=500；初始相机下屏幕 y=500 + stageTopInset。
     final card = find.byKey(const ValueKey('node-card-n2'));
-    expect(tester.getTopLeft(card).dy, 500);
+    expect(tester.getTopLeft(card).dy, 500 + InkToolbarSize.stageTopInset);
 
     // 围绕世界原点 2x：锚定本道 → y = 400 + 2*(500-400) = 600（未锚定会飞到 1000）。
     container.read(canvasTransformControllerProvider('cv1')).value =
@@ -444,7 +483,10 @@ void main() {
     container.read(canvasTransformControllerProvider('cv1')).value =
         initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
     await tester.pump();
-    expect(tester.getTopLeft(card).dy, closeTo(200, 0.5));
+    expect(
+      tester.getTopLeft(card).dy,
+      closeTo(200 + InkToolbarSize.stageTopInset, 0.5),
+    );
   });
 
   // ── (c) resize：updateLane → repo 收到 size 更新 ──────────────────────────
@@ -475,10 +517,11 @@ void main() {
     await tester.pumpAndSettle();
     await container.read(canvasLanesControllerProvider('cv1').future);
 
-    // lane-1 尺寸 400 → 分界线在屏幕 y=400，感应条 395..405 需整段可抓
-    // （含与 lane-2 标题栏 400..432 重叠的下半段——感应条须压在标题栏之上）。
-    // 从边界线正中 y=403 往下拖 50。
-    final gesture = await tester.startGesture(const Offset(300, 403));
+    // lane-1 尺寸 400 → 分界线在屏幕 y=400 + stageTopInset（初始相机让出工具条那一条），
+    // 感应条 ±5 需整段可抓（含与 lane-2 标题栏重叠的下半段——感应条须压在标题栏之上）。
+    // 从边界线正中往下 3 处起拖，往下拖 50。
+    final gesture = await tester
+        .startGesture(const Offset(300, 403 + InkToolbarSize.stageTopInset));
     await gesture.moveBy(const Offset(0, 25));
     await tester.pump();
     await gesture.moveBy(const Offset(0, 25));
@@ -502,12 +545,14 @@ void main() {
     await tester.pumpAndSettle();
     await container.read(canvasLanesControllerProvider('cv1').future);
 
-    // 相机上移 300：泳道栈随平移整体走，lane-1/lane-2 分界线从 400 移到 100。
+    // 相机上移 300：泳道栈随平移整体走，lane-1/lane-2 分界线从 400 移到 100（都另加
+    // stageTopInset）。
     container.read(canvasTransformControllerProvider('cv1')).value =
         initialCanvasTransform()..translateByDouble(0.0, -300.0, 0.0, 1.0);
     await tester.pump();
 
-    final gesture = await tester.startGesture(const Offset(300, 103));
+    final gesture = await tester
+        .startGesture(const Offset(300, 103 + InkToolbarSize.stageTopInset));
     await gesture.moveBy(const Offset(0, 25));
     await tester.pump();
     await gesture.moveBy(const Offset(0, 25));

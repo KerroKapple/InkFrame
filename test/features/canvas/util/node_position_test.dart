@@ -5,6 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/util/node_position.dart';
+import 'package:inkframe/theme/tokens.dart';
 
 void main() {
   test('同 seed 结果确定', () {
@@ -33,10 +34,11 @@ void main() {
           transform: initialCanvasTransform(),
           viewportSize: const Size(800, 600),
         );
-        // 初始相机对准世界原点附近:视口中心(400,300)→世界(400,300);
+        // 初始相机把世界原点放在 (0, stageTopInset):视口中心(400,300)→世界(400, 300 - inset);
         // 节点左上角 = 世界中心 - 半节点(100,80) ± 散布(≤60)。
+        const double cy = 300 - InkToolbarSize.stageTopInset;
         expect(p.dx, inInclusiveRange(400 - 100 - 60, 400 - 100 + 60));
-        expect(p.dy, inInclusiveRange(300 - 80 - 60, 300 - 80 + 60));
+        expect(p.dy, inInclusiveRange(cy - 80 - 60, cy - 80 + 60));
       }
     });
 

@@ -43,6 +43,8 @@ void main() {
     expect(find.byType(CanvasToolbar), findsOneWidget);
     final Rect toolbar = tester.getRect(find.byType(CanvasToolbar));
     expect(toolbar.top, closeTo(stage.top + InkSpacing.s12, 0.5));
+    // 舞台顶部让出的那一条（初始相机、竖向泳道标题栏、顶部浮层都按它让位）要装得下整条工具条。
+    expect(toolbar.bottom, lessThanOrEqualTo(stage.top + InkToolbarSize.stageTopInset));
     expect(toolbar.center.dx, closeTo(stage.center.dx, 0.5));
 
     final Rect zoom = tester.getRect(find.byType(CanvasZoomBar));

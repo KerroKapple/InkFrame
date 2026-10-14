@@ -7,6 +7,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
 
+import '../../../theme/tokens.dart';
 import 'canvas_extent.dart';
 
 /// 缩放下限（与 InteractiveViewer.minScale 共用）。
@@ -57,10 +58,17 @@ Matrix4 zoomedTransform({
     ..scaleByDouble(target, target, 1.0, 1.0);
 }
 
-/// 初始相机：scale=1、平移 -kStageHalf——世界原点（舞台中央）对准视口左上。
-/// 居中定舞台（canvas_extent.dart）下，默认视角"屏幕坐标 == 世界坐标"。
+/// 初始相机：scale=1，世界原点（舞台中央）对准视口左上、再往下让出浮动工具条那一条
+/// （[InkToolbarSize.stageTopInset]；稿：泳道带从舞台顶 64 起，标题栏在它下面）。
+/// 不让的话第一条横向泳道的标题栏正好压在工具条底下，窄窗口里右端的折叠 / 编辑键被盖住。
+/// 居中定舞台（canvas_extent.dart）下，默认视角"屏幕坐标 == 世界坐标 + (0, stageTopInset)"。
 Matrix4 initialCanvasTransform() => Matrix4.identity()
-  ..translateByDouble(-kStageHalf, -kStageHalf, 0.0, 1.0);
+  ..translateByDouble(
+    -kStageHalf,
+    -kStageHalf + InkToolbarSize.stageTopInset,
+    0.0,
+    1.0,
+  );
 
 /// 缩放复位：回到初始相机（scale=1、对准世界原点）。
 Matrix4 resetTransform() => initialCanvasTransform();
