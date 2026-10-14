@@ -1,4 +1,4 @@
-// InkInput：enabled 透传契约。
+// InkInput：enabled / autofocus 透传契约。
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/theme/app_theme.dart';
@@ -30,5 +30,16 @@ void main() {
     await pump(tester, InkInput(controller: ctrl, enabled: false));
 
     expect(tester.widget<TextField>(find.byType(TextField)).enabled, isFalse);
+  });
+
+  testWidgets('autofocus 默认关；autofocus=true → 挂上就持焦', (tester) async {
+    final ctrl = TextEditingController();
+    addTearDown(ctrl.dispose);
+    await pump(tester, InkInput(controller: ctrl));
+    expect(tester.widget<TextField>(find.byType(TextField)).autofocus, isFalse);
+
+    await pump(tester, InkInput(key: const ValueKey<String>('af'), controller: ctrl, autofocus: true));
+    await tester.pump();
+    expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasPrimaryFocus, isTrue);
   });
 }
