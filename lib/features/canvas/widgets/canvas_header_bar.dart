@@ -1,12 +1,17 @@
 // CanvasHeaderBar：画布头 29px（稿 28 + 1px 下沿）——画布名 | 竖线 | 泳道名 | 撑开 | 缩放 %。
 // 稿右侧还有「自动保存 · 2 秒前」：仓库没有自动保存状态，不画（缺什么问用户）。
 //
-// CanvasZoomBar：右下浮动缩放条（− / % / + / 适应），绑定 canvasTransformController。
+// CanvasZoomBar：左下浮动缩放条（缩小 / % / 放大 / 适应），绑定 canvasTransformController。
+// 缩小 / 放大画图标集 v1 的 zoomOut / zoomIn（原来是「−」「+」两个字符）；四格都走
+// InkActivatable——Tab 可达、Enter / Space 激活，图标格的名字由 semanticLabel + tooltip 说出。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_icon.dart';
+import '../../../theme/icons/ink_glyph.dart';
+import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_lanes_controller.dart';
@@ -98,6 +103,7 @@ class CanvasZoomBar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final c = context.inkColors;
     final t = context.inkTypography;
+    final l = context.l10n;
     final TransformationController transform = ref.watch(canvasTransformControllerProvider(canvasId));
 
     void zoom(double factor) {
@@ -118,8 +124,8 @@ class CanvasZoomBar extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          _ZoomCell(width: 27, onTap: () => zoom(1 / kCanvasZoomStep), borderRight: true,
-              child: Text('−', style: t.body.copyWith(color: c.fg3))),
+          _ZoomCell(width: 27, label: l.canvasZoomOut, onTap: () => zoom(1 / kCanvasZoomStep), borderRight: true,
+              child: InkIcon(InkGlyph.zoomOut, size: InkIconSize.sm, color: c.fg3)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
             child: ValueListenableBuilder<Matrix4>(
@@ -128,10 +134,11 @@ class CanvasZoomBar extends ConsumerWidget {
                   Text('${(scaleOf(m) * 100).round()}%', style: t.mono.copyWith(color: c.fg3)),
             ),
           ),
-          _ZoomCell(width: 27, onTap: () => zoom(kCanvasZoomStep), borderLeft: true,
-              child: Text('+', style: t.body.copyWith(color: c.fg3))),
+          _ZoomCell(width: 27, label: l.canvasZoomIn, onTap: () => zoom(kCanvasZoomStep), borderLeft: true,
+              child: InkIcon(InkGlyph.zoomIn, size: InkIconSize.sm, color: c.fg3)),
+          // 「适应」格本身有字，读屏读这行字即可，不再另给标签（否则会念两遍）。
           _ZoomCell(width: 41, onTap: () => transform.value = initialCanvasTransform(), borderLeft: true,
-              child: Text(context.l10n.canvasZoomFit, style: t.meta.copyWith(color: c.fg3))),
+              child: Text(l.canvasZoomFit, style: t.meta.copyWith(color: c.fg3))),
         ],
       ),
     );
@@ -143,22 +150,28 @@ class _ZoomCell extends StatelessWidget {
     required this.width,
     required this.onTap,
     required this.child,
+    this.label,
     this.borderLeft = false,
     this.borderRight = false,
   });
   final double width;
   final VoidCallback onTap;
   final Widget child;
+
+  /// 只有图标的格必须给：图标对读屏透明，不给就是一颗没有名字的按钮。
+  /// 同一句也当 tooltip——光看图标认不出时，悬停能看到字。
+  final String? label;
   final bool borderLeft;
   final bool borderRight;
 
   @override
   Widget build(BuildContext context) {
     final c = context.inkColors;
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
+    return InkActivatable(
       onTap: onTap,
-      child: Container(
+      semanticLabel: label,
+      tooltip: label,
+      builder: (BuildContext context, bool hovered, bool focused) => Container(
         width: width,
         height: 24,
         alignment: Alignment.center,

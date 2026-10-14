@@ -5,6 +5,9 @@
 // （canvas_shortcuts.dart 的 kCanvasShortcuts、palette_activators.dart 的
 // kCommandPaletteActivators、本文件的 kOverlayDismissActivator——设置浮层
 // 的 Esc 也从这里取），谁加绑定谁自动上屏。
+// 画布的「按住空格临时平移」不在 kCanvasShortcuts 里（要按下与松开两个事件，
+// 由 CanvasShortcuts 的 onKeyEvent 处理），按键取自它自己用的那个常量
+// CanvasToolKeys.holdToPan——与 kOverlayDismissActivator 同一种收法。
 //
 // 新增 Intent 没在 [shortcutActionOf] 认领 ⇒ shortcut_catalog_test 打红；
 // 新增按键没在 [_keyLabels] 认领 ⇒ 该动作在某平台出不了键位，同一个测试打红。
@@ -14,6 +17,7 @@
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
+import '../../canvas/models/canvas_node.dart';
 import '../../canvas/widgets/canvas_shortcuts.dart';
 import '../../command_palette/palette_activators.dart';
 
@@ -21,7 +25,7 @@ import '../../command_palette/palette_activators.dart';
 const SingleActivator kOverlayDismissActivator =
     SingleActivator(LogicalKeyboardKey.escape);
 
-/// 清单上的动作。声明序 == 列表显示序：全局两条在前，画布六条在后。
+/// 清单上的动作。声明序 == 列表显示序：全局两条在前，画布的在后（编辑 / 缩放 / 工具）。
 enum ShortcutAction {
   commandPalette,
   overlayDismiss,
@@ -31,6 +35,14 @@ enum ShortcutAction {
   canvasZoomIn,
   canvasZoomOut,
   canvasZoomReset,
+  canvasSelectTool,
+  canvasPanTool,
+  canvasHoldPan,
+  canvasAddImageNode,
+  canvasAddVideoNode,
+  canvasAddTextNode,
+  canvasAddLane,
+  canvasToggleLink,
 }
 
 /// 画布表里的 Intent → 动作标识；未认领返回 null（测试打红，不静默丢行）。
@@ -41,6 +53,16 @@ ShortcutAction? shortcutActionOf(Intent intent) => switch (intent) {
       CanvasZoomInIntent() => ShortcutAction.canvasZoomIn,
       CanvasZoomOutIntent() => ShortcutAction.canvasZoomOut,
       CanvasZoomResetIntent() => ShortcutAction.canvasZoomReset,
+      CanvasSelectToolIntent() => ShortcutAction.canvasSelectTool,
+      CanvasTogglePanToolIntent() => ShortcutAction.canvasPanTool,
+      CanvasAddNodeIntent(type: CanvasNodeType.image) =>
+        ShortcutAction.canvasAddImageNode,
+      CanvasAddNodeIntent(type: CanvasNodeType.video) =>
+        ShortcutAction.canvasAddVideoNode,
+      CanvasAddNodeIntent(type: CanvasNodeType.text) =>
+        ShortcutAction.canvasAddTextNode,
+      CanvasAddLaneIntent() => ShortcutAction.canvasAddLane,
+      CanvasToggleLinkIntent() => ShortcutAction.canvasToggleLink,
       _ => null,
     };
 
@@ -74,6 +96,7 @@ List<ShortcutRow> buildShortcutRows({required bool isMac}) {
   kCanvasShortcuts.forEach(
     (ShortcutActivator a, Intent i) => add(shortcutActionOf(i), a),
   );
+  add(ShortcutAction.canvasHoldPan, CanvasToolKeys.holdToPan);
 
   return <ShortcutRow>[
     for (final ShortcutAction action in ShortcutAction.values)
@@ -127,4 +150,13 @@ final Map<int, String> _keyLabels = <int, String>{
   LogicalKeyboardKey.equal.keyId: '=',
   LogicalKeyboardKey.minus.keyId: '-',
   LogicalKeyboardKey.digit0.keyId: '0',
+  LogicalKeyboardKey.space.keyId: 'Space',
+  // 画布工具单键（CanvasToolKeys）。
+  LogicalKeyboardKey.keyV.keyId: 'V',
+  LogicalKeyboardKey.keyH.keyId: 'H',
+  LogicalKeyboardKey.keyI.keyId: 'I',
+  LogicalKeyboardKey.keyG.keyId: 'G',
+  LogicalKeyboardKey.keyT.keyId: 'T',
+  LogicalKeyboardKey.keyF.keyId: 'F',
+  LogicalKeyboardKey.keyL.keyId: 'L',
 };

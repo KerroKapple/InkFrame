@@ -1,5 +1,7 @@
 // CanvasShortcuts widget 测试（PL-2）：五组键位（Delete / Esc / ⌘A / ⌘± / ⌘0）
 // 驱动真实画布 + 焦点链陷阱（Inspector 文本框聚焦时不误伤画布）。
+// 浮动工具条之后多了工具单键（V / H / I / G / T / F / L）与按住空格临时平移，
+// 同样要过焦点链陷阱：在文本框里打这些字母 / 空格，画布一概不动。
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -11,6 +13,7 @@ import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_tool_mode.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/providers/selected_edge_controller.dart';
@@ -35,7 +38,8 @@ List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
   // override 投影本身——否则 nav.openCanvas('c2') 不会反映到派生值上。
   shellControllerProvider
       .overrideWith(() => ShellNavigator(initial: const ShellState(canvasId: 'c1'))),
-  canvasNodesControllerProvider.overrideWith(() => FakeNodesController(nodes)),
+  // 记录型：I / G / T 建节点只记类型、不碰仓储（删除 / 撤销沿用 FakeNodesController）。
+  canvasNodesControllerProvider.overrideWith(() => RecordingNodesController(nodes)),
   canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
   canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
   fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
@@ -136,6 +140,11 @@ Future<void> _sendKey(WidgetTester tester, LogicalKeyboardKey key) async {
 /// 测试环境用 Ctrl 变体驱动即可（与 _sendCtrl 一致）。
 Future<void> _sendMeta(WidgetTester tester, LogicalKeyboardKey key) =>
     _sendCtrl(tester, key);
+
+/// 当前画布（c1）的记录型节点控制器——I / G / T 建了什么节点从这里读。
+RecordingNodesController _recorder(ProviderContainer container) =>
+    container.read(canvasNodesControllerProvider('c1').notifier)
+        as RecordingNodesController;
 
 void main() {
   testWidgets('Delete 键删除选中节点（复用 PL-4a 删除路径）', (tester) async {
@@ -581,6 +590,165 @@ void main() {
       isFalse,
       reason: 'isActive:false 的 CanvasShortcuts 子树必须整体拒绝聚焦（含 Inspector 输入框），'
           '否则用户正在框里打字时切走标签，焦点会滞留在看不见的界面上',
+    );
+  });
+
+  // ===== 工具单键（浮动工具条）=====
+  testWidgets('H 开 / 关平移工具；V 回到选择工具并退出连线', (tester) async {
+    final container = await _pump(tester, nodes: twoNodes);
+
+    await _sendKey(tester, LogicalKeyboardKey.keyH);
+    expect(container.read(canvasToolModeProvider('c1')), CanvasToolMode.pan);
+    await _sendKey(tester, LogicalKeyboardKey.keyH);
+    expect(container.read(canvasToolModeProvider('c1')), CanvasToolMode.select);
+
+    // 平移中 + 连线中按 V：两样都退掉（选择 = 不在平移、也不在连线）。
+    await _sendKey(tester, LogicalKeyboardKey.keyH);
+    container.read(linkModeControllerProvider('c1').notifier).start('a');
+    await tester.pump();
+    await _sendKey(tester, LogicalKeyboardKey.keyV);
+    expect(container.read(canvasToolModeProvider('c1')), CanvasToolMode.select);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
+  });
+
+  testWidgets('I / G / T：各建一个 image / video / text 节点（与工具条同一条路径）',
+      (tester) async {
+    final container = await _pump(tester, nodes: twoNodes);
+
+    await _sendKey(tester, LogicalKeyboardKey.keyI);
+    await _sendKey(tester, LogicalKeyboardKey.keyG);
+    await _sendKey(tester, LogicalKeyboardKey.keyT);
+    await tester.pumpAndSettle();
+
+    expect(_recorder(container).added, <CanvasNodeType>[
+      CanvasNodeType.image,
+      CanvasNodeType.video,
+      CanvasNodeType.text,
+    ]);
+  });
+
+  testWidgets('F：开「新建泳道」框', (tester) async {
+    await _pump(tester, nodes: twoNodes);
+
+    await _sendKey(tester, LogicalKeyboardKey.keyF);
+    await tester.pumpAndSettle();
+
+    expect(find.text('New lane'), findsOneWidget);
+  });
+
+  testWidgets('L：恰好选中一个节点 → 以它为源进连线；再按退出；没选中时不动', (tester) async {
+    final container = await _pump(tester, nodes: twoNodes);
+
+    await _sendKey(tester, LogicalKeyboardKey.keyL);
+    expect(
+      container.read(linkModeControllerProvider('c1')),
+      isNull,
+      reason: '没选中节点：不知道从哪个节点连出去',
+    );
+
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
+    await tester.pump();
+    await _sendKey(tester, LogicalKeyboardKey.keyL);
+    expect(container.read(linkModeControllerProvider('c1')), 'a');
+
+    await _sendKey(tester, LogicalKeyboardKey.keyL);
+    expect(container.read(linkModeControllerProvider('c1')), isNull);
+  });
+
+  testWidgets('Esc 在平移工具里 → 回到选择；一次只剥一层，不动选中', (tester) async {
+    final container = await _pump(tester, nodes: twoNodes);
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
+    await _sendKey(tester, LogicalKeyboardKey.keyH);
+    expect(container.read(canvasToolModeProvider('c1')), CanvasToolMode.pan);
+
+    await _sendKey(tester, LogicalKeyboardKey.escape);
+
+    expect(container.read(canvasToolModeProvider('c1')), CanvasToolMode.select);
+    expect(container.read(canvasSelectionControllerProvider('c1')), {'a'});
+  });
+
+  testWidgets('按住空格 → 实际平移；松开 → 回到原来的工具（工具态始终没变）', (tester) async {
+    final container = await _pump(tester, nodes: twoNodes);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(container.read(canvasPanActiveProvider('c1')), isTrue);
+    expect(container.read(canvasToolModeProvider('c1')), CanvasToolMode.select);
+
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(container.read(canvasPanActiveProvider('c1')), isFalse);
+  });
+
+  // ===== 焦点链陷阱：工具单键与空格在文本框里打字时一概让位 =====
+  testWidgets('焦点在文本框里：V / H / I / G / T / F / L 与空格都交给打字，画布不动',
+      (tester) async {
+    final fieldController = TextEditingController();
+    addTearDown(fieldController.dispose);
+
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: CanvasShortcuts(
+          isActive: true,
+          child: Column(
+            children: <Widget>[
+              const Expanded(child: CanvasView()),
+              // 提示词条 / 检查器文本框替身：同处于 CanvasShortcuts 子树内的 EditableText。
+              TextField(controller: fieldController),
+            ],
+          ),
+        ),
+      ),
+      overrides: _canvasOverrides(twoNodes),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CanvasView)),
+    );
+
+    // 先切到平移、选中 a：V / H 误命中会把工具切走，L 误命中会以 a 为源进连线。
+    container.read(canvasToolModeProvider('c1').notifier).pan();
+    container.read(canvasSelectionControllerProvider('c1').notifier).select('a');
+    await tester.pump();
+
+    await tester.tap(find.byType(TextField));
+    await tester.pumpAndSettle();
+    expect(isEditingText(), isTrue); // 主焦点确在 EditableText 内
+
+    for (final LogicalKeyboardKey key in <LogicalKeyboardKey>[
+      LogicalKeyboardKey.keyV,
+      LogicalKeyboardKey.keyH,
+      LogicalKeyboardKey.keyI,
+      LogicalKeyboardKey.keyG,
+      LogicalKeyboardKey.keyT,
+      LogicalKeyboardKey.keyF,
+      LogicalKeyboardKey.keyL,
+    ]) {
+      await tester.sendKeyEvent(key);
+      await tester.pump();
+    }
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(
+      container.read(canvasSpacePanProvider('c1')),
+      isFalse,
+      reason: '打字时空格就是空格，不是临时平移',
+    );
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pumpAndSettle();
+
+    expect(
+      container.read(canvasToolModeProvider('c1')),
+      CanvasToolMode.pan,
+      reason: 'V / H 不得被画布吃掉',
+    );
+    expect(_recorder(container).added, isEmpty, reason: 'I / G / T 不得建节点');
+    expect(find.text('New lane'), findsNothing, reason: 'F 不得开泳道框');
+    expect(
+      container.read(linkModeControllerProvider('c1')),
+      isNull,
+      reason: 'L 不得进连线模式',
     );
   });
 }

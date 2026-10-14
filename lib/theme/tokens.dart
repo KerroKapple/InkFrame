@@ -359,6 +359,24 @@ class InkIconSize {
   static const double gridStroke = 1.5;
 }
 
+/// 画布浮动工具条（画布重设计稿 › 画布页 · 改后：舞台顶部居中）。内边距 / 键间距 / 圆角 / 阴影
+/// 仍走 InkSpacing / InkRadius / InkShadow。
+///
+/// 两个 inset 是舞台上其它浮层给工具条 / 缩放条让出的位置——写成令牌而不是在 widget 里拿
+/// 「top 12 + 条高」现算（禁止对 token 做加减拼间距）。改了工具条或缩放条的尺寸，这里跟着改。
+class InkToolbarSize {
+  InkToolbarSize._();
+  static const double button = 32; // 工具键边长
+  static const double separatorHeight = 20; // 组间分隔竖线高
+
+  /// 舞台顶部浮层（错误横幅 / 连线提示 / 多选计数）的 top：工具条 top 12 + 条高 42
+  /// （32 键 + 2×4 内边距 + 2×1 边）+ 10 间隙。
+  static const double stageTopInset = 64;
+
+  /// 舞台左下浮层（泳道工具栏）的 bottom：缩放条 bottom 12 + 条高 26 + 10 间隙。
+  static const double stageBottomInset = 48;
+}
+
 /// 通知卡（右下角，画布重设计稿 › 通知）。间距 / 圆角 / 阴影仍走 InkSpacing / InkRadius / InkShadow。
 class InkToastSize {
   InkToastSize._();

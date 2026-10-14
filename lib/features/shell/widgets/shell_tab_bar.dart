@@ -206,7 +206,7 @@ class ShellTabBar extends ConsumerWidget {
                 onTap: () => showScriptImportDialog(
                   context,
                   canvasId: canvasId,
-                  // 整条链从视口中心起铺（与 FAB 同源）。
+                  // 整条链从视口中心起铺（与画布工具条「更多 › 导入脚本…」同一种落点）。
                   origin: pickViewportCenteredNodePosition(
                     random: Random(),
                     transform: ref.read(canvasTransformControllerProvider(canvasId)).value,

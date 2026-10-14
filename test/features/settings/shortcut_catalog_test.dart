@@ -52,6 +52,28 @@ void main() {
     expect(rows[ShortcutAction.canvasEscape], <String>['Esc']);
   });
 
+  test('画布工具单键：不带修饰键，两个平台同一个字母', () {
+    for (final bool isMac in <bool>[true, false]) {
+      final Map<ShortcutAction, List<String>> rows = _byAction(isMac: isMac);
+      expect(rows[ShortcutAction.canvasSelectTool], <String>['V']);
+      expect(rows[ShortcutAction.canvasPanTool], <String>['H']);
+      expect(rows[ShortcutAction.canvasAddImageNode], <String>['I']);
+      expect(rows[ShortcutAction.canvasAddVideoNode], <String>['G']);
+      expect(rows[ShortcutAction.canvasAddTextNode], <String>['T']);
+      expect(rows[ShortcutAction.canvasAddLane], <String>['F']);
+      expect(rows[ShortcutAction.canvasToggleLink], <String>['L']);
+    }
+  });
+
+  // 按住空格不在 kCanvasShortcuts 里（要按下与松开两个事件），清单从 CanvasShortcuts
+  // 自己用的那个常量收它——不收的话，设置页上这条键位根本不存在。
+  test('按住空格临时平移：两个平台都列「Space」，与 CanvasShortcuts 用的是同一个键', () {
+    expect(CanvasToolKeys.holdToPan.trigger, LogicalKeyboardKey.space);
+    for (final bool isMac in <bool>[true, false]) {
+      expect(_byAction(isMac: isMac)[ShortcutAction.canvasHoldPan], <String>['Space']);
+    }
+  });
+
   test('Windows：Ctrl 变体上屏，⌘ 变体不上屏', () {
     final Map<ShortcutAction, List<String>> rows = _byAction(isMac: false);
     expect(rows[ShortcutAction.commandPalette], <String>['Ctrl+K']);

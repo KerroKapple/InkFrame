@@ -358,8 +358,6 @@
   "canvasAddVideoNode": "Add video node",
   "@canvasAddVideoNode": {},
   "canvasAddShotNode": "Add shot node",
-  "canvasAddNodeTooltip": "New node",
-  "@canvasAddNodeTooltip": {},
   "canvasAddNodeFailed": "Failed to add node",
 
   "inspectorVideoPromptLabel": "Video prompt",
@@ -700,7 +698,7 @@
 
   "canvasAddImportScript": "Import script…",
   "@canvasAddImportScript": {
-    "description": "Add-node FAB menu item that opens the script import dialog"
+    "description": "Canvas toolbar \"More\" menu item that opens the script import dialog"
   },
   "canvasEmptyImportScript": "Import script",
   "@canvasEmptyImportScript": {
@@ -746,6 +744,12 @@
   "canvasToolImageNode": "Image node",
   "canvasToolVideoNode": "Video node",
   "canvasToolLane": "Lane",
+  "canvasToolShotNode": "Shot node",
+  "canvasToolMore": "More",
+  "canvasToolPanHoldSpace": "hold Space",
+  "@canvasToolPanHoldSpace": {
+    "description": "Second shortcut hint in the Pan tool tooltip, after the H key: holding the Space bar pans temporarily"
+  },
   "projectPanelCanvases": "Canvases",
   "projectPanelAssets": "Assets",
   "projectPanelCharacters": "Characters",
@@ -753,6 +757,8 @@
   "projectPanelCurrentNodes": "Current canvas · nodes",
   "canvasHeaderLanes": "Lanes:",
   "canvasZoomFit": "Fit",
+  "canvasZoomIn": "Zoom in",
+  "canvasZoomOut": "Zoom out",
   "promptBarBaseStyle": "Base style",
   "promptBarAttached": "Attached",
   "promptBarChars": "{count} chars",
@@ -1091,6 +1097,14 @@
   "settingsShortcutCanvasZoomIn": "Zoom in",
   "settingsShortcutCanvasZoomOut": "Zoom out",
   "settingsShortcutCanvasZoomReset": "Reset zoom",
+  "settingsShortcutCanvasSelectTool": "Select tool",
+  "settingsShortcutCanvasPanTool": "Pan tool on / off",
+  "settingsShortcutCanvasHoldPan": "Pan while held",
+  "settingsShortcutCanvasAddImageNode": "New image node",
+  "settingsShortcutCanvasAddVideoNode": "New video node",
+  "settingsShortcutCanvasAddTextNode": "New text node",
+  "settingsShortcutCanvasAddLane": "New lane",
+  "settingsShortcutCanvasToggleLink": "Start / stop linking",
   "settingsPerformanceConcurrencyTitle": "Concurrency and quota",
   "settingsPerformanceGlobalLimit": "Global concurrent jobs",
   "settingsPerformanceImageCache": "Image cache limit",
