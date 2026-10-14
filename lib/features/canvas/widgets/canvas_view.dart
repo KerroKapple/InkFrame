@@ -845,7 +845,9 @@ class _CanvasStage extends ConsumerWidget {
         width = LaneTitleBar.horizontalWidth;
       } else {
         left = rect.left + kTitleBarInsetV;
-        top = crossInset;
+        // 竖向道的标题栏钉在视口顶：同样让出浮动工具条那一条，否则居中的工具条一直盖着
+        // 中间几条道的标题栏（横向道随泳道栈走，默认相机已让出）。
+        top = InkToolbarSize.stageTopInset + crossInset;
         width = (rect.width - kTitleBarInsetV * 2)
             .clamp(LaneTitleBar.minWidth, LaneTitleBar.verticalMaxWidth);
       }
