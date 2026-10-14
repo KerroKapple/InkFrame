@@ -82,6 +82,9 @@ class InkColors {
     required this.canvasGrid,
     required this.laneDivider,
     required this.thumbFill,
+    required this.edgeFirstFrame,
+    required this.edgeLastFrame,
+    required this.edgeReference,
   });
 
   /// 深色主题（默认）——README dark 列原值。
@@ -121,6 +124,9 @@ class InkColors {
         canvasGrid: Color(0xFF222222),
         laneDivider: Color(0xFF2A2A2A),
         thumbFill: Color(0xFF202020),
+        edgeFirstFrame: Color(0xFF8FD694),
+        edgeLastFrame: Color(0xFFE87C9E),
+        edgeReference: Color(0xFF7CB8E8),
       );
 
   /// 浅色主题——同一语义、反向 ramp；accent 压暗保对比。
@@ -158,6 +164,9 @@ class InkColors {
         canvasGrid: Color(0xFFECECEC),
         laneDivider: Color(0xFFDADADA),
         thumbFill: Color(0xFFF0F0F0),
+        edgeFirstFrame: Color(0xFF2F7D4A),
+        edgeLastFrame: Color(0xFFB23A68),
+        edgeReference: Color(0xFF2D6AA6),
       );
 
   /// 高对比度变体（A11y §20.1）——基于 dark：surface 塌到两档，描边纯白，
@@ -196,6 +205,9 @@ class InkColors {
         canvasGrid: Color(0xFF1A1A1A),
         laneDivider: Color(0xFFFFFFFF),
         thumbFill: Color(0xFF0A0A0A),
+        edgeFirstFrame: Color(0xFF6BFFB0),
+        edgeLastFrame: Color(0xFFFF8AC8),
+        edgeReference: Color(0xFF7CC8FF),
       );
 
   // ---- surface：越大越"抬升"（light 变体的 surface5 例外，见工厂注释）----
@@ -245,6 +257,12 @@ class InkColors {
   final Color canvasGrid;
   final Color laneDivider;
   final Color thumbFill;
+
+  // ---- 连线语义（画布重设计稿 › 画布交互）：颜色之外还靠线型和标签区分，色弱也分得清 ----
+  // 叙事线用 fg4、产出线用 fg6，不另设色。三色对画布底（surface1）都 ≥ 3:1（图形对比度）。
+  final Color edgeFirstFrame; // 首帧：实线 + 「首帧」标签
+  final Color edgeLastFrame; // 尾帧：实线 + 「尾帧」标签
+  final Color edgeReference; // 参考：虚线 + 「参考」标签
 }
 
 /// 间距（8 的倍数主刻度 + 半阶档位）。
