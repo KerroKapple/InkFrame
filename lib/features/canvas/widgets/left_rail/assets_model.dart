@@ -1,8 +1,9 @@
-// 左栏「素材」页的纯函数：分段（本画布 / 项目全部）、类型计数与过滤、网格标签。
+// 左栏「素材」页的纯函数：分段（本画布 / 项目全部）、删掉的不显示、类型计数与过滤、网格标签。
 //
 // 数据是画廊那一份（galleryGraphProvider → galleryControllerProvider 的项目级产物），这里只做派生，
-// 不读库。网格标签的「源配置名」取画廊的 galleryConfigNodeOf（result 节点走 sourceNodeId，批量 slot
-// 先经它挂的 result 容器），与画廊信息栏同一口径。
+// 不读库；当前画布另有画布控制器里的实时节点表，删除靠它立即生效。网格标签的「源配置名」取画廊的
+// galleryConfigNodeOf（result 节点走 sourceNodeId，批量 slot 先经它挂的 result 容器），与画廊信息栏
+// 同一口径。
 import 'package:flutter/foundation.dart';
 
 import '../../../gallery/models/gallery_graph.dart';
@@ -32,6 +33,22 @@ List<GalleryItem> assetsInScope(
             if (i.canvasId == canvasId) i,
         ],
     };
+
+/// 删掉的不显示：[canvasId]（当前画布）的条目，节点已不在 [liveNodes]（画布控制器里的实时节点表）里的
+/// 去掉——删除立即生效，不等画廊图重读。批量 slot 的 nodeId 是它挂的 result 容器，容器删了 slot 跟着走。
+/// 别的画布的条目原样（手里没有它们的实时节点表）；[liveNodes] 为 null（还没载入）时不过滤。保持传入的序。
+List<GalleryItem> assetsWithoutDeleted(
+  List<GalleryItem> items, {
+  required String canvasId,
+  required List<CanvasNode>? liveNodes,
+}) {
+  if (liveNodes == null) return items;
+  final Set<String> alive = <String>{for (final CanvasNode n in liveNodes) n.id};
+  return <GalleryItem>[
+    for (final GalleryItem i in items)
+      if (i.canvasId != canvasId || alive.contains(i.nodeId)) i,
+  ];
+}
 
 AssetCounts countAssets(List<GalleryItem> items) {
   int image = 0;

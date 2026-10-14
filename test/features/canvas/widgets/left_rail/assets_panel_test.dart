@@ -2,34 +2,49 @@
 //
 // 钉：分段与类型 chip 的计数、网格标签（源配置名 · take N / 成片）、点格子定位（当前画布 =
 // 单选 + 移到视口中心；别的画布 = 切过去）、「在画廊中打开全部」切到画廊标签。
+// 新鲜度：画廊图被别处保活着时 job 成功，之后再打开本页也能看到新图（开页即重读）；本页开着时 job 成功，
+// 新图跟着出来（本页对注册表的监听）。删除：当前画布删掉的节点，格子立刻消失；点一个在节点表里找不到的
+// 格子，不改选中集。
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/left_rail_state.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/left_rail/assets_model.dart';
 import 'package:inkframe/features/canvas/widgets/left_rail/assets_panel.dart';
+import 'package:inkframe/features/gallery/providers/gallery_graph_provider.dart';
+import 'package:inkframe/features/generation/models/job_state.dart';
+import 'package:inkframe/features/generation/providers/jobs_registry.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 
 import '../../../../_harness/fake_canvas.dart';
 import '../../../../_harness/fake_repositories.dart';
+import '../../../../_harness/fake_toast_service.dart';
 import '../../../../_harness/shell_app.dart';
 
 const ProjectRef _alpha = ProjectRef(id: 'p1', name: 'Alpha');
 
 /// 种好的两张画布：A（当前）= Harbor 名下两个图片 take + Boat 一个视频；B = Peaks 一张图。
 class _Seed {
-  _Seed(this.canvases, this.nodes, this.cvA, this.cvB, this.take2Id, this.peaksTakeId);
+  _Seed(this.canvases, this.nodes, this.cvA, this.cvB, this.harborId, this.take2Id, this.peaksTakeId);
 
   final InMemoryCanvasRepository canvases;
   final InMemoryNodeRepository nodes;
   final String cvA;
   final String cvB;
+
+  /// A 画布上的配置节点 Harbor。
+  final String harborId;
 
   /// Harbor 的第二个（较新的）take。
   final String take2Id;
@@ -107,10 +122,65 @@ Future<_Seed> _seed() async {
     sourceNodeId: peaks,
     typeConfig: <String, Object?>{'image_url': 'images/p.png'},
   );
-  return _Seed(canvases, nodes, cvA, cvB, take2, peaksTake);
+  return _Seed(canvases, nodes, cvA, cvB, harbor, take2, peaksTake);
 }
 
-Future<ProviderContainer> _pump(WidgetTester tester, _Seed s) async {
+/// 节点表照常从内存仓储读（与画廊图同一份数据）；删除只改内存——仓储里还在、画廊图也不重读，格子还在不在
+/// 全看本画布的实时节点表。（真控制器的删除走 UnitOfWork，外壳测试里连不上库。）
+class _MemoryDeleteNodes extends CanvasNodesController {
+  @override
+  Future<NodeDeletion?> removeNode(String id) async {
+    final List<CanvasNode> previous = state.valueOrNull ?? const <CanvasNode>[];
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      for (final CanvasNode n in previous)
+        if (n.id != id) n,
+    ]);
+    return null;
+  }
+}
+
+/// 画布节点一直在载入：节点表拿不到，画廊图却照样读得出来——格子画着，点了在节点表里找不到。
+class _NeverLoadedNodes extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) => Completer<List<CanvasNode>>().future;
+}
+
+/// 素材格子的锚点：'leftRail-asset-' + galleryItemKey（'画布|相对路径|slot 序号'，节点主产物的 slot 是 null）。
+Key _tileKey(String canvasId, String path, [int? slot]) =>
+    ValueKey<String>('leftRail-asset-$canvasId|$path|$slot');
+
+/// Harbor 又生成了一张：result 落库，然后 job 转成功。返回新产物的相对路径。
+Future<String> _harborGeneratesAgain(ProviderContainer c, _Seed s) async {
+  const String path = 'images/h3.png';
+  final String id = await s.nodes.create(
+    canvasId: s.cvA,
+    type: 'image',
+    nodeRole: 'result',
+    label: 'Harbor take',
+    sourceNodeId: s.harborId,
+    positionX: 600,
+    typeConfig: <String, Object?>{'image_url': path},
+  );
+  c.read(jobsRegistryProvider.notifier).upsert(
+        JobState.succeeded(
+          jobId: 'job-h3',
+          providerId: 'p',
+          canvasId: s.cvA,
+          projectId: 'p1',
+          sourceNodeId: s.harborId,
+          resultNodeId: id,
+          artifactPath: path,
+        ),
+      );
+  return path;
+}
+
+Future<ProviderContainer> _pump(
+  WidgetTester tester,
+  _Seed s, {
+  LeftRailPage page = LeftRailPage.assets,
+  List<Override> extra = const <Override>[],
+}) async {
   final paths = await setupTempPaths(tester, 'ink_left_assets_');
   await pumpInkShell(
     tester,
@@ -120,10 +190,13 @@ Future<ProviderContainer> _pump(WidgetTester tester, _Seed s) async {
       canvasRepositoryProvider.overrideWith((_) async => s.canvases),
       nodeRepositoryProvider.overrideWith((_) async => s.nodes),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
+      // job 成功会弹通知卡（卡片带计时器）：换成只记录的假实现。
+      toastServiceProvider.overrideWithValue(RecordingToastService()),
+      ...extra,
     ],
   );
   final ProviderContainer c = readShellContainer(tester);
-  c.read(leftRailProvider.notifier).open(LeftRailPage.assets);
+  c.read(leftRailProvider.notifier).open(page);
   // 画布节点载入 + 画廊图聚合 + 视口尺寸帧后上报：多给几帧。
   for (int i = 0; i < 8; i++) {
     await tester.pump();
@@ -229,4 +302,82 @@ void main() {
     expect(shell.tab, ShellTab.gallery);
     expect(shell.project, _alpha);
   }, timeout: const Timeout(Duration(seconds: 30)));
+
+  group('新鲜度', () {
+    testWidgets('画廊图被别处保活着时 job 成功，之后再切到素材页：新图在（开页即重读）', (tester) async {
+      final _Seed s = await _seed();
+      final ProviderContainer c = await _pump(tester, s, page: LeftRailPage.outline);
+      // 别处（常驻的画廊标签、角色页的引用计数）保活着画廊图：此刻读出来的是还没有新图的那一版。
+      c.listen(galleryGraphProvider('p1'), (_, _) {});
+      for (int i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+      expect(c.read(galleryGraphProvider('p1')).hasValue, isTrue, reason: '前置：画廊图已读出');
+
+      // 素材页没开的时候，Harbor 又生成了一张。
+      final String path = await _harborGeneratesAgain(c, s);
+      for (int i = 0; i < 4; i++) {
+        await tester.pump();
+      }
+
+      // 再切到素材页。
+      c.read(leftRailProvider.notifier).open(LeftRailPage.assets);
+      for (int i = 0; i < 8; i++) {
+        await tester.pump();
+      }
+      expect(find.byKey(_tileKey(s.cvA, path)), findsOneWidget,
+          reason: '画廊图被别处保活着、是旧的；开页时要让它重读，不能把开页前成功的 job 当成「已见」');
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    testWidgets('素材页开着时 job 成功：新图跟着出来', (tester) async {
+      final _Seed s = await _seed();
+      final ProviderContainer c = await _pump(tester, s);
+      expect(find.byKey(_tileKey(s.cvA, 'images/h3.png')), findsNothing, reason: '前置：还没有这张');
+
+      final String path = await _harborGeneratesAgain(c, s);
+      for (int i = 0; i < 8; i++) {
+        await tester.pump();
+      }
+      expect(find.byKey(_tileKey(s.cvA, path)), findsOneWidget,
+          reason: '本页 watch 着画廊图，没人让它失效就一直不重读——要靠本页对注册表的监听');
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
+
+  group('删除', () {
+    testWidgets('删掉当前画布上的一个产物节点：它的格子立刻消失，不等画廊图重读', (tester) async {
+      final _Seed s = await _seed();
+      final ProviderContainer c = await _pump(
+        tester,
+        s,
+        extra: <Override>[canvasNodesControllerProvider.overrideWith(_MemoryDeleteNodes.new)],
+      );
+      final AppLocalizations l = _l(tester);
+      final Finder tile = find.byKey(_tileKey(s.cvA, 'images/h2.png'));
+      expect(tile, findsOneWidget, reason: '前置：格子在');
+      expect(find.text(l.leftRailAssetsKindAll(3)), findsOneWidget);
+
+      await c.read(canvasNodesControllerProvider(s.cvA).notifier).removeNode(s.take2Id);
+      await tester.pump();
+      await tester.pump();
+
+      expect(tile, findsNothing, reason: '节点已经不在画布上（画廊图里还有，它没重读）');
+      expect(find.text(l.leftRailAssetsKindAll(2)), findsOneWidget, reason: '计数跟着少一个');
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    testWidgets('点一个在节点表里找不到的格子：不改选中集', (tester) async {
+      final _Seed s = await _seed();
+      final ProviderContainer c = await _pump(
+        tester,
+        s,
+        extra: <Override>[canvasNodesControllerProvider.overrideWith(_NeverLoadedNodes.new)],
+      );
+      final Finder tile = find.byKey(_tileKey(s.cvA, 'images/h2.png'));
+      expect(tile, findsOneWidget, reason: '前置：画廊图读得到，格子画着');
+
+      await _tap(tester, tile);
+
+      expect(c.read(canvasSelectionControllerProvider(s.cvA)), isEmpty,
+          reason: '选中一个找不到的 id：状态栏写「选中 1」，检查器却是空的');
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
 }

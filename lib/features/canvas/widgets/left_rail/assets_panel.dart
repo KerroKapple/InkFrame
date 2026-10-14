@@ -9,9 +9,16 @@
 // 点格子：产物在当前画布 = 单选它并移到视口中心（与大纲同一条 focusNodeOnCanvas）；在别的画布 =
 // 走画廊「在画布中定位」那条路（gallery_actions.galleryLocateInCanvas：切过去再选中）。
 //
-// 新产物：本页开着时，本项目有 job 转成功 ⇒ 帧后失效一次画廊图（与画廊标签脏刷新的入口相同）。
-// 不这样做，画廊图被本页 watch 着一直不重读，刚生成的图在素材里看不到。按 jobId 记账，一条只刷一次
-// （成功的 job 会一直留在 registry 里）。
+// 新鲜度：画廊图不只本页 watch——画廊标签物化后常驻、角色页的引用计数（characterUsageProvider）也读它，
+// 被它们保活着时，本页打开看到的可能是旧图（job 成功发生在本页没开的时候）。所以：
+//   - 每次挂载（展开左栏、从别的页切过来）时图若已经活着，帧后让它失效一次——开页即是新的；没活着的话
+//     本页这次 build 本来就现读，不再多读一遍。
+//   - 本页开着时，本项目有 job 转成功（上一刻还不是成功、这一刻是）⇒ 帧后再失效一次（与画廊标签脏刷新
+//     的入口相同）。成功的 job 会一直留在注册表里、别的 job 每跳一次进度整张表都会再发一遍，所以按前后
+//     两刻比，不记账。
+// 删除：当前画布的条目按画布控制器里的实时节点表过一遍（assets_model.assetsWithoutDeleted）——节点删了格子
+// 立刻消失，不等画廊图重读；点格子时节点表里找不到就不选中（选中一个不存在的 id，状态栏写「选中 1」，
+// 检查器却是空的）。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -37,7 +44,6 @@ import '../../../shell/providers/active_project.dart';
 import '../../../shell/providers/shell_controller.dart';
 import '../../models/canvas_node.dart';
 import '../../providers/canvas_nodes_controller.dart';
-import '../../providers/canvas_selection_controller.dart';
 import '../node_card.dart' show nodeTypeLabel;
 import 'assets_model.dart';
 import 'left_panel_parts.dart';
@@ -68,24 +74,31 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
   AssetScope _scope = AssetScope.canvas;
   AssetKindFilter _kind = AssetKindFilter.all;
 
-  /// 已经算过的成功 job（见头注：按 jobId 记账，一条只刷一次）。
-  final Set<String> _seenSucceeded = <String>{};
-
   @override
   void initState() {
     super.initState();
-    // 本页打开之前就成功了的 job 不算「新产物」：本页第一次读画廊图时它们已经在里面了。
-    for (final JobState j in ref.read(jobsRegistryProvider)) {
-      if (j is JobSucceeded) _seenSucceeded.add(j.jobId);
+    // 开页即是新的（见头注）：图此刻已经活着 ⇒ 是被别处保活着的，可能早于刚成功的 job，帧后让它失效一次。
+    // 推到帧后：initState 跑在 build 阶段里，同步改 provider 图会被 Riverpod 断言掉。
+    final ProjectRef? project = ref.read(activeProjectProvider);
+    if (project != null && ref.exists(galleryGraphProvider(project.id))) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.invalidate(galleryGraphProvider(project.id));
+      });
     }
   }
 
   void _onJobs(List<JobState>? previous, List<JobState> next) {
     final ProjectRef? project = ref.read(activeProjectProvider);
     if (project == null) return;
+    // 上一刻就已经是成功的不算新产物（成功的 job 会一直留在注册表里）。
+    final Set<String> succeededBefore = <String>{
+      for (final JobState j in previous ?? const <JobState>[])
+        if (j is JobSucceeded) j.jobId,
+    };
     bool fresh = false;
     for (final JobState j in next) {
-      if (j is! JobSucceeded || !_seenSucceeded.add(j.jobId)) continue;
+      if (j is! JobSucceeded || succeededBefore.contains(j.jobId)) continue;
       // 拿不到 projectId（生产里不会发生）就当作可能是本项目：多刷一次远比漏刷便宜。
       if (j.projectId == null || j.projectId == project.id) fresh = true;
     }
@@ -109,13 +122,9 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
             const <CanvasNode>[];
     final CanvasNode? node =
         nodes.where((CanvasNode n) => n.id == item.nodeId).firstOrNull;
-    if (node == null) {
-      // 画布节点还没载入（或画廊图比画布新）：位置未知，至少选中它。
-      ref
-          .read(canvasSelectionControllerProvider(canvasId).notifier)
-          .select(item.nodeId);
-      return;
-    }
+    // 节点表里没有它（刚删掉，或画布节点还没载入）：不选中——选中一个找不到的 id，状态栏写「选中 1」，
+    // 检查器却是空的。
+    if (node == null) return;
     focusNodeOnCanvas(ref, canvasId: canvasId, node: node);
   }
 
@@ -139,8 +148,14 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
     final GalleryGraph graph =
         ref.watch(galleryGraphProvider(project.id)).valueOrNull ??
             GalleryGraph.empty;
-    final List<GalleryItem> all =
-        itemsAsync.valueOrNull ?? const <GalleryItem>[];
+    // 本画布的实时节点表：删掉的节点，格子立刻消失（不等画廊图重读）。
+    final List<CanvasNode>? liveNodes =
+        ref.watch(canvasNodesControllerProvider(widget.canvasId)).valueOrNull;
+    final List<GalleryItem> all = assetsWithoutDeleted(
+      itemsAsync.valueOrNull ?? const <GalleryItem>[],
+      canvasId: widget.canvasId,
+      liveNodes: liveNodes,
+    );
     final List<GalleryItem> scoped =
         assetsInScope(all, scope: _scope, canvasId: widget.canvasId);
     final AssetCounts counts = countAssets(scoped);

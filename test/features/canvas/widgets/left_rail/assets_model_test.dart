@@ -1,4 +1,4 @@
-// 左栏素材页的纯函数（PR-4）：分段过滤、类型计数、网格标签（源配置名 + take 序号）。
+// 左栏素材页的纯函数（PR-4）：分段过滤、删掉的不显示、类型计数、网格标签（源配置名 + take 序号）。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/left_rail/assets_model.dart';
@@ -70,6 +70,34 @@ void main() {
   test('分段：本画布只留当前画布的产物，项目全部原样（保持聚合序）', () {
     expect(assetsInScope(all, scope: AssetScope.canvas, canvasId: 'cvA'), <GalleryItem>[orphan, v1, a3, a1, a2]);
     expect(assetsInScope(all, scope: AssetScope.project, canvasId: 'cvA'), all);
+  });
+
+  test('删掉的不显示：本画布节点已不在实时节点表里的去掉（批量 slot 跟着容器走），别的画布原样；节点表没载入不过滤',
+      () {
+    // 挂在 r1a 这个 result 容器上的批量 slot。
+    final GalleryItem slot = GalleryItem(
+      kind: GalleryItemKind.image,
+      relativePath: 'images/s0.png',
+      canvasId: 'cvA',
+      canvasName: 'cvA',
+      nodeId: 'r1a',
+      createdAt: DateTime.utc(2026, 1, 4),
+      slotIndex: 0,
+    );
+    final List<GalleryItem> items = <GalleryItem>[b1, orphan, v1, a3, a1, a2, slot];
+    // cvA 上 r1a、rOrphan 删了；cvB 的 r3 不在这份节点表里，但它在别的画布，原样留着。
+    final List<CanvasNode> live = <CanvasNode>[
+      _config('cfg1', 'Harbor'),
+      _config('cfg2', 'Boat'),
+      _result('r1b', 'cfg1'),
+      _result('r1c', 'cfg1'),
+      _result('r2', 'cfg2'),
+    ];
+    expect(
+      assetsWithoutDeleted(items, canvasId: 'cvA', liveNodes: live),
+      <GalleryItem>[b1, v1, a3, a2],
+    );
+    expect(assetsWithoutDeleted(items, canvasId: 'cvA', liveNodes: null), items, reason: '节点表还没载入');
   });
 
   test('类型计数随分段变', () {
