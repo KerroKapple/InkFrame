@@ -112,6 +112,31 @@ are complete with CI fully green; M3 first slices are in progress across four tr
 storyboarding, custom providers, asset gallery, video export). Remaining beta gaps are tracked in
 [docs/BOARD.md](docs/BOARD.md). See [ROADMAP.md](ROADMAP.md) for what's shipped and what's next.
 
+## 🗂 Project layout
+
+```
+InkFrame/
+├── lib/                # App source (Dart)
+│   ├── core/           #   Shared abstractions: interfaces, models, errors, DI wiring
+│   ├── features/       #   Feature slices: canvas, storyboard, export, gallery, settings, studio…
+│   ├── providers/      #   AI provider adapters (Gemini, OpenAI, Kling, Wanx, Stability…)
+│   ├── services/       #   App-level services: job queue, backup/restore, ffmpeg export, updates
+│   ├── storage/        #   Embedded PostgreSQL: lifecycle, repositories, forward migrations
+│   ├── theme/          #   Design tokens + reusable Ink* components
+│   └── l10n/           #   ARB strings (en / zh) + generated localizations
+├── test/               # Tests mirroring lib/, plus quality/ (architecture guard tests) and _harness/
+├── docs/               # Documentation
+│   ├── adr/            #   Architecture Decision Records
+│   ├── specs/          #   PRD and feature specs
+│   ├── design/         #   Design notes and visual references
+│   ├── research/       #   Market / model / release-engineering research
+│   └── internal/       #   Maintainer notes: audits, tech debt, regression checklists
+├── scripts/            # Tooling: git hooks, PG binary fetch, release, smoke, coverage
+├── assets/             # Bundled fonts, license texts, sample media
+├── macos/ · windows/   # Platform runners (Flutter desktop)
+└── .github/            # CI, release, smoke, secret-scan workflows
+```
+
 ## 📚 Documentation
 
 - [ROADMAP.md](ROADMAP.md) — what's shipped, what's next

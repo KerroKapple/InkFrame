@@ -110,6 +110,31 @@ M2「创作者要的」（角色一致性 / 批量变体 / 预设库 / 成本估
 首切片进行中（分镜 / 自定义 Provider / 画廊 / 视频导出）。剩余 beta 缺口见
 [docs/BOARD.md](docs/BOARD.md)；已发布与待办见 [ROADMAP.md](ROADMAP.md)。
 
+## 🗂 目录速览
+
+```
+InkFrame/
+├── lib/                # 应用源码（Dart）
+│   ├── core/           #   共享抽象：接口、模型、错误体系、依赖注入接线
+│   ├── features/       #   功能切片：画布、分镜、导出、素材库、设置、工作台……
+│   ├── providers/      #   AI 服务适配器（Gemini、OpenAI、可灵、通义万相、Stability……）
+│   ├── services/       #   应用级服务：任务队列、备份还原、ffmpeg 导出、更新检查
+│   ├── storage/        #   嵌入式 PostgreSQL：生命周期、仓储、前向迁移
+│   ├── theme/          #   设计令牌 + 可复用 Ink* 组件
+│   └── l10n/           #   ARB 文案（中 / 英）+ 生成的本地化代码
+├── test/               # 测试，结构对应 lib/；另有 quality/（架构守护测试）和 _harness/
+├── docs/               # 文档
+│   ├── adr/            #   架构决策记录
+│   ├── specs/          #   PRD 与功能规格
+│   ├── design/         #   设计笔记与视觉参考
+│   ├── research/       #   市场 / 模型 / 发布工程调研
+│   └── internal/       #   维护者笔记：审计、技术债、回归清单
+├── scripts/            # 工具脚本：git hooks、PG 二进制拉取、发布、烟测、覆盖率
+├── assets/             # 内置字体、许可证文本、示例素材
+├── macos/ · windows/   # 平台工程（Flutter 桌面）
+└── .github/            # CI、发布、烟测、密钥扫描工作流
+```
+
 ## 📚 文档
 
 - [ROADMAP.md](ROADMAP.md) — 已发布与待办

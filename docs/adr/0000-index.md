@@ -29,6 +29,7 @@ proposed ──► accepted ──► superseded (by ADR-NNNN)
 | [ADR-0011](0011-plugin-oriented-extension-points.md) | 面向插件的扩展点：现在守住接缝，运行时插件系统延后到 ROADMAP | accepted | 2026-07-01 |
 | [ADR-0012](0012-forward-migration-as-sole-data-upgrade-path.md) | 单线前向迁移是用户数据的唯一升级路径（D-4/U7/QG-5 拍板） | accepted | 2026-07-08 |
 | [ADR-0013](0013-product-first-principles.md) | 产品第一性原理：节点为原子、交互为护城河、信任为第一特性（上位约束） | accepted | 2026-07-08 |
+| [ADR-0014](0014-dev-infra-scaling-seams-and-triggers.md) | 开发基础设施按指标扩展：现在守住接缝，扩展机制按阈值启用 | proposed | 2026-10-14 |
 
 ---
 
