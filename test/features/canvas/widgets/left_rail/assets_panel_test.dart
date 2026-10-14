@@ -5,6 +5,8 @@
 // 新鲜度：画廊图被别处保活着时 job 成功，之后再打开本页也能看到新图（开页即重读）；本页开着时 job 成功，
 // 新图跟着出来（本页对注册表的监听）。删除：当前画布删掉的节点，格子立刻消失；点一个在节点表里找不到的
 // 格子，不改选中集。
+// take 号：普通生成和批量混在一起时，素材页格子与检查器历史页的号一致（批量 slot 不参与编号，照画廊写
+// 「#n」）；名下只有一个产物时两处都写成片。
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -15,8 +17,11 @@ import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/providers/inspector_tab.dart';
 import 'package:inkframe/features/canvas/providers/left_rail_state.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_inspector_panel.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
+import 'package:inkframe/features/canvas/widgets/inspector_history_panel.dart';
 import 'package:inkframe/features/canvas/widgets/left_rail/assets_model.dart';
 import 'package:inkframe/features/canvas/widgets/left_rail/assets_panel.dart';
 import 'package:inkframe/features/gallery/providers/gallery_graph_provider.dart';
@@ -27,6 +32,7 @@ import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 
+import '../../../../_harness/fake_batch_result.dart';
 import '../../../../_harness/fake_canvas.dart';
 import '../../../../_harness/fake_repositories.dart';
 import '../../../../_harness/fake_toast_service.dart';
@@ -180,15 +186,32 @@ Future<ProviderContainer> _pump(
   _Seed s, {
   LeftRailPage page = LeftRailPage.assets,
   List<Override> extra = const <Override>[],
+}) =>
+    _pumpShell(
+      tester,
+      canvases: s.canvases,
+      nodes: s.nodes,
+      canvasId: s.cvA,
+      page: page,
+      extra: extra,
+    );
+
+Future<ProviderContainer> _pumpShell(
+  WidgetTester tester, {
+  required InMemoryCanvasRepository canvases,
+  required InMemoryNodeRepository nodes,
+  required String canvasId,
+  LeftRailPage page = LeftRailPage.assets,
+  List<Override> extra = const <Override>[],
 }) async {
   final paths = await setupTempPaths(tester, 'ink_left_assets_');
   await pumpInkShell(
     tester,
     paths: paths,
-    initial: ShellState(tab: ShellTab.canvas, canvasId: s.cvA, project: _alpha),
+    initial: ShellState(tab: ShellTab.canvas, canvasId: canvasId, project: _alpha),
     extraOverrides: <Override>[
-      canvasRepositoryProvider.overrideWith((_) async => s.canvases),
-      nodeRepositoryProvider.overrideWith((_) async => s.nodes),
+      canvasRepositoryProvider.overrideWith((_) async => canvases),
+      nodeRepositoryProvider.overrideWith((_) async => nodes),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
       // job 成功会弹通知卡（卡片带计时器）：换成只记录的假实现。
       toastServiceProvider.overrideWithValue(RecordingToastService()),
@@ -378,6 +401,136 @@ void main() {
 
       expect(c.read(canvasSelectionControllerProvider(s.cvA)), isEmpty,
           reason: '选中一个找不到的 id：状态栏写「选中 1」，检查器却是空的');
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
+
+  group('take 号：素材页与检查器历史页同一口径', () {
+    testWidgets('普通生成 + 批量混在一起：两处的号一致，批量 slot 写「#n」不占号；名下只有一个时两处都写成片', (tester) async {
+      final InMemoryCanvasRepository canvases = InMemoryCanvasRepository();
+      final InMemoryNodeRepository nodes = InMemoryNodeRepository();
+      final String cv = await canvases.create(projectId: 'p1', name: 'A');
+      Future<String> at(String id, DateTime t) async {
+        await nodes.update(id, <String, Object?>{'created_at': t});
+        return id;
+      }
+
+      // Harbor：1 月 1 日一张、1 月 2 日一次三格批量（没转正：result 容器没有产物 url）、1 月 3 日又一张。
+      final String harbor = await nodes.create(
+        canvasId: cv,
+        type: 'text',
+        nodeRole: 'config',
+        label: 'Harbor',
+        typeConfig: <String, Object?>{'text': 'dawn'},
+      );
+      final String first = await at(
+        await nodes.create(
+          canvasId: cv,
+          type: 'image',
+          nodeRole: 'result',
+          label: 'Harbor take',
+          sourceNodeId: harbor,
+          positionX: 300,
+          typeConfig: <String, Object?>{'image_url': 'images/h1.png'},
+        ),
+        DateTime.utc(2026, 1, 1),
+      );
+      final String batch = await at(
+        await nodes.create(
+          canvasId: cv,
+          type: 'image',
+          nodeRole: 'result',
+          label: 'Harbor batch',
+          sourceNodeId: harbor,
+          positionX: 300,
+          positionY: 300,
+        ),
+        DateTime.utc(2026, 1, 2),
+      );
+      final String latest = await at(
+        await nodes.create(
+          canvasId: cv,
+          type: 'image',
+          nodeRole: 'result',
+          label: 'Harbor take',
+          sourceNodeId: harbor,
+          positionX: 300,
+          positionY: 600,
+          typeConfig: <String, Object?>{'image_url': 'images/h2.png'},
+        ),
+        DateTime.utc(2026, 1, 3),
+      );
+      // Boat：只生成过一次。
+      final String boat = await nodes.create(
+        canvasId: cv,
+        type: 'text',
+        nodeRole: 'config',
+        label: 'Boat',
+        positionY: 900,
+        typeConfig: <String, Object?>{'text': 'drift'},
+      );
+      final String boatTake = await nodes.create(
+        canvasId: cv,
+        type: 'image',
+        nodeRole: 'result',
+        label: 'Boat take',
+        sourceNodeId: boat,
+        positionX: 300,
+        positionY: 900,
+        typeConfig: <String, Object?>{'image_url': 'images/b.png'},
+      );
+      final FakeBatchResultRepo slots = FakeBatchResultRepo(<String, Map<String, Object?>>{
+        for (int i = 0; i < 3; i++)
+          'slot-$i': <String, Object?>{
+            'id': 'slot-$i',
+            'node_id': batch,
+            'job_id': 'job-batch',
+            'slot_index': i,
+            'status': 'success',
+            'output_url': 'images/hb$i.png',
+            'canvas_id': cv,
+            'project_id': 'p1',
+            'created_at': DateTime.utc(2026, 1, 2),
+          },
+      });
+
+      final ProviderContainer c = await _pumpShell(
+        tester,
+        canvases: canvases,
+        nodes: nodes,
+        canvasId: cv,
+        extra: <Override>[batchResultRepositoryProvider.overrideWith((_) async => slots)],
+      );
+      final AppLocalizations l = _l(tester);
+      Finder tileText(String path, String text, [int? slot]) =>
+          find.descendant(of: find.byKey(_tileKey(cv, path, slot)), matching: find.text(text));
+      Finder rowText(String nodeId, String text) => find.descendant(
+            of: find.byKey(InspectorHistoryPanel.takeKey(nodeId)),
+            matching: find.text(text),
+          );
+
+      // 检查器切到历史页，选中 Harbor。
+      await tester.tap(find.byKey(CanvasInspectorPanel.tabKey(InspectorTab.history)));
+      await tester.pump();
+      c.read(canvasSelectionControllerProvider(cv).notifier).select(harbor);
+      await tester.pump();
+      await tester.pump();
+
+      // 历史页只数 result 节点：1 月 3 日那张是 take 2。素材页同一张也是 take 2（不是把三格 slot 也数进去的 take 5）。
+      expect(rowText(first, l.inspectorHistoryTake(1)), findsOneWidget);
+      expect(rowText(latest, l.inspectorHistoryTake(2)), findsOneWidget);
+      expect(tileText('images/h1.png', l.leftRailAssetTake('Harbor', 1)), findsOneWidget);
+      expect(tileText('images/h2.png', l.leftRailAssetTake('Harbor', 2)), findsOneWidget);
+      // 批量 slot 不参与 take 编号，照画廊对 slot 的写法。
+      for (int i = 0; i < 3; i++) {
+        expect(tileText('images/hb$i.png', 'Harbor #${i + 1}', i), findsOneWidget);
+      }
+
+      // Boat 名下只有一个产物：两处都写成片。
+      c.read(canvasSelectionControllerProvider(cv).notifier).select(boat);
+      await tester.pump();
+      await tester.pump();
+      expect(rowText(boatTake, l.inspectorHistoryFinal), findsOneWidget);
+      expect(tileText('images/b.png', l.leftRailAssetFinal('Boat')), findsOneWidget);
     }, timeout: const Timeout(Duration(seconds: 30)));
   });
 }

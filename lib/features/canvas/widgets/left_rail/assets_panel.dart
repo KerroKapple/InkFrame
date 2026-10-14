@@ -160,7 +160,13 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
         assetsInScope(all, scope: _scope, canvasId: widget.canvasId);
     final AssetCounts counts = countAssets(scoped);
     final List<GalleryItem> shown = assetsOfKind(scoped, _kind);
-    final Map<String, AssetCaption> captions = assetCaptions(graph, all);
+    // take 号在本画布的实时节点表上数（与检查器历史页同一份、同一个函数），别的画布用画廊图。
+    final Map<String, AssetCaption> captions = assetCaptions(
+      graph,
+      all,
+      canvasId: widget.canvasId,
+      canvasNodes: liveNodes,
+    );
 
     final Widget body;
     if (!itemsAsync.hasValue && itemsAsync.hasError) {
@@ -227,8 +233,9 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
     );
   }
 
-  /// 「源配置名 · 成片」/「源配置名 · take N」。源配置名空着（或找不到源节点）时回落到类型名，
-  /// 与画廊 tile 的回落同一口径。
+  /// 「源配置名 · 成片」/「源配置名 · take N」；批量 slot 照画廊对 slot 的写法「源配置名 #n」（不参与 take
+  /// 编号，见 assets_model.takeNumbersOn）。源配置名空着（或找不到源节点）时回落到类型名，与画廊 tile 的回落
+  /// 同一口径。
   static String _captionOf(
     BuildContext context,
     GalleryItem item,
@@ -244,6 +251,8 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
                 ? CanvasNodeType.video
                 : CanvasNodeType.image,
           );
+    final int? slot = caption?.slot;
+    if (slot != null) return '$name #$slot';
     final int? take = caption?.take;
     return take == null ? l.leftRailAssetFinal(name) : l.leftRailAssetTake(name, take);
   }

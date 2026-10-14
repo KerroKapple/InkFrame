@@ -1,4 +1,5 @@
 // 左栏素材页的纯函数（PR-4）：分段过滤、删掉的不显示、类型计数、网格标签（源配置名 + take 序号）。
+// take 号在节点上数（与检查器历史页同一个函数）：result 节点按时间正序编号，批量 slot 不参与。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/left_rail/assets_model.dart';
@@ -25,12 +26,17 @@ GalleryItem _item(
 CanvasNode _config(String id, String label) =>
     CanvasNode(id: id, label: label, type: CanvasNodeType.image);
 
-CanvasNode _result(String id, String source) => CanvasNode(
+/// result 节点；[url] 是它的产物（videos/ 开头记成 video_url），没有 = 生成中 / 失败的占位或没转正的批量容器。
+CanvasNode _result(String id, String source, {String? url, DateTime? at}) => CanvasNode(
       id: id,
       label: id,
       type: CanvasNodeType.image,
       role: NodeRole.result,
       sourceNodeId: source,
+      createdAt: at,
+      typeConfig: <String, Object?>{
+        if (url != null) (url.startsWith('videos/') ? 'video_url' : 'image_url'): url,
+      },
     );
 
 void main() {
@@ -52,15 +58,15 @@ void main() {
       'cvA': <CanvasNode>[
         _config('cfg1', 'Harbor'),
         _config('cfg2', 'Boat'),
-        _result('r1a', 'cfg1'),
-        _result('r1b', 'cfg1'),
-        _result('r1c', 'cfg1'),
-        _result('r2', 'cfg2'),
-        _result('rOrphan', 'deleted'),
+        _result('r1a', 'cfg1', url: 'images/1a.png', at: DateTime.utc(2026, 1, 2)),
+        _result('r1b', 'cfg1', url: 'images/1b.png', at: DateTime.utc(2026, 1, 1)),
+        _result('r1c', 'cfg1', url: 'images/1c.png', at: DateTime.utc(2026, 1, 3)),
+        _result('r2', 'cfg2', url: 'videos/2.mp4', at: DateTime.utc(2026, 2, 1)),
+        _result('rOrphan', 'deleted', url: 'images/o.png', at: DateTime.utc(2026, 3, 1)),
       ],
       'cvB': <CanvasNode>[
         _config('cfg3', 'Peaks'),
-        _result('r3', 'cfg3'),
+        _result('r3', 'cfg3', url: 'images/3.png', at: DateTime.utc(2026, 4, 1)),
       ],
     },
     edgesByCanvas: const <String, List<Never>>{},
@@ -133,6 +139,43 @@ void main() {
     test('源配置已删的孤儿：config 为 null、不参与编号', () {
       expect(of(orphan).config, isNull);
       expect(of(orphan).take, isNull);
+    });
+
+    test('批量 slot 不参与 take 编号：名下的 result 节点按时间正序编 take 1..N，slot 没有 take 号', () {
+      // cfgG 名下：rg1（1 月 1 日）、批量容器 rgB（1 月 2 日，没转正 ⇒ 没有产物 url）挂三格 slot、rg2（1 月 3 日）。
+      final GalleryGraph batchGraph = GalleryGraph(
+        canvases: const <GalleryCanvasInfo>[GalleryCanvasInfo(id: 'cvC', name: 'C')],
+        nodesByCanvas: <String, List<CanvasNode>>{
+          'cvC': <CanvasNode>[
+            _config('cfgG', 'Gull'),
+            _result('rg1', 'cfgG', url: 'images/g1.png', at: DateTime.utc(2026, 1, 1)),
+            _result('rgB', 'cfgG', at: DateTime.utc(2026, 1, 2)),
+            _result('rg2', 'cfgG', url: 'images/g2.png', at: DateTime.utc(2026, 1, 3)),
+          ],
+        },
+        edgesByCanvas: const <String, List<Never>>{},
+        slotsByNode: const <String, List<Never>>{},
+      );
+      GalleryItem slot(int i) => GalleryItem(
+            kind: GalleryItemKind.image,
+            relativePath: 'images/gb$i.png',
+            canvasId: 'cvC',
+            canvasName: 'C',
+            nodeId: 'rgB',
+            createdAt: DateTime.utc(2026, 1, 2),
+            slotIndex: i,
+          );
+      final GalleryItem g1 = _item('cvC', 'rg1', 'images/g1.png', at: DateTime.utc(2026, 1, 1));
+      final GalleryItem g2 = _item('cvC', 'rg2', 'images/g2.png', at: DateTime.utc(2026, 1, 3));
+      final Map<String, AssetCaption> batch =
+          assetCaptions(batchGraph, <GalleryItem>[g2, slot(0), slot(1), slot(2), g1]);
+
+      expect(batch[galleryItemKey(g1)]!.take, 1);
+      expect(batch[galleryItemKey(g2)]!.take, 2, reason: '检查器历史页只数 result 节点：它是 take 2，不是 take 5');
+      for (int i = 0; i < 3; i++) {
+        expect(batch[galleryItemKey(slot(i))]!.take, isNull, reason: 'slot 不参与 take 编号');
+        expect(batch[galleryItemKey(slot(i))]!.config?.label, 'Gull', reason: 'slot 经它挂的 result 容器找到源配置');
+      }
     });
 
     test('take 按整个项目编号：只传本画布的产物算出来的号与全量一致（切分段不换号）', () {
