@@ -14,6 +14,9 @@ import 'package:inkframe/features/studio/widgets/library_sidebar.dart';
 import 'package:inkframe/features/studio/widgets/trash_dialog.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
+import 'package:inkframe/theme/components/ink_icon.dart';
+import 'package:inkframe/theme/icons/ink_glyph.dart';
+import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/test_app.dart';
@@ -105,5 +108,40 @@ void main() {
     await tester.pump();
     expect(find.text('All projects'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('行首图标：全部项目 / 回收站 / 设置各用图标集 v1 的对应图标（16px），选中行琥珀色',
+      (tester) async {
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: LibrarySidebar()),
+      surfaceSize: const Size(400, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith((_) async => _two()),
+        projectRepositoryProvider.overrideWith((_) async => InMemoryProjectRepository()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    InkIcon iconIn(Key row) => tester.widget<InkIcon>(
+          find.descendant(of: find.byKey(row), matching: find.byType(InkIcon)),
+        );
+    final InkColors c = InkColors.dark();
+
+    final InkIcon all = iconIn(LibrarySidebar.allProjectsKey);
+    expect(all.glyph, InkGlyph.projects);
+    expect(all.color, c.accent, reason: '「全部项目」是选中行，图标琥珀色');
+
+    final InkIcon trash = iconIn(LibrarySidebar.trashKey);
+    expect(trash.glyph, InkGlyph.trash);
+    expect(trash.color, c.fg6);
+
+    final InkIcon settings = iconIn(LibrarySidebar.settingsKey);
+    expect(settings.glyph, InkGlyph.settings);
+    expect(settings.color, c.fg6);
+
+    for (final InkIcon icon in <InkIcon>[all, trash, settings]) {
+      expect(icon.size, InkIconSize.sm, reason: '${icon.glyph.name} 的尺寸');
+    }
   });
 }

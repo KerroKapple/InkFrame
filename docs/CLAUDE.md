@@ -218,6 +218,7 @@ lib/
 │   ├── motion.dart                    # Animation timings / curves
 │   ├── app_theme.dart                 # ThemeData builder from tokens
 │   ├── primitives/                    # Low-level styled primitives
+│   ├── icons/                         # 图标集 v1：ink_glyph.dart（44 个图标的 SVG 路径，与设计稿同源）+ svg_path_data.dart（d → Path，不引 SVG 依赖）；绘制入口是 components/ink_icon.dart
 │   └── components/                    # Reusable Ink* components
 ├── core/                              # Shared abstractions (no Flutter imports below interfaces)
 │   ├── constants/                     # Enums, numeric constants (no side effects)
