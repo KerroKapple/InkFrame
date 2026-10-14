@@ -535,7 +535,7 @@ InkGlyph _configGlyph(CanvasNodeType type) => switch (type) {
       CanvasNodeType.image => InkGlyph.imageConfig,
       CanvasNodeType.video => InkGlyph.videoConfig,
       CanvasNodeType.text => InkGlyph.text,
-      CanvasNodeType.shot => InkGlyph.script,
+      CanvasNodeType.shot => InkGlyph.shot,
     };
 
 /// config 卡图区的文字排布：正文贴顶、最多三行省略，摘要单行贴底；两样都没有时图区留空。

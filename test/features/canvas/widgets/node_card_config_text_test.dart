@@ -295,7 +295,7 @@ void main() {
         (CanvasNodeType.image, InkGlyph.imageConfig),
         (CanvasNodeType.video, InkGlyph.videoConfig),
         (CanvasNodeType.text, InkGlyph.text),
-        (CanvasNodeType.shot, InkGlyph.script),
+        (CanvasNodeType.shot, InkGlyph.shot),
       ]) {
         await _pump(
           tester,
