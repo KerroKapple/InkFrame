@@ -1,13 +1,13 @@
-// 「在序列中查看 / 定位」的跳镜头判据 shotIndexForSelection（sequence/util/view_in_sequence.dart）。
+// 「在序列中查看 / 定位」的跳镜头判据 shotIndexForSelection（sequence/util/shot_index.dart）。
 //
-// PR-8b 把它从 shell_tab_bar.dart 原样搬到这里（标签栏「在序列中查看」与画布节点右键菜单「在序列中定位」
+// PR-8b 把它从 shell_tab_bar.dart 原样搬出来（标签栏「在序列中查看」与画布节点右键菜单「在序列中定位」
 // 共用），用例随之从 shell_tab_bar_view_in_sequence_test.dart 原样搬过来：产物归到来源那一镜，把产物借给
 // 前一镜的配置节点（折叠）落在借走它的那一镜，多选取链序最靠前的。外壳级的切标签 + 跳播放头仍在那个文件里。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/sequence/models/sequence_lens.dart';
-import 'package:inkframe/features/sequence/util/view_in_sequence.dart';
+import 'package:inkframe/features/sequence/util/shot_index.dart';
 
 CanvasNode _shot(String id, {Map<String, Object?> config = const <String, Object?>{}}) => CanvasNode(
       id: id,

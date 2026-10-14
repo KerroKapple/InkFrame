@@ -1,4 +1,4 @@
-// shotIndexByNode（sequence/util/view_in_sequence.dart）：一次给出每个节点所在那一镜。
+// shotIndexByNode（sequence/util/shot_index.dart）：一次给出每个节点所在那一镜。
 //
 // 它不另写折叠规则，逐个节点问的就是 shotIndexForSelection 用的那个判据——这里钉两件事：结果与逐个节点
 // 调 shotIndexForSelection 完全一致；不在任何一镜里的节点不在表里。左栏大纲的镜号、⌘K 的「序列 NNN」
@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/sequence/models/sequence_lens.dart';
-import 'package:inkframe/features/sequence/util/view_in_sequence.dart';
+import 'package:inkframe/features/sequence/util/shot_index.dart';
 
 CanvasNode _shot(String id, String notes) => CanvasNode(
       id: id,

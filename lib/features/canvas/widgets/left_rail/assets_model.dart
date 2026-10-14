@@ -5,15 +5,16 @@
 // galleryConfigNodeOf（result 节点走 sourceNodeId，批量 slot 先经它挂的 result 容器），与画廊信息栏
 // 同一口径。
 //
-// take 号：[takeNumbersOn] 是素材页格子与检查器历史页共用的那一个编号函数——每个配置节点名下有产物的
-// result 节点按时间正序编号，名下只有一个时两处都写「成片」；批量 slot 不参与 take 编号，照画廊写「#n」。
+// take 号：[takeNumbersOn]（canvas/util/take_numbers.dart）是素材页格子与检查器历史页共用的那一个编号函数——
+// 每个配置节点名下有产物的 result 节点按时间正序编号，名下只有一个时两处都写「成片」；批量 slot 不参与 take
+// 编号，照画廊写「#n」。
 import 'package:flutter/foundation.dart';
 
 import '../../../gallery/models/gallery_graph.dart';
 import '../../../gallery/models/gallery_item.dart';
 import '../../../gallery/util/gallery_meta.dart';
 import '../../models/canvas_node.dart';
-import '../../util/node_artifacts.dart';
+import '../../util/take_numbers.dart';
 
 /// 分段：本画布 / 项目全部。
 enum AssetScope { canvas, project }
@@ -81,32 +82,6 @@ List<GalleryItem> assetsOfKind(List<GalleryItem> items, AssetKindFilter kind) =>
             if (i.kind == GalleryItemKind.video) i,
         ],
     };
-
-/// take 号——素材页的格子标签与检查器历史页共用这一个函数，两处的号不会走岔。
-///
-/// 同一来源（result 节点的 sourceNodeId，即它的配置节点）名下有产物的 result 节点按生成时间正序编号，
-/// 最早的是 take 1；「有产物」「谁先谁后」都照 [resultsFor]（产物 url 非空；按 created_at，缺戳的垫底）。
-/// 名下只有一个的不进表——它是「成片」，两处都不写号；没有来源的孤儿产物也不进表（各自成片）。
-/// 批量 slot 不是 result 节点，不参与；批量的 result 容器转正之前没有产物 url，同样不参与。
-/// [nodes] 是同一张画布的节点。
-Map<String, int> takeNumbersOn(List<CanvasNode> nodes) {
-  // 按来源分桶，桶内保持节点列表原序（resultsFor 对缺时间戳的产物按原序定先后）。
-  final Map<String, List<CanvasNode>> bySource = <String, List<CanvasNode>>{};
-  for (final CanvasNode n in nodes) {
-    final String? source = n.sourceNodeId;
-    if (n.role != NodeRole.result || source == null) continue;
-    (bySource[source] ??= <CanvasNode>[]).add(n);
-  }
-  final Map<String, int> out = <String, int>{};
-  for (final MapEntry<String, List<CanvasNode>> e in bySource.entries) {
-    final List<CanvasNode> newestFirst = resultsFor(sourceNodeId: e.key, nodes: e.value);
-    if (newestFirst.length < 2) continue;
-    for (int i = 0; i < newestFirst.length; i++) {
-      out[newestFirst[i].id] = newestFirst.length - i;
-    }
-  }
-  return out;
-}
 
 /// 网格标签的几段：源配置节点 + take 号 / slot 号。界面拼成「源配置名 · 成片」「源配置名 · take N」，
 /// 批量 slot 照画廊写「源配置名 #n」。

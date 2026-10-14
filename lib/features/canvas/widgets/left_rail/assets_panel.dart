@@ -234,7 +234,7 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
   }
 
   /// 「源配置名 · 成片」/「源配置名 · take N」；批量 slot 照画廊对 slot 的写法「源配置名 #n」（不参与 take
-  /// 编号，见 assets_model.takeNumbersOn）。源配置名空着（或找不到源节点）时回落到类型名，与画廊 tile 的回落
+  /// 编号，见 util/take_numbers.dart 的 takeNumbersOn）。源配置名空着（或找不到源节点）时回落到类型名，与画廊 tile 的回落
   /// 同一口径。
   static String _captionOf(
     BuildContext context,

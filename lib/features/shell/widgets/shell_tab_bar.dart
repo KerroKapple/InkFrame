@@ -8,8 +8,9 @@
 //   并把播放头跳到当前选中节点所在的那一镜）/ 导出视频（= 导出标签，主按钮）。序列与导出在本仓库
 //   已升格为标签，按钮只是稿上的快捷入口。原来的「导入脚本」随 PR-6 页签去重撤掉——浮动工具条的
 //   「更多」里有同一个入口；「序列预览」改名「在序列中查看」，说的就是它真正做的事。
-//   「在序列中查看」的本体（含跳镜头判据 shotIndexForSelection 与临时保活订阅）PR-8b 搬到了
-//   sequence/util/view_in_sequence.dart，与画布节点右键菜单的「在序列中定位」共用；本文件只调它。
+//   「在序列中查看」的本体（切标签 + 临时保活订阅）PR-8b 搬到了 sequence/util/view_in_sequence.dart，
+//   与画布节点右键菜单的「在序列中定位」共用（跳镜头判据 shotIndexForSelection 在同目录的 shot_index.dart）；
+//   本文件只调它。
 //
 // 【标签条绝不进 chrome 的槽位】整条 InkWindowChrome 包在 DragToMoveArea 里，
 // 其 onDoubleTap 让其中任何单击等满 kDoubleTapTimeout(300ms)。标签是全应用最高

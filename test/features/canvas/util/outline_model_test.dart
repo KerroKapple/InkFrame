@@ -13,7 +13,7 @@ import 'package:inkframe/features/canvas/util/outline_model.dart';
 import 'package:inkframe/features/gallery/models/gallery_graph.dart';
 import 'package:inkframe/features/gallery/util/gallery_meta.dart';
 import 'package:inkframe/features/sequence/models/sequence_lens.dart';
-import 'package:inkframe/features/sequence/util/view_in_sequence.dart';
+import 'package:inkframe/features/sequence/util/shot_index.dart';
 
 CanvasNode _config(
   String id, {

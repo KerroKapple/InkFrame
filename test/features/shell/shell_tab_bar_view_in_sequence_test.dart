@@ -4,9 +4,9 @@
 // - 选中叙事链上的节点再点：切到序列标签，播放头跳到那一镜——走 selectShot（seekToken +1，
 //   「用户 seek」语义）；
 // - 没选中 / 选中的不在链上：只切标签，播放头不动。
-// 跳镜头的判据 shotIndexForSelection 与「切标签 + 跳播放头」本体 PR-8b 搬到了
-// sequence/util/view_in_sequence.dart（画布节点右键菜单「在序列中定位」共用），判据的用例随之搬到
-// test/features/sequence/util/view_in_sequence_test.dart；这里留外壳级的那几条。
+// 「切标签 + 跳播放头」本体 PR-8b 搬到了 sequence/util/view_in_sequence.dart（画布节点右键菜单「在序列中
+// 定位」共用），跳镜头的判据 shotIndexForSelection 在同目录的 shot_index.dart，判据的用例在
+// test/features/sequence/util/shot_index_test.dart；这里留外壳级的那几条。
 //
 // 外壳级的那几条从画布标签起步：序列标签此前从没物化过，播放头（autoDispose）没有订阅者——
 // 正是「临时订阅撑过这一帧」要防的那种情形，裸 read 写进去的跳转会在下一帧被回收。

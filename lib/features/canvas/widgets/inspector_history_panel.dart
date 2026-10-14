@@ -6,7 +6,7 @@
 //     没有来源的孤儿产物只列它自己。
 // 顶部说明「<节点名> 的全部 take」：配置节点用它自己的引用名（nodeRefName）；产物节点用它来源的那个。
 // 行：72×41 缩略（cover、圆角 3、1px outline）|「take N」（N 按时间正序，最早的是 take 1；名下只有一个写
-//   「成片」——号由 left_rail/assets_model.dart 的 takeNumbersOn 给，与左栏素材页的格子同一个函数）
+//   「成片」——号由 util/take_numbers.dart 的 takeNumbersOn 给，与左栏素材页的格子同一个函数）
 //   + meta（10 号 fg5）：相对时间（复用画廊的 galleryTimeAgo）· 种子（type_config 里有 seed 才写）。
 // 「在用」= 这个 take 有 data 出边（首帧 / 尾帧 / 参考，往下游流）：缩略描边换 accent，右侧写「在用」。
 // 稿上的图钉「固定」没有数据模型，不画。
@@ -32,7 +32,7 @@ import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../util/node_artifacts.dart';
-import 'left_rail/assets_model.dart' show takeNumbersOn;
+import '../util/take_numbers.dart';
 import 'left_rail/left_rail_actions.dart';
 import 'node_card.dart' show nodeRefName;
 

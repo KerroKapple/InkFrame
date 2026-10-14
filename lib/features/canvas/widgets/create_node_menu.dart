@@ -45,6 +45,7 @@ import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../sequence/models/sequence_lens.dart';
 import '../../sequence/providers/sequence_lens_provider.dart';
+import '../../sequence/util/shot_index.dart';
 import '../../sequence/util/view_in_sequence.dart';
 import '../../settings/util/shortcut_catalog.dart';
 import '../../shell/models/shell_state.dart';

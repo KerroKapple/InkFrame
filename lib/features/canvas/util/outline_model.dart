@@ -11,7 +11,7 @@
 //
 // 镜号（行首的「01」、⌘K 镜头组的「序列 003」）用**序列的口径**：[sequenceShotNumbers]——序列 lens 折叠后的
 // 镜序（全画布的，1 起，不是组内序号），节点归哪一镜复用「在序列中查看」的判据
-// （sequence/util/view_in_sequence.dart）。同一张图在大纲、⌘K、序列视图、画廊（「序列 002」）里因此是同一个号。
+// （sequence/util/shot_index.dart）。同一张图在大纲、⌘K、序列视图、画廊（「序列 002」）里因此是同一个号。
 // 几种节点由此共号或无号：
 //   - 借出产物的配置节点与借走它产物的那一镜同号（「导入剧本 + 用本镜备注生成图像」那条主路径：镜头 →
 //     图像配置，图挂在配置名下，序列里放在镜头那一镜）；
@@ -23,7 +23,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../sequence/models/sequence_lens.dart';
-import '../../sequence/util/view_in_sequence.dart';
+import '../../sequence/util/shot_index.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/style_lane.dart';
