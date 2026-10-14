@@ -150,8 +150,16 @@ void main() {
     expect(tester.takeException(), isNull);
     final Rect thumb = _thumb(tester);
     final Rect body = tester.getRect(_text);
-    const double lineHeight = 12 * 1.55;
-    expect(body.height, closeTo(3 * lineHeight, 1), reason: '三行就封顶');
+    // 单行高用同一个渲染出来的样式现量：测试字体的行高会取整，硬写 12 × 1.55 在这台机器上差 1.2。
+    final Text shown = tester.widget<Text>(_text);
+    final TextPainter one = TextPainter(
+      text: TextSpan(text: 'M', style: shown.style),
+      textDirection: TextDirection.ltr,
+      maxLines: 1,
+    )..layout();
+    final double lineHeight = one.height;
+    one.dispose();
+    expect((body.height / lineHeight).round(), 3, reason: '三行就封顶');
     expect(body.bottom, lessThanOrEqualTo(thumb.bottom));
   });
 
