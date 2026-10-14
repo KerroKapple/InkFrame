@@ -1,15 +1,10 @@
 // InkShell：外壳根——唯一根 Scaffold + 唯一 chrome + 持久标签条 + 内容区。
 //
-// 【根 Scaffold 的理由】通知卡（ToastService）已经不走 ScaffoldMessenger——它画在
-// MaterialApp.builder 的 ToastLayer 里，在所有路由之上（features/notifications）。
-// 但仍有少数调用点直接 ScaffoldMessenger.of(context).showSnackBar（画廊动作等），
-// 而 ScaffoldMessengerState._updateScaffolds 对【每个 root Scaffold】都推一份
-// SnackBar。保活之后画布自带的 Scaffold 是 IndexedStack 里的一个子：没有外壳根
-// Scaffold 时它就是唯一的 root ⇒ 激活序列/导出标签（无 Scaffold）时 SnackBar 全画在
-// 离台的画布子树里，用户根本看不见。
-// 修法：外壳持一个根 Scaffold，画布自带的 Scaffold【原样保留】，它因为有了 Scaffold
-// 祖先而变成 nested，_isRoot 返回 false，被自动排除出广播。
-// V3c 钉死它（test/features/shell/shell_window_chrome_test.dart）。
+// 【根 Scaffold】给整个外壳一个 Material 祖先（文字输入、墨水效果都要）。通知不走它：
+// 通知卡画在 MaterialApp.builder 的 ToastLayer 里、在所有路由之上（features/notifications），
+// lib 里也已经没有直接弹 SnackBar 的地方（test/quality/no_direct_snackbar_test.dart 守着）。
+// 画布自带的 Scaffold 原样保留；当初为 SnackBar 广播加的 V3c 用例还在
+// （test/features/shell/shell_window_chrome_test.dart），只当根 Scaffold 在场的回归闸。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

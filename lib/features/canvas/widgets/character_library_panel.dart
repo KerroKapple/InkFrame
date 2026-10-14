@@ -22,6 +22,7 @@ import '../../../core/di/character_assets.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart';
 import '../../../core/interfaces/toast_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
@@ -363,14 +364,17 @@ class _CharacterLibraryRowState extends ConsumerState<CharacterLibraryRow> {
   ///
   /// 文案走 l10nError：这里的失败可能是磁盘满、连接断，套「角色导入失败」会把用户
   /// 引到一个跟本次操作无关的方向（这两条路径根本不导入任何文件）。
+  ///
+  /// 通知服务与文案在 await 之前就取好：删除是乐观的——行先从列表里消失，这一行的
+  /// State 随之卸载；失败回滚时出现的是一个新 State。等失败回来再碰 ref / context
+  /// 会抛，失败卡就丢了（用户只看到行闪了一下又回来，不知道为什么）。
   Future<void> _guard(Future<void> Function() action) async {
+    final ToastService toast = ref.read(toastServiceProvider);
+    final AppLocalizations l10n = context.l10n;
     try {
       await action();
     } on InkError catch (e) {
-      if (!mounted) return;
-      ref
-          .read(toastServiceProvider)
-          .show(l10nError(context, e), kind: ToastKind.error);
+      toast.show(l10nErrorFor(l10n, e), kind: ToastKind.error);
     }
   }
 }

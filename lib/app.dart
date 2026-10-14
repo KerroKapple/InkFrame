@@ -4,9 +4,8 @@
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
 // - 通知卡层（ToastLayer）挂在 MaterialApp.builder：Stack[ Navigator, 右下角卡片栈 ]，
-//   卡片画在所有路由（设置浮层、对话框）之上；ToastService 不再经 ScaffoldMessenger。
-//   少数直接 ScaffoldMessenger.of(context).showSnackBar 的调用点照旧走 MaterialApp
-//   自带的 messenger
+//   卡片画在所有路由（设置浮层、对话框）之上。lib 里已没有直接弹 SnackBar 的地方，
+//   test/quality/no_direct_snackbar_test.dart 守着不许再出现
 // - 解锁后不再有"路由"：body 恒为 InkShell（持久标签外壳），哪个 surface 在台上
 //   由 ShellContentStack 的两级 IndexedStack 依 ShellState 决定，本文件零判据
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError

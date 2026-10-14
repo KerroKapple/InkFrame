@@ -6,6 +6,8 @@
 //
 // 失败提示走 toastServiceProvider（右下角错误卡，画在 app 顶层的 ToastLayer 里）——这里只
 // pump 面板、没有那一层，所以 _pumpPanel 一律覆盖成 RecordingToastService，断言记下来的卡。
+import 'dart:async';
+
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -42,6 +44,17 @@ class _SoftDeleteFailsRepo extends FakeCharacterRepo {
 
   @override
   Future<int> softDelete(String id) async => throw const LocalIOError();
+}
+
+/// softDelete 要等测试放行才失败：乐观删除先把行拿掉（行的 State 随之卸载），
+/// 失败晚一拍回来——真实磁盘 / 连接错误就是这个时序。
+class _SoftDeleteFailsLaterRepo extends FakeCharacterRepo {
+  _SoftDeleteFailsLaterRepo(super.rows);
+
+  final Completer<int> gate = Completer<int>();
+
+  @override
+  Future<int> softDelete(String id) => gate.future;
 }
 
 /// importImage 抛指定对象的资产服务——用来喂 createFromImage 那条路上
@@ -325,6 +338,36 @@ void main() {
     );
     // 乐观删除要回滚：行还在。
     expect(find.text('行者'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('删除失败晚一拍回来（行已被乐观删除、State 已卸载）→ 失败卡照样弹', (
+    WidgetTester tester,
+  ) async {
+    final RecordingToastService toast = RecordingToastService();
+    final _SoftDeleteFailsLaterRepo repo =
+        _SoftDeleteFailsLaterRepo(<String, Map<String, Object?>>{
+          'c1': _characterRow('c1', name: '行者'),
+        });
+    await _pumpPanel(tester, await _overrides(repo), toast: toast);
+    final AppLocalizations l = _l(tester);
+
+    await tester.tap(find.byKey(const ValueKey<String>('character-menu-c1')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(l.characterMenuDelete).last);
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('character-delete-confirm')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('行者'), findsNothing, reason: '乐观删除：行先消失');
+
+    repo.gate.completeError(const LocalIOError());
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>[l.errorLocalIO]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(find.text('行者'), findsOneWidget, reason: '失败回滚：行回来');
     expect(tester.takeException(), isNull);
   });
 

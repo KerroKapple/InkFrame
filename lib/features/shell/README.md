@@ -35,7 +35,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | 内容懒物化、物化后永不换回占位 | V4 成立的唯一物理前提：没访问过的标签体 `findsNothing` 才是真断言 | `shell_keep_alive_host_test.dart` + `test/app/app_routing_test.dart` |
 | 全树唯一 `InkWindowChrome` | 每个已物化标签各带一份 = 两套最小化/关闭按钮 | `shell_window_chrome_test.dart`（V3a） |
 | 通知卡（`ToastService`）画在 `MaterialApp.builder` 的 `ToastLayer` 里（Navigator 之上），**不走** `ScaffoldMessenger` | 卡片要在任何标签、设置浮层、对话框之上都看得见、点得到；挂在某个 Scaffold 上就会跟着离台子树一起消失、被浮层遮罩盖住 | `shell_window_chrome_test.dart`（V3b）+ `test/features/notifications/widgets/toast_layer_test.dart`（对话框开着时卡片仍可命中） |
-| 外壳持根 `Scaffold`，画布自带的 Scaffold 保留不动 | 仍有少数调用点直接 `ScaffoldMessenger.of(context).showSnackBar`（画廊动作等）：messenger 对每个 **root** Scaffold 各推一份 SnackBar；不加祖先 ⇒ 序列/导出标签（无 Scaffold）激活时 SnackBar 画在离台的画布子树里 | `shell_window_chrome_test.dart`（V3c） |
+| 外壳持根 `Scaffold`，画布自带的 Scaffold 保留不动 | 给整个外壳一个 Material 祖先；lib 里已没有直接弹 SnackBar 的地方（`test/quality/no_direct_snackbar_test.dart` 守着），当初为 SnackBar 广播加的用例只当根 Scaffold 在场的回归闸 | `shell_window_chrome_test.dart`（V3c）+ `test/quality/no_direct_snackbar_test.dart` |
 | 标签条绝不进 chrome 的槽位 | `InkWindowChrome` 整条包在 `DragToMoveArea` 里，其 `onDoubleTap` 让单击等满 `kDoubleTapTimeout`(300ms) | `test/features/shell/shell_tab_bar_test.dart`（一帧落地） |
 | `ShellContentStack` 的焦点重夺【无条件】，不许加 `hasFocus` 守卫 | 切换那一帧画布 FocusNode 还没 unfocus，守卫会跳过请求 → 焦点掉到 ModalScope 的 FocusScope → 全 app ⌘K 失效 | T8 的 V2 用例 |
 | `ShellBreadcrumb` 条件 watch：`canvasId == null` 时不碰 `canvasRepository` | 否则每个 boot 级 widget test 都得额外密封画布仓储 | `shell_chrome_test.dart` + `test/widget_test.dart` |
