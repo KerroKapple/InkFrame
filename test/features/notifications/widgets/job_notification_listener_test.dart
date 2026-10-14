@@ -15,7 +15,7 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
-import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_focus_request.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
@@ -154,12 +154,11 @@ void main() {
     expect(t.primary?.label, _l10n(tester).toastActionView);
   });
 
-  testWidgets('「查看」：打开产物所在画布（带项目）并选中 result 节点', (tester) async {
+  testWidgets('「查看」：打开产物所在画布（带项目），挂起定位 result 节点的请求', (tester) async {
     final _Harness h = await _pump(
       tester,
       shell: const ShellState(tab: ShellTab.gallery, project: _alpha),
     );
-    h.container.listen(canvasSelectionControllerProvider('c1'), (_, _) {});
     h.upsert(_succeeded('j1'));
     await tester.pump();
 
@@ -168,7 +167,12 @@ void main() {
     expect(s.tab, ShellTab.canvas);
     expect(s.canvasId, 'c1');
     expect(s.project, _alpha);
-    expect(h.container.read(canvasSelectionControllerProvider('c1')), <String>{'r1'});
+    // 不在切画布的同一刻写选中（目标画布还没挂载，写了会被 autoDispose 回收——原先这条用例人为订阅了
+    // 选中 provider 保活，所以一直是绿的）。挂起请求，由画布挂上来后落地，见 canvas_focus_request_test。
+    expect(
+      h.container.read(canvasFocusRequestProvider),
+      const CanvasFocusRequest(canvasId: 'c1', nodeId: 'r1'),
+    );
   });
 
   testWidgets('失败：一张失败卡——本地化原因、提示音、按节点去重', (tester) async {

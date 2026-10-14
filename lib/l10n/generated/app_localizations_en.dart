@@ -3012,6 +3012,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get notificationsOpen => 'Notifications';
 
   @override
+  String get notificationsOpenUnread => 'Notifications, unread';
+
+  @override
+  String get notificationsOpenUnreadFailure => 'Notifications, unread failures';
+
+  @override
   String get notificationsTitle => 'Notifications';
 
   @override

@@ -137,8 +137,12 @@ class _InkToastCardState extends State<InkToastCard> {
   @override
   void didUpdateWidget(InkToastCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // 进行中原地变成失败：同样要播报。
-    if (widget.tone == InkToastTone.error && oldWidget.tone != InkToastTone.error) {
+    // 进行中原地变成失败，或去重原地换成了一条新的失败（同一张卡、同一个 State、新原因）：都要播报——
+    // 否则同一节点先断网失败、再配额失败，读屏用户只听得到第一次。
+    if (widget.tone == InkToastTone.error &&
+        (oldWidget.tone != InkToastTone.error ||
+            oldWidget.title != widget.title ||
+            oldWidget.body != widget.body)) {
       _scheduleAnnounce();
     }
   }

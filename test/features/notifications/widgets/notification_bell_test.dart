@@ -2,11 +2,15 @@
 // 打开即已读、点外面与 Esc 关闭、ToastCenter.historyOpen 翻成 true 时自己弹开。
 //
 // 只 pump 固定帧：ToastCenter 的倒计时 Timer 在跑，pumpAndSettle 不是这里要的语义。
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/clock.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/features/notifications/providers/toast_center.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/notifications/widgets/notification_bell.dart';
@@ -15,11 +19,22 @@ import 'package:inkframe/l10n/l10n_x.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/tokens.dart';
 
-Future<ProviderContainer> _pumpBell(WidgetTester tester) async {
+class _Clock implements Clock {
+  _Clock(this.value);
+  DateTime value;
+  @override
+  DateTime nowUtc() => value;
+}
+
+Future<ProviderContainer> _pumpBell(
+  WidgetTester tester, {
+  List<Override> overrides = const <Override>[],
+}) async {
   await tester.binding.setSurfaceSize(const Size(1280, 800));
   addTearDown(() => tester.binding.setSurfaceSize(null));
   await tester.pumpWidget(
     ProviderScope(
+      overrides: overrides,
       child: MaterialApp(
         theme: buildAppTheme(variant: InkThemeVariant.dark, textScale: 1),
         locale: const Locale('en'),
@@ -158,4 +173,68 @@ void main() {
     expect(panel.top, greaterThanOrEqualTo(bell.bottom));
     expect(panel.right, moreOrLessEquals(bell.right));
   });
+
+  testWidgets('上面压着对话框时承接不了历史面板：开着的历史关上；对话框关掉后恢复承接', (tester) async {
+    final ProviderContainer c = await _pumpBell(tester);
+    await tester.pump();
+    expect(c.read(toastCenterProvider).historyHostReady, isTrue, reason: '铃铛挂着、路由在最上层');
+    c.read(toastCenterProvider.notifier).openHistory();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(NotificationBell.panelKey), findsOneWidget);
+
+    final BuildContext ctx = tester.element(find.byType(NotificationBell));
+    unawaited(showDialog<void>(
+      context: ctx,
+      builder: (_) => const AlertDialog(content: Text('dialog')),
+    ));
+    for (int i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(c.read(toastCenterProvider).historyHostReady, isFalse);
+    expect(c.read(toastCenterProvider).historyOpen, isFalse,
+        reason: '面板挂在铃铛那层路由后面：留着就画在对话框遮罩底下');
+    expect(find.byKey(NotificationBell.panelKey), findsNothing);
+
+    Navigator.of(ctx).pop();
+    for (int i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(c.read(toastCenterProvider).historyHostReady, isTrue);
+  });
+
+  testWidgets('读屏：铃铛的语义标签带上未读 / 未读失败（点只靠颜色，读屏拿不到）', (tester) async {
+    final SemanticsHandle semantics = tester.ensureSemantics();
+    final ProviderContainer c = await _pumpBell(tester);
+    final AppLocalizations l = _l10n(tester);
+    expect(find.bySemanticsLabel(l.notificationsOpen), findsOneWidget);
+
+    c.read(toastServiceProvider).show('done', kind: ToastKind.success);
+    await tester.pump();
+    expect(find.bySemanticsLabel(l.notificationsOpenUnread), findsOneWidget);
+
+    c.read(toastServiceProvider).show('boom', kind: ToastKind.error);
+    await tester.pump();
+    expect(find.bySemanticsLabel(l.notificationsOpenUnreadFailure), findsOneWidget);
+    semantics.dispose();
+  });
+
+  testWidgets('面板开着时相对时间会走：过了两分钟，「刚刚」变成「2 分钟前」', (tester) async {
+    final _Clock clock = _Clock(DateTime.utc(2026, 10, 15, 12));
+    final ProviderContainer c = await _pumpBell(
+      tester,
+      overrides: <Override>[clockProvider.overrideWithValue(clock)],
+    );
+    final AppLocalizations l = _l10n(tester);
+    c.read(toastServiceProvider).show('boom', kind: ToastKind.error);
+    await tester.pump();
+    await _tapBell(tester);
+    expect(find.text(l.notificationsJustNow), findsOneWidget);
+
+    clock.value = clock.value.add(const Duration(minutes: 2));
+    await tester.pump(const Duration(seconds: 30));
+    expect(find.text(l.notificationsMinutesAgo(2)), findsOneWidget,
+        reason: '没有新通知也要刷新，否则时间停在打开那一刻');
+  });
+
 }

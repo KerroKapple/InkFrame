@@ -5306,6 +5306,18 @@ abstract class AppLocalizations {
   /// **'Notifications'**
   String get notificationsOpen;
 
+  /// Screen-reader label of the bell when there are unread notifications (the unread dot is color only).
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications, unread'**
+  String get notificationsOpenUnread;
+
+  /// Screen-reader label of the bell when unread notifications include a failure (the dot turns red).
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications, unread failures'**
+  String get notificationsOpenUnreadFailure;
+
   /// No description provided for @notificationsTitle.
   ///
   /// In en, this message translates to:

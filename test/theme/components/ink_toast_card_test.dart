@@ -5,6 +5,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/l10n/l10n_x.dart';
 import 'package:inkframe/theme/components/ink_toast_card.dart';
@@ -255,4 +256,47 @@ void main() {
     );
     handle.dispose();
   });
+
+  testWidgets('失败卡原地换成一条新的失败（去重替换，State 沿用）：读屏再播报一次', (tester) async {
+    final List<String> announced = <String>[];
+    tester.binding.defaultBinaryMessenger.setMockDecodedMessageHandler<dynamic>(
+      SystemChannels.accessibility,
+      (dynamic message) async {
+        final Map<dynamic, dynamic> event = message as Map<dynamic, dynamic>;
+        if (event['type'] == 'announce') {
+          announced.add((event['data'] as Map<dynamic, dynamic>)['message'] as String);
+        }
+        return null;
+      },
+    );
+    addTearDown(() => tester.binding.defaultBinaryMessenger
+        .setMockDecodedMessageHandler<dynamic>(SystemChannels.accessibility, null));
+
+    Widget card(String title, String body) => MediaQuery(
+          data: const MediaQueryData(supportsAnnounce: true),
+          child: InkToastCard(
+            key: const ValueKey<String>('same-card'),
+            tone: InkToastTone.error,
+            title: title,
+            body: body,
+            dismissLabel: 'Dismiss',
+            onDismiss: () {},
+          ),
+        );
+
+    await _pump(tester, (_) => card('Generation failed', 'offline'));
+    await tester.pump();
+    expect(announced, <String>['Generation failed']);
+
+    // 同一节点又失败了一次，原因不同：同一张卡、同一个 State，只换了内容。
+    await _pump(tester, (_) => card('Generation failed', 'quota exceeded'));
+    await tester.pump();
+    expect(announced, hasLength(2), reason: '否则读屏用户只听得到第一次失败');
+
+    // 内容没变的重建不重复播报。
+    await _pump(tester, (_) => card('Generation failed', 'quota exceeded'));
+    await tester.pump();
+    expect(announced, hasLength(2));
+  });
+
 }
