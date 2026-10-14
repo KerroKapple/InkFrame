@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/features/canvas/providers/canvas_focus_request.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
@@ -296,6 +297,15 @@ void main() {
     expect(s.tab, ShellTab.canvas);
     expect(s.canvasId, isNotNull);
     expect(s.project?.id, 'p1');
+
+    // 「并选中节点」：目标画布这一刻还没挂载（本用例也没挂），直接写它的选中会被 autoDispose
+    // 回收——原先这条用例只看了切标签，选中丢了也是绿的。现在定位走挂起请求，由画布挂上来后
+    // 落地（canvas_focus_request_test.dart 钉落地）；这里钉请求指向那张产物的节点。
+    final CanvasFocusRequest? request = _read(tester, canvasFocusRequestProvider);
+    expect(request?.canvasId, s.canvasId);
+    final Map<String, Object?>? row = await nodes.findById(request!.nodeId);
+    expect(row?['node_role'], 'result');
+    expect(row?['source_node_id'], isNotNull);
   });
 
   // 「在画布中定位」的点击壳此前是手搓的 Semantics + MouseRegion + GestureDetector

@@ -15,7 +15,7 @@ import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/components/ink_name_dialog.dart';
-import '../../canvas/providers/canvas_selection_controller.dart';
+import '../../canvas/providers/canvas_focus_request.dart';
 import '../../canvas/providers/characters_controller.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../../shell/models/shell_state.dart';
@@ -35,10 +35,15 @@ File? galleryResolveFile(WidgetRef ref, {required String projectId, required Str
   }
 }
 
-/// 打开产物所在画布并选中它的节点（result 节点本身；批量 slot 选它的 config 节点）。
+/// 打开产物所在画布，挂上来后选中它的节点并移到视口中心（result 节点本身；批量 slot 选它的
+/// config 节点）。
 void galleryLocateInCanvas(WidgetRef ref, {required ProjectRef project, required GalleryItem item}) {
   ref.read(shellControllerProvider.notifier).openCanvas(item.canvasId, withProject: project);
-  ref.read(canvasSelectionControllerProvider(item.canvasId).notifier).select(item.nodeId);
+  // 目标画布这一刻往往还没挂载（从画廊、别的画布过来），直接写它的选中会被 autoDispose 回收：
+  // 挂起请求，由画布挂上来后落地（单选 + 移到视口中心），见 canvas_focus_request.dart。
+  ref
+      .read(canvasFocusRequestProvider.notifier)
+      .request(canvasId: item.canvasId, nodeId: item.nodeId);
 }
 
 /// GA-4：命名 → charactersController.createFromImage（补偿逻辑在控制器内）。
