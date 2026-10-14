@@ -349,6 +349,8 @@ class InkShadow {
 /// （20 → 1.5，16 → 1.2），和设计稿里 SVG 的缩放方式一致。
 class InkIconSize {
   InkIconSize._();
+  static const double xs = 13; // 行内小图标：筛选框搜索、缩略占位里的类型图标、进行中转圈
+  static const double s14 = 14; // 行尾状态图标（完成 ✓）
   static const double sm = 16; // 列表行、紧凑工具格、状态栏
   static const double md = 20; // 导航条、工具条（网格原尺寸）
 

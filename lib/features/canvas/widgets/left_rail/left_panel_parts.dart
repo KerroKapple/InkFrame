@@ -85,8 +85,7 @@ class LeftPanelFilterField extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          // TODO(token): 稿上是 13px 的搜索图标；InkIconSize 只有 16 / 20，先用最近的 sm。
-          InkIcon(InkGlyph.search, size: InkIconSize.sm, color: c.fg6),
+          InkIcon(InkGlyph.search, size: InkIconSize.xs, color: c.fg6),
           const SizedBox(width: InkSpacing.s6),
           Expanded(
             child: TextField(

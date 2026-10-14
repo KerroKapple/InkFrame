@@ -342,10 +342,9 @@ class _ShotRow extends StatelessWidget {
               height: thumbHeight,
               outlined: true,
               placeholder: Center(
-                // TODO(token): 稿上类型图标是 13px；InkIconSize 只有 16 / 20，先用最近的 sm。
                 child: InkIcon(
                   _typeGlyph(node.type),
-                  size: InkIconSize.sm,
+                  size: InkIconSize.xs,
                   color: c.fg6,
                 ),
               ),
@@ -397,10 +396,9 @@ class _StatusBadge extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             _Spin(
-              // TODO(token): 稿上进行中图标是 13px；InkIconSize 只有 16 / 20，先用最近的 sm。
               child: InkIcon(
                 InkGlyph.progress,
-                size: InkIconSize.sm,
+                size: InkIconSize.xs,
                 color: c.accent,
               ),
             ),
@@ -417,10 +415,9 @@ class _StatusBadge extends StatelessWidget {
           style: t.micro.copyWith(color: c.fg5),
         );
       case NodeStatusKind.done:
-        // TODO(token): 稿上完成图标是 14px；InkIconSize 只有 16 / 20，先用最近的 sm。
         return InkIcon(
           InkGlyph.success,
-          size: InkIconSize.sm,
+          size: InkIconSize.s14,
           color: c.success,
           semanticLabel: l.nodeStatusDone,
         );
