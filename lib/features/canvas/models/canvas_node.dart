@@ -195,6 +195,13 @@ const Size kNodeCardSize = Size(224, 191);
 /// 端口在图区垂直中心：18 + 6 + 63。
 const double kNodeCardPortY = 87;
 
+/// 产物落点（util/result_placement.dart）：config 卡右缘到产物卡左缘的水平间距。
+/// 世界坐标里的布局常量，不是视觉令牌——和卡片渲染尺寸住在一起。
+const double kResultColumnGap = 64;
+
+/// 产物落点：同一 config 名下上下相邻两张产物卡之间的竖向间距。
+const double kResultRowGap = 48;
+
 /// 新建节点写入 DB 的尺寸（addNode 未显式传 size）= 渲染尺寸。
 Size defaultNodeSize(CanvasNodeType type) => kNodeCardSize;
 

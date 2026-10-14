@@ -666,6 +666,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorRoleLastFrame => 'Last frame';
 
   @override
+  String get canvasEdgeLabelReference => 'Reference';
+
+  @override
   String get inspectorRemoveInput => 'Remove input';
 
   @override

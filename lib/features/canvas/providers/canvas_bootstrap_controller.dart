@@ -35,6 +35,7 @@ import '../../../core/logging/logger_service.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
 import '../models/canvas_node.dart';
+import '../util/result_placement.dart';
 
 /// 示例内容文案（UI 层从 ARB 构造传入）。
 typedef SampleSeed = ({
@@ -52,6 +53,11 @@ typedef SampleSeed = ({
 /// 那是卡片改版之前的尺寸，代码里早就不存在了，没人发现。
 const Offset kSampleNodePosition = Offset(120, 90);
 
+/// 示例泳道的带厚：要装下 config 卡和它右侧一列往下错开的全部示例成片
+///（最后一张底边 = 90 + 2 × 191 + 48 = 520），再留出一点下边距。
+/// 默认带厚 kDefaultLaneSize 只装得下一行卡片，第二张成片会压在泳道下沿上。
+const double kSampleLaneSize = 600;
+
 /// 随应用打包的示例成片（原「内置示例」那两张水墨图）。顺序即种入顺序。
 const List<String> kSampleArtifactAssets = <String>[
   'assets/samples/ink-wash-mountains-square.jpg',
@@ -61,9 +67,10 @@ const List<String> kSampleArtifactAssets = <String>[
 /// 成片在画布目录下的相对路径前缀（`images/sample-1.jpg` …）。
 const String _kSampleArtifactStem = 'images/sample';
 
-/// 成片节点落在 config 节点右侧一排（不进泳道，与生成路径一致）。
-const Offset _kFirstArtifactPosition = Offset(440, 90);
-const double _kArtifactStepX = 300;
+// 成片节点的落点与生成路径同一条规则（util/result_placement.dart）：config 卡右侧
+// 一列，第 k 个往下错开 k 格；并与 config 同道（同道才同一套坐标，理由见
+// GenerationController._resultPlacement）。原来排成一横排，config → 第二张的产出线
+// 得从第一张卡底下穿过去。
 
 const String _logModule = 'canvas.bootstrap';
 
@@ -106,6 +113,7 @@ class CanvasBootstrapController {
         canvasId: canvasId,
         label: seed.laneLabel,
         stylePrompt: seed.laneStylePrompt,
+        size: kSampleLaneSize,
       );
       final configNodeId = await s.nodes.create(
         canvasId: canvasId,
@@ -124,6 +132,7 @@ class CanvasBootstrapController {
         projectId: projectId,
         canvasId: canvasId,
         configNodeId: configNodeId,
+        laneId: laneId,
         nodeSize: nodeSize,
         artifacts: artifacts,
         fileResolver: fileResolver,
@@ -174,16 +183,21 @@ class CanvasBootstrapController {
   }
 
   /// 先落盘、再建 result 节点；某一张写盘失败就跳过它（不留指向不存在文件的节点）。
+  ///
+  /// 落点按「config 名下第 k 个产物」排（k = 已经种下的成片数，跳过的那张不占格），
+  /// 与 config 同道。
   Future<void> _seedArtifactNodes({
     required RepositoryScope scope,
     required String projectId,
     required String canvasId,
     required String configNodeId,
+    required String laneId,
     required Size nodeSize,
     required List<Uint8List> artifacts,
     required FileResolverService fileResolver,
     required LoggerService logger,
   }) async {
+    var placed = 0;
     for (var i = 0; i < artifacts.length; i++) {
       final String relativePath = '$_kSampleArtifactStem-${i + 1}.jpg';
       final bool written = await _writeArtifact(
@@ -195,17 +209,23 @@ class CanvasBootstrapController {
         logger: logger,
       );
       if (!written) continue;
+      final Offset at = resultNodePosition(
+        configPosition: kSampleNodePosition,
+        index: placed,
+      );
       await scope.nodes.create(
         canvasId: canvasId,
         type: CanvasNodeType.image.name,
         nodeRole: NodeRole.result.name,
         sourceNodeId: configNodeId,
-        positionX: _kFirstArtifactPosition.dx + _kArtifactStepX * i,
-        positionY: _kFirstArtifactPosition.dy,
+        laneId: laneId,
+        positionX: at.dx,
+        positionY: at.dy,
         width: nodeSize.width,
         height: nodeSize.height,
         typeConfig: <String, Object?>{'image_url': relativePath},
       );
+      placed++;
     }
   }
 

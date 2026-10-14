@@ -1238,6 +1238,12 @@ abstract class AppLocalizations {
   /// **'Last frame'**
   String get inspectorRoleLastFrame;
 
+  /// No description provided for @canvasEdgeLabelReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get canvasEdgeLabelReference;
+
   /// No description provided for @inspectorRemoveInput.
   ///
   /// In en, this message translates to:

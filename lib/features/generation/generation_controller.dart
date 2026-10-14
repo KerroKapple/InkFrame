@@ -3,7 +3,8 @@
 // 职责（S3a）：
 //   1. 读 config 节点的 type_config（prompt / providerId / resolution / aspectRatio）
 //   2. 从 SecureStorage 取 API Key（缺失 → GenerationError.missingApiKey）
-//   3. 预创建 result 节点（source_node_id = config.id）
+//   3. 预创建 result 节点（source_node_id = config.id），落在 config 卡右侧一列、
+//      与 config 同道（见 _resultPlacement）
 //      —— 注意：原 plan R2 "success 后创"在 B-b3 落盘体系下不可行：
 //         JobQueueService 落盘逻辑要 GenerationTask.resultNodeId 才能
 //         NodeRepository.update(image_url)。必须预创建 + 失败清理。
@@ -18,6 +19,7 @@
 // refImages / duration / camera 等字段 mapping 即可。
 
 import 'dart:async';
+import 'dart:ui' show Offset;
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -53,6 +55,7 @@ import '../../core/models/provider_capabilities.dart';
 import '../../core/models/shot_language.dart';
 import '../../core/interfaces/provider_registry.dart';
 import '../canvas/models/character.dart';
+import '../canvas/util/result_placement.dart';
 import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
 import 'services/prompt_assembler.dart';
@@ -290,6 +293,13 @@ class GenerationController {
       }
     }
 
+    // 产物落点：原来不给坐标 ⇒ 每个成片都落在世界原点 (0,0)，一张叠一张。
+    final Offset resultPosition = await _resultPlacement(
+      cfgRow: cfgRow,
+      canvasId: canvasId,
+      configNodeId: configNodeId,
+    );
+
     // 预创建 result 节点 + 建 job 行——单事务原子（任一失败整体回滚，不留半行）。
     final String resultNodeId;
     final String jobId;
@@ -300,6 +310,10 @@ class GenerationController {
           type: nodeType,
           nodeRole: 'result',
           sourceNodeId: configNodeId,
+          // 与 config 同道——同道才同一套坐标（理由见 _resultPlacement）。
+          laneId: laneId,
+          positionX: resultPosition.dx,
+          positionY: resultPosition.dy,
         );
         final jId = await scope.jobs.create(
           canvasId: canvasId,
@@ -574,6 +588,38 @@ class GenerationController {
       );
       return true;
     }
+  }
+
+  /// 新产物的落点（世界坐标）：config 卡右侧一列，第 k 格，k = 它名下现存产物数
+  /// （canvas/util/result_placement.dart，示例项目同一条规则）。
+  ///
+  /// 产物与 config **同道**（建行时传 config 的 lane_id）：泳道里的节点以本道起始边
+  /// 为锚缩放（canvas/util/lane_pin_geometry.dart），无道节点走全局变换——两套坐标
+  /// 只在缩放 = 1 或第一条道（起始边 = 0）时重合。产物要是不进 config 的道，从第二条道
+  /// 起一缩放就和 config 错开（起始边 400、缩到 0.5 就差出 200px），产出线跟着歪；
+  /// 同道则共用同一份分道位移，任何缩放下都贴在 config 右边。
+  ///
+  /// 数不出现存产物（读库失败）就落第 0 格——落点只关乎好不好看，不值得拦下一次生成。
+  Future<Offset> _resultPlacement({
+    required Map<String, Object?> cfgRow,
+    required String canvasId,
+    required String configNodeId,
+  }) async {
+    final Offset configPosition = Offset(
+      cfgRow.optDouble(NodeCol.positionX) ?? 0,
+      cfgRow.optDouble(NodeCol.positionY) ?? 0,
+    );
+    var index = 0;
+    try {
+      index = liveResultCount(await nodes.listByCanvas(canvasId), configNodeId);
+    } on InkError catch (e) {
+      logger?.warn(
+        _logModule,
+        'existing result count failed; placing result at slot 0 (swallowed)',
+        extra: {'config_node_id': configNodeId, 'reason': e.toString()},
+      );
+    }
+    return resultNodePosition(configPosition: configPosition, index: index);
   }
 
   /// configNode 的 data 入连线取一次（refs + associatedTexts 共用）；失败 warn + 空。

@@ -23,6 +23,7 @@ import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/util/edge_hit_test.dart';
+import 'package:inkframe/features/canvas/util/edge_style.dart';
 import 'package:inkframe/features/canvas/widgets/edge_painter.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
@@ -102,12 +103,19 @@ Widget _scaleScene(List<CanvasNode> nodes, List<CanvasEdge> edges) => ProviderSc
                     painter: EdgePainter(
                       edges: edges,
                       nodes: nodes,
-                      neutralColor: const Color(0xFF888888),
-                      arrowColor: const Color(0xFF888888),
-                      accentColor: const Color(0xFFFFFFFF),
+                      palette: const EdgePalette(
+                        narrative: Color(0xFF888888),
+                        lineage: Color(0xFF888888),
+                        firstFrame: Color(0xFF888888),
+                        lastFrame: Color(0xFF888888),
+                        reference: Color(0xFF888888),
+                        accent: Color(0xFFFFFFFF),
+                        chipFill: Color(0xFF000000),
+                      ),
                       labelStyle: const TextStyle(fontSize: 10),
                       firstFrameLabel: 'first',
                       lastFrameLabel: 'last',
+                      referenceLabel: 'reference',
                       selectedEdgeId: null,
                     ),
                   ),

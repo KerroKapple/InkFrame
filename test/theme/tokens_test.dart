@@ -158,7 +158,24 @@ void main() {
       }
     });
 
-    test('每个变体暴露全部 32 个槽位（README 表 28 + scrim + 画布专用 3）', () {
+    test('连线语义三色对画布底（surface1）≥ 3:1（图形对比度）', () {
+      for (final (name, make) in _variants) {
+        final c = make();
+        for (final (role, color) in <(String, Color)>[
+          ('edgeFirstFrame', c.edgeFirstFrame),
+          ('edgeLastFrame', c.edgeLastFrame),
+          ('edgeReference', c.edgeReference),
+        ]) {
+          expect(
+            wcagContrast(color, c.surface1),
+            greaterThanOrEqualTo(3),
+            reason: '$name $role × surface1',
+          );
+        }
+      }
+    });
+
+    test('每个变体暴露全部 35 个槽位（README 表 28 + scrim + 画布专用 3 + 连线语义 3）', () {
       for (final (_, make) in _variants) {
         final c = make();
         final List<Color> all = <Color>[
@@ -194,8 +211,11 @@ void main() {
           c.canvasGrid,
           c.laneDivider,
           c.thumbFill,
+          c.edgeFirstFrame,
+          c.edgeLastFrame,
+          c.edgeReference,
         ];
-        expect(all.length, 32);
+        expect(all.length, 35);
       }
     });
   });

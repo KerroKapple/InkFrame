@@ -26,6 +26,8 @@ import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/models/generation_task.dart';
 import 'package:inkframe/core/models/job_status.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
+import 'package:inkframe/features/canvas/models/canvas_node.dart'
+    show kNodeCardSize, kResultColumnGap, kResultRowGap;
 import 'package:inkframe/features/generation/generation_controller.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
@@ -45,6 +47,9 @@ class _FakeNodeRepo implements NodeRepository {
   final List<Map<String, Object?>> creates = [];
   final List<String> softDeleted = [];
   int _idSeq = 0;
+
+  /// 置 true：listByCanvas 抛 InkError（产物落点数不出现存产物的降级路径）。
+  bool listThrows = false;
 
   @override
   Future<String> create({
@@ -68,6 +73,9 @@ class _FakeNodeRepo implements NodeRepository {
       'type': type,
       'node_role': nodeRole,
       'source_node_id': sourceNodeId,
+      'lane_id': laneId,
+      'position_x': positionX,
+      'position_y': positionY,
     });
     rows[id] = {
       'id': id,
@@ -75,6 +83,9 @@ class _FakeNodeRepo implements NodeRepository {
       'type': type,
       'node_role': nodeRole,
       'source_node_id': sourceNodeId,
+      'lane_id': laneId,
+      'position_x': positionX,
+      'position_y': positionY,
       'type_config': typeConfig,
     };
     return id;
@@ -89,9 +100,14 @@ class _FakeNodeRepo implements NodeRepository {
     return 1;
   }
 
-  // 未使用接口
+  /// 产物落点要数 config 名下现存产物：按画布过滤现存行（软删的行已从 rows 移除）。
   @override
-  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async => [];
+  Future<List<Map<String, Object?>>> listByCanvas(String canvasId) async {
+    if (listThrows) throw const LocalIOError();
+    return rows.values.where((r) => r['canvas_id'] == canvasId).toList();
+  }
+
+  // 未使用接口
   @override
   Future<List<Map<String, Object?>>> listOrphanResults(String canvasId) async =>
       [];
@@ -1091,6 +1107,109 @@ void main() {
         jobsRegistry.events.every((e) => e.projectId == null),
         isTrue,
         reason: '拿不到就是拿不到，不许回填一个猜的项目 id',
+      );
+    });
+  });
+
+  // 原来预建 result 节点不给坐标 ⇒ 仓储默认 (0,0)：每个成片都落在世界原点叠成一摞，
+  // 还正压在示例 config 卡上。现在排在 config 卡右侧一列，第 k 个往下错开 k 格，
+  // 并与 config 同道（泳道内外两套坐标只在缩放 = 1 时重合，不同道一缩放就错开）。
+  group('产物落点（成片不再全叠在世界原点）', () {
+    const double column = 100.0 + 224 + 64; // config.x + 卡宽 + 列距
+
+    Future<String> seedPlacedConfig({String? laneId}) async {
+      final cfg = await seedConfigNode();
+      nodes.rows[cfg]!
+        ..['position_x'] = 100.0
+        ..['position_y'] = 50.0
+        ..['lane_id'] = laneId;
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+      return cfg;
+    }
+
+    void seedResult(String id, {required String source, String canvas = 'cvx'}) {
+      nodes.rows[id] = <String, Object?>{
+        'id': id,
+        'canvas_id': canvas,
+        'type': 'image',
+        'node_role': 'result',
+        'source_node_id': source,
+        'type_config': const <String, Object?>{},
+      };
+    }
+
+    test('名下还没有产物：落在 config 卡右侧、顶对齐，并与 config 同道', () async {
+      final cfg = await seedPlacedConfig(laneId: 'lane-2');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final created = nodes.creates.single;
+      expect(created['position_x'], column);
+      expect(
+        created['position_x'],
+        100.0 + kNodeCardSize.width + kResultColumnGap,
+        reason: '与卡宽 / 列距常量同源',
+      );
+      expect(created['position_y'], 50.0);
+      expect(created['lane_id'], 'lane-2', reason: '同道才同一套坐标，缩放时不和 config 错开');
+    });
+
+    test('config 不在泳道里 → 产物也不进泳道', () async {
+      final cfg = await seedPlacedConfig();
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(nodes.creates.single['lane_id'], isNull);
+    });
+
+    test('名下已有两个现存产物 → 新产物排第 3 格；别的 config / 别的画布的产物不算', () async {
+      final cfg = await seedPlacedConfig();
+      seedResult('r-a', source: cfg);
+      seedResult('r-b', source: cfg);
+      seedResult('r-other-config', source: 'cfg-other');
+      seedResult('r-other-canvas', source: cfg, canvas: 'cvy');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final created = nodes.creates.single;
+      expect(created['position_x'], column, reason: '同一列');
+      expect(
+        created['position_y'],
+        50.0 + 2 * (kNodeCardSize.height + kResultRowGap),
+      );
+    });
+
+    test('连着生成两次：第二个产物排到第一个下面一格', () async {
+      final cfg = await seedPlacedConfig();
+
+      await buildCtrl().submitFromConfigNode(cfg);
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(nodes.creates, hasLength(2));
+      expect(nodes.creates[0]['position_y'], 50.0);
+      expect(
+        nodes.creates[1]['position_y'],
+        50.0 + kNodeCardSize.height + kResultRowGap,
+      );
+    });
+
+    test('数不出现存产物（读库失败）→ 不拦生成，落第 0 格，留一条 warn', () async {
+      final cfg = await seedPlacedConfig();
+      nodes.listThrows = true;
+
+      final jobId = await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(jobId, isNotEmpty, reason: '落点只关乎好不好看，不值得拦下一次生成');
+      final created = nodes.creates.single;
+      expect(created['position_x'], column);
+      expect(created['position_y'], 50.0);
+      expect(
+        logger.byLevel(InkLogLevel.warn).where(
+              (r) =>
+                  r.module == 'generation.controller' &&
+                  r.extra?['config_node_id'] == cfg,
+            ),
+        isNotEmpty,
       );
     });
   });

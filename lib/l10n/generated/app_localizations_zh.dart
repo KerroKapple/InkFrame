@@ -635,6 +635,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorRoleLastFrame => '结束帧';
 
   @override
+  String get canvasEdgeLabelReference => '参考';
+
+  @override
   String get inspectorRemoveInput => '移除输入';
 
   @override

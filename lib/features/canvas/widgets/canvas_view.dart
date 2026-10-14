@@ -32,6 +32,8 @@ import '../util/canvas_node_delete.dart';
 import '../util/canvas_snackbars.dart';
 import '../util/canvas_zoom.dart';
 import '../util/edge_hit_test.dart';
+import '../util/edge_style.dart';
+import '../util/lineage_edges.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_lanes_controller.dart';
 import '../providers/lane_collapse_controller.dart';
@@ -410,6 +412,15 @@ class _CanvasStage extends ConsumerWidget {
       for (final n in nodes)
         if (n.laneId == null || !collapsedIds.contains(n.laneId)) n,
     ];
+    // 产出线：由 source_node_id 推导（不落库、点不中、删不掉——命中仍只看存量边），
+    // 只在可见节点之间推：折叠道里的端点不画，线也不画。整层算一次，连线层与端口共用。
+    final lineage = deriveLineageEdges(nodes: visibleNodes, edges: edges);
+    // 端口按需显示：哪一侧真挂着画出来的线（存量边 + 产出线）就常驻那一侧。
+    final ports = connectedPortSides(
+      nodes: visibleNodes,
+      edges: edges,
+      lineage: lineage,
+    );
 
     // PL-2：绑定快捷键缩放共用的变换控制器（按 canvasId 分族；gesture 平移/缩放照常）。
     final transformController = ref.watch(
@@ -558,6 +569,18 @@ class _CanvasStage extends ConsumerWidget {
                             final selectedNodeIds = ref.watch(
                               canvasSelectionControllerProvider(canvasId),
                             );
+                            // 连线语义色（画布重设计稿）：叙事 fg4、产出 fg6、首帧 /
+                            // 尾帧 / 参考各一色；当前链路仍是用户自定义连线色，没设
+                            // 就是 accent。标签胶囊底 = 画布底色。
+                            final palette = EdgePalette(
+                              narrative: colors.fg4,
+                              lineage: colors.fg6,
+                              firstFrame: colors.edgeFirstFrame,
+                              lastFrame: colors.edgeLastFrame,
+                              reference: colors.edgeReference,
+                              accent: style.edgeColor ?? colors.accent,
+                              chipFill: colors.surface1,
+                            );
                             // 锚点吃分道位移（与卡片渲染位置同源），缩放/平移
                             // 实时跟随。
                             return ValueListenableBuilder<Matrix4>(
@@ -565,18 +588,18 @@ class _CanvasStage extends ConsumerWidget {
                               builder: (context, m, _) => CustomPaint(
                                 painter: EdgePainter(
                                   edges: edges,
+                                  lineage: lineage,
                                   nodes: displacedNodes(
                                     nodes: visibleNodes,
                                     lanes: laneSlices,
                                     direction: direction,
                                     transform: m,
                                   ),
-                                  neutralColor: colors.fg6,
-                                  arrowColor: colors.fg5,
-                                  accentColor: style.edgeColor ?? colors.accent,
+                                  palette: palette,
                                   labelStyle: typo.micro,
                                   firstFrameLabel: l.inspectorRoleFirstFrame,
                                   lastFrameLabel: l.inspectorRoleLastFrame,
+                                  referenceLabel: l.canvasEdgeLabelReference,
                                   direction: direction,
                                   selectedNodeIds: selectedNodeIds,
                                   selectedEdgeId: selectedEdgeId,
@@ -605,6 +628,8 @@ class _CanvasStage extends ConsumerWidget {
                         laneSlices: laneSlices,
                         direction: direction,
                         transform: transformController,
+                        hasInEdge: ports.inbound.contains(node.id),
+                        hasOutEdge: ports.outbound.contains(node.id),
                         onTap: () => onNodeTap(node),
                         onDelete: () => deleteNodeWithUndo(
                           context,
@@ -655,6 +680,9 @@ class _CanvasStage extends ConsumerWidget {
                                     laneSlices: laneSlices,
                                     direction: direction,
                                     transform: transformController,
+                                    hasInEdge: ports.inbound.contains(node.id),
+                                    hasOutEdge:
+                                        ports.outbound.contains(node.id),
                                     onTap: () => onNodeTap(node),
                                     onDelete: () => deleteNodeWithUndo(
                                       context,
@@ -1007,7 +1035,8 @@ _selectedEdgeGeometry({
 }
 
 /// 单个节点卡片插槽：各自 watch 自己的选中/链接态——改选中只重建涉及的卡片，
-/// 不连带整个舞台层（丝滑核心）。NodeCard 公共 API 不变。
+/// 不连带整个舞台层（丝滑核心）。端口占用（[hasInEdge] / [hasOutEdge]）由舞台层
+/// 按存量边 + 产出线整层算一次传进来。
 class _NodeCardSlot extends ConsumerWidget {
   const _NodeCardSlot({
     required this.node,
@@ -1016,6 +1045,8 @@ class _NodeCardSlot extends ConsumerWidget {
     required this.laneSlices,
     required this.direction,
     required this.transform,
+    required this.hasInEdge,
+    required this.hasOutEdge,
     required this.onTap,
     required this.onDelete,
   });
@@ -1029,6 +1060,10 @@ class _NodeCardSlot extends ConsumerWidget {
 
   /// 画布世界→屏幕变换：泳道钉在视口层（屏幕坐标），落点归属须换算后判定。
   final TransformationController transform;
+
+  /// 入口 / 出口这一侧真挂着画出来的线——端口常驻（见 NodeCard 头注）。
+  final bool hasInEdge;
+  final bool hasOutEdge;
   final VoidCallback onTap;
   final VoidCallback onDelete;
 
@@ -1099,6 +1134,8 @@ class _NodeCardSlot extends ConsumerWidget {
         onDelete: onDelete,
         isLinkSource: linkSourceId == node.id,
         isLinkCandidate: linkSourceId != null && linkSourceId != node.id,
+        hasInEdge: hasInEdge,
+        hasOutEdge: hasOutEdge,
       ),
     );
   }

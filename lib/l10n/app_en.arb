@@ -276,6 +276,7 @@
   "inspectorRoleReference": "Reference",
   "inspectorRoleFirstFrame": "First frame",
   "inspectorRoleLastFrame": "Last frame",
+  "canvasEdgeLabelReference": "Reference",
   "inspectorRemoveInput": "Remove input",
   "inspectorInputsLabelCounted": "Inputs ({count}/{max})",
   "@inspectorInputsLabelCounted": {
