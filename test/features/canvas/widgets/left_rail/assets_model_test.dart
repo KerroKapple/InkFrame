@@ -35,7 +35,7 @@ CanvasNode _result(String id, String source, {String? url, DateTime? at}) => Can
       sourceNodeId: source,
       createdAt: at,
       typeConfig: <String, Object?>{
-        if (url != null) (url.startsWith('videos/') ? 'video_url' : 'image_url'): url,
+        (url?.startsWith('videos/') ?? false) ? 'video_url' : 'image_url': ?url,
       },
     );
 

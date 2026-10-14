@@ -3452,6 +3452,12 @@ abstract class AppLocalizations {
   /// **'Take {number}'**
   String inspectorHistoryTake(int number);
 
+  /// Inspector History tab: label of the only take when a config has exactly one result (same rule as the asset tiles' 'final').
+  ///
+  /// In en, this message translates to:
+  /// **'Final'**
+  String get inspectorHistoryFinal;
+
   /// Inspector History tab — the seed a take was generated with (only shown when it was recorded)
   ///
   /// In en, this message translates to:
