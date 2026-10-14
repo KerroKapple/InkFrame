@@ -378,6 +378,11 @@ class InkToolbarSize {
 
   /// 舞台左下浮层（泳道工具栏）的 bottom：缩放条 bottom 12 + 条高 26 + 10 间隙。
   static const double stageBottomInset = 48;
+
+  /// 舞台左下那一簇（缩放条 + 叠在它上面的泳道工具栏）从舞台左沿量起占的宽度，含右侧一档间隙：
+  /// 底部居中的提示词条居中时会压到这一段，就改在右边剩下的那段里居中（prompt_bar_width.dart）。
+  /// 由 canvas_screen_layout_test 守着：两条的右沿 + 12 都得落在这里面，改了它们的宽度这里跟着改。
+  static const double stageBottomLeftReserve = 176;
 }
 
 /// 通知卡（右下角，画布重设计稿 › 通知）。间距 / 圆角 / 阴影仍走 InkSpacing / InkRadius / InkShadow。

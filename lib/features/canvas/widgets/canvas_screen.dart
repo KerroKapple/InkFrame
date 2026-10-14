@@ -69,7 +69,7 @@ class CanvasScreen extends ConsumerWidget {
                         left: 0,
                         right: 0,
                         bottom: 16,
-                        child: Center(child: CanvasPromptBar(canvasId: canvasId)),
+                        child: CanvasPromptBar(canvasId: canvasId),
                       ),
                       // 最后画：压在舞台浮层（连线提示等）之上，那些浮层的 top 已让出
                       // 工具条的高度（InkToolbarSize.stageTopInset）。
