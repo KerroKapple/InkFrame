@@ -6,7 +6,7 @@
 //     省掉。提交中（submitting）算排队——与 nodeStatusOf、原渲染队列同一口径。
 //   - 只剩终态 job（注册表里还没清）：outline 边、fg5 字，「任务 N」；有失败再加「· 失败 K」（danger）。
 //   - 注册表空：什么都不画（连同左侧间距一起收成零宽）。
-// 点胶囊开弹层（shell_task_popover.dart），再点或按 Esc 关（弹层开着时持焦）。弹层走 OverlayPortal 挂到
+// 点胶囊开弹层（shell_task_popover.dart），再点、点外面（含铃铛）或按 Esc 关（弹层开着时持焦）。弹层走 OverlayPortal 挂到
 // Navigator 的 Overlay 上，锚在胶囊正上方、左沿对齐，底边距状态栏上沿 8——与铃铛下拉同一套做法
 // （notification_bell.dart）。注册表清空时胶囊连同弹层一起消失。
 //
@@ -87,6 +87,10 @@ class _ShellTaskCapsuleState extends ConsumerState<ShellTaskCapsule> {
   final LayerLink _link = LayerLink();
   final FocusNode _panelFocus = FocusNode(debugLabel: 'shellTasks');
 
+  /// 胶囊与弹层同属一个 TapRegion 组（与铃铛同一做法）：点胶囊是切换，不算「点外面」；
+  /// 点别处（含铃铛）就关。
+  final Object _tapGroup = Object();
+
   @override
   void dispose() {
     _panelFocus.dispose();
@@ -115,18 +119,25 @@ class _ShellTaskCapsuleState extends ConsumerState<ShellTaskCapsule> {
     if (summary.running + summary.queued + summary.terminal == 0) return const SizedBox.shrink();
     return Padding(
       padding: EdgeInsets.only(left: widget.leadingGap),
-      child: CompositedTransformTarget(
-        link: _link,
-        child: OverlayPortal(
-          controller: _portal,
-          overlayChildBuilder: (BuildContext context) =>
-              _PopoverLayer(link: _link, focusNode: _panelFocus, onClose: _close),
-          child: InkActivatable(
-            key: ShellTaskCapsule.capsuleKey,
-            onTap: _toggle,
-            focusRingRadius: BorderRadius.circular(InkRadius.pill),
-            builder: (BuildContext context, bool hovered, bool focused) =>
-                _CapsuleBody(summary: summary, hovered: hovered),
+      child: TapRegion(
+        groupId: _tapGroup,
+        child: CompositedTransformTarget(
+          link: _link,
+          child: OverlayPortal(
+            controller: _portal,
+            overlayChildBuilder: (BuildContext context) => _PopoverLayer(
+              link: _link,
+              groupId: _tapGroup,
+              focusNode: _panelFocus,
+              onClose: _close,
+            ),
+            child: InkActivatable(
+              key: ShellTaskCapsule.capsuleKey,
+              onTap: _toggle,
+              focusRingRadius: BorderRadius.circular(InkRadius.pill),
+              builder: (BuildContext context, bool hovered, bool focused) =>
+                  _CapsuleBody(summary: summary, hovered: hovered),
+            ),
           ),
         ),
       ),
@@ -167,8 +178,7 @@ class _CapsuleBody extends StatelessWidget {
         children: active
             ? <Widget>[
                 _Spin(
-                  // TODO(token): 稿上是 11px 的转圈图标，图标尺寸令牌里没有 11，先用 xs（13）。
-                  child: InkIcon(InkGlyph.progress, size: InkIconSize.xs, color: c.accent),
+                  child: InkIcon(InkGlyph.progress, size: InkIconSize.s11, color: c.accent),
                 ),
                 const SizedBox(width: InkSpacing.s6),
                 Text(
@@ -205,9 +215,15 @@ class _CapsuleBody extends StatelessWidget {
 /// 浮层根：铺满 Overlay 的 Align（本身不吃点击）+ 跟着胶囊走的弹层。
 /// 弹层左沿对齐胶囊左沿、底边在胶囊上沿之上 [ShellTaskCapsule.popoverLift]。
 class _PopoverLayer extends StatelessWidget {
-  const _PopoverLayer({required this.link, required this.focusNode, required this.onClose});
+  const _PopoverLayer({
+    required this.link,
+    required this.groupId,
+    required this.focusNode,
+    required this.onClose,
+  });
 
   final LayerLink link;
+  final Object groupId;
   final FocusNode focusNode;
   final VoidCallback onClose;
 
@@ -220,11 +236,15 @@ class _PopoverLayer extends StatelessWidget {
         targetAnchor: Alignment.topLeft,
         followerAnchor: Alignment.bottomLeft,
         offset: const Offset(0, -ShellTaskCapsule.popoverLift),
-        child: CallbackShortcuts(
-          bindings: <ShortcutActivator, VoidCallback>{
-            const SingleActivator(LogicalKeyboardKey.escape): onClose,
-          },
-          child: Focus(focusNode: focusNode, child: const ShellTaskPopover()),
+        child: TapRegion(
+          groupId: groupId,
+          onTapOutside: (_) => onClose(),
+          child: CallbackShortcuts(
+            bindings: <ShortcutActivator, VoidCallback>{
+              const SingleActivator(LogicalKeyboardKey.escape): onClose,
+            },
+            child: Focus(focusNode: focusNode, child: const ShellTaskPopover()),
+          ),
         ),
       ),
     );

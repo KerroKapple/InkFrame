@@ -14,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
+import 'package:inkframe/features/export/providers/delivery_plan_provider.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
@@ -88,6 +89,9 @@ Future<ProviderContainer> _pumpOnCanvas(WidgetTester tester) async {
       canvasEdgesControllerProvider.overrideWith(_Edges.new),
       canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
+      // 序列标签右侧交付面板的底栏要显示输出目录（resolveInProject）；桩解析器不实现它——
+      // 回落成默认相对路径即可，本文件不测交付。
+      deliveryOutputDirPathProvider.overrideWith((ref, String projectId) => null),
     ],
   );
   for (int i = 0; i < 4; i++) {

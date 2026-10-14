@@ -163,18 +163,4 @@ void main() {
         jobId: 'new', providerId: 'p', canvasId: 'c1', sourceNodeId: 'n1', progress: 0.2));
     expect(reg.activeForSourceNode('n1')?.jobId, 'new');
   });
-
-  test('forCanvas 只返回指定画布的活跃任务，按插入序', () {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    final reg = container.read(jobsRegistryProvider.notifier);
-
-    reg.upsert(const JobState.running(jobId: 'a', providerId: 'p', canvasId: 'c1', progress: 0.1));
-    reg.upsert(const JobState.running(jobId: 'b', providerId: 'p', canvasId: 'c2', progress: 0.2));
-    reg.upsert(const JobState.queued(jobId: 'd', providerId: 'p', canvasId: 'c1'));
-    reg.upsert(const JobState.succeeded(jobId: 'e', providerId: 'p', canvasId: 'c1', artifactPath: 'x.png'));
-
-    final c1Active = reg.forCanvas('c1');
-    expect(c1Active.map((s) => s.jobId).toList(), <String>['a', 'd']); // 终态 e 被过滤
-  });
 }

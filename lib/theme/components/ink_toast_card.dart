@@ -490,7 +490,7 @@ class _ProgressRow extends StatelessWidget {
         ),
         if (v != null) ...<Widget>[
           const SizedBox(width: InkSpacing.sm),
-          // 数值读数，与画布缩放百分比同一写法（canvas_header_bar.dart）。读屏不再念它：
+          // 数值读数，与画布缩放百分比同一写法（canvas_zoom_bar.dart）。读屏不再念它：
           // 进度条自己的语义 value 就是这个百分比。
           ExcludeSemantics(
             child: Text(

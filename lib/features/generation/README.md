@@ -30,7 +30,7 @@ services/toast_service       轻提示
 - `JobState`（本模块）：UI 端**完整状态机**，带 `sourceNodeId`（供 inspector 按节点回读进度）与 `resultNodeId`（供批量网格终态定点刷新）
 
 ## 消费者
-- canvas 的 `canvas_render_queue` 读 `jobsRegistryProvider`（活跃任务进度 + 取消入口 + 最近失败区）
+- 外壳状态栏的任务胶囊 / 任务弹层（`features/shell/widgets/shell_task_capsule.dart` / `shell_task_popover.dart`）读 `jobsRegistryProvider`：全部 job（不只当前画布）的进度、取消、定位、清除已完成
 - canvas 的 `node_active_job` / `inspector_status_panel` 用 `JobsRegistry.activeForSourceNode` 显示节点级进度
 - canvas 的 `canvas_job_listener` 监听终态、按 `resultNodeId` 定点 `invalidate(batchResultsControllerProvider(nodeId))` 刷新批量网格
 

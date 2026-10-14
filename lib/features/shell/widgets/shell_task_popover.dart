@@ -9,8 +9,9 @@
 //   - 运行中的行再加一条 4 高的进度条（control 底、accent 填充、圆角 2）。
 //   - 不显示耗时：JobState 没有起止时间（与原渲染队列一样）。
 //   - 动作：可取消（非终态）⇒「取消」（JobQueueService.cancel，幂等）；终态且源节点还在 ⇒「定位」：
-//     同一画布 = 切回画布标签再单选 + 居中；别的画布 = 先 openCanvas 切过去，再单选 + 居中
-//     （left_rail_actions.focusNodeOnCanvas）。换画布要带 ProjectRef（外壳换项目必须带名字）：任务属于
+//     同一画布 = 切回画布标签；别的画布 = 先 openCanvas 切过去；然后挂起定位请求，画布挂着 / 挂上来
+//     后落地：单选 + 居中（canvas_focus_request.dart——别的画布这一刻还没挂载，直接写它的选中会被
+//     autoDispose 回收）。换画布要带 ProjectRef（外壳换项目必须带名字）：任务属于
 //     外壳当前项目就用它，否则从 Studio 一直开着的工作库列表里找；都拿不到就不画「定位」——绝不挂一个
 //     点了没反应的按钮（job_notification_listener 的「查看」同一口径）。
 //   - 头部「并发 N」只读显示 JobQueueService 的全局并发上限。
@@ -28,8 +29,8 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/providers/canvas_focus_request.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
-import '../../canvas/widgets/left_rail/left_rail_actions.dart';
 import '../../canvas/widgets/node_card.dart' show nodeDisplayName;
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
@@ -254,17 +255,20 @@ class _TaskRow extends ConsumerWidget {
       ),
     );
     final ShellNavigator nav = ref.read(shellControllerProvider.notifier);
+    void requestFocus() => ref
+        .read(canvasFocusRequestProvider.notifier)
+        .request(canvasId: job.canvasId, nodeId: source.id);
     if (shell.canvasId == job.canvasId) {
       return () {
         nav.goTab(ShellTab.canvas);
-        focusNodeOnCanvas(ref, canvasId: job.canvasId, node: source);
+        requestFocus();
       };
     }
     final ProjectRef? project = _projectFor(ref, job.projectId, shell.project);
     if (project == null) return null;
     return () {
       nav.openCanvas(job.canvasId, withProject: project);
-      focusNodeOnCanvas(ref, canvasId: job.canvasId, node: source);
+      requestFocus();
     };
   }
 

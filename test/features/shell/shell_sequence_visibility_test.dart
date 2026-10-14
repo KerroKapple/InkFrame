@@ -127,4 +127,23 @@ void main() {
     expect(c.read(shellControllerProvider).tab, ShellTab.canvas);
     expect(c.read(canvasSelectionControllerProvider('cv-1')), <String>{'b'});
   }, timeout: const Timeout(Duration(seconds: 15)));
+
+  testWidgets('从没进过画布标签：回到画布定位同样选中当前镜（画布是切过去才挂上来的）', (tester) async {
+    await _pump(tester, 'ink_seq_vis_cold_');
+    final ProviderContainer c = readShellContainer(tester);
+
+    await tester.tap(find.byKey(SequenceScreen.chainRowKey(1)));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.byKey(ShellTabBar.locateInCanvasKey));
+    // 画布槽位这才物化：节点载入、视口上报之后定位才落地——多给几帧。
+    for (int i = 0; i < 6; i++) {
+      await tester.pump();
+    }
+
+    expect(c.read(shellControllerProvider).tab, ShellTab.canvas);
+    expect(c.read(canvasSelectionControllerProvider('cv-1')), <String>{'b'},
+        reason: '画布挂载前直接写选中会被 autoDispose 回收');
+  }, timeout: const Timeout(Duration(seconds: 15)));
 }

@@ -35,13 +35,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ink_icon.dart';
 import '../../../theme/components/ink_shell_tab_bar.dart';
 import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/providers/canvas_focus_request.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
 import '../../export/delivery_keys.dart';
@@ -160,9 +160,12 @@ class ShellTabBar extends ConsumerWidget {
               onTap: !canLocate
                   ? null
                   : () {
-                      // 与 galleryLocateInCanvas 同序：先切标签再选中。
+                      // 与 galleryLocateInCanvas 同一条路：切标签 + 挂起定位请求，画布落地时单选 + 居中
+                      // （从没进过画布标签时画布还没挂载，直接写选中会被 autoDispose 回收）。
                       nav.goTab(ShellTab.canvas);
-                      ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(lens.shots[shotIndex].nodeId);
+                      ref
+                          .read(canvasFocusRequestProvider.notifier)
+                          .request(canvasId: canvasId, nodeId: lens.shots[shotIndex].nodeId);
                     },
               child: Opacity(opacity: canLocate ? 1 : 0.5, child: InkSecondaryButton(l.shellActionLocateInCanvas)),
             ),
@@ -205,7 +208,7 @@ class ShellTabBar extends ConsumerWidget {
                 key: viewInSequenceKey,
                 label: l.shellActionViewInSequence,
                 onTap: () => _viewInSequence(ref, canvasId),
-                child: _IconSecondaryButton(glyph: InkGlyph.sequence, label: l.shellActionViewInSequence),
+                child: InkSecondaryButton(l.shellActionViewInSequence, leading: InkGlyph.sequence),
               ),
               _Action(
                 key: exportVideoKey,
@@ -412,40 +415,6 @@ class _Action extends StatelessWidget {
         focusRingRadius: BorderRadius.circular(InkRadius.s3),
         builder: (BuildContext context, bool hovered, bool focused) => child,
       );
-}
-
-/// 左侧带图标的次级按钮（稿：「在序列中查看」——24 高 + 1px controlStrong 边、圆角 3、左右 10、
-/// 图标 14、图标与文字间距 6、fg2）。theme 层的 InkSecondaryButton 还没有图标位（theme 不归本 PR 改），
-/// 外观在这里按同一组令牌拼；点击壳仍是外面那层 [_Action]。
-class _IconSecondaryButton extends StatelessWidget {
-  const _IconSecondaryButton({required this.glyph, required this.label});
-
-  final InkGlyph glyph;
-  final String label;
-
-  /// 与 InkSecondaryButton 同高：稿 content 24 + 上下 1px 边。
-  static const double height = 26;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    return Container(
-      height: height,
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
-      decoration: BoxDecoration(
-        border: Border.all(color: c.controlStrong),
-        borderRadius: BorderRadius.circular(InkRadius.s3),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          InkIcon(glyph, size: InkIconSize.s14, color: c.fg2),
-          const SizedBox(width: InkSpacing.s6),
-          Text(label, style: context.inkTypography.body.copyWith(color: c.fg2)),
-        ],
-      ),
-    );
-  }
 }
 
 /// 「在序列中查看」该跳到哪一镜：选中节点里链序最靠前的那一镜；没选中 / 都不在链上 ⇒ -1。

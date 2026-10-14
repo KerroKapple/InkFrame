@@ -251,6 +251,22 @@ void main() {
       expect(find.byKey(ShellTaskPopover.panelKey), findsNothing, reason: 'Esc 关');
     });
 
+    testWidgets('点弹层外面也关（与铃铛同一做法）；点弹层里面不关', (tester) async {
+      await _pump(tester, const <JobState>[
+        JobState.running(jobId: 'r', providerId: 'p', canvasId: 'c1'),
+      ]);
+      await _open(tester);
+      final Rect panel = tester.getRect(find.byKey(ShellTaskPopover.panelKey));
+
+      await tester.tapAt(panel.center);
+      await tester.pump();
+      expect(find.byKey(ShellTaskPopover.panelKey), findsOneWidget, reason: '点弹层里面不是「外面」');
+
+      await tester.tapAt(const Offset(4, 4));
+      await tester.pump();
+      expect(find.byKey(ShellTaskPopover.panelKey), findsNothing, reason: '点外面关');
+    });
+
     testWidgets('弹层在胶囊正上方、左沿对齐，宽 340', (tester) async {
       await _pump(tester, const <JobState>[
         JobState.running(jobId: 'r', providerId: 'p', canvasId: 'c1'),

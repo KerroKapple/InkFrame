@@ -204,7 +204,7 @@ void main() {
     expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'far'});
   }, timeout: const Timeout(Duration(seconds: 30)));
 
-  testWidgets('「定位」别的画布：切到那张画布（同项目，项目上下文原样带着）', (tester) async {
+  testWidgets('「定位」别的画布：切到那张画布（项目上下文原样带着），挂上来后单选源节点并移到视口中心', (tester) async {
     final ProviderContainer c = await _pump(
       tester,
       initial: const ShellState(tab: ShellTab.canvas, canvasId: 'c1', project: _alpha),
@@ -233,5 +233,16 @@ void main() {
     expect(s.tab, ShellTab.canvas);
     expect(s.canvasId, 'c2');
     expect(s.project, _alpha);
+
+    // 目标画布是切过去才挂上来的：定位走挂起请求，等节点载入、视口上报后落地。
+    for (int i = 0; i < 6; i++) {
+      await tester.pump();
+    }
+    expect(c.read(canvasSelectionControllerProvider('c2')), <String>{'n2'},
+        reason: '切过去以后源节点要被选中（同一刻直接写会被 autoDispose 回收）');
+    final Offset card = tester.getCenter(find.byKey(const ValueKey<String>('node-card-n2')));
+    final Offset stage = tester.getCenter(find.byType(CanvasView));
+    expect(card.dx, closeTo(stage.dx, 1));
+    expect(card.dy, closeTo(stage.dy, 1));
   }, timeout: const Timeout(Duration(seconds: 30)));
 }

@@ -1180,15 +1180,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingStepSampleBody => '创建一个示例项目快速了解画布，也可以从空白工作室开始。';
 
   @override
-  String get canvasRenderQueue => '渲染队列';
-
-  @override
-  String get canvasRenderQueueExpand => '展开渲染队列';
-
-  @override
-  String get canvasRenderQueueCollapse => '收起渲染队列';
-
-  @override
   String get canvasEmptyTitle => '当前画布为空';
 
   @override
@@ -1209,16 +1200,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get canvasRenderQueueEmpty => '暂无渲染任务';
-
-  @override
   String get canvasRenderQueueStatusQueued => '排队中';
 
   @override
   String get canvasRenderQueueCancel => '取消任务';
-
-  @override
-  String get canvasRenderQueueFailures => '最近失败';
 
   @override
   String get windowMinimize => '最小化';
@@ -1747,9 +1732,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get leftRailCharacterFilterHint => '搜索角色…';
 
   @override
-  String get canvasHeaderLanes => '泳道：';
-
-  @override
   String get canvasZoomFit => '适应';
 
   @override
@@ -1773,10 +1755,28 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorTabProperties => '属性';
 
   @override
-  String get inspectorTabStatus => '状态';
+  String get inspectorTabHistory => '历史';
 
   @override
-  String get inspectorTabHistory => '历史';
+  String inspectorHistoryHeading(String name) {
+    return '$name 的全部 take';
+  }
+
+  @override
+  String inspectorHistoryTake(int number) {
+    return 'take $number';
+  }
+
+  @override
+  String inspectorHistorySeed(int seed) {
+    return '种子 $seed';
+  }
+
+  @override
+  String get inspectorHistoryInUse => '在用';
+
+  @override
+  String get inspectorHistoryEmpty => '还没有生成过';
 
   @override
   String get inspectorNoSelection => '选中一个节点以编辑参数';
@@ -1785,28 +1785,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorHintFollowsSelection => '参数随选中节点切换';
 
   @override
-  String get renderQueueTabExportHistory => '导出历史';
+  String taskCapsuleRunning(int count) {
+    return '生成中 $count';
+  }
 
   @override
-  String get renderQueueColTask => '任务';
+  String taskCapsuleQueued(int count) {
+    return '排队 $count';
+  }
 
   @override
-  String get renderQueueColType => '类型';
+  String taskCapsuleTotal(int count) {
+    return '任务 $count';
+  }
 
   @override
-  String get renderQueueColProgress => '进度';
+  String taskCapsuleFailed(int count) {
+    return '失败 $count';
+  }
 
   @override
-  String get renderQueueColElapsed => '耗时';
-
-  @override
-  String get renderQueueColModel => '模型';
+  String get taskPopoverTitle => '任务';
 
   @override
   String get renderQueueClearDone => '清除已完成';
 
   @override
-  String get renderQueueStatusRunning => '渲染中';
+  String get renderQueueStatusRunning => '生成中';
 
   @override
   String get renderQueueStatusDone => '完成';
@@ -1838,10 +1843,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get shellActionImportScript => '导入脚本';
-
-  @override
-  String get shellActionSequencePreview => '序列预览';
+  String get shellActionViewInSequence => '在序列中查看';
 
   @override
   String get shellActionExportVideo => '导出视频';
