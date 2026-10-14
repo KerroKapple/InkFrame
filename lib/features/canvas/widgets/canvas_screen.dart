@@ -21,7 +21,6 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../providers/current_canvas_id.dart';
 import 'canvas_inspector_panel.dart';
-import 'canvas_job_listener.dart';
 import 'canvas_prompt_bar.dart';
 import 'canvas_shortcuts.dart';
 import 'canvas_toolbar.dart';
@@ -41,51 +40,49 @@ class CanvasScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final String? canvasId = ref.watch(currentCanvasIdProvider);
-    return CanvasJobListener(
-      child: Scaffold(
-        backgroundColor: colors.surface2,
-        // PL-2：画布快捷键层包裹整行（含 Inspector），autofocus 使按键即时生效；
-        // 焦点在 Inspector 文本框时删除/全选让位文本编辑（见 CanvasShortcuts）。
-        body: CanvasShortcuts(
-          isActive: isVisible,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              if (canvasId != null) ...<Widget>[
-                const CanvasLeftRail(),
-                CanvasLeftRailPanel(canvasId: canvasId),
-              ],
-              Expanded(
-                child: Stack(
-                  children: <Widget>[
-                    const Positioned.fill(child: CanvasView()),
-                    if (canvasId != null) ...<Widget>[
-                      Positioned(
-                        left: InkSpacing.s12,
-                        bottom: InkSpacing.s12,
-                        child: CanvasZoomBar(canvasId: canvasId),
-                      ),
-                      Positioned(
-                        left: 0,
-                        right: 0,
-                        bottom: 16,
-                        child: CanvasPromptBar(canvasId: canvasId),
-                      ),
-                      // 最后画：压在舞台浮层（连线提示等）之上，那些浮层的 top 已让出
-                      // 工具条的高度（InkToolbarSize.stageTopInset）。
-                      Positioned(
-                        top: InkSpacing.s12,
-                        left: 0,
-                        right: 0,
-                        child: Center(child: CanvasToolbar(canvasId: canvasId)),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              if (canvasId != null) CanvasInspectorPanel(canvasId: canvasId),
+    return Scaffold(
+      backgroundColor: colors.surface2,
+      // PL-2：画布快捷键层包裹整行（含 Inspector），autofocus 使按键即时生效；
+      // 焦点在 Inspector 文本框时删除/全选让位文本编辑（见 CanvasShortcuts）。
+      body: CanvasShortcuts(
+        isActive: isVisible,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            if (canvasId != null) ...<Widget>[
+              const CanvasLeftRail(),
+              CanvasLeftRailPanel(canvasId: canvasId),
             ],
-          ),
+            Expanded(
+              child: Stack(
+                children: <Widget>[
+                  const Positioned.fill(child: CanvasView()),
+                  if (canvasId != null) ...<Widget>[
+                    Positioned(
+                      left: InkSpacing.s12,
+                      bottom: InkSpacing.s12,
+                      child: CanvasZoomBar(canvasId: canvasId),
+                    ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 16,
+                      child: CanvasPromptBar(canvasId: canvasId),
+                    ),
+                    // 最后画：压在舞台浮层（连线提示等）之上，那些浮层的 top 已让出
+                    // 工具条的高度（InkToolbarSize.stageTopInset）。
+                    Positioned(
+                      top: InkSpacing.s12,
+                      left: 0,
+                      right: 0,
+                      child: Center(child: CanvasToolbar(canvasId: canvasId)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (canvasId != null) CanvasInspectorPanel(canvasId: canvasId),
+          ],
         ),
       ),
     );

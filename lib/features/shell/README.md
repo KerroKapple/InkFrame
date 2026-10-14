@@ -52,16 +52,13 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | canvas 域的读路径（`nodes` / `edges` / `style_lanes`）全部 `JOIN canvases … AND c.deleted_at IS NULL` | 画布软删**不级联**到子表，只过滤子行自身 `deleted_at` 会把已删画布的内容照常读出来——画面上完全看不出它已被删。反向：孤儿回收的两个「引用集」(`listAllMediaUrls` / `listAllOutputUrls`) 与归档导出的 9 条查询**绝不能**加这个过滤 | `test/storage/repositories/repository_sql_templates_test.dart`「canvas 域读路径必带画布软删过滤」（表驱动 11 条 + 1 条反向）+ `postgres_repositories_integration_test.dart`（pg-tagged，真 PG 钉"级联不存在"这个前提事实） |
 | **同一时刻只保活一个 `canvasId`**：五槽保活是按 `ShellTab` 分的，不是按 `canvasId` 分的。`canvas` 那一槽从头到尾只有一个 `KeyedSubtree('shellTabBody-canvas')`，`CanvasTab` 内部 `watch(currentCanvasIdProvider)` 变了就在同一个槽位里换内容 | 从画布 A 切到画布 B 不是"多开一个保活槽"，是把槽位里的树换成 B；A 的滚动位置/本地 UI 态随之丢弃——这是当前设计的边界，不是 bug | `shell_keep_alive_host_test.dart`（五槽 == 五个 `ShellTab`，与 `canvasId` 无关） |
 | **任务胶囊挂在状态栏、看的是全部 job**（`shell_task_capsule.dart` / `shell_task_popover.dart`），不只当前画布 | 状态栏是全局的，job 也是全局的：在画廊或序列标签上也要看得到还在跑的生成。弹层「定位」跨画布时走挂起定位请求（`canvas_focus_request.dart`），不在切画布的同一刻写目标画布的选中 | `shell_task_capsule_test.dart` / `shell_task_capsule_shell_test.dart` |
+| **画布侧的 job 监听挂在外壳根**：`InkShell` 包着 `CanvasJobListener`，不随画布页挂载；job 到终态时让 **job 所在画布**的节点控制器失效（没人 watch 的画布 invalidate 是空操作） | job 是全局的：没开画布、开着别的画布时照样落产物；任务弹层在任何标签下都能开，开着时保活 job 所在画布的节点控制器。监听跟着画布页走的话，画布页不在的那段时间落的产物没人让控制器失效，「定位」过去看到旧节点表。生成完成 / 失败的通知不在这里：应用级的 `JobNotificationListener`（挂在 `ToastLayer` 里）只要 job 到终态就弹 | `shell_canvas_job_listener_test.dart`（没开画布时）+ `test/features/canvas/widgets/canvas_screen_job_listener_test.dart`（判据；弹层保活别的画布） |
 
 ## 已知且接受的副作用（隐藏标签仍会 build / layout）
 
 `RenderIndexedStack` 未覆写 `performLayout`，隐藏子照常 build / layout / 跑
 `LayoutBuilder` 与 post-frame，只是不 paint、不 hitTest。于是：
 
-- `CanvasJobListener` 在任何标签下都会 invalidate 节点控制器——这是**改善**（切回画布时
-  产物已经在了），不是回归。生成完成 / 失败的通知不在这里：应用级的
-  `JobNotificationListener`（`features/notifications`，挂在 `ToastLayer` 里）只要 job 到终态就弹，
-  与哪个标签在台上、当前开的是哪张画布都无关。
 - 画廊的 `GridView` 在离台时仍 build 首屏 tile 并解码图片。懒物化把"首启即 N+2
   次查询 + 一屏解码"挡在门外：不点画廊标签就零画廊查询。
 
