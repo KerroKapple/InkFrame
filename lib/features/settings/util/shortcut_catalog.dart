@@ -14,6 +14,9 @@
 //
 // 键位符号不进 ARB（与 core/constants/shortcut_labels.dart 同约定）：⌘ / Ctrl
 // 是平台符号，翻译它只会制造错误。动作名走 ARB，由呈现层按 [ShortcutAction] 取。
+//
+// 回车按平台换字（[_platformKeyLabels]）：macOS 画 ↵、其余平台写 Enter——与提示词条「生成」按钮尾标
+// （submitShortcutLabel：⌘↵ / Ctrl+Enter）同一个拍板，同一个动作在两处不写成两样。
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
@@ -32,9 +35,13 @@ enum ShortcutAction {
   canvasDelete,
   canvasEscape,
   canvasSelectAll,
+  canvasDuplicate,
+  canvasGenerate,
   canvasZoomIn,
   canvasZoomOut,
   canvasZoomReset,
+  canvasFitAll,
+  canvasFitSelection,
   canvasSelectTool,
   canvasPanTool,
   canvasHoldPan,
@@ -67,6 +74,10 @@ ShortcutAction? shortcutActionOf(Intent intent) => switch (intent) {
       CanvasOpenCreateMenuIntent() => ShortcutAction.canvasOpenCreateMenu,
       CanvasToggleLinkIntent() => ShortcutAction.canvasToggleLink,
       CanvasToggleLeftRailIntent() => ShortcutAction.canvasToggleLeftRail,
+      CanvasDuplicateIntent() => ShortcutAction.canvasDuplicate,
+      CanvasGenerateIntent() => ShortcutAction.canvasGenerate,
+      CanvasFitAllIntent() => ShortcutAction.canvasFitAll,
+      CanvasFitSelectionIntent() => ShortcutAction.canvasFitSelection,
       _ => null,
     };
 
@@ -111,8 +122,8 @@ List<ShortcutRow> buildShortcutRows({required bool isMac}) {
 
 /// [kCanvasShortcuts] 里第一条满足 [matches] 的绑定在本平台的展示串；一条都出不了字 ⇒ null。
 ///
-/// 菜单行尾的键位提示用它（画布空白处右键菜单的「全选」）：与本清单同源，改了绑定提示跟着变，
-/// 不会出现菜单上写着一个早就不存在的键。
+/// 菜单行尾的键位提示用它（空白处右键菜单的「全选」「适应视图」，节点右键菜单的「生成」「复制一份」
+/// 「删除」）：与本清单同源，改了绑定提示跟着变，不会出现菜单上写着一个早就不存在的键。
 String? canvasShortcutLabel(
   bool Function(Intent intent) matches, {
   required bool isMac,
@@ -137,7 +148,11 @@ String? formatShortcutActivator(
   if (_duplicateTriggerIds.contains(activator.trigger.keyId)) return null;
   if (activator.meta && !isMac) return null;
   if (activator.control && isMac) return null;
-  final String? label = _keyLabels[activator.trigger.keyId];
+  final int keyId = activator.trigger.keyId;
+  final ({String mac, String other})? platformLabel = _platformKeyLabels[keyId];
+  final String? label = platformLabel == null
+      ? _keyLabels[keyId]
+      : (isMac ? platformLabel.mac : platformLabel.other);
   if (label == null) return null;
   final StringBuffer out = StringBuffer();
   if (activator.meta) out.write('⌘');
@@ -183,4 +198,17 @@ final Map<int, String> _keyLabels = <int, String>{
   LogicalKeyboardKey.backslash.keyId: r'\',
   // 新建…（CanvasToolKeys.createMenu）。
   LogicalKeyboardKey.tab.keyId: 'Tab',
+  // 复制一份（CanvasToolKeys.duplicate*）：⌘D / Ctrl+D。
+  LogicalKeyboardKey.keyD.keyId: 'D',
+  // 适应全部 / 适应选中（CanvasToolKeys.fitAll / fitSelection）：⇧1 / Shift+1、⇧2 / Shift+2。
+  LogicalKeyboardKey.digit1.keyId: '1',
+  LogicalKeyboardKey.digit2.keyId: '2',
+};
+
+/// 按平台换字的按键（同样按 keyId 索引，理由同上）。回车：macOS 画 ↵、其余平台写 Enter——生成选中
+/// （CanvasToolKeys.generate*）出来是 ⌘↵ / Ctrl+Enter，与提示词条「生成」按钮尾标（submitShortcutLabel）
+/// 一字不差。
+final Map<int, ({String mac, String other})> _platformKeyLabels =
+    <int, ({String mac, String other})>{
+  LogicalKeyboardKey.enter.keyId: (mac: '↵', other: 'Enter'),
 };

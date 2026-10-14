@@ -8,6 +8,8 @@
 //   并把播放头跳到当前选中节点所在的那一镜）/ 导出视频（= 导出标签，主按钮）。序列与导出在本仓库
 //   已升格为标签，按钮只是稿上的快捷入口。原来的「导入脚本」随 PR-6 页签去重撤掉——浮动工具条的
 //   「更多」里有同一个入口；「序列预览」改名「在序列中查看」，说的就是它真正做的事。
+//   「在序列中查看」的本体（含跳镜头判据 shotIndexForSelection 与临时保活订阅）PR-8b 搬到了
+//   sequence/util/view_in_sequence.dart，与画布节点右键菜单的「在序列中定位」共用；本文件只调它。
 //
 // 【标签条绝不进 chrome 的槽位】整条 InkWindowChrome 包在 DragToMoveArea 里，
 // 其 onDoubleTap 让其中任何单击等满 kDoubleTapTimeout(300ms)。标签是全应用最高
@@ -40,10 +42,8 @@ import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
-import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_focus_request.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
-import '../../canvas/providers/canvas_selection_controller.dart';
 import '../../export/delivery_keys.dart';
 import '../../export/models/delivery_plan.dart';
 import '../../export/open_export_dialog.dart';
@@ -56,13 +56,13 @@ import '../../export/util/delivery_target_labels.dart';
 import '../../sequence/models/sequence_lens.dart';
 import '../../sequence/providers/sequence_lens_provider.dart';
 import '../../sequence/providers/sequence_playhead.dart';
+import '../../sequence/util/view_in_sequence.dart';
 import '../util/tab_availability.dart';
 import '../../gallery/models/gallery_item.dart';
 import '../../gallery/providers/gallery_view.dart';
 import '../../gallery/widgets/gallery_actions.dart';
 import '../../../core/di/database_restore.dart';
 import '../../../core/di/project_archive.dart';
-import '../../storyboard/models/sequence_shot.dart';
 import '../../studio/project_import_flow.dart';
 import '../../studio/providers/project_export_busy.dart';
 import '../../studio/studio_home_screen.dart' show showStudioNewProjectDialog;
@@ -207,7 +207,7 @@ class ShellTabBar extends ConsumerWidget {
               _Action(
                 key: viewInSequenceKey,
                 label: l.shellActionViewInSequence,
-                onTap: () => _viewInSequence(ref, canvasId),
+                onTap: () => viewInSequence(ref, canvasId: canvasId),
                 child: InkSecondaryButton(l.shellActionViewInSequence, leading: InkGlyph.sequence),
               ),
               _Action(
@@ -219,27 +219,6 @@ class ShellTabBar extends ConsumerWidget {
             ],
       items: _items(l, s, nav),
     );
-  }
-
-  /// 「在序列中查看」：切到序列标签；选中的节点在叙事链上 ⇒ 播放头跳到它那一镜。跳镜头走
-  /// selectShot——seekToken 自增，与点链表行同一个「用户 seek」入口，监视器据此换镜。没选中 /
-  /// 选中的不在链上 ⇒ 只切标签，播放头不动。
-  ///
-  /// 【临时订阅撑过这一帧】播放头是 autoDispose：序列标签第一次露面之前没有任何订阅者，裸 read
-  /// 写进去的值会在下一帧开头被 ProviderScope 回收——随后才 build 的序列屏订阅到的是一个全新的
-  /// 0 镜播放头，跳转等于没发生。listenManual 挂到这一帧画完（序列屏已经订阅上）再放手。
-  static void _viewInSequence(WidgetRef ref, String canvasId) {
-    final int index = shotIndexForSelection(
-      ref.read(sequenceLensProvider(canvasId)),
-      selection: ref.read(canvasSelectionControllerProvider(canvasId)),
-      nodes: ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[],
-    );
-    ref.read(shellControllerProvider.notifier).goTab(ShellTab.sequence);
-    if (index < 0) return;
-    final ProviderSubscription<SequencePlayhead> hold =
-        ref.listenManual<SequencePlayhead>(sequencePlayheadProvider(canvasId), (_, _) {});
-    ref.read(sequencePlayheadProvider(canvasId).notifier).selectShot(index);
-    WidgetsBinding.instance.addPostFrameCallback((_) => hold.close());
   }
 
   /// [lockedExcept] 非 null ⇒ 除它之外的每一格都**不可点 + 降 0.5**
@@ -415,38 +394,4 @@ class _Action extends StatelessWidget {
         focusRingRadius: BorderRadius.circular(InkRadius.s3),
         builder: (BuildContext context, bool hovered, bool focused) => child,
       );
-}
-
-/// 「在序列中查看」该跳到哪一镜：选中节点里链序最靠前的那一镜；没选中 / 都不在链上 ⇒ -1。
-///
-/// 一个节点「在」哪一镜（与 sequence_builder 的折叠同一口径）：
-///   - 它自己就是那一镜（shot.nodeId）；
-///   - 那一镜放的就是它（shot.artifactNodeId——选中的正是那张成片）；
-///   - 产物节点归到它的来源配置节点；配置节点若把产物借给了前面的 shot（折叠，不单独成镜），
-///     就落在借走它产物的那一镜上。
-int shotIndexForSelection(
-  SequenceLens lens, {
-  required Set<String> selection,
-  required List<CanvasNode> nodes,
-}) {
-  if (selection.isEmpty || lens.shots.isEmpty) return -1;
-  final Map<String, CanvasNode> byId = <String, CanvasNode>{for (final CanvasNode n in nodes) n.id: n};
-  int best = -1;
-  for (final String id in selection) {
-    final int i = _shotIndexOfNode(lens, id, byId);
-    if (i >= 0 && (best < 0 || i < best)) best = i;
-  }
-  return best;
-}
-
-int _shotIndexOfNode(SequenceLens lens, String id, Map<String, CanvasNode> byId) {
-  final CanvasNode? node = byId[id];
-  final String owner = node != null && node.role == NodeRole.result ? (node.sourceNodeId ?? id) : id;
-  for (int i = 0; i < lens.shots.length; i++) {
-    final SequenceShot shot = lens.shots[i];
-    if (shot.nodeId == owner || shot.artifactNodeId == id) return i;
-    final String? artifact = shot.artifactNodeId;
-    if (artifact != null && byId[artifact]?.sourceNodeId == owner) return i;
-  }
-  return -1;
 }

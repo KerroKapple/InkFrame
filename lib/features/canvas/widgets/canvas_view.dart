@@ -9,6 +9,8 @@
 //   - 新建菜单（create_node_menu.dart）：从卡片出端口拖线（_NodeCardSlot 报拖线、_PendingWireLayer 画
 //     实时虚线、舞台层判落点——落在卡上 = linkTo，落在空白 = 带上下文开菜单）、空白处双击 / 右键
 //     （_BlankPointerDetector）都开它；菜单宿主 CanvasMenuHost 包在 _CanvasBody 最外层
+//   - 节点右键菜单（PR-8b，同一个宿主）：卡片插槽收右键按下，舞台层先处理选中（没选中的先单选它，已在
+//     多选里的保持多选）再在按下点开菜单
 
 import 'dart:async';
 
@@ -544,6 +546,18 @@ class _CanvasStage extends ConsumerWidget {
           );
     }
 
+    // 卡片上按右键 → 节点右键菜单开在按下的那一点。右键一张没被选中的卡：先把选中换成它；右键一张已在
+    // 选中集里的卡（多选）：保持多选——菜单作用在整个选中集上（node_menu_model.nodeMenuTargets）。
+    void onNodeSecondaryDown(CanvasNode node, Offset stagePoint) {
+      if (!ref.read(canvasSelectionControllerProvider(canvasId)).contains(node.id)) {
+        ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(node.id);
+      }
+      ref.read(canvasMenuRequestProvider(canvasId).notifier).openNode(
+            MatrixUtils.transformPoint(transformController.value, stagePoint),
+            node.id,
+          );
+    }
+
     final selectedGeometry = _selectedEdgeGeometry(
       selectedEdgeId: selectedEdgeId,
       edges: edges,
@@ -781,6 +795,7 @@ class _CanvasStage extends ConsumerWidget {
                         hasInEdge: ports.inbound.contains(node.id),
                         hasOutEdge: ports.outbound.contains(node.id),
                         onTap: () => onNodeTap(node),
+                        onSecondaryDown: (Offset p) => onNodeSecondaryDown(node, p),
                         onWireDrop: onWireDrop,
                         onDelete: () => deleteNodeWithUndo(
                           context,
@@ -835,6 +850,8 @@ class _CanvasStage extends ConsumerWidget {
                                     hasOutEdge:
                                         ports.outbound.contains(node.id),
                                     onTap: () => onNodeTap(node),
+                                    onSecondaryDown: (Offset p) =>
+                                        onNodeSecondaryDown(node, p),
                                     onWireDrop: onWireDrop,
                                     onDelete: () => deleteNodeWithUndo(
                                       context,
@@ -1212,7 +1229,7 @@ _selectedEdgeGeometry({
 /// 按存量边 + 产出线整层算一次传进来。
 ///
 /// 出端口拖线也从这里报：指针的全局坐标换成舞台坐标写进 canvasWireDragProvider，松手时把这条拖线
-/// 交给舞台层（[onWireDrop]）判落点。
+/// 交给舞台层（[onWireDrop]）判落点。卡片上的右键按下同样换成舞台坐标交给舞台层（[onSecondaryDown]）。
 class _NodeCardSlot extends ConsumerWidget {
   const _NodeCardSlot({
     required this.node,
@@ -1224,6 +1241,7 @@ class _NodeCardSlot extends ConsumerWidget {
     required this.hasInEdge,
     required this.hasOutEdge,
     required this.onTap,
+    required this.onSecondaryDown,
     required this.onDelete,
     required this.onWireDrop,
   });
@@ -1242,6 +1260,9 @@ class _NodeCardSlot extends ConsumerWidget {
   final bool hasInEdge;
   final bool hasOutEdge;
   final VoidCallback onTap;
+
+  /// 在本卡上按下右键：给的是按下点的舞台坐标（舞台层换成视口坐标开节点右键菜单）。
+  final ValueChanged<Offset> onSecondaryDown;
   final VoidCallback onDelete;
 
   /// 从本卡出端口拖线后松手：舞台层判落点（连线 / 开新建菜单 / 什么都不做）。
@@ -1292,7 +1313,15 @@ class _NodeCardSlot extends ConsumerWidget {
     );
     // 拖线期间的高亮与连线模式同一套样式：源卡片 = 起点，其余卡片 = 可连的目标。
     final String? activeSourceId = linkSourceId ?? wireSourceId;
-    return RepaintBoundary(
+    // 右键：只听按下事件（与空白处的右键同一做法），不进手势竞技场——卡片的单击 / 拖动不受影响。
+    // 平移生效时舞台内容整层不收指针（_PanGate），这里也就收不到，平移时不开菜单。
+    return Listener(
+      onPointerDown: (PointerDownEvent event) {
+        if (event.buttons != kSecondaryButton) return;
+        final Offset? stage = _toStage(context, event.position);
+        if (stage != null) onSecondaryDown(stage);
+      },
+      child: RepaintBoundary(
       child: NodeCard(
         node: node,
         lane: lane,
@@ -1344,6 +1373,7 @@ class _NodeCardSlot extends ConsumerWidget {
         hasInEdge: hasInEdge,
         hasOutEdge: hasOutEdge,
         portDrag: _portDrag(context, ref),
+      ),
       ),
     );
   }
