@@ -42,6 +42,8 @@ class ShortcutsSection extends StatelessWidget {
         ShortcutAction.canvasAddTextNode => l.settingsShortcutCanvasAddTextNode,
         ShortcutAction.canvasAddLane => l.settingsShortcutCanvasAddLane,
         ShortcutAction.canvasToggleLink => l.settingsShortcutCanvasToggleLink,
+        ShortcutAction.canvasToggleLeftRail =>
+          l.settingsShortcutCanvasToggleLeftRail,
       };
 
   @override

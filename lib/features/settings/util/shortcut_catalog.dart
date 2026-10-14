@@ -43,6 +43,7 @@ enum ShortcutAction {
   canvasAddTextNode,
   canvasAddLane,
   canvasToggleLink,
+  canvasToggleLeftRail,
 }
 
 /// 画布表里的 Intent → 动作标识；未认领返回 null（测试打红，不静默丢行）。
@@ -63,6 +64,7 @@ ShortcutAction? shortcutActionOf(Intent intent) => switch (intent) {
         ShortcutAction.canvasAddTextNode,
       CanvasAddLaneIntent() => ShortcutAction.canvasAddLane,
       CanvasToggleLinkIntent() => ShortcutAction.canvasToggleLink,
+      CanvasToggleLeftRailIntent() => ShortcutAction.canvasToggleLeftRail,
       _ => null,
     };
 
@@ -159,4 +161,6 @@ final Map<int, String> _keyLabels = <int, String>{
   LogicalKeyboardKey.keyT.keyId: 'T',
   LogicalKeyboardKey.keyF.keyId: 'F',
   LogicalKeyboardKey.keyL.keyId: 'L',
+  // 左栏开合（CanvasToolKeys.toggleLeftRail*）：⌘\ / Ctrl+\。
+  LogicalKeyboardKey.backslash.keyId: r'\',
 };

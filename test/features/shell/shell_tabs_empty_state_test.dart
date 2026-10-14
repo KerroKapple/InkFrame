@@ -194,8 +194,9 @@ const _shotB = CanvasNode(
 /// 打开画布的那一支默认同时带 project：_open 的 projectId 现在走
 /// ShellState.project（spec §8.2），生产侧的 openCanvas 调用点基本都带
 /// withProject。[withProject] 传 false 用来造「有画布、无项目上下文」这一态：
-/// 它是 ShellState 构造得出来的合法态（`canvas_project_panel` 那个不带
-/// withProject 的调用点就依赖"沿用旧值"），导出按钮的第二条阻断判据
+/// 它是 ShellState 构造得出来的合法态（左栏大纲面板头的画布切换胶囊
+/// `left_rail/canvas_switcher.dart` 那个不带 withProject 的调用点就依赖"沿用旧值"），
+/// 导出按钮的第二条阻断判据
 /// （`s.project != null`）只在这一态下可观测。
 Override _shellWith({String? canvasId, bool withProject = true}) =>
     shellControllerProvider.overrideWith(

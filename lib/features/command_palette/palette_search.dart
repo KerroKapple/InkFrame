@@ -17,8 +17,8 @@ import '../canvas/providers/canvas_edges_controller.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
 import '../canvas/providers/canvas_selection_controller.dart';
 import '../canvas/providers/current_canvas_name.dart';
-import '../canvas/util/narrative_order.dart';
 import '../canvas/util/node_artifacts.dart';
+import '../canvas/util/outline_model.dart' show narrativeSequenceIndex;
 import '../canvas/widgets/node_card.dart' show nodeDisplayName, nodeTypeLabel;
 import '../gallery/models/gallery_item.dart';
 import '../gallery/models/gallery_selection.dart';
@@ -85,8 +85,9 @@ List<PaletteEntry> _shotEntries(
   final String project = s.project?.name ?? l.shellBreadcrumbNoProject;
   // 路径第三段：在叙事链上的镜写「序列 003」（与画廊「已入序列」同一判据：narrative 边两端
   // 都在场的节点才算链上），其余写节点类型。边也是画布已加载的，只遍历内存，不读库。
+  // 链序号与左栏大纲的「01」同出 narrativeSequenceIndex（canvas/util/outline_model.dart）。
   final List<CanvasEdge> edges = ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ?? const <CanvasEdge>[];
-  final Map<String, int> sequenceIndex = _sequenceIndexByNode(nodes, edges);
+  final Map<String, int> sequenceIndex = narrativeSequenceIndex(nodes, edges);
   final List<PaletteEntry> out = <PaletteEntry>[];
   for (final CanvasNode n in nodes) {
     if (n.role != NodeRole.config) continue;
@@ -116,24 +117,6 @@ List<PaletteEntry> _shotEntries(
     ));
   }
   return out;
-}
-
-/// 链上节点 → 1 起的序列号。链成员 = narrative 边两端都在 [nodes] 里的节点；顺序 = 叙事链序。
-Map<String, int> _sequenceIndexByNode(List<CanvasNode> nodes, List<CanvasEdge> edges) {
-  final Set<String> ids = <String>{for (final CanvasNode n in nodes) n.id};
-  final Set<String> members = <String>{};
-  for (final CanvasEdge e in edges) {
-    if (e.edgeType != EdgeType.narrative) continue;
-    if (!ids.contains(e.sourceNodeId) || !ids.contains(e.targetNodeId)) continue;
-    members..add(e.sourceNodeId)..add(e.targetNodeId);
-  }
-  if (members.isEmpty) return const <String, int>{};
-  final List<CanvasNode> ordered = orderByNarrativeChain(
-    nodes: nodes,
-    edges: edges,
-    include: (CanvasNode n) => members.contains(n.id),
-  );
-  return <String, int>{for (int i = 0; i < ordered.length; i++) ordered[i].id: i + 1};
 }
 
 List<PaletteEntry> _artifactEntries(

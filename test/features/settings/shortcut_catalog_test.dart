@@ -74,6 +74,20 @@ void main() {
     }
   });
 
+  // PR-4：左栏开合进清单。键位与导航条收起键的 tooltip 同源（CanvasToolKeys.toggleLeftRail*），
+  // 这里钉的是「设置页上真的列得出来、而且按平台各出一个」。
+  test('左栏开合：macOS 列 ⌘\\，Windows 列 Ctrl+\\，与 CanvasToolKeys 是同一组激活器', () {
+    expect(kCanvasShortcuts[CanvasToolKeys.toggleLeftRailMeta], isA<CanvasToggleLeftRailIntent>());
+    expect(kCanvasShortcuts[CanvasToolKeys.toggleLeftRailControl], isA<CanvasToggleLeftRailIntent>());
+    expect(_byAction(isMac: true)[ShortcutAction.canvasToggleLeftRail], <String>[r'⌘\']);
+    expect(_byAction(isMac: false)[ShortcutAction.canvasToggleLeftRail], <String>[r'Ctrl+\']);
+    expect(
+      formatShortcutActivator(CanvasToolKeys.toggleLeftRailControl, isMac: false),
+      r'Ctrl+\',
+      reason: '导航条收起键的 tooltip 走的就是这一句',
+    );
+  });
+
   test('Windows：Ctrl 变体上屏，⌘ 变体不上屏', () {
     final Map<ShortcutAction, List<String>> rows = _byAction(isMac: false);
     expect(rows[ShortcutAction.commandPalette], <String>['Ctrl+K']);

@@ -1,4 +1,4 @@
-// Ink 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 底线字段 / 方点。
+// Ink 基础件（纯呈现，theme 层）：面板标签条 / 按钮 / 方点。
 // 尺寸全部来自 Workspace v2 稿的 CSS（docs/design/handoff-2026-09/InkFrame Workspace v2.html）。
 // 原为静态复刻与真实画布共用；复刻脚手架已随 P7 删除，现在只服务 features/。
 //
@@ -8,8 +8,9 @@
 // primitives/ 的公开件逐个找消费点，首跑（删之前，30 个公开件）点出 8 个，其中
 // 这四个是本次范围（另外四个记在 BOARD）——剩下 22 个各有消费点，证明"死"是这
 // 几个独有的事实，不是闸口径太严把一批都误判了。
-// `InkUnderlineField` **留着**：`InkSelect` / `InkMonoField` 曾复用它，但
-// `canvas_project_panel.dart` 现在直接在用。
+// 【2026-10-14 又删一件】`InkUnderlineField`（1px 底线的 22px 字段）最后一个消费点是
+// 左栏旧项目面板 canvas_project_panel.dart 的筛选框；左栏换成图标导航条后筛选框按稿是
+// 填色带边框的盒子，它就没人用了——同一道闸点出来的。
 import 'package:flutter/widgets.dart';
 
 import '../app_theme.dart';
@@ -169,25 +170,6 @@ class InkPrimaryButton extends StatelessWidget {
           if (trailing != null) ...<Widget>[const SizedBox(width: InkSpacing.s6), trailing!],
         ],
       ),
-    );
-  }
-}
-
-/// 无底色 + 1px control 底线的 22px 字段容器。
-class InkUnderlineField extends StatelessWidget {
-  const InkUnderlineField({super.key, required this.child, this.width});
-  final Widget child;
-  final double? width;
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    return Container(
-      width: width,
-      height: 23, // content 22 + border-bottom 1
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
-      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: c.control))),
-      child: child,
     );
   }
 }

@@ -1710,19 +1710,121 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasToolPanHoldSpace => 'hold Space';
 
   @override
-  String get projectPanelCanvases => 'Canvases';
+  String get leftRailOutline => 'Outline';
 
   @override
-  String get projectPanelAssets => 'Assets';
+  String get leftRailAssets => 'Assets';
 
   @override
-  String get projectPanelCharacters => 'Characters';
+  String get leftRailCharacters => 'Characters';
 
   @override
-  String get projectPanelFilterHint => 'Filter…';
+  String get leftRailShortcuts => 'Keyboard shortcuts';
 
   @override
-  String get projectPanelCurrentNodes => 'Current canvas · nodes';
+  String get leftRailCollapse => 'Collapse sidebar';
+
+  @override
+  String get leftRailExpand => 'Expand sidebar';
+
+  @override
+  String get leftRailSwitchCanvas => 'Switch canvas';
+
+  @override
+  String get leftRailOutlineFilterHint => 'Filter shots, nodes…';
+
+  @override
+  String get leftRailOutlineEmpty => 'No config nodes on this canvas yet';
+
+  @override
+  String get leftRailGroupNoLane => 'No lane';
+
+  @override
+  String get leftRailGroupNotInSequence => 'Not in sequence';
+
+  @override
+  String leftRailGroupShotCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count shots',
+      one: '1 shot',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get leftRailTypeImageConfig => 'Image config';
+
+  @override
+  String get leftRailTypeVideoConfig => 'Video config';
+
+  @override
+  String get leftRailTypeShot => 'Shot';
+
+  @override
+  String get leftRailStatusReady => 'Ready';
+
+  @override
+  String get leftRailStatusDraft => 'Draft';
+
+  @override
+  String get leftRailArtifactImage => 'Final · image';
+
+  @override
+  String get leftRailArtifactVideo => 'Final · video';
+
+  @override
+  String leftRailArtifactCount(String label, int count) {
+    return '$label · $count in all';
+  }
+
+  @override
+  String get leftRailAssetsThisCanvas => 'This canvas';
+
+  @override
+  String get leftRailAssetsWholeProject => 'Whole project';
+
+  @override
+  String leftRailAssetsKindAll(int count) {
+    return 'All $count';
+  }
+
+  @override
+  String leftRailAssetsKindImage(int count) {
+    return 'Images $count';
+  }
+
+  @override
+  String leftRailAssetsKindVideo(int count) {
+    return 'Videos $count';
+  }
+
+  @override
+  String leftRailAssetFinal(String name) {
+    return '$name · final';
+  }
+
+  @override
+  String leftRailAssetTake(String name, int take) {
+    return '$name · take $take';
+  }
+
+  @override
+  String get leftRailAssetsOpenGallery => 'Open all in Gallery ›';
+
+  @override
+  String get leftRailAssetsEmpty => 'No generated assets yet';
+
+  @override
+  String get leftRailAssetsNoProject => 'Open a project to see its assets';
+
+  @override
+  String get leftRailCharactersNoProject =>
+      'Open a project to manage its characters';
+
+  @override
+  String get leftRailCharacterFilterHint => 'Search characters…';
 
   @override
   String get canvasHeaderLanes => 'Lanes:';
@@ -2740,6 +2842,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasToggleLink => 'Start / stop linking';
+
+  @override
+  String get settingsShortcutCanvasToggleLeftRail =>
+      'Show / hide the canvas left sidebar';
 
   @override
   String get settingsPerformanceConcurrencyTitle => 'Concurrency and quota';

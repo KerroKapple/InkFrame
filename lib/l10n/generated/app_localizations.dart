@@ -3098,35 +3098,197 @@ abstract class AppLocalizations {
   /// **'hold Space'**
   String get canvasToolPanHoldSpace;
 
-  /// No description provided for @projectPanelCanvases.
+  /// Canvas left sidebar: the Outline page — rail button tooltip and the panel title
   ///
   /// In en, this message translates to:
-  /// **'Canvases'**
-  String get projectPanelCanvases;
+  /// **'Outline'**
+  String get leftRailOutline;
 
-  /// No description provided for @projectPanelAssets.
+  /// Canvas left sidebar: the Assets page — rail button tooltip and the panel title
   ///
   /// In en, this message translates to:
   /// **'Assets'**
-  String get projectPanelAssets;
+  String get leftRailAssets;
 
-  /// No description provided for @projectPanelCharacters.
+  /// Canvas left sidebar: the Characters page — rail button tooltip and the panel title
   ///
   /// In en, this message translates to:
   /// **'Characters'**
-  String get projectPanelCharacters;
+  String get leftRailCharacters;
 
-  /// No description provided for @projectPanelFilterHint.
+  /// Canvas left sidebar: bottom rail button that opens Settings on the Shortcuts page
   ///
   /// In en, this message translates to:
-  /// **'Filter…'**
-  String get projectPanelFilterHint;
+  /// **'Keyboard shortcuts'**
+  String get leftRailShortcuts;
 
-  /// No description provided for @projectPanelCurrentNodes.
+  /// Canvas left sidebar: toggle button label while the panel is open; the tooltip appends the key binding in code (Ctrl+backslash, or Cmd+backslash on macOS)
   ///
   /// In en, this message translates to:
-  /// **'Current canvas · nodes'**
-  String get projectPanelCurrentNodes;
+  /// **'Collapse sidebar'**
+  String get leftRailCollapse;
+
+  /// Canvas left sidebar: toggle button label while the panel is collapsed; the tooltip appends the key binding in code
+  ///
+  /// In en, this message translates to:
+  /// **'Expand sidebar'**
+  String get leftRailExpand;
+
+  /// Tooltip of the canvas switcher pill in the Outline panel header (current canvas name + caret; opens the project's canvas list)
+  ///
+  /// In en, this message translates to:
+  /// **'Switch canvas'**
+  String get leftRailSwitchCanvas;
+
+  /// Placeholder of the Outline filter field; matches node names and prompts, case-insensitive
+  ///
+  /// In en, this message translates to:
+  /// **'Filter shots, nodes…'**
+  String get leftRailOutlineFilterHint;
+
+  /// Outline panel empty state: the canvas has no config nodes
+  ///
+  /// In en, this message translates to:
+  /// **'No config nodes on this canvas yet'**
+  String get leftRailOutlineEmpty;
+
+  /// Outline group header: shots on the narrative chain that do not belong to any lane
+  ///
+  /// In en, this message translates to:
+  /// **'No lane'**
+  String get leftRailGroupNoLane;
+
+  /// Outline group header: config nodes that are not on the narrative chain (listed last, unnumbered)
+  ///
+  /// In en, this message translates to:
+  /// **'Not in sequence'**
+  String get leftRailGroupNotInSequence;
+
+  /// Monospace count after an Outline lane / no-lane group name
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 shot} other{{count} shots}}'**
+  String leftRailGroupShotCount(int count);
+
+  /// Outline row second line: the node is an image config node
+  ///
+  /// In en, this message translates to:
+  /// **'Image config'**
+  String get leftRailTypeImageConfig;
+
+  /// Outline row second line: the node is a video config node
+  ///
+  /// In en, this message translates to:
+  /// **'Video config'**
+  String get leftRailTypeVideoConfig;
+
+  /// Outline row second line: the node is a shot (storyboard) node
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get leftRailTypeShot;
+
+  /// Outline row status: no active job, no result yet, the prompt is filled in
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get leftRailStatusReady;
+
+  /// Outline row status: no active job, no result yet, the prompt is empty
+  ///
+  /// In en, this message translates to:
+  /// **'Draft'**
+  String get leftRailStatusDraft;
+
+  /// Outline child row under a shot: its latest generated result is an image
+  ///
+  /// In en, this message translates to:
+  /// **'Final · image'**
+  String get leftRailArtifactImage;
+
+  /// Outline child row under a shot: its latest generated result is a video
+  ///
+  /// In en, this message translates to:
+  /// **'Final · video'**
+  String get leftRailArtifactVideo;
+
+  /// Outline child row when the shot has more than one result: label is leftRailArtifactImage / leftRailArtifactVideo, count is the total number of results
+  ///
+  /// In en, this message translates to:
+  /// **'{label} · {count} in all'**
+  String leftRailArtifactCount(String label, int count);
+
+  /// Assets panel segment: only results generated on the current canvas
+  ///
+  /// In en, this message translates to:
+  /// **'This canvas'**
+  String get leftRailAssetsThisCanvas;
+
+  /// Assets panel segment: results from every canvas of the project
+  ///
+  /// In en, this message translates to:
+  /// **'Whole project'**
+  String get leftRailAssetsWholeProject;
+
+  /// Assets panel type chip: every result in the current segment, with its count
+  ///
+  /// In en, this message translates to:
+  /// **'All {count}'**
+  String leftRailAssetsKindAll(int count);
+
+  /// Assets panel type chip: image results in the current segment, with their count
+  ///
+  /// In en, this message translates to:
+  /// **'Images {count}'**
+  String leftRailAssetsKindImage(int count);
+
+  /// Assets panel type chip: video results in the current segment, with their count
+  ///
+  /// In en, this message translates to:
+  /// **'Videos {count}'**
+  String leftRailAssetsKindVideo(int count);
+
+  /// Assets grid caption when the source config node has exactly one result; name is the source config node's name
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · final'**
+  String leftRailAssetFinal(String name);
+
+  /// Assets grid caption when the source config node has several results; take numbers them oldest first, starting at 1
+  ///
+  /// In en, this message translates to:
+  /// **'{name} · take {take}'**
+  String leftRailAssetTake(String name, int take);
+
+  /// Link at the bottom of the Assets panel: opens the project's Gallery tab
+  ///
+  /// In en, this message translates to:
+  /// **'Open all in Gallery ›'**
+  String get leftRailAssetsOpenGallery;
+
+  /// Assets panel empty state
+  ///
+  /// In en, this message translates to:
+  /// **'No generated assets yet'**
+  String get leftRailAssetsEmpty;
+
+  /// Assets panel when the shell has no active project
+  ///
+  /// In en, this message translates to:
+  /// **'Open a project to see its assets'**
+  String get leftRailAssetsNoProject;
+
+  /// Characters page of the canvas left sidebar when the shell has no active project
+  ///
+  /// In en, this message translates to:
+  /// **'Open a project to manage its characters'**
+  String get leftRailCharactersNoProject;
+
+  /// Placeholder of the filter field at the top of the Characters page; matches character names, case-insensitive
+  ///
+  /// In en, this message translates to:
+  /// **'Search characters…'**
+  String get leftRailCharacterFilterHint;
 
   /// No description provided for @canvasHeaderLanes.
   ///
@@ -4861,6 +5023,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start / stop linking'**
   String get settingsShortcutCanvasToggleLink;
+
+  /// Settings > Shortcuts row: toggles the canvas left sidebar panel (same action as the rail collapse button)
+  ///
+  /// In en, this message translates to:
+  /// **'Show / hide the canvas left sidebar'**
+  String get settingsShortcutCanvasToggleLeftRail;
 
   /// No description provided for @settingsPerformanceConcurrencyTitle.
   ///

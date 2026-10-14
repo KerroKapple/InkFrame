@@ -111,9 +111,10 @@ void main() {
   // 这种写法，真出现了也该当场在评审里被问住。
   test('openCanvas 的调用点要么带 withProject，要么在同项目豁免名单里', () {
     const Map<String, String> exempt = <String, String>{
-      'lib/features/canvas/widgets/canvas_project_panel.dart':
-          '左栏项目面板在【同一项目内】换画布——沿用 state.project 正是要的语义；'
-              '要求它重传一份自己并不拥有的 ProjectRef 只会多一个传错的机会',
+      'lib/features/canvas/widgets/left_rail/canvas_switcher.dart':
+          '大纲面板头的画布切换胶囊在【同一项目内】换画布——沿用 state.project 正是要的语义；'
+              '要求它重传一份自己并不拥有的 ProjectRef 只会多一个传错的机会'
+              '（PR-4 之前这条豁免属于左栏项目面板 canvas_project_panel.dart，画布树挪进了胶囊）',
     };
 
     final Set<String> without = <String>{};

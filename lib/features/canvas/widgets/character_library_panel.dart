@@ -11,6 +11,10 @@
 //
 // 三个动作直接接 CharactersController 上已有的方法：
 // 编辑 → CharacterEditDialog / 改名 → rename / 删除 → 二次确认后 softDelete。
+//
+// PR-4（画布左栏）：顶上加了与大纲 / 素材同款的面板头「角色」+ 筛选框「搜索角色…」
+// （按名称不区分大小写包含匹配），共用件在 left_rail/left_panel_parts.dart。
+// 稿底部「拖到配置节点上即挂载；提示词里输入 @ 也能引用」那行不画：拖放和 @ 都还没做。
 import 'dart:io';
 import 'dart:ui' show PathMetric;
 
@@ -34,6 +38,7 @@ import '../models/character.dart';
 import '../providers/character_usage.dart';
 import '../providers/characters_controller.dart';
 import 'character_edit_dialog.dart';
+import 'left_rail/left_panel_parts.dart';
 
 /// 行内缩略图边长（稿：36×36，1px 内沿 outline）。
 const double _kRowThumb = 36;
@@ -51,21 +56,48 @@ const double _kMenuItemHeight = 26;
 /// ⋯ 菜单三项。顺序照稿注「编辑、改名、删除」。
 enum _CharacterAction { edit, rename, delete }
 
-class CharacterLibraryPanel extends ConsumerWidget {
+class CharacterLibraryPanel extends ConsumerStatefulWidget {
   const CharacterLibraryPanel({super.key, required this.projectId});
 
   final String projectId;
 
+  /// 筛选框的测试锚点（PR-4：面板头下的「搜索角色…」）。
+  static const Key filterKey = ValueKey<String>('character-filter');
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<CharacterLibraryPanel> createState() =>
+      _CharacterLibraryPanelState();
+}
+
+class _CharacterLibraryPanelState extends ConsumerState<CharacterLibraryPanel> {
+  final TextEditingController _filter = TextEditingController();
+
+  @override
+  void dispose() {
+    _filter.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final c = context.inkColors;
     final t = context.inkTypography;
     final l = context.l10n;
+    final String projectId = widget.projectId;
     final AsyncValue<List<Character>> charactersAsync = ref.watch(
       charactersControllerProvider(projectId),
     );
     final List<Character> characters =
         charactersAsync.valueOrNull ?? const <Character>[];
+    // 筛选：按名称不区分大小写包含匹配。「还没有角色」看的是筛选前的列表——
+    // 筛空了只是没命中，不是库里没有。
+    final String q = _filter.text.trim().toLowerCase();
+    final List<Character> shown = q.isEmpty
+        ? characters
+        : <Character>[
+            for (final Character ch in characters)
+              if (ch.name.toLowerCase().contains(q)) ch,
+          ];
     // 引用计数读的是全项目投影，慢一拍；未就绪时按 0 显示，不把整页卡在 loading。
     final Map<String, List<CanvasNode>> usages =
         ref.watch(characterUsageProvider(projectId)).valueOrNull ??
@@ -74,6 +106,13 @@ class CharacterLibraryPanel extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        LeftPanelHeader(title: l.leftRailCharacters),
+        LeftPanelFilterField(
+          key: CharacterLibraryPanel.filterKey,
+          controller: _filter,
+          hint: l.leftRailCharacterFilterHint,
+          onChanged: (_) => setState(() {}),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(
             InkSpacing.s10,
@@ -114,7 +153,7 @@ class CharacterLibraryPanel extends ConsumerWidget {
               : ListView(
                   padding: EdgeInsets.zero,
                   children: <Widget>[
-                    for (final Character ch in characters)
+                    for (final Character ch in shown)
                       CharacterLibraryRow(
                         key: ValueKey<String>('character-row-${ch.id}'),
                         projectId: projectId,

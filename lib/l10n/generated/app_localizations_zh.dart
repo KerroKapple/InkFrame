@@ -1637,19 +1637,114 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasToolPanHoldSpace => '按住空格';
 
   @override
-  String get projectPanelCanvases => '画布';
+  String get leftRailOutline => '大纲';
 
   @override
-  String get projectPanelAssets => '资产';
+  String get leftRailAssets => '素材';
 
   @override
-  String get projectPanelCharacters => '角色';
+  String get leftRailCharacters => '角色';
 
   @override
-  String get projectPanelFilterHint => '筛选…';
+  String get leftRailShortcuts => '快捷键';
 
   @override
-  String get projectPanelCurrentNodes => '当前画布 · 节点';
+  String get leftRailCollapse => '收起侧栏';
+
+  @override
+  String get leftRailExpand => '展开侧栏';
+
+  @override
+  String get leftRailSwitchCanvas => '切换画布';
+
+  @override
+  String get leftRailOutlineFilterHint => '筛选镜头、节点…';
+
+  @override
+  String get leftRailOutlineEmpty => '画布上还没有配置节点';
+
+  @override
+  String get leftRailGroupNoLane => '未分泳道';
+
+  @override
+  String get leftRailGroupNotInSequence => '未入链';
+
+  @override
+  String leftRailGroupShotCount(int count) {
+    return '$count 镜';
+  }
+
+  @override
+  String get leftRailTypeImageConfig => '图像配置';
+
+  @override
+  String get leftRailTypeVideoConfig => '视频配置';
+
+  @override
+  String get leftRailTypeShot => '镜头';
+
+  @override
+  String get leftRailStatusReady => '就绪';
+
+  @override
+  String get leftRailStatusDraft => '草稿';
+
+  @override
+  String get leftRailArtifactImage => '成片 · 图像';
+
+  @override
+  String get leftRailArtifactVideo => '成片 · 视频';
+
+  @override
+  String leftRailArtifactCount(String label, int count) {
+    return '$label · 共 $count 个';
+  }
+
+  @override
+  String get leftRailAssetsThisCanvas => '本画布';
+
+  @override
+  String get leftRailAssetsWholeProject => '项目全部';
+
+  @override
+  String leftRailAssetsKindAll(int count) {
+    return '全部 $count';
+  }
+
+  @override
+  String leftRailAssetsKindImage(int count) {
+    return '图片 $count';
+  }
+
+  @override
+  String leftRailAssetsKindVideo(int count) {
+    return '视频 $count';
+  }
+
+  @override
+  String leftRailAssetFinal(String name) {
+    return '$name · 成片';
+  }
+
+  @override
+  String leftRailAssetTake(String name, int take) {
+    return '$name · take $take';
+  }
+
+  @override
+  String get leftRailAssetsOpenGallery => '在画廊中打开全部 ›';
+
+  @override
+  String get leftRailAssetsEmpty => '还没有生成的素材';
+
+  @override
+  String get leftRailAssetsNoProject => '打开一个项目后显示素材';
+
+  @override
+  String get leftRailCharactersNoProject => '打开一个项目后管理角色';
+
+  @override
+  String get leftRailCharacterFilterHint => '搜索角色…';
 
   @override
   String get canvasHeaderLanes => '泳道：';
@@ -2621,6 +2716,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasToggleLink => '开始 / 退出连线';
+
+  @override
+  String get settingsShortcutCanvasToggleLeftRail => '展开 / 收起画布左栏';
 
   @override
   String get settingsPerformanceConcurrencyTitle => '并发与配额';
