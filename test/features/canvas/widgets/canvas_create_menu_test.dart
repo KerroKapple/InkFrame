@@ -5,6 +5,7 @@
 //   - 边写失败：刚建的节点被删掉（不留半截）+ 错误卡。
 //   - 拖线途中 Esc：取消拖线，松手什么都不写。
 //   - 平移工具开着：端口不可拖（拖的是画布）。
+//   - 没选中的卡（端口只在悬停时亮）：按在端口上慢慢往外拖，指针先越出卡片盒——还是拖线，卡片不被拖走（B2）。
 //   - 双击空白 / Tab / 空白处右键「新建…」：开的是同一个新建菜单（不带上下文）。
 //   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
 //   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
@@ -59,8 +60,16 @@ class _Nodes extends CanvasNodesController {
   /// removeNode 收到的 id，按调用顺序。
   final List<String> removed = <String>[];
 
+  /// moveNode 收到的 id（拖卡片的落点），按调用顺序。只记、不改内存态。
+  final List<String> moved = <String>[];
+
   @override
   Future<List<CanvasNode>> build(String canvasId) async => _seed;
+
+  @override
+  Future<void> moveNode(String id, Offset delta, {required String? laneId}) async {
+    moved.add(id);
+  }
 
   @override
   Future<CanvasNode> addNode({
@@ -467,6 +476,43 @@ void main() {
       );
 
       expect(_edgesOf(c).added, isEmpty);
+    });
+
+    // B2：没选中的卡，出端口只在悬停时亮。在端口上按下后慢慢往外拖，指针先越出卡片盒、悬停态先掉——端口一拆，
+    // 拖线手势跟着拆，接着过阈值的就成了卡片自己的拖动（卡片被拖走、落库）。按下就得把端口钉住。
+    testWidgets('没选中的卡：悬停亮出端口，按下后先挪 1.5px 出卡片盒、再拖到 40px 外——还是拖线，卡片没被拖走',
+        (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final Finder port =
+          find.descendant(of: _card('img'), matching: find.byKey(NodeCard.outPortKey));
+      expect(port, findsNothing, reason: '前提：没选中、没悬停、没挂线——端口不亮');
+
+      final TestGesture mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: tester.getCenter(_card('img')));
+      await tester.pump();
+      expect(port, findsOneWidget, reason: '前提：悬停亮出端口');
+      expect(c.read(canvasSelectionControllerProvider('c1')), isEmpty);
+
+      // 圆点的中心正在卡片右缘上：往里收 0.5px 按下，再往外挪 1.5px 就越出了卡片盒——
+      // 鼠标的拖动阈值是 2px，这一下还没起拖，悬停态却已经掉了。
+      final Offset press = tester.getCenter(port) - const Offset(0.5, 0);
+      await mouse.moveTo(press);
+      await tester.pump();
+      await mouse.down(press);
+      await tester.pump();
+      await mouse.moveBy(const Offset(1.5, 0));
+      await tester.pump();
+      expect(port, findsOneWidget, reason: '按着端口时端口钉住，悬停态掉了也不收');
+      await mouse.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await mouse.up();
+      await tester.pumpAndSettle();
+
+      expect(_nodesOf(c).moved, isEmpty, reason: '拖的是线，不是卡片：不能有 moveNode');
+      final CanvasMenuRequest? menu = c.read(canvasMenuRequestProvider('c1'));
+      expect(menu?.kind, CanvasMenuKind.create, reason: '拖线落在空白处：开新建菜单');
+      expect(menu?.sourceNodeId, 'img', reason: '带着「从哪张卡拖出来」的上下文');
     });
 
     testWidgets('平移工具开着：端口不可拖——从端口起拖拖的是画布，不起拖线、不开菜单', (tester) async {
