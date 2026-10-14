@@ -210,7 +210,7 @@ Container(
 ```
 lib/
 ├── main.dart                          # Entry point, ProviderScope
-├── app.dart                           # MaterialApp, router, theme wiring
+├── app.dart                           # MaterialApp, router, theme wiring; MaterialApp.builder = ToastLayer (toasts above every route)
 ├── l10n/                              # ARB files (app_en.arb, app_zh.arb) + generated/ + l10n_x.dart (context.l10n extension, InkError → localized string)
 ├── theme/                             # Design tokens, theme, components
 │   ├── tokens.dart                    # Color / spacing / radius / shadow tokens
@@ -219,7 +219,7 @@ lib/
 │   ├── app_theme.dart                 # ThemeData builder from tokens
 │   ├── primitives/                    # Low-level styled primitives
 │   ├── icons/                         # 图标集 v1：ink_glyph.dart（44 个图标的 SVG 路径，与设计稿同源）+ svg_path_data.dart（d → Path，不引 SVG 依赖）；绘制入口是 components/ink_icon.dart
-│   └── components/                    # Reusable Ink* components
+│   └── components/                    # Reusable Ink* components (incl. ink_icon.dart — the one painter for icon set v1 glyphs; ink_toast_card.dart — toast card + InkToastLeading, pure presentation with its own InkToastTone)
 ├── core/                              # Shared abstractions (no Flutter imports below interfaces)
 │   ├── constants/                     # Enums, numeric constants (no side effects)
 │   ├── db/                            # DbRow typing + column-name constants (columns.dart, row_reader.dart)
@@ -258,6 +258,10 @@ lib/
 │   │   ├── models/
 │   │   ├── providers/                 # P4: batch_results_controller.dart（某 result 节点下的 slot 列表 + 转正/重跑/取消三个动作的唯一入口；转正在一个事务里改节点产物 + 清同节点旧 promoted + 标本行，然后定点重建画布节点集合）+ batch_job_progress.dart（jobId → 进度，family 化避免注册表任何一条 job 变动都重建整屏）
 │   │   └── services/                  # prompt_assembler + shot_language_prompt.dart (P3: 镜头语言 → 英文提示词前缀，不 i18n) + cost_estimator
+│   ├── notifications/                 # 右下角通知卡 + 铃铛历史 + 生成完成 / 失败通知（ToastService 的实现；卡片层挂在 MaterialApp.builder，画在所有路由之上）
+│   │   ├── models/                    # toast_entry.dart（一张卡的不可变快照，也是历史里的一行）+ notification_prefs.dart（提示音 / 停留时长偏好字符串 → 枚举）
+│   │   ├── providers/                 # toast_center.dart（ToastCenter：按类型计时、悬停 / 窗口失焦停表、dedupeKey 原地替换、最多 3 张在场其余折叠、本次会话历史 100 条 + 未读、chime 时按设置响一声）+ toast_service_provider.dart（以 core 契约类型暴露 ToastCenter）
+│   │   └── widgets/                   # toast_layer.dart（builder 层：右下角卡片栈 + 进退场动画 +「还有 N 条」）/ job_notification_listener.dart（jobsRegistry 新终态 → 完成 / 失败卡，不为通知查库）/ notification_bell.dart（外壳 chrome 的铃铛 + OverlayPortal 历史下拉）
 │   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
 │   │   ├── settings_screen.dart       # SettingsScreen (壳走 theme 层的 InkOverlayDialog + 左导航 + 各页正文 + 底部条 完成/导出诊断包); pages = 常规 / API 密钥 / 快捷键 / 性能 / 节点布局 / 网络 / 存储 / 关于（后三页里快捷键 / 性能 / 网络是 P7 补的只读页）
 │   │   ├── providers/
@@ -267,7 +271,7 @@ lib/
 │   │   ├── models/                    # shell_state.dart (ShellTab / ShellOverlay / ProjectRef / ShellState — hand-written value object, 8 named transitions incl. closeCanvas / closeProject context-invalidation, no copyWith)
 │   │   ├── providers/                 # shell_controller.dart (ShellNavigator Notifier + shellControllerProvider — sole write entry point) + active_project.dart (activeProjectProvider — read-only projection of ShellState.project) + gallery_dirty.dart (galleryDirtyProvider — any job reaching JobSucceeded marks *its own project's* gallery dirty, keyed by JobState.projectId; the gallery tab refreshes once on the invisible→visible edge **if the active project is dirty**, then clears that project's mark. State is a `Set<String?>` where `null` is the "project unknown" wildcard — unreachable in production, falls back to the old global semantics. NOT live refresh: a gallery the user is already looking at stays put until they switch away and back)
 │   │   ├── util/                      # tab_availability.dart (hasNarrativeEdges / canExportVideo — pure predicates moved verbatim out of the deleted canvas_top_chrome.dart)
-│   │   └── widgets/                   # ink_shell.dart (sole root Scaffold + chrome + tab bar) / shell_content_stack.dart (outer Stack: tab host under an ExcludeFocus + overlay on top; inner five-slot IndexedStack; fallback focus) / shell_keep_alive_host.dart (five lazily-materialized, then permanent tab slots) / shell_chrome.dart (the tree's only InkWindowChrome) / shell_breadcrumb.dart / shell_empty_state.dart / shell_overlay_layer.dart (ModalBarrier scrim + the settings overlay — ShellOverlay 只剩 settings（P7 删掉内置示例页）; NOT kept alive; the barrier is what stops click-through) / shell_tab_bar.dart (wires ShellState into the theme-layer InkShellTabBar — that component knows nothing about ShellTab, see test/quality/no_reverse_layer_import_test.dart) + tabs/ (studio / canvas / sequence / gallery / export bodies)
+│   │   └── widgets/                   # ink_shell.dart (sole root Scaffold + chrome + tab bar) / shell_content_stack.dart (outer Stack: tab host under an ExcludeFocus + overlay on top; inner five-slot IndexedStack; fallback focus) / shell_keep_alive_host.dart (five lazily-materialized, then permanent tab slots) / shell_chrome.dart (the tree's only InkWindowChrome; trailing = ⌘K chip + notification bell + ⚙) / shell_breadcrumb.dart / shell_empty_state.dart / shell_overlay_layer.dart (ModalBarrier scrim + the settings overlay — ShellOverlay 只剩 settings（P7 删掉内置示例页）; NOT kept alive; the barrier is what stops click-through) / shell_tab_bar.dart (wires ShellState into the theme-layer InkShellTabBar — that component knows nothing about ShellTab, see test/quality/no_reverse_layer_import_test.dart) + tabs/ (studio / canvas / sequence / gallery / export bodies)
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
 │   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
 │   ├── storyboard/                    # Script in, sequence out — paste a script into a shot chain (SB-1/SB-2), play the chain end to end (SB-6)
