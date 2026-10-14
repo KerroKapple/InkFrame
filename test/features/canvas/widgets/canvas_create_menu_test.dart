@@ -787,6 +787,38 @@ void main() {
       expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing, reason: '拖动不是双击的第一下');
     });
 
+    testWidgets('拖出去又拖回原处再松手，接着在原处按一下：也不算双击（挪出过点击容差就不是单击）', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      final TestGesture drag = await tester.startGesture(p);
+      await drag.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await drag.moveBy(const Offset(-40, 0));
+      await tester.pump();
+      await drag.up();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tapAt(p);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
+    testWidgets('一根手指按着不放时，另一根手指在别处点两下：不算双击', (tester) async {
+      await _pump(tester);
+      final TestGesture rest = await tester.startGesture(const Offset(300, 600));
+      await tester.pump();
+
+      await tester.tapAt(const Offset(700, 500));
+      await tester.tapAt(const Offset(700, 500));
+      await tester.pump();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing, reason: '另有指针按着时不算');
+
+      await rest.up();
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
     testWidgets('双指捏合：第二根手指在第一根旁边落下，不算双击', (tester) async {
       await _pump(tester);
       final TestGesture first = await tester.startGesture(const Offset(700, 500));
