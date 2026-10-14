@@ -750,15 +750,15 @@
   "@canvasCreateMenuNoMatch": {
     "description": "Canvas New menu: the only row shown when the search text matches no item"
   },
-  "canvasCreateMenuAsFirstFrame": "As first frame · New video config",
+  "canvasCreateMenuAsFirstFrame": "First frame · New video",
   "@canvasCreateMenuAsFirstFrame": {
     "description": "Canvas New menu, opened by dragging a wire out of an image node: create a video config node at the drop point and link the image to it as its first frame"
   },
-  "canvasCreateMenuAsLastFrame": "As last frame · New video config",
+  "canvasCreateMenuAsLastFrame": "Last frame · New video",
   "@canvasCreateMenuAsLastFrame": {
     "description": "Canvas New menu, opened by dragging a wire out of an image node: create a video config node and link the image to it as its last frame"
   },
-  "canvasCreateMenuAsReference": "As reference · New image config",
+  "canvasCreateMenuAsReference": "Reference · New image",
   "@canvasCreateMenuAsReference": {
     "description": "Canvas New menu, opened by dragging a wire out of an image node: create an image config node and link the image to it as a reference image"
   },

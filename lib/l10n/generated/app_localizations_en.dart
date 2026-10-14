@@ -1701,14 +1701,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasCreateMenuNoMatch => 'No matching actions';
 
   @override
-  String get canvasCreateMenuAsFirstFrame =>
-      'As first frame · New video config';
+  String get canvasCreateMenuAsFirstFrame => 'First frame · New video';
 
   @override
-  String get canvasCreateMenuAsLastFrame => 'As last frame · New video config';
+  String get canvasCreateMenuAsLastFrame => 'Last frame · New video';
 
   @override
-  String get canvasCreateMenuAsReference => 'As reference · New image config';
+  String get canvasCreateMenuAsReference => 'Reference · New image';
 
   @override
   String get canvasCreateMenuNextShot => 'Next shot (narrative)';

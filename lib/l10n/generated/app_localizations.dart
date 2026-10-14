@@ -3083,19 +3083,19 @@ abstract class AppLocalizations {
   /// Canvas New menu, opened by dragging a wire out of an image node: create a video config node at the drop point and link the image to it as its first frame
   ///
   /// In en, this message translates to:
-  /// **'As first frame · New video config'**
+  /// **'First frame · New video'**
   String get canvasCreateMenuAsFirstFrame;
 
   /// Canvas New menu, opened by dragging a wire out of an image node: create a video config node and link the image to it as its last frame
   ///
   /// In en, this message translates to:
-  /// **'As last frame · New video config'**
+  /// **'Last frame · New video'**
   String get canvasCreateMenuAsLastFrame;
 
   /// Canvas New menu, opened by dragging a wire out of an image node: create an image config node and link the image to it as a reference image
   ///
   /// In en, this message translates to:
-  /// **'As reference · New image config'**
+  /// **'Reference · New image'**
   String get canvasCreateMenuAsReference;
 
   /// Canvas New menu, opened by dragging a wire out of a config node: create a config node of the same type and link it as the next shot in the story order

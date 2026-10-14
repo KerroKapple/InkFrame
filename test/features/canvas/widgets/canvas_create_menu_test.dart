@@ -244,9 +244,9 @@ Matrix4 _ivTransform(WidgetTester tester) => tester
     .transformationController!
     .value;
 
-const String _firstFrame = 'As first frame · New video config';
-const String _lastFrame = 'As last frame · New video config';
-const String _reference = 'As reference · New image config';
+const String _firstFrame = 'First frame · New video';
+const String _lastFrame = 'Last frame · New video';
+const String _reference = 'Reference · New image';
 const String _nextShot = 'Next shot (narrative)';
 const List<String> _plainLabels = <String>[
   'Image config',
