@@ -22,13 +22,14 @@ import 'package:inkframe/core/interfaces/character_asset_service.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
-import 'package:inkframe/features/canvas/providers/project_panel_tab.dart';
+import 'package:inkframe/features/canvas/providers/left_rail_state.dart';
 import 'package:inkframe/features/canvas/widgets/character_edit_dialog.dart';
 import 'package:inkframe/features/canvas/widgets/character_library_panel.dart';
 import 'package:inkframe/features/canvas/widgets/characters_section.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
+import 'package:inkframe/theme/components/ink_name_dialog.dart';
 
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_character.dart';
@@ -178,6 +179,13 @@ Future<void> _pumpPanel(
   await tester.pumpAndSettle();
 }
 
+/// 命名框里的输入框。面板顶上（PR-4 起）还有一个「搜索角色…」筛选框，
+/// 全局 find.byType(TextField) 会同时命中两个——限定在命名框子树里。
+Finder get _nameDialogField => find.descendant(
+  of: find.byType(InkNameDialog),
+  matching: find.byType(TextField),
+);
+
 AppLocalizations _l(WidgetTester tester) =>
     AppLocalizations.of(tester.element(find.byType(CharacterLibraryPanel)));
 
@@ -262,7 +270,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(l.characterMenuRename));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '  山中老者  ');
+    await tester.enterText(_nameDialogField, '  山中老者  ');
     // 确认键的可用态随输入重算（InkNameDialog）——不 pump 就还停在禁用态。
     await tester.pump();
     await tester.tap(find.text(l.characterSave));
@@ -292,7 +300,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(l.characterMenuRename));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '山中老者');
+    await tester.enterText(_nameDialogField, '山中老者');
     await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
@@ -397,7 +405,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('character-new')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '行者');
+    await tester.enterText(_nameDialogField, '行者');
     await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
@@ -433,7 +441,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('character-new')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '行者');
+    await tester.enterText(_nameDialogField, '行者');
     await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
@@ -460,7 +468,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey<String>('character-new')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), '行者');
+    await tester.enterText(_nameDialogField, '行者');
     await tester.pump();
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
@@ -595,7 +603,7 @@ void main() {
     );
   });
 
-  testWidgets('检查器角色区的「管理」链接把左栏页签切到角色页', (WidgetTester tester) async {
+  testWidgets('检查器角色区的「管理」链接：左栏收着也先展开，再切到角色页', (WidgetTester tester) async {
     final FakeCharacterRepo repo = FakeCharacterRepo();
     await pumpInkApp(
       tester,
@@ -628,11 +636,64 @@ void main() {
     final ProviderContainer container = ProviderScope.containerOf(
       tester.element(find.byType(CharactersSection)),
     );
-    expect(container.read(projectPanelTabProvider), ProjectPanelTab.canvases);
+    // 起点：左栏停在大纲页、而且收着——「只切页不展开」的实现在这里会留下一个看不见的角色页。
+    container.read(leftRailProvider.notifier).toggle();
+    expect(
+      container.read(leftRailProvider),
+      const LeftRailState(page: LeftRailPage.outline, expanded: false),
+    );
 
     await tester.tap(find.byKey(const ValueKey<String>('characters-manage')));
     await tester.pumpAndSettle();
 
-    expect(container.read(projectPanelTabProvider), ProjectPanelTab.characters);
+    expect(
+      container.read(leftRailProvider),
+      const LeftRailState(page: LeftRailPage.characters),
+      reason: '「管理」要把左栏展开并切到角色页',
+    );
+  });
+
+  testWidgets('面板头「角色」+ 筛选框：按名称不区分大小写包含匹配，筛空不报「还没有角色」', (
+    WidgetTester tester,
+  ) async {
+    final FakeCharacterRepo repo = FakeCharacterRepo(<String, Map<String, Object?>>{
+      'c1': _characterRow('c1', name: 'Fisherman'),
+      'c2': _characterRow('c2', name: '孤舟'),
+      'c3': _characterRow('c3', name: 'old FISHER'),
+    });
+    await _pumpPanel(tester, await _overrides(repo));
+
+    final AppLocalizations l = _l(tester);
+    expect(find.text(l.leftRailCharacters), findsOneWidget, reason: '面板头标题');
+    for (final String id in <String>['c1', 'c2', 'c3']) {
+      expect(find.byKey(ValueKey<String>('character-row-$id')), findsOneWidget);
+    }
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(CharacterLibraryPanel.filterKey),
+        matching: find.byType(TextField),
+      ),
+      'fisher',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey<String>('character-row-c1')), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('character-row-c3')), findsOneWidget,
+        reason: '不区分大小写：FISHER 也算命中');
+    expect(find.byKey(const ValueKey<String>('character-row-c2')), findsNothing);
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(CharacterLibraryPanel.filterKey),
+        matching: find.byType(TextField),
+      ),
+      'zzz',
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey<String>('character-row-c1')), findsNothing);
+    expect(find.text(l.characterLibraryEmpty), findsNothing,
+        reason: '筛空只是没命中，不是库里没有角色');
   });
 }

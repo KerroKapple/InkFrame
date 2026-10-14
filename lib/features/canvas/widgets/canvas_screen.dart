@@ -1,7 +1,9 @@
 // CanvasScreen：画布标签体（Workspace v2 稿 → 画布重设计稿「画布页 · 改后」）。
 //
-// 主体三栏：项目面板 241 | 画布区（29px 画布头 + 舞台 + 浮层）| 检查器 301；
-// 底部渲染队列 173。状态栏在外壳（ShellStatusBar），菜单栏 / 标签栏也在外壳。
+// 主体三栏：左栏（43px 图标导航条 + 241 面板，面板可收起）| 画布区（29px 画布头 + 舞台 + 浮层）|
+// 检查器 301；底部渲染队列 173。状态栏在外壳（ShellStatusBar），菜单栏 / 标签栏也在外壳。
+// 左栏（widgets/left_rail/）：导航条切大纲 / 素材 / 角色三页，点当前页或收起键（Ctrl+\ / ⌘\）
+// 收起面板——收起时舞台左沿直接贴上导航条右沿。浮层都按舞台定位，不进左栏那一列。
 //
 // 画布区浮层（稿）：顶部居中浮动工具条（top 12）、底部居中提示词条（bottom 16）、
 // 左下缩放条（left 12 / bottom 12）；右下角留给通知卡。原来的左侧 37px 工具条与右下
@@ -18,12 +20,13 @@ import '../providers/current_canvas_id.dart';
 import 'canvas_header_bar.dart';
 import 'canvas_inspector_panel.dart';
 import 'canvas_job_listener.dart';
-import 'canvas_project_panel.dart';
 import 'canvas_prompt_bar.dart';
 import 'canvas_render_queue.dart';
 import 'canvas_shortcuts.dart';
 import 'canvas_toolbar.dart';
 import 'canvas_view.dart';
+import 'left_rail/canvas_left_rail.dart';
+import 'left_rail/left_rail_panel.dart';
 
 class CanvasScreen extends ConsumerWidget {
   const CanvasScreen({super.key, required this.isVisible});
@@ -49,7 +52,10 @@ class CanvasScreen extends ConsumerWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
-                    if (canvasId != null) CanvasProjectPanel(canvasId: canvasId),
+                    if (canvasId != null) ...<Widget>[
+                      const CanvasLeftRail(),
+                      CanvasLeftRailPanel(canvasId: canvasId),
+                    ],
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

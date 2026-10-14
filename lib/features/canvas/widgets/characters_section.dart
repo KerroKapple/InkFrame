@@ -35,7 +35,7 @@ import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/characters_controller.dart';
 import '../providers/inspector_submit_controller.dart';
-import '../providers/project_panel_tab.dart';
+import '../providers/left_rail_state.dart';
 import '../util/ref_image_budget.dart';
 
 /// 项目级角色一致性：把可复用角色挂到本 config 节点（写 type_config.character_ids），
@@ -198,15 +198,16 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
               style: typo.meta.copyWith(color: colors.fg3),
             ),
             const Spacer(),
-            // 「管理」= 去左栏角色页。挂载区本身保持原样，这里只多一条去处。
+            // 「管理」= 去左栏角色页：左栏收着就先展开，再切到角色页。挂载区本身保持原样，
+            // 这里只多一条去处。
             MouseRegion(
               cursor: SystemMouseCursors.click,
               child: GestureDetector(
                 key: const ValueKey<String>('characters-manage'),
                 behavior: HitTestBehavior.opaque,
                 onTap: () => ref
-                    .read(projectPanelTabProvider.notifier)
-                    .select(ProjectPanelTab.characters),
+                    .read(leftRailProvider.notifier)
+                    .open(LeftRailPage.characters),
                 child: Text(
                   context.l10n.characterManage,
                   style: typo.micro.copyWith(color: colors.accent),

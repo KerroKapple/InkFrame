@@ -12,6 +12,9 @@
 //
 // 按住空格临时平移不进快捷键表：它要按下与松开两个事件，Shortcuts 只认按下。
 // 在本层 Focus 的 onKeyEvent 里处理（_CanvasShortcutsState._onKeyEvent）。
+//
+// Ctrl+\（macOS ⌘\）开合左栏（PR-4）：同样对文本编辑让位——在筛选框 / 提示词条里打字时
+// 不该把左栏收起来。键位常量在 CanvasToolKeys，导航条「收起」键的 tooltip 与它同源。
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -23,6 +26,7 @@ import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
 import '../providers/current_canvas_id.dart';
+import '../providers/left_rail_state.dart';
 import '../providers/link_mode_controller.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/canvas_node_delete.dart';
@@ -88,6 +92,11 @@ class CanvasToggleLinkIntent extends Intent {
   const CanvasToggleLinkIntent();
 }
 
+/// Ctrl+\ / ⌘\：左栏面板开合（与导航条底部的收起键同一个动作）。
+class CanvasToggleLeftRailIntent extends Intent {
+  const CanvasToggleLeftRailIntent();
+}
+
 /// 画布工具的键位。工具条 tooltip 与下面的 [kCanvasShortcuts] 取同一组常量——改键位
 /// 只改这里，tooltip 不会还挂着旧键。
 class CanvasToolKeys {
@@ -105,6 +114,21 @@ class CanvasToolKeys {
   /// （features/settings/util/shortcut_catalog.dart）。
   static const SingleActivator holdToPan =
       SingleActivator(LogicalKeyboardKey.space);
+
+  /// 左栏开合：macOS 是 ⌘\，其余平台 Ctrl+\。两个变体都进 [kCanvasShortcuts]（与 ⌘A / Ctrl+A
+  /// 同一种双注册）；导航条收起键的 tooltip 按平台取其一出字（shortcut_catalog 的
+  /// formatShortcutActivator），所以 tooltip 与绑定、与设置页清单是同一个常量。
+  /// includeRepeats: false——按住不放不该来回开合。
+  static const SingleActivator toggleLeftRailMeta = SingleActivator(
+    LogicalKeyboardKey.backslash,
+    meta: true,
+    includeRepeats: false,
+  );
+  static const SingleActivator toggleLeftRailControl = SingleActivator(
+    LogicalKeyboardKey.backslash,
+    control: true,
+    includeRepeats: false,
+  );
 }
 
 /// 主焦点是否落在某个 EditableText 内——用于让文本编辑抢先于画布删除/全选。
@@ -198,6 +222,9 @@ kCanvasShortcuts = <ShortcutActivator, Intent>{
       const CanvasAddLaneIntent(),
   const SingleActivator(CanvasToolKeys.link, includeRepeats: false):
       const CanvasToggleLinkIntent(),
+  // 左栏开合（PR-4）。
+  CanvasToolKeys.toggleLeftRailMeta: const CanvasToggleLeftRailIntent(),
+  CanvasToolKeys.toggleLeftRailControl: const CanvasToggleLeftRailIntent(),
 };
 
 /// 画布快捷键层：包裹画布主体（含 Inspector）。
@@ -324,6 +351,11 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
           ),
           CanvasToggleLinkIntent: _EditingAwareAction<CanvasToggleLinkIntent>(
             (_) => _toggleLink(),
+          ),
+          // 左栏开合同样对文本编辑让位：在筛选框里打字时 Ctrl+\ 不收左栏。
+          CanvasToggleLeftRailIntent:
+              _EditingAwareAction<CanvasToggleLeftRailIntent>(
+            (_) => _toggleLeftRail(),
           ),
         },
         child: Focus(
@@ -464,5 +496,11 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
     toggleLinkMode(ref, canvasId: canvasId);
+  }
+
+  /// 左栏只在打开了画布时才画；没有画布时不动它的状态。
+  void _toggleLeftRail() {
+    if (ref.read(currentCanvasIdProvider) == null) return;
+    ref.read(leftRailProvider.notifier).toggle();
   }
 }

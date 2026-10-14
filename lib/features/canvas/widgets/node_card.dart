@@ -379,6 +379,53 @@ String nodeTypeLabel(BuildContext context, CanvasNodeType type) => switch (type)
       CanvasNodeType.shot => context.l10n.canvasNodeShotType,
     };
 
+/// 节点状态的种类。判据只有 [nodeStatusOf] 一份：节点卡状态行与左栏大纲行共用，两处不会走岔。
+enum NodeStatusKind { running, queued, done, pending, ready, draft }
+
+/// 节点此刻的状态；[percent] 只在 running 时有值（进度 × 100 四舍五入）。
+typedef NodeStatus = ({NodeStatusKind kind, int? percent});
+
+/// 节点状态判据。
+///
+/// - [job]：nodeActiveJobProvider 的值（只会是非终态）。running → 进行中带百分比；
+///   queued / submitting → 排队中。终态在那条 provider 里到不了，真来了按「就绪」报（与抽出前同口径）。
+/// - 没有活动 job：result 节点看自己有没有产物 url（完成 / 等待中）；config 节点看
+///   [hasArtifact]（名下已有产物 = 完成），再看正文（[configMainText]）——有 = 就绪、空 = 草稿。
+///
+/// [hasArtifact] 只有左栏大纲会传 true：节点卡的产物另有成片卡，config 卡的状态行只说草稿 / 就绪。
+NodeStatus nodeStatusOf(
+  CanvasNode node, {
+  required JobState? job,
+  bool hasArtifact = false,
+}) {
+  if (job != null) {
+    return switch (job) {
+      JobRunning(:final double progress) => (
+          kind: NodeStatusKind.running,
+          percent: (progress * 100).round(),
+        ),
+      JobQueued() || JobSubmitting() => (kind: NodeStatusKind.queued, percent: null),
+      JobSucceeded() || JobFailed() || JobCancelled() => (
+          kind: NodeStatusKind.ready,
+          percent: null,
+        ),
+    };
+  }
+  if (node.role == NodeRole.result) {
+    return (
+      kind: (node.imageUrl ?? node.videoUrl) != null
+          ? NodeStatusKind.done
+          : NodeStatusKind.pending,
+      percent: null,
+    );
+  }
+  if (hasArtifact) return (kind: NodeStatusKind.done, percent: null);
+  return (
+    kind: configMainText(node) == null ? NodeStatusKind.draft : NodeStatusKind.ready,
+    percent: null,
+  );
+}
+
 /// 状态行：左状态文字（进行中 accent，其余 fg4），右等宽 meta（provider id / camera / txt）。
 class _StatusRow extends ConsumerWidget {
   const _StatusRow({required this.node});
@@ -389,32 +436,20 @@ class _StatusRow extends ConsumerWidget {
     final colors = context.inkColors;
     final typo = context.inkTypography;
     final l = context.l10n;
-    final JobState? job = ref.watch(nodeActiveJobProvider(node.id));
-
-    final String status;
-    Color statusColor = colors.fg4;
-    if (job != null) {
-      switch (job) {
-        case JobRunning(:final progress):
-          status = l.inspectorStatusRunningWithProgress((progress * 100).round());
-          statusColor = colors.accent;
-        case JobQueued() || JobSubmitting():
-          status = l.canvasRenderQueueStatusQueued;
-        default:
-          status = l.nodeStatusReady;
-      }
-    } else if (node.role == NodeRole.result) {
-      status = (node.imageUrl ?? node.videoUrl) != null
-          ? l.nodeStatusDone
-          : l.nodeStatusPending;
-    } else {
-      final String? prompt = node.type == CanvasNodeType.shot
-          ? (node.typeConfig['shot_notes'] as String?)
-          : (node.type == CanvasNodeType.text ? node.textContent : node.promptText);
-      status = (prompt == null || prompt.trim().isEmpty)
-          ? l.nodeStatusDraft
-          : l.nodeStatusReady;
-    }
+    final NodeStatus s = nodeStatusOf(
+      node,
+      job: ref.watch(nodeActiveJobProvider(node.id)),
+    );
+    final String status = switch (s.kind) {
+      NodeStatusKind.running => l.inspectorStatusRunningWithProgress(s.percent ?? 0),
+      NodeStatusKind.queued => l.canvasRenderQueueStatusQueued,
+      NodeStatusKind.done => l.nodeStatusDone,
+      NodeStatusKind.pending => l.nodeStatusPending,
+      NodeStatusKind.ready => l.nodeStatusReady,
+      NodeStatusKind.draft => l.nodeStatusDraft,
+    };
+    final Color statusColor =
+        s.kind == NodeStatusKind.running ? colors.accent : colors.fg4;
 
     final String meta = switch (node.type) {
       CanvasNodeType.text => 'txt',
@@ -508,7 +543,7 @@ class _ConfigBody extends ConsumerWidget {
     if (node.type == CanvasNodeType.video) return _VideoConfigText(node: node);
     final ShotLanguage lang = node.shotLanguage;
     return _ConfigText(
-      text: _configMainText(node),
+      text: configMainText(node),
       // 底部行：image config = 镜头语言摘要（设了才画）；text / shot 没有底部行。
       summary: node.type == CanvasNodeType.image && !lang.isEmpty
           ? shotLanguageSummary(context, lang)
@@ -519,7 +554,9 @@ class _ConfigBody extends ConsumerWidget {
 
 /// config 卡的正文：shot = 镜头备注，text = 正文，image / video = 提示词。
 /// 去首尾空白；空串归 null（= 不画正文）。
-String? _configMainText(CanvasNode node) {
+///
+/// 公开：状态判据（[nodeStatusOf] 的草稿 / 就绪）与左栏大纲的「按提示词筛选」都读这一份。
+String? configMainText(CanvasNode node) {
   final String? raw = switch (node.type) {
     CanvasNodeType.shot => node.typeConfig['shot_notes'] as String?,
     CanvasNodeType.text => node.textContent,
@@ -624,7 +661,7 @@ class _VideoConfigText extends ConsumerWidget {
     if (camera != null) parts.add(cameraMovementLabel(context, camera));
 
     return _ConfigText(
-      text: _configMainText(node),
+      text: configMainText(node),
       summary: parts.isEmpty ? null : parts.join(' · '),
     );
   }

@@ -30,10 +30,12 @@ util/       无副作用的几何/命中/预设工具
 - `prompt_presets_controller` — 提示词预设 CRUD（项目级）
 - `canvas_base_style` / `lane_collapse_controller` / `characters_controller` / `playable_video_path` / `current_canvas_id` / `current_canvas_name` / `canvas_bootstrap_controller`
 - `canvas_tool_mode` — 工具态（选择 / 平移）+ 按住空格临时平移，按画布 autoDispose；实际是否平移 = 二者取或（`canvasPanActiveProvider`，舞台指针闸 / 手形光标 / 工具条高亮共用）
+- `left_rail_state` — 画布左栏停在哪一页（大纲 / 素材 / 角色）+ 面板展开 / 收起；非 autoDispose（检查器「管理」链接、Ctrl+\ / ⌘\ 都要跨子树开合 / 切页）
 
 ## widgets（关键）
-- `canvas_screen` — 整屏骨架：项目面板 | 画布区（画布头 + `canvas_view` + 浮层：顶部居中 `canvas_toolbar` / 底部居中提示词条 / 左下缩放条）| 检查器，底部 `canvas_render_queue`；外层包 `canvas_shortcuts`（删除/Esc/全选/缩放 + 工具单键 V/H/I/G/T/F/L + 按住空格平移；`isActive` 由外壳按标签可见性下传）。窗口 chrome 与面包屑在外壳 `ShellChrome`
+- `canvas_screen` — 整屏骨架：左栏（43px 导航条 + 可收起的 241 面板）| 画布区（画布头 + `canvas_view` + 浮层：顶部居中 `canvas_toolbar` / 底部居中提示词条 / 左下缩放条）| 检查器，底部 `canvas_render_queue`；外层包 `canvas_shortcuts`（删除/Esc/全选/缩放 + 工具单键 V/H/I/G/T/F/L + 按住空格平移 + Ctrl+\ / ⌘\ 开合左栏；`isActive` 由外壳按标签可见性下传）。窗口 chrome 与面包屑在外壳 `ShellChrome`
 - `canvas_toolbar` — 舞台顶部居中的浮动工具条：选择 · 平移 | 图像 · 视频 · 文本 · 分镜 · 泳道 · 连线 | 更多（导入脚本）。取代原左侧 37px 工具条与右下角加号
+- `left_rail/` — 画布左栏（PR-4）：`canvas_left_rail`（43px 图标导航条：大纲 / 素材 / 角色 + 快捷键 / 收起）· `left_rail_panel`（241 面板宿主）· `outline_panel`（泳道分组的镜头行 + 产物子行，点行 = 单选 + 移到视口中心）· `canvas_switcher`（大纲面板头的画布切换胶囊）· `assets_panel` / `assets_model`（本画布 / 项目全部 + 类型 chip + 两列网格，数据复用画廊）· `left_panel_parts`（面板头 / 筛选框）· `left_rail_actions`（定位：单选 + 居中）；角色页仍是 `character_library_panel`（顶上加了面板头 + 筛选）
 - `canvas_view` / `edge_painter` — 画布视口与连线绘制
 - `node_card` / `video_node_body` — 节点卡片各形态
 - `node_inspector_router` — 按 (role, type) 分发：config → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`（前二者共用 `inspector_status_panel`）；result+image → `image_result_inspector`
@@ -43,7 +45,7 @@ util/       无副作用的几何/命中/预设工具
 - `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`
 
 ## util
-`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars` · `canvas_tool_actions`（工具条与单键快捷键共用：视口中心建节点 / 建泳道 / 切连线 / 选择工具）
+`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars` · `canvas_tool_actions`（工具条与单键快捷键共用：视口中心建节点 / 建泳道 / 切连线 / 选择工具）· `outline_model`（左栏大纲分组 + 「在链上」/ 链序号的唯一判据，⌘K 共用）· `viewport_focus`（保持缩放、把节点移到视口中心）
 
 ## 数据流（生成一次图/视频）
 1. 选中 config 节点 → `node_inspector_router` 渲染对应 inspector

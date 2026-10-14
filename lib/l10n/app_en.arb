@@ -750,11 +750,157 @@
   "@canvasToolPanHoldSpace": {
     "description": "Second shortcut hint in the Pan tool tooltip, after the H key: holding the Space bar pans temporarily"
   },
-  "projectPanelCanvases": "Canvases",
-  "projectPanelAssets": "Assets",
-  "projectPanelCharacters": "Characters",
-  "projectPanelFilterHint": "Filter…",
-  "projectPanelCurrentNodes": "Current canvas · nodes",
+  "leftRailOutline": "Outline",
+  "@leftRailOutline": {
+    "description": "Canvas left sidebar: the Outline page — rail button tooltip and the panel title"
+  },
+  "leftRailAssets": "Assets",
+  "@leftRailAssets": {
+    "description": "Canvas left sidebar: the Assets page — rail button tooltip and the panel title"
+  },
+  "leftRailCharacters": "Characters",
+  "@leftRailCharacters": {
+    "description": "Canvas left sidebar: the Characters page — rail button tooltip and the panel title"
+  },
+  "leftRailShortcuts": "Keyboard shortcuts",
+  "@leftRailShortcuts": {
+    "description": "Canvas left sidebar: bottom rail button that opens Settings on the Shortcuts page"
+  },
+  "leftRailCollapse": "Collapse sidebar",
+  "@leftRailCollapse": {
+    "description": "Canvas left sidebar: toggle button label while the panel is open; the tooltip appends the key binding in code (Ctrl+backslash, or Cmd+backslash on macOS)"
+  },
+  "leftRailExpand": "Expand sidebar",
+  "@leftRailExpand": {
+    "description": "Canvas left sidebar: toggle button label while the panel is collapsed; the tooltip appends the key binding in code"
+  },
+  "leftRailSwitchCanvas": "Switch canvas",
+  "@leftRailSwitchCanvas": {
+    "description": "Tooltip of the canvas switcher pill in the Outline panel header (current canvas name + caret; opens the project's canvas list)"
+  },
+  "leftRailOutlineFilterHint": "Filter shots, nodes…",
+  "@leftRailOutlineFilterHint": {
+    "description": "Placeholder of the Outline filter field; matches node names and prompts, case-insensitive"
+  },
+  "leftRailOutlineEmpty": "No config nodes on this canvas yet",
+  "@leftRailOutlineEmpty": {
+    "description": "Outline panel empty state: the canvas has no config nodes"
+  },
+  "leftRailGroupNoLane": "No lane",
+  "@leftRailGroupNoLane": {
+    "description": "Outline group header: shots on the narrative chain that do not belong to any lane"
+  },
+  "leftRailGroupNotInSequence": "Not in sequence",
+  "@leftRailGroupNotInSequence": {
+    "description": "Outline group header: config nodes that are not on the narrative chain (listed last, unnumbered)"
+  },
+  "leftRailGroupShotCount": "{count, plural, =1{1 shot} other{{count} shots}}",
+  "@leftRailGroupShotCount": {
+    "description": "Monospace count after an Outline lane / no-lane group name",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "leftRailTypeImageConfig": "Image config",
+  "@leftRailTypeImageConfig": {
+    "description": "Outline row second line: the node is an image config node"
+  },
+  "leftRailTypeVideoConfig": "Video config",
+  "@leftRailTypeVideoConfig": {
+    "description": "Outline row second line: the node is a video config node"
+  },
+  "leftRailTypeShot": "Shot",
+  "@leftRailTypeShot": {
+    "description": "Outline row second line: the node is a shot (storyboard) node"
+  },
+  "leftRailStatusReady": "Ready",
+  "@leftRailStatusReady": {
+    "description": "Outline row status: no active job, no result yet, the prompt is filled in"
+  },
+  "leftRailStatusDraft": "Draft",
+  "@leftRailStatusDraft": {
+    "description": "Outline row status: no active job, no result yet, the prompt is empty"
+  },
+  "leftRailArtifactImage": "Final · image",
+  "@leftRailArtifactImage": {
+    "description": "Outline child row under a shot: its latest generated result is an image"
+  },
+  "leftRailArtifactVideo": "Final · video",
+  "@leftRailArtifactVideo": {
+    "description": "Outline child row under a shot: its latest generated result is a video"
+  },
+  "leftRailArtifactCount": "{label} · {count} in all",
+  "@leftRailArtifactCount": {
+    "description": "Outline child row when the shot has more than one result: label is leftRailArtifactImage / leftRailArtifactVideo, count is the total number of results",
+    "placeholders": {
+      "label": { "type": "String" },
+      "count": { "type": "int" }
+    }
+  },
+  "leftRailAssetsThisCanvas": "This canvas",
+  "@leftRailAssetsThisCanvas": {
+    "description": "Assets panel segment: only results generated on the current canvas"
+  },
+  "leftRailAssetsWholeProject": "Whole project",
+  "@leftRailAssetsWholeProject": {
+    "description": "Assets panel segment: results from every canvas of the project"
+  },
+  "leftRailAssetsKindAll": "All {count}",
+  "@leftRailAssetsKindAll": {
+    "description": "Assets panel type chip: every result in the current segment, with its count",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "leftRailAssetsKindImage": "Images {count}",
+  "@leftRailAssetsKindImage": {
+    "description": "Assets panel type chip: image results in the current segment, with their count",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "leftRailAssetsKindVideo": "Videos {count}",
+  "@leftRailAssetsKindVideo": {
+    "description": "Assets panel type chip: video results in the current segment, with their count",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "leftRailAssetFinal": "{name} · final",
+  "@leftRailAssetFinal": {
+    "description": "Assets grid caption when the source config node has exactly one result; name is the source config node's name",
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "leftRailAssetTake": "{name} · take {take}",
+  "@leftRailAssetTake": {
+    "description": "Assets grid caption when the source config node has several results; take numbers them oldest first, starting at 1",
+    "placeholders": {
+      "name": { "type": "String" },
+      "take": { "type": "int" }
+    }
+  },
+  "leftRailAssetsOpenGallery": "Open all in Gallery ›",
+  "@leftRailAssetsOpenGallery": {
+    "description": "Link at the bottom of the Assets panel: opens the project's Gallery tab"
+  },
+  "leftRailAssetsEmpty": "No generated assets yet",
+  "@leftRailAssetsEmpty": {
+    "description": "Assets panel empty state"
+  },
+  "leftRailAssetsNoProject": "Open a project to see its assets",
+  "@leftRailAssetsNoProject": {
+    "description": "Assets panel when the shell has no active project"
+  },
+  "leftRailCharactersNoProject": "Open a project to manage its characters",
+  "@leftRailCharactersNoProject": {
+    "description": "Characters page of the canvas left sidebar when the shell has no active project"
+  },
+  "leftRailCharacterFilterHint": "Search characters…",
+  "@leftRailCharacterFilterHint": {
+    "description": "Placeholder of the filter field at the top of the Characters page; matches character names, case-insensitive"
+  },
   "canvasHeaderLanes": "Lanes:",
   "canvasZoomFit": "Fit",
   "canvasZoomIn": "Zoom in",
@@ -1105,6 +1251,10 @@
   "settingsShortcutCanvasAddTextNode": "New text node",
   "settingsShortcutCanvasAddLane": "New lane",
   "settingsShortcutCanvasToggleLink": "Start / stop linking",
+  "settingsShortcutCanvasToggleLeftRail": "Show / hide the canvas left sidebar",
+  "@settingsShortcutCanvasToggleLeftRail": {
+    "description": "Settings > Shortcuts row: toggles the canvas left sidebar panel (same action as the rail collapse button)"
+  },
   "settingsPerformanceConcurrencyTitle": "Concurrency and quota",
   "settingsPerformanceGlobalLimit": "Global concurrent jobs",
   "settingsPerformanceImageCache": "Image cache limit",
