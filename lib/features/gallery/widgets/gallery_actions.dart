@@ -12,10 +12,12 @@ import '../../../core/di/file_resolver.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart' show CharacterAssetError;
 import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/components/ink_name_dialog.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
 import '../../canvas/providers/characters_controller.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
 import '../models/gallery_item.dart';
@@ -63,11 +65,12 @@ Future<void> gallerySaveAsCharacter(
   if (name == null || name.trim().isEmpty || !context.mounted) return;
   // await 前预取（PLAYBOOK §5.1：跨异步边界不再碰 context）。
   final l = context.l10n;
-  final ScaffoldMessengerState? messenger = ScaffoldMessenger.maybeOf(context);
+  // 通知出口同样在 await 前取好。存为角色是用户刚点的那一下：成败都不响。
+  final ToastService toast = ref.read(toastServiceProvider);
   final File? file = galleryResolveFile(ref, projectId: projectId, canvasId: item.canvasId, relativePath: item.relativePath);
   // existsSync 守卫：tile 显示 broken 占位时按钮照样可点。
   if (file == null || !file.existsSync()) {
-    messenger?.showSnackBar(SnackBar(content: Text(l.inspectorCharactersImportFailed)));
+    toast.show(l.inspectorCharactersImportFailed, kind: ToastKind.error);
     return;
   }
   // listenManual 保活 autoDispose family 至操作完成；先 await build 再调 createFromImage。
@@ -79,13 +82,13 @@ Future<void> gallerySaveAsCharacter(
     await ref
         .read(charactersControllerProvider(projectId).notifier)
         .createFromImage(name: name.trim(), sourceAbsolutePath: file.path);
-    messenger?.showSnackBar(SnackBar(content: Text(l.gallerySavedAsCharacter)));
+    toast.show(l.gallerySavedAsCharacter, kind: ToastKind.success);
   } on InkError catch (_) {
-    messenger?.showSnackBar(SnackBar(content: Text(l.inspectorCharactersImportFailed)));
+    toast.show(l.inspectorCharactersImportFailed, kind: ToastKind.error);
   } on CharacterAssetError catch (_) {
-    messenger?.showSnackBar(SnackBar(content: Text(l.inspectorCharactersImportFailed)));
+    toast.show(l.inspectorCharactersImportFailed, kind: ToastKind.error);
   } on FileSystemException catch (_) {
-    messenger?.showSnackBar(SnackBar(content: Text(l.inspectorCharactersImportFailed)));
+    toast.show(l.inspectorCharactersImportFailed, kind: ToastKind.error);
   } finally {
     sub.close();
   }

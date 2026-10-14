@@ -1,5 +1,6 @@
 // gallerySaveAsCharacter（GA-4 搬到共享动作）：命名确认 → createFromImage + 成功提示；
-// 源文件缺失 → 失败提示、不建记录、不逃逸。
+// 源文件缺失 → 失败提示、不建记录、不逃逸。提示走通知卡（toastServiceProvider），
+// 存为角色是用户刚点的那一下，成败都不响。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,11 +10,14 @@ import 'package:inkframe/core/di/character_assets.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/gallery/models/gallery_item.dart';
 import 'package:inkframe/features/gallery/widgets/gallery_actions.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/theme/components/ink_name_dialog.dart';
 
 import '../../../_harness/fake_character.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 class _TempResolver implements FileResolverService {
@@ -68,7 +72,9 @@ void main() {
   setUp(() => root = Directory.systemTemp.createTempSync('gal_act_'));
   tearDown(() => root.deleteSync(recursive: true));
 
-  Future<void> run(WidgetTester tester, FakeCharacterRepo repo, FakeCharacterAssetService assets) async {
+  /// 走完一次「存为角色」，返回记下的通知卡。
+  Future<RecordingToastService> run(WidgetTester tester, FakeCharacterRepo repo, FakeCharacterAssetService assets) async {
+    final RecordingToastService toast = RecordingToastService();
     await pumpInkApp(
       tester,
       const _Host(),
@@ -76,6 +82,7 @@ void main() {
         fileResolverServiceProvider.overrideWithValue(_TempResolver(root.path)),
         characterRepositoryProvider.overrideWith((_) async => repo),
         characterAssetServiceProvider.overrideWithValue(assets),
+        toastServiceProvider.overrideWithValue(toast),
       ],
     );
     await tester.tap(find.text('go'));
@@ -86,6 +93,7 @@ void main() {
     await tester.pump();
     await tester.tap(find.text('Save')); // 对话框确认键（inspectorCharactersSave）
     await tester.pumpAndSettle();
+    return toast;
   }
 
   testWidgets('命名确认 → createFromImage + 成功提示', (tester) async {
@@ -94,17 +102,23 @@ void main() {
       ..writeAsBytesSync(_kPngBytes);
     final repo = FakeCharacterRepo();
     final assets = FakeCharacterAssetService();
-    await run(tester, repo, assets);
+    final RecordingToastService toast = await run(tester, repo, assets);
     expect(repo.rows, hasLength(1), reason: '角色记录已建');
     expect(assets.imported, hasLength(1), reason: '参考图已导入');
-    expect(find.text('Character saved'), findsOneWidget);
+    expect(toast.titles, <String>['Character saved']);
+    expect(toast.kinds, <ToastKind>[ToastKind.success]);
+    expect(toast.shown.single.chime, isFalse,
+        reason: '存为角色是用户刚点的那一下，不是后台事件');
   });
 
   testWidgets('源文件缺失 → 失败提示，不逃逸不建记录（P1-2 回归）', (tester) async {
     final repo = FakeCharacterRepo();
-    await run(tester, repo, FakeCharacterAssetService());
+    final RecordingToastService toast =
+        await run(tester, repo, FakeCharacterAssetService());
     expect(repo.rows, isEmpty, reason: '零角色记录');
-    expect(find.text('Character saved'), findsNothing);
+    expect(toast.titles, <String>['Failed to import character'],
+        reason: '只报失败，不报「已存为角色」');
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(tester.takeException(), isNull, reason: '不逃逸为崩溃');
   });
 }

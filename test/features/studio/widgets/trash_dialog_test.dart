@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/trashed_items_providers.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -15,8 +17,9 @@ import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/components/ink_overlay_dialog.dart';
 
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 
-/// restore 必炸的项目仓储（失败 snackbar 路径）。
+/// restore 必炸的项目仓储（失败提示路径）。
 class _FailingRestoreRepo extends InMemoryProjectRepository {
   @override
   Future<int> restore(String id) async => throw const LocalIOError();
@@ -170,23 +173,30 @@ void main() {
     expect(find.textContaining('Local disk I/O error'), findsOneWidget);
   });
 
-  testWidgets('恢复失败 InkError → snackbar，行保留', (tester) async {
+  // 回收站开着时报的错：通知卡画在所有路由之上，浮层挡不住它（旧 SnackBar 弹在
+  // barrier 之下）。通知出口覆盖成记录版，断言它收到了什么，不再找屏幕上的字。
+  testWidgets('恢复失败 InkError → 错误通知卡（不响），行保留', (tester) async {
     final repo = _FailingRestoreRepo();
     final p1 = await repo.create(name: 'Stuck');
     await repo.softDelete(p1);
+    final toast = RecordingToastService();
 
     await _pump(
       tester,
       const TrashDialog(),
       overrides: [
         projectRepositoryProvider.overrideWith((ref) async => repo),
+        toastServiceProvider.overrideWithValue(toast),
       ],
     );
 
     await tester.tap(find.text('Restore'));
     await tester.pumpAndSettle();
 
-    expect(find.text("Couldn't restore"), findsOneWidget);
+    expect(toast.titles, <String>["Couldn't restore"]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(toast.shown.single.chime, isFalse,
+        reason: '恢复是用户刚点的那一下，失败是即时回应，不是后台事件');
     expect(find.text('Stuck'), findsOneWidget);
   });
 

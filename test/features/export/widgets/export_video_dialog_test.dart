@@ -10,14 +10,17 @@ import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/video_export.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/interfaces/video_export_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/export/util/export_order.dart';
 import 'package:inkframe/features/export/widgets/export_video_dialog.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/components/ink_progress_bar.dart';
 
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 class _FakeVideoExportService implements VideoExportService {
@@ -136,12 +139,15 @@ List<bool?> _checkboxValues(WidgetTester tester) => tester
     .map((Checkbox c) => c.value)
     .toList();
 
+/// [toast]：要断言通知卡时传进来；不传也一律覆盖成记录版——导出成功会弹一张
+/// 带 chime 的卡，真的通知中心会去起计时器、放提示音，测试里不该碰。
 Future<void> _pumpDialog(
   WidgetTester tester, {
   required _FakeVideoExportService service,
   List<CanvasNode>? nodes,
   FileResolverService? resolver,
   List<CanvasNode> Function(List<CanvasNode>)? order,
+  RecordingToastService? toast,
 }) async {
   // EX-1′ 起排序不在对话框内，走调用方同一条路径 orderVideoNodesForExport
   // （无 narrative 边时等价于旧的 position.x 升序）。[order] 可替换掉这一步，
@@ -177,6 +183,7 @@ Future<void> _pumpDialog(
       videoExportServiceProvider.overrideWithValue(service),
       fileResolverServiceProvider
           .overrideWithValue(resolver ?? _FakeFileResolver()),
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
     ],
   );
   await tester.tap(find.text('open'));
@@ -438,14 +445,15 @@ void main() {
     expect(service.lastOutputBaseName, 'my_cut');
   });
 
-  testWidgets('ffmpeg_not_found → 专门文案内嵌 banner（非 SnackBar），对话框保持打开',
+  testWidgets('ffmpeg_not_found → 专门文案内嵌 banner（不弹通知卡），对话框保持打开',
       (tester) async {
     final service = _FakeVideoExportService(
       error: const LocalIOError(
         extra: <String, Object?>{'reason': 'ffmpeg_not_found'},
       ),
     );
-    await _pumpDialog(tester, service: service);
+    final toast = RecordingToastService();
+    await _pumpDialog(tester, service: service, toast: toast);
 
     await tester.tap(find.text('Export'));
     await tester.pumpAndSettle();
@@ -457,8 +465,10 @@ void main() {
       ),
       findsOneWidget,
     );
-    // 债144①：失败提示内嵌对话框，不再弹 barrier 之下看不见的 SnackBar。
-    expect(find.byType(SnackBar), findsNothing);
+    // 债144①：失败提示内嵌对话框——对话框留着可改了重试，错误就在按钮旁边。
+    // 当初挪进来是因为旧 SnackBar 弹在 barrier 之下看不见；通知卡虽然画在
+    // 所有路由之上，失败也不另弹一张——同一件事不报两遍。
+    expect(toast.shown, isEmpty);
     expect(find.byType(InkErrorBanner), findsOneWidget);
     expect(find.text('Export video'), findsOneWidget);
   });
@@ -498,7 +508,8 @@ void main() {
         extra: <String, Object?>{'reason': 'export_io_failed'},
       ),
     );
-    await _pumpDialog(tester, service: service);
+    final toast = RecordingToastService();
+    await _pumpDialog(tester, service: service, toast: toast);
 
     await tester.tap(find.text('Export'));
     await tester.pumpAndSettle();
@@ -507,13 +518,14 @@ void main() {
       find.text('Local disk I/O error. Check space and permissions.'),
       findsOneWidget,
     );
-    expect(find.byType(SnackBar), findsNothing);
+    expect(toast.shown, isEmpty, reason: '失败只内嵌在对话框里，不另弹通知卡');
     // 失败后按钮回可用（可改名重试）。
     final button = tester.widget<FilledButton>(find.byType(FilledButton));
     expect(button.onPressed, isNotNull);
   });
 
-  testWidgets('成功 → 关对话框 + snackbar 相对路径 + 复制绝对路径 action', (tester) async {
+  testWidgets('成功 → 关对话框 + 成功通知卡（带 chime）报相对路径 + 「复制路径」按钮复制绝对路径',
+      (tester) async {
     final copied = <String>[];
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
       SystemChannels.platform,
@@ -532,17 +544,31 @@ void main() {
     );
 
     final service = _FakeVideoExportService();
-    await _pumpDialog(tester, service: service);
+    final toast = RecordingToastService();
+    await _pumpDialog(tester, service: service, toast: toast);
 
     await tester.tap(find.text('Export'));
     await tester.pumpAndSettle();
 
     expect(find.text('Export video'), findsNothing);
-    expect(find.text('Exported to exports/out.mp4'), findsOneWidget);
+    expect(toast.titles, <String>['Exported to exports/out.mp4']);
+    final RecordedToast done = toast.shown.single;
+    expect(done.kind, ToastKind.success);
+    expect(done.chime, isTrue,
+        reason: '导出是一段长任务，跑完时用户未必还盯着屏幕——到达时按设置响一声');
+    expect(done.primary?.label, 'Copy path');
 
-    await tester.tap(find.text('Copy path'));
+    // 记录版不画卡片，直接按下主按钮——与用户点「复制路径」走同一个回调。
+    done.primary!.onPressed();
     await tester.pumpAndSettle();
     expect(copied, <String>['Z:/fake/p1/exports/out.mp4']);
+    expect(
+      toast.titles,
+      <String>['Exported to exports/out.mp4', 'Path copied to clipboard'],
+    );
+    expect(toast.kinds, <ToastKind>[ToastKind.success, ToastKind.info]);
+    expect(toast.shown.last.chime, isFalse,
+        reason: '「已复制」是对刚才那一下的即时回应，不响');
   });
 
   testWidgets('busy 态：不确定进度条 + 导出按钮与输出名输入禁用', (tester) async {
