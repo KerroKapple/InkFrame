@@ -4,6 +4,13 @@
 // （一份只捕 InkError、一份什么都捕）。工具条和快捷键都调这里——同一个动作只有一条路径，
 // 点按钮和按键的结果不会不一样。
 //
+// 建节点只有一条路：addNodeFromMenu——建节点、判泳道写 laneId、新节点只单选不挪相机、写库失败弹错误卡，要连线时
+// 连好线、不留半截。入口只在「落在哪」上分两种：
+//   - 不带落点的：工具条建节点键、I / G / T、Tab 开的新建菜单里不带上下文的项——落在「视口中心 + 散布」
+//     （addNodeAtViewportCenter 算好这一点再交给它；散布防连建叠成一摞）。菜单项上标着 I / G / T，走的就是这几个键
+//     的那一条路；
+//   - 带落点的：拖线松手、双击空白、空白处右键「新建…」——落在那一点（菜单锚点），不加散布。
+//
 // 与 canvas_node_delete.dart 同一类：要 BuildContext（弹框 / 出提示）的画布动作。
 // 建泳道要开泳道编辑框，所以这里反向引了 widgets/lane_edit_dialog.dart。
 //
@@ -80,32 +87,47 @@ Offset viewportCenteredNodeOrigin(
       nodeSize: defaultNodeSize(type),
     );
 
-/// 在视口中心建一个 [type] 节点；写库失败弹错误卡「添加节点失败」。
+/// 「视口中心 + 散布」那一点换成视口坐标：新卡片的左上角画在这里（[viewportCenteredNodeOrigin] 的世界坐标过一遍
+/// 相机）。判泳道吃的是视口坐标（[menuNodePlacement]），与带落点的入口同一种输入。
+Offset viewportCenteredNodePoint(
+  WidgetRef ref, {
+  required String canvasId,
+  required CanvasNodeType type,
+  Random? random,
+}) =>
+    MatrixUtils.transformPoint(
+      ref.read(canvasTransformControllerProvider(canvasId)).value,
+      worldToStage(
+        viewportCenteredNodeOrigin(ref, canvasId: canvasId, type: type, random: random),
+      ),
+    );
+
+/// 在「视口中心 + 散布」建一个 [type] 节点：工具条建节点键、I / G / T、Tab 新建菜单里不带上下文的项共用。
+/// 落点算好之后与新建菜单同一条路（[addNodeFromMenu]）：判泳道写 laneId、新节点只单选不挪相机、写库失败弹
+/// 错误卡「添加节点失败」。
 Future<void> addNodeAtViewportCenter(
   BuildContext context,
   WidgetRef ref, {
   required String canvasId,
   required CanvasNodeType type,
   Random? random,
-}) async {
-  // 文案在 await 之前取：await 之后 context 可能已卸载。
-  final String label = context.l10n.canvasNodeDefaultLabel;
-  final String failed = context.l10n.canvasAddNodeFailed;
-  try {
-    await ref.read(canvasNodesControllerProvider(canvasId).notifier).addNode(
-          label: label,
+}) =>
+    addNodeFromMenu(
+      context,
+      ref,
+      canvasId: canvasId,
+      type: type,
+      placement: menuNodePlacement(
+        ref,
+        canvasId: canvasId,
+        viewportPoint: viewportCenteredNodePoint(
+          ref,
+          canvasId: canvasId,
           type: type,
-          position: viewportCenteredNodeOrigin(
-            ref,
-            canvasId: canvasId,
-            type: type,
-            random: random,
-          ),
-        );
-  } on InkError catch (_) {
-    if (context.mounted) showCanvasSnack(context, failed);
-  }
-}
+          random: random,
+        ),
+      ),
+    );
 
 /// 开「新建泳道」对话框，确认后建泳道；写库失败弹错误卡「创建泳道失败」。
 Future<void> addLaneViaDialog(
@@ -267,7 +289,8 @@ Future<void> linkByPortDrop(
       .linkTo(targetNodeId);
 }
 
-/// 新建菜单的落点：视口里的 [viewportPoint]（菜单锚点）→ 新卡片左上角的世界坐标 + 泳道归属。
+/// 新建节点的落点：视口里的 [viewportPoint]（菜单锚点，或「视口中心 + 散布」那一点）→ 新卡片左上角的世界坐标 +
+/// 泳道归属。
 /// 相机、泳道切片（有效厚度，折叠的道按轨宽算）与方向都取此刻的现值，判定本体见 drop_placement.dart。
 NodePlacement menuNodePlacement(
   WidgetRef ref, {
@@ -286,12 +309,15 @@ NodePlacement menuNodePlacement(
       ],
       ref.read(laneCollapseProvider(canvasId)),
     ),
-    direction: ref.read(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
-        LaneDirection.horizontal,
+    // 没有泳道就不判道，也就不必去读泳道方向（与 _fitNodes 同口径）：工具条 / 单键建节点不为这个去碰画布仓储。
+    direction: lanes.isEmpty
+        ? LaneDirection.horizontal
+        : (ref.read(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
+            LaneDirection.horizontal),
   );
 }
 
-/// 新建菜单建节点：在 [placement] 建一个 [type] 配置节点；给了 [edge] 就再从 [sourceNodeId] 连一条线到它。
+/// 建节点的唯一一条路（见头注）：在 [placement] 建一个 [type] 配置节点；给了 [edge] 就再从 [sourceNodeId] 连一条线到它。
 ///
 /// 写入顺序 = 先建节点（落进泳道的再写泳道归属）、再连线。**不留半截**：节点建好之后任何一步失败，
 /// 都把刚建的节点删掉（removeNode 同一个事务里级联软删它身上已有的线），再弹错误卡「添加节点失败」。
@@ -312,8 +338,11 @@ Future<void> addNodeFromMenu(
   final String failed = context.l10n.canvasAddNodeFailed;
   final CanvasNodesController nodes =
       ref.read(canvasNodesControllerProvider(canvasId).notifier);
-  final CanvasEdgesController edges =
-      ref.read(canvasEdgesControllerProvider(canvasId).notifier);
+  final CreateMenuEdge? link = edge;
+  // 要连线才取连线控制器：不带上下文的建节点（工具条 / 单键 / Tab 菜单）用不着它。
+  final CanvasEdgesController? edges = link != null && sourceNodeId != null
+      ? ref.read(canvasEdgesControllerProvider(canvasId).notifier)
+      : null;
   final CanvasFocusRequestController focus =
       ref.read(canvasFocusRequestProvider.notifier);
   // 叙事边的序号按此刻锚点已有的出边算（同样在 await 之前取）；别的边不排序，取默认 0。
@@ -340,8 +369,7 @@ Future<void> addNodeFromMenu(
   }
 
   try {
-    final CreateMenuEdge? link = edge;
-    if (link != null && sourceNodeId != null) {
+    if (edges != null && link != null && sourceNodeId != null) {
       await edges.addEdge(
         sourceNodeId: sourceNodeId,
         targetNodeId: created.id,
@@ -361,7 +389,7 @@ Future<void> addNodeFromMenu(
     return;
   }
 
-  // 只单选、不挪相机：新节点就落在用户刚点的地方（拖线松手点 / 双击点 / 右键点 / Tab 的视口中心）。
+  // 只单选、不挪相机：新节点就落在用户眼前（拖线松手点 / 双击点 / 右键点 / 视口中心）。
   focus.request(canvasId: canvasId, nodeId: created.id, center: false);
 }
 

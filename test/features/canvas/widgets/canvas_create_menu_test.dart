@@ -11,6 +11,8 @@
 //   - 双击空白 / Tab / 空白处右键「新建…」：开的是同一个新建菜单（不带上下文）。
 //   - 空白处右键在抬起时开、锚点是按下点；按住右键拖动（拖画布）不开（B4）。
 //   - 双击的第一下得是一次单击：拖画布那一下、双指捏合都不算（B3）。
+//   - 建节点只有一条路（B9）：I / G / T 与 Tab 菜单里不带上下文的项落在「视口中心 + 散布」、判泳道写 laneId、
+//     新节点只单选不挪相机；双击 / 右键「新建…」/ 拖线松手仍落在指定点、不加散布。
 //   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
 //   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
 //   - 从菜单开的对话框（泳道 / 导入脚本…）一打开就持焦，按键不穿到框后面的画布上（B1）；画布所在的路由上面
@@ -275,6 +277,16 @@ const List<String> _plainLabels = <String>[
   'Shot',
   'Lane',
 ];
+
+/// 视口 1200 × 800 的中心 (600, 400) 在初始相机下的世界坐标（视口 = 世界 + (0, stageTopInset)）。
+const Offset _viewportCenterWorld = Offset(600, 400 - InkToolbarSize.stageTopInset);
+
+/// [topLeft] 那张新卡片的中心落在视口中心的散布范围里（±60，node_position.dart）。
+void _expectScatteredAroundViewportCenter(Offset topLeft) {
+  final Offset center = topLeft + Offset(kNodeCardSize.width / 2, kNodeCardSize.height / 2);
+  expect((center.dx - _viewportCenterWorld.dx).abs(), lessThanOrEqualTo(60), reason: 'x：$center');
+  expect((center.dy - _viewportCenterWorld.dy).abs(), lessThanOrEqualTo(60), reason: 'y：$center');
+}
 
 /// 从菜单开出来的对话框 [dialog] 拿着键盘（B1）：主焦点在它的输入框里；不点输入框直接按 Backspace / L / Esc——
 /// 选中的卡 [selected] 还在、画布没进连线、Esc 关的是对话框、画布选中不变。
@@ -664,7 +676,8 @@ void main() {
       expect(find.text(_reference), findsNothing);
     });
 
-    testWidgets('菜单键盘：↓ ↵ 执行第二项（视频配置），节点落在视口中心、不连线', (tester) async {
+    testWidgets('菜单键盘：↓ ↵ 执行第二项（视频配置），节点落在视口中心（+ 散布，与 G 同一条路）、不连线、被单选',
+        (tester) async {
       final ProviderContainer c = await _pump(tester);
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pumpAndSettle();
@@ -676,12 +689,9 @@ void main() {
 
       final _Nodes nodes = _nodesOf(c);
       expect(nodes.added.single.type, CanvasNodeType.video);
-      expect(nodes.added.single.position.dx, closeTo(600, 0.5));
-      expect(
-        nodes.added.single.position.dy,
-        closeTo(400 - InkToolbarSize.stageTopInset, 0.5),
-      );
+      _expectScatteredAroundViewportCenter(nodes.added.single.position);
       expect(_edgesOf(c).added, isEmpty, reason: '不带上下文：只建节点、不连线');
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'new-1'});
     });
 
     testWidgets('菜单里 Esc：关菜单、什么都不建；焦点回到画布，再按 Tab 又能打开', (tester) async {
@@ -866,6 +876,68 @@ void main() {
 
       expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'img', 'vid'});
       expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
+    });
+  });
+
+  // B9：原来菜单项标着 I / G / T，走的却不是这几个键的路——按键路径不判泳道、不选中新节点，菜单路径落在锚点上。
+  group('B9：工具条 / 单键 / Tab 菜单同一条建节点路径', () {
+    testWidgets('I：视口中心落在泳道里 ⇒ 新节点带 laneId、被单选、相机不动', (tester) async {
+      final ProviderContainer c = await _pump(tester, withLane: true);
+      final Matrix4 cameraBefore = _ivTransform(tester).clone();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyI);
+      await tester.pumpAndSettle();
+
+      final _Nodes nodes = _nodesOf(c);
+      expect(nodes.added.single.type, CanvasNodeType.image);
+      expect(nodes.added.single.laneId, 'lane-1', reason: '判泳道归属，写 laneId');
+      _expectScatteredAroundViewportCenter(nodes.added.single.position);
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'new-1'},
+          reason: '新节点被单选');
+      expect(_ivTransform(tester), cameraBefore, reason: '只单选、不挪相机');
+    });
+
+    testWidgets('Tab 菜单「图像配置」：与 I 同一条路——落在视口中心 + 散布（不落在菜单锚点上）、判泳道、单选',
+        (tester) async {
+      final ProviderContainer c = await _pump(tester, withLane: true);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      _expectPlainCreateMenuAt(tester, const Offset(600, 400));
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(CanvasMenuKeys.createMenu),
+          matching: find.text('Image config'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final _Nodes nodes = _nodesOf(c);
+      expect(nodes.added.single.type, CanvasNodeType.image);
+      _expectScatteredAroundViewportCenter(nodes.added.single.position);
+      expect(nodes.added.single.laneId, 'lane-1');
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'new-1'});
+    });
+
+    testWidgets('双击空白开的菜单：建出来的节点仍落在双击点上（带落点的入口不加散布）', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      const Offset p = Offset(700, 500);
+      await tester.tapAt(p);
+      await tester.tapAt(p);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(CanvasMenuKeys.createMenu),
+          matching: find.text('Image config'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final Offset at = _nodesOf(c).added.single.position;
+      expect(at.dx, closeTo(p.dx, 0.5));
+      expect(at.dy, closeTo(p.dy - InkToolbarSize.stageTopInset, 0.5));
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'new-1'});
     });
   });
 

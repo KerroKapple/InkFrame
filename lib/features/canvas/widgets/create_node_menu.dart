@@ -3,7 +3,8 @@
 // 一个宿主、三种菜单：
 //   - 新建菜单，四个入口：从卡片出端口拖到空白处松手（带「从哪张卡拖出来」的连线上下文）、双击舞台空白、
 //     画布持焦时按 Tab、空白处右键菜单里的「新建…」。菜单项判据在 util/create_menu_model.dart，建节点 /
-//     连线 / 回滚在 util/canvas_tool_actions.dart（addNodeFromMenu）。
+//     连线 / 回滚在 util/canvas_tool_actions.dart（addNodeFromMenu）。新节点落在菜单锚点上；Tab 开的菜单例外——
+//     它的锚点只是视口中心，不带上下文的项与工具条 / I / G / T 同一条路，落在「视口中心 + 散布」。
 //   - 空白处右键菜单。
 //   - 节点右键菜单（PR-8b）：卡片上按右键（canvas_view 的卡片插槽报上来）。右键一张没被选中的卡，画布先把
 //     选中换成它；右键一张已在多选里的卡，保持多选。可用 / 置灰的判据在 util/node_menu_model.dart，动作在
@@ -138,6 +139,7 @@ class CanvasMenuRequest {
     required this.anchor,
     this.sourceNodeId,
     this.nodeId,
+    this.viewportCentered = false,
   });
 
   final CanvasMenuKind kind;
@@ -150,6 +152,10 @@ class CanvasMenuRequest {
 
   /// 节点右键菜单：右键的是哪张卡（[kind] 为 [CanvasMenuKind.node] 时非空）。
   final String? nodeId;
+
+  /// Tab 开在视口中心的新建菜单：锚点不是用户点出来的位置。不带上下文的项与工具条 / I / G / T 同一条路，
+  /// 落在「视口中心 + 散布」（canvas_tool_actions.addNodeAtViewportCenter），不落在锚点上。
+  final bool viewportCentered;
 }
 
 /// 画布上此刻开着的菜单，按画布分族。纯 UI 态，不落库。
@@ -164,12 +170,18 @@ class CanvasMenuController
   @override
   CanvasMenuRequest? build(String canvasId) => null;
 
-  /// 开新建菜单；[sourceNodeId] 非空 = 带连线上下文（从那张卡的出端口拖出来的）。
-  void openCreate(Offset anchor, {String? sourceNodeId}) =>
+  /// 开新建菜单；[sourceNodeId] 非空 = 带连线上下文（从那张卡的出端口拖出来的）。[viewportCentered]：Tab 开的、
+  /// 锚点就是视口中心（见 [CanvasMenuRequest.viewportCentered]）。
+  void openCreate(
+    Offset anchor, {
+    String? sourceNodeId,
+    bool viewportCentered = false,
+  }) =>
       state = CanvasMenuRequest(
         kind: CanvasMenuKind.create,
         anchor: anchor,
         sourceNodeId: sourceNodeId,
+        viewportCentered: viewportCentered,
       );
 
   /// 开空白处右键菜单。
@@ -317,6 +329,11 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
         ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[];
     final CanvasNodeType? type = createdNodeType(action, source: source, nodes: nodes);
     if (type == null) return;
+    // Tab 开在视口中心的菜单、不带上下文的项：与工具条 / I / G / T 同一条路——视口中心 + 散布、判泳道、只单选。
+    if (request.viewportCentered && request.sourceNodeId == null) {
+      addNodeAtViewportCenter(context, ref, canvasId: canvasId, type: type);
+      return;
+    }
     addNodeFromMenu(
       context,
       ref,

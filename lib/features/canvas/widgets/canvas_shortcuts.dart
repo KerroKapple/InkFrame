@@ -677,6 +677,7 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   }
 
   /// 新建菜单开在视口中心（不带连线上下文）。视口还没上报尺寸（首帧前）时不知道中心在哪，不开。
+  /// 菜单里不带上下文的项与 I / G / T 同一条路（落在视口中心 + 散布），见 CanvasMenuRequest.viewportCentered。
   void _openCreateMenu() {
     final String? canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
@@ -684,7 +685,7 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     if (viewport.isEmpty) return;
     ref
         .read(canvasMenuRequestProvider(canvasId).notifier)
-        .openCreate(viewport.center(Offset.zero));
+        .openCreate(viewport.center(Offset.zero), viewportCentered: true);
   }
 
   // ===== PR-8b：动作本体在 util/canvas_tool_actions.dart，与节点右键菜单共用 =====
