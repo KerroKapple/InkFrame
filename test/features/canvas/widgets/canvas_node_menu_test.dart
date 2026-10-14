@@ -590,8 +590,9 @@ void main() {
   // 读到库里的旧提示词，白生成一次。
   testWidgets('生成：防抖还没发射时，终稿里带着最新提示词', (tester) async {
     final ProviderContainer c = await _pump(tester);
-    c.read(inspectorSubmitControllerProvider('img').notifier).savePromptDebounced('boat at dusk');
     await _openMenuOn(tester, 'img');
+    // 提示词条刚敲完字：防抖窗口还没过（开菜单的那几帧已经走过去了，所以放在开菜单之后、点「生成」之前）。
+    c.read(inspectorSubmitControllerProvider('img').notifier).savePromptDebounced('boat at dusk');
 
     await _pick(tester, 'Generate');
 
