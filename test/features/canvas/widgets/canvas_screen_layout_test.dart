@@ -1,24 +1,43 @@
 // 画布页浮层布局（画布重设计稿「画布页 · 改后」）：
 // - 左侧 37px 工具条与右下角加号撤了——它们的测试锚点在树里一个都找不到；
 // - 浮动工具条在舞台顶部居中（top 12）；
-// - 缩放条挪到舞台左下（left 12 / bottom 12），右下角留给通知卡。
+// - 缩放条挪到舞台左下（left 12 / bottom 12），右下角留给通知卡；
+// - PR-6 页签去重撤掉了舞台上方的画布头和底部的渲染队列：舞台上沿紧贴外壳标签栏下沿，
+//   下沿紧贴状态栏上沿（两条都撤干净了才成立，留下任何一条都差出它的高度）。
 //
-// 走外壳级 pump：CanvasScreen 的项目面板 / 检查器 / 渲染队列都要真 provider，只有外壳搭得起来。
+// 走外壳级 pump：CanvasScreen 的左栏 / 检查器都要真 provider，只有外壳搭得起来。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
-import 'package:inkframe/features/canvas/widgets/canvas_header_bar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_toolbar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_zoom_bar.dart';
 import 'package:inkframe/features/canvas/widgets/lane_toolbar.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/widgets/shell_status_bar.dart';
+import 'package:inkframe/features/shell/widgets/shell_tab_bar.dart';
 import 'package:inkframe/l10n/l10n_x.dart';
 import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/shell_app.dart';
 
 void main() {
+  testWidgets('画布头与底栏都撤了：舞台上沿贴外壳标签栏，下沿贴状态栏', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_canvas_layout_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(tab: ShellTab.canvas, canvasId: 'cv-1'),
+    );
+
+    final Rect stage = tester.getRect(find.byType(CanvasView));
+    final Rect tabBar = tester.getRect(find.byType(ShellTabBar));
+    final Rect statusBar = tester.getRect(find.byType(ShellStatusBar));
+    expect(stage.top, closeTo(tabBar.bottom, 0.5), reason: '舞台上方不该再有 29px 的画布头');
+    expect(stage.bottom, closeTo(statusBar.top, 0.5), reason: '舞台下方不该再有 173px 的渲染队列');
+  }, timeout: const Timeout(Duration(seconds: 15)));
+
   testWidgets('没有左侧工具条与右下加号；工具条在舞台顶部居中，缩放条在左下',
       (tester) async {
     final paths = await setupTempPaths(tester, 'ink_canvas_layout_');

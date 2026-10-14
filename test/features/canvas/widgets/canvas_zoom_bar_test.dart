@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
-import 'package:inkframe/features/canvas/widgets/canvas_header_bar.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_zoom_bar.dart';
 import 'package:inkframe/theme/components/ink_icon.dart';
 import 'package:inkframe/theme/icons/ink_glyph.dart';
 import 'package:inkframe/theme/tokens.dart';

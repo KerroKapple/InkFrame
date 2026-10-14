@@ -2,8 +2,10 @@
 //
 // 画布 golden 里中文是方框（测试字体栈没有 CJK），字宽稳定但字形不出——中文换行、
 // 省略号截断、混排基线三类回归 golden 抓不到。本文件是普通 widget test，Windows 也能跑：
-// 把稿上标了 text-overflow: ellipsis 的位置（画布树 / 节点列表 / 节点卡标题 / 队列任务名 /
-// 队列模型 / 面包屑 / 画布头 / 泳道标题 / 检查器输入源名）全部灌一段 60 字中文，断言：
+// 把稿上标了 text-overflow: ellipsis 的位置（画布树 / 节点列表 / 节点卡标题 / 任务弹层任务名 /
+// 任务弹层 meta 里的 provider 名 / 面包屑 / 状态栏 / 泳道标题 / 检查器输入源名）全部灌一段 60 字中文，断言：
+// （PR-6 页签去重撤掉了画布头与底栏渲染队列；队列那两处挪进了状态栏任务胶囊上方的任务弹层，
+// 所以本用例在量之前先把弹层点开。）
 //   1. 整个外壳 1600×1000 下没有任何 RenderFlex 溢出（flutter_test 会把溢出当异常抛）；
 //   2. 每处长文本都是单行 + 省略号；
 //   3. 每处长文本的渲染框都落在外壳边界内。
@@ -32,6 +34,8 @@ import 'package:inkframe/features/generation/providers/jobs_registry.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/shell/widgets/ink_shell.dart';
+import 'package:inkframe/features/shell/widgets/shell_task_capsule.dart';
+import 'package:inkframe/features/shell/widgets/shell_task_popover.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:postgres/postgres.dart';
@@ -124,7 +128,8 @@ void main() {
           packageInfoProvider.overrideWith(
             (_) async => PackageInfo(appName: 'InkFrame', packageName: 'inkframe', version: '0.0.0', buildNumber: '0'),
           ),
-          // 队列一行：任务名 = 源节点名（超长），模型列 = providerId（超长）。
+          // 任务弹层一行：任务名 = 源节点名（超长），meta 里的 provider 名 = providerId（没有注册
+          // 显示名就回退 id，超长）。
           jobsRegistryProvider.overrideWith(
             () => _SeedableJobsRegistry(<JobState>[
               JobState.running(
@@ -159,6 +164,12 @@ void main() {
     for (int i = 0; i < 6; i++) {
       await tester.pump();
     }
+    // 点开状态栏的任务弹层：原来渲染队列那两处（任务名 / 模型）现在在弹层里。
+    await tester.tap(find.byKey(ShellTaskCapsule.capsuleKey));
+    for (int i = 0; i < 3; i++) {
+      await tester.pump();
+    }
+    expect(find.byKey(ShellTaskPopover.panelKey), findsOneWidget);
 
     // 1. 没有任何布局溢出异常。
     expect(tester.takeException(), isNull);
@@ -188,7 +199,7 @@ void main() {
       }
     }
     expect(problems, isEmpty, reason: problems.join('\n'));
-    // 覆盖面：面包屑 / 画布头 / 画布树 / 节点列表 / 泳道 / 节点卡 / 检查器 / 队列——至少这么多处。
+    // 覆盖面：面包屑 / 状态栏 / 画布树 / 节点列表 / 泳道 / 节点卡 / 检查器 / 任务弹层——至少这么多处。
     expect(longTexts.evaluate().length, greaterThanOrEqualTo(8),
         reason: '超长文本出现的位置少于预期，说明某处没有渲染出来（或改用了别的 widget）');
   }, timeout: const Timeout(Duration(seconds: 30)));
