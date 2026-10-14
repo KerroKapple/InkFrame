@@ -912,6 +912,24 @@ void main() {
       expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing, reason: '挪出了点击容差：抬起也不开');
     });
 
+    testWidgets('空白处按住右键拖出去又拖回原处再松手：也不开（按着时挪出过点击容差就是在拖）', (tester) async {
+      await _pump(tester);
+      final TestGesture drag = await tester.startGesture(
+        const Offset(700, 500),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pump();
+      await drag.moveBy(const Offset(60, 0));
+      await tester.pump();
+      await drag.moveBy(const Offset(-60, 0));
+      await tester.pump();
+      await drag.up();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
+    });
+
     testWidgets('空白处右键单击：抬起时开，锚点是按下的那一点（容差内的手抖不挪锚点）', (tester) async {
       await _pump(tester);
       const Offset p = Offset(700, 500);
