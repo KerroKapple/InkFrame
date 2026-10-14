@@ -8,6 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
@@ -26,7 +27,8 @@ Future<void> deleteNodeWithUndo(
     final deletion = await nodesCtrl.removeNode(nodeId);
     if (!context.mounted) return;
     if (deletion == null) {
-      showCanvasSnack(context, context.l10n.nodeDeleted);
+      // 没有撤销令牌（节点不在内存）：只是告知已删，不是失败。
+      showCanvasSnack(context, context.l10n.nodeDeleted, kind: ToastKind.info);
       return;
     }
     showCanvasUndoSnack(
@@ -42,7 +44,7 @@ Future<void> deleteNodeWithUndo(
 }
 
 /// 删除当前选中的一个或多个节点。单选下沉到 [deleteNodeWithUndo]（PL-4a 不回归）；
-/// 多选逐个删除后弹一条批量撤销 snackbar。
+/// 多选逐个删除后弹一张批量撤销卡。
 Future<void> deleteNodesWithUndo(
   BuildContext context,
   WidgetRef ref, {
@@ -68,7 +70,7 @@ Future<void> deleteNodesWithUndo(
       if (deletion != null) deletions.add(deletion);
     }
   } on InkError catch (_) {
-    // 中途某个失败：已删的仍逐个可撤销，落到下方批量 snackbar；另提示失败。
+    // 中途某个失败：已删的仍逐个可撤销，落到下方的批量撤销卡；另提示失败。
     if (context.mounted) {
       showCanvasSnack(context, context.l10n.nodeDeleteFailed);
     }

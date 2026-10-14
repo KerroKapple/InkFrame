@@ -57,6 +57,8 @@ dependencies:
   file_selector: ^1.1.0
   archive: ^4.0.9
   crypto: ^3.0.7
+  # 系统提示音：Windows 经 dart:ffi 调 winmm 的 PlaySoundW，UTF-16 字符串编组用它
+  ffi: ^2.2.0
 
 dev_dependencies:
   flutter_test:
@@ -88,6 +90,8 @@ flutter:
     - assets/fonts/
     - assets/licenses/
     - assets/samples/
+    # InkFrame 默认提示音（tool/sounds/generate_notification_chime.dart 生成）
+    - assets/sounds/
 
   fonts:
     # 界面无衬线字体（Noto Sans SC）不打包，走 typography.dart 的系统回落链。

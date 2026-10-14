@@ -359,6 +359,18 @@ class InkIconSize {
   static const double gridStroke = 1.5;
 }
 
+/// 通知卡（右下角，画布重设计稿 › 通知）。间距 / 圆角 / 阴影仍走 InkSpacing / InkRadius / InkShadow。
+class InkToastSize {
+  InkToastSize._();
+  static const double width = 360; // 卡宽；窗口窄于 [narrowWindow] 时改为 窗口宽 − 2 × InkSpacing.md
+  static const double narrowWindow = 480;
+  static const double thumbnail = 40; // 左侧缩略图 / 类型图标底块
+  static const double closeHit = 24; // 关闭按钮命中区
+  static const double progress = 4; // 进度条高
+  static const double historyWidth = 360; // 铃铛下拉面板宽
+  static const double historyMaxHeight = 460;
+}
+
 /// 动画时长（MediaQuery.disableAnimations 时由上层替换为 Duration.zero）。
 class InkMotion {
   InkMotion._();

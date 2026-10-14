@@ -21,7 +21,8 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
 import 'package:inkframe/core/interfaces/database_restore_service.dart';
 import 'package:inkframe/core/interfaces/folder_opener.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/startup/widgets/startup_error_view.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
@@ -36,6 +37,7 @@ import 'package:inkframe/theme/tokens.dart';
 import 'package:postgres/postgres.dart';
 
 import '../../_harness/fake_secure_storage.dart';
+import '../../_harness/fake_toast_service.dart';
 import '../../_harness/test_app.dart';
 
 /// FolderOpener 探针：记录被请求打开的路径。
@@ -82,15 +84,6 @@ class _FakeRestoreFlow implements DatabaseRestoreFlow {
     lastFile = backupFileName;
     lastRequire = requirePreBackup;
     return RestoreFlowResult(outcome: outcome);
-  }
-}
-
-class _RecordingToast implements ToastService {
-  final List<String> shown = <String>[];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    shown.add(message);
   }
 }
 
@@ -355,7 +348,7 @@ void main() {
         folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
         databaseBackupServiceProvider.overrideWithValue(backupSvc),
         databaseRestoreFlowProvider.overrideWithValue(flow),
-        toastServiceProvider.overrideWithValue(_RecordingToast()),
+        toastServiceProvider.overrideWithValue(RecordingToastService()),
       ],
       surfaceSize: const Size(1200, 900),
     );
@@ -397,7 +390,7 @@ void main() {
           _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily),
         ])),
         databaseRestoreFlowProvider.overrideWithValue(_FakeRestoreFlow()),
-        toastServiceProvider.overrideWithValue(_RecordingToast()),
+        toastServiceProvider.overrideWithValue(RecordingToastService()),
       ],
       surfaceSize: const Size(1200, 900),
     );
@@ -423,7 +416,7 @@ void main() {
             _backupInfo('inkframe-2026-07-15.dump', BackupKind.daily),
           ])),
           databaseRestoreFlowProvider.overrideWithValue(_FakeRestoreFlow()),
-          toastServiceProvider.overrideWithValue(_RecordingToast()),
+          toastServiceProvider.overrideWithValue(RecordingToastService()),
         ],
         surfaceSize: const Size(1200, 900),
       );
@@ -485,7 +478,7 @@ void main() {
   testWidgets('LB-22：只有 prerestore 备份 → 按钮不渲染；flow 失败 → toast + 按钮复位',
       (tester) async {
     final AppPaths paths = _tempPaths();
-    final toast = _RecordingToast();
+    final toast = RecordingToastService();
     final flow = _FakeRestoreFlow()..outcome = RestoreOutcome.failed;
 
     // 场景 1：仅 prerestore → 无按钮。
@@ -531,7 +524,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(flow.calls, 1);
-    expect(toast.shown.single, l10n.restoreFailed);
+    expect(toast.shown.single.title, l10n.restoreFailed);
+    expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '还原是分钟级的后台重操作，失败是它的结局——该响一声');
     // 按钮复位（onPressed 非 null）。
     final InkButton restoreBtn = tester.widget<InkButton>(
       find.widgetWithText(InkButton, l10n.startupErrorRestoreLatest),
@@ -559,7 +555,7 @@ void main() {
         folderOpenerProvider.overrideWithValue(_SpyFolderOpener()),
         databaseBackupServiceProvider.overrideWithValue(backupSvc),
         databaseRestoreFlowProvider.overrideWithValue(flow),
-        toastServiceProvider.overrideWithValue(_RecordingToast()),
+        toastServiceProvider.overrideWithValue(RecordingToastService()),
       ],
       surfaceSize: const Size(1200, 900),
     );

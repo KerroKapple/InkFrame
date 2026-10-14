@@ -5,7 +5,8 @@
 // （test/features/shell/shell_window_chrome_test.dart）。
 //
 // 槽位：leading = 16px 琥珀方块「If」+「InkFrame」，center = 六个菜单标签，
-// trailing = ⌘K 搜索入口 + ⚙（设置浮层入口，复用 studioOpenSettings 文案）。
+// trailing = ⌘K 搜索入口 + 通知铃铛（本次会话的通知历史，features/notifications）+
+// ⚙（设置浮层入口，复用 studioOpenSettings 文案）。
 //
 // 【菜单标签目前是纯文字】稿上有「文件 / 编辑 / 画布 / 节点 / 窗口 / 帮助」六项，
 // 但仓库里没有对应的菜单命令；按「不做稿上没有的合理补充」与
@@ -27,6 +28,7 @@ import '../../../theme/components/ink_window_chrome.dart';
 import '../../../theme/tokens.dart';
 import '../../command_palette/widgets/command_palette_chip.dart';
 import '../../export/providers/delivery_controller.dart';
+import '../../notifications/widgets/notification_bell.dart';
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
 
@@ -151,6 +153,9 @@ class _ChromeTrailing extends StatelessWidget {
       children: <Widget>[
         CommandPaletteChip(compact: compact),
         const SizedBox(width: InkSpacing.md),
+        // 铃铛不跟 ⚙ 一起被交付锁住：看历史不改任何东西。
+        const NotificationBell(),
+        const SizedBox(width: InkSpacing.sm),
         _SettingsIconButton(onPressed: onOpenSettings),
         const SizedBox(width: InkSpacing.s12),
       ],

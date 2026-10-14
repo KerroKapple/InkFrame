@@ -13,10 +13,9 @@ JobState _fail(String id, String cv, InkError e) =>
 void main() {
   const err = NetworkError(code: InkErrorCode.networkOffline, extra: {});
 
-  test('当前画布新增 job → 需重拉，无失败 toast', () {
+  test('当前画布新增 job → 需重拉', () {
     final r = CanvasJobEffects.diff(prev: const [], next: [_run('a', 'c1', 0.1)], canvasId: 'c1');
     expect(r.shouldReloadNodes, isTrue);
-    expect(r.toastErrors, isEmpty);
   });
   test('别的画布变化 → 不重拉', () {
     final r = CanvasJobEffects.diff(prev: const [], next: [_run('a', 'c2', 0.1)], canvasId: 'c1');
@@ -26,16 +25,14 @@ void main() {
     final r = CanvasJobEffects.diff(prev: [_run('a', 'c1', 0.9)], next: [_ok('a', 'c1')], canvasId: 'c1');
     expect(r.shouldReloadNodes, isTrue);
   });
-  test('当前画布 job 转 failed → 重拉 + toast 该错误', () {
+  test('当前画布 job 转 failed → 重拉', () {
     final r = CanvasJobEffects.diff(prev: [_run('a', 'c1', 0.9)], next: [_fail('a', 'c1', err)], canvasId: 'c1');
     expect(r.shouldReloadNodes, isTrue);
-    expect(r.toastErrors, hasLength(1));
   });
-  test('当前画布 job 转 cancelled → 重拉但不 toast', () {
+  test('当前画布 job 转 cancelled → 重拉', () {
     const cancelled = JobState.cancelled(jobId: 'a', providerId: 'p', canvasId: 'c1');
     final r = CanvasJobEffects.diff(prev: [_run('a', 'c1', 0.9)], next: [cancelled], canvasId: 'c1');
     expect(r.shouldReloadNodes, isTrue);
-    expect(r.toastErrors, isEmpty);
   });
   test('当前画布无变化 → 不重拉', () {
     final r = CanvasJobEffects.diff(prev: [_run('a', 'c1', 0.5)], next: [_run('a', 'c1', 0.5)], canvasId: 'c1');
@@ -103,8 +100,7 @@ void main() {
         canvasId: 'c1',
       );
       expect(r.invalidateBatchNodes, ['rn-a']);
-      expect(r.toastErrors, hasLength(1));
-    });
+      });
 
     test('无 resultNodeId 的终态 → 不收集', () {
       final r = CanvasJobEffects.diff(

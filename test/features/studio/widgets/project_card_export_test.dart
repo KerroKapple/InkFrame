@@ -5,7 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/project_archive.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/project_archive_service.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/project_export_busy.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -14,6 +15,7 @@ import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
+import '../../../_harness/fake_toast_service.dart';
 import '../../../helpers/recording_logger.dart';
 
 class _FakeArchiveService implements ProjectArchiveService {
@@ -31,18 +33,9 @@ class _FakeArchiveService implements ProjectArchiveService {
   }
 }
 
-class _RecordingToast implements ToastService {
-  final List<({String message, ToastKind kind})> shown = [];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    shown.add((message: message, kind: kind));
-  }
-}
-
 void main() {
   late _FakeArchiveService service;
-  late _RecordingToast toast;
+  late RecordingToastService toast;
 
   Future<ProviderContainer> pumpHome(
     WidgetTester tester, {
@@ -96,10 +89,10 @@ void main() {
 
   setUp(() {
     service = _FakeArchiveService();
-    toast = _RecordingToast();
+    toast = RecordingToastService();
   });
 
-  testWidgets('菜单导出 → service 收到 (projectId, path) + 成功 toast', (tester) async {
+  testWidgets('菜单导出 → service 收到 (projectId, path) + 成功卡（带 chime）', (tester) async {
     final container = await pumpHome(tester, pickedPath: 'C:/tmp/Alpha.zip');
     await tapExport(tester);
 
@@ -107,8 +100,11 @@ void main() {
     expect(service.calls.single.projectId, 'p1');
     expect(service.calls.single.targetPath, 'C:/tmp/Alpha.zip');
     expect(toast.shown, hasLength(1));
-    expect(toast.shown.single.message, 'Project exported');
-    expect(toast.shown.single.kind, ToastKind.info);
+    expect(toast.shown.single.title, 'Project exported');
+    expect(toast.shown.single.kind, ToastKind.success,
+        reason: '导出完成是「成了」，不是一条普通提示');
+    expect(toast.shown.single.chime, isTrue,
+        reason: '导出在后台跑，完成是「后台事件到达」');
     expect(container.read(projectExportBusyProvider), isFalse);
   });
 
@@ -127,8 +123,10 @@ void main() {
 
     expect(service.calls, hasLength(1));
     expect(toast.shown, hasLength(1));
-    expect(toast.shown.single.message, 'Failed to export project');
+    expect(toast.shown.single.title, 'Failed to export project');
     expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '失败也是这次导出的结局');
     expect(container.read(projectExportBusyProvider), isFalse);
   });
 }

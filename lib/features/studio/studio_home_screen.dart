@@ -13,6 +13,7 @@ import '../../core/di/preferences.dart';
 import '../../core/di/project_archive.dart';
 import '../../core/di/repositories.dart';
 import '../../core/errors/ink_error.dart';
+import '../../core/interfaces/toast_service.dart';
 import '../../core/models/app_preferences.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
@@ -44,7 +45,7 @@ import 'util/last_session.dart';
 import 'widgets/library_sidebar.dart';
 import 'widgets/project_card.dart';
 import 'widgets/studio_provider_banner.dart';
-import '../generation/services/toast_service.dart';
+import '../notifications/providers/toast_service_provider.dart';
 
 const String _logModule = 'studio.home';
 
@@ -672,7 +673,8 @@ class _ProjectGrid extends ConsumerWidget {
       if (path == null) return; // 用户取消保存对话框。
       final service = await serviceFuture;
       await service.exportProject(projectId: p.id, targetPath: path);
-      toast.show(doneMsg);
+      // 导出在后台跑（用户可能早切进画布了）：结局成败都带 chime。
+      toast.show(doneMsg, kind: ToastKind.success, chime: true);
     } on InkError catch (e, st) {
       logger.error(
         _logModule,
@@ -681,7 +683,7 @@ class _ProjectGrid extends ConsumerWidget {
         cause: e,
         stackTrace: st,
       );
-      toast.show(failedMsg, kind: ToastKind.error);
+      toast.show(failedMsg, kind: ToastKind.error, chime: true);
     } finally {
       busy.state = false;
     }

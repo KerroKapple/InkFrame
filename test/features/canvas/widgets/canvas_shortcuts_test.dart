@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
@@ -22,8 +23,10 @@ import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 
 import '../../../_harness/fake_canvas.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
@@ -36,6 +39,8 @@ List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
   canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
   canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
   fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
+  // 删除走通知卡（撤销卡）：记录下来断言，不真起 ToastCenter 的计时器。
+  toastServiceProvider.overrideWithValue(RecordingToastService()),
 ];
 
 /// 画布单独包在 CanvasShortcuts 下，外层再套 CommandPaletteShortcuts——
@@ -143,8 +148,10 @@ void main() {
 
     expect(find.text('Node A'), findsNothing);
     expect(find.byType(NodeCard), findsOneWidget); // 仅剩 B
-    expect(find.text('Node deleted'), findsOneWidget);
-    expect(find.text('Undo'), findsOneWidget); // 撤销入口保留
+    final toast = container.read(toastServiceProvider) as RecordingToastService;
+    expect(toast.titles, <String>['Node deleted']);
+    expect(toast.kinds, <ToastKind>[ToastKind.undo]); // 撤销入口保留
+    expect(toast.shown.single.primary?.label, 'Undo');
   });
 
   testWidgets('Backspace 键同样删除选中节点', (tester) async {
@@ -169,8 +176,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NodeCard), findsNothing);
-    expect(find.text('2 nodes deleted'), findsOneWidget);
-    expect(find.text('Undo'), findsOneWidget);
+    final toast = container.read(toastServiceProvider) as RecordingToastService;
+    expect(toast.titles, <String>['2 nodes deleted']);
+    expect(toast.kinds, <ToastKind>[ToastKind.undo]);
+    expect(toast.shown.single.primary?.label, 'Undo');
   });
 
   testWidgets('Esc 清空节点 + 边选择', (tester) async {

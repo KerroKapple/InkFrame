@@ -10,13 +10,16 @@ import 'package:inkframe/core/di/database_backup.dart';
 import 'package:inkframe/core/di/database_restore.dart';
 import 'package:inkframe/core/interfaces/database_backup_service.dart';
 import 'package:inkframe/core/interfaces/database_restore_service.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/settings/widgets/backup_section.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/storage/pg_controller.dart';
 import 'package:inkframe/theme/app_theme.dart';
+
+import '../../_harness/fake_toast_service.dart';
 
 class _FakeController implements PgController {
   _FakeController({PgRuntime? runtime, this.failStart = false}) : _rt = runtime;
@@ -100,15 +103,6 @@ class _FakeFlow implements DatabaseRestoreFlow {
   }
 }
 
-class _RecordingToast implements ToastService {
-  final List<({String message, ToastKind kind})> shown = [];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    shown.add((message: message, kind: kind));
-  }
-}
-
 BackupFileInfo _info(String name, BackupKind kind) => BackupFileInfo(
       name: name,
       kind: kind,
@@ -120,7 +114,7 @@ void main() {
   late _FakeController controller;
   late _FakeBackup backup;
   late _FakeFlow flow;
-  late _RecordingToast toast;
+  late RecordingToastService toast;
 
   setUp(() {
     controller = _FakeController(
@@ -133,7 +127,7 @@ void main() {
     );
     backup = _FakeBackup();
     flow = _FakeFlow();
-    toast = _RecordingToast();
+    toast = RecordingToastService();
   });
 
   Future<ProviderContainer> pump(WidgetTester tester) async {
@@ -190,8 +184,10 @@ void main() {
 
     expect(backup.lastKind, BackupKind.manual);
     expect(backup.lastConn?.port, 5544);
-    expect(toast.shown.single.message, 'Backup created');
+    expect(toast.shown.single.title, 'Backup created');
     expect(toast.shown.single.kind, ToastKind.success);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '备份在后台跑（可长达十分钟），完成是「后台事件到达」');
     expect(backup.listCalls, greaterThan(before));
     expect(controller.startCalls, 0); // runtime 已有，不重复 start。
   });
@@ -203,7 +199,7 @@ void main() {
     await tester.tap(find.text('Back up now'));
     await tester.pumpAndSettle();
     expect(controller.startCalls, 1);
-    expect(toast.shown.single.message, 'Backup created');
+    expect(toast.shown.single.title, 'Backup created');
 
     // 第二种：start 失败。
     controller = _FakeController(failStart: true);
@@ -212,8 +208,9 @@ void main() {
     await pump(tester);
     await tester.tap(find.text('Back up now'));
     await tester.pumpAndSettle();
-    expect(toast.shown.single.message, 'Backup failed — see the log folder for details');
+    expect(toast.shown.single.title, 'Backup failed — see the log folder for details');
     expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isTrue, reason: '失败也是这次备份的结局');
   });
 
   testWidgets('无二进制 → 专属 reinstall 文案', (tester) async {
@@ -221,7 +218,8 @@ void main() {
     await pump(tester);
     await tester.tap(find.text('Back up now'));
     await tester.pumpAndSettle();
-    expect(toast.shown.single.message, contains('reinstall InkFrame'));
+    expect(toast.shown.single.title, contains('reinstall InkFrame'));
+    expect(toast.shown.single.kind, ToastKind.error);
   });
 
   testWidgets('还原：确认框亮文件名+时间 → flow.run(name, requirePreBackup: true)；成功重置会话',
@@ -242,7 +240,10 @@ void main() {
     expect(flow.calls, 1);
     expect(flow.lastFile, 'inkframe-2026-07-15.dump');
     expect(flow.lastRequire, isTrue);
-    expect(toast.shown.single.message, 'Restore complete');
+    expect(toast.shown.single.title, 'Restore complete');
+    expect(toast.shown.single.kind, ToastKind.success);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '还原是分钟级的后台重操作，完成是「后台事件到达」');
     // resetSession：四项归零（tab/overlay/canvasId/project 全回默认）。
     expect(container.read(shellControllerProvider), const ShellState());
   });
@@ -262,8 +263,9 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Restore').last);
     await tester.pumpAndSettle();
-    expect(toast.shown.single.message, contains('newer version'));
+    expect(toast.shown.single.title, contains('newer version'));
     expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isTrue, reason: '失败也是这次还原的结局');
   });
 
   // BOARD 170：看门狗超时与秒级失败必须是两句话。等了十分钟 / 三十分钟才失败，
@@ -275,10 +277,12 @@ void main() {
     await tester.tap(find.text('Back up now'));
     await tester.pumpAndSettle();
 
-    expect(toast.shown.single.message, contains('took too long'));
-    expect(toast.shown.single.message, contains('will likely time out again'),
+    expect(toast.shown.single.title, contains('took too long'));
+    expect(toast.shown.single.title, contains('will likely time out again'),
         reason: '要告诉用户立刻重试多半没用，否则他会原样再等一轮');
     expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '十分钟之后才到的结局，最该响一声');
   });
 
   testWidgets('还原超时 → 专门文案，并且说清数据未被改动', (tester) async {
@@ -291,8 +295,8 @@ void main() {
     await tester.tap(find.text('Restore').last);
     await tester.pumpAndSettle();
 
-    expect(toast.shown.single.message, contains('took too long'));
-    expect(toast.shown.single.message, contains('your data was not changed'),
+    expect(toast.shown.single.title, contains('took too long'));
+    expect(toast.shown.single.title, contains('your data was not changed'),
         reason: '三十分钟之后最想知道的是「我的数据还在不在」');
     expect(toast.shown.single.kind, ToastKind.error);
   });
@@ -317,7 +321,7 @@ void main() {
     flow.gate!.complete();
     await tester.pumpAndSettle();
     expect(find.text('Restoring…'), findsNothing);
-    expect(toast.shown.single.message, 'Restore complete');
+    expect(toast.shown.single.title, 'Restore complete');
   });
 
   testWidgets('databaseRestoreBusyProvider=true → 备份/还原钮均不可用', (tester) async {

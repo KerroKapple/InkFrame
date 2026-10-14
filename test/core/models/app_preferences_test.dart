@@ -36,6 +36,51 @@ void main() {
     expect(p.localeCode, isNull);
   });
 
+  group('通知偏好', () {
+    test('默认：InkFrame 提示音、没有自定义文件、标准停留', () {
+      const p = AppPreferences();
+      expect(p.notificationSound, 'inkframe');
+      expect(p.notificationSoundFile, isNull);
+      expect(p.toastDwell, 'standard');
+    });
+
+    test('toMap / fromMap 往返', () {
+      const p = AppPreferences(
+        notificationSound: 'custom',
+        notificationSoundFile: 'notification.mp3',
+        toastDwell: 'never',
+      );
+      final m = p.toMap();
+      expect(m['notification_sound'], 'custom');
+      expect(m['notification_sound_file'], 'notification.mp3');
+      expect(m['toast_dwell'], 'never');
+      expect(AppPreferences.fromMap(m), p);
+    });
+
+    test('老文件缺键、非法值、空文件名 → 退默认', () {
+      expect(AppPreferences.fromMap(const <String, Object?>{}), const AppPreferences());
+      final p = AppPreferences.fromMap(<String, Object?>{
+        'notification_sound': 'steam',
+        'notification_sound_file': '',
+        'toast_dwell': 3,
+      });
+      expect(p.notificationSound, 'inkframe');
+      expect(p.notificationSoundFile, isNull);
+      expect(p.toastDwell, 'standard');
+    });
+
+    test('copyWith 改值、clearNotificationSoundFile 清文件名', () {
+      const p = AppPreferences(notificationSoundFile: 'a.wav');
+      final q = p.copyWith(notificationSound: 'off', toastDwell: 'long');
+      expect(q.notificationSound, 'off');
+      expect(q.toastDwell, 'long');
+      expect(q.notificationSoundFile, 'a.wav');
+      expect(q.copyWith(clearNotificationSoundFile: true).notificationSoundFile, isNull);
+      expect(q == p, isFalse);
+      expect(q.hashCode == p.copyWith(notificationSound: 'off', toastDwell: 'long').hashCode, isTrue);
+    });
+  });
+
   test('copyWith clearLocale 清空语言', () {
     const p = AppPreferences(localeCode: 'en');
     expect(p.copyWith(clearLocale: true).localeCode, isNull);

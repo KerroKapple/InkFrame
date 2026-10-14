@@ -13,6 +13,7 @@ import 'package:inkframe/features/settings/widgets/custom_providers_section.dart
 import 'package:inkframe/features/settings/widgets/diagnostics_section.dart';
 import 'package:inkframe/features/settings/widgets/language_section.dart';
 import 'package:inkframe/features/settings/widgets/network_section.dart';
+import 'package:inkframe/features/settings/widgets/notifications_section.dart';
 import 'package:inkframe/features/settings/widgets/performance_section.dart';
 import 'package:inkframe/features/settings/widgets/shortcuts_section.dart';
 import 'package:inkframe/features/settings/widgets/startup_section.dart';
@@ -100,14 +101,15 @@ void main() {
     SettingsPage.general: <(Type, String)>[
       (ThemeSection, 'ThemeSection 缺席 → 无法切换主题/文字缩放'),
       (LanguageSection, 'LanguageSection 缺席 → 无法切换界面语言'),
+      (NotificationsSection, 'NotificationsSection 缺席 → 换不了提示音、改不了通知停留时长'),
     ],
   };
 
-  test('存在性断言表覆盖每一页、合计十二个 section', () {
+  test('存在性断言表覆盖每一页、合计十三个 section', () {
     expect(sectionsByPage.keys.toSet(), SettingsPage.values.toSet(),
         reason: '新增页却没进表 = 该页 section 无存在性断言');
-    // 九个既有 + P7 的快捷键 / 性能 / 网络三个。
-    expect(sectionsByPage.values.expand((l) => l).length, 12);
+    // 九个既有 + P7 的快捷键 / 性能 / 网络三个 + 通知。
+    expect(sectionsByPage.values.expand((l) => l).length, 13);
   });
 
   for (final MapEntry<SettingsPage, List<(Type, String)>> entry

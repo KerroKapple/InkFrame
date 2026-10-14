@@ -1,5 +1,9 @@
 // CanvasJobListener 真实 widget 测试：pump 生产代码本体（非手抄副本）。
-// 验证 jobsRegistry 变化 → toast / 节点重拉两条副作用都走真实接线。
+// 验证 jobsRegistry 变化 → 节点重拉走真实接线，且【这里不弹通知】——
+// 生成完成 / 失败的通知卡归应用级的 JobNotificationListener
+// （test/features/notifications/widgets/job_notification_listener_test.dart）；
+// 这里再弹一次，失败就会出两张卡。ToastService 仍换成记录用的假实现，就是为了
+// 钉住「一张都没弹」。
 // 纯决策矩阵由 canvas_job_effects_test.dart 覆盖。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,20 +16,13 @@ import 'package:inkframe/features/canvas/widgets/canvas_job_listener.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
+import '../../../_harness/fake_toast_service.dart';
+
 // ── fakes ──────────────────────────────────────────────────────────────────
-class _FakeToastService implements ToastService {
-  final List<({String message, ToastKind kind})> calls = [];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    calls.add((message: message, kind: kind));
-  }
-}
-
 /// 只计数 listByCanvas 的 NodeRepository——invalidate → rebuild → 计数 +1。
 class _CountingNodeRepository implements NodeRepository {
   int listByCanvasCalls = 0;
@@ -88,17 +85,17 @@ class _CountingNodeRepository implements NodeRepository {
 const _err = NetworkError(code: InkErrorCode.networkOffline);
 
 void main() {
-  late _FakeToastService fakeToast;
+  late RecordingToastService toasts;
   late _CountingNodeRepository fakeRepo;
   late ProviderContainer container;
 
   setUp(() {
-    fakeToast = _FakeToastService();
+    toasts = RecordingToastService();
     fakeRepo = _CountingNodeRepository();
     container = ProviderContainer(
       overrides: [
         currentCanvasIdProvider.overrideWith((ref) => 'c1'),
-        toastServiceProvider.overrideWithValue(fakeToast),
+        toastServiceProvider.overrideWithValue(toasts),
         nodeRepositoryProvider.overrideWith((ref) async => fakeRepo),
       ],
     );
@@ -126,7 +123,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('JobFailed 推入 → toast error 一次 + 节点重拉', (tester) async {
+  testWidgets('JobFailed 推入 → 节点重拉，但这里不弹通知（归应用级监听）', (tester) async {
     await pump(tester);
     final baseline = fakeRepo.listByCanvasCalls;
     expect(baseline, greaterThan(0), reason: '前置：controller 已完成首拉');
@@ -141,15 +138,16 @@ void main() {
         );
     await tester.pumpAndSettle();
 
-    expect(fakeToast.calls, hasLength(1));
-    expect(fakeToast.calls.first.kind, ToastKind.error);
-    // toast 文案是 l10n 后的用户文案，绝不应是 messageKey 本身。
-    expect(fakeToast.calls.first.message, isNot('errorNetworkOffline'));
+    expect(
+      toasts.shown,
+      isEmpty,
+      reason: '失败卡由 JobNotificationListener 弹；这里再弹就是两张',
+    );
     expect(fakeRepo.listByCanvasCalls, greaterThan(baseline),
         reason: 'invalidate 应触发节点重拉');
   });
 
-  testWidgets('JobCancelled 推入 → 不 toast 但节点重拉', (tester) async {
+  testWidgets('JobCancelled 推入 → 不通知但节点重拉', (tester) async {
     await pump(tester);
     final baseline = fakeRepo.listByCanvasCalls;
 
@@ -162,11 +160,11 @@ void main() {
         );
     await tester.pumpAndSettle();
 
-    expect(fakeToast.calls, isEmpty);
+    expect(toasts.shown, isEmpty);
     expect(fakeRepo.listByCanvasCalls, greaterThan(baseline));
   });
 
-  testWidgets('别的画布 JobFailed → 无 toast 无重拉', (tester) async {
+  testWidgets('别的画布 JobFailed → 无通知无重拉', (tester) async {
     await pump(tester);
     final baseline = fakeRepo.listByCanvasCalls;
 
@@ -180,7 +178,7 @@ void main() {
         );
     await tester.pumpAndSettle();
 
-    expect(fakeToast.calls, isEmpty);
+    expect(toasts.shown, isEmpty);
     expect(fakeRepo.listByCanvasCalls, baseline);
   });
 }

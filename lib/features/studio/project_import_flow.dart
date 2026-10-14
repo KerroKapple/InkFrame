@@ -14,10 +14,11 @@ import '../../core/di/database_restore.dart';
 import '../../core/di/logger.dart';
 import '../../core/di/project_archive.dart';
 import '../../core/interfaces/project_import_service.dart';
+import '../../core/interfaces/toast_service.dart';
 import '../../l10n/l10n_x.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/tokens.dart';
-import '../generation/services/toast_service.dart';
+import '../notifications/providers/toast_service_provider.dart';
 import 'controllers/studio_state.dart';
 import 'providers/project_export_busy.dart';
 import 'providers/workspace_projects_provider.dart';
@@ -48,6 +49,7 @@ Future<void> runProjectImportFlow(BuildContext context, WidgetRef ref) async {
       path = await picker();
     } catch (e, st) {
       // 放行点：平台 picker 异常不得静默（#192 评审 P3-5）。
+      // 导入还没开始——这是对用户刚点那一下的即时回应，不带 chime。
       logger.error(_logModule, 'import picker failed', cause: e, stackTrace: st);
       toast.show(l10n.importFailed, kind: ToastKind.error);
       return;
@@ -97,10 +99,11 @@ Future<void> runProjectImportFlow(BuildContext context, WidgetRef ref) async {
       }
     }
 
+    // 导入是分钟级的后台重操作：下面是它的结局，成败都带 chime。
     if (result.outcome == ImportOutcome.imported) {
       container.invalidate(workspaceProjectsProvider);
       selected.state = result.newProjectId;
-      toast.show(doneMsg, kind: ToastKind.success);
+      toast.show(doneMsg, kind: ToastKind.success, chime: true);
     } else {
       final String msg = switch (result.outcome) {
         ImportOutcome.failedFormat => l10n.importFailedFormat,
@@ -108,7 +111,7 @@ Future<void> runProjectImportFlow(BuildContext context, WidgetRef ref) async {
         ImportOutcome.failedCorrupt => l10n.importFailedCorrupt,
         ImportOutcome.failed || ImportOutcome.imported => l10n.importFailed,
       };
-      toast.show(msg, kind: ToastKind.error);
+      toast.show(msg, kind: ToastKind.error, chime: true);
     }
   } finally {
     importBusy.state = false;

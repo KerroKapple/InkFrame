@@ -5,7 +5,8 @@
 
 ```
 InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
-└ _StartupGate
+├ builder → ToastLayer             # Stack[ Navigator, 右下角通知卡栈 ]：卡片画在所有路由（浮层 / 对话框）之上
+└ _StartupGate                     # home，在 ToastLayer 包着的 Navigator 里
   └ _UnlockedShell
     └ CommandPaletteShortcuts      # 必须在 _shellFocus 之上
       └ InkShell
@@ -22,7 +23,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
                      │        └ 5 × KeyedSubtree(key: 'shellTabBody-<name>')
                      │              child = 已物化 ? <TabBody> : SizedBox.shrink()
                      └ if (overlay != null) ShellOverlayLayer(key: 'shellOverlay-<name>')
-                          └ Stack[ ModalBarrier(scrim, 不可点关) , SettingsScreen | BuiltInShowcaseScreen ]
+                          └ Stack[ ModalBarrier(scrim, 不可点关) , SettingsScreen ]
            )
 ```
 
@@ -33,7 +34,8 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | 槽位 Key 恒在树里（`shellTabBody-*`，物化与否都在） | 保活断言锚在稳定 Key 上，不会因"画廊未选项目所以 `GalleryScreen` 不 mount"而假红 | `test/features/shell/shell_keep_alive_host_test.dart` |
 | 内容懒物化、物化后永不换回占位 | V4 成立的唯一物理前提：没访问过的标签体 `findsNothing` 才是真断言 | `shell_keep_alive_host_test.dart` + `test/app/app_routing_test.dart` |
 | 全树唯一 `InkWindowChrome` | 每个已物化标签各带一份 = 两套最小化/关闭按钮 | `shell_window_chrome_test.dart`（V3a） |
-| 外壳持根 `Scaffold`，画布/设置自带的 Scaffold 保留不动 | `ScaffoldMessenger` 对每个 **root** Scaffold 各推一份 SnackBar；不加祖先 ⇒ 一条 toast 渲染两份，且序列/导出标签（无 Scaffold）激活时 toast 画在离台子树里 | `shell_window_chrome_test.dart`（V3b） |
+| 通知卡（`ToastService`）画在 `MaterialApp.builder` 的 `ToastLayer` 里（Navigator 之上），**不走** `ScaffoldMessenger` | 卡片要在任何标签、设置浮层、对话框之上都看得见、点得到；挂在某个 Scaffold 上就会跟着离台子树一起消失、被浮层遮罩盖住 | `shell_window_chrome_test.dart`（V3b）+ `test/features/notifications/widgets/toast_layer_test.dart`（对话框开着时卡片仍可命中） |
+| 外壳持根 `Scaffold`，画布自带的 Scaffold 保留不动 | 仍有少数调用点直接 `ScaffoldMessenger.of(context).showSnackBar`（画廊动作等）：messenger 对每个 **root** Scaffold 各推一份 SnackBar；不加祖先 ⇒ 序列/导出标签（无 Scaffold）激活时 SnackBar 画在离台的画布子树里 | `shell_window_chrome_test.dart`（V3c） |
 | 标签条绝不进 chrome 的槽位 | `InkWindowChrome` 整条包在 `DragToMoveArea` 里，其 `onDoubleTap` 让单击等满 `kDoubleTapTimeout`(300ms) | `test/features/shell/shell_tab_bar_test.dart`（一帧落地） |
 | `ShellContentStack` 的焦点重夺【无条件】，不许加 `hasFocus` 守卫 | 切换那一帧画布 FocusNode 还没 unfocus，守卫会跳过请求 → 焦点掉到 ModalScope 的 FocusScope → 全 app ⌘K 失效 | T8 的 V2 用例 |
 | `ShellBreadcrumb` 条件 watch：`canvasId == null` 时不碰 `canvasRepository` | 否则每个 boot 级 widget test 都得额外密封画布仓储 | `shell_chrome_test.dart` + `test/widget_test.dart` |
@@ -55,8 +57,10 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 `RenderIndexedStack` 未覆写 `performLayout`，隐藏子照常 build / layout / 跑
 `LayoutBuilder` 与 post-frame，只是不 paint、不 hitTest。于是：
 
-- `CanvasJobListener` 在任何标签下都会 invalidate 节点控制器并对新失败 job 弹 toast
-  —— 这是**改善**（生成失败不再因切走标签而丢消息），不是回归。
+- `CanvasJobListener` 在任何标签下都会 invalidate 节点控制器——这是**改善**（切回画布时
+  产物已经在了），不是回归。生成完成 / 失败的通知不在这里：应用级的
+  `JobNotificationListener`（`features/notifications`，挂在 `ToastLayer` 里）只要 job 到终态就弹，
+  与哪个标签在台上、当前开的是哪张画布都无关。
 - 画廊的 `GridView` 在离台时仍 build 首屏 tile 并解码图片。懒物化把"首启即 N+2
   次查询 + 一屏解码"挡在门外：不点画廊标签就零画廊查询。
 
@@ -89,7 +93,7 @@ InkFrameApp (MaterialApp)          # 全树唯一 MaterialApp
 | `widgets/ink_shell.dart` | 外壳根：唯一 Scaffold + chrome + 标签条 + 内容区 |
 | `widgets/shell_content_stack.dart` | 两级 IndexedStack + `_shellFocus` 兜底焦点 |
 | `widgets/shell_keep_alive_host.dart` | 懒物化 + 物化后常驻的五槽宿主 |
-| `widgets/shell_chrome.dart` | 全树唯一 `InkWindowChrome` 的宿主（logo / 面包屑 / ⌘K / ⚙） |
+| `widgets/shell_chrome.dart` | 全树唯一 `InkWindowChrome` 的宿主（logo / 菜单标签 / ⌘K / 通知铃铛 / ⚙；面包屑在标签栏） |
 | `widgets/shell_breadcrumb.dart` | `studio › project › canvas`（条件 watch） |
 | `widgets/shell_empty_state.dart` | 复用空态（图标 + 标题 + 可选副标题 + 可选 CTA） |
 | `widgets/shell_overlay_layer.dart` | 浮层槽分发（只有 settings——内置示例页已随 P7 删除），**不保活** |

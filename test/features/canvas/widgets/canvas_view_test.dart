@@ -1,5 +1,9 @@
 // CanvasView widget 测试（ME-37 / FIX-009）：
-// 连线成功 / 自连 / 重复(23505) / 其他失败 的 snackbar 分流 + 单选 / 多选交互。
+// 连线成功 / 自连 / 重复(23505) / 其他失败 的通知卡分流（文案 + 类型）+ 单选 / 多选交互。
+//
+// 画布提示走 toastServiceProvider（右下角通知卡，由 ToastLayer 画在 app 顶层）——
+// 这里只 pump 画布、没有那一层，所以一律覆盖成 RecordingToastService，断言记下来的卡，
+// 撤销按钮直接调卡上 primary 的回调。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -9,6 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/models/style_lane.dart';
@@ -23,8 +28,10 @@ import 'package:inkframe/features/canvas/providers/selected_edge_controller.dart
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
 
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 class _FakeNodesController extends CanvasNodesController {
@@ -259,10 +266,12 @@ CanvasNode _textNode(String id, String label, double x) => CanvasNode(
       size: const Size(180, 120),
     );
 
+/// [toast] 不传也照样覆盖一份：本文件任何一条用例都不该摸到真的通知中心。
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   required List<CanvasNode> nodes,
   InkError? edgeError,
+  RecordingToastService? toast,
 }) async {
   await pumpInkApp(
     tester,
@@ -274,6 +283,7 @@ Future<ProviderContainer> _pump(
       canvasEdgesControllerProvider
           .overrideWith(() => _FakeEdgesController(error: edgeError)),
       fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
     ],
   );
   await tester.pumpAndSettle();
@@ -314,8 +324,11 @@ void main() {
     expect(find.text('2 selected'), findsOneWidget);
   });
 
-  testWidgets('link 模式点击目标节点 → 创建连线 + Link created', (tester) async {
-    final container = await _pump(tester, nodes: twoNodes);
+  // 连线结果四种：连上了 = success；自连 / 已存在 = 没坏东西、换个目标就行 = warning；
+  // 只有写库失败才是 error（错误卡不自动消失，拿它报「已存在」会一直钉在屏上）。
+  testWidgets('link 模式点击目标节点 → 创建连线 + Link created（success）', (tester) async {
+    final toast = RecordingToastService();
+    final container = await _pump(tester, nodes: twoNodes, toast: toast);
     container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
     // link 模式 banner 出现。
@@ -327,28 +340,33 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Link created'), findsOneWidget);
+    expect(toast.titles, <String>['Link created']);
+    expect(toast.kinds, <ToastKind>[ToastKind.success]);
     expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
-  testWidgets('link 模式点击源节点自身 → Cannot link a node to itself',
+  testWidgets('link 模式点击源节点自身 → Cannot link a node to itself（warning）',
       (tester) async {
-    final container = await _pump(tester, nodes: twoNodes);
+    final toast = RecordingToastService();
+    final container = await _pump(tester, nodes: twoNodes, toast: toast);
     container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
 
     await tester.tap(find.byKey(const ValueKey('node-card-a')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Cannot link a node to itself'), findsOneWidget);
+    expect(toast.titles, <String>['Cannot link a node to itself']);
+    expect(toast.kinds, <ToastKind>[ToastKind.warning]);
     expect(container.read(linkModeControllerProvider('c1')), isNull);
   });
 
-  testWidgets('db_code 23505 → Link already exists', (tester) async {
+  testWidgets('db_code 23505 → Link already exists（warning）', (tester) async {
+    final toast = RecordingToastService();
     final container = await _pump(
       tester,
       nodes: twoNodes,
       edgeError: const LocalIOError(extra: {'db_code': '23505'}),
+      toast: toast,
     );
     container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
@@ -356,15 +374,18 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Link already exists'), findsOneWidget);
+    expect(toast.titles, <String>['Link already exists']);
+    expect(toast.kinds, <ToastKind>[ToastKind.warning]);
   });
 
-  testWidgets('其他 InkError → Failed to create link（不再误报已存在，ME-08）',
+  testWidgets('其他 InkError → Failed to create link（error；不再误报已存在，ME-08）',
       (tester) async {
+    final toast = RecordingToastService();
     final container = await _pump(
       tester,
       nodes: twoNodes,
       edgeError: const LocalIOError(extra: {'db_code': '23503'}),
+      toast: toast,
     );
     container.read(linkModeControllerProvider('c1').notifier).start('a');
     await tester.pump();
@@ -372,11 +393,13 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('node-card-b')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Failed to create link'), findsOneWidget);
-    expect(find.text('Link already exists'), findsNothing);
+    expect(toast.titles, <String>['Failed to create link'],
+        reason: '不能误报成「已存在」');
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
   });
 
-  testWidgets('拖拽落点 moveNode 失败 → SnackBar 提示（不再静默吞错）', (tester) async {
+  testWidgets('拖拽落点 moveNode 失败 → 错误卡提示（不再静默吞错）', (tester) async {
+    final toast = RecordingToastService();
     await pumpInkApp(
       tester,
       const Scaffold(body: CanvasShortcuts(isActive: true, child: CanvasView())),
@@ -387,6 +410,7 @@ void main() {
         canvasEdgesControllerProvider
             .overrideWith(() => _FakeEdgesController()),
         fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+        toastServiceProvider.overrideWithValue(toast),
       ],
     );
     await tester.pumpAndSettle();
@@ -399,7 +423,8 @@ void main() {
     await gesture.up();
     await tester.pumpAndSettle();
 
-    expect(find.text('Failed to move node'), findsOneWidget);
+    expect(toast.titles, <String>['Failed to move node']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
   });
 
   testWidgets('泳道方向加载失败 → 非阻塞错误横幅（GAP-3 余量:此前静默回落 horizontal）',
@@ -573,6 +598,10 @@ void main() {
   });
 
   group('PL-4a 删除防误伤（Deleted · Undo）', () {
+    late RecordingToastService toast;
+
+    setUp(() => toast = RecordingToastService());
+
     Future<void> pumpWith(
       WidgetTester tester, {
       required CanvasNodesController nodes,
@@ -592,12 +621,23 @@ void main() {
             (_) async => LaneDirection.horizontal,
           ),
           fileResolverServiceProvider.overrideWithValue(_StubResolver()),
+          toastServiceProvider.overrideWithValue(toast),
         ],
       );
       await tester.pumpAndSettle();
     }
 
-    testWidgets('删除节点 → 弹出 Deleted · Undo snackbar', (tester) async {
+    /// 按最后一张卡上的「撤销」。通知卡画在 app 顶层的 ToastLayer 里、不在本测试的
+    /// 树上，所以直接调它主按钮的回调——那正是卡片按钮被点时会调的同一个函数。
+    Future<void> pressUndo(WidgetTester tester) async {
+      final RecordedToast card = toast.shown.last;
+      expect(card.kind, ToastKind.undo);
+      expect(card.primary?.label, 'Undo');
+      card.primary!.onPressed();
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('删除节点 → 弹出 Deleted · Undo 撤销卡', (tester) async {
       final fakeNodes = _FakeNodesController(twoNodes);
       await pumpWith(tester,
           nodes: fakeNodes, edges: _FakeEdgesController());
@@ -607,8 +647,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
 
-      expect(find.text('Node deleted'), findsOneWidget);
-      expect(find.text('Undo'), findsOneWidget);
+      expect(toast.titles, <String>['Node deleted']);
+      expect(toast.kinds, <ToastKind>[ToastKind.undo]);
+      expect(toast.shown.single.primary?.label, 'Undo');
+      expect(toast.shown.single.chime, isFalse,
+          reason: '删除是用户自己刚做的操作，不响');
     });
 
     testWidgets('点 Undo → 调用 controller.restore，节点回到 state', (tester) async {
@@ -622,8 +665,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(NodeCard), findsOneWidget); // 仅剩 B
 
-      await tester.tap(find.text('Undo'));
-      await tester.pumpAndSettle();
+      await pressUndo(tester);
 
       expect(fakeNodes.restoreCalls, hasLength(1));
       expect(fakeNodes.restoreCalls.first.node.id, 'a');
@@ -639,7 +681,7 @@ void main() {
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
-      expect(find.text('Undo'), findsOneWidget);
+      expect(toast.shown.single.primary?.label, 'Undo');
 
       // 不点 Undo：restore 永不触发，软删生效（节点保持删除）。
       expect(fakeNodes.restoreCalls, isEmpty);
@@ -668,11 +710,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
 
-      expect(find.text('Link deleted'), findsOneWidget);
-      expect(find.text('Undo'), findsOneWidget);
+      expect(toast.titles, <String>['Link deleted']);
+      expect(toast.kinds, <ToastKind>[ToastKind.undo]);
 
-      await tester.tap(find.text('Undo'));
-      await tester.pumpAndSettle();
+      await pressUndo(tester);
 
       expect(fakeEdges.restoreCalls, hasLength(1));
       expect(fakeEdges.restoreCalls.first.id, 'e1');
@@ -700,9 +741,10 @@ void main() {
       await tester.tap(find.byIcon(Icons.close));
       await tester.pumpAndSettle();
 
-      expect(find.text('Failed to delete link'), findsOneWidget);
-      expect(find.text('Link deleted'), findsNothing);
-      expect(find.text('Undo'), findsNothing, reason: '没删成，没有可撤销的东西');
+      expect(toast.titles, <String>['Failed to delete link'],
+          reason: '只报失败，不弹「已删除」');
+      expect(toast.kinds, <ToastKind>[ToastKind.error]);
+      expect(toast.shown.single.primary, isNull, reason: '没删成，没有可撤销的东西');
     });
 
     testWidgets('删除有边节点 → Undo 同时复原节点与其级联边', (tester) async {
@@ -730,8 +772,7 @@ void main() {
       expect(container.read(canvasEdgesControllerProvider('c1')).valueOrNull,
           isEmpty);
 
-      await tester.tap(find.text('Undo'));
-      await tester.pumpAndSettle();
+      await pressUndo(tester);
 
       // Undo 后：节点 A 与级联边 e1 都复原。
       expect(find.byType(NodeCard), findsNWidgets(2));
@@ -751,10 +792,10 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.delete);
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Undo'));
-      await tester.pumpAndSettle();
+      await pressUndo(tester);
 
-      expect(find.text("Couldn't undo"), findsOneWidget);
+      expect(toast.titles, <String>['Node deleted', "Couldn't undo"]);
+      expect(toast.kinds.last, ToastKind.error);
     });
   });
 }

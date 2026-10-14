@@ -3,7 +3,10 @@
 // - 主题走 ThemeModeController（dark/light/highContrast + textScale）
 // - 平台亮度变化通过 StatefulWidget 生命周期订阅并转发给 controller
 // - i18n delegates 走生成的 AppLocalizations；locale 来自 LocaleController
-// - ScaffoldMessenger 走全局 toastMessengerKeyProvider，便于 ToastService 跨 context 提示
+// - 通知卡层（ToastLayer）挂在 MaterialApp.builder：Stack[ Navigator, 右下角卡片栈 ]，
+//   卡片画在所有路由（设置浮层、对话框）之上；ToastService 不再经 ScaffoldMessenger。
+//   少数直接 ScaffoldMessenger.of(context).showSnackBar 的调用点照旧走 MaterialApp
+//   自带的 messenger
 // - 解锁后不再有"路由"：body 恒为 InkShell（持久标签外壳），哪个 surface 在台上
 //   由 ShellContentStack 的两级 IndexedStack 依 ShellState 决定，本文件零判据
 // - 启动失败 gate（LB-09）：DB-ready future（pgMigratedPoolProvider）为 AsyncError
@@ -25,7 +28,7 @@ import 'core/di/preferences.dart';
 import 'core/di/theme.dart';
 import 'core/di/video_backfill.dart';
 import 'features/command_palette/widgets/command_palette_shortcuts.dart';
-import 'features/generation/services/toast_service.dart';
+import 'features/notifications/widgets/toast_layer.dart';
 import 'features/shell/widgets/ink_shell.dart';
 import 'features/startup/widgets/startup_error_view.dart';
 import 'features/studio/providers/restore_last_session.dart';
@@ -77,7 +80,6 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
   Widget build(BuildContext context) {
     final themeState = ref.watch(themeModeControllerProvider);
     final locale = ref.watch(localeControllerProvider);
-    final messengerKey = ref.watch(toastMessengerKeyProvider);
     return MaterialApp(
       onGenerateTitle: (context) => context.l10n.appTitle,
       theme: buildAppTheme(
@@ -85,9 +87,10 @@ class _InkFrameAppState extends ConsumerState<InkFrameApp>
         textScale: themeState.textScale,
       ),
       locale: locale,
-      scaffoldMessengerKey: messengerKey,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      // 通知卡层包住 Navigator：卡片在任何路由、对话框之上。
+      builder: (BuildContext context, Widget? child) => ToastLayer(child: child!),
       home: const _StartupGate(),
       debugShowCheckedModeBanner: false,
     );

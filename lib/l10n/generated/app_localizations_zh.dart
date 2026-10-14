@@ -2648,4 +2648,120 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get studioTrashColumnName => '项目';
+
+  @override
+  String get toastDismiss => '关闭通知';
+
+  @override
+  String get toastRegion => '通知';
+
+  @override
+  String toastMore(int count) {
+    return '还有 $count 条 · 查看全部';
+  }
+
+  @override
+  String get notificationsOpen => '通知';
+
+  @override
+  String get notificationsTitle => '通知';
+
+  @override
+  String get notificationsEmpty => '还没有通知';
+
+  @override
+  String get notificationsClear => '清空';
+
+  @override
+  String get notificationsSession => '本次会话';
+
+  @override
+  String get notificationsJustNow => '刚刚';
+
+  @override
+  String notificationsMinutesAgo(int minutes) {
+    return '$minutes 分钟前';
+  }
+
+  @override
+  String jobNotifySucceeded(String name) {
+    return '$name 已生成';
+  }
+
+  @override
+  String get jobNotifySucceededGeneric => '生成完成';
+
+  @override
+  String jobNotifyFailed(String name) {
+    return '$name 生成失败';
+  }
+
+  @override
+  String get jobNotifyFailedGeneric => '生成失败';
+
+  @override
+  String get toastActionView => '查看';
+
+  @override
+  String get settingsNotificationsSection => '通知';
+
+  @override
+  String get settingsNotificationSound => '提示音';
+
+  @override
+  String get settingsNotificationSoundInkframe => 'InkFrame 默认';
+
+  @override
+  String get settingsNotificationSoundSystem => '系统提示音';
+
+  @override
+  String get settingsNotificationSoundCustom => '自定义…';
+
+  @override
+  String get settingsNotificationSoundOff => '关闭';
+
+  @override
+  String get settingsNotificationSoundPreview => '试听';
+
+  @override
+  String get settingsNotificationSoundInkframeHint =>
+      '短促的双音提示，只在后台的事情做完时响（生成、导出），你自己刚做的操作不响。';
+
+  @override
+  String get settingsNotificationSoundSystemHint =>
+      '播放系统的通知声音；换声音、调音量都在系统声音设置里。';
+
+  @override
+  String get settingsNotificationSoundCustomHint =>
+      '支持 WAV / MP3 / OGG / M4A，不超过 2 MB，只播前 4 秒。文件会复制进数据目录，原文件挪走也没关系。';
+
+  @override
+  String get settingsNotificationSoundChooseFile => '选择文件…';
+
+  @override
+  String get settingsNotificationSoundReplaceFile => '更换…';
+
+  @override
+  String get settingsNotificationSoundNoFile => '还没选文件';
+
+  @override
+  String get settingsNotificationSoundTooLarge => '文件超过 2 MB，换一个小一点的。';
+
+  @override
+  String get settingsNotificationSoundImportFailed => '这个文件用不了。';
+
+  @override
+  String get settingsNotificationSoundFileType => '音频';
+
+  @override
+  String get settingsNotificationDwell => '停留时长';
+
+  @override
+  String get settingsNotificationDwellStandard => '标准';
+
+  @override
+  String get settingsNotificationDwellLong => '加长';
+
+  @override
+  String get settingsNotificationDwellNever => '不自动关闭';
 }

@@ -1,7 +1,7 @@
 // DiagnosticsSection — 日志目录入口 + 诊断包导出（LB-18）。
 //
 // 打开日志目录走 FolderOpener（best-effort）；导出经 saveLocationPickerProvider
-// seam（LB-11 同款）→ DiagnosticsBundleService → 成败 toast。
+// seam（LB-11 同款）→ DiagnosticsBundleService → 成败通知卡（失败卡带「打开日志目录」）。
 // 跨 await 依赖首个 await 前 read 持有（#188 P1-1 惯例）。
 //
 // 导出按钮抽成 [DiagnosticsExportButton]：设置浮层的底部条（Screens 稿）也放一枚，
@@ -16,12 +16,13 @@ import '../../../core/di/logger.dart';
 import '../../../core/di/paths.dart';
 import '../../../core/di/project_archive.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../services/diagnostics_bundle_service.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/tokens.dart';
-import '../../generation/services/toast_service.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 
 class DiagnosticsSection extends ConsumerWidget {
   const DiagnosticsSection({super.key});
@@ -96,21 +97,36 @@ class _DiagnosticsExportButtonState extends ConsumerState<DiagnosticsExportButto
     final logger = ref.read(loggerProvider);
     final picker = ref.read(saveLocationPickerProvider);
     final serviceFuture = ref.read(diagnosticsBundleServiceProvider.future);
+    // 失败卡上「打开日志目录」要用：卡片可能在设置浮层关掉之后才被点，回调里不能再碰 ref。
+    final opener = ref.read(folderOpenerProvider);
+    final logsPath = ref.read(appPathsProvider).logs.path;
     final suggested =
         diagnosticsBundleFileName(ref.read(clockProvider).nowUtc());
     final doneMsg = context.l10n.settingsDiagnosticsExported;
     final failedMsg = context.l10n.settingsDiagnosticsExportFailed;
+    final openLogsLabel = context.l10n.settingsOpenLogDir;
     setState(() => _exporting = true);
     try {
       final path = await picker(suggested);
       if (path == null) return; // 用户取消。
       final service = await serviceFuture;
       await service.exportBundle(targetPath: path);
-      toast.show(doneMsg, kind: ToastKind.success);
+      // 打包在后台跑，结局（成败都算）是「后台事件到达」→ chime。
+      toast.show(doneMsg, kind: ToastKind.success, chime: true);
     } on InkError catch (e, st) {
       logger.error(kDiagnosticsModule, 'diagnostics export failed',
           cause: e, stackTrace: st);
-      toast.show(failedMsg, kind: ToastKind.error);
+      // 文案让人「去日志目录看详情」——按钮直接把目录打开，与本区「打开日志目录」
+      // 同一个 FolderOpener、同一个 best-effort（打不开静默）。
+      toast.show(
+        failedMsg,
+        kind: ToastKind.error,
+        chime: true,
+        primary: ToastAction(
+          openLogsLabel,
+          () => opener.open(logsPath).ignore(),
+        ),
+      );
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
