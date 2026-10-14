@@ -3,8 +3,8 @@
 // 钉：分段与类型 chip 的计数、网格标签（源配置名 · take N / 成片）、点格子定位（当前画布 =
 // 单选 + 移到视口中心；别的画布 = 切过去）、「在画廊中打开全部」切到画廊标签。
 // 新鲜度：画廊图被别处保活着时 job 成功，之后再打开本页也能看到新图（开页即重读）；本页开着时 job 成功，
-// 新图跟着出来（本页对注册表的监听）。删除：当前画布删掉的节点，格子立刻消失；点一个在节点表里找不到的
-// 格子，不改选中集。
+// 新图跟着出来（本页对注册表的监听）。删除：当前画布删掉的节点，格子立刻消失、剩下的 take 号跟着变；点一个
+// 在节点表里找不到的格子，不改选中集。
 // take 号：普通生成和批量混在一起时，素材页格子与检查器历史页的号一致（批量 slot 不参与编号，照画廊写
 // 「#n」）；名下只有一个产物时两处都写成片。
 import 'dart:async';
@@ -367,7 +367,7 @@ void main() {
   });
 
   group('删除', () {
-    testWidgets('删掉当前画布上的一个产物节点：它的格子立刻消失，不等画廊图重读', (tester) async {
+    testWidgets('删掉当前画布上的一个产物节点：它的格子立刻消失、剩下的 take 号跟着变，不等画廊图重读', (tester) async {
       final _Seed s = await _seed();
       final ProviderContainer c = await _pump(
         tester,
@@ -378,6 +378,7 @@ void main() {
       final Finder tile = find.byKey(_tileKey(s.cvA, 'images/h2.png'));
       expect(tile, findsOneWidget, reason: '前置：格子在');
       expect(find.text(l.leftRailAssetsKindAll(3)), findsOneWidget);
+      expect(find.text(l.leftRailAssetTake('Harbor', 1)), findsOneWidget, reason: '前置：Harbor 名下两个 take');
 
       await c.read(canvasNodesControllerProvider(s.cvA).notifier).removeNode(s.take2Id);
       await tester.pump();
@@ -385,6 +386,9 @@ void main() {
 
       expect(tile, findsNothing, reason: '节点已经不在画布上（画廊图里还有，它没重读）');
       expect(find.text(l.leftRailAssetsKindAll(2)), findsOneWidget, reason: '计数跟着少一个');
+      expect(find.text(l.leftRailAssetFinal('Harbor')), findsOneWidget,
+          reason: '剩下那张名下只有它一个：号在本画布的实时节点表上数，立刻改写成片（与检查器历史页同一份）');
+      expect(find.text(l.leftRailAssetTake('Harbor', 1)), findsNothing);
     }, timeout: const Timeout(Duration(seconds: 30)));
 
     testWidgets('点一个在节点表里找不到的格子：不改选中集', (tester) async {
