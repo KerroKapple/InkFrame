@@ -42,7 +42,7 @@ const List<(String, InkGlyph)> _order = <(String, InkGlyph)>[
   ('image', InkGlyph.imageConfig),
   ('video', InkGlyph.videoConfig),
   ('text', InkGlyph.text),
-  ('shot', InkGlyph.sequence),
+  ('shot', InkGlyph.shot),
   ('lane', InkGlyph.lane),
   ('link', InkGlyph.link),
   ('more', InkGlyph.more),

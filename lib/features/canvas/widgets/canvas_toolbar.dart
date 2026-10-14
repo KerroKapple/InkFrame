@@ -114,7 +114,7 @@ class CanvasToolbar extends ConsumerWidget {
           key: keyOf('shot'),
           tool: _Tool(
             label: l.canvasToolShotNode,
-            glyph: InkGlyph.sequence,
+            glyph: InkGlyph.shot,
             onTap: () => addNode(CanvasNodeType.shot),
           ),
         ),
