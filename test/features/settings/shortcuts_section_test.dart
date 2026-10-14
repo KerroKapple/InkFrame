@@ -21,6 +21,13 @@ void main() {
     expect(find.text('⌘A'), findsOneWidget);
     // 一个动作绑多键 → 同一行里逐个列出。
     expect(find.text('Delete  ·  Backspace'), findsOneWidget);
+    // 浮动工具条的单键与按住空格平移也在清单上。
+    expect(find.text('Pan tool on / off'), findsOneWidget);
+    expect(find.text('H'), findsOneWidget);
+    expect(find.text('Pan while held'), findsOneWidget);
+    expect(find.text('Space'), findsOneWidget);
+    expect(find.text('New image node'), findsOneWidget);
+    expect(find.text('I'), findsOneWidget);
     expect(
       find.text(
         'Key bindings are fixed in this version — this page lists what is '

@@ -821,9 +821,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasAddShotNode => 'Add shot node';
 
   @override
-  String get canvasAddNodeTooltip => 'New node';
-
-  @override
   String get canvasAddNodeFailed => 'Failed to add node';
 
   @override
@@ -1704,6 +1701,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasToolLane => 'Lane';
 
   @override
+  String get canvasToolShotNode => 'Shot node';
+
+  @override
+  String get canvasToolMore => 'More';
+
+  @override
+  String get canvasToolPanHoldSpace => 'hold Space';
+
+  @override
   String get projectPanelCanvases => 'Canvases';
 
   @override
@@ -1723,6 +1729,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get canvasZoomFit => 'Fit';
+
+  @override
+  String get canvasZoomIn => 'Zoom in';
+
+  @override
+  String get canvasZoomOut => 'Zoom out';
 
   @override
   String get promptBarBaseStyle => 'Base style';
@@ -2704,6 +2716,30 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasZoomReset => 'Reset zoom';
+
+  @override
+  String get settingsShortcutCanvasSelectTool => 'Select tool';
+
+  @override
+  String get settingsShortcutCanvasPanTool => 'Pan tool on / off';
+
+  @override
+  String get settingsShortcutCanvasHoldPan => 'Pan while held';
+
+  @override
+  String get settingsShortcutCanvasAddImageNode => 'New image node';
+
+  @override
+  String get settingsShortcutCanvasAddVideoNode => 'New video node';
+
+  @override
+  String get settingsShortcutCanvasAddTextNode => 'New text node';
+
+  @override
+  String get settingsShortcutCanvasAddLane => 'New lane';
+
+  @override
+  String get settingsShortcutCanvasToggleLink => 'Start / stop linking';
 
   @override
   String get settingsPerformanceConcurrencyTitle => 'Concurrency and quota';

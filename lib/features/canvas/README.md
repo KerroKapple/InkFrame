@@ -29,19 +29,21 @@ util/       无副作用的几何/命中/预设工具
 - `node_active_job` — 按节点回读注册表里的活跃 job（inspector 进度来源，ADR-0008）
 - `prompt_presets_controller` — 提示词预设 CRUD（项目级）
 - `canvas_base_style` / `lane_collapse_controller` / `characters_controller` / `playable_video_path` / `current_canvas_id` / `current_canvas_name` / `canvas_bootstrap_controller`
+- `canvas_tool_mode` — 工具态（选择 / 平移）+ 按住空格临时平移，按画布 autoDispose；实际是否平移 = 二者取或（`canvasPanActiveProvider`，舞台指针闸 / 手形光标 / 工具条高亮共用）
 
 ## widgets（关键）
-- `canvas_screen` — 整屏骨架：`canvas_tool_bar`（基底风格入口；窗口 chrome 与面包屑已上移到外壳 `ShellChrome`，T7）+ `canvas_view` + `canvas_render_queue`，外层包 `canvas_shortcuts`（删除/Esc/全选/缩放快捷键，PL-2；`isActive` 由外壳按标签可见性下传）
+- `canvas_screen` — 整屏骨架：项目面板 | 画布区（画布头 + `canvas_view` + 浮层：顶部居中 `canvas_toolbar` / 底部居中提示词条 / 左下缩放条）| 检查器，底部 `canvas_render_queue`；外层包 `canvas_shortcuts`（删除/Esc/全选/缩放 + 工具单键 V/H/I/G/T/F/L + 按住空格平移；`isActive` 由外壳按标签可见性下传）。窗口 chrome 与面包屑在外壳 `ShellChrome`
+- `canvas_toolbar` — 舞台顶部居中的浮动工具条：选择 · 平移 | 图像 · 视频 · 文本 · 分镜 · 泳道 · 连线 | 更多（导入脚本）。取代原左侧 37px 工具条与右下角加号
 - `canvas_view` / `edge_painter` — 画布视口与连线绘制
 - `node_card` / `video_node_body` — 节点卡片各形态
 - `node_inspector_router` — 按 (role, type) 分发：config → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`（前二者共用 `inspector_status_panel`）；result+image → `image_result_inspector`
 - `node_inputs_section` — config 节点入边列表 + role 切换（reference/first_frame/last_frame，按能力位门控），被 image/video config inspector 挂载
 - `batch_results_grid` — 结果节点的批量/变体槽位网格（挂载于 `image_result_inspector`）
 - `canvas_render_queue` — 右侧渲染队列（消费 `jobsRegistry`）
-- `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_add_node_fab` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`
+- `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`
 
 ## util
-`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars`
+`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars` · `canvas_tool_actions`（工具条与单键快捷键共用：视口中心建节点 / 建泳道 / 切连线 / 选择工具）
 
 ## 数据流（生成一次图/视频）
 1. 选中 config 节点 → `node_inspector_router` 渲染对应 inspector

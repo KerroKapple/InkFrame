@@ -32,6 +32,16 @@ class ShortcutsSection extends StatelessWidget {
         ShortcutAction.canvasZoomIn => l.settingsShortcutCanvasZoomIn,
         ShortcutAction.canvasZoomOut => l.settingsShortcutCanvasZoomOut,
         ShortcutAction.canvasZoomReset => l.settingsShortcutCanvasZoomReset,
+        ShortcutAction.canvasSelectTool => l.settingsShortcutCanvasSelectTool,
+        ShortcutAction.canvasPanTool => l.settingsShortcutCanvasPanTool,
+        ShortcutAction.canvasHoldPan => l.settingsShortcutCanvasHoldPan,
+        ShortcutAction.canvasAddImageNode =>
+          l.settingsShortcutCanvasAddImageNode,
+        ShortcutAction.canvasAddVideoNode =>
+          l.settingsShortcutCanvasAddVideoNode,
+        ShortcutAction.canvasAddTextNode => l.settingsShortcutCanvasAddTextNode,
+        ShortcutAction.canvasAddLane => l.settingsShortcutCanvasAddLane,
+        ShortcutAction.canvasToggleLink => l.settingsShortcutCanvasToggleLink,
       };
 
   @override

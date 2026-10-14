@@ -1,4 +1,4 @@
-// 画布快捷键基建 + 第一批（PL-2）。
+// 画布快捷键基建 + 第一批（PL-2）+ 工具单键（浮动工具条）。
 //
 // 键位 → Intent（Shortcuts）→ Action（Actions）→ provider 副作用；business 逻辑
 // 全部下沉到 util / controller，本层只做绑定（SOLID：可测的 shortcut→action 缝）。
@@ -7,18 +7,26 @@
 // 必须选中框内文本，而非命中画布。CanvasShortcuts 是 Inspector 字段的祖先，若无
 // 防护会抢先命中（本地 Shortcuts 优先于上层 DefaultTextEditingShortcuts）。因此
 // 删除/全选两个动作在文本编辑态下 isEnabled=false，按键得以冒泡到文本编辑快捷键。
+// 工具单键（V / H / I / G / T / F / L）同一个道理：在提示词条或检查器里打字时，
+// 「v」就该是一个「v」，不能把工具切走。
+//
+// 按住空格临时平移不进快捷键表：它要按下与松开两个事件，Shortcuts 只认按下。
+// 在本层 Focus 的 onKeyEvent 里处理（_CanvasShortcutsState._onKeyEvent）。
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
+import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
 import '../providers/current_canvas_id.dart';
 import '../providers/link_mode_controller.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/canvas_node_delete.dart';
+import '../util/canvas_tool_actions.dart';
 import '../util/canvas_zoom.dart';
 
 // ===== Intents =====
@@ -28,7 +36,7 @@ class DeleteSelectionIntent extends Intent {
   const DeleteSelectionIntent();
 }
 
-/// Esc：连线模式激活则退出连线，否则清空节点 + 边选择。
+/// Esc：在平移工具则回到选择；否则连线模式激活则退出连线；否则清空节点 + 边选择。
 class CanvasEscapeIntent extends Intent {
   const CanvasEscapeIntent();
 }
@@ -53,6 +61,52 @@ class CanvasZoomResetIntent extends Intent {
   const CanvasZoomResetIntent();
 }
 
+/// V：选择工具（同时退出连线模式，与工具条「选择」同义）。
+class CanvasSelectToolIntent extends Intent {
+  const CanvasSelectToolIntent();
+}
+
+/// H：平移工具开 / 关。
+class CanvasTogglePanToolIntent extends Intent {
+  const CanvasTogglePanToolIntent();
+}
+
+/// I / G / T：在视口中心新建一个 [type] 节点（与工具条建节点键同一条路径）。
+class CanvasAddNodeIntent extends Intent {
+  const CanvasAddNodeIntent(this.type);
+
+  final CanvasNodeType type;
+}
+
+/// F：新建泳道（开泳道编辑框）。
+class CanvasAddLaneIntent extends Intent {
+  const CanvasAddLaneIntent();
+}
+
+/// L：开始 / 退出连线（恰好选中一个节点时以它为源；已在连线模式则退出）。
+class CanvasToggleLinkIntent extends Intent {
+  const CanvasToggleLinkIntent();
+}
+
+/// 画布工具的键位。工具条 tooltip 与下面的 [kCanvasShortcuts] 取同一组常量——改键位
+/// 只改这里，tooltip 不会还挂着旧键。
+class CanvasToolKeys {
+  CanvasToolKeys._();
+  static const LogicalKeyboardKey select = LogicalKeyboardKey.keyV;
+  static const LogicalKeyboardKey pan = LogicalKeyboardKey.keyH;
+  static const LogicalKeyboardKey imageNode = LogicalKeyboardKey.keyI;
+  static const LogicalKeyboardKey videoNode = LogicalKeyboardKey.keyG;
+  static const LogicalKeyboardKey textNode = LogicalKeyboardKey.keyT;
+  static const LogicalKeyboardKey lane = LogicalKeyboardKey.keyF;
+  static const LogicalKeyboardKey link = LogicalKeyboardKey.keyL;
+
+  /// 按住临时平移。不进 [kCanvasShortcuts]（要按下与松开两个事件，见
+  /// _CanvasShortcutsState._onKeyEvent）；设置页清单单独收它
+  /// （features/settings/util/shortcut_catalog.dart）。
+  static const SingleActivator holdToPan =
+      SingleActivator(LogicalKeyboardKey.space);
+}
+
 /// 主焦点是否落在某个 EditableText 内——用于让文本编辑抢先于画布删除/全选。
 /// 用顶层 [primaryFocus] getter（非 FocusManager.instance 静态单例，遵守 DIP 铁律）。
 bool isEditingText() {
@@ -62,7 +116,7 @@ bool isEditingText() {
 }
 
 /// 文本编辑态下自动让位的 Action：聚焦文本框时 isEnabled/consumesKey=false，
-/// 使按键冒泡到 DefaultTextEditingShortcuts（画布删除/全选专用）。
+/// 使按键冒泡到 DefaultTextEditingShortcuts（画布删除 / 全选 / 缩放 / 工具单键）。
 class _EditingAwareAction<T extends Intent> extends Action<T> {
   _EditingAwareAction(this._onInvoke);
   final void Function(T intent) _onInvoke;
@@ -128,6 +182,22 @@ kCanvasShortcuts = <ShortcutActivator, Intent>{
       const CanvasZoomResetIntent(),
   const SingleActivator(LogicalKeyboardKey.numpad0, control: true):
       const CanvasZoomResetIntent(),
+  // 工具单键（浮动工具条）。不带修饰键、两个平台同键。includeRepeats: false——
+  // 按住 I 不该连建一串节点，按住 H 不该来回切，按住 F 不该叠开对话框。
+  const SingleActivator(CanvasToolKeys.select, includeRepeats: false):
+      const CanvasSelectToolIntent(),
+  const SingleActivator(CanvasToolKeys.pan, includeRepeats: false):
+      const CanvasTogglePanToolIntent(),
+  const SingleActivator(CanvasToolKeys.imageNode, includeRepeats: false):
+      const CanvasAddNodeIntent(CanvasNodeType.image),
+  const SingleActivator(CanvasToolKeys.videoNode, includeRepeats: false):
+      const CanvasAddNodeIntent(CanvasNodeType.video),
+  const SingleActivator(CanvasToolKeys.textNode, includeRepeats: false):
+      const CanvasAddNodeIntent(CanvasNodeType.text),
+  const SingleActivator(CanvasToolKeys.lane, includeRepeats: false):
+      const CanvasAddLaneIntent(),
+  const SingleActivator(CanvasToolKeys.link, includeRepeats: false):
+      const CanvasToggleLinkIntent(),
 };
 
 /// 画布快捷键层：包裹画布主体（含 Inspector）。
@@ -145,9 +215,13 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
 
   /// 画布页当前是否是外壳里被激活（可见）的那一层。
   /// false 时本层交出焦点并拒绝再被聚焦——不可见的画布绝不吞
-  /// Delete / Backspace / Esc / ⌘A / ⌘0。
+  /// Delete / Backspace / Esc / ⌘A / ⌘0，也不吞工具单键与空格。
   final bool isActive;
   final Widget child;
+
+  /// 画布舞台按下指针时调用：把键盘焦点要回最近的 CanvasShortcuts（不在其下则无事）。
+  static void reclaimFocus(BuildContext context) =>
+      context.findAncestorStateOfType<_CanvasShortcutsState>()?._reclaimFocus();
 
   @override
   ConsumerState<CanvasShortcuts> createState() => _CanvasShortcutsState();
@@ -180,6 +254,13 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.isActive) _focusNode.requestFocus();
     });
+  }
+
+  /// 在画布舞台上按下鼠标：把键盘焦点要回本层。在提示词条 / 检查器的文本框里打完字
+  /// 再点画布，文本框的 onTapOutside 只会把焦点交还给路由作用域——本层不持焦，
+  /// Delete / Esc / 工具单键全都收不到，直到切一次标签才恢复。
+  void _reclaimFocus() {
+    if (widget.isActive && !_focusNode.hasPrimaryFocus) _focusNode.requestFocus();
   }
 
   @override
@@ -227,16 +308,75 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
           CanvasZoomResetIntent: _EditingAwareAction<CanvasZoomResetIntent>(
             (_) => _zoomReset(),
           ),
+          // 工具单键同样对文本编辑让位：在提示词条 / 检查器里打字时字母就是字母。
+          CanvasSelectToolIntent: _EditingAwareAction<CanvasSelectToolIntent>(
+            (_) => _selectTool(),
+          ),
+          CanvasTogglePanToolIntent:
+              _EditingAwareAction<CanvasTogglePanToolIntent>(
+            (_) => _togglePanTool(),
+          ),
+          CanvasAddNodeIntent: _EditingAwareAction<CanvasAddNodeIntent>(
+            (CanvasAddNodeIntent intent) => _addNode(intent.type),
+          ),
+          CanvasAddLaneIntent: _EditingAwareAction<CanvasAddLaneIntent>(
+            (_) => _addLane(),
+          ),
+          CanvasToggleLinkIntent: _EditingAwareAction<CanvasToggleLinkIntent>(
+            (_) => _toggleLink(),
+          ),
         },
         child: Focus(
           focusNode: _focusNode,
           skipTraversal: true,
           canRequestFocus: widget.isActive,
           descendantsAreFocusable: widget.isActive, // 连 Inspector 的 TextField 一起排除
+          onKeyEvent: _onKeyEvent,
+          onFocusChange: _onFocusChange,
           child: widget.child,
         ),
       ),
     );
+  }
+
+  /// 按住空格临时平移：按下（含按住时的自动重复）开，松开关。
+  ///
+  /// 【只在画布本身持焦时接管空格】焦点落在某个控件上——检查器里的按钮 / 下拉框、
+  /// 工具条键、提示词条或检查器的文本框——空格是那个控件的「激活」或「打一个空格」，
+  /// 画布不能抢。本层的 onKeyEvent 比祖先层的快捷键表（含 WidgetsApp 的
+  /// 空格 → ActivateIntent）先拿到事件，不加这道判断就会把它们全部截走。
+  ///
+  /// 【松开不论焦点在哪都收】按下时在画布、松开前焦点挪进了检查器的文本框，松开事件
+  /// 照样冒泡经过本层；只要是空格松开就收，免得卡在平移里。焦点整个离开画布的情形
+  /// 由 [_onFocusChange] 兜底。
+  KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
+    final String? canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return KeyEventResult.ignored;
+    if (event is KeyUpEvent) {
+      if (event.logicalKey != CanvasToolKeys.holdToPan.trigger) {
+        return KeyEventResult.ignored;
+      }
+      final bool wasHeld = ref.read(canvasSpacePanProvider(canvasId));
+      ref.read(canvasSpacePanProvider(canvasId).notifier).release();
+      return wasHeld && node.hasPrimaryFocus
+          ? KeyEventResult.handled
+          : KeyEventResult.ignored;
+    }
+    if (!node.hasPrimaryFocus) return KeyEventResult.ignored;
+    if (!CanvasToolKeys.holdToPan.accepts(event, HardwareKeyboard.instance)) {
+      return KeyEventResult.ignored;
+    }
+    ref.read(canvasSpacePanProvider(canvasId).notifier).hold();
+    return KeyEventResult.handled;
+  }
+
+  /// 焦点整个离开画布（开对话框 / 切标签 / 浮层盖上）之后，空格的松开事件不会再
+  /// 送到本层——当场收掉临时平移，回来时不会还卡在里面。
+  void _onFocusChange(bool hasFocus) {
+    if (hasFocus || !mounted) return;
+    final String? canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    ref.read(canvasSpacePanProvider(canvasId).notifier).release();
   }
 
   void _deleteSelection() {
@@ -258,9 +398,14 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
         .selectAll(nodes.map((n) => n.id));
   }
 
+  /// Esc 一次剥一层：平移工具 → 回选择；连线模式 → 退出连线；否则清空节点 + 边选择。
   void _escape() {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
+    if (ref.read(canvasToolModeProvider(canvasId)) == CanvasToolMode.pan) {
+      ref.read(canvasToolModeProvider(canvasId).notifier).select();
+      return;
+    }
     if (ref.read(linkModeControllerProvider(canvasId)) != null) {
       ref.read(linkModeControllerProvider(canvasId).notifier).cancel();
       return;
@@ -286,5 +431,38 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     if (canvasId == null) return;
     ref.read(canvasTransformControllerProvider(canvasId)).value =
         resetTransform();
+  }
+
+  // ===== 工具单键：动作本体在 util/canvas_tool_actions.dart，与工具条共用 =====
+
+  void _selectTool() {
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    activateSelectTool(ref, canvasId: canvasId);
+  }
+
+  void _togglePanTool() {
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    ref.read(canvasToolModeProvider(canvasId).notifier).togglePan();
+  }
+
+  void _addNode(CanvasNodeType type) {
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    // fire-and-forget：失败自带错误卡（与工具条建节点同一条路径）。
+    addNodeAtViewportCenter(context, ref, canvasId: canvasId, type: type);
+  }
+
+  void _addLane() {
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    addLaneViaDialog(context, ref, canvasId: canvasId);
+  }
+
+  void _toggleLink() {
+    final canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    toggleLinkMode(ref, canvasId: canvasId);
   }
 }

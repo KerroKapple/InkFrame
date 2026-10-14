@@ -3,6 +3,8 @@
 // 职责切分（HI-18）：
 //   - _CanvasBody：状态装配 + 节点 tap 语义 + 连线事件 → snackbar 副作用（ref.listen）
 //   - _CanvasStage：InteractiveViewer 舞台（连线层 / 节点卡片 / 边删除按钮）
+//   - 平移工具（H / 按住空格，canvas_tool_mode.dart）：_PanGate 让舞台内容与泳道标题栏层
+//     不收指针、拖哪儿都是拖画布；_StagePanCursor 换手形光标
 //   - 可播放性 IO 判定在 playableVideoPathProvider；连线编排在 LinkActionController
 
 import 'package:flutter/material.dart';
@@ -21,6 +23,7 @@ import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
+import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
 import '../providers/current_canvas_id.dart';
 import '../providers/link_action_controller.dart';
@@ -45,6 +48,7 @@ import 'canvas_empty_state.dart';
 import 'canvas_grid_painter.dart';
 import 'edge_painter.dart';
 import 'lane_background.dart';
+import 'canvas_shortcuts.dart';
 import 'lane_edit_dialog.dart';
 import 'lane_title_bar.dart';
 import 'lane_toolbar.dart';
@@ -297,33 +301,36 @@ class _CanvasBody extends ConsumerWidget {
       );
     }
 
+    // 顶部三条浮层从 stageTopInset 起：舞台顶部居中压着浮动工具条（canvas_screen 画在
+    // 本层之上），从 md 起的话连线提示的后半句会被工具条盖住。
     final Widget leftArea = Stack(
       children: [
         Positioned.fill(child: canvasArea),
         // 边/泳道/泳道方向加载失败 → 非阻塞横幅（节点照常渲染），可忽略。
         Positioned(
-          top: InkSpacing.md,
+          top: InkToolbarSize.stageTopInset,
           left: InkSpacing.md,
           right: InkSpacing.md,
           child: _EdgeLaneErrorSlot(canvasId: canvasId),
         ),
         // 链接提示条：仅随 linkMode 重建。
         Positioned(
-          top: InkSpacing.md,
+          top: InkToolbarSize.stageTopInset,
           left: InkSpacing.md,
           right: InkSpacing.md,
           child: _LinkHintSlot(canvasId: canvasId),
         ),
         // 多选计数 chip：仅随选中数量重建。
         Positioned(
-          top: InkSpacing.md,
+          top: InkToolbarSize.stageTopInset,
           right: InkSpacing.md,
           child: _SelectionCountSlot(canvasId: canvasId),
         ),
-        // 泳道工具栏：左下角固定，位于链接提示条之下。
+        // 泳道工具栏：左下角，叠在缩放条（canvas_screen，left 12 / bottom 12）之上，
+        // 左沿与它对齐。
         Positioned(
-          bottom: InkSpacing.md,
-          left: InkSpacing.md,
+          bottom: InkToolbarSize.stageBottomInset,
+          left: InkSpacing.s12,
           child: LaneToolbar(canvasId: canvasId),
         ),
       ],
@@ -542,13 +549,19 @@ class _CanvasStage extends ConsumerWidget {
                   ),
                 ),
               Positioned.fill(
-                child: InteractiveViewer(
+                child: _StagePanCursor(
+                  canvasId: canvasId,
+                  child: InteractiveViewer(
             transformationController: transformController,
             constrained: false,
             boundaryMargin: const EdgeInsets.all(kCanvasBoundaryMargin),
             minScale: kCanvasMinScale,
             maxScale: kCanvasMaxScale,
-            child: SizedBox(
+            // 平移生效：舞台内容（连线命中层 / 卡片 / 边删除钮）整层不收指针，命中落到
+            // InteractiveViewer 自己的 opaque 手势层上——拖到卡片上也是拖画布。
+            child: _PanGate(
+              canvasId: canvasId,
+              child: SizedBox(
               width: stage.width,
               height: stage.height,
               child: Stack(
@@ -743,14 +756,19 @@ class _CanvasStage extends ConsumerWidget {
                 ],
               ),
             ),
+            ),
+                  ),
                 ),
               ),
               // 泳道标题栏 + 分界线拖拽条：视口层、随泳道栈同偏移平移。
               // 感应条必须压在标题栏之上——标题栏横跨整条泳道顶部，若反过来
               // 会盖住感应条下半段，边界拖拽十有八九落在标题栏上（宽度调不动）。
+              // 平移生效时这一层同样不收指针：拖到标题栏 / 感应条上也是拖画布。
               if (lanes.isNotEmpty)
                 Positioned.fill(
-                  child: laneShifted(
+                  child: _PanGate(
+                    canvasId: canvasId,
+                    child: laneShifted(
                     Stack(
                       clipBehavior: Clip.none,
                       children: [
@@ -770,6 +788,7 @@ class _CanvasStage extends ConsumerWidget {
                           ),
                       ],
                     ),
+                  ),
                   ),
                 ),
             ],
@@ -1236,5 +1255,61 @@ class _SelectionCountSlot extends ConsumerWidget {
     );
     if (count < 2) return const SizedBox.shrink();
     return _SelectionCountChip(count: count);
+  }
+}
+
+/// 平移闸：平移生效（工具 = 平移，或按住空格）时 [child] 整层不收指针。
+///
+/// IgnorePointer 恒在树上、只拨 ignoring——平移开关一拨就增删包装层的话，舞台整棵子树
+/// 会被卸载重挂。watch 收在这一小层：开关只重建它自己，[child] 是上游传进来的同一个
+/// 实例，舞台不跟着重建。
+class _PanGate extends ConsumerWidget {
+  const _PanGate({required this.canvasId, required this.child});
+
+  final String canvasId;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => IgnorePointer(
+        ignoring: ref.watch(canvasPanActiveProvider(canvasId)),
+        child: child,
+      );
+}
+
+/// 平移时的手形光标：平移生效 = grab，按住拖动中 = grabbing；不在平移时 defer
+/// （交给卡片 / 分界线自己的光标）。理由同 [_PanGate]：MouseRegion / Listener 恒在树上，
+/// 只换参数。平移时卡片与标题栏都被 [_PanGate] 挡掉命中，它们的光标不会盖过这里。
+class _StagePanCursor extends ConsumerStatefulWidget {
+  const _StagePanCursor({required this.canvasId, required this.child});
+
+  final String canvasId;
+  final Widget child;
+
+  @override
+  ConsumerState<_StagePanCursor> createState() => _StagePanCursorState();
+}
+
+class _StagePanCursorState extends ConsumerState<_StagePanCursor> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (value != _pressed) setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool panning = ref.watch(canvasPanActiveProvider(widget.canvasId));
+    final MouseCursor cursor = !panning
+        ? MouseCursor.defer
+        : (_pressed ? SystemMouseCursors.grabbing : SystemMouseCursors.grab);
+    return Listener(
+      onPointerDown: (_) {
+        _setPressed(true);
+        CanvasShortcuts.reclaimFocus(context);
+      },
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: MouseRegion(cursor: cursor, child: widget.child),
+    );
   }
 }

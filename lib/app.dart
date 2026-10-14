@@ -13,7 +13,7 @@
 // - 首帧闸门（ON-1，挂 DB-ready 之后）：onboardingCompleted=false → 弹首启向导并
 //   跳过该次会话恢复；=true → 照常触发 restoreLastSession（在 _UnlockedShell，
 //   Navigator 之下）；PG 失败/未就绪不弹向导也不恢复
-// - 新增节点 FAB 已下沉到 CanvasScreen 内部，本文件不再托管
+// - 新建节点入口在 CanvasScreen 自己的浮动工具条里（canvas_toolbar.dart），本文件不托管
 // - ⌘K/Ctrl+K 命令面板（PL-1）：CommandPaletteShortcuts 包住 shell 全路由生效
 
 import 'package:flutter/material.dart';

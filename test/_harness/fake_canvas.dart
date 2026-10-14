@@ -45,6 +45,49 @@ class FakeNodesController extends CanvasNodesController {
   }
 }
 
+/// 在 [FakeNodesController] 上记下建 / 挪节点的调用，不碰仓储、也不改内存态：
+/// I / G / T 快捷键与平移工具的用例只关心「调没调、调的是谁」，新卡片怎么渲染
+/// 不归它们管（少画几张卡，少一处与本用例无关的失败面）。
+class RecordingNodesController extends FakeNodesController {
+  RecordingNodesController(super.seed);
+
+  /// addNode 收到的节点类型，按调用顺序。
+  final List<CanvasNodeType> added = <CanvasNodeType>[];
+
+  /// moveNode 收到的节点 id，按调用顺序（拖拽落点）。
+  final List<String> moved = <String>[];
+
+  @override
+  Future<CanvasNode> addNode({
+    required String label,
+    required CanvasNodeType type,
+    NodeRole role = NodeRole.config,
+    String? sourceNodeId,
+    Offset position = Offset.zero,
+    Size? size,
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) async {
+    added.add(type);
+    return CanvasNode(
+      id: 'added-${added.length}',
+      label: label,
+      type: type,
+      role: role,
+      canvasId: arg,
+      position: position,
+    );
+  }
+
+  @override
+  Future<void> moveNode(
+    String id,
+    Offset delta, {
+    required String? laneId,
+  }) async {
+    moved.add(id);
+  }
+}
+
 class FakeEdgesController extends CanvasEdgesController {
   @override
   Future<List<CanvasEdge>> build(String canvasId) async => const <CanvasEdge>[];

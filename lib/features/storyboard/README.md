@@ -50,7 +50,7 @@ widgets/sequence_preview_dialog.dart     只负责"放"与"推进"
   会在 read 之后立刻销毁 ref，事务 await 完再 invalidate 就撞上已销毁的 ref，画布刷不出新链。
 
 落点：第一镜落视口中心，后续沿 x 轴每 `kShotChainSpacingX`(260) 排开（shot 卡宽 240，
-留 20 走线余量）。入口 = 画布 FAB 菜单「导入脚本…」+ 空态 CTA「导入脚本」。
+留 20 走线余量）。入口 = 画布浮动工具条「更多 › 导入脚本…」+ 空态 CTA「导入脚本」+ 标签栏右侧「导入脚本」。
 
 排序复用 SB-5 的 `canvas/util/narrative_order.dart`，产物查找复用 EX-1′ 首建的
 `canvas/util/node_artifacts.dart` —— 本 feature 不再造第二套（卡面裁决）。

@@ -783,9 +783,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasAddShotNode => '添加分镜节点';
 
   @override
-  String get canvasAddNodeTooltip => '新建节点';
-
-  @override
   String get canvasAddNodeFailed => '添加节点失败';
 
   @override
@@ -1631,6 +1628,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasToolLane => '泳道';
 
   @override
+  String get canvasToolShotNode => '分镜节点';
+
+  @override
+  String get canvasToolMore => '更多';
+
+  @override
+  String get canvasToolPanHoldSpace => '按住空格';
+
+  @override
   String get projectPanelCanvases => '画布';
 
   @override
@@ -1650,6 +1656,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get canvasZoomFit => '适应';
+
+  @override
+  String get canvasZoomIn => '放大';
+
+  @override
+  String get canvasZoomOut => '缩小';
 
   @override
   String get promptBarBaseStyle => '基础风格';
@@ -2585,6 +2597,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasZoomReset => '缩放复位';
+
+  @override
+  String get settingsShortcutCanvasSelectTool => '选择工具';
+
+  @override
+  String get settingsShortcutCanvasPanTool => '平移工具开 / 关';
+
+  @override
+  String get settingsShortcutCanvasHoldPan => '按住时临时平移';
+
+  @override
+  String get settingsShortcutCanvasAddImageNode => '新建图像节点';
+
+  @override
+  String get settingsShortcutCanvasAddVideoNode => '新建视频节点';
+
+  @override
+  String get settingsShortcutCanvasAddTextNode => '新建文本节点';
+
+  @override
+  String get settingsShortcutCanvasAddLane => '新建泳道';
+
+  @override
+  String get settingsShortcutCanvasToggleLink => '开始 / 退出连线';
 
   @override
   String get settingsPerformanceConcurrencyTitle => '并发与配额';
