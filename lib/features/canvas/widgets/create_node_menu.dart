@@ -6,7 +6,7 @@
 //     连线 / 回滚在 util/canvas_tool_actions.dart（addNodeFromMenu）。新节点落在菜单锚点上；Tab 开的菜单例外——
 //     它的锚点只是视口中心，不带上下文的项与工具条 / I / G / T 同一条路，落在「视口中心 + 散布」。
 //   - 空白处右键菜单。
-//   - 节点右键菜单（PR-8b）：卡片上按右键（canvas_view 的卡片插槽报上来）。右键一张没被选中的卡，画布先把
+//   - 节点右键菜单（PR-8b）：卡片上右键单击（canvas_view 的卡片插槽在抬起时报上来，按住右键拖动不算）。右键一张没被选中的卡，画布先把
 //     选中换成它；右键一张已在多选里的卡，保持多选。可用 / 置灰的判据在 util/node_menu_model.dart，动作在
 //     util/canvas_tool_actions.dart（与 Ctrl+↵ / Ctrl+D 共用），「在序列中定位」走
 //     sequence/util/view_in_sequence.dart（与标签栏「在序列中查看」共用），删除走 canvas_node_delete.dart。
