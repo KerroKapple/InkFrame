@@ -75,6 +75,21 @@ Future<void> _pumpInStage(WidgetTester tester, double stageWidth) async {
 }
 
 void main() {
+  testWidgets('提示词占满整条宽度；字数与「生成」在下面一行', (tester) async {
+    await _pumpInStage(tester, 1014);
+    final Rect bar = tester.getRect(_surface);
+    final Rect field = tester.getRect(_field);
+    final Rect generate = tester.getRect(find.byKey(CanvasPromptBar.generateKey));
+    // 条子内边距左 14、右 12，外加 1px 描边两侧：提示词框应吃满剩下的宽度。
+    expect(field.width, greaterThan(bar.width - 14 - 12 - 2 - 1),
+        reason: '提示词不该再和按钮挤一行');
+    expect(generate.top, greaterThanOrEqualTo(field.bottom),
+        reason: '生成按钮在提示词下面');
+    expect(generate.right, closeTo(bar.right - 12 - 1, 1.5), reason: '按钮贴右');
+    final Rect baseStyle = tester.getRect(find.byKey(CanvasPromptBar.baseStyleKey));
+    expect(baseStyle.right, closeTo(bar.right - 12 - 1, 1.5), reason: '基础风格贴右，不被平分到中间');
+  });
+
   group('宽度跟着舞台走', () {
     for (final (double stage, double expected) in const <(double, double)>[
       (697.0, 480.0), // 0.6 倍只有 418 → 下限

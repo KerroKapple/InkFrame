@@ -163,77 +163,84 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
             children: <Widget>[
               InkSquareDot(size: 6, color: c.accent),
               const SizedBox(width: InkSpacing.sm),
-              Flexible(
-                child: Text(nodeDisplayName(context, node),
-                    maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg2)),
-              ),
-              if (summary.isNotEmpty) ...<Widget>[
-                const SizedBox(width: InkSpacing.sm),
-                Text('·', style: t.meta.copyWith(color: c.fg5)),
-                const SizedBox(width: InkSpacing.sm),
-                Flexible(
-                  child: Text(summary.join(' · '),
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg5)),
+              // 名字 + 摘要整组吃掉剩余宽度，基础风格贴右。原来名字是 Flexible、后面跟 Spacer：
+              // 两个 flex 1 平分剩余空间，基础风格就被推到条子中间。
+              Expanded(
+                child: Row(
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(nodeDisplayName(context, node),
+                          maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg2)),
+                    ),
+                    if (summary.isNotEmpty) ...<Widget>[
+                      const SizedBox(width: InkSpacing.sm),
+                      Text('·', style: t.meta.copyWith(color: c.fg5)),
+                      const SizedBox(width: InkSpacing.sm),
+                      Flexible(
+                        child: Text(summary.join(' · '),
+                            maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg5)),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
-              const Spacer(),
+              ),
+              const SizedBox(width: InkSpacing.sm),
               _BaseStyleChip(canvasId: widget.canvasId, prefix: prefix),
             ],
           ),
           const SizedBox(height: InkSpacing.sm),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: <Widget>[
-              Expanded(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 40),
-                  child: CallbackShortcuts(
-                    bindings: <ShortcutActivator, VoidCallback>{
-                      const SingleActivator(LogicalKeyboardKey.enter, meta: true): _submit,
-                      const SingleActivator(LogicalKeyboardKey.enter, control: true): _submit,
-                    },
-                    child: TextField(
-                      controller: _prompt,
-                      // 1 行起、随内容长到 8 行，再多就在框内滚动；条子底边不动，只往上长。
-                      // 多行框里回车是换行，生成走上面那两条 ⌘↵ / Ctrl+↵。
-                      minLines: 1,
-                      maxLines: 8,
-                      style: t.prompt.copyWith(color: c.fg1),
-                      cursorColor: c.accent,
-                      decoration: InputDecoration.collapsed(
-                        hintText: l.inspectorPromptHint,
-                        hintStyle: t.prompt.copyWith(color: c.fg6),
-                      ),
-                      onChanged: (String v) {
-                        setState(() {});
-                        ref
-                            .read(inspectorSubmitControllerProvider(node.id).notifier)
-                            .savePromptDebounced(v);
-                      },
-                    ),
-                  ),
+          // 提示词占满整条宽度（不再和字数 / 生成挤一行——窄条子上一段话会被折成五六行）；
+          // 字数、失败原因、生成按钮放到下面一行（提示词条与节点文字稿）。
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 40),
+            child: CallbackShortcuts(
+              bindings: <ShortcutActivator, VoidCallback>{
+                const SingleActivator(LogicalKeyboardKey.enter, meta: true): _submit,
+                const SingleActivator(LogicalKeyboardKey.enter, control: true): _submit,
+              },
+              child: TextField(
+                controller: _prompt,
+                // 1 行起、随内容长到 8 行，再多就在框内滚动；条子底边不动，只往上长。
+                // 多行框里回车是换行，生成走上面那两条 ⌘↵ / Ctrl+↵。
+                minLines: 1,
+                maxLines: 8,
+                style: t.prompt.copyWith(color: c.fg1),
+                cursorColor: c.accent,
+                decoration: InputDecoration.collapsed(
+                  hintText: l.inspectorPromptHint,
+                  hintStyle: t.prompt.copyWith(color: c.fg6),
                 ),
+                onChanged: (String v) {
+                  setState(() {});
+                  ref
+                      .read(inspectorSubmitControllerProvider(node.id).notifier)
+                      .savePromptDebounced(v);
+                },
               ),
-              const SizedBox(width: InkSpacing.s10),
-              Row(
-                children: <Widget>[
-                  Text(l.promptBarChars(_prompt.text.characters.length),
-                      style: t.monoSmall.copyWith(color: c.fg6)),
-                  const SizedBox(width: InkSpacing.sm),
-                  if (submitState is InspectorSubmitFailure)
-                    Padding(
-                      padding: const EdgeInsets.only(right: InkSpacing.sm),
-                      child: Text(
-                        inspectorSubmitErrorText(context, submitState.error),
-                        style: t.meta.copyWith(color: c.danger),
-                      ),
-                    ),
-                  _GenerateButton(
-                    enabled: !busy && _prompt.text.trim().isNotEmpty,
-                    label: busy ? l.inspectorStatusSubmitting : l.inspectorGenerate,
-                    onTap: _submit,
+            ),
+          ),
+          const SizedBox(height: InkSpacing.sm),
+          Row(
+            children: <Widget>[
+              if (submitState is InspectorSubmitFailure)
+                Expanded(
+                  child: Text(
+                    inspectorSubmitErrorText(context, submitState.error),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.meta.copyWith(color: c.danger),
                   ),
-                ],
+                )
+              else
+                const Spacer(),
+              const SizedBox(width: InkSpacing.sm),
+              Text(l.promptBarChars(_prompt.text.characters.length),
+                  style: t.monoSmall.copyWith(color: c.fg6)),
+              const SizedBox(width: InkSpacing.sm),
+              _GenerateButton(
+                enabled: !busy && _prompt.text.trim().isNotEmpty,
+                label: busy ? l.inspectorStatusSubmitting : l.inspectorGenerate,
+                onTap: _submit,
               ),
             ],
           ),
