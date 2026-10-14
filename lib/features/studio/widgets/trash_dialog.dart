@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
@@ -20,6 +21,7 @@ import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_overlay_dialog.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../controllers/studio_projects_controller.dart';
 import '../providers/trashed_items_providers.dart';
 
@@ -142,16 +144,15 @@ class _TrashList extends ConsumerWidget {
     // 跨 await 依赖首个 await 前 read 持有（#188 P1-1 惯例）。
     final controller = ref.read(studioProjectsControllerProvider);
     final container = ProviderScope.containerOf(context, listen: false);
-    final messenger = ScaffoldMessenger.maybeOf(context);
+    final toast = ref.read(toastServiceProvider);
     final failedMsg = context.l10n.studioRestoreFailed;
     try {
       await controller.restoreProject(item.id);
       // controller 已刷新工作库；这里刷新回收站列表（本对话框仍挂着）。
       container.invalidate(trashedProjectsProvider);
     } on InkError {
-      messenger?.showSnackBar(
-        SnackBar(content: Text(failedMsg), duration: const Duration(seconds: 3)),
-      );
+      // 通知卡画在所有路由之上，回收站浮层挡不住它。恢复是用户刚点的那一下，不响。
+      toast.show(failedMsg, kind: ToastKind.error);
     }
   }
 }

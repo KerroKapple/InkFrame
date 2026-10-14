@@ -36,7 +36,7 @@ class GalleryScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
     final AsyncValue<List<GalleryItem>> itemsAsync = ref.watch(galleryControllerProvider(projectId));
-    // Material 根：对话框 / SnackBar 需要 Material 祖先。
+    // Material 根：对话框与输入控件需要 Material 祖先。
     return Material(
       color: colors.surface1,
       child: Row(

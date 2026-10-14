@@ -9,9 +9,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
@@ -53,12 +55,9 @@ class CanvasAddNodeFab extends ConsumerWidget {
           );
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.canvasAddNodeFailed),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ref
+          .read(toastServiceProvider)
+          .show(context.l10n.canvasAddNodeFailed, kind: ToastKind.error);
     }
   }
 

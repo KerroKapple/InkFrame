@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/file_resolver.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
@@ -18,6 +19,7 @@ import '../../../theme/components/ink_input.dart';
 import '../../../theme/components/ink_progress_bar.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/export_controller.dart';
 import '../util/export_file_name.dart';
 import '../util/export_take_selection.dart';
@@ -195,7 +197,9 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                 ],
                 if (state is ExportVideoFailure) ...<Widget>[
                   const SizedBox(height: InkSpacing.md),
-                  // 债144①：失败提示内嵌对话框（SnackBar 弹在 barrier 之下易漏看）。
+                  // 债144①：失败提示内嵌对话框——对话框留着可改了重试，错误就在
+                  // 按钮旁边，不另弹通知卡（当初挪进来，是因为旧 SnackBar 弹在
+                  // barrier 之下易漏看）。
                   InkErrorBanner(message: _failureText(state.error)),
                 ],
                 const SizedBox(height: InkSpacing.xl),
@@ -386,7 +390,9 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
 
   Future<void> _onExport() async {
     final l = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
+    // 通知出口与 navigator 都在 await 前取好：成功要先关对话框再提示，
+    // 那之后本 State 的 context 和 ref 已经不能用了。
+    final toast = ref.read(toastServiceProvider);
     final navigator = Navigator.of(context);
     final resolver = ref.read(fileResolverServiceProvider);
     final ordered = <CanvasNode>[
@@ -406,26 +412,18 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
       case ExportVideoSuccess(:final relativePath):
         final absolutePath = _absolutePath(resolver, relativePath);
         navigator.pop();
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(l.exportVideoSuccess(relativePath)),
-            action: absolutePath == null
-                ? null
-                : SnackBarAction(
-                    label: l.exportVideoCopyPath,
-                    onPressed: () async {
-                      await Clipboard.setData(
-                        ClipboardData(text: absolutePath),
-                      );
-                      messenger.showSnackBar(
-                        SnackBar(
-                          content: Text(l.exportVideoPathCopied),
-                          duration: const Duration(seconds: 2),
-                        ),
-                      );
-                    },
-                  ),
-          ),
+        // 导出是一段长任务（ffmpeg 拼接），跑完时用户未必还盯着屏幕：成功卡带 chime。
+        toast.show(
+          l.exportVideoSuccess(relativePath),
+          kind: ToastKind.success,
+          chime: true,
+          primary: absolutePath == null
+              ? null
+              : ToastAction(l.exportVideoCopyPath, () async {
+                  await Clipboard.setData(ClipboardData(text: absolutePath));
+                  // 「已复制」是对刚才那一下的即时回应：普通提示，不响。
+                  toast.show(l.exportVideoPathCopied, kind: ToastKind.info);
+                }),
         );
       case ExportVideoFailure():
         break; // 失败由 build 内嵌 InkErrorBanner 渲染（债144①）。

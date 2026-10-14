@@ -1,11 +1,14 @@
 // 基底风格编辑入口（原 CanvasToolBar 的唯一动作，工具条本身随 Workspace v2 稿撤掉）。
 //
 // 入口挂在画布底部提示词条的「基础风格」标签上（canvas_prompt_bar.dart）。
-import 'package:flutter/material.dart';
+// 读 / 写失败都走全应用唯一的通知出口 toastServiceProvider（错误卡，等用户关）。
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/canvas_base_style.dart';
 import 'base_style_editor_dialog.dart';
 
@@ -23,9 +26,9 @@ Future<void> openBaseStyleEditor(
     cur = await ref.read(canvasBaseStyleProvider(canvasId).future);
   } on InkError catch (e) {
     if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(l10nAsyncError(context, e))),
-    );
+    ref
+        .read(toastServiceProvider)
+        .show(l10nAsyncError(context, e), kind: ToastKind.error);
     return;
   }
   if (!context.mounted) return;
@@ -40,8 +43,8 @@ Future<void> openBaseStyleEditor(
     await setBaseStyle(ref, canvasId, prefix: r.prefix, suffix: r.suffix);
   } on InkError catch (_) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.l10n.baseStyleUpdateFailed)),
-    );
+    ref
+        .read(toastServiceProvider)
+        .show(context.l10n.baseStyleUpdateFailed, kind: ToastKind.error);
   }
 }

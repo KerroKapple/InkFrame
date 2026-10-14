@@ -21,11 +21,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/character_assets.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart';
+import '../../../core/interfaces/toast_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/tokens.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
 import '../providers/character_usage.dart';
@@ -357,18 +360,21 @@ class _CharacterLibraryRowState extends ConsumerState<CharacterLibraryRow> {
     );
   }
 
-  /// 改名 / 删除只经仓储，仓储只抛 InkError；失败给 SnackBar，不崩 UI 也不假装成功。
+  /// 改名 / 删除只经仓储，仓储只抛 InkError；失败弹错误通知卡，不崩 UI 也不假装成功。
   ///
   /// 文案走 l10nError：这里的失败可能是磁盘满、连接断，套「角色导入失败」会把用户
   /// 引到一个跟本次操作无关的方向（这两条路径根本不导入任何文件）。
+  ///
+  /// 通知服务与文案在 await 之前就取好：删除是乐观的——行先从列表里消失，这一行的
+  /// State 随之卸载；失败回滚时出现的是一个新 State。等失败回来再碰 ref / context
+  /// 会抛，失败卡就丢了（用户只看到行闪了一下又回来，不知道为什么）。
   Future<void> _guard(Future<void> Function() action) async {
+    final ToastService toast = ref.read(toastServiceProvider);
+    final AppLocalizations l10n = context.l10n;
     try {
       await action();
     } on InkError catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.maybeOf(
-        context,
-      )?.showSnackBar(SnackBar(content: Text(l10nError(context, e))));
+      toast.show(l10nErrorFor(l10n, e), kind: ToastKind.error);
     }
   }
 }
@@ -453,21 +459,23 @@ Future<void> createCharacterFromFile(
         .createFromImage(name: trimmed, sourceAbsolutePath: file.path);
   } on InkError catch (e) {
     if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(
-      context,
-    )?.showSnackBar(SnackBar(content: Text(l10nError(context, e))));
+    ref
+        .read(toastServiceProvider)
+        .show(l10nError(context, e), kind: ToastKind.error);
   } on CharacterAssetError catch (_) {
     // 捕获集 = createFromImage 的真实抛出集（仓储 InkError / 资产服务 / dart:io）。
     // 后两类不是 InkError，只接 InkError 会让「选了个坏文件」变成未捕获异步异常：
     // 用户点了没反应，只多一份 crash 文件。
     if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+    ref.read(toastServiceProvider).show(
+      context.l10n.inspectorCharactersImportFailed,
+      kind: ToastKind.error,
     );
   } on FileSystemException catch (_) {
     if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+    ref.read(toastServiceProvider).show(
+      context.l10n.inspectorCharactersImportFailed,
+      kind: ToastKind.error,
     );
   }
 }

@@ -6,8 +6,8 @@
 // 画布区浮层（稿）：右下缩放条（bottom 56）、底部居中提示词条（bottom 16）、右下 32×32 FAB。
 // 节点 Inspector 不再浮在画布里，改住右侧面板。
 //
-// 【Scaffold 保留】它因为有外壳根 Scaffold 作祖先而变成 nested，_isRoot 返回 false ⇒
-// 自动排除出 SnackBar 广播（V3b）。FAB 不再用 Scaffold.floatingActionButton（稿的位置在画布区内）。
+// 【Scaffold 保留】外壳根 Scaffold 之下的 nested Scaffold，只提供画布区的底色与 Material 祖先。
+// FAB 不再用 Scaffold.floatingActionButton（稿的位置在画布区内）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

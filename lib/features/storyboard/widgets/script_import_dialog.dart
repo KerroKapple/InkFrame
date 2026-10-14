@@ -8,10 +8,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/script_import_controller.dart';
 import '../util/script_splitter.dart';
 
@@ -60,12 +62,11 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
   Future<void> _confirm() async {
     final List<ShotDraft> drafts = _drafts;
     if (drafts.isEmpty || _busy) return;
-    // 文案 / navigator / messenger 都在 await 前取好：成功要先关对话框再提示，
-    // 那之后本 State 的 context 已经不能用了。
+    // 文案 / navigator / 通知出口都在 await 前取好：成功要先关对话框再提示，
+    // 那之后本 State 的 context 和 ref 已经不能用了。
     final String doneMsg = context.l10n.scriptImportDone(drafts.length);
     final String failMsg = context.l10n.scriptImportFailed;
-    final ScaffoldMessengerState? messenger =
-        ScaffoldMessenger.maybeOf(context);
+    final ToastService toast = ref.read(toastServiceProvider);
     final NavigatorState navigator = Navigator.of(context);
     final ScriptImportController controller =
         ref.read(scriptImportControllerProvider(widget.canvasId));
@@ -74,18 +75,14 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
     try {
       await controller.importDrafts(drafts, origin: widget.origin);
       navigator.pop();
-      _showSnack(messenger, doneMsg);
+      // 建链是一次短事务、用户就等在对话框前——是即时回应，不是后台事件，不响。
+      toast.show(doneMsg, kind: ToastKind.success);
     } on InkError catch (_) {
       // 事务已整体回滚，画布没有残留——对话框留着，用户改完还能再点一次。
+      // 通知卡画在所有路由之上，对话框开着也看得见。
       if (mounted) setState(() => _busy = false);
-      _showSnack(messenger, failMsg);
+      toast.show(failMsg, kind: ToastKind.error);
     }
-  }
-
-  void _showSnack(ScaffoldMessengerState? messenger, String message) {
-    messenger?.showSnackBar(
-      SnackBar(content: Text(message), duration: const Duration(seconds: 3)),
-    );
   }
 
   @override

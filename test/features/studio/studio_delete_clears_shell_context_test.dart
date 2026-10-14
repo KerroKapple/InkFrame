@@ -6,10 +6,16 @@
 //
 // 两条反向用例同样重要：删【别的】画布 / 项目时外壳一动不动——无条件清上下文
 // 会把用户正在编辑的那张画布连带关掉，比原 bug 更难查。
+//
+// 末尾两条是失败侧：没删成 ⇒ 外壳一动不动，错误走通知卡（toastServiceProvider）。
+// 「管理画布」那条失败时对话框还开着——通知卡画在所有路由之上，挡不住。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
@@ -18,6 +24,7 @@ import 'package:inkframe/features/studio/studio_home_screen.dart';
 import 'package:inkframe/features/studio/widgets/project_card.dart';
 
 import '../../_harness/fake_repositories.dart';
+import '../../_harness/fake_toast_service.dart';
 import '../../_harness/test_app.dart';
 
 const ProjectRef _alpha = ProjectRef(id: 'p1', name: 'Alpha');
@@ -44,6 +51,18 @@ class _RecordingProjectRepo extends InMemoryProjectRepository {
   }
 }
 
+/// softDelete 必抛 LocalIOError——驱动删画布失败分支。
+class _FailingCanvasRepo extends InMemoryCanvasRepository {
+  @override
+  Future<int> softDelete(String id) async => throw const LocalIOError();
+}
+
+/// softDelete 必抛 LocalIOError——驱动删项目失败分支。
+class _FailingProjectRepo extends InMemoryProjectRepository {
+  @override
+  Future<int> softDelete(String id) async => throw const LocalIOError();
+}
+
 List<ProjectWithCanvases> _library() => <ProjectWithCanvases>[
       ProjectWithCanvases(
         id: 'p1',
@@ -68,8 +87,9 @@ List<ProjectWithCanvases> _library() => <ProjectWithCanvases>[
 Future<ProviderContainer> _pumpStudio(
   WidgetTester tester, {
   required ShellState initial,
-  required _RecordingCanvasRepo canvases,
-  required _RecordingProjectRepo projects,
+  required InMemoryCanvasRepository canvases,
+  required InMemoryProjectRepository projects,
+  RecordingToastService? toast,
 }) async {
   await pumpInkApp(
     tester,
@@ -81,6 +101,7 @@ Future<ProviderContainer> _pumpStudio(
       workspaceProjectsProvider.overrideWith((_) async => _library()),
       projectRepositoryProvider.overrideWith((_) async => projects),
       canvasRepositoryProvider.overrideWith((_) async => canvases),
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
     ],
   );
   await tester.pumpAndSettle();
@@ -211,5 +232,55 @@ void main() {
           tab: ShellTab.gallery, canvasId: 'cv-1', project: _alpha),
       reason: '删的是 Beta，Alpha 的项目上下文与画布都不该被碰',
     );
+  });
+
+  testWidgets('删当前项目失败：错误通知卡（不响）、外壳上下文一动不动', (tester) async {
+    final toast = RecordingToastService();
+    final container = await _pumpStudio(
+      tester,
+      initial: const ShellState(
+          tab: ShellTab.gallery, canvasId: 'cv-1', project: _alpha),
+      canvases: _RecordingCanvasRepo(),
+      projects: _FailingProjectRepo(),
+      toast: toast,
+    );
+
+    await _cardMenu(tester, 'Delete project');
+    await tester.tap(find.widgetWithText(TextButton, 'Delete'));
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>['Failed to delete project']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(toast.shown.single.chime, isFalse,
+        reason: '删除是用户刚点的那一下，失败是即时回应，不是后台事件');
+    expect(
+      container.read(shellControllerProvider),
+      const ShellState(
+          tab: ShellTab.gallery, canvasId: 'cv-1', project: _alpha),
+      reason: '没删成就不该清上下文——否则用户正看着的项目被平白关掉',
+    );
+  });
+
+  testWidgets('管理画布里删画布失败：对话框开着也报错误通知卡、行还在、外壳不动',
+      (tester) async {
+    final toast = RecordingToastService();
+    final container = await _pumpStudio(
+      tester,
+      initial: const ShellState(
+          tab: ShellTab.studio, canvasId: 'cv-1', project: _alpha),
+      canvases: _FailingCanvasRepo(),
+      projects: _RecordingProjectRepo(),
+      toast: toast,
+    );
+
+    await _cardMenu(tester, 'Manage canvases');
+    await _deleteCanvasRow(tester, 'Open one');
+
+    expect(toast.titles, <String>['Failed to delete canvas']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(find.text('Open one'), findsOneWidget,
+        reason: '没删成：对话框还开着、这一行还在');
+    expect(container.read(shellControllerProvider).canvasId, 'cv-1',
+        reason: '没删成就不该把正打开的画布关掉');
   });
 }

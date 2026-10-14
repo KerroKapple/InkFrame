@@ -12,12 +12,17 @@ extension AppL10nX on BuildContext {
 
 /// InkError → 用户可读的本地化字符串。
 String l10nError(BuildContext context, InkError e) =>
-    _l10nByMessageKey(context, e.messageKey);
+    l10nErrorFor(context.l10n, e);
+
+/// 同 [l10nError]，但只要一份 AppLocalizations——给「await 之后 widget 可能已经卸载」
+/// 的地方用：在 await 之前先取 `context.l10n`，失败回来时不再碰 context。
+String l10nErrorFor(AppLocalizations l10n, InkError e) =>
+    _l10nByMessageKey(l10n, e.messageKey);
 
 /// InkErrorCode（如从 wire 字符串还原的裸错误码）→ 本地化文案。
 /// 与 l10nError 共用同一 messageKey→ARB 映射，保持单一真相源。
 String l10nErrorCode(BuildContext context, InkErrorCode code) =>
-    _l10nByMessageKey(context, kInkErrorMessageKeys[code]!);
+    _l10nByMessageKey(context.l10n, kInkErrorMessageKeys[code]!);
 
 /// RestoreOutcome（非 restored）→ 失败文案（设置页 / 启动失败面共用，LB-22）。
 String l10nRestoreFailure(AppLocalizations l10n, RestoreOutcome outcome) {
@@ -48,8 +53,7 @@ String l10nKeyRejectReason(AppLocalizations l10n, KeyInvalidReason reason) {
 }
 
 /// messageKey → ARB 字符串的唯一 switch（l10nError / l10nErrorCode 共用）。
-String _l10nByMessageKey(BuildContext context, String messageKey) {
-  final l = context.l10n;
+String _l10nByMessageKey(AppLocalizations l, String messageKey) {
   return switch (messageKey) {
     'errorInvalidKey' => l.errorInvalidKey,
     'errorInsufficientBalance' => l.errorInsufficientBalance,

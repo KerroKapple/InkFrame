@@ -14,6 +14,7 @@ import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/core/interfaces/unit_of_work.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
@@ -40,6 +41,20 @@ class _FailingCreateCanvasRepository extends InMemoryCanvasRepository {
   }) async {
     throw const LocalIOError(extra: {'op': 'create'});
   }
+}
+
+/// update 必抛 LocalIOError 的项目仓储——驱动重命名项目失败分支。
+class _FailingUpdateProjectRepository extends InMemoryProjectRepository {
+  @override
+  Future<int> update(String id, Map<String, Object?> patch) async =>
+      throw const LocalIOError(extra: {'op': 'update'});
+}
+
+/// run 永远抛错的 UoW——驱动新建项目失败分支（项目 + 首画布在单事务里建）。
+class _ThrowingUnitOfWork implements UnitOfWork {
+  @override
+  Future<T> run<T>(Future<T> Function(RepositoryScope scope) action) async =>
+      throw const LocalIOError(extra: {'op': 'create'});
 }
 
 void main() {
@@ -358,5 +373,78 @@ void main() {
     expect(canvases.rows.values.single['name'], 'Untitled Canvas');
     // 列表刷新后卡片可见（sidebar + card 各一处）
     expect(find.text('Heist'), findsOneWidget, reason: '只在卡片上；库面板不列项目');
+  });
+
+  // 下面两条：新建 / 重命名失败走通知卡（toastServiceProvider）。两者都是用户
+  // 刚点的那一下的即时回应，不是后台事件，所以不响。
+  testWidgets('create 失败：InkError → error toast（不响）', (tester) async {
+    final toast = RecordingToastService();
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => const <ProjectWithCanvases>[],
+        ),
+        unitOfWorkProvider.overrideWith((_) async => _ThrowingUnitOfWork()),
+        toastServiceProvider.overrideWithValue(toast),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('New Project'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Heist');
+    await tester.tap(find.text('Create'));
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>['Failed to create project']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(toast.shown.single.chime, isFalse,
+        reason: '建项目是用户刚点的那一下，失败是即时回应，不是后台事件');
+  });
+
+  testWidgets('重命名项目失败：InkError → error toast（不响）', (tester) async {
+    final toast = RecordingToastService();
+    await pumpInkApp(
+      tester,
+      const StudioHomeScreen(),
+      surfaceSize: const Size(1440, 900),
+      overrides: <Override>[
+        workspaceProjectsProvider.overrideWith(
+          (_) async => <ProjectWithCanvases>[
+            ProjectWithCanvases(
+              id: 'p1',
+              name: 'Alpha',
+              createdAt: DateTime.utc(2026, 5, 1),
+              canvases: const <CanvasRef>[],
+            ),
+          ],
+        ),
+        projectRepositoryProvider
+            .overrideWith((_) async => _FailingUpdateProjectRepository()),
+        toastServiceProvider.overrideWithValue(toast),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    // 菜单键的类型参数是私有枚举，byType 配不上 ⇒ 按 tooltip 定位。
+    await tester.tap(
+      find.descendant(
+        of: find.byType(StudioProjectCard),
+        matching: find.byTooltip('Project options'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Rename project').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'Alpha 2');
+    await tester.tap(find.text('Rename'));
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>['Failed to rename project']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(toast.shown.single.chime, isFalse);
   });
 }

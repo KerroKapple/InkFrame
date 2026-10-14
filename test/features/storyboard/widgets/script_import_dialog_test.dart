@@ -2,16 +2,22 @@
 //
 // 预览是这张卡的定心丸——拆分规则再讲究，用户也得先看见「拆成了几镜、每镜叫什么」
 // 才敢按下创建。所以预览必须随文本与策略实时变，不能等到点了创建才知道结果。
+//
+// 成败提示走通知卡（toastServiceProvider）：成功时对话框已关，失败时对话框还开着
+// ——通知卡画在所有路由之上，两种时机都看得见。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/interfaces/unit_of_work.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/storyboard/widgets/script_import_dialog.dart';
 
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/fake_unit_of_work.dart';
 import '../../../_harness/test_app.dart';
 
@@ -34,11 +40,13 @@ void main() {
     edgeRepo = InMemoryEdgeRepository();
   });
 
-  Future<void> pump(WidgetTester tester, {UnitOfWork? uow}) async {
+  /// 打开对话框，返回记下的通知卡。
+  Future<RecordingToastService> pump(WidgetTester tester, {UnitOfWork? uow}) async {
     final UnitOfWork unitOfWork = uow ??
         FakeUnitOfWork(
           FakeRepositoryScope(nodes: nodeRepo, edges: edgeRepo),
         );
+    final RecordingToastService toast = RecordingToastService();
     await pumpInkApp(
       tester,
       Scaffold(
@@ -52,10 +60,12 @@ void main() {
       ),
       overrides: <Override>[
         unitOfWorkProvider.overrideWith((ref) async => unitOfWork),
+        toastServiceProvider.overrideWithValue(toast),
       ],
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
+    return toast;
   }
 
   Future<void> paste(WidgetTester tester, String text) async {
@@ -100,7 +110,7 @@ void main() {
   });
 
   testWidgets('点创建 → 建出 shot 链、对话框关闭、成功提示', (tester) async {
-    await pump(tester);
+    final RecordingToastService toast = await pump(tester);
     await paste(tester, threeShots);
 
     await tester.tap(find.text('Create shots'));
@@ -117,11 +127,14 @@ void main() {
       everyElement('narrative'),
     );
     expect(find.text('Import script'), findsNothing, reason: '对话框应已关闭');
-    expect(find.text('3 shots added to the canvas'), findsOneWidget);
+    expect(toast.titles, <String>['3 shots added to the canvas']);
+    expect(toast.kinds, <ToastKind>[ToastKind.success]);
+    expect(toast.shown.single.chime, isFalse,
+        reason: '建链是一次短事务、用户就等在对话框前——即时回应，不是后台事件');
   });
 
   testWidgets('单镜文本 → 建 1 个节点 0 条边', (tester) async {
-    await pump(tester);
+    final RecordingToastService toast = await pump(tester);
     await paste(tester, '就一镜');
 
     await tester.tap(find.text('Create shots'));
@@ -129,11 +142,12 @@ void main() {
 
     expect(nodeRepo.rows, hasLength(1));
     expect(edgeRepo.rows, isEmpty);
-    expect(find.text('1 shot added to the canvas'), findsOneWidget);
+    expect(toast.titles, <String>['1 shot added to the canvas']);
   });
 
   testWidgets('事务失败 → 提示失败、画布无残留、对话框留着可重试', (tester) async {
-    await pump(tester, uow: _ThrowingUnitOfWork());
+    final RecordingToastService toast =
+        await pump(tester, uow: _ThrowingUnitOfWork());
     await paste(tester, threeShots);
 
     await tester.tap(find.text('Create shots'));
@@ -142,9 +156,10 @@ void main() {
     expect(nodeRepo.rows, isEmpty);
     expect(edgeRepo.rows, isEmpty);
     expect(
-      find.text("Couldn't import the script. Nothing was added to the canvas."),
-      findsOneWidget,
+      toast.titles,
+      <String>["Couldn't import the script. Nothing was added to the canvas."],
     );
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(find.text('Import script'), findsOneWidget, reason: '失败不该关掉对话框');
   });
 }

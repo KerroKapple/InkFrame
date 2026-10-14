@@ -1,5 +1,6 @@
 // ImageConfigInspector 角色区/预设区 widget 测试（B3）：
-// 角色 chip 缩略图 / InkDashedSlot 空态 / 落库失败 SnackBar。
+// 角色 chip 缩略图 / InkDashedSlot 空态 / 落库失败错误卡（toastServiceProvider，
+// 这里覆盖成 RecordingToastService 断言记下来的卡）。
 // 节点必须带 projectId——两个 section 首行守卫 projectId==null 即 shrink，
 // 这正是此前 widget 测试结构性够不到这两个区的原因。
 
@@ -18,11 +19,13 @@ import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/character_usage.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/primitives/ink_dashed_slot.dart';
 
@@ -30,6 +33,7 @@ import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_character.dart';
 import '../../../_harness/fake_prompt_preset.dart';
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 const _kCanvasId = 'cv-1';
@@ -168,12 +172,14 @@ void main() {
   late InMemoryEdgeRepository edgeRepo;
   late FakeCharacterRepo charRepo;
   late FakePromptPresetRepo presetRepo;
+  late RecordingToastService toast;
 
   setUp(() {
     nodeRepo = InMemoryNodeRepository();
     edgeRepo = InMemoryEdgeRepository();
     charRepo = FakeCharacterRepo();
     presetRepo = FakePromptPresetRepo();
+    toast = RecordingToastService();
   });
 
   Future<CanvasNode> seedConfigNode({
@@ -233,6 +239,7 @@ void main() {
         ),
         promptPresetRepositoryProvider.overrideWith((ref) async => presetRepo),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
+        toastServiceProvider.overrideWithValue(toast),
       ],
     );
     await tester.pumpAndSettle();
@@ -306,7 +313,7 @@ void main() {
     );
   });
 
-  testWidgets('存为预设落库失败 → SnackBar 提示（不静默吞错）', (tester) async {
+  testWidgets('存为预设落库失败 → 错误卡提示（不静默吞错）', (tester) async {
     presetRepo.failCreate = true;
     // 提示词来自节点 typeConfig（空 prompt 直接 return 不落库）。
     final node = await seedConfigNode(typeConfig: <String, Object?>{'prompt': 'a cat'});
@@ -323,7 +330,8 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Failed to save preset'), findsOneWidget);
+    expect(toast.titles, <String>['Failed to save preset']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
   });
 
   testWidgets('预设点选 → prompt/negative 填入字段并落库（GAP-7）', (tester) async {
@@ -362,7 +370,7 @@ void main() {
     expect(find.text(r'$0.01'), findsOneWidget);
   });
 
-  testWidgets('存为角色落库失败 → SnackBar 提示（不静默吞错）', (tester) async {
+  testWidgets('存为角色落库失败 → 错误卡提示（不静默吞错）', (tester) async {
     charRepo.failCreate = true;
     final node = await seedConfigNode();
     // reference 边 + 带 image_url 的源节点 → 「存为角色」按钮启用
@@ -390,7 +398,8 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Failed to import character'), findsOneWidget);
+    expect(toast.titles, <String>['Failed to import character']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
   });
 
   group('LB-06 分区加载失败错误态', () {

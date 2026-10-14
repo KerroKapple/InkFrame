@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/preferences.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -26,6 +27,7 @@ import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/services/cost_estimator.dart';
 import '../../generation/services/prompt_assembler.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/prompt_preset.dart';
@@ -527,8 +529,9 @@ class _PresetsSectionState extends ConsumerState<_PresetsSection> {
       // 落库失败不崩 UI，但必须让用户知道没存上（此前静默吞错 = 假成功）。
       // 参数 context 跨 async gap 不可用，取 State 自身 context（mounted 已守卫）。
       if (!mounted) return;
-      ScaffoldMessenger.maybeOf(this.context)?.showSnackBar(
-        SnackBar(content: Text(this.context.l10n.inspectorPresetsSaveFailed)),
+      ref.read(toastServiceProvider).show(
+        this.context.l10n.inspectorPresetsSaveFailed,
+        kind: ToastKind.error,
       );
     }
   }

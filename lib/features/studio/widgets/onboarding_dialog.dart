@@ -18,6 +18,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/preferences.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -26,6 +27,7 @@ import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../canvas/providers/canvas_bootstrap_controller.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../../settings/providers/settings_page.dart';
 import '../../settings/widgets/language_section.dart';
 import '../../shell/models/shell_state.dart';
@@ -137,14 +139,10 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
       );
     } on InkError {
       // 捕获集 = createSample 真实抛出集（仓储链路只抛 InkError）。
-      // 失败留在向导——用户可改走「从空白开始」。
+      // 失败留在向导——用户可改走「从空白开始」。通知卡画在所有路由之上，
+      // 向导这层 modal 挡不住它；建示例是用户刚点的那一下，不响。
       if (mounted) {
-        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-          SnackBar(
-            content: Text(failedMsg),
-            duration: const Duration(seconds: 3),
-          ),
-        );
+        ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
       }
       return;
     }

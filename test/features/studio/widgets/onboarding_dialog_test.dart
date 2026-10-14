@@ -17,9 +17,13 @@ import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/core/interfaces/unit_of_work.dart';
 import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/settings/providers/settings_page.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
@@ -36,7 +40,15 @@ import '../../../_harness/fake_asset_bundle.dart';
 import '../../../_harness/fake_providers.dart';
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_secure_storage.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/fake_unit_of_work.dart';
+
+/// run 永远抛错的 UoW：驱动「创建示例项目」的失败分支（示例项目在单事务里建）。
+class _ThrowingUnitOfWork implements UnitOfWork {
+  @override
+  Future<T> run<T>(Future<T> Function(RepositoryScope scope) action) async =>
+      throw const LocalIOError();
+}
 
 /// 被拒三种原因的英文文案（en ARB 原文）。测试里按字面钉，文案改了必须一起改。
 const String _rejectedInvalidText =
@@ -623,6 +635,49 @@ void main() {
       // ON-2b：演示内容一并种入。
       expect(lanes.rows, hasLength(1));
       expect(nodes.rows.values.single['lane_id'], lanes.rows.keys.single);
+    });
+
+    // 失败时向导还开着（modal）：通知卡画在所有路由之上，挡不住；旧 SnackBar
+    // 弹在 barrier 之下。失败不落标记——用户还能改走「从空白开始」。
+    testWidgets('第 3 步「创建示例项目」失败：错误通知卡（不响）、向导留着、不落标记',
+        (WidgetTester tester) async {
+      final InMemoryPreferencesService prefs = InMemoryPreferencesService();
+      final RecordingToastService toast = RecordingToastService();
+      final Directory root =
+          Directory.systemTemp.createTempSync('ink_onboarding_sample_fail_');
+      addTearDown(() {
+        if (root.existsSync()) root.deleteSync(recursive: true);
+      });
+      await _pumpAndOpen(
+        tester,
+        overrides: _overrides(
+          prefs: prefs,
+          secure: FakeSecureStorage(),
+          extra: <Override>[
+            // 与成功用例同一套环境，只把事务换成必炸的那个。
+            appPathsProvider.overrideWithValue(DefaultAppPaths.forRoot(root)),
+            assetBundleProvider.overrideWithValue(
+              FakeAssetBundle(const <String, List<int>>{}),
+            ),
+            unitOfWorkProvider.overrideWith((_) async => _ThrowingUnitOfWork()),
+            toastServiceProvider.overrideWithValue(toast),
+          ],
+        ),
+      );
+
+      await _gotoKeysStep(tester);
+      await tester.tap(find.byKey(OnboardingDialog.nextKey));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(OnboardingDialog.createSampleKey));
+      await tester.pumpAndSettle();
+
+      expect(toast.titles, <String>["Couldn't create sample project"]);
+      expect(toast.kinds, <ToastKind>[ToastKind.error]);
+      expect(toast.shown.single.chime, isFalse,
+          reason: '建示例是用户刚点的那一下，失败是即时回应，不是后台事件');
+      expect(find.byKey(OnboardingDialog.createSampleKey), findsOneWidget,
+          reason: '失败留在向导第 3 步，可改走「从空白开始」');
+      expect(prefs.current.onboardingCompleted, isFalse);
     });
 
     testWidgets('卡片高固定：中文 + 1.3 字号档 + 小窗仍不溢出（正文自己滚）',

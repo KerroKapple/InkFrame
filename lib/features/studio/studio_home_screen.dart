@@ -278,12 +278,9 @@ Future<void> showStudioNewProjectDialog(BuildContext context, WidgetRef ref) asy
         );
   } on InkError {
     if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        content: Text(context.l10n.studioNewProjectFailed),
-        duration: const Duration(seconds: 3),
-      ),
-    );
+    ref
+        .read(toastServiceProvider)
+        .show(context.l10n.studioNewProjectFailed, kind: ToastKind.error);
   }
 }
 
@@ -718,12 +715,7 @@ class _ProjectGrid extends ConsumerWidget {
           .renameProject(id: p.id, name: name);
     } on InkError {
       if (!context.mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: Text(failedMsg),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
     }
   }
 
@@ -766,12 +758,7 @@ class _ProjectGrid extends ConsumerWidget {
       if (wasActive) nav.closeProject();
     } on InkError {
       if (!context.mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: Text(failedMsg),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
     }
   }
 }
@@ -797,10 +784,9 @@ class _ManageCanvasesDialogState extends ConsumerState<_ManageCanvasesDialog> {
     _canvases = List.of(widget.project.canvases);
   }
 
+  /// 画布行内操作失败。通知卡画在所有路由之上——本对话框还开着也看得见。
   void _showError(String msg) {
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(msg), duration: const Duration(seconds: 3)),
-    );
+    ref.read(toastServiceProvider).show(msg, kind: ToastKind.error);
   }
 
   Future<void> _rename(CanvasRef c) async {

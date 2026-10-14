@@ -18,6 +18,7 @@ import '../../../core/di/file_resolver.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
@@ -26,6 +27,7 @@ import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/primitives/ink_dashed_slot.dart';
 import '../../../theme/tokens.dart';
 import '../../gallery/providers/gallery_graph_provider.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
@@ -331,8 +333,9 @@ class _CharactersSectionState extends ConsumerState<CharactersSection> {
 
   void _importFailed() {
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+    ref.read(toastServiceProvider).show(
+      context.l10n.inspectorCharactersImportFailed,
+      kind: ToastKind.error,
     );
   }
 

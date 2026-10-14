@@ -13,12 +13,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
@@ -130,7 +132,7 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
   /// 在 shot 右侧偏移一格新建 config 节点 + narrative 边 shot→新节点。
   ///
   /// notifier 与文案在 await 前取好：面板中途销毁也保证「节点+边」成对落地。
-  /// 失败仅 snackbar，节点/连线失败分开报——建节点失败就没必要报连线。
+  /// 失败只弹错误通知卡，节点/连线失败分开报——建节点失败就没必要报连线。
   Future<void> _generateFromNotes({
     required CanvasNodeType type,
     required Map<String, Object?> extraConfig,
@@ -156,7 +158,7 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
           typeConfig: <String, Object?>{'prompt': notes, ...extraConfig},
         );
       } on InkError catch (_) {
-        _showSnack(addFailedMsg);
+        _toastError(addFailedMsg);
         return;
       }
       try {
@@ -166,21 +168,16 @@ class _ShotConfigInspectorState extends ConsumerState<ShotConfigInspector> {
           edgeType: EdgeType.narrative,
         );
       } on InkError catch (_) {
-        _showSnack(linkFailedMsg);
+        _toastError(linkFailedMsg);
       }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
-  void _showSnack(String message) {
+  void _toastError(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    ref.read(toastServiceProvider).show(message, kind: ToastKind.error);
   }
 
   @override
