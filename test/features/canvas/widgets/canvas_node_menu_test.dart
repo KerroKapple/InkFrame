@@ -9,11 +9,13 @@
 //   - 加入泳道 ›：子菜单列出泳道 + 移出泳道，当前那条打勾不可点，moveNode 的参数，多选整批。
 //   - 在序列中定位：切到序列标签，播放头跳到那一镜。
 //   - 删除：走撤销卡；多选整批。
+//   - 存为角色的起名框一打开就持焦（B1）：不点输入框直接按 Backspace / L / Esc，按键不穿到框后面的画布上。
 //
 // 变异对照：拿掉任一可用条件 ⇒「可用 / 置灰」组对应的那一条红；_pickNode 只对右键的那张做复制 / 移道 / 删除
 // （不看选中集）⇒ 三条「多选」用例红。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
@@ -28,6 +30,7 @@ import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/characters_controller.dart';
 import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
+import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
@@ -618,6 +621,43 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
       await tester.pumpAndSettle();
 
+      expect(_RecordingCharacters.created, isEmpty);
+    });
+
+    // B1：起名框弹出来时主焦点曾被画布要回去（关菜单时还焦点 + 框里没有 autofocus）——Backspace 删掉框后面
+    // 选中的卡、L 在画布上进连线、Esc 关不掉框。不点输入框直接发键：enterText 会替我们把焦点给到输入框，
+    // 正好把这个问题盖住，所以这里一律不用它。
+    testWidgets('起名框一打开就持焦：不点输入框直接按 Backspace / L / Esc——卡还在、没进连线、Esc 关的是框',
+        (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await _openMenuOn(tester, 'take');
+      expect(_selection(c), <String>{'take'}, reason: '前提：右键那张产物卡被单选');
+
+      await _pick(tester, 'Save as character');
+      final Finder dialog = find.byType(InkNameDialog);
+      expect(dialog, findsOneWidget);
+      final Iterable<EditableText> fields = tester.widgetList<EditableText>(
+        find.descendant(of: dialog, matching: find.byType(EditableText)),
+      );
+      expect(
+        fields.any((EditableText f) => f.focusNode.hasPrimaryFocus),
+        isTrue,
+        reason: '主焦点在起名框的输入框里，不在画布上',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pumpAndSettle();
+      expect(_nodesOf(c).removed, isEmpty, reason: 'Backspace 不得删掉框后面选中的卡');
+      expect(_card('take'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+      await tester.pump();
+      expect(c.read(linkModeControllerProvider('c1')), isNull, reason: 'L 不得在画布上进连线');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(dialog, findsNothing, reason: 'Esc 关的是起名框');
+      expect(_selection(c), <String>{'take'}, reason: 'Esc 没落到画布上：选中不变');
       expect(_RecordingCharacters.created, isEmpty);
     });
   });

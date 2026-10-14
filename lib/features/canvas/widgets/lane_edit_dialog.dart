@@ -54,6 +54,12 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
   late final TextEditingController _styleCtrl;
   String? _selectedTint; // null = 自动
 
+  /// 名称框一打开就持焦（autofocus）：框常从画布开（F / 新建菜单「泳道」），按键不能穿到框后面的画布上。
+  /// InkInput 不收 autofocus 参数，就照 Focus(autofocus: true) 的做法排一次 FocusScope.autofocus——
+  /// 作用域里还没有别的焦点才生效。
+  final FocusNode _labelFocus = FocusNode(debugLabel: 'laneEdit.label');
+  bool _didAutofocus = false;
+
   @override
   void initState() {
     super.initState();
@@ -64,7 +70,16 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didAutofocus) return;
+    _didAutofocus = true;
+    FocusScope.of(context, createDependency: false).autofocus(_labelFocus);
+  }
+
+  @override
   void dispose() {
+    _labelFocus.dispose();
     _labelCtrl.dispose();
     _styleCtrl.dispose();
     super.dispose();
@@ -137,7 +152,11 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
                       // 名称
                       Text(l10n.laneNameLabel, style: label),
                       const SizedBox(height: InkSpacing.s6),
-                      InkInput(controller: _labelCtrl, hintText: l10n.laneNameHint),
+                      InkInput(
+                        controller: _labelCtrl,
+                        focusNode: _labelFocus,
+                        hintText: l10n.laneNameHint,
+                      ),
                       const SizedBox(height: InkSpacing.md),
 
                       // 风格提示词（多行）+ 说明

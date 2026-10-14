@@ -49,8 +49,23 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
   ScriptSplitStrategy _strategy = ScriptSplitStrategy.blankLine;
   bool _busy = false;
 
+  /// 粘贴框一打开就持焦（autofocus）：框常从画布开（空白处右键「导入脚本…」），按键不能穿到框后面的画布上。
+  /// InkInput 不收 autofocus 参数，就照 Focus(autofocus: true) 的做法排一次 FocusScope.autofocus——
+  /// 作用域里还没有别的焦点才生效。
+  final FocusNode _focus = FocusNode(debugLabel: 'scriptImport.text');
+  bool _didAutofocus = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didAutofocus) return;
+    _didAutofocus = true;
+    FocusScope.of(context, createDependency: false).autofocus(_focus);
+  }
+
   @override
   void dispose() {
+    _focus.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -101,6 +116,7 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
             children: <Widget>[
               InkInput(
                 controller: _ctrl,
+                focusNode: _focus,
                 hintText: l.scriptImportHint,
                 minLines: 4,
                 maxLines: 8,

@@ -43,8 +43,23 @@ class _InkNameDialogState extends State<InkNameDialog> {
   /// 调用方在 showDialog 返回后立即 dispose 会炸。
   final TextEditingController _ctrl = TextEditingController();
 
+  /// 一打开焦点就在输入框里（autofocus）：框是从画布菜单之类的地方开的，按键不能穿到框后面去。
+  /// InkInput 不收 autofocus 参数，就照 Focus(autofocus: true) 的做法排一次 FocusScope.autofocus——
+  /// 作用域里还没有别的焦点才生效，不从已经持焦的控件手里抢。
+  final FocusNode _focus = FocusNode(debugLabel: 'InkNameDialog');
+  bool _didAutofocus = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didAutofocus) return;
+    _didAutofocus = true;
+    FocusScope.of(context, createDependency: false).autofocus(_focus);
+  }
+
   @override
   void dispose() {
+    _focus.dispose();
     _ctrl.dispose();
     super.dispose();
   }
@@ -57,6 +72,7 @@ class _InkNameDialogState extends State<InkNameDialog> {
       title: Text(widget.title),
       content: InkInput(
         controller: _ctrl,
+        focusNode: _focus,
         hintText: widget.hint,
         // 每次输入重建一次，确认键的可用态才跟得上（禁用态的唯一依据）。
         onChanged: (_) => setState(() {}),

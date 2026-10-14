@@ -73,6 +73,15 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // B1：框常从画布开（空白处右键「导入脚本…」）。不持焦的话主焦点会被画布要回去，按键穿过框打到画布上。
+  testWidgets('一打开粘贴框就持焦（autofocus）：不用先点一下就能粘贴', (tester) async {
+    await pump(tester);
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasPrimaryFocus,
+      isTrue,
+    );
+  });
+
   testWidgets('刚打开：预览为空，创建按钮禁用', (tester) async {
     await pump(tester);
 

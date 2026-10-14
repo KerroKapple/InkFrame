@@ -8,9 +8,13 @@
 //   - 双击空白 / Tab / 空白处右键「新建…」：开的是同一个新建菜单（不带上下文）。
 //   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
 //   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
+//   - 从菜单开的对话框（泳道 / 导入脚本…）一打开就持焦，按键不穿到框后面的画布上（B1）；画布所在的路由上面
+//     压着对话框时，画布一概不要焦点（第一层兜底，换一个没有 autofocus 的框照样成立）。
 //
 // 变异对照：拿掉 addNodeFromMenu 的回滚 ⇒「边写失败」红；拿掉 Esc 里取消拖线那一层 ⇒「拖线途中 Esc」红；
 // 把 Tab 的 _CanvasFocusedAction 换成不设门的 Action ⇒「打字时 Tab」「按钮上 Tab」两条红。
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -36,6 +40,7 @@ import 'package:inkframe/features/canvas/widgets/node_card.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
+import 'package:inkframe/features/storyboard/widgets/script_import_dialog.dart';
 import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/fake_canvas.dart';
@@ -255,6 +260,44 @@ const List<String> _plainLabels = <String>[
   'Shot',
   'Lane',
 ];
+
+/// 从菜单开出来的对话框 [dialog] 拿着键盘（B1）：主焦点在它的输入框里；不点输入框直接按 Backspace / L / Esc——
+/// 选中的卡 [selected] 还在、画布没进连线、Esc 关的是对话框、画布选中不变。
+///
+/// 不用 enterText：它会替我们把焦点给到输入框，正好把「焦点被画布要走」盖住。
+Future<void> _expectDialogOwnsKeys(
+  WidgetTester tester,
+  ProviderContainer c, {
+  required Finder dialog,
+  required String selected,
+}) async {
+  expect(dialog, findsOneWidget);
+  final Iterable<EditableText> fields = tester.widgetList<EditableText>(
+    find.descendant(of: dialog, matching: find.byType(EditableText)),
+  );
+  expect(
+    fields.any((EditableText f) => f.focusNode.hasPrimaryFocus),
+    isTrue,
+    reason: '主焦点在对话框的输入框里，不在画布上',
+  );
+
+  await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+  await tester.pumpAndSettle();
+  expect(_nodesOf(c).removed, isEmpty, reason: 'Backspace 不得删掉框后面选中的卡');
+
+  await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+  await tester.pump();
+  expect(c.read(linkModeControllerProvider('c1')), isNull, reason: 'L 不得在画布上进连线');
+
+  await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+  await tester.pumpAndSettle();
+  expect(dialog, findsNothing, reason: 'Esc 关的是对话框');
+  expect(
+    c.read(canvasSelectionControllerProvider('c1')),
+    <String>{selected},
+    reason: 'Esc 没落到画布上：选中不变',
+  );
+}
 
 void _expectMenuAt(WidgetTester tester, Key key, Offset at) {
   final Finder menu = find.byKey(key);
@@ -638,6 +681,88 @@ void main() {
 
       expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'img', 'vid'});
       expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
+    });
+  });
+
+  group('B1：从菜单开的对话框拿着键盘，按键不穿到框后面的画布上', () {
+    testWidgets('Tab 新建菜单 →「泳道」：泳道框一打开就持焦', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      c.read(canvasSelectionControllerProvider('c1').notifier).select('img');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(of: find.byKey(CanvasMenuKeys.createMenu), matching: find.text('Lane')),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('New lane'), findsOneWidget, reason: '前提：开的是「新建泳道」框');
+
+      await _expectDialogOwnsKeys(tester, c, dialog: find.byType(Dialog), selected: 'img');
+    });
+
+    testWidgets('空白处右键 →「导入脚本…」：导入框一打开就持焦', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      c.read(canvasSelectionControllerProvider('c1').notifier).select('img');
+      await tester.pump();
+      await tester.tapAt(
+        const Offset(700, 500),
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(CanvasMenuKeys.blankMenu),
+          matching: find.text('Import script…'),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await _expectDialogOwnsKeys(
+        tester,
+        c,
+        dialog: find.byType(ScriptImportDialog),
+        selected: 'img',
+      );
+    });
+
+    // 第一层单独钉：照「收菜单时要回焦点 → 开对话框」的时序走一遍，换成一个什么都不 autofocus 的框。以后新加的
+    // 对话框入口忘了另外两层（关菜单不还焦点、框里 autofocus），也得靠这一层兜住。
+    testWidgets('画布所在的路由上面压着对话框：收菜单的焦点回收与舞台按下的回收都不要焦点', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      c.read(canvasSelectionControllerProvider('c1').notifier).select('img');
+      await tester.pump();
+      await tester.tapAt(
+        const Offset(700, 500),
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsOneWidget, reason: '前提：菜单开着、菜单持焦');
+
+      final BuildContext canvas = tester.element(find.byType(CanvasView));
+      c.read(canvasMenuRequestProvider('c1').notifier).close();
+      CanvasShortcuts.reclaimFocusIfOrphaned(canvas);
+      unawaited(
+        showDialog<void>(
+          context: canvas,
+          builder: (BuildContext _) => const AlertDialog(content: Text('bare dialog')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('bare dialog'), findsOneWidget);
+
+      CanvasShortcuts.reclaimFocus(canvas);
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pumpAndSettle();
+      expect(_nodesOf(c).removed, isEmpty, reason: '焦点没被要回画布：Backspace 不删框后面选中的卡');
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+      await tester.pump();
+      expect(c.read(linkModeControllerProvider('c1')), isNull, reason: 'L 不得在画布上进连线');
     });
   });
 

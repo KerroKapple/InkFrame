@@ -17,7 +17,8 @@
 //     实时虚线层与卡片高亮读，Esc 取消。
 //   - CanvasMenuHost：包在画布区外层（canvas_view 的 _CanvasBody），菜单经 OverlayPortal 浮到 Overlay 上，
 //     锚点跟着画布区走（CompositedTransformFollower，与铃铛下拉同一做法）。点外面关（TapRegion）；
-//     焦点整个离开菜单也关（开对话框 / 切标签 / 命令面板盖上来）；关菜单时焦点还给画布，单键快捷键接着能用。
+//     焦点整个离开菜单也关（开对话框 / 切标签 / 命令面板盖上来）；关菜单时焦点还给画布，单键快捷键接着能用——
+//     选的项要开对话框（泳道 / 导入脚本… / 存为角色）时除外：焦点归对话框。
 //   - CanvasMenuPanel：菜单本体。新建菜单顶上是搜索框（一打开就持焦，直接打字过滤）；右键菜单没有。
 //     ↑ / ↓ 移动高亮（鼠标悬停也移），↵ 执行，Esc 关。项可以置灰（不隐藏；↑ / ↓ 跳过它）、标危险色（删除）、
 //     打勾（子菜单里「当前所在」那一项），也可以带子菜单（行尾 ›）：悬停 / 点击 / → / ↵ 打开，← / Esc 收回。
@@ -282,7 +283,8 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
 
   /// 关 [request] 那一个菜单（已经换成别的菜单就不动）。[restoreFocus]：菜单拿着焦点（搜索框 / 菜单本身），
   /// 它一拆焦点就落空、画布快捷键全收不到——帧后焦点要是还落空就还给画布（CanvasShortcuts 那边判）。
-  /// 焦点是自己走掉的（开了对话框 / 切了标签）就传 false，不抢。
+  /// 焦点是自己走掉的（开了对话框 / 切了标签）就传 false，不抢。选了会开对话框的项（泳道 / 导入脚本… /
+  /// 存为角色）同样传 false：焦点该归对话框，要回画布的话按键会穿过对话框打到画布上。
   void _dismiss(CanvasMenuRequest request, {required bool restoreFocus}) {
     if (!identical(ref.read(canvasMenuRequestProvider(widget.canvasId)), request)) {
       return;
@@ -303,7 +305,8 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
   }
 
   void _pickCreate(CanvasMenuRequest request, CreateMenuAction action) {
-    _dismiss(request, restoreFocus: true);
+    // 泳道开「新建泳道」框：焦点交给框，不往画布要。
+    _dismiss(request, restoreFocus: action != CreateMenuAction.lane);
     final String canvasId = widget.canvasId;
     if (action == CreateMenuAction.lane) {
       addLaneViaDialog(context, ref, canvasId: canvasId);
@@ -337,7 +340,8 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
         // 原地换成新建菜单：同一个锚点，不带上下文。
         ref.read(canvasMenuRequestProvider(canvasId).notifier).openCreate(request.anchor);
       case BlankMenuAction.importScript:
-        _dismiss(request, restoreFocus: true);
+        // 开导入框：焦点交给框，不往画布要。
+        _dismiss(request, restoreFocus: false);
         // 整条链从右键那一点起铺。导入的镜头不进泳道，按不在道里的卡算世界坐标。
         showScriptImportDialog(
           context,
@@ -362,7 +366,8 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
     final String? nodeId = request.nodeId;
     // 「加入泳道 ›」那一行只开子菜单，不会交回来；防御一手。
     if (nodeId == null || pick.action == NodeMenuAction.laneSubmenu) return;
-    _dismiss(request, restoreFocus: true);
+    // 存为角色开起名框：焦点交给框，不往画布要。
+    _dismiss(request, restoreFocus: pick.action != NodeMenuAction.saveAsCharacter);
     final String canvasId = widget.canvasId;
     final Set<String> targets = nodeMenuTargets(
       ref.read(canvasSelectionControllerProvider(canvasId)),

@@ -369,6 +369,10 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   /// Delete / Esc / 工具单键全都收不到。别的控件已经拿到焦点（点到了别的文本框、开了对话框）就不抢。
   /// 帧后再判：桌面上点到文本框外面，文本框自己的失焦与收菜单是同一次按下里的两件事，谁先谁后不定，
   /// 失焦又在微任务里才落地——收菜单的这一刻还看不出焦点最后落在哪。
+  ///
+  /// 本层所在的路由上面压着对话框时一律不要（见 _CanvasShortcutsState._onTopRoute）：菜单收起、对话框刚推上来
+  /// 的那一帧，菜单的焦点节点已经卸掉、对话框还没人持焦，主焦点正好是空的——不拦这一道，焦点就被要回画布，
+  /// 按键穿过对话框打到画布上。
   static void reclaimFocusIfOrphaned(BuildContext context) => context
       .findAncestorStateOfType<_CanvasShortcutsState>()
       ?._reclaimFocusIfOrphaned();
@@ -406,16 +410,24 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     });
   }
 
+  /// 本层所在的路由此刻是不是最上面那一层。上面压着对话框（起名框 / 泳道框 / 导入框 / 命令面板……）时键盘归
+  /// 那个框，本层一概不抢焦点——抢过来的话按键穿过对话框打到画布上：Backspace 删掉框后面选中的卡、L / I / T / H / F
+  /// 在画布上起作用、Esc 关不掉框。这一道判在「要回焦点」的地方，以后新加的对话框入口不用各自记得让。
+  /// 不在任何路由里（单测直接挂）按「在最上面」算。
+  bool get _onTopRoute => ModalRoute.isCurrentOf(context) ?? true;
+
   /// 在画布舞台上按下鼠标：把键盘焦点要回本层。在提示词条 / 检查器的文本框里打完字
   /// 再点画布，文本框的 onTapOutside 只会把焦点交还给路由作用域——本层不持焦，
-  /// Delete / Esc / 工具单键全都收不到，直到切一次标签才恢复。
+  /// Delete / Esc / 工具单键全都收不到，直到切一次标签才恢复。上面压着对话框时不要（[_onTopRoute]）。
   void _reclaimFocus() {
-    if (widget.isActive && !_focusNode.hasPrimaryFocus) _focusNode.requestFocus();
+    if (widget.isActive && _onTopRoute && !_focusNode.hasPrimaryFocus) {
+      _focusNode.requestFocus();
+    }
   }
 
   void _reclaimFocusIfOrphaned() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !widget.isActive) return;
+      if (!mounted || !widget.isActive || !_onTopRoute) return;
       final FocusNode? focused = primaryFocus;
       if (focused == null || identical(focused, _focusNode.enclosingScope)) {
         _focusNode.requestFocus();
