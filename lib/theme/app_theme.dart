@@ -81,6 +81,21 @@ ThemeData buildAppTheme({
       surface: colors.surface2,
       onSurface: colors.fg1,
     ),
+    // tooltip 走浮层令牌。不给这层时 Material 取 colorScheme.inverseSurface——上面的
+    // ColorScheme 没给它，回落成 onSurface（fg1，浅灰）：暗色界面里冒出一块浅底黑字。
+    tooltipTheme: TooltipThemeData(
+      decoration: BoxDecoration(
+        color: colors.surface4,
+        border: Border.all(color: colors.overlayBorder),
+        borderRadius: BorderRadius.circular(InkRadius.s3),
+        boxShadow: InkShadow.card,
+      ),
+      textStyle: typography.meta.copyWith(color: colors.fg2),
+      padding: const EdgeInsets.symmetric(
+        horizontal: InkSpacing.sm,
+        vertical: InkSpacing.s5,
+      ),
+    ),
     extensions: <ThemeExtension<dynamic>>[
       AppThemeExtension(colors: colors, typography: typography),
     ],
