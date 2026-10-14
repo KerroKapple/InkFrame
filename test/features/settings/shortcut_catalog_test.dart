@@ -103,6 +103,51 @@ void main() {
     }
   });
 
+  // PR-8b：生成选中 / 复制一份 / 适应全部 / 适应选中进清单。键位与节点右键菜单、空白处右键菜单行尾的提示
+  // 同源（CanvasToolKeys）；回车按平台换字，与提示词条「生成」按钮尾标（submitShortcutLabel）一字不差。
+  test('生成选中：macOS 列 ⌘↵，Windows 列 Ctrl+Enter（与提示词条「生成」按钮尾标同一个写法）', () {
+    expect(kCanvasShortcuts[CanvasToolKeys.generateMeta], isA<CanvasGenerateIntent>());
+    expect(kCanvasShortcuts[CanvasToolKeys.generateControl], isA<CanvasGenerateIntent>());
+    expect(_byAction(isMac: true)[ShortcutAction.canvasGenerate], <String>['⌘↵']);
+    expect(_byAction(isMac: false)[ShortcutAction.canvasGenerate], <String>['Ctrl+Enter']);
+  });
+
+  test('复制一份：macOS 列 ⌘D，Windows 列 Ctrl+D', () {
+    expect(kCanvasShortcuts[CanvasToolKeys.duplicateMeta], isA<CanvasDuplicateIntent>());
+    expect(kCanvasShortcuts[CanvasToolKeys.duplicateControl], isA<CanvasDuplicateIntent>());
+    expect(_byAction(isMac: true)[ShortcutAction.canvasDuplicate], <String>['⌘D']);
+    expect(_byAction(isMac: false)[ShortcutAction.canvasDuplicate], <String>['Ctrl+D']);
+  });
+
+  test('适应全部 / 适应选中：Shift+1 / Shift+2，两个平台同键（macOS 写 ⇧）', () {
+    expect(kCanvasShortcuts[CanvasToolKeys.fitAll], isA<CanvasFitAllIntent>());
+    expect(kCanvasShortcuts[CanvasToolKeys.fitSelection], isA<CanvasFitSelectionIntent>());
+    expect(_byAction(isMac: true)[ShortcutAction.canvasFitAll], <String>['⇧1']);
+    expect(_byAction(isMac: false)[ShortcutAction.canvasFitAll], <String>['Shift+1']);
+    expect(_byAction(isMac: true)[ShortcutAction.canvasFitSelection], <String>['⇧2']);
+    expect(_byAction(isMac: false)[ShortcutAction.canvasFitSelection], <String>['Shift+2']);
+  });
+
+  test('⌘0 / Ctrl+0 仍是缩放复位，不是适应', () {
+    expect(
+      kCanvasShortcuts[const SingleActivator(LogicalKeyboardKey.digit0, control: true)],
+      isA<CanvasZoomResetIntent>(),
+    );
+  });
+
+  test('四个新键都不吃按住不放的自动重复（按住 Ctrl+D 不该连复制一串）', () {
+    for (final SingleActivator a in <SingleActivator>[
+      CanvasToolKeys.generateMeta,
+      CanvasToolKeys.generateControl,
+      CanvasToolKeys.duplicateMeta,
+      CanvasToolKeys.duplicateControl,
+      CanvasToolKeys.fitAll,
+      CanvasToolKeys.fitSelection,
+    ]) {
+      expect(a.includeRepeats, isFalse, reason: '$a');
+    }
+  });
+
   // 菜单行尾的键位提示从快捷键表里取（空白处右键菜单的「全选」），按平台出字。
   test('canvasShortcutLabel：按平台取表里第一条能出字的绑定；没有匹配 ⇒ null', () {
     bool selectAll(Intent intent) => intent is SelectAllNodesIntent;
@@ -112,6 +157,10 @@ void main() {
       canvasShortcutLabel((Intent intent) => false, isMac: true),
       isNull,
     );
+    // 节点右键菜单「生成」行尾：与 Windows 下的 Ctrl+Enter、macOS 下的 ⌘↵ 一致。
+    bool generate(Intent intent) => intent is CanvasGenerateIntent;
+    expect(canvasShortcutLabel(generate, isMac: true), '⌘↵');
+    expect(canvasShortcutLabel(generate, isMac: false), 'Ctrl+Enter');
   });
 
   test('Windows：Ctrl 变体上屏，⌘ 变体不上屏', () {

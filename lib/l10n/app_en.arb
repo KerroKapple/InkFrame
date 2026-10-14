@@ -781,7 +781,40 @@
   "canvasBlankMenuSelectAll": "Select all",
   "canvasBlankMenuFitView": "Fit view",
   "@canvasBlankMenuFitView": {
-    "description": "Canvas right-click menu on empty space: same as the Fit cell of the zoom bar (back to the default camera)"
+    "description": "Canvas right-click menu on empty space: same as the Fit cell of the zoom bar and Shift+1 — zooms out (never in) so every node on the canvas fits in view"
+  },
+  "canvasNodeMenuGenerate": "Generate",
+  "@canvasNodeMenuGenerate": {
+    "description": "Canvas right-click menu on a node: generate from this image / video config node (same as Generate on the prompt bar). Greyed out unless exactly one config node with a non-empty prompt is targeted"
+  },
+  "canvasNodeMenuDuplicate": "Duplicate",
+  "@canvasNodeMenuDuplicate": {
+    "description": "Canvas right-click menu on a node: copy each selected config node (same type, settings and lane), placed slightly down and to the right. Links and results are not copied"
+  },
+  "canvasNodeMenuSaveAsCharacter": "Save as character",
+  "@canvasNodeMenuSaveAsCharacter": {
+    "description": "Canvas right-click menu on a result node with an image: create a project character from that image (asks for a name first)"
+  },
+  "canvasNodeMenuAddToLane": "Add to lane",
+  "@canvasNodeMenuAddToLane": {
+    "description": "Canvas right-click menu on a node: opens a submenu listing this canvas's lanes; picking one moves the selected nodes into it"
+  },
+  "canvasNodeMenuRemoveFromLane": "Remove from lane",
+  "@canvasNodeMenuRemoveFromLane": {
+    "description": "Last item of the Add to lane submenu: take the selected nodes out of their lanes"
+  },
+  "canvasNodeMenuLocateInSequence": "Locate in sequence",
+  "@canvasNodeMenuLocateInSequence": {
+    "description": "Canvas right-click menu on a node: switch to the Sequence tab and move the playhead to the shot this node belongs to"
+  },
+  "canvasNodeMenuDelete": "Delete",
+  "@canvasNodeMenuDelete": {
+    "description": "Canvas right-click menu on a node: delete the selected nodes (an Undo notification follows)"
+  },
+  "canvasNodeCopyName": "{name} copy",
+  "@canvasNodeCopyName": {
+    "description": "Name given to a node made by Duplicate: the original node's name plus a copy suffix",
+    "placeholders": { "name": { "type": "String" } }
   },
   "leftRailOutline": "Outline",
   "@leftRailOutline": {
@@ -1326,6 +1359,22 @@
   "settingsShortcutCanvasOpenCreateMenu": "New…",
   "@settingsShortcutCanvasOpenCreateMenu": {
     "description": "Settings > Shortcuts row for Tab: opens the canvas New menu (search and create a node) in the middle of the canvas"
+  },
+  "settingsShortcutCanvasDuplicate": "Duplicate",
+  "@settingsShortcutCanvasDuplicate": {
+    "description": "Settings > Shortcuts row for Ctrl+D / ⌘D: copy the selected config nodes on the canvas"
+  },
+  "settingsShortcutCanvasGenerate": "Run selected",
+  "@settingsShortcutCanvasGenerate": {
+    "description": "Settings > Shortcuts row for Ctrl+Enter / ⌘↵: generate from the one selected image / video config node on the canvas"
+  },
+  "settingsShortcutCanvasFitAll": "Fit all",
+  "@settingsShortcutCanvasFitAll": {
+    "description": "Settings > Shortcuts row for Shift+1: zoom out (never in) so every node on the canvas fits in view"
+  },
+  "settingsShortcutCanvasFitSelection": "Fit selection",
+  "@settingsShortcutCanvasFitSelection": {
+    "description": "Settings > Shortcuts row for Shift+2: zoom out (never in) so the selected nodes fit in view"
   },
   "settingsPerformanceConcurrencyTitle": "Concurrency and quota",
   "settingsPerformanceGlobalLimit": "Global concurrent jobs",

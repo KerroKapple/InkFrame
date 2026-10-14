@@ -8,15 +8,36 @@
 // 建泳道要开泳道编辑框，所以这里反向引了 widgets/lane_edit_dialog.dart。
 //
 // 新建菜单（widgets/create_node_menu.dart）的动作也在这里：在菜单锚点建节点并连好线（addNodeFromMenu，
-// 不留半截）、从出端口拖到另一张卡上连线（linkByPortDrop，走连线模式那一条 linkTo）、全选、适应视图。
+// 不留半截）、从出端口拖到另一张卡上连线（linkByPortDrop，走连线模式那一条 linkTo）、全选。
+//
+// PR-8b 节点右键菜单与四个新键的动作也在这里，菜单与快捷键各调同一个函数：
+//   - 生成（generateNode，Ctrl+↵ / ⌘↵）：与提示词条「生成」同一条 InspectorSubmitController.submit；
+//   - 复制一份（duplicateNodes，Ctrl+D / ⌘D）：同类型 / 同 typeConfig / 同泳道，右下各偏一个 lg；
+//   - 适应全部 / 适应选中（fitAllNodes / fitSelectedNodes，Shift+1 / Shift+2）：缩放条「适应」与空白处
+//     右键菜单「适应视图」都是适应全部；⌘0 仍是缩放复位，不归这里；
+//   - 存为角色（saveNodeAsCharacter）：与角色库「新建角色」同一条 createFromImage；
+//   - 加入 / 移出泳道（moveNodesToLane）：走 moveNode，多选整批。
+// 存为角色要开起名框，所以本文件又反向引了 theme 层的 InkNameDialog 与 widgets/node_card.dart 的显示名。
+import 'dart:async';
+import 'dart:io' show FileSystemException;
 import 'dart:math';
 
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/di/file_resolver.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/character_asset_service.dart'
+    show CharacterAssetError;
+import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/interfaces/toast_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
+import '../../../theme/components/ink_name_dialog.dart';
+import '../../../theme/tokens.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../models/canvas_node.dart';
+import '../models/character.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_focus_request.dart';
@@ -25,16 +46,22 @@ import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
+import '../providers/characters_controller.dart';
+import '../providers/inspector_submit_controller.dart';
 import '../providers/lane_collapse_controller.dart';
 import '../providers/link_action_controller.dart';
 import '../providers/link_mode_controller.dart';
 import '../widgets/lane_edit_dialog.dart';
+import '../widgets/node_card.dart';
+import 'canvas_extent.dart';
 import 'canvas_snackbars.dart';
 import 'canvas_zoom.dart';
 import 'create_menu_model.dart';
 import 'drop_placement.dart';
 import 'lane_geometry.dart';
+import 'node_menu_model.dart';
 import 'node_position.dart';
+import 'viewport_fit.dart';
 
 /// 新节点（或导入脚本那条链的第一镜）的落点：视口中心（债150；视口未上报时回退旧
 /// 固定区随机）。[random] 是测试注入口，null 时每次取系统熵。
@@ -138,11 +165,89 @@ void selectAllNodes(WidgetRef ref, {required String canvasId}) {
       .selectAll(nodes.map((CanvasNode n) => n.id));
 }
 
-/// 适应视图：回到初始相机——与左下缩放条的「适应」格同一个动作（canvas_zoom_bar.dart 那一格写的
-/// 也是 initialCanvasTransform）。
-void fitCanvasView(WidgetRef ref, {required String canvasId}) {
-  ref.read(canvasTransformControllerProvider(canvasId)).value =
-      initialCanvasTransform();
+/// 适应视口的留白：顶部让出浮动工具条那一条（与舞台顶部浮层同一个 stageTopInset），底部让出左下缩放条
+/// 那一截（stageBottomInset），左右各一个 lg。底部提示词条（只在选中一张图像 / 视频配置时出现）这一版没有
+/// 令牌，不扣。
+const EdgeInsets kCanvasFitInsets = EdgeInsets.fromLTRB(
+  InkSpacing.lg,
+  InkToolbarSize.stageTopInset,
+  InkSpacing.lg,
+  InkToolbarSize.stageBottomInset,
+);
+
+/// 适应全部（Shift+1；缩放条「适应」、空白处右键菜单「适应视图」同一个动作）：把画布上所有看得见的卡片
+/// 框进视口（只缩小、不放大，见 viewport_fit.dart）。画布上没有卡片 ⇒ 回到初始相机。视口还没量出来 ⇒ 不动。
+/// 节点还没载入时不动。
+void fitAllNodes(WidgetRef ref, {required String canvasId}) {
+  final List<CanvasNode>? nodes =
+      ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull;
+  if (nodes == null) return;
+  _fitNodes(ref, canvasId: canvasId, nodes: nodes, resetWhenEmpty: true);
+}
+
+/// 适应选中（Shift+2）：只框选中的卡片；没有选中（或选中的都在折叠的泳道里）⇒ 不动。
+void fitSelectedNodes(WidgetRef ref, {required String canvasId}) {
+  final Set<String> selected =
+      ref.read(canvasSelectionControllerProvider(canvasId));
+  if (selected.isEmpty) return;
+  final List<CanvasNode> nodes =
+      ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+          const <CanvasNode>[];
+  _fitNodes(
+    ref,
+    canvasId: canvasId,
+    nodes: <CanvasNode>[
+      for (final CanvasNode n in nodes)
+        if (selected.contains(n.id)) n,
+    ],
+    resetWhenEmpty: false,
+  );
+}
+
+/// 把 [nodes] 里看得见的（不在折叠泳道里的）卡片框进视口。卡片矩形与卡片实际画出来的位置同源
+/// （nodeStageRect：世界 + 分道位移），泳道切片按有效厚度（折叠的道按轨宽），与 focusNodeOnCanvas 同一份取值。
+void _fitNodes(
+  WidgetRef ref, {
+  required String canvasId,
+  required List<CanvasNode> nodes,
+  required bool resetWhenEmpty,
+}) {
+  final TransformationController transform =
+      ref.read(canvasTransformControllerProvider(canvasId));
+  final Set<String> collapsed = ref.read(laneCollapseProvider(canvasId));
+  final List<CanvasNode> visible = <CanvasNode>[
+    for (final CanvasNode n in nodes)
+      if (n.laneId == null || !collapsed.contains(n.laneId)) n,
+  ];
+  if (visible.isEmpty) {
+    if (resetWhenEmpty) transform.value = initialCanvasTransform();
+    return;
+  }
+  final List<StyleLane> lanes =
+      ref.read(canvasLanesControllerProvider(canvasId)).valueOrNull ??
+          const <StyleLane>[];
+  // 不在（现存）泳道里的卡片没有分道位移，也就不必去读泳道方向（与 focusNodeOnCanvas 同口径）。
+  final Set<String> laneIds = <String>{for (final StyleLane l in lanes) l.id};
+  final bool laned = visible.any((CanvasNode n) => laneIds.contains(n.laneId));
+  final LaneDirection direction = laned
+      ? (ref.read(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
+          LaneDirection.horizontal)
+      : LaneDirection.horizontal;
+  final Matrix4? next = transformFittingNodes(
+    nodes: visible,
+    lanes: laned
+        ? collapseLaneSlices(
+            <({String id, double size})>[
+              for (final StyleLane l in lanes) (id: l.id, size: l.size),
+            ],
+            collapsed,
+          )
+        : const <({String id, double size})>[],
+    direction: direction,
+    viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
+    insets: kCanvasFitInsets,
+  );
+  if (next != null) transform.value = next;
 }
 
 /// 从出端口拖到另一张卡上松手：等价于「连线模式里选源 → 点目标」。先以 [sourceNodeId] 进连线模式，
@@ -246,4 +351,196 @@ Future<void> addNodeFromMenu(
 
   // 只单选、不挪相机：新节点就落在用户刚点的地方（拖线松手点 / 双击点 / 右键点 / Tab 的视口中心）。
   focus.request(canvasId: canvasId, nodeId: created.id, center: false);
+}
+
+// ===== PR-8b：节点右键菜单与 Ctrl+↵ / Ctrl+D 的动作 =====
+
+/// 生成 [nodeId]（画布 Ctrl+↵ / ⌘↵ 与节点右键菜单「生成」共用；可不可生成的判据是
+/// node_menu_model.generationTarget，调用方先判）。在忙（提交中 / 生成中）⇒ 不动。
+///
+/// 走提示词条「生成」那一条 InspectorSubmitController.submit，但**提示词不从画布节点里取**：提示词条里敲的字
+/// 只经防抖落库（savePromptDebounced），不回写画布节点——内存里的 node.promptText 可能是旧的。拿旧值去
+/// submit 会把用户刚敲的字盖掉，而 submit 自己又会丢掉还没发射的防抖写入。所以先把挂起的写入冲下去
+/// （flushPendingWrites 在同一条写入链上排队，先于终稿落库），终稿只交空补丁——生成读的是库里那一行，
+/// 就是用户最后敲进去的那句。提示词条自己的「生成」手里有最新文本，照旧带着它提交。
+void generateNode(WidgetRef ref, {required String nodeId}) {
+  final InspectorSubmitController submit =
+      ref.read(inspectorSubmitControllerProvider(nodeId).notifier);
+  if (submit.isBusy) return;
+  unawaited(submit.flushPendingWrites());
+  unawaited(submit.submit(const <String, Object?>{}));
+}
+
+/// 「复制一份」的落点偏移：往右下各一个 lg（与 24px 网格底同一步长）。
+const Offset kDuplicateOffset = Offset(InkSpacing.lg, InkSpacing.lg);
+
+/// 复制一份（Ctrl+D / ⌘D 与节点右键菜单共用）：[nodeIds] 里的每一张**配置**卡各复制一份——同类型、
+/// 同 typeConfig、同泳道，标签加「副本」后缀，往右下偏 [kDuplicateOffset]。不复制边，不复制产物
+/// （产物卡本身也不复制，判据 node_menu_model.duplicateSources）。
+///
+/// 只复制出一张 ⇒ 挂一条定位请求单选它、不挪相机（与新建菜单建节点同一条路）；多张 ⇒ 全选新的这几张。
+/// 写库失败弹错误卡「添加节点失败」，已经复制出来的照样选中。
+Future<void> duplicateNodes(
+  BuildContext context,
+  WidgetRef ref, {
+  required String canvasId,
+  required Set<String> nodeIds,
+}) async {
+  final List<CanvasNode> nodes =
+      ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+          const <CanvasNode>[];
+  final List<CanvasNode> sources = duplicateSources(<CanvasNode>[
+    for (final CanvasNode n in nodes)
+      if (nodeIds.contains(n.id)) n,
+  ]);
+  if (sources.isEmpty) return;
+  // 文案与控制器都在 await 之前取：await 之后 context 可能已卸载。
+  final AppLocalizations l = context.l10n;
+  final List<String> labels = <String>[
+    for (final CanvasNode s in sources)
+      l.canvasNodeCopyName(nodeDisplayName(context, s)),
+  ];
+  final String failed = l.canvasAddNodeFailed;
+  final CanvasNodesController controller =
+      ref.read(canvasNodesControllerProvider(canvasId).notifier);
+  final CanvasFocusRequestController focus =
+      ref.read(canvasFocusRequestProvider.notifier);
+  final List<String> created = <String>[];
+  try {
+    for (int i = 0; i < sources.length; i++) {
+      final CanvasNode source = sources[i];
+      final CanvasNode copy = await controller.addNode(
+        label: labels[i],
+        type: source.type,
+        laneId: source.laneId,
+        position: clampIntoWorldReach(source.position + kDuplicateOffset),
+        size: source.size,
+        typeConfig: Map<String, Object?>.of(source.typeConfig),
+      );
+      created.add(copy.id);
+    }
+  } on InkError catch (_) {
+    if (context.mounted) showCanvasSnack(context, failed);
+  }
+  if (created.isEmpty) return;
+  if (created.length == 1) {
+    focus.request(canvasId: canvasId, nodeId: created.single, center: false);
+    return;
+  }
+  if (!context.mounted) return;
+  ref.read(canvasSelectionControllerProvider(canvasId).notifier).selectAll(created);
+}
+
+/// 存为角色（节点右键菜单）：[node] 是带图的产物节点（判据 node_menu_model.characterSource）。
+///
+/// 与角色库「新建角色」同一条路（character_library_panel.dart 的 createCharacterFromFile）：先弹 InkNameDialog
+/// 起名，再调 charactersController.createFromImage；源文件经 fileResolverService 解析成绝对路径。捕获集 =
+/// createFromImage 的真实抛出集（仓储 InkError / 资产服务 CharacterAssetError / dart:io FileSystemException），
+/// 失败一律出错误卡。画布上看不见角色库，所以成功也出一张卡（与画廊「存为角色」同一句）。
+/// 角色控制器是 autoDispose：操作期间 listenManual 挂住，先等它 build 完再建（与画廊同一做法）。
+Future<void> saveNodeAsCharacter(
+  BuildContext context,
+  WidgetRef ref, {
+  required String projectId,
+  required String canvasId,
+  required CanvasNode node,
+}) async {
+  final String? relativePath = node.imageUrl;
+  if (relativePath == null) return;
+  final String? name = await showDialog<String>(
+    context: context,
+    builder: (BuildContext ctx) => InkNameDialog(
+      title: ctx.l10n.characterNew,
+      hint: ctx.l10n.characterFieldName,
+      confirmLabel: ctx.l10n.characterSave,
+      cancelLabel: ctx.l10n.commonCancel,
+    ),
+  );
+  final String trimmed = name?.trim() ?? '';
+  if (trimmed.isEmpty || !context.mounted) return;
+  // 文案与通知出口在 await 之前取好：之后 context 可能已卸载（切了标签 / 换了画布）。
+  final AppLocalizations l = context.l10n;
+  final ToastService toast = ref.read(toastServiceProvider);
+  final String absolutePath;
+  try {
+    absolutePath = ref
+        .read(fileResolverServiceProvider)
+        .resolve(projectId: projectId, canvasId: canvasId, relativePath: relativePath)
+        .path;
+  } on PathSecurityError catch (_) {
+    toast.show(l.inspectorCharactersImportFailed, kind: ToastKind.error);
+    return;
+  }
+  final ProviderSubscription<AsyncValue<List<Character>>> keep =
+      ref.listenManual(charactersControllerProvider(projectId), (_, _) {});
+  try {
+    await ref.read(charactersControllerProvider(projectId).future);
+    if (!context.mounted) return;
+    await ref
+        .read(charactersControllerProvider(projectId).notifier)
+        .createFromImage(name: trimmed, sourceAbsolutePath: absolutePath);
+    toast.show(l.gallerySavedAsCharacter, kind: ToastKind.success);
+  } on InkError catch (e) {
+    toast.show(l10nErrorFor(l, e), kind: ToastKind.error);
+  } on CharacterAssetError catch (_) {
+    toast.show(l.inspectorCharactersImportFailed, kind: ToastKind.error);
+  } on FileSystemException catch (_) {
+    toast.show(l.inspectorCharactersImportFailed, kind: ToastKind.error);
+  } finally {
+    keep.close();
+  }
+}
+
+/// 加入泳道（[laneId] 非空）/ 移出泳道（[laneId] 为 null）：[nodeIds] 整批走 moveNode。已经在目标道里的
+/// 不动。位置一并挪进目标道的带里（移出时屏幕上不动），见 node_menu_model.laneMoveDelta——位置决定泳道
+/// 归属是整个画布的规则，只改 lane_id 卡片会画在带外。写库失败弹「节点移动失败」（控制器已回滚那一张）。
+Future<void> moveNodesToLane(
+  BuildContext context,
+  WidgetRef ref, {
+  required String canvasId,
+  required Set<String> nodeIds,
+  required String? laneId,
+}) async {
+  final List<CanvasNode> nodes =
+      ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+          const <CanvasNode>[];
+  final List<CanvasNode> movers = laneMoveCandidates(<CanvasNode>[
+    for (final CanvasNode n in nodes)
+      if (nodeIds.contains(n.id)) n,
+  ], laneId);
+  if (movers.isEmpty) return;
+  final List<StyleLane> lanes =
+      ref.read(canvasLanesControllerProvider(canvasId)).valueOrNull ??
+          const <StyleLane>[];
+  final List<({String id, double size})> slices = collapseLaneSlices(
+    <({String id, double size})>[
+      for (final StyleLane l in lanes) (id: l.id, size: l.size),
+    ],
+    ref.read(laneCollapseProvider(canvasId)),
+  );
+  final LaneDirection direction =
+      ref.read(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
+          LaneDirection.horizontal;
+  final double scale =
+      scaleOf(ref.read(canvasTransformControllerProvider(canvasId)).value);
+  final String failed = context.l10n.nodeMoveFailed;
+  final CanvasNodesController controller =
+      ref.read(canvasNodesControllerProvider(canvasId).notifier);
+  try {
+    for (final CanvasNode node in movers) {
+      await controller.moveNode(
+        node.id,
+        laneMoveDelta(
+          node: node,
+          toLaneId: laneId,
+          laneSlices: slices,
+          direction: direction,
+          scale: scale,
+        ),
+        laneId: laneId,
+      );
+    }
+  } on InkError catch (_) {
+    if (context.mounted) showCanvasSnack(context, failed);
+  }
 }

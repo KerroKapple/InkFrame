@@ -21,12 +21,22 @@
 // 焦点落在本层子树里的任何控件上（工具条键、检查器按钮、缩放条格子、左栏行、菜单里的行），Tab 都原样
 // 放行给 WidgetsApp 的焦点遍历；本层之外的控件按 Tab 根本到不了这里。Shift+Tab 不绑。
 // Esc 多了两层，按序剥：拖线中先取消拖线，菜单开着先关菜单，再往下才是平移 / 连线 / 清选中。
+//
+// PR-8b 四个键（画布重设计稿 › 画布交互「快捷键」），全走 _EditingAwareAction——打字时让位：
+//   - Ctrl+↵ / ⌘↵ 生成选中的那一张（恰好选中一张可生成的配置卡时生效）。提示词条里的 ⌘↵ 由提示词条
+//     自己的 CallbackShortcuts 先接住（它离焦点更近，接住就不再冒泡），本层又对文本编辑让位——同一次按键
+//     不会提交两次。
+//   - Ctrl+D / ⌘D 复制一份（选中的配置卡各一份）。
+//   - Shift+1 适应全部、Shift+2 适应选中（两个平台同键）。
+// ⌘0 / Ctrl+0 仍是「缩放复位」（回到初始相机），不是适应——两件事各有各的键。
+// 节点右键菜单行尾的键位提示从本表取（shortcut_catalog 的 canvasShortcutLabel），与设置「快捷键」页同源。
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/canvas_node.dart';
+import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
@@ -37,6 +47,7 @@ import '../providers/selected_edge_controller.dart';
 import '../util/canvas_node_delete.dart';
 import '../util/canvas_tool_actions.dart';
 import '../util/canvas_zoom.dart';
+import '../util/node_menu_model.dart';
 import 'create_node_menu.dart';
 
 // ===== Intents =====
@@ -109,6 +120,26 @@ class CanvasOpenCreateMenuIntent extends Intent {
   const CanvasOpenCreateMenuIntent();
 }
 
+/// Ctrl+↵ / ⌘↵：生成选中的那一张（与节点右键菜单「生成」、提示词条「生成」同一条 submit）。
+class CanvasGenerateIntent extends Intent {
+  const CanvasGenerateIntent();
+}
+
+/// Ctrl+D / ⌘D：复制一份（选中的配置卡各一份，与节点右键菜单「复制一份」同一个动作）。
+class CanvasDuplicateIntent extends Intent {
+  const CanvasDuplicateIntent();
+}
+
+/// Shift+1：适应全部（与缩放条「适应」、空白处右键菜单「适应视图」同一个动作）。
+class CanvasFitAllIntent extends Intent {
+  const CanvasFitAllIntent();
+}
+
+/// Shift+2：适应选中。
+class CanvasFitSelectionIntent extends Intent {
+  const CanvasFitSelectionIntent();
+}
+
 /// 画布工具的键位。工具条 tooltip 与下面的 [kCanvasShortcuts] 取同一组常量——改键位
 /// 只改这里，tooltip 不会还挂着旧键。
 class CanvasToolKeys {
@@ -142,6 +173,43 @@ class CanvasToolKeys {
   static const SingleActivator toggleLeftRailControl = SingleActivator(
     LogicalKeyboardKey.backslash,
     control: true,
+    includeRepeats: false,
+  );
+
+  /// 生成选中的那一张：macOS ⌘↵，其余平台 Ctrl+↵；两个变体都进 [kCanvasShortcuts]。
+  /// includeRepeats: false——按住不放不该连着提交。
+  static const SingleActivator generateMeta = SingleActivator(
+    LogicalKeyboardKey.enter,
+    meta: true,
+    includeRepeats: false,
+  );
+  static const SingleActivator generateControl = SingleActivator(
+    LogicalKeyboardKey.enter,
+    control: true,
+    includeRepeats: false,
+  );
+
+  /// 复制一份：⌘D / Ctrl+D。按住不放不该连复制一串。
+  static const SingleActivator duplicateMeta = SingleActivator(
+    LogicalKeyboardKey.keyD,
+    meta: true,
+    includeRepeats: false,
+  );
+  static const SingleActivator duplicateControl = SingleActivator(
+    LogicalKeyboardKey.keyD,
+    control: true,
+    includeRepeats: false,
+  );
+
+  /// 适应全部 / 适应选中：Shift+1 / Shift+2，两个平台同键。
+  static const SingleActivator fitAll = SingleActivator(
+    LogicalKeyboardKey.digit1,
+    shift: true,
+    includeRepeats: false,
+  );
+  static const SingleActivator fitSelection = SingleActivator(
+    LogicalKeyboardKey.digit2,
+    shift: true,
     includeRepeats: false,
   );
 }
@@ -264,6 +332,13 @@ kCanvasShortcuts = <ShortcutActivator, Intent>{
   // 新建…（PR-8a）。只在画布本身持焦时接管，见 _CanvasFocusedAction；按住不放不连开。
   const SingleActivator(CanvasToolKeys.createMenu, includeRepeats: false):
       const CanvasOpenCreateMenuIntent(),
+  // PR-8b：生成 / 复制一份 / 适应全部 / 适应选中。
+  CanvasToolKeys.generateMeta: const CanvasGenerateIntent(),
+  CanvasToolKeys.generateControl: const CanvasGenerateIntent(),
+  CanvasToolKeys.duplicateMeta: const CanvasDuplicateIntent(),
+  CanvasToolKeys.duplicateControl: const CanvasDuplicateIntent(),
+  CanvasToolKeys.fitAll: const CanvasFitAllIntent(),
+  CanvasToolKeys.fitSelection: const CanvasFitSelectionIntent(),
 };
 
 /// 画布快捷键层：包裹画布主体（含 Inspector）。
@@ -420,6 +495,20 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
               _CanvasFocusedAction<CanvasOpenCreateMenuIntent>(
             _focusNode,
             (_) => _openCreateMenu(),
+          ),
+          // PR-8b 四个键同样对文本编辑让位。⌘↵ 尤其要让：提示词条里打字时那一下归提示词条自己。
+          CanvasGenerateIntent: _EditingAwareAction<CanvasGenerateIntent>(
+            (_) => _generateSelection(),
+          ),
+          CanvasDuplicateIntent: _EditingAwareAction<CanvasDuplicateIntent>(
+            (_) => _duplicateSelection(),
+          ),
+          CanvasFitAllIntent: _EditingAwareAction<CanvasFitAllIntent>(
+            (_) => _fitAll(),
+          ),
+          CanvasFitSelectionIntent:
+              _EditingAwareAction<CanvasFitSelectionIntent>(
+            (_) => _fitSelection(),
           ),
         },
         child: Focus(
@@ -584,5 +673,47 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     ref
         .read(canvasMenuRequestProvider(canvasId).notifier)
         .openCreate(viewport.center(Offset.zero));
+  }
+
+  // ===== PR-8b：动作本体在 util/canvas_tool_actions.dart，与节点右键菜单共用 =====
+
+  /// Ctrl+↵ / ⌘↵：恰好选中一张可生成的配置卡（判据 generationTarget）才生成，其余情况不动。
+  void _generateSelection() {
+    final String? canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    final Set<String> selected =
+        ref.read(canvasSelectionControllerProvider(canvasId));
+    if (selected.isEmpty) return;
+    final List<CanvasNode> nodes =
+        ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+            const <CanvasNode>[];
+    final CanvasNode? target = generationTarget(<CanvasNode>[
+      for (final CanvasNode n in nodes)
+        if (selected.contains(n.id)) n,
+    ]);
+    if (target == null) return;
+    generateNode(ref, nodeId: target.id);
+  }
+
+  void _duplicateSelection() {
+    final String? canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    final Set<String> selected =
+        ref.read(canvasSelectionControllerProvider(canvasId));
+    if (selected.isEmpty) return;
+    // fire-and-forget：失败自带错误卡（与节点右键菜单「复制一份」同一条路径）。
+    duplicateNodes(context, ref, canvasId: canvasId, nodeIds: selected);
+  }
+
+  void _fitAll() {
+    final String? canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    fitAllNodes(ref, canvasId: canvasId);
+  }
+
+  void _fitSelection() {
+    final String? canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    fitSelectedNodes(ref, canvasId: canvasId);
   }
 }
