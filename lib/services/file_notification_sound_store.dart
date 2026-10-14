@@ -11,11 +11,11 @@ import 'dart:typed_data';
 
 import 'package:path/path.dart' as p;
 
+import '../core/constants/notification_sound.dart';
 import '../core/errors/ink_error.dart';
 import '../core/interfaces/notification_sound_store.dart';
 import '../core/logging/logger_service.dart';
 import '../core/paths/app_paths.dart';
-import '../features/notifications/models/notification_prefs.dart';
 
 class FileNotificationSoundStore implements NotificationSoundStore {
   FileNotificationSoundStore({required AppPaths paths, LoggerService? logger})

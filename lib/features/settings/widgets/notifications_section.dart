@@ -22,6 +22,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/tokens.dart';
+import '../../../core/constants/notification_sound.dart';
 import '../../notifications/models/notification_prefs.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/notification_prefs_controller.dart';

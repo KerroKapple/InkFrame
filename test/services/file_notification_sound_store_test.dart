@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/notification_sound_store.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
-import 'package:inkframe/features/notifications/models/notification_prefs.dart';
+import 'package:inkframe/core/constants/notification_sound.dart';
 import 'package:inkframe/services/file_notification_sound_store.dart';
 import 'package:path/path.dart' as p;
 

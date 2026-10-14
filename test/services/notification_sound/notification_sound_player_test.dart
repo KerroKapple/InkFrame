@@ -7,7 +7,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/interfaces/notification_sound_service.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
-import 'package:inkframe/features/notifications/models/notification_prefs.dart';
+import 'package:inkframe/core/constants/notification_sound.dart';
 import 'package:inkframe/services/notification_sound/audio_clip_player.dart';
 import 'package:inkframe/services/notification_sound/notification_sound_player.dart';
 import 'package:inkframe/services/notification_sound/system_alert_sound.dart';

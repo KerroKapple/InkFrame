@@ -14,9 +14,9 @@
 // 调用方（通知卡、设置页的试听）带崩。
 import 'dart:io';
 
+import '../../core/constants/notification_sound.dart';
 import '../../core/interfaces/notification_sound_service.dart';
 import '../../core/logging/logger_service.dart';
-import '../../features/notifications/models/notification_prefs.dart';
 import 'audio_clip_player.dart';
 import 'system_alert_sound.dart';
 
