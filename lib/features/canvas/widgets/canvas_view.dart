@@ -148,7 +148,11 @@ class _PendingFocusApplierState extends ConsumerState<_PendingFocusApplier> {
     ref.read(canvasFocusRequestProvider.notifier).consume(request);
     for (final CanvasNode node in widget.nodes) {
       if (node.id == request.nodeId) {
-        focusNodeOnCanvas(ref, canvasId: widget.canvasId, node: node);
+        if (request.center) {
+          focusNodeOnCanvas(ref, canvasId: widget.canvasId, node: node);
+        } else {
+          ref.read(canvasSelectionControllerProvider(widget.canvasId).notifier).select(node.id);
+        }
         return;
       }
     }

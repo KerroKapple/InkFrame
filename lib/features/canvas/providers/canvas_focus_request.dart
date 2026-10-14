@@ -9,24 +9,31 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// 一条定位请求：在 [canvasId] 上单选 [nodeId] 并把它移到视口中心。
+/// 一条定位请求：在 [canvasId] 上单选 [nodeId]；[center] 为真时再把它移到视口中心。
 @immutable
 class CanvasFocusRequest {
-  const CanvasFocusRequest({required this.canvasId, required this.nodeId});
+  const CanvasFocusRequest({required this.canvasId, required this.nodeId, this.center = true});
 
   final String canvasId;
   final String nodeId;
 
+  /// 落地时要不要把节点移到视口中心。「定位」类入口要（节点可能在视口外）；新建菜单建出来的
+  /// 节点就落在用户刚点的地方，挪相机只会让人找不着北——那里传 false，只单选。
+  final bool center;
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is CanvasFocusRequest && other.canvasId == canvasId && other.nodeId == nodeId;
+      other is CanvasFocusRequest &&
+          other.canvasId == canvasId &&
+          other.nodeId == nodeId &&
+          other.center == center;
 
   @override
-  int get hashCode => Object.hash(canvasId, nodeId);
+  int get hashCode => Object.hash(canvasId, nodeId, center);
 
   @override
-  String toString() => 'CanvasFocusRequest($canvasId, $nodeId)';
+  String toString() => 'CanvasFocusRequest($canvasId, $nodeId, center: $center)';
 }
 
 final canvasFocusRequestProvider =
@@ -40,8 +47,8 @@ class CanvasFocusRequestController extends Notifier<CanvasFocusRequest?> {
   CanvasFocusRequest? build() => null;
 
   /// 挂起一条请求；已有未消费的请求时以新的为准（用户最后一次点的那个）。
-  void request({required String canvasId, required String nodeId}) =>
-      state = CanvasFocusRequest(canvasId: canvasId, nodeId: nodeId);
+  void request({required String canvasId, required String nodeId, bool center = true}) =>
+      state = CanvasFocusRequest(canvasId: canvasId, nodeId: nodeId, center: center);
 
   /// 消费 [request]：只清它自己——落地在帧后，期间可能已经挂起了新的一条。
   void consume(CanvasFocusRequest request) {

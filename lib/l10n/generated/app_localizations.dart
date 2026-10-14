@@ -3068,6 +3068,90 @@ abstract class AppLocalizations {
   /// **'hold Space'**
   String get canvasToolPanHoldSpace;
 
+  /// Canvas New menu (opened by dragging a wire from a node's output port to empty space, double-clicking empty canvas, Tab, or right-click > New…): placeholder of the search box at the top. Typing filters the menu items.
+  ///
+  /// In en, this message translates to:
+  /// **'Type to search…'**
+  String get canvasCreateMenuSearchHint;
+
+  /// Canvas New menu: the only row shown when the search text matches no item
+  ///
+  /// In en, this message translates to:
+  /// **'No matching actions'**
+  String get canvasCreateMenuNoMatch;
+
+  /// Canvas New menu, opened by dragging a wire out of an image node: create a video config node at the drop point and link the image to it as its first frame
+  ///
+  /// In en, this message translates to:
+  /// **'As first frame · New video config'**
+  String get canvasCreateMenuAsFirstFrame;
+
+  /// Canvas New menu, opened by dragging a wire out of an image node: create a video config node and link the image to it as its last frame
+  ///
+  /// In en, this message translates to:
+  /// **'As last frame · New video config'**
+  String get canvasCreateMenuAsLastFrame;
+
+  /// Canvas New menu, opened by dragging a wire out of an image node: create an image config node and link the image to it as a reference image
+  ///
+  /// In en, this message translates to:
+  /// **'As reference · New image config'**
+  String get canvasCreateMenuAsReference;
+
+  /// Canvas New menu, opened by dragging a wire out of a config node: create a config node of the same type and link it as the next shot in the story order
+  ///
+  /// In en, this message translates to:
+  /// **'Next shot (narrative)'**
+  String get canvasCreateMenuNextShot;
+
+  /// No description provided for @canvasCreateMenuImageConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Image config'**
+  String get canvasCreateMenuImageConfig;
+
+  /// No description provided for @canvasCreateMenuVideoConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Video config'**
+  String get canvasCreateMenuVideoConfig;
+
+  /// No description provided for @canvasCreateMenuText.
+  ///
+  /// In en, this message translates to:
+  /// **'Text'**
+  String get canvasCreateMenuText;
+
+  /// No description provided for @canvasCreateMenuShot.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot'**
+  String get canvasCreateMenuShot;
+
+  /// Canvas New menu without a wire: opens the New lane dialog (the four rows above it create nodes of that type)
+  ///
+  /// In en, this message translates to:
+  /// **'Lane'**
+  String get canvasCreateMenuLane;
+
+  /// Canvas right-click menu on empty space: opens the New menu (search and create a node) at the click point
+  ///
+  /// In en, this message translates to:
+  /// **'New…'**
+  String get canvasBlankMenuNew;
+
+  /// No description provided for @canvasBlankMenuSelectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get canvasBlankMenuSelectAll;
+
+  /// Canvas right-click menu on empty space: same as the Fit cell of the zoom bar (back to the default camera)
+  ///
+  /// In en, this message translates to:
+  /// **'Fit view'**
+  String get canvasBlankMenuFitView;
+
   /// Canvas left sidebar: the Outline page — rail button tooltip and the panel title
   ///
   /// In en, this message translates to:
@@ -5005,6 +5089,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show / hide the canvas left sidebar'**
   String get settingsShortcutCanvasToggleLeftRail;
+
+  /// Settings > Shortcuts row for Tab: opens the canvas New menu (search and create a node) in the middle of the canvas
+  ///
+  /// In en, this message translates to:
+  /// **'New…'**
+  String get settingsShortcutCanvasOpenCreateMenu;
 
   /// No description provided for @settingsPerformanceConcurrencyTitle.
   ///

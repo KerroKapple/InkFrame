@@ -1622,6 +1622,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasToolPanHoldSpace => '按住空格';
 
   @override
+  String get canvasCreateMenuSearchHint => '直接打字搜索…';
+
+  @override
+  String get canvasCreateMenuNoMatch => '没有匹配的操作';
+
+  @override
+  String get canvasCreateMenuAsFirstFrame => '当首帧 · 新建视频配置';
+
+  @override
+  String get canvasCreateMenuAsLastFrame => '当尾帧 · 新建视频配置';
+
+  @override
+  String get canvasCreateMenuAsReference => '当参考 · 新建图像配置';
+
+  @override
+  String get canvasCreateMenuNextShot => '下一镜（叙事）';
+
+  @override
+  String get canvasCreateMenuImageConfig => '图像配置';
+
+  @override
+  String get canvasCreateMenuVideoConfig => '视频配置';
+
+  @override
+  String get canvasCreateMenuText => '文本';
+
+  @override
+  String get canvasCreateMenuShot => '镜头';
+
+  @override
+  String get canvasCreateMenuLane => '泳道';
+
+  @override
+  String get canvasBlankMenuNew => '新建…';
+
+  @override
+  String get canvasBlankMenuSelectAll => '全选';
+
+  @override
+  String get canvasBlankMenuFitView => '适应视图';
+
+  @override
   String get leftRailOutline => '大纲';
 
   @override
@@ -2721,6 +2763,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasToggleLeftRail => '展开 / 收起画布左栏';
+
+  @override
+  String get settingsShortcutCanvasOpenCreateMenu => '新建…';
 
   @override
   String get settingsPerformanceConcurrencyTitle => '并发与配额';

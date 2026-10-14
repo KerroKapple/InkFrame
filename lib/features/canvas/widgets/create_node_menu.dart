@@ -264,8 +264,10 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
       addLaneViaDialog(context, ref, canvasId: canvasId);
       return;
     }
-    final CanvasNodeType? type =
-        createdNodeType(action, source: _nodeById(request.sourceNodeId));
+    final CanvasNode? source = _nodeById(request.sourceNodeId);
+    final List<CanvasNode> nodes =
+        ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[];
+    final CanvasNodeType? type = createdNodeType(action, source: source, nodes: nodes);
     if (type == null) return;
     addNodeFromMenu(
       context,
@@ -277,7 +279,8 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
         canvasId: canvasId,
         viewportPoint: request.anchor,
       ),
-      sourceNodeId: request.sourceNodeId,
+      // 「下一镜」的叙事边从叙事锚点连出（产物卡 ⇒ 它的来源配置节点），其余从拖出来的那张卡。
+      sourceNodeId: createdEdgeSourceId(action, source: source, nodes: nodes),
       edge: createdEdge(action),
     );
   }

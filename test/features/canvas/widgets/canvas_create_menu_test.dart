@@ -21,6 +21,7 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/models/style_lane.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
@@ -46,9 +47,9 @@ class _Nodes extends CanvasNodesController {
   _Nodes(this._seed);
   final List<CanvasNode> _seed;
 
-  /// addNode 收到的类型与落点，按调用顺序。新节点 id 依次是 new-1、new-2……
-  final List<({CanvasNodeType type, Offset position})> added =
-      <({CanvasNodeType type, Offset position})>[];
+  /// addNode 收到的类型、落点与泳道归属，按调用顺序。新节点 id 依次是 new-1、new-2……
+  final List<({CanvasNodeType type, Offset position, String? laneId})> added =
+      <({CanvasNodeType type, Offset position, String? laneId})>[];
 
   /// removeNode 收到的 id，按调用顺序。
   final List<String> removed = <String>[];
@@ -62,11 +63,12 @@ class _Nodes extends CanvasNodesController {
     required CanvasNodeType type,
     NodeRole role = NodeRole.config,
     String? sourceNodeId,
+    String? laneId,
     Offset position = Offset.zero,
     Size? size,
     Map<String, Object?> typeConfig = const <String, Object?>{},
   }) async {
-    added.add((type: type, position: position));
+    added.add((type: type, position: position, laneId: laneId));
     final CanvasNode node = CanvasNode(
       id: 'new-${added.length}',
       label: label,
@@ -153,9 +155,17 @@ const CanvasNode _vid = CanvasNode(
   position: Offset(400, 40),
 );
 
+/// 一条从世界原点起、厚 2000 的横向泳道：舞台左上一大片都在道里。
+class _OneLane extends CanvasLanesController {
+  @override
+  Future<List<StyleLane>> build(String canvasId) async =>
+      const <StyleLane>[StyleLane(id: 'lane-1', canvasId: 'c1', label: 'Ink', size: 2000)];
+}
+
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   List<CanvasNode> nodes = const <CanvasNode>[_img, _vid],
+  bool withLane = false,
   bool failEdges = false,
   RecordingToastService? toast,
   Widget Function(Widget canvas)? around,
@@ -175,7 +185,8 @@ Future<ProviderContainer> _pump(
       ),
       canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes)),
       canvasEdgesControllerProvider.overrideWith(() => _Edges(fail: failEdges)),
-      canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
+      canvasLanesControllerProvider
+          .overrideWith(() => withLane ? _OneLane() : EmptyLanesController()),
       canvasLaneDirectionProvider('c1')
           .overrideWith((_) async => LaneDirection.horizontal),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
@@ -301,6 +312,7 @@ void main() {
       final ProviderContainer c = await _pump(tester);
       final Offset grab = await _revealPort(tester, c, 'img');
       const Offset drop = Offset(700, 500);
+      final Matrix4 cameraBefore = _ivTransform(tester).clone();
 
       await _dragWire(tester, grab, drop);
 
@@ -330,7 +342,46 @@ void main() {
       expect(edge.role, EdgeRole.firstFrame);
       expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'new-1'},
           reason: '新节点建好后被单选');
+      expect(_ivTransform(tester), cameraBefore,
+          reason: '新节点就落在松手点：只单选、不挪相机');
       expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
+    testWidgets('从产物卡拖到空白选「下一镜」：建来源配置的类型，叙事边从来源配置节点连出', (tester) async {
+      const CanvasNode take = CanvasNode(
+        id: 'take',
+        label: 'Shot 01 take',
+        type: CanvasNodeType.image,
+        role: NodeRole.result,
+        sourceNodeId: 'img',
+        canvasId: 'c1',
+        position: Offset(40, 320),
+        typeConfig: <String, Object?>{'image_url': 'images/take.png'},
+      );
+      final ProviderContainer c = await _pump(tester, nodes: const <CanvasNode>[_img, _vid, take]);
+      final Offset grab = await _revealPort(tester, c, 'take');
+
+      await _dragWire(tester, grab, const Offset(700, 560));
+      expect(find.text(_firstFrame), findsOneWidget, reason: '图像产物照样出首帧 / 尾帧 / 参考');
+      await tester.tap(find.text(_nextShot));
+      await tester.pumpAndSettle();
+
+      expect(_nodesOf(c).added.single.type, CanvasNodeType.image, reason: '与来源配置同类型');
+      final CanvasEdge edge = _edgesOf(c).added.single;
+      expect(edge.edgeType, EdgeType.narrative);
+      expect(edge.sourceNodeId, 'img', reason: '叙事边只连配置节点：从产物的来源配置节点连出');
+      expect(edge.targetNodeId, 'new-1');
+    });
+
+    testWidgets('落点在泳道里：泳道归属随建节点一次写进去', (tester) async {
+      final ProviderContainer c = await _pump(tester, withLane: true);
+      final Offset grab = await _revealPort(tester, c, 'img');
+
+      await _dragWire(tester, grab, const Offset(700, 500));
+      await tester.tap(find.text(_firstFrame));
+      await tester.pumpAndSettle();
+
+      expect(_nodesOf(c).added.single.laneId, 'lane-1');
     });
 
     testWidgets('拖线途中按 Esc：取消拖线，松手不开菜单、不连线、不建节点', (tester) async {

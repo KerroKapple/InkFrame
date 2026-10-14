@@ -3,15 +3,18 @@
 // 四个入口（从出端口拖到空白处 / 双击空白 / Tab / 空白处右键「新建…」）开的是同一个菜单，区别只在有没有
 // 「从哪张卡拖出来」的连线上下文：
 //   - 带上下文：源带图像产物 ⇒ 当首帧 / 当尾帧（建视频配置）、当参考（建图像配置），各连一条对应角色的
-//     data 边；源能续叙事链 ⇒「下一镜」（建与源同类型的配置节点 + narrative 边）。两组之间一条分隔线。
+//     data 边；源有叙事锚点 ⇒「下一镜」（建与锚点同类型的配置节点 + 锚点 → 新节点的 narrative 边）。
+//     两组之间一条分隔线。
 //     视频产物不出前三项——首帧 / 尾帧 / 参考是图像语义。
 //   - 不带上下文：图像配置 · 视频配置 · 文本 · 镜头 · 泳道。
 //
 // 【叙事边只连配置节点】仓库里建 narrative 边的只有两处：导入脚本（shot → shot）与 shot 检查器的
 // 「用本镜备注生成」（shot → image / video 配置）。读侧全把叙事链当成「配置节点的序列」：export_order
 // 头注写明 result 节点「自己不在 narrative 链上」，sequence_builder 不让 result 独立成镜，左栏大纲只列链上的
-// 配置节点。text 节点进了链也成不了一镜（没有备注、没有产物，buildSequence 直接跳过）。所以「下一镜」只给
-// shot / image / video 的配置节点；从产物卡、文本卡拖出来不出这一项（派工单：不合法就不显示）。
+// 配置节点。text 节点进了链也成不了一镜（没有备注、没有产物，buildSequence 直接跳过）。所以「下一镜」的叙事
+// 边一律连在 shot / image / video 的**配置节点**上（[narrativeAnchorOf]）：从配置卡拖出来就是它自己；从产物
+// 卡拖出来（稿上的示例源正是「镜头 01 · 成片」）是它的来源配置节点。文本卡、来源已删的孤儿产物没有锚点，
+// 不出这一项。
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import 'node_artifacts.dart';
@@ -72,9 +75,19 @@ bool sourceCarriesImage(CanvasNode source, List<CanvasNode> nodes) {
   return latestResultFor(sourceNodeId: source.id, nodes: nodes)?.imageUrl != null;
 }
 
-/// 源节点能不能当 narrative 边的源去续「下一镜」：shot / image / video 的配置节点（见头注）。
-bool canContinueNarrative(CanvasNode source) =>
-    source.role == NodeRole.config && source.type != CanvasNodeType.text;
+/// 「下一镜」的叙事锚点（narrative 边从它连出，新节点与它同类型）：源自己是 shot / image / video 的配置
+/// 节点就是它；源是产物，就是它还在 [nodes] 里的来源配置节点（同样不能是文本）。没有锚点 ⇒ null，
+/// 菜单不出「下一镜」（见头注）。
+CanvasNode? narrativeAnchorOf(CanvasNode source, List<CanvasNode> nodes) {
+  bool continuable(CanvasNode n) => n.role == NodeRole.config && n.type != CanvasNodeType.text;
+  if (continuable(source)) return source;
+  final String? origin = source.role == NodeRole.result ? source.sourceNodeId : null;
+  if (origin == null) return null;
+  for (final CanvasNode n in nodes) {
+    if (n.id == origin) return continuable(n) ? n : null;
+  }
+  return null;
+}
 
 /// 菜单分组：组与组之间画分隔线，空组不出。[source] 为 null ⇒ 不带上下文的五项。
 List<List<CreateMenuAction>> createMenuGroups({
@@ -84,7 +97,7 @@ List<List<CreateMenuAction>> createMenuGroups({
   if (source == null) return const <List<CreateMenuAction>>[kPlainCreateActions];
   return <List<CreateMenuAction>>[
     if (sourceCarriesImage(source, nodes)) kImageSourceActions,
-    if (canContinueNarrative(source)) const <CreateMenuAction>[CreateMenuAction.nextShot],
+    if (narrativeAnchorOf(source, nodes) != null) const <CreateMenuAction>[CreateMenuAction.nextShot],
   ];
 }
 
@@ -108,19 +121,35 @@ List<List<E>> filterMenuGroups<E>(
   return out;
 }
 
-/// 这一项要建的节点类型；泳道不建节点 ⇒ null。「下一镜」= 源的类型（没有源也是 null）。
-CanvasNodeType? createdNodeType(CreateMenuAction action, {CanvasNode? source}) =>
+/// 这一项要建的节点类型；泳道不建节点 ⇒ null。「下一镜」= 叙事锚点的类型（没有源 / 没有锚点也是 null）。
+CanvasNodeType? createdNodeType(
+  CreateMenuAction action, {
+  CanvasNode? source,
+  List<CanvasNode> nodes = const <CanvasNode>[],
+}) =>
     switch (action) {
       CreateMenuAction.asFirstFrame ||
       CreateMenuAction.asLastFrame ||
       CreateMenuAction.videoConfig =>
         CanvasNodeType.video,
       CreateMenuAction.asReference || CreateMenuAction.imageConfig => CanvasNodeType.image,
-      CreateMenuAction.nextShot => source?.type,
+      CreateMenuAction.nextShot => source == null ? null : narrativeAnchorOf(source, nodes)?.type,
       CreateMenuAction.text => CanvasNodeType.text,
       CreateMenuAction.shot => CanvasNodeType.shot,
       CreateMenuAction.lane => null,
     };
+
+/// 这一项的边从哪个节点连出：「下一镜」从叙事锚点（产物 ⇒ 它的来源配置节点），其余从源本身；
+/// 没有源 ⇒ null。
+String? createdEdgeSourceId(
+  CreateMenuAction action, {
+  CanvasNode? source,
+  List<CanvasNode> nodes = const <CanvasNode>[],
+}) {
+  if (source == null) return null;
+  if (action == CreateMenuAction.nextShot) return narrativeAnchorOf(source, nodes)?.id;
+  return source.id;
+}
 
 /// 这一项要连的线（源 → 新节点）；不连线的项 ⇒ null。
 CreateMenuEdge? createdEdge(CreateMenuAction action) => switch (action) {

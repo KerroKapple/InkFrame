@@ -211,10 +211,12 @@ Future<void> addNodeFromMenu(
 
   final CanvasNode created;
   try {
+    // 泳道归属随建节点一次写进去（落进道里的卡与拖卡片落点同一套判定，见 menuNodePlacement）。
     created = await nodes.addNode(
       label: label,
       type: type,
       position: placement.world,
+      laneId: placement.laneId,
     );
   } on InkError catch (_) {
     if (context.mounted) showCanvasSnack(context, failed);
@@ -222,11 +224,6 @@ Future<void> addNodeFromMenu(
   }
 
   try {
-    final String? laneId = placement.laneId;
-    // 建节点的写入不带泳道归属；落进道里的，用拖卡片落点那一条写入补上（位移为零，只改 lane_id）。
-    if (laneId != null) {
-      await nodes.moveNode(created.id, Offset.zero, laneId: laneId);
-    }
     final CreateMenuEdge? link = edge;
     if (link != null && sourceNodeId != null) {
       await edges.addEdge(
@@ -241,11 +238,12 @@ Future<void> addNodeFromMenu(
       await nodes.removeNode(created.id);
     } on InkError catch (_) {
       // 回滚也没成：节点留在画布上——至少让它被选中，用户看得见、能手动删。
-      focus.request(canvasId: canvasId, nodeId: created.id);
+      focus.request(canvasId: canvasId, nodeId: created.id, center: false);
     }
     if (context.mounted) showCanvasSnack(context, failed);
     return;
   }
 
-  focus.request(canvasId: canvasId, nodeId: created.id);
+  // 只单选、不挪相机：新节点就落在用户刚点的地方（拖线松手点 / 双击点 / 右键点 / Tab 的视口中心）。
+  focus.request(canvasId: canvasId, nodeId: created.id, center: false);
 }

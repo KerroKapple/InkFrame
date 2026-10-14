@@ -2,7 +2,8 @@
 // 每一项建什么节点、连什么线；搜索过滤。
 //
 // 钉的几条：图像源出首帧 / 尾帧 / 参考（拿掉 sourceCarriesImage 的判断，视频产物那条红）；
-// 「下一镜」只给配置节点（叙事链只连配置节点，见 create_menu_model 头注）；空组不出、不留孤立分隔线。
+// 「下一镜」的叙事边只连配置节点：配置卡以自己为锚，产物卡以它的来源配置节点为锚（见 create_menu_model
+// 头注）；空组不出、不留孤立分隔线。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -57,7 +58,7 @@ void main() {
       );
     });
 
-    test('图像产物源：首帧 / 尾帧 / 参考；产物不在叙事链上，不出「下一镜」', () {
+    test('图像产物源：首帧 / 尾帧 / 参考 +「下一镜」（锚点 = 它的来源配置节点）', () {
       final CanvasNode cfg = _node('cfg', CanvasNodeType.image);
       final CanvasNode res = _node(
         'res',
@@ -68,11 +69,14 @@ void main() {
       );
       expect(
         createMenuGroups(source: res, nodes: <CanvasNode>[cfg, res]),
-        <List<CreateMenuAction>>[_imageThree],
+        <List<CreateMenuAction>>[
+          _imageThree,
+          <CreateMenuAction>[CreateMenuAction.nextShot],
+        ],
       );
     });
 
-    test('视频产物源：不出首帧 / 尾帧 / 参考（那是图像语义），也不出「下一镜」', () {
+    test('视频产物源：不出首帧 / 尾帧 / 参考（那是图像语义），只有「下一镜」', () {
       final CanvasNode cfg = _node('cfg', CanvasNodeType.video);
       final CanvasNode res = _node(
         'res',
@@ -86,7 +90,9 @@ void main() {
       for (final CreateMenuAction a in _imageThree) {
         expect(groups.expand((List<CreateMenuAction> g) => g), isNot(contains(a)));
       }
-      expect(groups, isEmpty);
+      expect(groups, <List<CreateMenuAction>>[
+        <CreateMenuAction>[CreateMenuAction.nextShot],
+      ]);
     });
 
     test('视频配置 / 镜头源：只有「下一镜」', () {
@@ -139,18 +145,29 @@ void main() {
     });
   });
 
-  group('canContinueNarrative', () {
-    test('shot / image / video 的配置节点能续一镜；产物与文本不能', () {
-      expect(canContinueNarrative(_node('a', CanvasNodeType.shot)), isTrue);
-      expect(canContinueNarrative(_node('a', CanvasNodeType.image)), isTrue);
-      expect(canContinueNarrative(_node('a', CanvasNodeType.video)), isTrue);
-      expect(canContinueNarrative(_node('a', CanvasNodeType.text)), isFalse);
-      expect(
-        canContinueNarrative(
-          _node('a', CanvasNodeType.image, role: NodeRole.result, sourceNodeId: 'x'),
-        ),
-        isFalse,
-      );
+  group('narrativeAnchorOf', () {
+    test('shot / image / video 的配置节点以自己为锚；文本配置没有锚点', () {
+      for (final CanvasNodeType type in <CanvasNodeType>[
+        CanvasNodeType.shot,
+        CanvasNodeType.image,
+        CanvasNodeType.video,
+      ]) {
+        final CanvasNode n = _node('a', type);
+        expect(narrativeAnchorOf(n, <CanvasNode>[n]), same(n), reason: type.name);
+      }
+      final CanvasNode text = _node('t', CanvasNodeType.text);
+      expect(narrativeAnchorOf(text, <CanvasNode>[text]), isNull);
+    });
+
+    test('产物以它的来源配置节点为锚；来源已删 / 来源是文本 ⇒ 没有锚点', () {
+      final CanvasNode cfg = _node('cfg', CanvasNodeType.image);
+      final CanvasNode res =
+          _node('res', CanvasNodeType.image, role: NodeRole.result, sourceNodeId: 'cfg');
+      expect(narrativeAnchorOf(res, <CanvasNode>[cfg, res]), same(cfg));
+      expect(narrativeAnchorOf(res, <CanvasNode>[res]), isNull, reason: '来源配置节点已删');
+
+      final CanvasNode textCfg = _node('cfg', CanvasNodeType.text);
+      expect(narrativeAnchorOf(res, <CanvasNode>[textCfg, res]), isNull, reason: '来源是文本');
     });
   });
 
@@ -193,6 +210,21 @@ void main() {
         createdEdge(CreateMenuAction.nextShot),
         (type: EdgeType.narrative, role: EdgeRole.reference),
       );
+    });
+
+    test('从产物卡续「下一镜」：建来源配置节点的类型，叙事边从来源配置节点连出', () {
+      final CanvasNode cfg = _node('cfg', CanvasNodeType.video);
+      final CanvasNode res =
+          _node('res', CanvasNodeType.video, role: NodeRole.result, sourceNodeId: 'cfg');
+      final List<CanvasNode> nodes = <CanvasNode>[cfg, res];
+      expect(
+        createdNodeType(CreateMenuAction.nextShot, source: res, nodes: nodes),
+        CanvasNodeType.video,
+      );
+      expect(createdEdgeSourceId(CreateMenuAction.nextShot, source: res, nodes: nodes), 'cfg');
+      // 首帧 / 尾帧 / 参考的 data 边从拖出来的那张卡本身连出。
+      expect(createdEdgeSourceId(CreateMenuAction.asFirstFrame, source: res, nodes: nodes), 'res');
+      expect(createdEdgeSourceId(CreateMenuAction.imageConfig), isNull);
     });
 
     test('不带上下文的项：建对应类型、不连线；泳道不建节点', () {
