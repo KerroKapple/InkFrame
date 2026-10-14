@@ -219,6 +219,10 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   final bool isActive;
   final Widget child;
 
+  /// 画布舞台按下指针时调用：把键盘焦点要回最近的 CanvasShortcuts（不在其下则无事）。
+  static void reclaimFocus(BuildContext context) =>
+      context.findAncestorStateOfType<_CanvasShortcutsState>()?._reclaimFocus();
+
   @override
   ConsumerState<CanvasShortcuts> createState() => _CanvasShortcutsState();
 }
@@ -250,6 +254,13 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted && widget.isActive) _focusNode.requestFocus();
     });
+  }
+
+  /// 在画布舞台上按下鼠标：把键盘焦点要回本层。在提示词条 / 检查器的文本框里打完字
+  /// 再点画布，文本框的 onTapOutside 只会把焦点交还给路由作用域——本层不持焦，
+  /// Delete / Esc / 工具单键全都收不到，直到切一次标签才恢复。
+  void _reclaimFocus() {
+    if (widget.isActive && !_focusNode.hasPrimaryFocus) _focusNode.requestFocus();
   }
 
   @override

@@ -48,6 +48,7 @@ import 'canvas_empty_state.dart';
 import 'canvas_grid_painter.dart';
 import 'edge_painter.dart';
 import 'lane_background.dart';
+import 'canvas_shortcuts.dart';
 import 'lane_edit_dialog.dart';
 import 'lane_title_bar.dart';
 import 'lane_toolbar.dart';
@@ -1302,7 +1303,10 @@ class _StagePanCursorState extends ConsumerState<_StagePanCursor> {
         ? MouseCursor.defer
         : (_pressed ? SystemMouseCursors.grabbing : SystemMouseCursors.grab);
     return Listener(
-      onPointerDown: (_) => _setPressed(true),
+      onPointerDown: (_) {
+        _setPressed(true);
+        CanvasShortcuts.reclaimFocus(context);
+      },
       onPointerUp: (_) => _setPressed(false),
       onPointerCancel: (_) => _setPressed(false),
       child: MouseRegion(cursor: cursor, child: widget.child),

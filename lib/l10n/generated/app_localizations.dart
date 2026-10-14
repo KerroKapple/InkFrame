@@ -1514,12 +1514,6 @@ abstract class AppLocalizations {
   /// **'Add shot node'**
   String get canvasAddShotNode;
 
-  /// No description provided for @canvasAddNodeTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'New node'**
-  String get canvasAddNodeTooltip;
-
   /// No description provided for @canvasAddNodeFailed.
   ///
   /// In en, this message translates to:
@@ -2918,7 +2912,7 @@ abstract class AppLocalizations {
   /// **'Back to Studio'**
   String get commandBackToStudio;
 
-  /// Add-node FAB menu item that opens the script import dialog
+  /// Canvas toolbar "More" menu item that opens the script import dialog
   ///
   /// In en, this message translates to:
   /// **'Import script…'**
@@ -3086,6 +3080,24 @@ abstract class AppLocalizations {
   /// **'Lane'**
   String get canvasToolLane;
 
+  /// No description provided for @canvasToolShotNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Shot node'**
+  String get canvasToolShotNode;
+
+  /// No description provided for @canvasToolMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get canvasToolMore;
+
+  /// Second shortcut hint in the Pan tool tooltip, after the H key: holding the Space bar pans temporarily
+  ///
+  /// In en, this message translates to:
+  /// **'hold Space'**
+  String get canvasToolPanHoldSpace;
+
   /// No description provided for @projectPanelCanvases.
   ///
   /// In en, this message translates to:
@@ -3127,6 +3139,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Fit'**
   String get canvasZoomFit;
+
+  /// No description provided for @canvasZoomIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom in'**
+  String get canvasZoomIn;
+
+  /// No description provided for @canvasZoomOut.
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom out'**
+  String get canvasZoomOut;
 
   /// No description provided for @promptBarBaseStyle.
   ///
@@ -4789,6 +4813,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset zoom'**
   String get settingsShortcutCanvasZoomReset;
+
+  /// No description provided for @settingsShortcutCanvasSelectTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Select tool'**
+  String get settingsShortcutCanvasSelectTool;
+
+  /// No description provided for @settingsShortcutCanvasPanTool.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan tool on / off'**
+  String get settingsShortcutCanvasPanTool;
+
+  /// No description provided for @settingsShortcutCanvasHoldPan.
+  ///
+  /// In en, this message translates to:
+  /// **'Pan while held'**
+  String get settingsShortcutCanvasHoldPan;
+
+  /// No description provided for @settingsShortcutCanvasAddImageNode.
+  ///
+  /// In en, this message translates to:
+  /// **'New image node'**
+  String get settingsShortcutCanvasAddImageNode;
+
+  /// No description provided for @settingsShortcutCanvasAddVideoNode.
+  ///
+  /// In en, this message translates to:
+  /// **'New video node'**
+  String get settingsShortcutCanvasAddVideoNode;
+
+  /// No description provided for @settingsShortcutCanvasAddTextNode.
+  ///
+  /// In en, this message translates to:
+  /// **'New text node'**
+  String get settingsShortcutCanvasAddTextNode;
+
+  /// No description provided for @settingsShortcutCanvasAddLane.
+  ///
+  /// In en, this message translates to:
+  /// **'New lane'**
+  String get settingsShortcutCanvasAddLane;
+
+  /// No description provided for @settingsShortcutCanvasToggleLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Start / stop linking'**
+  String get settingsShortcutCanvasToggleLink;
 
   /// No description provided for @settingsPerformanceConcurrencyTitle.
   ///

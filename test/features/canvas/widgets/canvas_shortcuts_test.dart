@@ -751,4 +751,49 @@ void main() {
       reason: 'L 不得进连线模式',
     );
   });
+
+  testWidgets('打完字再点画布空白：键盘焦点回到画布，单键工具立刻生效', (tester) async {
+    final fieldController = TextEditingController();
+    addTearDown(fieldController.dispose);
+
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: CanvasShortcuts(
+          isActive: true,
+          child: Column(
+            children: <Widget>[
+              const Expanded(child: CanvasView()),
+              TextField(controller: fieldController),
+            ],
+          ),
+        ),
+      ),
+      overrides: _canvasOverrides(twoNodes),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CanvasView)),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pumpAndSettle();
+    expect(isEditingText(), isTrue);
+
+    // 点画布右下角的空白（节点都在左上一带）：文本框失焦，画布要回焦点。
+    final Rect stage = tester.getRect(find.byType(CanvasView));
+    await tester.tapAt(stage.bottomRight - const Offset(40, 40));
+    await tester.pumpAndSettle();
+    expect(isEditingText(), isFalse);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyH);
+    await tester.pump();
+    expect(
+      container.read(canvasToolModeProvider('c1')),
+      CanvasToolMode.pan,
+      reason: '点回画布后 H 应立即切到平移，不该要等切一次标签',
+    );
+  });
+
 }
