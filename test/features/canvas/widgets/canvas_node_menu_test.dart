@@ -11,15 +11,22 @@
 //   - 在序列中定位：切到序列标签，播放头跳到那一镜。
 //   - 删除：走撤销卡；多选整批。
 //   - 存为角色的起名框一打开就持焦（B1）：不点输入框直接按 Backspace / L / Esc，按键不穿到框后面的画布上。
+//   - 失败分支（B10）：复制一份中途写库失败（已复制出来的照样选中 + 错误卡）；存为角色的四种失败（产物路径解析
+//     被拒 / 仓储 InkError / 资产服务 CharacterAssetError / 文件系统 FileSystemException）各出对应的错误卡。
 //
 // 变异对照：拿掉任一可用条件 ⇒「可用 / 置灰」组对应的那一条红；_pickNode 只对右键的那张做复制 / 移道 / 删除
 // （不看选中集）⇒ 三条「多选」用例红。
+import 'dart:io' show File, FileSystemException;
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/character_asset_service.dart' show CharacterAssetError;
+import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -40,6 +47,7 @@ import 'package:inkframe/features/notifications/providers/toast_service_provider
 import 'package:inkframe/features/sequence/providers/sequence_playhead.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
+import 'package:inkframe/l10n/l10n_x.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/components/ink_icon.dart';
 import 'package:inkframe/theme/components/ink_name_dialog.dart';
@@ -133,8 +141,11 @@ typedef _Moved = ({String id, Offset delta, String? laneId});
 
 /// 节点：增 / 挪 / 删都落在内存态里，并记下收到了什么。新节点 id 依次是 new-1、new-2……
 class _Nodes extends CanvasNodesController {
-  _Nodes(this._seed);
+  _Nodes(this._seed, {this.failAddAt});
   final List<CanvasNode> _seed;
+
+  /// 第几次 addNode（1 起）写库失败、抛 InkError（这一次照样记进 [added]，但不建节点）；null = 不失败。
+  final int? failAddAt;
 
   final List<_Added> added = <_Added>[];
   final List<_Moved> moved = <_Moved>[];
@@ -161,6 +172,9 @@ class _Nodes extends CanvasNodesController {
       laneId: laneId,
       typeConfig: typeConfig,
     ));
+    if (added.length == failAddAt) {
+      throw const LocalIOError(extra: <String, Object?>{'op': 'createNode'});
+    }
     final CanvasNode node = CanvasNode(
       id: 'new-${added.length}',
       label: label,
@@ -280,10 +294,11 @@ class _RecordingSubmit extends InspectorSubmitController {
   }
 }
 
-/// 角色：只记 createFromImage 收到了什么。
+/// 角色：只记 createFromImage 收到了什么。[failWith] 非空 ⇒ createFromImage 抛它（什么都不建）。
 class _RecordingCharacters extends CharactersController {
   static final List<({String projectId, String name, String path})> created =
       <({String projectId, String name, String path})>[];
+  static Object? failWith;
 
   @override
   Future<List<Character>> build(String projectId) async => const <Character>[];
@@ -293,9 +308,22 @@ class _RecordingCharacters extends CharactersController {
     required String name,
     required String sourceAbsolutePath,
   }) async {
+    final Object? failure = failWith;
+    if (failure != null) throw failure;
     created.add((projectId: arg, name: name, path: sourceAbsolutePath));
     return 'char-1';
   }
+}
+
+/// 产物路径解析被拒（越出项目根之类）：resolve 抛 PathSecurityError。
+class _RejectingResolver extends StubFileResolver {
+  @override
+  File resolve({
+    required String projectId,
+    required String canvasId,
+    required String relativePath,
+  }) =>
+      throw PathSecurityError('outside the project root');
 }
 
 // ===== 装配 =====
@@ -306,6 +334,8 @@ Future<ProviderContainer> _pump(
   List<CanvasEdge> edges = _chain,
   List<StyleLane> lanes = const <StyleLane>[],
   bool withProject = true,
+  int? failAddAt,
+  FileResolverService? resolver,
 }) async {
   await pumpInkApp(
     tester,
@@ -320,11 +350,11 @@ Future<ProviderContainer> _pump(
           ),
         ),
       ),
-      canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes)),
+      canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes, failAddAt: failAddAt)),
       canvasEdgesControllerProvider.overrideWith(() => _Edges(edges)),
       canvasLanesControllerProvider.overrideWith(() => _Lanes(lanes)),
       canvasLaneDirectionProvider('c1').overrideWith((_) async => LaneDirection.horizontal),
-      fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
+      fileResolverServiceProvider.overrideWithValue(resolver ?? StubFileResolver()),
       toastServiceProvider.overrideWithValue(RecordingToastService()),
       inspectorSubmitControllerProvider.overrideWith(_RecordingSubmit.new),
       charactersControllerProvider.overrideWith(_RecordingCharacters.new),
@@ -397,6 +427,7 @@ void main() {
     _RecordingSubmit.configs.clear();
     _RecordingSubmit.busy = <String>{};
     _RecordingCharacters.created.clear();
+    _RecordingCharacters.failWith = null;
   });
 
   group('右键开菜单', () {
@@ -619,6 +650,25 @@ void main() {
       );
       expect(_selection(c), <String>{'new-1', 'new-2'});
     });
+
+    // B10：中途写库失败——已经复制出来的照样选中（只出来一张 ⇒ 单选它），弹错误卡。
+    testWidgets('多选复制中途写库失败：已经复制出来的那张被单选，弹错误卡「添加节点失败」', (tester) async {
+      final ProviderContainer c = await _pump(tester, failAddAt: 2);
+      c.read(canvasSelectionControllerProvider('c1').notifier).selectAll(<String>['img', 'vid']);
+      await tester.pump();
+      await _openMenuOn(tester, 'img');
+
+      await _pick(tester, 'Duplicate');
+
+      expect(
+        _nodesOf(c).added.map((_Added a) => a.label),
+        <String>['Shot 01 copy', 'Shot 02 copy'],
+        reason: '第二张也试过，写库失败',
+      );
+      expect(_selection(c), <String>{'new-1'}, reason: '只复制出来一张：单选它');
+      expect(_toastOf(c).titles, <String>['Failed to add node']);
+      expect(_toastOf(c).kinds, <ToastKind>[ToastKind.error]);
+    });
   });
 
   group('存为角色', () {
@@ -697,6 +747,60 @@ void main() {
       expect(dialog, findsNothing, reason: 'Esc 关的是起名框');
       expect(_selection(c), <String>{'take'}, reason: 'Esc 没落到画布上：选中不变');
       expect(_RecordingCharacters.created, isEmpty);
+    });
+  });
+
+  // B10：saveNodeAsCharacter 的捕获集 = createFromImage 的真实抛出集 + 产物路径解析；失败一律出错误卡，不建角色。
+  group('存为角色：失败分支', () {
+    /// 右键产物卡 →「存为角色」→ 起名 → 保存。
+    Future<void> saveAs(WidgetTester tester, String name) async {
+      await _openMenuOn(tester, 'take');
+      await _pick(tester, 'Save as character');
+      await tester.enterText(
+        find.descendant(of: find.byType(InkNameDialog), matching: find.byType(TextField)),
+        name,
+      );
+      await tester.pump();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('产物路径解析被拒（PathSecurityError）：不建角色，出「导入角色失败」错误卡', (tester) async {
+      final ProviderContainer c = await _pump(tester, resolver: _RejectingResolver());
+      await saveAs(tester, 'Hero');
+
+      expect(_RecordingCharacters.created, isEmpty);
+      expect(_toastOf(c).titles, <String>['Failed to import character']);
+      expect(_toastOf(c).kinds, <ToastKind>[ToastKind.error]);
+    });
+
+    testWidgets('createFromImage 抛 InkError：出该错误的本地化文案（错误卡）', (tester) async {
+      _RecordingCharacters.failWith = const LocalIOError();
+      final ProviderContainer c = await _pump(tester);
+      await saveAs(tester, 'Hero');
+
+      expect(_toastOf(c).titles, <String>[
+        l10nError(tester.element(find.byType(CanvasView)), const LocalIOError()),
+      ]);
+      expect(_toastOf(c).kinds, <ToastKind>[ToastKind.error]);
+    });
+
+    testWidgets('createFromImage 抛 CharacterAssetError：出「导入角色失败」错误卡', (tester) async {
+      _RecordingCharacters.failWith = const CharacterAssetError('copy failed');
+      final ProviderContainer c = await _pump(tester);
+      await saveAs(tester, 'Hero');
+
+      expect(_toastOf(c).titles, <String>['Failed to import character']);
+      expect(_toastOf(c).kinds, <ToastKind>[ToastKind.error]);
+    });
+
+    testWidgets('createFromImage 抛 FileSystemException：出「导入角色失败」错误卡', (tester) async {
+      _RecordingCharacters.failWith = const FileSystemException('source vanished');
+      final ProviderContainer c = await _pump(tester);
+      await saveAs(tester, 'Hero');
+
+      expect(_toastOf(c).titles, <String>['Failed to import character']);
+      expect(_toastOf(c).kinds, <ToastKind>[ToastKind.error]);
     });
   });
 

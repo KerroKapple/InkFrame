@@ -2,7 +2,7 @@
 //
 //   - 从出端口拖线：落在另一张卡上 = 连线（走连线模式那一条 linkTo，image → video 默认首帧）；落在空白处 =
 //     在松手点开带上下文的新建菜单，选「当首帧」⇒ 节点落在松手点 + 一条首帧 data 边 + 新节点被单选。
-//   - 边写失败：刚建的节点被删掉（不留半截）+ 错误卡。
+//   - 边写失败：刚建的节点被删掉（不留半截）+ 错误卡；回滚本身也失败：节点留下、被单选 + 错误卡（B10）。
 //   - 「下一镜」的叙事边 sortOrder 排在锚点已有的分叉之后（B7）。
 //   - 拖线途中 Esc：取消拖线，松手什么都不写。
 //   - 拖线途中源卡被删：画布层取消拖线，其余卡片不再显示成连线候选（B5）。
@@ -55,9 +55,11 @@ import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 /// 节点：增删都落在内存态里（新节点要进画布，定位请求才落得了地），并记下建了什么、删了什么。
+/// [failRemove] = 删节点写库必失败（记下这次尝试、抛 InkError、内存态不动）。
 class _Nodes extends CanvasNodesController {
-  _Nodes(this._seed);
+  _Nodes(this._seed, {this.failRemove = false});
   final List<CanvasNode> _seed;
+  final bool failRemove;
 
   /// addNode 收到的类型、落点与泳道归属，按调用顺序。新节点 id 依次是 new-1、new-2……
   final List<({CanvasNodeType type, Offset position, String? laneId})> added =
@@ -107,6 +109,9 @@ class _Nodes extends CanvasNodesController {
   @override
   Future<NodeDeletion?> removeNode(String id) async {
     removed.add(id);
+    if (failRemove) {
+      throw const LocalIOError(extra: <String, Object?>{'op': 'removeNode'});
+    }
     final List<CanvasNode> previous = state.valueOrNull ?? const <CanvasNode>[];
     CanvasNode? gone;
     for (final CanvasNode n in previous) {
@@ -189,6 +194,7 @@ Future<ProviderContainer> _pump(
   List<CanvasEdge> edges = const <CanvasEdge>[],
   bool withLane = false,
   bool failEdges = false,
+  bool failRemove = false,
   RecordingToastService? toast,
   Widget Function(Widget canvas)? around,
 }) async {
@@ -205,7 +211,7 @@ Future<ProviderContainer> _pump(
       shellControllerProvider.overrideWith(
         () => ShellNavigator(initial: const ShellState(canvasId: 'c1')),
       ),
-      canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes)),
+      canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes, failRemove: failRemove)),
       canvasEdgesControllerProvider.overrideWith(() => _Edges(fail: failEdges, seed: edges)),
       canvasLanesControllerProvider
           .overrideWith(() => withLane ? _OneLane() : EmptyLanesController()),
@@ -608,6 +614,35 @@ void main() {
       expect(toast.titles, <String>['Failed to add node']);
       expect(toast.kinds, <ToastKind>[ToastKind.error]);
       expect(c.read(canvasSelectionControllerProvider('c1')), isNot(contains('new-1')));
+    });
+
+    // B10：回滚本身也失败——节点留在画布上，至少让它被选中（用户看得见、能手动删），照样出错误卡。
+    testWidgets('边写失败、回滚也失败：节点留在画布上并被单选（不挪相机），弹错误卡', (tester) async {
+      final RecordingToastService toast = RecordingToastService();
+      final ProviderContainer c =
+          await _pump(tester, failEdges: true, failRemove: true, toast: toast);
+      final Matrix4 cameraBefore = _ivTransform(tester).clone();
+      c
+          .read(canvasMenuRequestProvider('c1').notifier)
+          .openCreate(const Offset(700, 500), sourceNodeId: 'img');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(_firstFrame));
+      await tester.pumpAndSettle();
+
+      final _Nodes nodes = _nodesOf(c);
+      expect(nodes.added, hasLength(1));
+      expect(nodes.removed, <String>['new-1'], reason: '试过回滚');
+      expect(
+        c.read(canvasNodesControllerProvider('c1')).valueOrNull!.map((CanvasNode n) => n.id),
+        contains('new-1'),
+        reason: '回滚没成：节点还在',
+      );
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'new-1'},
+          reason: '留下的节点被单选');
+      expect(_ivTransform(tester), cameraBefore, reason: '只单选、不挪相机');
+      expect(toast.titles, <String>['Failed to add node']);
+      expect(toast.kinds, <ToastKind>[ToastKind.error]);
     });
 
     testWidgets('「下一镜（叙事）」：建与源同类型的配置节点 + 一条 narrative 边（源 → 新）', (tester) async {
