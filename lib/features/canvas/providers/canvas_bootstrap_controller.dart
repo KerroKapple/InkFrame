@@ -53,6 +53,11 @@ typedef SampleSeed = ({
 /// 那是卡片改版之前的尺寸，代码里早就不存在了，没人发现。
 const Offset kSampleNodePosition = Offset(120, 90);
 
+/// 示例泳道的带厚：要装下 config 卡和它右侧一列往下错开的全部示例成片
+///（最后一张底边 = 90 + 2 × 191 + 48 = 520），再留出一点下边距。
+/// 默认带厚 kDefaultLaneSize 只装得下一行卡片，第二张成片会压在泳道下沿上。
+const double kSampleLaneSize = 600;
+
 /// 随应用打包的示例成片（原「内置示例」那两张水墨图）。顺序即种入顺序。
 const List<String> kSampleArtifactAssets = <String>[
   'assets/samples/ink-wash-mountains-square.jpg',
@@ -108,6 +113,7 @@ class CanvasBootstrapController {
         canvasId: canvasId,
         label: seed.laneLabel,
         stylePrompt: seed.laneStylePrompt,
+        size: kSampleLaneSize,
       );
       final configNodeId = await s.nodes.create(
         canvasId: canvasId,

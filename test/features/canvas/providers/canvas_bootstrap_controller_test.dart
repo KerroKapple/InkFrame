@@ -127,6 +127,8 @@ void main() {
     expect(laneRows, hasLength(1));
     expect(laneRows.single['label'], _seed.laneLabel);
     expect(laneRows.single['style_prompt'], _seed.laneStylePrompt);
+    // 带厚按示例常量建：要装下 config 右侧一整列往下错开的示例成片
+    expect(laneRows.single['size'], kSampleLaneSize);
 
     // 预填节点：image config、挂进泳道、prompt 预填、落在泳道带内
     final nodeRows = await nodes.listByCanvas(canvasId);
