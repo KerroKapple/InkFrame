@@ -8,7 +8,8 @@
 //   - 可播放性 IO 判定在 playableVideoPathProvider；连线编排在 LinkActionController
 //   - 新建菜单（create_node_menu.dart）：从卡片出端口拖线（_NodeCardSlot 报拖线、_PendingWireLayer 画
 //     实时虚线、舞台层判落点——落在卡上 = linkTo，落在空白 = 带上下文开菜单）、空白处双击 / 右键
-//     （_BlankPointerDetector）都开它；菜单宿主 CanvasMenuHost 包在 _CanvasBody 最外层
+//     （_BlankPointerDetector）都开它；菜单宿主 CanvasMenuHost 包在 _CanvasBody 最外层。拖线途中源卡没了
+//     （被删）由 _CanvasBody 看着节点集取消拖线——卡片插槽已经卸载，它自己收不了
 //   - 节点右键菜单（PR-8b，同一个宿主）：卡片插槽收右键单击，舞台层先处理选中（没选中的先单选它，已在
 //     多选里的保持多选）再在按下点开菜单
 //   - 右键（空白处与卡片上）都是抬起时开、按下到抬起没挪出点击容差才开，锚点用按下点（_SecondaryClickDetector）：
@@ -339,11 +340,30 @@ class _CanvasBody extends ConsumerWidget {
     selectionCtrl.select(node.id, toggle: modifierHeld);
   }
 
+  /// 拖线途中源卡没了（Delete 键 / 撤销 / 别处删掉）：取消拖线（B5）。
+  ///
+  /// 源卡的插槽跟着卸载，拖线手势随之销毁、松手再也回调不到；插槽自己收不了——它卸载之后 ref 已不可用
+  /// （原来 NodeCard.dispose 里补的那一手因此从没生效过）。拖线状态不收，实时虚线与其余卡片的「可连目标」
+  /// 高亮就一直挂着。节点集在这一层是知道的，所以在这里看着：源不在当前节点集里了就取消。
+  void _cancelOrphanedWire(WidgetRef ref, List<CanvasNode>? next) {
+    if (next == null) return;
+    final WireDrag? drag = ref.read(canvasWireDragProvider(canvasId));
+    if (drag == null) return;
+    for (final CanvasNode n in next) {
+      if (n.id == drag.sourceNodeId) return;
+    }
+    ref.read(canvasWireDragProvider(canvasId).notifier).cancel();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<LinkActionEvent?>(
       linkActionControllerProvider(canvasId),
       (_, next) => _onLinkEvent(context, next),
+    );
+    ref.listen<AsyncValue<List<CanvasNode>>>(
+      canvasNodesControllerProvider(canvasId),
+      (_, AsyncValue<List<CanvasNode>> next) => _cancelOrphanedWire(ref, next.valueOrNull),
     );
 
     // 本层不再 watch 选中/链接态——这两类高频变化下沉到各插槽各自 watch，

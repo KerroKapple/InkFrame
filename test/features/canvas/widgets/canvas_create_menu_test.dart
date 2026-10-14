@@ -4,6 +4,7 @@
 //     在松手点开带上下文的新建菜单，选「当首帧」⇒ 节点落在松手点 + 一条首帧 data 边 + 新节点被单选。
 //   - 边写失败：刚建的节点被删掉（不留半截）+ 错误卡。
 //   - 拖线途中 Esc：取消拖线，松手什么都不写。
+//   - 拖线途中源卡被删：画布层取消拖线，其余卡片不再显示成连线候选（B5）。
 //   - 平移工具开着：端口不可拖（拖的是画布）。
 //   - 没选中的卡（端口只在悬停时亮）：按在端口上慢慢往外拖，指针先越出卡片盒——还是拖线，卡片不被拖走（B2）。
 //   - 双击空白 / Tab / 空白处右键「新建…」：开的是同一个新建菜单（不带上下文）。
@@ -461,6 +462,35 @@ void main() {
       expect(_edgesOf(c).added, isEmpty);
       expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'img'},
           reason: 'Esc 这一下只剥拖线这一层，不清选中');
+    });
+
+    // B5：拖线途中源卡被删，源卡的插槽跟着卸载——手势再也回调不到，插槽自己的清理用的 ref 也已不可用。
+    // 拖线状态得由知道节点集的画布层收掉，不然虚线与「可连目标」高亮一直挂着。
+    testWidgets('拖线途中源卡被删：拖线取消，其余卡片不再显示成连线候选，松手什么都不发生', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final Offset grab = await _revealPort(tester, c, 'img');
+      NodeCard vidCard() => tester.widget<NodeCard>(
+            find.descendant(of: _card('vid'), matching: find.byType(NodeCard)),
+          );
+
+      final TestGesture gesture = await tester.startGesture(grab);
+      await gesture.moveBy(const Offset(30, 0));
+      await tester.pump();
+      await gesture.moveTo(const Offset(700, 500));
+      await tester.pump();
+      expect(c.read(canvasWireDragProvider('c1'))?.sourceNodeId, 'img', reason: '前提：拖线已经开始');
+      expect(vidCard().isLinkCandidate, isTrue, reason: '前提：拖线期间其余卡片是可连的目标');
+
+      await _nodesOf(c).removeNode('img');
+      await tester.pumpAndSettle();
+
+      expect(c.read(canvasWireDragProvider('c1')), isNull, reason: '源卡没了：拖线取消');
+      expect(vidCard().isLinkCandidate, isFalse, reason: '其余卡片不再显示成连线候选');
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing, reason: '松手不开菜单');
+      expect(_edgesOf(c).added, isEmpty, reason: '松手不连线');
     });
 
     testWidgets('拖线途中按 Esc 之后落在另一张卡上：也不连线', (tester) async {

@@ -77,7 +77,8 @@ class PortDragCallbacks {
   /// 松手。
   final VoidCallback onEnd;
 
-  /// 手势被系统取消（或卡片在拖线途中被拆掉）。
+  /// 手势被系统取消。卡片在拖线途中被拆掉（节点被删）不归这里：手势跟着拆、这里回调不到，画布层看着节点集
+  /// 取消拖线（canvas_view 的 _CanvasBody）。
   final VoidCallback onCancel;
 }
 
@@ -173,18 +174,8 @@ class _NodeCardState extends ConsumerState<NodeCard> {
 
   @override
   void dispose() {
-    // 拖线途中卡片被拆掉（节点被删 / 换画布）：手势跟着拆、松手不会再回调，拖线状态得替它收掉。
-    // 同样延到微任务里做，画布已经整个拆了就静默放弃。
-    final PortDragCallbacks? portDrag = widget.portDrag;
-    if (_portDragging && portDrag != null) {
-      scheduleMicrotask(() {
-        try {
-          portDrag.onCancel();
-        } on StateError {
-          // 画布（连同它的 ProviderContainer）已经拆了——拖线状态随之回收，无需再收。
-        }
-      });
-    }
+    // 拖线途中卡片被拆掉（节点被删）：拖线状态归画布层收（canvas_view 的 _CanvasBody 看着节点集）——
+    // 这里收不了，回调要用的是卡片插槽的 ref，插槽已经卸载。
     // 拖拽中被删（如 Delete 快捷键）不会走 onPanEnd，广播会残留脏值；
     // 微任务延后清理避开 widget 树锁，容器已销毁时静默放弃。
     final broadcast = _dragBroadcast;
