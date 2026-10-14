@@ -1,5 +1,5 @@
 // AboutSection widget test — 探测可用 / 不可用两条路径 + UPD-1 检查更新流
-// + ON-3 ffmpeg 状态行。
+// + ON-3 ffmpeg 状态行。发布页打不开走通知卡（RecordingToastService 断言）。
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -12,12 +12,15 @@ import 'package:inkframe/core/di/video_export.dart';
 import 'package:inkframe/services/ffmpeg_locator.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/secure_storage_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/interfaces/update_check_service.dart';
 import 'package:inkframe/core/interfaces/url_opener_service.dart';
 import 'package:inkframe/core/models/update_check_result.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/settings/widgets/about_section.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 
+import '../../_harness/fake_toast_service.dart';
 import '../../_harness/test_app.dart';
 
 class _OkSecure implements SecureStorageService {
@@ -68,6 +71,12 @@ class _RecordingOpener implements UrlOpenerService {
   Future<void> openExternal(Uri url) async => opened.add(url);
 }
 
+/// 系统层打不开（契约：抛 LocalIOError）。
+class _FailingOpener implements UrlOpenerService {
+  @override
+  Future<void> openExternal(Uri url) async => throw const LocalIOError();
+}
+
 /// 固定结果的 ffmpeg 探测——testWidgets 禁真 spawn（sync-IO 坑），
 /// 所有用例必须 override 掉默认 locator。
 class _FakeFfmpegLocator implements FfmpegLocator {
@@ -115,6 +124,7 @@ List<Override> _updateOverrides({
   UpdateCheckService? service,
   UrlOpenerService? opener,
   InMemoryPreferencesService? prefs,
+  RecordingToastService? toast,
 }) =>
     <Override>[
       ..._baseOverrides(),
@@ -122,6 +132,7 @@ List<Override> _updateOverrides({
       urlOpenerServiceProvider
           .overrideWithValue(opener ?? _RecordingOpener()),
       if (prefs != null) preferencesServiceProvider.overrideWithValue(prefs),
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
     ];
 
 void main() {
@@ -287,6 +298,30 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(opener.opened, [Uri.parse(_kNewVersion.releaseUrl!)]);
+  });
+
+  testWidgets('查看发布页打不开 → 失败通知卡', (tester) async {
+    final toast = RecordingToastService();
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: AboutSection())),
+      overrides: _updateOverrides(opener: _FailingOpener(), toast: toast),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.text('Check for updates'));
+    await tester.tap(find.text('Check for updates'));
+    await tester.pumpAndSettle();
+    expect(toast.shown, isEmpty, reason: '检查本身成功，不该弹卡');
+
+    await tester.ensureVisible(find.text('View release'));
+    await tester.tap(find.text('View release'));
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>["Couldn't open the release page"]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(toast.shown.single.chime, isFalse,
+        reason: '用户自己刚点的按钮，不是后台事件到达');
   });
 
   testWidgets('检查更新：已是最新 → up-to-date 文案,无发布页按钮', (tester) async {

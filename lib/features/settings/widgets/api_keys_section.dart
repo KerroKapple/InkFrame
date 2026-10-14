@@ -10,12 +10,16 @@
 //
 // 存取/验证状态全部由 ApiKeyScopeController（family by providerId）承载，
 // 本组件只持有输入框 controller 并渲染 AsyncValue。
+//
+// 保存 / 清除的结局走通知卡（toastServiceProvider）：已保存 = 完成；存上了但没验过
+// = 警告；被拒、存储层出错 = 失败（失败卡不自动消失）；已清除 = 提示。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/secure_storage_keys.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../core/models/custom_provider_config.dart';
 import '../../../core/models/key_validation_result.dart';
 import '../../../core/models/provider_capabilities.dart';
@@ -24,6 +28,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/api_key_scope_controller.dart';
 
 class ApiKeysSection extends ConsumerWidget {
@@ -123,19 +128,26 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
       switch (outcome) {
         case ApiKeySaved():
           _ctrl.clear();
-          _showToast(context.l10n.settingsApiKeySaved);
+          _showToast(context.l10n.settingsApiKeySaved, kind: ToastKind.success);
         case ApiKeySavedUnverified():
           _ctrl.clear();
-          _showToast(context.l10n.settingsApiKeySavedUnverified);
+          // 存上了，但这把 Key 还没验过——提醒一句，不算完成。
+          _showToast(
+            context.l10n.settingsApiKeySavedUnverified,
+            kind: ToastKind.warning,
+          );
         case ApiKeyRejected(reason: final KeyInvalidReason reason):
           // 不清输入框——用户可直接修改重试。
           // 按成因分流：余额不足说「去充值」，不说「Key 无效」——后者会让用户
           // 把一把本来有效的 Key 换掉。
-          _showToast(l10nKeyRejectReason(context.l10n, reason));
+          _showToast(
+            l10nKeyRejectReason(context.l10n, reason),
+            kind: ToastKind.error,
+          );
       }
     } on InkError catch (e) {
       if (!mounted) return;
-      _showToast(l10nError(context, e));
+      _showToast(l10nError(context, e), kind: ToastKind.error);
     }
   }
 
@@ -145,21 +157,24 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
     try {
       await notifier.clear();
       if (!mounted) return;
-      _showToast(context.l10n.settingsApiKeyCleared);
+      _showToast(context.l10n.settingsApiKeyCleared, kind: ToastKind.info);
     } on InkError catch (e) {
       if (!mounted) return;
-      _showToast(l10nError(context, e));
+      _showToast(l10nError(context, e), kind: ToastKind.error);
     }
   }
 
-  void _showToast(String text) {
-    final messenger = ScaffoldMessenger.maybeOf(context);
-    messenger?.showSnackBar(
-      SnackBar(
-        content: Text(text),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  /// 本行的通知卡。只在 mounted 检查之后调用，这里读 ref 是安全的。
+  ///
+  /// 同一行的卡共用一个去重键（按 scope）：失败卡不自动消失，连着被拒几次只替换
+  /// 那一张；改好再存时，「已保存」原地换掉还没被关掉的失败卡，不在旁边留一句
+  /// 已经不成立的「Key 无效」。都是用户自己刚点的保存 / 清除，不响提示音。
+  void _showToast(String text, {required ToastKind kind}) {
+    ref.read(toastServiceProvider).show(
+          text,
+          kind: kind,
+          dedupeKey: 'settings.apiKey.${widget.scope}',
+        );
   }
 
   @override

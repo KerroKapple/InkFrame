@@ -3,7 +3,8 @@
 // 列表 + 5 字段表单对话框（校验=custom_provider_validation 纯函数,与文件
 // 服务解析同一事实源）+ 删除确认。写仅落盘、重启生效——会话内发生过写
 // 操作后常驻「重启后生效」提示条;不碰 registry 变异。
-// 损坏文件:Store 拒写抛 LocalIOError → snackbar 提示,绝不覆盖。
+// 损坏文件:Store 拒写抛 LocalIOError → 失败通知卡(toastServiceProvider,ToastKind.error),
+// 绝不覆盖。
 
 import 'dart:async' show unawaited;
 
@@ -13,6 +14,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/custom_providers.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../core/models/custom_provider_config.dart';
 import '../../../core/models/custom_provider_validation.dart';
 import '../../../core/models/provider_protocol_template.dart';
@@ -23,6 +25,7 @@ import '../../../theme/components/ink_card.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 
 /// 编辑区 fresh 读盘列表（不使用会话内快照;写后 invalidate 刷新）。
 final customProvidersListProvider =
@@ -169,6 +172,10 @@ class _ProviderRow extends ConsumerWidget {
   }
 }
 
+/// 读 / 写 custom_providers.json 失败的通知卡共用一个去重键：失败卡不自动消失，
+/// 连着失败几次只替换那一张，不叠一摞。
+const String _fileToastKey = 'settings.customProviders.file';
+
 Future<void> _confirmDelete(
   BuildContext context,
   WidgetRef ref,
@@ -178,6 +185,8 @@ Future<void> _confirmDelete(
   final failedMsg = l10n.settingsCustomProviderSaveFailed;
   final store = ref.read(customProviderStoreProvider);
   final dirty = ref.read(customProvidersDirtyProvider.notifier);
+  // 通知卡不靠 context：await 之后不必再验 mounted，失败照样报。
+  final ToastService toast = ref.read(toastServiceProvider);
   final bool? confirmed = await showDialog<bool>(
     context: context,
     builder: (ctx) => AlertDialog(
@@ -199,9 +208,7 @@ Future<void> _confirmDelete(
   try {
     await store.remove(config.id);
   } on InkError {
-    if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(failedMsg)));
+    toast.show(failedMsg, kind: ToastKind.error, dedupeKey: _fileToastKey);
     return;
   }
   dirty.state = true;
@@ -222,14 +229,14 @@ Future<void> _openEditor(
   final saveFailedMsg = l10n.settingsCustomProviderSaveFailed;
   final store = ref.read(customProviderStoreProvider);
   final dirty = ref.read(customProvidersDirtyProvider.notifier);
+  // 通知卡不靠 context：await 之后不必再验 mounted，失败照样报。
+  final ToastService toast = ref.read(toastServiceProvider);
   // 冲突校验基线：现存文件条目（编辑时剔除自身）+ 内置 providerId。
   final List<CustomProviderConfig> current;
   try {
     current = await store.list();
   } on InkError {
-    if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(loadFailedMsg)));
+    toast.show(loadFailedMsg, kind: ToastKind.error, dedupeKey: _fileToastKey);
     return;
   }
   final takenIds = {
@@ -252,9 +259,7 @@ Future<void> _openEditor(
   try {
     await store.upsert(result);
   } on InkError {
-    if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)
-        ?.showSnackBar(SnackBar(content: Text(saveFailedMsg)));
+    toast.show(saveFailedMsg, kind: ToastKind.error, dedupeKey: _fileToastKey);
     return;
   }
   dirty.state = true;

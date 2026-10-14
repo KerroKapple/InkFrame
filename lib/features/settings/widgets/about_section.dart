@@ -4,6 +4,7 @@
 // 比"按平台名字硬编码 backend 字符串"更接近事实，避免给用户假阳性。
 // 检查更新：手动按钮走 UpdateCheckController.checkNow;结果/失败就地轻呈现,
 // 新版给发布页链接（UrlOpenerService）;启动静默检查由偏好开关控制。
+// 发布页打不开走失败通知卡（toastServiceProvider，ToastKind.error）。
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -16,6 +17,7 @@ import '../../../core/di/url_opener.dart';
 import '../../../core/di/video_export.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/secure_storage_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../core/models/update_check_result.dart';
 import '../../../services/ffmpeg_locator.dart' show FfmpegLocator, kFfmpegOnPathExe;
 import '../../../l10n/l10n_x.dart';
@@ -23,6 +25,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_card.dart';
 import '../../../theme/tokens.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/update_check_controller.dart';
 
 const _kSecureStoragePingKey = 'inkframe.settings.secure_storage_probe';
@@ -296,17 +299,24 @@ class _UpdateCheckBlock extends ConsumerWidget {
     );
   }
 
+  /// 「打不开发布页」卡的去重键：失败卡不自动消失，连点几下只留一张。
+  static const String _openReleaseToastKey = 'settings.about.openRelease';
+
   Future<void> _openRelease(
     BuildContext context,
     WidgetRef ref,
     String url,
   ) async {
+    // 依赖在 await 之前取好：通知卡不靠 context，await 之后不必再验 mounted。
+    final ToastService toast = ref.read(toastServiceProvider);
+    final String failedMsg = context.l10n.settingsAboutUpdateOpenFailed;
     try {
       await ref.read(urlOpenerServiceProvider).openExternal(Uri.parse(url));
     } on InkError {
-      if (!context.mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(content: Text(context.l10n.settingsAboutUpdateOpenFailed)),
+      toast.show(
+        failedMsg,
+        kind: ToastKind.error,
+        dedupeKey: _openReleaseToastKey,
       );
     }
   }

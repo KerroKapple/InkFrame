@@ -1,14 +1,24 @@
 // CustomProvidersSection widget 测试（GAP-1）：列表/添加/编辑/删除/内联校验/
 // 损坏文件错误呈现/重启提示。fake CustomProviderStore,零磁盘。
+// 读写失败走通知卡：覆盖 toastServiceProvider 为 RecordingToastService 断言 titles / kinds
+// （pumpInkApp 里没有 ToastLayer，卡片文字不在树上，不能用 find.text 找）。
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/custom_providers.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/custom_provider_store.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/models/custom_provider_config.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/settings/widgets/custom_providers_section.dart';
 
+import '../../_harness/fake_toast_service.dart';
 import '../../_harness/test_app.dart';
+
+const String _kSaveFailed =
+    "Couldn't save. If custom_providers.json is corrupted, fix or remove it and retry.";
+const String _kLoadFailed =
+    "Couldn't read custom_providers.json. If it's corrupted, fix or remove it and retry.";
 
 CustomProviderConfig _cfg({
   String id = 'my-relay',
@@ -52,13 +62,18 @@ class _FakeStore implements CustomProviderStore {
   }
 }
 
-Future<void> _pump(WidgetTester tester, _FakeStore store) async {
+Future<void> _pump(
+  WidgetTester tester,
+  _FakeStore store, {
+  RecordingToastService? toast,
+}) async {
   await pumpInkApp(
     tester,
     const Scaffold(body: SingleChildScrollView(child: CustomProvidersSection())),
     surfaceSize: const Size(900, 900),
     overrides: [
       customProviderStoreProvider.overrideWithValue(store),
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
     ],
   );
   await tester.pumpAndSettle();
@@ -161,9 +176,10 @@ void main() {
     expect(store.entries, isEmpty);
   });
 
-  testWidgets('损坏文件:列表 error 呈现不崩;读拒绝 → 读失败 snackbar', (tester) async {
+  testWidgets('损坏文件:列表 error 呈现不崩;读拒绝 → 读失败通知卡', (tester) async {
     final store = _FakeStore()..broken = true;
-    await _pump(tester, store);
+    final toast = RecordingToastService();
+    await _pump(tester, store, toast: toast);
 
     // 列表 error 态（LocalIOError → l10n 文案）
     expect(
@@ -178,21 +194,16 @@ void main() {
     // 第一反应是「我刚填的被弄丢了」。文案错位比没有文案更坏。
     await tester.tap(find.text('Add custom provider…'));
     await tester.pumpAndSettle();
-    expect(
-      find.textContaining("Couldn't read custom_providers.json"),
-      findsOneWidget,
-    );
-    expect(
-      find.textContaining("Couldn't save"),
-      findsNothing,
-      reason: '读失败不该说成保存失败',
-    );
+    // 整张列表比对：只有读失败这一句，没有「保存失败」。
+    expect(toast.titles, <String>[_kLoadFailed], reason: '读失败不该说成保存失败');
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
   });
 
   // 反向：真的写失败时，仍然是「保存失败」那一句。
-  testWidgets('读得到但写拒绝 → 保存失败 snackbar（不是读失败）', (tester) async {
+  testWidgets('读得到但写拒绝 → 保存失败通知卡（不是读失败）', (tester) async {
     final store = _FakeStore();
-    await _pump(tester, store);
+    final toast = RecordingToastService();
+    await _pump(tester, store, toast: toast);
 
     await tester.tap(find.text('Add custom provider…'));
     await tester.pumpAndSettle();
@@ -208,9 +219,33 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining("Couldn't save"), findsOneWidget);
+    expect(toast.titles, <String>[_kSaveFailed]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    // 写失败不算「改过」：不该亮「重启后生效」。
     expect(
-      find.textContaining("Couldn't read custom_providers.json"),
+      find.text('Changes saved — restart InkFrame to apply'),
+      findsNothing,
+    );
+  });
+
+  testWidgets('删除写拒绝 → 失败通知卡，条目还在、不亮重启提示', (tester) async {
+    final store = _FakeStore([_cfg()]);
+    final toast = RecordingToastService();
+    await _pump(tester, store, toast: toast);
+
+    // 列表已经读出来之后才让 store 坏掉——这样失败的一定是 remove。
+    store.broken = true;
+    await tester.tap(find.byTooltip('Delete provider?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    expect(store.entries, hasLength(1));
+    expect(find.text('My Relay'), findsOneWidget);
+    expect(toast.titles, <String>[_kSaveFailed]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(
+      find.text('Changes saved — restart InkFrame to apply'),
       findsNothing,
     );
   });
