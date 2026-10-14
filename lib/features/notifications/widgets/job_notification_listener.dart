@@ -8,12 +8,13 @@
 // 把整张表再发一遍：prev 里已经是终态的一律跳过，再按 jobId 记账兜底（gallery_dirty.dart
 // 同一做法）。取消不通知——那是用户自己刚做的事。
 //
-// 【不为一张通知卡去查库】
+// 【尽量不为一张通知卡去查库】
 // - 标题里的节点名只从【还活着的】画布节点控制器里拿（任务所在画布正开着时就有）；
 //   拿不到就用泛化标题。
-// - 缩略图：图片任务的 artifactPath 本身就是 image_url，直接用；其余（视频）读 result 节点的
-//   thumbnail_url，同样只从活着的控制器拿。成功那一刻控制器里的 result 节点通常还是占位
-//   版本（CanvasJobListener 发起的重拉还没回来），所以视频卡多半落到类型图标——这是不查库的代价。
+// - 缩略图：图片任务的 artifactPath 本身就是 image_url，直接用。视频读 result 节点的
+//   thumbnail_url：先看活着的控制器，可成功那一刻那里的 result 节点通常还是占位版本
+//  （CanvasJobListener 发起的重拉还没回来），所以拿不到时按 resultNodeId 读一次库——
+//   首帧缩略图在发出成功之前就已写进 type_config。读失败就落到类型图标，不拦通知。
 // - 「查看」要一个 ProjectRef（外壳换项目必须带名字）：任务属于外壳当前项目时直接用它，
 //   否则从 Studio 一直开着的工作库列表里找名字；都拿不到就不给这个按钮，绝不挂一个
 //   点了没反应的按钮。
@@ -22,7 +23,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 import '../../../core/di/file_resolver.dart';
+import '../../../core/di/repositories.dart';
+import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/interfaces/node_repository.dart';
 import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
@@ -70,26 +74,51 @@ class _JobNotificationListenerState
       if (before[job.jobId]?.isTerminal ?? false) continue;
       if (!_notified.add(job.jobId)) continue;
       if (job is JobSucceeded) {
-        _notifySucceeded(job);
+        _notifySucceeded(job).ignore();
       } else if (job is JobFailed) {
         _notifyFailed(job);
       }
     }
   }
 
-  void _notifySucceeded(JobSucceeded job) {
+  Future<void> _notifySucceeded(JobSucceeded job) async {
+    // 文案与动作在 await 之前取：之后 context 可能已经不在树上。
     final AppLocalizations l = context.l10n;
     final List<CanvasNode>? nodes = _aliveNodes(job.canvasId);
     final String? label = _labelOf(_find(nodes, job.sourceNodeId));
+    final ToastAction? view = _viewAction(job);
+    String? thumbnail = _thumbnailPath(job, nodes);
+    if (thumbnail == null && !_isImage(job.artifactPath)) {
+      thumbnail = await _storedThumbnail(job);
+      if (!mounted) return;
+    }
     ref.read(toastServiceProvider).show(
           label == null
               ? l.jobNotifySucceededGeneric
               : l.jobNotifySucceeded(label),
           kind: ToastKind.success,
-          thumbnailPath: _thumbnailPath(job, nodes),
-          primary: _viewAction(job),
+          thumbnailPath: thumbnail,
+          primary: view,
           chime: true,
         );
+  }
+
+  static bool _isImage(String path) =>
+      _kImageExtensions.contains(p.extension(path).toLowerCase());
+
+  /// 视频任务：按 resultNodeId 读一次库里的 result 节点，拿首帧缩略图。读不到就 null。
+  Future<String?> _storedThumbnail(JobSucceeded job) async {
+    final String? resultNodeId = job.resultNodeId;
+    if (resultNodeId == null || job.projectId == null) return null;
+    try {
+      final NodeRepository repo = await ref.read(nodeRepositoryProvider.future);
+      final Map<String, Object?>? row = await repo.findById(resultNodeId);
+      final String? relative =
+          row == null ? null : CanvasNodeMapping.fromRow(row).thumbnailUrl;
+      return relative == null ? null : _resolve(job, relative);
+    } on InkError {
+      return null;
+    }
   }
 
   void _notifyFailed(JobFailed job) {
@@ -127,15 +156,18 @@ class _JobNotificationListenerState
   }
 
   String? _thumbnailPath(JobSucceeded job, List<CanvasNode>? nodes) {
-    final String? projectId = job.projectId;
-    if (projectId == null) return null;
     final String artifact = job.artifactPath;
     final CanvasNode? result = _find(nodes, job.resultNodeId);
-    final String? relative =
-        _kImageExtensions.contains(p.extension(artifact).toLowerCase())
-            ? artifact
-            : result?.thumbnailUrl ?? result?.imageUrl;
-    if (relative == null) return null;
+    final String? relative = _isImage(artifact)
+        ? artifact
+        : result?.thumbnailUrl ?? result?.imageUrl;
+    return relative == null ? null : _resolve(job, relative);
+  }
+
+  /// 画布相对路径 → 绝对路径；越出项目目录（PathSecurityError）当作没有。
+  String? _resolve(JobSucceeded job, String relative) {
+    final String? projectId = job.projectId;
+    if (projectId == null) return null;
     try {
       return ref
           .read(fileResolverServiceProvider)

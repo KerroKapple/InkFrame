@@ -29,6 +29,11 @@ Future<ProviderContainer> _pumpLayer(
 }) async {
   await tester.binding.setSurfaceSize(size);
   addTearDown(() => tester.binding.setSurfaceSize(null));
+  // 窄窗口判据读的是 MediaQuery（窗口尺寸），setSurfaceSize 只改布局面——两边要一起设。
+  tester.view
+    ..physicalSize = size
+    ..devicePixelRatio = 1.0;
+  addTearDown(tester.view.reset);
   await tester.pumpWidget(
     ProviderScope(
       child: MaterialApp(

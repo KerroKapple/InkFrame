@@ -21,11 +21,10 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path/path.dart' as p;
 
 import '../../../core/di/clock.dart';
 import '../../../core/di/notification_sound.dart';
-import '../../../core/di/paths.dart';
+import '../../../core/di/notification_sound_store.dart';
 import '../../../core/di/preferences.dart';
 import '../../../core/interfaces/notification_sound_service.dart';
 import '../../../core/interfaces/toast_service.dart';
@@ -474,19 +473,16 @@ class ToastCenter extends Notifier<ToastCenterState> implements ToastService {
     _syncTicker();
   }
 
-  /// 按设置响一声。自定义音只认 config/sounds/ 下的文件名（basename：偏好文件里
-  /// 就算混进了路径分隔符，也出不了这个目录）。
+  /// 按设置响一声。自定义音的文件名 → 绝对路径交给 NotificationSoundStore.resolve：
+  /// 目录规则只在那一处（带目录、`..` 的名字一律不认）。
   void _chime() {
     final AppPreferences prefs = ref.read(preferencesServiceProvider).current;
     final NotificationSound sound =
         notificationSoundFromPref(prefs.notificationSound);
     final String? file = prefs.notificationSoundFile;
+    // 还没选文件就不去碰存取服务（它要数据目录）：交给出声方一个 null，它静默不响。
     final String? customPath = sound == NotificationSound.custom && file != null
-        ? p.join(
-            ref.read(appPathsProvider).config.path,
-            kCustomNotificationSoundDir,
-            p.basename(file),
-          )
+        ? ref.read(notificationSoundStoreProvider).resolve(file)
         : null;
     unawaited(
       ref

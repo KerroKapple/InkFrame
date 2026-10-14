@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -26,6 +27,7 @@ import 'package:inkframe/l10n/l10n_x.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
 import '../../../_harness/fake_canvas.dart';
+import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_toast_service.dart';
 
 const ProjectRef _alpha = ProjectRef(id: 'p1', name: 'Alpha');
@@ -84,12 +86,15 @@ Future<_Harness> _pump(
   bool canvasAlive = true,
   ShellState shell = const ShellState(project: _alpha),
   List<JobState> before = const <JobState>[],
+  InMemoryNodeRepository? repo,
 }) async {
   final RecordingToastService toasts = RecordingToastService();
+  final InMemoryNodeRepository nodeRepo = repo ?? InMemoryNodeRepository();
   final ProviderContainer container = ProviderContainer(
     overrides: <Override>[
       toastServiceProvider.overrideWithValue(toasts),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
+      nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
       canvasNodesControllerProvider
           .overrideWith(() => FakeNodesController(_nodes)),
       shellControllerProvider.overrideWith(() => ShellNavigator(initial: shell)),
@@ -231,7 +236,35 @@ void main() {
     expect(h.toasts.shown, isEmpty);
   });
 
-  testWidgets('画布没开着：泛化标题；视频产物不是图，不硬塞缩略图', (tester) async {
+  testWidgets('视频：内存里还是占位节点时读一次库，拿首帧缩略图', (tester) async {
+    final InMemoryNodeRepository repo = InMemoryNodeRepository();
+    final String resultId = await repo.create(
+      canvasId: 'c1',
+      type: 'video',
+      nodeRole: 'result',
+      sourceNodeId: 'n1',
+      typeConfig: const <String, Object?>{'thumbnail_url': 'thumbs/v1.jpg'},
+    );
+    final _Harness h = await _pump(tester, repo: repo);
+    h.upsert(JobState.succeeded(
+      jobId: 'jv',
+      providerId: 'p',
+      canvasId: 'c1',
+      projectId: 'p1',
+      sourceNodeId: 'n1',
+      resultNodeId: resultId,
+      artifactPath: 'videos/v1.mp4',
+    ));
+    await tester.pump();
+    await tester.pump();
+    final RecordedToast t = h.toasts.shown.single;
+    expect(t.kind, ToastKind.success);
+    expect(t.thumbnailPath, isNotNull);
+    // StubFileResolver 原样拼接相对路径，所以斜杠保持原样。
+    expect(t.thumbnailPath, endsWith('thumbs/v1.jpg'));
+  });
+
+  testWidgets('画布没开着：泛化标题；视频产物库里也没有首帧时不硬塞缩略图', (tester) async {
     final _Harness h = await _pump(tester, canvasAlive: false);
     h.upsert(_succeeded('j4', artifactPath: 'videos/j4.mp4'));
     await tester.pump();
