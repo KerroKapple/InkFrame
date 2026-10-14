@@ -9,6 +9,10 @@
 //     胶囊下那段线），1px 描边与 10px 文字都用连线色。标签等所有线画完再统一画，
 //     不会被后画的线压住。
 // 端口圆点由 NodeCard 自己画，本层不画。
+//
+// 从出端口拖线时的实时虚线（[PendingWirePainter]，画布重设计稿 › 拖线到空白处 → 建节点）也在本文件：
+// 同一条 edgePath 贝塞尔、同一个虚线切法，只是它画在卡片之上（canvas_view 舞台的最上层），
+// 拖过别的卡片时线不会被压住。
 import 'dart:math' as math;
 import 'dart:ui' show PathMetric, Tangent;
 
@@ -30,6 +34,15 @@ const EdgeInsets _kLabelPadding = EdgeInsets.symmetric(
 
 /// 一个待画的标签：画完全部连线后统一画在最上面。
 typedef _PendingLabel = ({EdgeLabelKind kind, Color color, Offset at});
+
+/// 拖线中的实时虚线线宽（稿：1.75，与首帧 / 尾帧数据线同宽）。
+const double kPendingWireWidth = 1.75;
+
+/// 实时虚线的线型：画 4、空 3。
+const EdgeDash kPendingWireDash = (on: 4.0, off: 3.0);
+
+/// 实时虚线在指针那头的实心点半径。
+const double kPendingWireDotRadius = 3.5;
 
 class EdgePainter extends CustomPainter {
   EdgePainter({
@@ -278,4 +291,58 @@ class EdgePainter extends CustomPainter {
         old.dragNodeId != dragNodeId ||
         old.dragDelta != dragDelta;
   }
+}
+
+/// 从出端口拖线时的实时虚线：源节点出点 → 指针。
+///
+/// 曲线与存量连线是同一条贝塞尔（edgePath，出点同 edgeSourceAnchor），所以松手连上之后那条线的起头
+/// 和拖的时候一模一样；颜色由调用方给（accent），线宽 / 虚线 / 末端实心点见上面三个常量。
+class PendingWirePainter extends CustomPainter {
+  PendingWirePainter({
+    required this.source,
+    required this.to,
+    required this.color,
+    this.direction = LaneDirection.horizontal,
+  });
+
+  /// 拖线的源节点，坐标已是渲染位置（舞台坐标 + 分道位移，见 displacedNodes）。
+  final CanvasNode source;
+
+  /// 指针（舞台坐标）。
+  final Offset to;
+
+  final Color color;
+
+  /// 泳道主轴——决定出点方位与曲线走向，与 [EdgePainter.direction] 同源。
+  final LaneDirection direction;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Path path = edgePath(
+      edgeSourceAnchor(source, direction: direction),
+      to,
+      direction: direction,
+    );
+    canvas.drawPath(
+      EdgePainter._dashed(path, kPendingWireDash),
+      Paint()
+        ..color = color
+        ..strokeWidth = kPendingWireWidth
+        ..style = PaintingStyle.stroke,
+    );
+    canvas.drawCircle(
+      to,
+      kPendingWireDotRadius,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant PendingWirePainter oldDelegate) =>
+      oldDelegate.source != source ||
+      oldDelegate.to != to ||
+      oldDelegate.color != color ||
+      oldDelegate.direction != direction;
 }

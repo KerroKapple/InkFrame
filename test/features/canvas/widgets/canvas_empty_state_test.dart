@@ -35,6 +35,7 @@ class _FailingNodesController extends CanvasNodesController {
     required CanvasNodeType type,
     NodeRole role = NodeRole.config,
     String? sourceNodeId,
+    String? laneId,
     Offset position = Offset.zero,
     Size? size,
     Map<String, Object?> typeConfig = const <String, Object?>{},

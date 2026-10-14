@@ -1695,6 +1695,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasToolPanHoldSpace => 'hold Space';
 
   @override
+  String get canvasCreateMenuSearchHint => 'Type to search…';
+
+  @override
+  String get canvasCreateMenuNoMatch => 'No matching actions';
+
+  @override
+  String get canvasCreateMenuAsFirstFrame => 'First frame · New video';
+
+  @override
+  String get canvasCreateMenuAsLastFrame => 'Last frame · New video';
+
+  @override
+  String get canvasCreateMenuAsReference => 'Reference · New image';
+
+  @override
+  String get canvasCreateMenuNextShot => 'Next shot (narrative)';
+
+  @override
+  String get canvasCreateMenuImageConfig => 'Image config';
+
+  @override
+  String get canvasCreateMenuVideoConfig => 'Video config';
+
+  @override
+  String get canvasCreateMenuText => 'Text';
+
+  @override
+  String get canvasCreateMenuShot => 'Shot';
+
+  @override
+  String get canvasCreateMenuLane => 'Lane';
+
+  @override
+  String get canvasBlankMenuNew => 'New…';
+
+  @override
+  String get canvasBlankMenuSelectAll => 'Select all';
+
+  @override
+  String get canvasBlankMenuFitView => 'Fit view';
+
+  @override
   String get leftRailOutline => 'Outline';
 
   @override
@@ -2848,6 +2890,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsShortcutCanvasToggleLeftRail =>
       'Show / hide the canvas left sidebar';
+
+  @override
+  String get settingsShortcutCanvasOpenCreateMenu => 'New…';
 
   @override
   String get settingsPerformanceConcurrencyTitle => 'Concurrency and quota';

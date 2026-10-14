@@ -1,0 +1,704 @@
+// 新建菜单接到画布上（canvas_view / canvas_shortcuts / create_node_menu / canvas_tool_actions）。
+//
+//   - 从出端口拖线：落在另一张卡上 = 连线（走连线模式那一条 linkTo，image → video 默认首帧）；落在空白处 =
+//     在松手点开带上下文的新建菜单，选「当首帧」⇒ 节点落在松手点 + 一条首帧 data 边 + 新节点被单选。
+//   - 边写失败：刚建的节点被删掉（不留半截）+ 错误卡。
+//   - 拖线途中 Esc：取消拖线，松手什么都不写。
+//   - 平移工具开着：端口不可拖（拖的是画布）。
+//   - 双击空白 / Tab / 空白处右键「新建…」：开的是同一个新建菜单（不带上下文）。
+//   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
+//   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
+//
+// 变异对照：拿掉 addNodeFromMenu 的回滚 ⇒「边写失败」红；拿掉 Esc 里取消拖线那一层 ⇒「拖线途中 Esc」红；
+// 把 Tab 的 _CanvasFocusedAction 换成不设门的 Action ⇒「打字时 Tab」「按钮上 Tab」两条红。
+import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/canvas/models/canvas_edge.dart';
+import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/models/style_lane.dart';
+import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_tool_mode.dart';
+import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
+import 'package:inkframe/features/canvas/util/lane_geometry.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
+import 'package:inkframe/features/canvas/widgets/create_node_menu.dart';
+import 'package:inkframe/features/canvas/widgets/node_card.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
+import 'package:inkframe/theme/tokens.dart';
+
+import '../../../_harness/fake_canvas.dart';
+import '../../../_harness/fake_toast_service.dart';
+import '../../../_harness/test_app.dart';
+
+/// 节点：增删都落在内存态里（新节点要进画布，定位请求才落得了地），并记下建了什么、删了什么。
+class _Nodes extends CanvasNodesController {
+  _Nodes(this._seed);
+  final List<CanvasNode> _seed;
+
+  /// addNode 收到的类型、落点与泳道归属，按调用顺序。新节点 id 依次是 new-1、new-2……
+  final List<({CanvasNodeType type, Offset position, String? laneId})> added =
+      <({CanvasNodeType type, Offset position, String? laneId})>[];
+
+  /// removeNode 收到的 id，按调用顺序。
+  final List<String> removed = <String>[];
+
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => _seed;
+
+  @override
+  Future<CanvasNode> addNode({
+    required String label,
+    required CanvasNodeType type,
+    NodeRole role = NodeRole.config,
+    String? sourceNodeId,
+    String? laneId,
+    Offset position = Offset.zero,
+    Size? size,
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) async {
+    added.add((type: type, position: position, laneId: laneId));
+    final CanvasNode node = CanvasNode(
+      id: 'new-${added.length}',
+      label: label,
+      type: type,
+      role: role,
+      canvasId: arg,
+      position: position,
+    );
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      ...state.valueOrNull ?? const <CanvasNode>[],
+      node,
+    ]);
+    return node;
+  }
+
+  @override
+  Future<NodeDeletion?> removeNode(String id) async {
+    removed.add(id);
+    final List<CanvasNode> previous = state.valueOrNull ?? const <CanvasNode>[];
+    CanvasNode? gone;
+    for (final CanvasNode n in previous) {
+      if (n.id == id) gone = n;
+    }
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      for (final CanvasNode n in previous)
+        if (n.id != id) n,
+    ]);
+    final CanvasNode? node = gone;
+    return node == null ? null : (node: node, edgeIds: const <String>[]);
+  }
+}
+
+/// 连线：记下建出来的边；[fail] = 写库必失败（真控制器失败时回滚内存再上抛 InkError）。
+class _Edges extends CanvasEdgesController {
+  _Edges({this.fail = false});
+  final bool fail;
+  final List<CanvasEdge> added = <CanvasEdge>[];
+
+  @override
+  Future<List<CanvasEdge>> build(String canvasId) async => const <CanvasEdge>[];
+
+  @override
+  Future<CanvasEdge> addEdge({
+    required String sourceNodeId,
+    required String targetNodeId,
+    EdgeType edgeType = EdgeType.data,
+    EdgeRole role = EdgeRole.reference,
+    EdgeRole Function(List<CanvasEdge> current)? roleResolver,
+    int sortOrder = 0,
+  }) async {
+    if (fail) {
+      throw const LocalIOError(extra: <String, Object?>{'op': 'createEdge'});
+    }
+    final List<CanvasEdge> current = state.valueOrNull ?? const <CanvasEdge>[];
+    final CanvasEdge edge = CanvasEdge(
+      id: 'e${added.length + 1}',
+      canvasId: arg,
+      sourceNodeId: sourceNodeId,
+      targetNodeId: targetNodeId,
+      edgeType: edgeType,
+      // 与真控制器同口径：解析器在「此刻的边集合」上求值。
+      role: roleResolver?.call(current) ?? role,
+      sortOrder: sortOrder,
+    );
+    added.add(edge);
+    state = AsyncData<List<CanvasEdge>>(<CanvasEdge>[...current, edge]);
+    return edge;
+  }
+}
+
+/// 拖线的源（图像配置）与连线的目标（视频配置），并排在舞台左上。
+const CanvasNode _img = CanvasNode(
+  id: 'img',
+  label: 'Shot 01',
+  type: CanvasNodeType.image,
+  canvasId: 'c1',
+  position: Offset(40, 40),
+);
+const CanvasNode _vid = CanvasNode(
+  id: 'vid',
+  label: 'Shot 02',
+  type: CanvasNodeType.video,
+  canvasId: 'c1',
+  position: Offset(400, 40),
+);
+
+/// 一条从世界原点起、厚 2000 的横向泳道：舞台左上一大片都在道里。
+class _OneLane extends CanvasLanesController {
+  @override
+  Future<List<StyleLane>> build(String canvasId) async =>
+      const <StyleLane>[StyleLane(id: 'lane-1', canvasId: 'c1', label: 'Ink', size: 2000)];
+}
+
+Future<ProviderContainer> _pump(
+  WidgetTester tester, {
+  List<CanvasNode> nodes = const <CanvasNode>[_img, _vid],
+  bool withLane = false,
+  bool failEdges = false,
+  RecordingToastService? toast,
+  Widget Function(Widget canvas)? around,
+}) async {
+  const Widget canvas = CanvasView();
+  await pumpInkApp(
+    tester,
+    Scaffold(
+      body: CanvasShortcuts(
+        isActive: true,
+        child: around == null ? canvas : around(canvas),
+      ),
+    ),
+    overrides: <Override>[
+      shellControllerProvider.overrideWith(
+        () => ShellNavigator(initial: const ShellState(canvasId: 'c1')),
+      ),
+      canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes)),
+      canvasEdgesControllerProvider.overrideWith(() => _Edges(fail: failEdges)),
+      canvasLanesControllerProvider
+          .overrideWith(() => withLane ? _OneLane() : EmptyLanesController()),
+      canvasLaneDirectionProvider('c1')
+          .overrideWith((_) async => LaneDirection.horizontal),
+      fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
+    ],
+    surfaceSize: const Size(1200, 800),
+  );
+  await tester.pumpAndSettle();
+  return ProviderScope.containerOf(tester.element(find.byType(CanvasView)));
+}
+
+_Nodes _nodesOf(ProviderContainer c) =>
+    c.read(canvasNodesControllerProvider('c1').notifier) as _Nodes;
+
+_Edges _edgesOf(ProviderContainer c) =>
+    c.read(canvasEdgesControllerProvider('c1').notifier) as _Edges;
+
+Finder _card(String id) => find.byKey(ValueKey<String>('node-card-$id'));
+
+/// 选中源卡片（端口按需显示：选中时两侧端口都亮出来），返回它出端口上的按点。
+///
+/// 圆点的中心正落在卡片右缘上——那一半在卡片盒外、点不到（命中先按卡片盒筛），所以往里收 3px 按。
+Future<Offset> _revealPort(
+  WidgetTester tester,
+  ProviderContainer c,
+  String id,
+) async {
+  c.read(canvasSelectionControllerProvider('c1').notifier).select(id);
+  await tester.pump();
+  return tester.getCenter(
+        find.descendant(of: _card(id), matching: find.byKey(NodeCard.outPortKey)),
+      ) -
+      const Offset(3, 0);
+}
+
+/// 从 [from] 按下、过触摸阈值、移到 [to]；[beforeRelease] 在松手前跑（按 Esc 之类），然后松手。
+Future<void> _dragWire(
+  WidgetTester tester,
+  Offset from,
+  Offset to, {
+  Future<void> Function()? beforeRelease,
+}) async {
+  final TestGesture gesture = await tester.startGesture(from);
+  await gesture.moveBy(const Offset(30, 0));
+  await tester.pump();
+  await gesture.moveTo(to);
+  await tester.pump();
+  if (beforeRelease != null) await beforeRelease();
+  await gesture.up();
+  await tester.pumpAndSettle();
+}
+
+Matrix4 _ivTransform(WidgetTester tester) => tester
+    .widget<InteractiveViewer>(find.byType(InteractiveViewer))
+    .transformationController!
+    .value;
+
+const String _firstFrame = 'First frame · New video';
+const String _lastFrame = 'Last frame · New video';
+const String _reference = 'Reference · New image';
+const String _nextShot = 'Next shot (narrative)';
+const List<String> _plainLabels = <String>[
+  'Image config',
+  'Video config',
+  'Text',
+  'Shot',
+  'Lane',
+];
+
+void _expectMenuAt(WidgetTester tester, Key key, Offset at) {
+  final Finder menu = find.byKey(key);
+  expect(menu, findsOneWidget);
+  final Offset topLeft = tester.getTopLeft(menu);
+  expect(topLeft.dx, closeTo(at.dx, 0.5));
+  expect(topLeft.dy, closeTo(at.dy, 0.5));
+}
+
+/// 不带上下文的新建菜单开在 [at]：五项都在，带上下文的项一项没有。
+void _expectPlainCreateMenuAt(WidgetTester tester, Offset at) {
+  _expectMenuAt(tester, CanvasMenuKeys.createMenu, at);
+  final Finder menu = find.byKey(CanvasMenuKeys.createMenu);
+  for (final String label in _plainLabels) {
+    expect(
+      find.descendant(of: menu, matching: find.text(label)),
+      findsOneWidget,
+      reason: label,
+    );
+  }
+  expect(find.text(_firstFrame), findsNothing);
+}
+
+void main() {
+  group('从出端口拖线', () {
+    testWidgets('拖到另一张卡上：走 linkTo 建出一条边，image → video 默认首帧，出连线成功提示',
+        (tester) async {
+      final RecordingToastService toast = RecordingToastService();
+      final ProviderContainer c = await _pump(tester, toast: toast);
+      final Offset grab = await _revealPort(tester, c, 'img');
+
+      await _dragWire(tester, grab, tester.getCenter(_card('vid')));
+
+      final List<CanvasEdge> edges = _edgesOf(c).added;
+      expect(edges, hasLength(1));
+      expect(edges.single.sourceNodeId, 'img');
+      expect(edges.single.targetNodeId, 'vid');
+      expect(edges.single.edgeType, EdgeType.data);
+      expect(
+        edges.single.role,
+        EdgeRole.firstFrame,
+        reason: '与连线模式同一条 linkTo：image → video 默认首帧',
+      );
+      expect(toast.titles, <String>['Link created']);
+      expect(toast.kinds, <ToastKind>[ToastKind.success]);
+      expect(c.read(linkModeControllerProvider('c1')), isNull,
+          reason: 'linkTo 收尾时退出连线模式');
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing,
+          reason: '落在卡上不开菜单');
+      expect(_nodesOf(c).added, isEmpty);
+    });
+
+    testWidgets('拖到空白处：新建菜单开在松手点（带上下文）；选「当首帧」⇒ 节点落在松手点 + 首帧 data 边 + 新节点被单选',
+        (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final Offset grab = await _revealPort(tester, c, 'img');
+      const Offset drop = Offset(700, 500);
+      final Matrix4 cameraBefore = _ivTransform(tester).clone();
+
+      await _dragWire(tester, grab, drop);
+
+      _expectMenuAt(tester, CanvasMenuKeys.createMenu, drop);
+      for (final String label in <String>[_firstFrame, _lastFrame, _reference, _nextShot]) {
+        expect(find.text(label), findsOneWidget, reason: label);
+      }
+      expect(find.text('Image config'), findsNothing,
+          reason: '带上下文时不出不带上下文的那五项');
+
+      await tester.tap(find.text(_firstFrame));
+      await tester.pumpAndSettle();
+
+      final _Nodes nodes = _nodesOf(c);
+      expect(nodes.added, hasLength(1));
+      expect(nodes.added.single.type, CanvasNodeType.video);
+      // 初始相机下视口 = 世界 + (0, stageTopInset)：节点左上角落在松手点。
+      expect(nodes.added.single.position.dx, closeTo(drop.dx, 0.5));
+      expect(
+        nodes.added.single.position.dy,
+        closeTo(drop.dy - InkToolbarSize.stageTopInset, 0.5),
+      );
+      final CanvasEdge edge = _edgesOf(c).added.single;
+      expect(edge.sourceNodeId, 'img');
+      expect(edge.targetNodeId, 'new-1');
+      expect(edge.edgeType, EdgeType.data);
+      expect(edge.role, EdgeRole.firstFrame);
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'new-1'},
+          reason: '新节点建好后被单选');
+      expect(_ivTransform(tester), cameraBefore,
+          reason: '新节点就落在松手点：只单选、不挪相机');
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
+    testWidgets('从产物卡拖到空白选「下一镜」：建来源配置的类型，叙事边从来源配置节点连出', (tester) async {
+      const CanvasNode take = CanvasNode(
+        id: 'take',
+        label: 'Shot 01 take',
+        type: CanvasNodeType.image,
+        role: NodeRole.result,
+        sourceNodeId: 'img',
+        canvasId: 'c1',
+        position: Offset(40, 320),
+        typeConfig: <String, Object?>{'image_url': 'images/take.png'},
+      );
+      final ProviderContainer c = await _pump(tester, nodes: const <CanvasNode>[_img, _vid, take]);
+      final Offset grab = await _revealPort(tester, c, 'take');
+
+      await _dragWire(tester, grab, const Offset(700, 560));
+      expect(find.text(_firstFrame), findsOneWidget, reason: '图像产物照样出首帧 / 尾帧 / 参考');
+      await tester.tap(find.text(_nextShot));
+      await tester.pumpAndSettle();
+
+      expect(_nodesOf(c).added.single.type, CanvasNodeType.image, reason: '与来源配置同类型');
+      final CanvasEdge edge = _edgesOf(c).added.single;
+      expect(edge.edgeType, EdgeType.narrative);
+      expect(edge.sourceNodeId, 'img', reason: '叙事边只连配置节点：从产物的来源配置节点连出');
+      expect(edge.targetNodeId, 'new-1');
+    });
+
+    testWidgets('落点在泳道里：泳道归属随建节点一次写进去', (tester) async {
+      final ProviderContainer c = await _pump(tester, withLane: true);
+      final Offset grab = await _revealPort(tester, c, 'img');
+
+      await _dragWire(tester, grab, const Offset(700, 500));
+      await tester.tap(find.text(_firstFrame));
+      await tester.pumpAndSettle();
+
+      expect(_nodesOf(c).added.single.laneId, 'lane-1');
+    });
+
+    testWidgets('拖线途中按 Esc：取消拖线，松手不开菜单、不连线、不建节点', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final Offset grab = await _revealPort(tester, c, 'img');
+
+      await _dragWire(
+        tester,
+        grab,
+        const Offset(700, 500),
+        beforeRelease: () async {
+          expect(c.read(canvasWireDragProvider('c1')), isNotNull,
+              reason: '前置：拖线已经开始');
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          await tester.pump();
+          expect(c.read(canvasWireDragProvider('c1')), isNull,
+              reason: 'Esc 先取消拖线');
+        },
+      );
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+      expect(_nodesOf(c).added, isEmpty);
+      expect(_edgesOf(c).added, isEmpty);
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'img'},
+          reason: 'Esc 这一下只剥拖线这一层，不清选中');
+    });
+
+    testWidgets('拖线途中按 Esc 之后落在另一张卡上：也不连线', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final Offset grab = await _revealPort(tester, c, 'img');
+
+      await _dragWire(
+        tester,
+        grab,
+        tester.getCenter(_card('vid')),
+        beforeRelease: () async {
+          await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+          await tester.pump();
+        },
+      );
+
+      expect(_edgesOf(c).added, isEmpty);
+    });
+
+    testWidgets('平移工具开着：端口不可拖——从端口起拖拖的是画布，不起拖线、不开菜单', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final Offset grab = await _revealPort(tester, c, 'img');
+      c.read(canvasToolModeProvider('c1').notifier).pan();
+      await tester.pump();
+      final Matrix4 before = _ivTransform(tester).clone();
+
+      final TestGesture gesture = await tester.startGesture(grab);
+      await gesture.moveBy(const Offset(30, 0));
+      await tester.pump();
+      await gesture.moveTo(const Offset(700, 500));
+      await tester.pump();
+      expect(c.read(canvasWireDragProvider('c1')), isNull,
+          reason: '平移时端口按不到，起不了拖线');
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+      expect(_edgesOf(c).added, isEmpty);
+      expect(_ivTransform(tester), isNot(before), reason: '拖的是画布');
+    });
+  });
+
+  group('新建菜单：建节点与连线', () {
+    testWidgets('边写失败：刚建的节点被删掉（不留半截），并弹错误卡', (tester) async {
+      final RecordingToastService toast = RecordingToastService();
+      final ProviderContainer c =
+          await _pump(tester, failEdges: true, toast: toast);
+      c
+          .read(canvasMenuRequestProvider('c1').notifier)
+          .openCreate(const Offset(700, 500), sourceNodeId: 'img');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(_firstFrame));
+      await tester.pumpAndSettle();
+
+      final _Nodes nodes = _nodesOf(c);
+      expect(nodes.added, hasLength(1), reason: '先建节点');
+      expect(nodes.removed, <String>['new-1'], reason: '边写失败 ⇒ 回滚删掉刚建的节点');
+      expect(
+        c.read(canvasNodesControllerProvider('c1')).valueOrNull!.map((CanvasNode n) => n.id),
+        isNot(contains('new-1')),
+      );
+      expect(toast.titles, <String>['Failed to add node']);
+      expect(toast.kinds, <ToastKind>[ToastKind.error]);
+      expect(c.read(canvasSelectionControllerProvider('c1')), isNot(contains('new-1')));
+    });
+
+    testWidgets('「下一镜（叙事）」：建与源同类型的配置节点 + 一条 narrative 边（源 → 新）', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      c
+          .read(canvasMenuRequestProvider('c1').notifier)
+          .openCreate(const Offset(700, 500), sourceNodeId: 'img');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(_nextShot));
+      await tester.pumpAndSettle();
+
+      expect(_nodesOf(c).added.single.type, CanvasNodeType.image);
+      final CanvasEdge edge = _edgesOf(c).added.single;
+      expect(edge.sourceNodeId, 'img');
+      expect(edge.targetNodeId, 'new-1');
+      expect(edge.edgeType, EdgeType.narrative);
+    });
+
+    testWidgets('视频产物源：菜单不出首帧 / 尾帧 / 参考三项', (tester) async {
+      const CanvasNode take = CanvasNode(
+        id: 'take',
+        label: 'Take',
+        type: CanvasNodeType.video,
+        role: NodeRole.result,
+        canvasId: 'c1',
+        sourceNodeId: 'vid',
+        position: Offset(700, 40),
+        typeConfig: <String, Object?>{'video_url': 'take.mp4'},
+      );
+      final ProviderContainer c =
+          await _pump(tester, nodes: const <CanvasNode>[_img, _vid, take]);
+      c
+          .read(canvasMenuRequestProvider('c1').notifier)
+          .openCreate(const Offset(700, 500), sourceNodeId: 'take');
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsOneWidget);
+      expect(find.text(_firstFrame), findsNothing);
+      expect(find.text(_lastFrame), findsNothing);
+      expect(find.text(_reference), findsNothing);
+    });
+
+    testWidgets('菜单键盘：↓ ↵ 执行第二项（视频配置），节点落在视口中心、不连线', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      final _Nodes nodes = _nodesOf(c);
+      expect(nodes.added.single.type, CanvasNodeType.video);
+      expect(nodes.added.single.position.dx, closeTo(600, 0.5));
+      expect(
+        nodes.added.single.position.dy,
+        closeTo(400 - InkToolbarSize.stageTopInset, 0.5),
+      );
+      expect(_edgesOf(c).added, isEmpty, reason: '不带上下文：只建节点、不连线');
+    });
+
+    testWidgets('菜单里 Esc：关菜单、什么都不建；焦点回到画布，再按 Tab 又能打开', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+      expect(_nodesOf(c).added, isEmpty);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsOneWidget,
+          reason: '焦点回到了画布本身，Tab 又归它');
+    });
+
+    testWidgets('点菜单外面：菜单关掉，什么都不建', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsOneWidget);
+
+      await tester.tapAt(const Offset(1000, 700));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+      expect(_nodesOf(c).added, isEmpty);
+    });
+  });
+
+  group('三个不带上下文的入口开的是同一个菜单', () {
+    testWidgets('双击舞台空白 → 在双击点开新建菜单', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      await tester.tapAt(p);
+      await tester.tapAt(p);
+      await tester.pumpAndSettle();
+
+      _expectPlainCreateMenuAt(tester, p);
+    });
+
+    testWidgets('单击空白不开菜单：两下隔得比双击窗口久，也不算双击', (tester) async {
+      await _pump(tester);
+      await tester.tapAt(const Offset(700, 500));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tapAt(const Offset(700, 500));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
+    testWidgets('画布持焦按 Tab → 在视口中心开新建菜单', (tester) async {
+      await _pump(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+
+      // 视口 1200 × 800，中心 (600, 400)。
+      _expectPlainCreateMenuAt(tester, const Offset(600, 400));
+    });
+
+    testWidgets('空白处右键 → 空白处右键菜单（只有四项）；点「新建…」→ 原地换成新建菜单', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      await tester.tapAt(
+        p,
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+
+      _expectMenuAt(tester, CanvasMenuKeys.blankMenu, p);
+      final Finder blank = find.byKey(CanvasMenuKeys.blankMenu);
+      for (final String label in <String>['New…', 'Import script…', 'Select all', 'Fit view']) {
+        expect(
+          find.descendant(of: blank, matching: find.text(label)),
+          findsOneWidget,
+          reason: label,
+        );
+      }
+      expect(find.text('Tab'), findsOneWidget, reason: '「新建…」行尾的键位提示');
+
+      await tester.tap(find.text('New…'));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
+      _expectPlainCreateMenuAt(tester, p);
+    });
+
+    testWidgets('空白处右键菜单「全选」：选中画布上全部节点', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await tester.tapAt(
+        const Offset(700, 500),
+        buttons: kSecondaryMouseButton,
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Select all'));
+      await tester.pumpAndSettle();
+
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'img', 'vid'});
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
+    });
+  });
+
+  group('Tab 只在画布本身持焦时接管', () {
+    testWidgets('在文本框里打字时按 Tab：不开新建菜单（文本编辑让位）', (tester) async {
+      final TextEditingController field = TextEditingController();
+      addTearDown(field.dispose);
+      final ProviderContainer c = await _pump(
+        tester,
+        around: (Widget canvas) => Column(
+          children: <Widget>[
+            Expanded(child: canvas),
+            // 提示词条 / 检查器文本框替身：同处于 CanvasShortcuts 子树内的 EditableText。
+            TextField(controller: field),
+          ],
+        ),
+      );
+
+      await tester.tap(find.byType(TextField));
+      await tester.enterText(find.byType(TextField), 'hello');
+      await tester.pumpAndSettle();
+      expect(isEditingText(), isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+
+      expect(c.read(canvasMenuRequestProvider('c1')), isNull);
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
+    testWidgets('焦点在画布里的按钮上按 Tab：照常走焦点遍历，不开新建菜单', (tester) async {
+      final FocusNode first = FocusNode(debugLabel: 'first');
+      final FocusNode second = FocusNode(debugLabel: 'second');
+      addTearDown(first.dispose);
+      addTearDown(second.dispose);
+      final ProviderContainer c = await _pump(
+        tester,
+        around: (Widget canvas) => Column(
+          children: <Widget>[
+            Expanded(child: canvas),
+            // 检查器按钮 / 工具条键替身：同处于 CanvasShortcuts 子树内、但不是文本框的可聚焦控件。
+            Row(
+              children: <Widget>[
+                TextButton(focusNode: first, onPressed: () {}, child: const Text('one')),
+                TextButton(focusNode: second, onPressed: () {}, child: const Text('two')),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      first.requestFocus();
+      await tester.pump();
+      expect(first.hasPrimaryFocus, isTrue);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+
+      expect(c.read(canvasMenuRequestProvider('c1')), isNull);
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+      expect(second.hasPrimaryFocus, isTrue, reason: 'Tab 照常把焦点移到下一个控件');
+    });
+  });
+}

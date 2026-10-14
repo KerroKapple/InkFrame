@@ -42,6 +42,7 @@ enum ShortcutAction {
   canvasAddVideoNode,
   canvasAddTextNode,
   canvasAddLane,
+  canvasOpenCreateMenu,
   canvasToggleLink,
   canvasToggleLeftRail,
 }
@@ -63,6 +64,7 @@ ShortcutAction? shortcutActionOf(Intent intent) => switch (intent) {
       CanvasAddNodeIntent(type: CanvasNodeType.text) =>
         ShortcutAction.canvasAddTextNode,
       CanvasAddLaneIntent() => ShortcutAction.canvasAddLane,
+      CanvasOpenCreateMenuIntent() => ShortcutAction.canvasOpenCreateMenu,
       CanvasToggleLinkIntent() => ShortcutAction.canvasToggleLink,
       CanvasToggleLeftRailIntent() => ShortcutAction.canvasToggleLeftRail,
       _ => null,
@@ -105,6 +107,22 @@ List<ShortcutRow> buildShortcutRows({required bool isMac}) {
       if (keys[action] != null)
         ShortcutRow(action: action, keys: keys[action]!),
   ];
+}
+
+/// [kCanvasShortcuts] 里第一条满足 [matches] 的绑定在本平台的展示串；一条都出不了字 ⇒ null。
+///
+/// 菜单行尾的键位提示用它（画布空白处右键菜单的「全选」）：与本清单同源，改了绑定提示跟着变，
+/// 不会出现菜单上写着一个早就不存在的键。
+String? canvasShortcutLabel(
+  bool Function(Intent intent) matches, {
+  required bool isMac,
+}) {
+  for (final MapEntry<ShortcutActivator, Intent> e in kCanvasShortcuts.entries) {
+    if (!matches(e.value)) continue;
+    final String? label = formatShortcutActivator(e.key, isMac: isMac);
+    if (label != null) return label;
+  }
+  return null;
 }
 
 /// 激活器 → 本平台展示串；null = 本平台不展示这一条。
@@ -163,4 +181,6 @@ final Map<int, String> _keyLabels = <int, String>{
   LogicalKeyboardKey.keyL.keyId: 'L',
   // 左栏开合（CanvasToolKeys.toggleLeftRail*）：⌘\ / Ctrl+\。
   LogicalKeyboardKey.backslash.keyId: r'\',
+  // 新建…（CanvasToolKeys.createMenu）。
+  LogicalKeyboardKey.tab.keyId: 'Tab',
 };

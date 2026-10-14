@@ -88,6 +88,20 @@ void main() {
     expect(center.dy, closeTo(stage.dy, 1));
   });
 
+  testWidgets('center: false：只单选，不挪相机（新建菜单建出来的节点就在用户刚点的地方）', (tester) async {
+    final ProviderContainer c = await _pump(tester);
+    final InteractiveViewer viewer = tester.widget<InteractiveViewer>(find.byType(InteractiveViewer));
+    final Matrix4 before = viewer.transformationController!.value.clone();
+
+    c.read(canvasFocusRequestProvider.notifier).request(canvasId: 'c1', nodeId: 'far', center: false);
+    await tester.pump();
+    await tester.pump();
+
+    expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'far'});
+    expect(c.read(canvasFocusRequestProvider), isNull);
+    expect(viewer.transformationController!.value, before, reason: '相机原地不动');
+  });
+
   testWidgets('别的画布的请求：本画布不动它，留给那张画布挂上来后落地', (tester) async {
     final ProviderContainer c = await _pump(tester);
     c.read(canvasFocusRequestProvider.notifier).request(canvasId: 'c2', nodeId: 'x');

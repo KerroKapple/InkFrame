@@ -63,6 +63,7 @@ class RecordingNodesController extends FakeNodesController {
     required CanvasNodeType type,
     NodeRole role = NodeRole.config,
     String? sourceNodeId,
+    String? laneId,
     Offset position = Offset.zero,
     Size? size,
     Map<String, Object?> typeConfig = const <String, Object?>{},
