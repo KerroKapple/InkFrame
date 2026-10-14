@@ -796,4 +796,93 @@ void main() {
     );
   });
 
+
+  testWidgets('焦点在画布里的按钮上：空格是按钮的「激活」，不起临时平移', (tester) async {
+    final FocusNode buttonFocus = FocusNode(debugLabel: 'inspector-button');
+    addTearDown(buttonFocus.dispose);
+    int pressed = 0;
+
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: CanvasShortcuts(
+          isActive: true,
+          child: Column(
+            children: <Widget>[
+              const Expanded(child: CanvasView()),
+              // 检查器里的按钮 / 下拉框替身：同处于 CanvasShortcuts 子树内、但不是文本框的可聚焦控件。
+              // 空格 → 激活 绑在 WidgetsApp 那层（本层的祖先），画布先拿到事件，不让就截走了。
+              TextButton(
+                focusNode: buttonFocus,
+                onPressed: () => pressed++,
+                child: const Text('btn'),
+              ),
+            ],
+          ),
+        ),
+      ),
+      overrides: _canvasOverrides(twoNodes),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CanvasView)),
+    );
+
+    buttonFocus.requestFocus();
+    await tester.pump();
+    expect(buttonFocus.hasPrimaryFocus, isTrue);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(
+      container.read(canvasSpacePanProvider('c1')),
+      isFalse,
+      reason: '按钮持焦时空格不是临时平移',
+    );
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pumpAndSettle();
+    expect(pressed, 1, reason: '空格要落到按钮上');
+  });
+
+  testWidgets('按住空格时焦点离开画布：临时平移随之收掉，不会卡在平移里', (tester) async {
+    final FocusNode outside = FocusNode(debugLabel: 'outside-canvas');
+    addTearDown(outside.dispose);
+
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: Column(
+          children: <Widget>[
+            const Expanded(
+              child: CanvasShortcuts(isActive: true, child: CanvasView()),
+            ),
+            // 画布之外的可聚焦控件（外壳标签栏之类）：松开空格的事件冒泡不经过画布层。
+            Focus(focusNode: outside, child: const SizedBox(width: 10, height: 10)),
+          ],
+        ),
+      ),
+      overrides: _canvasOverrides(twoNodes),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CanvasView)),
+    );
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+    expect(container.read(canvasSpacePanProvider('c1')), isTrue);
+
+    outside.requestFocus();
+    await tester.pump();
+    expect(
+      container.read(canvasSpacePanProvider('c1')),
+      isFalse,
+      reason: '焦点离开画布后松开事件到不了画布层，只能在失焦时收',
+    );
+
+    // 收尾：松开空格，键盘状态归零。
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.space);
+    await tester.pump();
+  });
+
 }

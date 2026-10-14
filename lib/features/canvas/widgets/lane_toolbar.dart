@@ -1,4 +1,4 @@
-// 泳道工具栏（Lanes 稿）：画布右下角，surface4 底 + control 边 + 圆角 3；
+// 泳道工具栏（Lanes 稿）：画布左下角、叠在缩放条之上，surface4 底 + control 边 + 圆角 3；
 // 「+」30×26 带右分隔线 | 方向键 = 图标（随当前方向变）+ 「横向 / 竖向」文字标签。
 import 'dart:async';
 

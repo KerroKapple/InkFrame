@@ -5,11 +5,15 @@
 //
 // 走外壳级 pump：CanvasScreen 的项目面板 / 检查器 / 渲染队列都要真 provider，只有外壳搭得起来。
 import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_header_bar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_toolbar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
+import 'package:inkframe/features/canvas/widgets/lane_toolbar.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/l10n/l10n_x.dart';
 import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/shell_app.dart';
@@ -45,4 +49,29 @@ void main() {
     expect(zoom.left, closeTo(stage.left + InkSpacing.s12, 0.5));
     expect(zoom.bottom, closeTo(stage.bottom - InkSpacing.s12, 0.5));
   }, timeout: const Timeout(Duration(seconds: 15)));
+
+  testWidgets('舞台浮层给工具条与缩放条让位：连线提示从工具条下沿以下开始，泳道工具栏叠在缩放条之上',
+      (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_canvas_layout_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(tab: ShellTab.canvas, canvasId: 'cv-1'),
+    );
+    final BuildContext context = tester.element(find.byType(CanvasView));
+    ProviderScope.containerOf(context)
+        .read(linkModeControllerProvider('cv-1').notifier)
+        .start('n-any');
+    await tester.pump();
+
+    final Rect toolbar = tester.getRect(find.byType(CanvasToolbar));
+    final Rect hint = tester.getRect(find.text(context.l10n.linkModeHint));
+    expect(hint.top, greaterThan(toolbar.bottom), reason: '连线提示的后半句不得被工具条盖住');
+
+    final Rect zoom = tester.getRect(find.byType(CanvasZoomBar));
+    final Rect lanes = tester.getRect(find.byType(LaneToolbar));
+    expect(lanes.bottom, lessThanOrEqualTo(zoom.top), reason: '泳道工具栏不得压在缩放条上');
+    expect(lanes.left, closeTo(zoom.left, 0.5), reason: '两条左沿对齐');
+  }, timeout: const Timeout(Duration(seconds: 15)));
+
 }
