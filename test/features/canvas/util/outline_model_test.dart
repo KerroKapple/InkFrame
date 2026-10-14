@@ -1,13 +1,19 @@
 // 左栏大纲分组（PR-4）：buildCanvasOutline 与「在链上」判据的纯函数测试。
 //
 // 每一条都对着派工单 §3 的一句口径：组序跟泳道 sortOrder、组内按叙事链序、链上无泳道进
-// 「未分泳道」、不在链上进「未入链」（最后、按位置、不编号）、编号是全画布链序、筛选按名称或
-// 提示词不区分大小写且整组都不匹配就不出、产物取最新一个并给出总数。
+// 「未分泳道」、不在链上进「未入链」（最后、按位置、不编号）、筛选按名称或提示词不区分大小写且
+// 整组都不匹配就不出、产物取最新一个并给出总数。
+// 镜号是序列的口径（不是链上 DFS 序）：「镜号」组拿审查给的两个场景交叉核对——大纲每一行的号 ==
+// 序列 lens 里它所在那一镜的号（「在序列中查看」的判据）== 画廊写的「序列 NNN」。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/models/style_lane.dart';
 import 'package:inkframe/features/canvas/util/outline_model.dart';
+import 'package:inkframe/features/gallery/models/gallery_graph.dart';
+import 'package:inkframe/features/gallery/util/gallery_meta.dart';
+import 'package:inkframe/features/sequence/models/sequence_lens.dart';
+import 'package:inkframe/features/sequence/util/view_in_sequence.dart';
 
 CanvasNode _config(
   String id, {
@@ -23,6 +29,15 @@ CanvasNode _config(
       laneId: lane,
       position: position,
       typeConfig: <String, Object?>{'prompt': prompt},
+    );
+
+/// 镜头节点（剧本拆出来的那种）：正文是 shot_notes。
+CanvasNode _shot(String id, {required String notes, String? lane}) => CanvasNode(
+      id: id,
+      label: id,
+      type: CanvasNodeType.shot,
+      laneId: lane,
+      typeConfig: <String, Object?>{'shot_notes': notes},
     );
 
 CanvasNode _result(String id, {required String source, required DateTime at, bool video = false}) =>
@@ -66,6 +81,31 @@ CanvasOutline _build(
     );
 
 List<String> _ids(OutlineGroup g) => <String>[for (final OutlineShot s in g.shots) s.node.id];
+
+List<int?> _numbers(OutlineGroup g) => <int?>[for (final OutlineShot s in g.shots) s.sequence];
+
+/// 交叉核对：大纲每一行的镜号 == 序列 lens 里它所在那一镜的序号（「在序列中查看」的判据，1 起；
+/// 不在任何一镜里 = 不编号）。
+void _expectSameAsSequence(CanvasOutline o, List<CanvasNode> nodes, List<CanvasEdge> edges) {
+  final SequenceLens lens = buildSequenceLens(nodes: nodes, edges: edges);
+  for (final OutlineGroup g in o.groups) {
+    for (final OutlineShot s in g.shots) {
+      final int i = shotIndexForSelection(lens, selection: <String>{s.node.id}, nodes: nodes);
+      expect(s.sequence, i < 0 ? null : i + 1, reason: '${s.node.id} 的镜号与序列视图不一致');
+    }
+  }
+}
+
+/// 画廊给这张产物写的「序列 NNN」（只有一张画布 c1）。
+int? _gallerySequenceOf(List<CanvasNode> nodes, List<CanvasEdge> edges, String relativePath) =>
+    GalleryIndex.build(
+      GalleryGraph(
+        canvases: const <GalleryCanvasInfo>[GalleryCanvasInfo(id: 'c1', name: 'c1')],
+        nodesByCanvas: <String, List<CanvasNode>>{'c1': nodes},
+        edgesByCanvas: <String, List<CanvasEdge>>{'c1': edges},
+        slotsByNode: const <String, List<GalleryBatchSlot>>{},
+      ),
+    ).sequenceIndexOf('c1', relativePath);
 
 void main() {
   group('narrativeChainMembers / narrativeSequenceIndex', () {
@@ -181,12 +221,13 @@ void main() {
   });
 
   group('编号', () {
-    test('链序是全画布的，从 1 起：跨泳道交错时组内号不连续', () {
+    test('镜号是全画布的，从 1 起：跨泳道交错时组内号不连续', () {
+      // 三个都有提示词 ⇒ 各自成一镜（既无产物也无备注的节点在序列里会被跳过，见「镜号」组）。
       final CanvasOutline o = _build(
         <CanvasNode>[
-          _config('a', lane: 'L1'),
-          _config('b', lane: 'L2'),
-          _config('c', lane: 'L1'),
+          _config('a', lane: 'L1', prompt: 'harbor'),
+          _config('b', lane: 'L2', prompt: 'boat'),
+          _config('c', lane: 'L1', prompt: 'peaks'),
         ],
         edges: <CanvasEdge>[_narrative('a', 'b'), _narrative('b', 'c')],
         lanes: <StyleLane>[_lane('L1', 0), _lane('L2', 1)],
@@ -196,6 +237,61 @@ void main() {
         <int?>[1, 3],
       );
       expect(o.groups[1].shots.single.sequence, 2);
+    });
+  });
+
+  group('镜号 = 序列的口径（与 buildSequence / lens、画廊交叉核对）', () {
+    test('场景 A：S1→S2→S3 的镜头链，S2 上「用本镜备注生成图像」接出的 C2 有图 ⇒ C2 与 S2 同号，S3 是 03', () {
+      // 边：S1→S2（sortOrder 0）、S2→S3（sortOrder 1）、S2→C2（sortOrder 0）；C2 名下有图。
+      // 链上 DFS 序是 S1、S2、C2、S3——按它编号 C2 写 03、S3 写 04，而序列把 C2 的图借给了 S2。
+      final List<CanvasNode> nodes = <CanvasNode>[
+        _shot('S1', notes: 'harbor at dawn'),
+        _shot('S2', notes: 'a lone boat'),
+        _shot('S3', notes: 'far peaks'),
+        _config('C2', prompt: 'a lone boat'),
+        _result('R2', source: 'C2', at: DateTime.utc(2026, 5, 1)),
+      ];
+      final List<CanvasEdge> edges = <CanvasEdge>[
+        _narrative('S1', 'S2'),
+        _narrative('S2', 'S3', sortOrder: 1),
+        _narrative('S2', 'C2'),
+      ];
+      final CanvasOutline o = _build(nodes, edges: edges);
+
+      expect(_ids(o.groups.single), <String>['S1', 'S2', 'C2', 'S3'], reason: '行序仍是叙事链序');
+      expect(_numbers(o.groups.single), <int?>[1, 2, 2, 3]);
+      _expectSameAsSequence(o, nodes, edges);
+      expect(_gallerySequenceOf(nodes, edges, 'images/R2.png'), 2, reason: '画廊给这张图写「序列 002」');
+    });
+
+    test('场景 B：C1→C2（C2 没提示词、没产物）→C3（有图）⇒ C2 借走 C3 的图成一镜，C3 与 C2 同号', () {
+      final List<CanvasNode> nodes = <CanvasNode>[
+        _config('C1', prompt: 'harbor at dawn'),
+        _config('C2'),
+        _config('C3', prompt: 'far peaks'),
+        _result('R3', source: 'C3', at: DateTime.utc(2026, 5, 1)),
+      ];
+      final List<CanvasEdge> edges = <CanvasEdge>[_narrative('C1', 'C2'), _narrative('C2', 'C3')];
+      final CanvasOutline o = _build(nodes, edges: edges);
+
+      expect(_ids(o.groups.single), <String>['C1', 'C2', 'C3']);
+      expect(_numbers(o.groups.single), <int?>[1, 2, 2]);
+      _expectSameAsSequence(o, nodes, edges);
+      expect(_gallerySequenceOf(nodes, edges, 'images/R3.png'), 2, reason: '画廊给这张图写「序列 002」');
+    });
+
+    test('链上但不在任何一镜里（既无产物也无备注、也没借到）：不编号，仍留在泳道组里', () {
+      final List<CanvasNode> nodes = <CanvasNode>[
+        _config('a', lane: 'L1', prompt: 'harbor'),
+        _config('b', lane: 'L1'),
+      ];
+      final List<CanvasEdge> edges = <CanvasEdge>[_narrative('a', 'b')];
+      final CanvasOutline o = _build(nodes, edges: edges, lanes: <StyleLane>[_lane('L1', 0)]);
+
+      expect(o.groups.single.kind, OutlineGroupKind.lane);
+      expect(_ids(o.groups.single), <String>['a', 'b']);
+      expect(_numbers(o.groups.single), <int?>[1, null]);
+      _expectSameAsSequence(o, nodes, edges);
     });
   });
 
@@ -226,7 +322,7 @@ void main() {
     test('一组里一个都不匹配，整组不画；筛选不改编号；configCount 仍是筛选前的数', () {
       final CanvasOutline o = _build(nodes, edges: edges, lanes: lanes, query: 'peaks');
       expect(o.groups.single.lane?.id, 'L2', reason: 'L1 一镜都没命中 → 整组不出，未入链同理');
-      expect(o.groups.single.shots.single.sequence, 3, reason: '编号还是全画布链序');
+      expect(o.groups.single.shots.single.sequence, 3, reason: '筛选不改镜号：还是全画布的那个号');
       expect(o.configCount, 4);
     });
 

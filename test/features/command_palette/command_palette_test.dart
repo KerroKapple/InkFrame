@@ -109,11 +109,24 @@ class _ChainOrderNodesController extends CanvasNodesController {
 }
 
 /// 三个图像 config 节点：cfg-a / cfg-b 在链上（边见 _ChainEdgesController），cfg-lone 孤立。
+/// 链上两个都有提示词：既无产物也无备注的节点在序列里会被跳过、不编号（镜号是序列的口径）。
 class _ChainShotsController extends CanvasNodesController {
   @override
   Future<List<CanvasNode>> build(String canvasId) async => <CanvasNode>[
-        CanvasNode(id: 'cfg-a', label: 'cfg-a', type: CanvasNodeType.image, canvasId: canvasId),
-        CanvasNode(id: 'cfg-b', label: 'cfg-b', type: CanvasNodeType.image, canvasId: canvasId),
+        CanvasNode(
+          id: 'cfg-a',
+          label: 'cfg-a',
+          type: CanvasNodeType.image,
+          canvasId: canvasId,
+          typeConfig: const <String, Object?>{'prompt': 'harbor at dawn'},
+        ),
+        CanvasNode(
+          id: 'cfg-b',
+          label: 'cfg-b',
+          type: CanvasNodeType.image,
+          canvasId: canvasId,
+          typeConfig: const <String, Object?>{'prompt': 'a lone boat'},
+        ),
         CanvasNode(id: 'cfg-lone', label: 'cfg-lone', type: CanvasNodeType.image, canvasId: canvasId),
       ];
 }
@@ -130,6 +143,60 @@ class _ChainEdgesController extends CanvasEdgesController {
           edgeType: EdgeType.narrative,
         ),
       ];
+}
+
+/// 「导入剧本 + 用本镜备注生成图像」的主路径：镜头 Scene 1 → Scene 2 → Scene 3，Scene 2 上生成图像接出的
+/// 图像配置 Scene 2 image 也接在 Scene 2 后面（排在 Scene 3 前），它名下有图——序列把这张图放在 Scene 2
+/// 那一镜（边见 _SceneEdgesController）。
+class _SceneShotsController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async {
+    CanvasNode shot(String id, String label, String notes) => CanvasNode(
+          id: id,
+          label: label,
+          type: CanvasNodeType.shot,
+          canvasId: canvasId,
+          typeConfig: <String, Object?>{'shot_notes': notes},
+        );
+    return <CanvasNode>[
+      shot('s1', 'Scene 1', 'harbor at dawn'),
+      shot('s2', 'Scene 2', 'a lone boat'),
+      shot('s3', 'Scene 3', 'far peaks'),
+      CanvasNode(
+        id: 'c2',
+        label: 'Scene 2 image',
+        type: CanvasNodeType.image,
+        canvasId: canvasId,
+        typeConfig: const <String, Object?>{'prompt': 'a lone boat'},
+      ),
+      CanvasNode(
+        id: 'r2',
+        label: 'r2',
+        type: CanvasNodeType.image,
+        role: NodeRole.result,
+        canvasId: canvasId,
+        sourceNodeId: 'c2',
+        createdAt: DateTime.utc(2026, 5, 1),
+        typeConfig: const <String, Object?>{'image_url': 'images/r2.png'},
+      ),
+    ];
+  }
+}
+
+/// s1 → s2（sortOrder 0）、s2 → s3（sortOrder 1）、s2 → c2（sortOrder 0）。
+class _SceneEdgesController extends CanvasEdgesController {
+  @override
+  Future<List<CanvasEdge>> build(String canvasId) async {
+    CanvasEdge narrative(String from, String to, int sortOrder) => CanvasEdge(
+          id: 'e-$from-$to',
+          canvasId: canvasId,
+          sourceNodeId: from,
+          targetNodeId: to,
+          edgeType: EdgeType.narrative,
+          sortOrder: sortOrder,
+        );
+    return <CanvasEdge>[narrative('s1', 's2', 0), narrative('s2', 's3', 1), narrative('s2', 'c2', 0)];
+  }
 }
 
 /// 带一个可搜到的图像 config 节点（「镜头 · 当前画布」组的数据源）。
@@ -568,6 +635,26 @@ void main() {
         reason: '条目顺序是节点原序（cfg-a 在前、序号 002），序号却按链序——序号不是行号');
     expect(find.textContaining('Sequence 003'), findsNothing);
     expect(find.textContaining('Image'), findsWidgets, reason: 'cfg-lone 不在链上 ⇒ 第三段是类型名');
+  });
+
+  testWidgets('镜头路径的「序列 NNN」是序列的口径：借出产物的图像配置与镜头同号，后面的镜不往后挪', (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_SceneShotsController.new),
+      canvasEdgesControllerProvider.overrideWith(_SceneEdgesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    await _warmNodes(container, 'c1');
+    await _warmEdges(container, 'c1');
+    await _pressCtrlK(tester);
+    await tester.enterText(find.byType(TextField), 'scene');
+    await tester.pumpAndSettle();
+
+    // 链上 DFS 序是 Scene 1、Scene 2、Scene 2 image、Scene 3；序列把 Scene 2 image 的图放进 Scene 2 那一镜，
+    // 所以只有三镜——与序列视图、画廊（「序列 002」）、左栏大纲同一个号。
+    expect(find.textContaining('Sequence 001'), findsOneWidget);
+    expect(find.textContaining('Sequence 002'), findsNWidgets(2), reason: 'Scene 2 与 Scene 2 image 同一镜');
+    expect(find.textContaining('Sequence 003'), findsOneWidget, reason: 'Scene 3 是第三镜');
+    expect(find.textContaining('Sequence 004'), findsNothing);
   });
 
   testWidgets('「设置项」组不存在；Studio 上下文有查询词也只出动作组', (tester) async {

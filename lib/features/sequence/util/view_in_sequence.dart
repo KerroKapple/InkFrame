@@ -4,6 +4,10 @@
 // 「在序列中定位」（看菜单的目标集）。PR-8b 从 shell_tab_bar.dart 原样搬出来（_viewInSequence /
 // shotIndexForSelection），逻辑与临时保活订阅一行没改；只多了一个可选的 [nodeIds]——不给就是选中集，
 // 与原来逐字相同。
+//
+// 「一个节点在哪一镜」的判据（[_shotIndexOfNode]）也给镜号用：[shotIndexByNode] 一次给出每个节点所在那一镜，
+// 左栏大纲的镜号、⌘K 镜头组的「序列 NNN」由它来（经 canvas/util/outline_model.dart 的 sequenceShotNumbers），
+// 与序列视图、画廊的序号是同一个数——折叠规则不另写第二份。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -62,6 +66,19 @@ int shotIndexForSelection(
     if (i >= 0 && (best < 0 || i < best)) best = i;
   }
   return best;
+}
+
+/// 每个节点所在那一镜的下标（0 起）：逐个节点问 [shotIndexForSelection] 用的同一个判据（[_shotIndexOfNode]），
+/// 不另写折叠规则。不在任何一镜里的节点（不在叙事链上，或折叠时被跳过的，见 sequence_builder）不在表里。
+Map<String, int> shotIndexByNode(SequenceLens lens, {required List<CanvasNode> nodes}) {
+  if (lens.shots.isEmpty) return const <String, int>{};
+  final Map<String, CanvasNode> byId = <String, CanvasNode>{for (final CanvasNode n in nodes) n.id: n};
+  final Map<String, int> out = <String, int>{};
+  for (final CanvasNode n in nodes) {
+    final int i = _shotIndexOfNode(lens, n.id, byId);
+    if (i >= 0) out[n.id] = i;
+  }
+  return out;
 }
 
 int _shotIndexOfNode(SequenceLens lens, String id, Map<String, CanvasNode> byId) {

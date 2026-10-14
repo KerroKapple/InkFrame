@@ -1,4 +1,5 @@
-// 左栏大纲（PR-4）：点行 = 单选 + 移到视口中心；行尾五种状态；产物子行；筛选；画布切换胶囊。
+// 左栏大纲（PR-4）：点行 = 单选 + 移到视口中心；行尾五种状态；产物子行；筛选；画布切换胶囊；
+// 镜号与组头「N 镜」走序列的口径（镜头和借出产物的配置同号、同一镜只数一次）。
 //
 // 定位与胶囊走外壳级 pump（视口尺寸、相机、外壳状态都要真的）；状态 / 子行 / 筛选只要面板本体，
 // 直接 pump OutlinePanel。进行中的图标在转圈——那几条只用固定次数的 pump，不 pumpAndSettle。
@@ -6,7 +7,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/models/style_lane.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
@@ -63,10 +66,35 @@ final CanvasNode _videoResult = CanvasNode(
   typeConfig: const <String, Object?>{'video_url': 'videos/v.mp4'},
 );
 
-List<Override> _canvasOverrides(List<CanvasNode> nodes) => <Override>[
+class _EdgesOf extends CanvasEdgesController {
+  _EdgesOf(this._edges);
+  final List<CanvasEdge> _edges;
+
+  @override
+  Future<List<CanvasEdge>> build(String canvasId) async => _edges;
+}
+
+class _LanesOf extends CanvasLanesController {
+  _LanesOf(this._lanes);
+  final List<StyleLane> _lanes;
+
+  @override
+  Future<List<StyleLane>> build(String canvasId) async => _lanes;
+}
+
+List<Override> _canvasOverrides(
+  List<CanvasNode> nodes, {
+  List<CanvasEdge> edges = const <CanvasEdge>[],
+  List<StyleLane> lanes = const <StyleLane>[],
+}) =>
+    <Override>[
       canvasNodesControllerProvider.overrideWith(() => FakeNodesController(nodes)),
-      canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
-      canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
+      canvasEdgesControllerProvider.overrideWith(
+        () => edges.isEmpty ? FakeEdgesController() : _EdgesOf(edges),
+      ),
+      canvasLanesControllerProvider.overrideWith(
+        () => lanes.isEmpty ? EmptyLanesController() : _LanesOf(lanes),
+      ),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
     ];
 
@@ -95,7 +123,12 @@ Offset _cardCenter(WidgetTester tester, String nodeId) =>
 Offset _stageCenter(WidgetTester tester) => tester.getCenter(find.byType(CanvasView));
 
 /// 直接 pump 面板本体（241 宽，与左栏面板同宽）。
-Future<ProviderContainer> _pumpPanel(WidgetTester tester, List<CanvasNode> nodes) async {
+Future<ProviderContainer> _pumpPanel(
+  WidgetTester tester,
+  List<CanvasNode> nodes, {
+  List<CanvasEdge> edges = const <CanvasEdge>[],
+  List<StyleLane> lanes = const <StyleLane>[],
+}) async {
   await pumpInkApp(
     tester,
     const Scaffold(
@@ -104,7 +137,7 @@ Future<ProviderContainer> _pumpPanel(WidgetTester tester, List<CanvasNode> nodes
         child: SizedBox(width: 241, height: 700, child: OutlinePanel(canvasId: 'c1')),
       ),
     ),
-    overrides: _canvasOverrides(nodes),
+    overrides: _canvasOverrides(nodes, edges: edges, lanes: lanes),
     surfaceSize: const Size(400, 800),
   );
   await tester.pump();
@@ -308,6 +341,64 @@ void main() {
       expect(find.byKey(OutlinePanel.groupKey(OutlineGroupKind.unchained)), findsNothing,
           reason: '一个都不匹配，组头也不画');
       expect(find.text(_l(tester).leftRailOutlineEmpty), findsNothing, reason: '只是没命中，不是空画布');
+    });
+
+    testWidgets('镜号与组头「N 镜」走序列的口径：借出产物的配置与镜头同号，同一镜只数一次', (tester) async {
+      // 「导入剧本 + 用本镜备注生成图像」的主路径：镜头链 S1→S2→S3，S2 上生成图像接出的 C2 有图，序列把这张图
+      // 放在 S2 那一镜。四行都在泳道 L1 里。
+      CanvasNode shot(String id, String notes) => CanvasNode(
+            id: id,
+            label: id,
+            type: CanvasNodeType.shot,
+            canvasId: 'c1',
+            laneId: 'L1',
+            typeConfig: <String, Object?>{'shot_notes': notes},
+          );
+      CanvasEdge narrative(String from, String to, {int sortOrder = 0}) => CanvasEdge(
+            id: 'e-$from-$to',
+            canvasId: 'c1',
+            sourceNodeId: from,
+            targetNodeId: to,
+            edgeType: EdgeType.narrative,
+            sortOrder: sortOrder,
+          );
+      await _pumpPanel(
+        tester,
+        <CanvasNode>[
+          shot('S1', 'harbor at dawn'),
+          shot('S2', 'a lone boat'),
+          shot('S3', 'far peaks'),
+          const CanvasNode(
+            id: 'C2',
+            label: 'C2',
+            type: CanvasNodeType.image,
+            canvasId: 'c1',
+            laneId: 'L1',
+            typeConfig: <String, Object?>{'prompt': 'a lone boat'},
+          ),
+          _imageResult('R2', source: 'C2', at: DateTime.utc(2026, 5, 1)),
+        ],
+        edges: <CanvasEdge>[
+          narrative('S1', 'S2'),
+          narrative('S2', 'S3', sortOrder: 1),
+          narrative('S2', 'C2'),
+        ],
+        lanes: const <StyleLane>[StyleLane(id: 'L1', canvasId: 'c1', label: 'Harbor', sortOrder: 0)],
+      );
+      final AppLocalizations l = _l(tester);
+
+      expect(_inRow('S1', find.text('01')), findsOneWidget);
+      expect(_inRow('S2', find.text('02')), findsOneWidget);
+      expect(_inRow('C2', find.text('02')), findsOneWidget, reason: '序列里这张图放在 S2 那一镜');
+      expect(_inRow('S3', find.text('03')), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(OutlinePanel.groupKey(OutlineGroupKind.lane, laneId: 'L1')),
+          matching: find.text(l.leftRailGroupShotCount(3)),
+        ),
+        findsOneWidget,
+        reason: '四行三镜：组头数的是不同镜号，不是行数',
+      );
     });
 
     testWidgets('画布上没有配置节点 → 居中一行空态说明', (tester) async {

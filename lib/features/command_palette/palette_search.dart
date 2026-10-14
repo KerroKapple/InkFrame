@@ -18,7 +18,7 @@ import '../canvas/providers/canvas_nodes_controller.dart';
 import '../canvas/providers/canvas_focus_request.dart';
 import '../canvas/providers/current_canvas_name.dart';
 import '../canvas/util/node_artifacts.dart';
-import '../canvas/util/outline_model.dart' show narrativeSequenceIndex;
+import '../canvas/util/outline_model.dart' show sequenceShotNumbers;
 import '../canvas/widgets/node_card.dart' show nodeDisplayName, nodeTypeLabel;
 import '../gallery/models/gallery_item.dart';
 import '../gallery/models/gallery_selection.dart';
@@ -83,11 +83,12 @@ List<PaletteEntry> _shotEntries(
   if (nodes == null) return const <PaletteEntry>[];
   final String canvasName = ref.watch(currentCanvasNameProvider).valueOrNull ?? l.canvasDefaultName;
   final String project = s.project?.name ?? l.shellBreadcrumbNoProject;
-  // 路径第三段：在叙事链上的镜写「序列 003」（与画廊「已入序列」同一判据：narrative 边两端
-  // 都在场的节点才算链上），其余写节点类型。边也是画布已加载的，只遍历内存，不读库。
-  // 链序号与左栏大纲的「01」同出 narrativeSequenceIndex（canvas/util/outline_model.dart）。
+  // 路径第三段：在序列某一镜里的节点写那一镜的「序列 003」，其余（不在链上，或在链上但折叠时被跳过）写
+  // 节点类型。镜号是序列的口径——与左栏大纲的「01」、序列视图、画廊同出 sequenceShotNumbers
+  // （canvas/util/outline_model.dart）：借出产物的配置节点与借走它的镜头同号。边也是画布已加载的，只遍历
+  // 内存，不读库。
   final List<CanvasEdge> edges = ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ?? const <CanvasEdge>[];
-  final Map<String, int> sequenceIndex = narrativeSequenceIndex(nodes, edges);
+  final Map<String, int> sequenceIndex = sequenceShotNumbers(nodes, edges);
   final List<PaletteEntry> out = <PaletteEntry>[];
   for (final CanvasNode n in nodes) {
     if (n.role != NodeRole.config) continue;
