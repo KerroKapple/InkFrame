@@ -24,7 +24,7 @@ const ProjectRef _alpha = ProjectRef(id: 'p1', name: 'Alpha');
 
 /// 种好的两张画布：A（当前）= Harbor 名下两个图片 take + Boat 一个视频；B = Peaks 一张图。
 class _Seed {
-  _Seed(this.canvases, this.nodes, this.cvA, this.cvB, this.take2Id);
+  _Seed(this.canvases, this.nodes, this.cvA, this.cvB, this.take2Id, this.peaksTakeId);
 
   final InMemoryCanvasRepository canvases;
   final InMemoryNodeRepository nodes;
@@ -33,6 +33,9 @@ class _Seed {
 
   /// Harbor 的第二个（较新的）take。
   final String take2Id;
+
+  /// B 画布上 Peaks 的唯一产物。
+  final String peaksTakeId;
 }
 
 Future<_Seed> _seed() async {
@@ -96,7 +99,7 @@ Future<_Seed> _seed() async {
     label: 'Peaks',
     typeConfig: <String, Object?>{'text': 'far'},
   );
-  await nodes.create(
+  final String peaksTake = await nodes.create(
     canvasId: cvB,
     type: 'image',
     nodeRole: 'result',
@@ -104,7 +107,7 @@ Future<_Seed> _seed() async {
     sourceNodeId: peaks,
     typeConfig: <String, Object?>{'image_url': 'images/p.png'},
   );
-  return _Seed(canvases, nodes, cvA, cvB, take2);
+  return _Seed(canvases, nodes, cvA, cvB, take2, peaksTake);
 }
 
 Future<ProviderContainer> _pump(WidgetTester tester, _Seed s) async {
@@ -187,7 +190,7 @@ void main() {
     expect(center.dy, closeTo(stage.dy, 1));
   }, timeout: const Timeout(Duration(seconds: 30)));
 
-  testWidgets('点别的画布的格子：切到那张画布（同项目）', (tester) async {
+  testWidgets('点别的画布的格子：切到那张画布，挂上来后单选那个产物并移到视口中心', (tester) async {
     final _Seed s = await _seed();
     final ProviderContainer c = await _pump(tester, s);
     final AppLocalizations l = _l(tester);
@@ -199,6 +202,21 @@ void main() {
     expect(shell.tab, ShellTab.canvas);
     expect(shell.canvasId, s.cvB);
     expect(shell.project, _alpha);
+
+    // 目标画布是切过去才挂上来的：它的选中 provider 在切换那一刻没有订阅者。定位要等它挂上、
+    // 节点载入、视口上报之后再落地——多给几帧。
+    for (int i = 0; i < 8; i++) {
+      await tester.pump();
+    }
+    expect(
+      c.read(canvasSelectionControllerProvider(s.cvB)),
+      <String>{s.peaksTakeId},
+      reason: '切过去以后那个产物要被选中（原先在目标画布挂载前就写选中，被 autoDispose 回收）',
+    );
+    final Offset card = tester.getCenter(find.byKey(ValueKey<String>('node-card-${s.peaksTakeId}')));
+    final Offset stage = tester.getCenter(find.byType(CanvasView));
+    expect(card.dx, closeTo(stage.dx, 1));
+    expect(card.dy, closeTo(stage.dy, 1));
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('「在画廊中打开全部」：在外壳里切到当前项目的画廊', (tester) async {

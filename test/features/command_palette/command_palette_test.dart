@@ -16,7 +16,7 @@ import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
-import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_focus_request.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
@@ -580,15 +580,14 @@ void main() {
     expect(find.text('Artifacts'), findsNothing);
   });
 
-  testWidgets('↵ 打开镜头条目 = 在画布里选中该节点；面板关闭', (tester) async {
+  testWidgets('↵ 打开镜头条目 = 挂起该节点的定位请求；面板关闭', (tester) async {
     final container = await _pumpShell(tester, overrides: <Override>[
       canvasNodesControllerProvider.overrideWith(_ShotNodesController.new),
     ]);
     container.read(shellControllerProvider.notifier).openCanvas('c1');
     await _warmNodes(container, 'c1');
-    // 选择集 provider 是 autoDispose：真 app 里画布常驻 watch，这里补一个监听，
-    // 否则动作写完的选中态会在断言前被回收成空集。
-    container.listen(canvasSelectionControllerProvider('c1'), (_, _) {});
+    // 本外壳没挂画布：⌘K 只负责挂起请求；请求在画布上落地（单选 + 移到视口中心）由
+    // canvas_focus_request_test.dart 钉。
     await _pressCtrlK(tester);
     await tester.enterText(find.byType(TextField), 'sunrise');
     await tester.pumpAndSettle();
@@ -596,6 +595,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(CommandPaletteDialog), findsNothing);
-    expect(container.read(canvasSelectionControllerProvider('c1')), <String>{'img'});
+    expect(
+      container.read(canvasFocusRequestProvider),
+      const CanvasFocusRequest(canvasId: 'c1', nodeId: 'img'),
+    );
   });
 }

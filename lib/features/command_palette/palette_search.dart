@@ -15,7 +15,7 @@ import '../canvas/models/canvas_edge.dart';
 import '../canvas/models/canvas_node.dart';
 import '../canvas/providers/canvas_edges_controller.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
-import '../canvas/providers/canvas_selection_controller.dart';
+import '../canvas/providers/canvas_focus_request.dart';
 import '../canvas/providers/current_canvas_name.dart';
 import '../canvas/util/node_artifacts.dart';
 import '../canvas/util/outline_model.dart' show narrativeSequenceIndex;
@@ -102,8 +102,10 @@ List<PaletteEntry> _shotEntries(
     final File? thumb = thumbRel == null || s.project == null
         ? null
         : galleryResolveFile(ref, projectId: s.project!.id, canvasId: canvasId, relativePath: thumbRel);
-    Future<void> select(BuildContext _, WidgetRef ref) async {
-      ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(n.id);
+    // ↵ 与 ⌘↵ 都是「在画布中定位」：挂起定位请求，画布下一帧就落地——单选 + 移到视口中心。
+    // 原先只单选，节点在视口外时按完什么都看不到。（镜头组只在画布标签下出，不用切标签。）
+    Future<void> locate(BuildContext _, WidgetRef ref) async {
+      ref.read(canvasFocusRequestProvider.notifier).request(canvasId: canvasId, nodeId: n.id);
     }
 
     out.add(PaletteEntry(
@@ -112,8 +114,8 @@ List<PaletteEntry> _shotEntries(
       name: name,
       path: l.commandPaletteShotPath(project, canvasName, third),
       thumbFile: thumb,
-      run: select,
-      locate: select,
+      run: locate,
+      locate: locate,
     ));
   }
   return out;

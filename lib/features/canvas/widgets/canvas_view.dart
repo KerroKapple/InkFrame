@@ -21,6 +21,7 @@ import '../../../theme/tokens.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
+import '../providers/canvas_focus_request.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_tool_mode.dart';
@@ -47,6 +48,7 @@ import '../../shell/widgets/shell_empty_state.dart';
 import 'canvas_empty_state.dart';
 import 'canvas_grid_painter.dart';
 import 'edge_painter.dart';
+import 'left_rail/left_rail_actions.dart';
 import 'lane_background.dart';
 import 'canvas_shortcuts.dart';
 import 'lane_edit_dialog.dart';
@@ -88,8 +90,58 @@ class CanvasView extends ConsumerWidget {
       // raw toString 上屏收敛（GAP-3 审计;设置页安全存储探测行的诊断详情
       // 为有意例外）——走 l10n 映射。
       error: (err, _) => _LoadError(message: l10nAsyncError(context, err)),
-      data: (nodes) => _CanvasBody(canvasId: canvasId, nodes: nodes),
+      data: (nodes) => _PendingFocusApplier(
+        canvasId: canvasId,
+        nodes: nodes,
+        child: _CanvasBody(canvasId: canvasId, nodes: nodes),
+      ),
     );
+  }
+}
+
+/// 挂起的定位请求（canvas_focus_request.dart）在本画布落地：节点已载入（本层只在 data 分支里）、
+/// 视口已上报尺寸之后，帧后单选 + 移到视口中心，并消费掉请求。
+///
+/// 跨画布定位时本画布是切过去才挂上来的；直接在切换那一刻写选中会被 autoDispose 回收。
+/// 请求的节点不在本画布（已删）时只消费、不定位。
+class _PendingFocusApplier extends ConsumerStatefulWidget {
+  const _PendingFocusApplier({
+    required this.canvasId,
+    required this.nodes,
+    required this.child,
+  });
+
+  final String canvasId;
+  final List<CanvasNode> nodes;
+  final Widget child;
+
+  @override
+  ConsumerState<_PendingFocusApplier> createState() => _PendingFocusApplierState();
+}
+
+class _PendingFocusApplierState extends ConsumerState<_PendingFocusApplier> {
+  @override
+  Widget build(BuildContext context) {
+    final CanvasFocusRequest? request = ref.watch(canvasFocusRequestProvider);
+    // 视口尺寸恒 watch：本层自己给这个 autoDispose provider 保活，不指望外层碰巧有人订阅
+    // （生产里 CanvasShortcuts 也 watch 着，但落地不该依赖它）。重建只到本层——返回的是
+    // 同一个 child 实例，舞台不跟着重建。
+    final Size viewport = ref.watch(canvasViewportSizeProvider(widget.canvasId));
+    if (request != null && request.canvasId == widget.canvasId && !viewport.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _land(request));
+    }
+    return widget.child;
+  }
+
+  void _land(CanvasFocusRequest request) {
+    if (!mounted || ref.read(canvasFocusRequestProvider) != request) return;
+    ref.read(canvasFocusRequestProvider.notifier).consume(request);
+    for (final CanvasNode node in widget.nodes) {
+      if (node.id == request.nodeId) {
+        focusNodeOnCanvas(ref, canvasId: widget.canvasId, node: node);
+        return;
+      }
+    }
   }
 }
 
