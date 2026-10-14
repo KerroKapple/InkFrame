@@ -1,7 +1,7 @@
 // CanvasEmptyState：当前画布没有节点时的引导态。
 //
 // 居中插图占位 + 主副标题 + 双 CTA（添加图片节点 / 添加视频节点）。
-// 整块外层 GestureDetector 仍负责"点空白"语义：取消连线模式 + 清选中。
+// 整块外层 GestureDetector 仍负责"点空白"语义：把键盘焦点要回画布 + 取消连线模式 + 清选中。
 // CTA 调 canvasNodesControllerProvider(canvasId).addNode(...)，失败弹错误通知卡
 // （toastServiceProvider）。
 
@@ -22,6 +22,7 @@ import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_transform_controller.dart';
 import '../util/node_position.dart';
+import 'canvas_shortcuts.dart';
 
 class CanvasEmptyState extends ConsumerWidget {
   const CanvasEmptyState({
@@ -33,7 +34,7 @@ class CanvasEmptyState extends ConsumerWidget {
 
   final String canvasId;
 
-  /// 点击空白区域（非 CTA）时的回调：用于退出连线模式 + 清选中。
+  /// 点击空白区域（非 CTA）时的回调：用于退出连线模式 + 清选中。键盘焦点由本层自己要回画布，不归它。
   final VoidCallback onBackgroundTap;
 
   /// 随机源注入口（测试用）；null 时每次取系统熵。
@@ -95,7 +96,12 @@ class CanvasEmptyState extends ConsumerWidget {
     final l = context.l10n;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
-      onTap: onBackgroundTap,
+      // 点空白先把键盘焦点要回画布（与舞台按下时同一个口，B6）：在提示词条 / 检查器之类的文本框里打完字
+      // 再点空画布，文本框的失焦只把焦点交还给路由作用域，画布不持焦——Delete / Esc / 工具单键全收不到。
+      onTap: () {
+        CanvasShortcuts.reclaimFocus(context);
+        onBackgroundTap();
+      },
       child: Container(
         color: context.inkColors.surface1,
         child: ShellEmptyState(

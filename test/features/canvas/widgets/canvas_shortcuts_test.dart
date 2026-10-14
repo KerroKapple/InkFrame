@@ -21,6 +21,7 @@ import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_empty_state.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
@@ -796,6 +797,49 @@ void main() {
     );
   });
 
+
+  // B6：没有节点时整块画布换成空态，空态的点击原来只清选中、不把焦点要回来。
+  testWidgets('空画布：在输入框里打完字再点空画布，按 I 照样建出节点（焦点回到画布）', (tester) async {
+    final fieldController = TextEditingController();
+    addTearDown(fieldController.dispose);
+
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: CanvasShortcuts(
+          isActive: true,
+          child: Column(
+            children: <Widget>[
+              const Expanded(child: CanvasView()),
+              // 画布之外的输入框（检查器 / 提示词条替身）。
+              TextField(controller: fieldController),
+            ],
+          ),
+        ),
+      ),
+      overrides: _canvasOverrides(const <CanvasNode>[]),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CanvasView)),
+    );
+    expect(find.byType(CanvasEmptyState), findsOneWidget, reason: '前提：没有节点，画的是空态');
+
+    await tester.tap(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pumpAndSettle();
+    expect(isEditingText(), isTrue);
+
+    // 点空态左上角的空白（CTA 在正中，横幅从工具条那一条往下才有）。
+    final Rect stage = tester.getRect(find.byType(CanvasView));
+    await tester.tapAt(stage.topLeft + const Offset(40, 40));
+    await tester.pumpAndSettle();
+    expect(isEditingText(), isFalse, reason: '点空画布：焦点回到画布');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyI);
+    await tester.pumpAndSettle();
+    expect(_recorder(container).added, <CanvasNodeType>[CanvasNodeType.image]);
+  });
 
   testWidgets('焦点在画布里的按钮上：空格是按钮的「激活」，不起临时平移', (tester) async {
     final FocusNode buttonFocus = FocusNode(debugLabel: 'inspector-button');
