@@ -1545,8 +1545,11 @@ class _RenderStageSpace extends RenderProxyBox {}
 /// 空白处的双击与右键：包在连线层上——卡片盖着的地方到不了这一层，收到的就是空白处的指针。
 ///
 /// 不用 GestureDetector 的 onDoubleTap：双击识别器一进手势竞技场，连线层原来的单击（选连线 / 点空白
-/// 清选中）就得等它放弃，每一次单击都慢 300ms。这里只听按下事件、自己数两下：第二下在
-/// [kDoubleTapTimeout] 之内、[kDoubleTapSlop] 之内落下就算双击；不进竞技场，单击照旧即时生效。
+/// 清选中）就得等它放弃，每一次单击都慢 300ms。这里只听原始指针事件、自己数两下，不进竞技场，单击照旧即时生效：
+///   - 第一下得真是一次单击：按下到抬起没挪出点击容差（computeHitSlop：鼠标 1px、触摸 kTouchSlop，与单击识别器
+///     同一个口径）——拖画布那一下不算第一下；按下时这一层上没有别的指针按着——双指捏合不算；
+///   - 第二下在 [kDoubleTapTimeout] 之内（从第一下按下起算）、离第一下 [kDoubleTapSlop] 之内、同一个设备落下才算，
+///     落下当场报。
 /// 右键单击交给 [_SecondaryClickDetector]（抬起时报按下点）。回调给的是本层的局部坐标 = 舞台坐标。
 class _BlankPointerDetector extends StatefulWidget {
   const _BlankPointerDetector({
@@ -1566,8 +1569,15 @@ class _BlankPointerDetector extends StatefulWidget {
 }
 
 class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
-  /// 上一下主键按下的全局位置；双击窗口一过就清掉。
-  Offset? _firstDown;
+  /// 这一层上此刻按着的指针（双指捏合的第二根手指落下时，第一根还在这里面）。
+  final Set<int> _pressed = <int>{};
+
+  /// 候选的第一下（主键按下那一下的事件）；双击窗口一过、挪出点击容差、被别的指针打断就清掉。
+  PointerDownEvent? _first;
+
+  /// 第一下已经在点击容差内抬起——它是一次单击。没抬起之前落下的第二下不算。
+  bool _firstReleased = false;
+
   Timer? _window;
 
   @override
@@ -1579,31 +1589,72 @@ class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
   void _reset() {
     _window?.cancel();
     _window = null;
-    _firstDown = null;
+    _first = null;
+    _firstReleased = false;
   }
 
+  /// [position] 还在 [down] 的点击容差里（没挪出去就还是单击，挪出去就是在拖）。
+  bool _withinTapSlop(PointerDownEvent down, Offset position) =>
+      (position - down.position).distance <= computeHitSlop(down.kind, null);
+
   void _onPointerDown(PointerDownEvent event) {
-    // 右键（及其它非主键）不是双击的一下，还打断候选；右键菜单归外面那层 _SecondaryClickDetector。
-    if (event.buttons != kPrimaryButton) {
+    final bool othersPressed = _pressed.isNotEmpty;
+    _pressed.add(event.pointer);
+    // 另有指针按着（双指捏合）、或不是主键（右键菜单归外面那层 _SecondaryClickDetector）：都不是双击的一下，
+    // 还打断候选。
+    if (othersPressed || event.buttons != kPrimaryButton) {
       _reset();
       return;
     }
-    final Offset? first = _firstDown;
-    if (first != null && (event.position - first).distance <= kDoubleTapSlop) {
+    final PointerDownEvent? first = _first;
+    if (first != null &&
+        _firstReleased &&
+        first.device == event.device &&
+        (event.position - first.position).distance <= kDoubleTapSlop) {
       _reset();
       widget.onDoubleDown(event.localPosition);
       return;
     }
     _window?.cancel();
-    _firstDown = event.position;
+    _first = event;
+    _firstReleased = false;
     _window = Timer(kDoubleTapTimeout, _reset);
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    final PointerDownEvent? first = _first;
+    if (first == null || _firstReleased || event.pointer != first.pointer) return;
+    // 第一下按着挪出了点击容差：这是在拖画布，不是单击。
+    if (!_withinTapSlop(first, event.position)) _reset();
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    _pressed.remove(event.pointer);
+    final PointerDownEvent? first = _first;
+    if (first == null || _firstReleased || event.pointer != first.pointer) return;
+    if (_withinTapSlop(first, event.position)) {
+      _firstReleased = true;
+    } else {
+      _reset();
+    }
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    _pressed.remove(event.pointer);
+    if (event.pointer == _first?.pointer) _reset();
   }
 
   @override
   Widget build(BuildContext context) => _SecondaryClickDetector(
         onSecondaryClick: (PointerDownEvent down) =>
             widget.onSecondaryClick(down.localPosition),
-        child: Listener(onPointerDown: _onPointerDown, child: widget.child),
+        child: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerCancel,
+          child: widget.child,
+        ),
       );
 }
 

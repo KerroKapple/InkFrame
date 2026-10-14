@@ -8,6 +8,7 @@
 //   - 没选中的卡（端口只在悬停时亮）：按在端口上慢慢往外拖，指针先越出卡片盒——还是拖线，卡片不被拖走（B2）。
 //   - 双击空白 / Tab / 空白处右键「新建…」：开的是同一个新建菜单（不带上下文）。
 //   - 空白处右键在抬起时开、锚点是按下点；按住右键拖动（拖画布）不开（B4）。
+//   - 双击的第一下得是一次单击：拖画布那一下、双指捏合都不算（B3）。
 //   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
 //   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
 //   - 从菜单开的对话框（泳道 / 导入脚本…）一打开就持焦，按键不穿到框后面的画布上（B1）；画布所在的路由上面
@@ -662,6 +663,50 @@ void main() {
       const Offset p = Offset(700, 500);
       await tester.tapAt(p);
       await tester.tapAt(p);
+      await tester.pumpAndSettle();
+
+      _expectPlainCreateMenuAt(tester, p);
+    });
+
+    // B3：自己数的双击原来只看「第二下离第一下按下点多远、隔多久」——拖画布那一下被当成了第一下。
+    testWidgets('拖画布之后 300ms 内在原处再按一下：不算双击，不开菜单', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      final TestGesture drag = await tester.startGesture(p);
+      await drag.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await drag.up();
+      await tester.pump(const Duration(milliseconds: 100));
+
+      await tester.tapAt(p);
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing, reason: '拖动不是双击的第一下');
+    });
+
+    testWidgets('双指捏合：第二根手指在第一根旁边落下，不算双击', (tester) async {
+      await _pump(tester);
+      final TestGesture first = await tester.startGesture(const Offset(700, 500));
+      await tester.pump();
+      final TestGesture second = await tester.startGesture(const Offset(760, 500));
+      await tester.pump();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing, reason: '另有指针按着时不算');
+
+      await first.up();
+      await second.up();
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
+    testWidgets('真正的双击（鼠标，两下都在原处抬起）：照常在双击点开新建菜单', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      final TestGesture mouse = await tester.startGesture(p, kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.up();
+      await tester.pump(const Duration(milliseconds: 50));
+      await mouse.down(p);
+      await mouse.up();
       await tester.pumpAndSettle();
 
       _expectPlainCreateMenuAt(tester, p);
