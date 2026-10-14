@@ -23,6 +23,12 @@
 //
 // 拖拽（HI-13）：位移累积在本卡片局部状态（Transform.translate），每帧只重建
 // 自身；onPanEnd 把累计位移一次性回调 onDragEnd，由上层提交 controller。
+//
+// 出端口可拖（画布重设计稿 › 拖线到空白处 → 建节点）：按住出端口拖出去是拖线、不是拖卡片——端口上
+// 的拖拽手势比卡片的更深，先过触摸阈值、先赢手势竞技场。卡片只管把指针的全局坐标经 [PortDragCallbacks]
+// 交出去，落在哪、连不连线、开不开新建菜单都归画布（canvas_view 的卡片插槽）。外观一点没动：圆点还是
+// 10px，只是外面多了一圈透明的命中区。拖线期间端口一直亮着——它一收起来，上面的拖拽手势就跟着拆掉，
+// 松手再也回调不到（拖出卡片时悬停态先掉）。
 import 'dart:async';
 import 'dart:io';
 
@@ -51,6 +57,29 @@ import '../util/camera_labels.dart';
 import '../util/lane_tint.dart';
 import 'video_node_body.dart';
 
+/// 从出端口拖线的四个回调。坐标一律是指针的**全局**坐标——卡片不知道舞台的变换，换算归画布。
+@immutable
+class PortDragCallbacks {
+  const PortDragCallbacks({
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
+    required this.onCancel,
+  });
+
+  /// 拖动被认出来（过了触摸阈值）的那一刻。
+  final ValueChanged<Offset> onStart;
+
+  /// 每次移动。
+  final ValueChanged<Offset> onUpdate;
+
+  /// 松手。
+  final VoidCallback onEnd;
+
+  /// 手势被系统取消（或卡片在拖线途中被拆掉）。
+  final VoidCallback onCancel;
+}
+
 class NodeCard extends ConsumerStatefulWidget {
   const NodeCard({
     super.key,
@@ -65,6 +94,7 @@ class NodeCard extends ConsumerStatefulWidget {
     this.isLinkCandidate = false,
     this.hasInEdge = false,
     this.hasOutEdge = false,
+    this.portDrag,
   });
 
   final CanvasNode node;
@@ -96,7 +126,14 @@ class NodeCard extends ConsumerStatefulWidget {
   /// 出口这一侧真挂着一条画出来的线 → 出端口常驻。
   final bool hasOutEdge;
 
+  /// 从出端口拖线（见 [PortDragCallbacks]）。null = 端口只是个圆点、按住拖动拖的是卡片。
+  final PortDragCallbacks? portDrag;
+
   static const double thumbHeight = 126; // 224 × 9 / 16
+
+  /// 出端口的拖线命中区边长：以圆点为中心的方块（圆点本身 10px，按不准）。卡片盒外的那一半点不到——
+  /// 命中先按卡片盒界筛——所以真正按得住的是卡片右缘内侧那一条。
+  static const double portHitExtent = 20;
 
   /// 入 / 出端口圆点的测试锚点（每张卡片内唯一）。
   static const Key inPortKey = ValueKey<String>('node-card-in-port');
@@ -127,8 +164,23 @@ class _NodeCardState extends ConsumerState<NodeCard> {
   /// 拖拽期捕获的广播口——dispose 兜底清残留用（dispose 后 ref 不可用）。
   StateController<NodeDragDelta?>? _dragBroadcast;
 
+  /// 正从出端口往外拖线：拖线期间端口一直亮着（见头注）。
+  bool _portDragging = false;
+
   @override
   void dispose() {
+    // 拖线途中卡片被拆掉（节点被删 / 换画布）：手势跟着拆、松手不会再回调，拖线状态得替它收掉。
+    // 同样延到微任务里做，画布已经整个拆了就静默放弃。
+    final PortDragCallbacks? portDrag = widget.portDrag;
+    if (_portDragging && portDrag != null) {
+      scheduleMicrotask(() {
+        try {
+          portDrag.onCancel();
+        } on StateError {
+          // 画布（连同它的 ProviderContainer）已经拆了——拖线状态随之回收，无需再收。
+        }
+      });
+    }
     // 拖拽中被删（如 Delete 快捷键）不会走 onPanEnd，广播会残留脏值；
     // 微任务延后清理避开 widget 树锁，容器已销毁时静默放弃。
     final broadcast = _dragBroadcast;
@@ -169,6 +221,45 @@ class _NodeCardState extends ConsumerState<NodeCard> {
     setState(() => _hovered = value);
   }
 
+  void _setPortDragging(bool value) {
+    if (_portDragging == value || !mounted) return;
+    setState(() => _portDragging = value);
+  }
+
+  /// 出端口：10px 圆点居中放在 [NodeCard.portHitExtent] 见方的透明命中区里；可拖时命中区收拖拽手势。
+  Widget _outPort(Color color) {
+    final Widget dot = Center(
+      child: Container(
+        key: NodeCard.outPortKey,
+        width: 10,
+        height: 10,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+    );
+    final PortDragCallbacks? drag = widget.portDrag;
+    if (drag == null) return dot;
+    return MouseRegion(
+      cursor: SystemMouseCursors.precise,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onPanStart: (DragStartDetails d) {
+          _setPortDragging(true);
+          drag.onStart(d.globalPosition);
+        },
+        onPanUpdate: (DragUpdateDetails d) => drag.onUpdate(d.globalPosition),
+        onPanEnd: (DragEndDetails _) {
+          _setPortDragging(false);
+          drag.onEnd();
+        },
+        onPanCancel: () {
+          _setPortDragging(false);
+          drag.onCancel();
+        },
+        child: dot,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final node = widget.node;
@@ -181,8 +272,8 @@ class _NodeCardState extends ConsumerState<NodeCard> {
     // 稿：shot 节点只有出端口。
     final bool hasIn =
         !(node.type == CanvasNodeType.shot && node.role == NodeRole.config);
-    // 端口按需显示：悬停 / 选中 / 连线模式两侧都亮；平时只留挂着线的那一侧。
-    final bool revealPorts = _hovered || highlighted;
+    // 端口按需显示：悬停 / 选中 / 连线模式两侧都亮；平时只留挂着线的那一侧。拖线途中也亮着（见头注）。
+    final bool revealPorts = _hovered || highlighted || _portDragging;
     final bool showInPort = hasIn && (revealPorts || widget.hasInEdge);
     final bool showOutPort = revealPorts || widget.hasOutEdge;
 
@@ -285,14 +376,11 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                         ),
                       if (showOutPort)
                         Positioned(
-                          right: -5,
-                          top: NodeCard.thumbHeight / 2 - 5,
-                          child: Container(
-                            key: NodeCard.outPortKey,
-                            width: 10,
-                            height: 10,
-                            decoration: BoxDecoration(color: outPort, shape: BoxShape.circle),
-                          ),
+                          right: -NodeCard.portHitExtent / 2,
+                          top: NodeCard.thumbHeight / 2 - NodeCard.portHitExtent / 2,
+                          width: NodeCard.portHitExtent,
+                          height: NodeCard.portHitExtent,
+                          child: _outPort(outPort),
                         ),
                     ],
                   ),

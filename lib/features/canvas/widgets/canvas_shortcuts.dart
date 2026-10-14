@@ -15,13 +15,18 @@
 //
 // Ctrl+\（macOS ⌘\）开合左栏（PR-4）：同样对文本编辑让位——在筛选框 / 提示词条里打字时
 // 不该把左栏收起来。键位常量在 CanvasToolKeys，导航条「收起」键的 tooltip 与它同源。
+//
+// Tab = 新建…（新建菜单，开在视口中心；create_node_menu.dart）。Tab 本来是焦点遍历键，所以它的门槛
+// 比别的单键更严：不只对文本编辑让位，而是**只在本层自己持主焦点时**才接管（_CanvasFocusedAction）。
+// 焦点落在本层子树里的任何控件上（工具条键、检查器按钮、缩放条格子、左栏行、菜单里的行），Tab 都原样
+// 放行给 WidgetsApp 的焦点遍历；本层之外的控件按 Tab 根本到不了这里。Shift+Tab 不绑。
+// Esc 多了两层，按序剥：拖线中先取消拖线，菜单开着先关菜单，再往下才是平移 / 连线 / 清选中。
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/canvas_node.dart';
-import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
@@ -32,6 +37,7 @@ import '../providers/selected_edge_controller.dart';
 import '../util/canvas_node_delete.dart';
 import '../util/canvas_tool_actions.dart';
 import '../util/canvas_zoom.dart';
+import 'create_node_menu.dart';
 
 // ===== Intents =====
 
@@ -40,7 +46,8 @@ class DeleteSelectionIntent extends Intent {
   const DeleteSelectionIntent();
 }
 
-/// Esc：在平移工具则回到选择；否则连线模式激活则退出连线；否则清空节点 + 边选择。
+/// Esc：拖线中则取消拖线；菜单开着则关菜单；在平移工具则回到选择；否则连线模式激活则退出连线；
+/// 否则清空节点 + 边选择。
 class CanvasEscapeIntent extends Intent {
   const CanvasEscapeIntent();
 }
@@ -97,6 +104,11 @@ class CanvasToggleLeftRailIntent extends Intent {
   const CanvasToggleLeftRailIntent();
 }
 
+/// Tab：在视口中心开「新建」菜单（与双击空白、空白处右键「新建…」同一个菜单）。
+class CanvasOpenCreateMenuIntent extends Intent {
+  const CanvasOpenCreateMenuIntent();
+}
+
 /// 画布工具的键位。工具条 tooltip 与下面的 [kCanvasShortcuts] 取同一组常量——改键位
 /// 只改这里，tooltip 不会还挂着旧键。
 class CanvasToolKeys {
@@ -108,6 +120,9 @@ class CanvasToolKeys {
   static const LogicalKeyboardKey textNode = LogicalKeyboardKey.keyT;
   static const LogicalKeyboardKey lane = LogicalKeyboardKey.keyF;
   static const LogicalKeyboardKey link = LogicalKeyboardKey.keyL;
+
+  /// 新建…（新建菜单）。空白处右键菜单「新建…」行尾的键位提示也取它。
+  static const LogicalKeyboardKey createMenu = LogicalKeyboardKey.tab;
 
   /// 按住临时平移。不进 [kCanvasShortcuts]（要按下与松开两个事件，见
   /// _CanvasShortcutsState._onKeyEvent）；设置页清单单独收它
@@ -156,6 +171,27 @@ class _EditingAwareAction<T extends Intent> extends Action<T> {
     _onInvoke(intent);
     return null;
   }
+}
+
+/// 只在画布快捷键层**自己**持主焦点时才生效的 Action（Tab = 新建…）。
+///
+/// Tab 是焦点遍历键（WidgetsApp 默认表：Tab → NextFocusIntent）。本层的 Shortcuts 比那张表离焦点更近，
+/// 焦点落在本层子树里任何一个控件上按 Tab，都会先查到这里——光对文本编辑让位不够，工具条键、检查器按钮、
+/// 缩放条格子上的 Tab 也得放行。所以门槛是「主焦点就是画布本身」：不是的时候 isEnabled = false，
+/// ShortcutManager 把按键原样放行（KeyEventResult.ignored），冒泡到 WidgetsApp 那层照常遍历焦点。
+/// 文本编辑让位（父类）照旧叠在上面：主焦点在文本框里时画布也不可能持主焦点，两道门是同一个结论。
+class _CanvasFocusedAction<T extends Intent> extends _EditingAwareAction<T> {
+  _CanvasFocusedAction(this._canvasFocus, super.onInvoke);
+
+  final FocusNode _canvasFocus;
+
+  @override
+  bool isEnabled(T intent) =>
+      _canvasFocus.hasPrimaryFocus && super.isEnabled(intent);
+
+  @override
+  bool consumesKey(T intent) =>
+      _canvasFocus.hasPrimaryFocus && super.consumesKey(intent);
 }
 
 // 键位映射：⌘ 与 Ctrl 变体同时注册，跨平台一致（桌面 macOS/Windows）。
@@ -225,6 +261,9 @@ kCanvasShortcuts = <ShortcutActivator, Intent>{
   // 左栏开合（PR-4）。
   CanvasToolKeys.toggleLeftRailMeta: const CanvasToggleLeftRailIntent(),
   CanvasToolKeys.toggleLeftRailControl: const CanvasToggleLeftRailIntent(),
+  // 新建…（PR-8a）。只在画布本身持焦时接管，见 _CanvasFocusedAction；按住不放不连开。
+  const SingleActivator(CanvasToolKeys.createMenu, includeRepeats: false):
+      const CanvasOpenCreateMenuIntent(),
 };
 
 /// 画布快捷键层：包裹画布主体（含 Inspector）。
@@ -249,6 +288,15 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   /// 画布舞台按下指针时调用：把键盘焦点要回最近的 CanvasShortcuts（不在其下则无事）。
   static void reclaimFocus(BuildContext context) =>
       context.findAncestorStateOfType<_CanvasShortcutsState>()?._reclaimFocus();
+
+  /// 画布上的浮层（新建菜单）收掉之后调用：焦点「落空」了才要回本层——主焦点是空的，或者落回了本层
+  /// 所在的作用域本身（没有任何具体控件持焦）。被收掉的菜单里的搜索框失焦就落在那儿；不要回来的话
+  /// Delete / Esc / 工具单键全都收不到。别的控件已经拿到焦点（点到了别的文本框、开了对话框）就不抢。
+  /// 帧后再判：桌面上点到文本框外面，文本框自己的失焦与收菜单是同一次按下里的两件事，谁先谁后不定，
+  /// 失焦又在微任务里才落地——收菜单的这一刻还看不出焦点最后落在哪。
+  static void reclaimFocusIfOrphaned(BuildContext context) => context
+      .findAncestorStateOfType<_CanvasShortcutsState>()
+      ?._reclaimFocusIfOrphaned();
 
   @override
   ConsumerState<CanvasShortcuts> createState() => _CanvasShortcutsState();
@@ -288,6 +336,16 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   /// Delete / Esc / 工具单键全都收不到，直到切一次标签才恢复。
   void _reclaimFocus() {
     if (widget.isActive && !_focusNode.hasPrimaryFocus) _focusNode.requestFocus();
+  }
+
+  void _reclaimFocusIfOrphaned() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.isActive) return;
+      final FocusNode? focused = primaryFocus;
+      if (focused == null || identical(focused, _focusNode.enclosingScope)) {
+        _focusNode.requestFocus();
+      }
+    });
   }
 
   @override
@@ -357,6 +415,12 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
               _EditingAwareAction<CanvasToggleLeftRailIntent>(
             (_) => _toggleLeftRail(),
           ),
+          // Tab：只在本层自己持主焦点时开新建菜单，别处的 Tab 一律放行给焦点遍历。
+          CanvasOpenCreateMenuIntent:
+              _CanvasFocusedAction<CanvasOpenCreateMenuIntent>(
+            _focusNode,
+            (_) => _openCreateMenu(),
+          ),
         },
         child: Focus(
           focusNode: _focusNode,
@@ -423,17 +487,24 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   void _selectAll() {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
-    final nodes = ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull;
-    if (nodes == null) return;
-    ref
-        .read(canvasSelectionControllerProvider(canvasId).notifier)
-        .selectAll(nodes.map((n) => n.id));
+    // 与空白处右键菜单「全选」同一个动作（canvas_tool_actions.dart）。
+    selectAllNodes(ref, canvasId: canvasId);
   }
 
-  /// Esc 一次剥一层：平移工具 → 回选择；连线模式 → 退出连线；否则清空节点 + 边选择。
+  /// Esc 一次剥一层：拖线中 → 取消拖线（松手时不连线、不开菜单）；菜单开着 → 关菜单；
+  /// 平移工具 → 回选择；连线模式 → 退出连线；否则清空节点 + 边选择。
   void _escape() {
     final canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
+    if (ref.read(canvasWireDragProvider(canvasId)) != null) {
+      ref.read(canvasWireDragProvider(canvasId).notifier).cancel();
+      return;
+    }
+    // 菜单拿着焦点时 Esc 由菜单自己收；这一层兜的是菜单开着、焦点却回到了画布的情形。
+    if (ref.read(canvasMenuRequestProvider(canvasId)) != null) {
+      ref.read(canvasMenuRequestProvider(canvasId).notifier).close();
+      return;
+    }
     if (ref.read(canvasToolModeProvider(canvasId)) == CanvasToolMode.pan) {
       ref.read(canvasToolModeProvider(canvasId).notifier).select();
       return;
@@ -502,5 +573,16 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   void _toggleLeftRail() {
     if (ref.read(currentCanvasIdProvider) == null) return;
     ref.read(leftRailProvider.notifier).toggle();
+  }
+
+  /// 新建菜单开在视口中心（不带连线上下文）。视口还没上报尺寸（首帧前）时不知道中心在哪，不开。
+  void _openCreateMenu() {
+    final String? canvasId = ref.read(currentCanvasIdProvider);
+    if (canvasId == null) return;
+    final Size viewport = ref.read(canvasViewportSizeProvider(canvasId));
+    if (viewport.isEmpty) return;
+    ref
+        .read(canvasMenuRequestProvider(canvasId).notifier)
+        .openCreate(viewport.center(Offset.zero));
   }
 }

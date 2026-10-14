@@ -41,6 +41,8 @@ class ShortcutsSection extends StatelessWidget {
           l.settingsShortcutCanvasAddVideoNode,
         ShortcutAction.canvasAddTextNode => l.settingsShortcutCanvasAddTextNode,
         ShortcutAction.canvasAddLane => l.settingsShortcutCanvasAddLane,
+        ShortcutAction.canvasOpenCreateMenu =>
+          l.settingsShortcutCanvasOpenCreateMenu,
         ShortcutAction.canvasToggleLink => l.settingsShortcutCanvasToggleLink,
         ShortcutAction.canvasToggleLeftRail =>
           l.settingsShortcutCanvasToggleLeftRail,

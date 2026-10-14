@@ -88,6 +88,32 @@ void main() {
     );
   });
 
+  // PR-8a：Tab = 新建…进清单。键位与空白处右键菜单「新建…」行尾的提示同源（CanvasToolKeys.createMenu）。
+  test('新建…：两个平台都列「Tab」，与 CanvasToolKeys.createMenu 是同一个键', () {
+    expect(CanvasToolKeys.createMenu, LogicalKeyboardKey.tab);
+    expect(
+      kCanvasShortcuts[const SingleActivator(CanvasToolKeys.createMenu, includeRepeats: false)],
+      isA<CanvasOpenCreateMenuIntent>(),
+    );
+    for (final bool isMac in <bool>[true, false]) {
+      expect(
+        _byAction(isMac: isMac)[ShortcutAction.canvasOpenCreateMenu],
+        <String>['Tab'],
+      );
+    }
+  });
+
+  // 菜单行尾的键位提示从快捷键表里取（空白处右键菜单的「全选」），按平台出字。
+  test('canvasShortcutLabel：按平台取表里第一条能出字的绑定；没有匹配 ⇒ null', () {
+    bool selectAll(Intent intent) => intent is SelectAllNodesIntent;
+    expect(canvasShortcutLabel(selectAll, isMac: true), '⌘A');
+    expect(canvasShortcutLabel(selectAll, isMac: false), 'Ctrl+A');
+    expect(
+      canvasShortcutLabel((Intent intent) => false, isMac: true),
+      isNull,
+    );
+  });
+
   test('Windows：Ctrl 变体上屏，⌘ 变体不上屏', () {
     final Map<ShortcutAction, List<String>> rows = _byAction(isMac: false);
     expect(rows[ShortcutAction.commandPalette], <String>['Ctrl+K']);

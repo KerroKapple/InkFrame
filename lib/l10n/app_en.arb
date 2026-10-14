@@ -742,6 +742,47 @@
   "@canvasToolPanHoldSpace": {
     "description": "Second shortcut hint in the Pan tool tooltip, after the H key: holding the Space bar pans temporarily"
   },
+  "canvasCreateMenuSearchHint": "Type to search…",
+  "@canvasCreateMenuSearchHint": {
+    "description": "Canvas New menu (opened by dragging a wire from a node's output port to empty space, double-clicking empty canvas, Tab, or right-click > New…): placeholder of the search box at the top. Typing filters the menu items."
+  },
+  "canvasCreateMenuNoMatch": "No matching actions",
+  "@canvasCreateMenuNoMatch": {
+    "description": "Canvas New menu: the only row shown when the search text matches no item"
+  },
+  "canvasCreateMenuAsFirstFrame": "As first frame · New video config",
+  "@canvasCreateMenuAsFirstFrame": {
+    "description": "Canvas New menu, opened by dragging a wire out of an image node: create a video config node at the drop point and link the image to it as its first frame"
+  },
+  "canvasCreateMenuAsLastFrame": "As last frame · New video config",
+  "@canvasCreateMenuAsLastFrame": {
+    "description": "Canvas New menu, opened by dragging a wire out of an image node: create a video config node and link the image to it as its last frame"
+  },
+  "canvasCreateMenuAsReference": "As reference · New image config",
+  "@canvasCreateMenuAsReference": {
+    "description": "Canvas New menu, opened by dragging a wire out of an image node: create an image config node and link the image to it as a reference image"
+  },
+  "canvasCreateMenuNextShot": "Next shot (narrative)",
+  "@canvasCreateMenuNextShot": {
+    "description": "Canvas New menu, opened by dragging a wire out of a config node: create a config node of the same type and link it as the next shot in the story order"
+  },
+  "canvasCreateMenuImageConfig": "Image config",
+  "canvasCreateMenuVideoConfig": "Video config",
+  "canvasCreateMenuText": "Text",
+  "canvasCreateMenuShot": "Shot",
+  "canvasCreateMenuLane": "Lane",
+  "@canvasCreateMenuLane": {
+    "description": "Canvas New menu without a wire: opens the New lane dialog (the four rows above it create nodes of that type)"
+  },
+  "canvasBlankMenuNew": "New…",
+  "@canvasBlankMenuNew": {
+    "description": "Canvas right-click menu on empty space: opens the New menu (search and create a node) at the click point"
+  },
+  "canvasBlankMenuSelectAll": "Select all",
+  "canvasBlankMenuFitView": "Fit view",
+  "@canvasBlankMenuFitView": {
+    "description": "Canvas right-click menu on empty space: same as the Fit cell of the zoom bar (back to the default camera)"
+  },
   "leftRailOutline": "Outline",
   "@leftRailOutline": {
     "description": "Canvas left sidebar: the Outline page — rail button tooltip and the panel title"
@@ -1281,6 +1322,10 @@
   "settingsShortcutCanvasToggleLeftRail": "Show / hide the canvas left sidebar",
   "@settingsShortcutCanvasToggleLeftRail": {
     "description": "Settings > Shortcuts row: toggles the canvas left sidebar panel (same action as the rail collapse button)"
+  },
+  "settingsShortcutCanvasOpenCreateMenu": "New…",
+  "@settingsShortcutCanvasOpenCreateMenu": {
+    "description": "Settings > Shortcuts row for Tab: opens the canvas New menu (search and create a node) in the middle of the canvas"
   },
   "settingsPerformanceConcurrencyTitle": "Concurrency and quota",
   "settingsPerformanceGlobalLimit": "Global concurrent jobs",
