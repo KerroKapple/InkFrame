@@ -3,6 +3,7 @@
 //   - 从出端口拖线：落在另一张卡上 = 连线（走连线模式那一条 linkTo，image → video 默认首帧）；落在空白处 =
 //     在松手点开带上下文的新建菜单，选「当首帧」⇒ 节点落在松手点 + 一条首帧 data 边 + 新节点被单选。
 //   - 边写失败：刚建的节点被删掉（不留半截）+ 错误卡。
+//   - 「下一镜」的叙事边 sortOrder 排在锚点已有的分叉之后（B7）。
 //   - 拖线途中 Esc：取消拖线，松手什么都不写。
 //   - 拖线途中源卡被删：画布层取消拖线，其余卡片不再显示成连线候选（B5）。
 //   - 平移工具开着：端口不可拖（拖的是画布）。
@@ -118,14 +119,15 @@ class _Nodes extends CanvasNodesController {
   }
 }
 
-/// 连线：记下建出来的边；[fail] = 写库必失败（真控制器失败时回滚内存再上抛 InkError）。
+/// 连线：起始边集由 [seed] 给；记下建出来的边；[fail] = 写库必失败（真控制器失败时回滚内存再上抛 InkError）。
 class _Edges extends CanvasEdgesController {
-  _Edges({this.fail = false});
+  _Edges({this.fail = false, this.seed = const <CanvasEdge>[]});
   final bool fail;
+  final List<CanvasEdge> seed;
   final List<CanvasEdge> added = <CanvasEdge>[];
 
   @override
-  Future<List<CanvasEdge>> build(String canvasId) async => const <CanvasEdge>[];
+  Future<List<CanvasEdge>> build(String canvasId) async => seed;
 
   @override
   Future<CanvasEdge> addEdge({
@@ -182,6 +184,7 @@ class _OneLane extends CanvasLanesController {
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   List<CanvasNode> nodes = const <CanvasNode>[_img, _vid],
+  List<CanvasEdge> edges = const <CanvasEdge>[],
   bool withLane = false,
   bool failEdges = false,
   RecordingToastService? toast,
@@ -201,7 +204,7 @@ Future<ProviderContainer> _pump(
         () => ShellNavigator(initial: const ShellState(canvasId: 'c1')),
       ),
       canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes)),
-      canvasEdgesControllerProvider.overrideWith(() => _Edges(fail: failEdges)),
+      canvasEdgesControllerProvider.overrideWith(() => _Edges(fail: failEdges, seed: edges)),
       canvasLanesControllerProvider
           .overrideWith(() => withLane ? _OneLane() : EmptyLanesController()),
       canvasLaneDirectionProvider('c1')
@@ -610,6 +613,31 @@ void main() {
       expect(edge.sourceNodeId, 'img');
       expect(edge.targetNodeId, 'new-1');
       expect(edge.edgeType, EdgeType.narrative);
+    });
+
+    // B7：原来「下一镜」不设 sortOrder（默认 0），与锚点已有的叙事分叉同序——谁先谁后落到边 id（UUID）上。
+    testWidgets('「下一镜」：锚点已有一条 sortOrder=0 的叙事出边 ⇒ 新边 sortOrder=1，排在已有分支之后',
+        (tester) async {
+      const CanvasEdge existing = CanvasEdge(
+        id: 'n0',
+        canvasId: 'c1',
+        sourceNodeId: 'img',
+        targetNodeId: 'vid',
+        edgeType: EdgeType.narrative,
+      );
+      final ProviderContainer c = await _pump(tester, edges: const <CanvasEdge>[existing]);
+      c
+          .read(canvasMenuRequestProvider('c1').notifier)
+          .openCreate(const Offset(700, 500), sourceNodeId: 'img');
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text(_nextShot));
+      await tester.pumpAndSettle();
+
+      final CanvasEdge edge = _edgesOf(c).added.single;
+      expect(edge.edgeType, EdgeType.narrative);
+      expect(edge.sourceNodeId, 'img');
+      expect(edge.sortOrder, 1);
     });
 
     testWidgets('视频产物源：菜单不出首帧 / 尾帧 / 参考三项', (tester) async {

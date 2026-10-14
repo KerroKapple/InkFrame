@@ -36,6 +36,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/tokens.dart';
 import '../../notifications/providers/toast_service_provider.dart';
+import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
 import '../models/style_lane.dart';
@@ -293,6 +294,7 @@ NodePlacement menuNodePlacement(
 ///
 /// 写入顺序 = 先建节点（落进泳道的再写泳道归属）、再连线。**不留半截**：节点建好之后任何一步失败，
 /// 都把刚建的节点删掉（removeNode 同一个事务里级联软删它身上已有的线），再弹错误卡「添加节点失败」。
+/// 「下一镜」的叙事边排在锚点已有的分叉之后（sortOrder 见 create_menu_model.nextNarrativeSortOrder）。
 /// 成功后挂一条定位请求——新节点在画布下一帧被单选（canvas_view 的 _PendingFocusApplier 落地，
 /// 不在这里直接写选中）。
 Future<void> addNodeFromMenu(
@@ -313,6 +315,14 @@ Future<void> addNodeFromMenu(
       ref.read(canvasEdgesControllerProvider(canvasId).notifier);
   final CanvasFocusRequestController focus =
       ref.read(canvasFocusRequestProvider.notifier);
+  // 叙事边的序号按此刻锚点已有的出边算（同样在 await 之前取）；别的边不排序，取默认 0。
+  final int sortOrder = edge?.type == EdgeType.narrative && sourceNodeId != null
+      ? nextNarrativeSortOrder(
+          anchorId: sourceNodeId,
+          edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+              const <CanvasEdge>[],
+        )
+      : 0;
 
   final CanvasNode created;
   try {
@@ -336,6 +346,7 @@ Future<void> addNodeFromMenu(
         targetNodeId: created.id,
         edgeType: link.type,
         role: link.role,
+        sortOrder: sortOrder,
       );
     }
   } on InkError catch (_) {

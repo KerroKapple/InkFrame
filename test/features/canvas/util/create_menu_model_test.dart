@@ -3,7 +3,7 @@
 //
 // 钉的几条：图像源出首帧 / 尾帧 / 参考（拿掉 sourceCarriesImage 的判断，视频产物那条红）；
 // 「下一镜」的叙事边只连配置节点：配置卡以自己为锚，产物卡以它的来源配置节点为锚（见 create_menu_model
-// 头注）；空组不出、不留孤立分隔线。
+// 头注）；空组不出、不留孤立分隔线。「下一镜」新边的 sortOrder 排在锚点已有的叙事分叉之后（B7）。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -262,6 +262,55 @@ void main() {
     test('一项都没匹配上 ⇒ 空；空白查询原样返回', () {
       expect(filterMenuGroups<String>(groups, 'zzz', label), isEmpty);
       expect(filterMenuGroups<String>(groups, '   ', label), groups);
+    });
+  });
+
+  // B7：「下一镜」原来不设 sortOrder（默认 0），与锚点已有的分叉同序，谁先谁后落到边 id（UUID）上。
+  group('nextNarrativeSortOrder（「下一镜」新边的 sortOrder）', () {
+    CanvasEdge edge(
+      String id,
+      String from, {
+      EdgeType type = EdgeType.narrative,
+      int sortOrder = 0,
+    }) =>
+        CanvasEdge(
+          id: id,
+          canvasId: 'c1',
+          sourceNodeId: from,
+          targetNodeId: 'to-$id',
+          edgeType: type,
+          sortOrder: sortOrder,
+        );
+
+    test('锚点没有出向叙事边 ⇒ 0', () {
+      expect(nextNarrativeSortOrder(anchorId: 'a', edges: const <CanvasEdge>[]), 0);
+    });
+
+    test('锚点已有一条 sortOrder=0 的叙事出边 ⇒ 1（排在它后面）', () {
+      expect(nextNarrativeSortOrder(anchorId: 'a', edges: <CanvasEdge>[edge('1', 'a')]), 1);
+    });
+
+    test('取最大值 + 1，不是条数：已有 0 与 3 ⇒ 4', () {
+      expect(
+        nextNarrativeSortOrder(
+          anchorId: 'a',
+          edges: <CanvasEdge>[edge('1', 'a', sortOrder: 3), edge('2', 'a')],
+        ),
+        4,
+      );
+    });
+
+    test('只看锚点自己的出向 narrative 边：别的源、data 边都不算', () {
+      expect(
+        nextNarrativeSortOrder(
+          anchorId: 'a',
+          edges: <CanvasEdge>[
+            edge('1', 'b', sortOrder: 7),
+            edge('2', 'a', type: EdgeType.data, sortOrder: 5),
+          ],
+        ),
+        0,
+      );
     });
   });
 }
