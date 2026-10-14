@@ -30,10 +30,22 @@ void main() {
       expect((t.monoSmall.fontSize, t.monoSmall.height), (10.0, 1.0));
     });
 
+    // 提示词条与节点文字稿：写长提示词时 12 读久了累眼，输入框单列一档 13/1.6。
+    test('提示词档 prompt：13 / 400 / 行高 1.6', () {
+      expect((t.prompt.fontSize, t.prompt.fontWeight, t.prompt.height),
+          (13.0, FontWeight.w400, 1.6));
+    });
+
+    test('all 列出全部 11 档（含 prompt），遍历类断言不漏新档', () {
+      expect(t.all, hasLength(11));
+      expect(t.all, contains(t.prompt));
+    });
+
     test('无衬线样式用 Noto Sans SC + 系统回落链', () {
       for (final s in <TextStyle>[
         t.body,
         t.bodyStrong,
+        t.prompt,
         t.meta,
         t.micro,
         t.sectionTitle,
@@ -58,10 +70,12 @@ void main() {
       }
     });
 
-    test('scaled(1.5) 覆盖全部八档且保留回落链', () {
+    test('scaled(1.5) 覆盖全部档位且保留回落链', () {
       final s = InkTypography.defaults().scaled(1.5);
       expect(s.body.fontSize, 12 * 1.5);
       expect(s.bodyStrong.fontSize, 12 * 1.5);
+      expect(s.prompt.fontSize, 13 * 1.5);
+      expect(s.prompt.height, 1.6, reason: '缩放只动字号，行高倍数不变');
       expect(s.meta.fontSize, 11 * 1.5);
       expect(s.micro.fontSize, 10 * 1.5);
       expect(s.sectionTitle.fontSize, 15 * 1.5);
@@ -75,6 +89,7 @@ void main() {
       final a = InkTypography.defaults(scale: 1.25);
       final b = InkTypography.defaults().scaled(1.25);
       expect(a.dialogTitle.fontSize, b.dialogTitle.fontSize);
+      expect(a.prompt.fontSize, b.prompt.fontSize);
     });
   });
 }

@@ -137,6 +137,12 @@ enum InkGlyph {
     InkGlyphPart.stroke('M16.5 12.25h-3.25a1 1 0 0 0-1 1v3.25'),
     InkGlyphPart.stroke('M6.5 7.25h7M6.5 10h4.5'),
   ]),
+  /// 镜头
+  shot(<InkGlyphPart>[
+    InkGlyphPart.stroke('M3.5 8.5h13v6.75a1.75 1.75 0 0 1-1.75 1.75h-9.5A1.75 1.75 0 0 1 3.5 15.25z'),
+    InkGlyphPart.stroke('M3.5 8.5V5.75A1.75 1.75 0 0 1 5.25 4h9.5a1.75 1.75 0 0 1 1.75 1.75V8.5'),
+    InkGlyphPart.stroke('M7.5 4.25l-2 4M11.5 4.25l-2 4M15.25 4.5l-1.85 3.75'),
+  ]),
   /// 上传
   upload(<InkGlyphPart>[
     InkGlyphPart.stroke('M10 12.75V3.5'),

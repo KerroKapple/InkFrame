@@ -30,7 +30,7 @@ const List<double> _sizes = <double>[InkIconSize.sm, InkIconSize.md, 24];
 
 const Key _sheetKey = ValueKey<String>('inkIconSheet');
 
-/// 每格 = 三档图标一行 + 图标名；一行 8 格，44 个图标排 6 行。
+/// 每格 = 三档图标一行 + 图标名；一行 8 格，45 个图标排 6 行。
 const double _cellWidth = 112;
 const double _cellHeight = 60;
 const int _perRow = 8;
