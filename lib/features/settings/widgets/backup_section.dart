@@ -16,6 +16,7 @@ import '../../../core/di/database_restore.dart';
 import '../../../core/di/project_archive.dart';
 import '../../../core/interfaces/database_backup_service.dart';
 import '../../../core/interfaces/database_restore_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../studio/providers/project_export_busy.dart';
 import '../../../l10n/l10n_x.dart';
@@ -25,7 +26,7 @@ import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_card.dart';
 import '../../../theme/tokens.dart';
 import '../../shell/providers/shell_controller.dart';
-import '../../generation/services/toast_service.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 
 class BackupSection extends ConsumerStatefulWidget {
   const BackupSection({super.key});
@@ -158,6 +159,8 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
     final failedMsg = context.l10n.settingsBackupFailed;
     final timedOutMsg = context.l10n.settingsBackupTimedOut;
     final noBinMsg = context.l10n.settingsBackupNoBinaries;
+    // 下面每一张卡都是这次备份的结局。备份在后台跑（看门狗上限十分钟），用户多半
+    // 早去干别的了——成败都算「后台事件到达」，带 chime（按设置响一声）。
     setState(() => _backingUp = true);
     try {
       final PgRuntime runtime;
@@ -165,7 +168,7 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
         // 与还原 flow 同一 ensure-started 语义（评审 UX P2-4）。
         runtime = controller.runtime ?? await controller.start();
       } on PgLifecycleError {
-        toast.show(failedMsg, kind: ToastKind.error);
+        toast.show(failedMsg, kind: ToastKind.error, chime: true);
         return;
       }
       final result = await service.backupNow(
@@ -180,16 +183,16 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
       );
       switch (result.outcome) {
         case BackupOutcome.created:
-          toast.show(doneMsg, kind: ToastKind.success);
+          toast.show(doneMsg, kind: ToastKind.success, chime: true);
         case BackupOutcome.skippedNoBinaries:
-          toast.show(noBinMsg, kind: ToastKind.error);
+          toast.show(noBinMsg, kind: ToastKind.error, chime: true);
         case BackupOutcome.failedTimedOut:
           // 超时单独一句：十分钟之后的失败若与秒级失败同一句话，用户的下一步
           // 一定是原样再点一次——再等十分钟。
-          toast.show(timedOutMsg, kind: ToastKind.error);
+          toast.show(timedOutMsg, kind: ToastKind.error, chime: true);
         case BackupOutcome.failed:
         case BackupOutcome.skippedAlreadyToday: // backupNow 契约上不产生。
-          toast.show(failedMsg, kind: ToastKind.error);
+          toast.show(failedMsg, kind: ToastKind.error, chime: true);
       }
       _refresh();
     } finally {
@@ -273,13 +276,14 @@ class _BackupSectionState extends ConsumerState<BackupSection> {
       }
     }
 
+    // 还原是分钟级的后台重操作：结局无论成败都带 chime（同上面的备份）。
     if (result.outcome == RestoreOutcome.restored) {
       // 会话重置：还原后的库里旧画布/画廊目标可能已不存在（评审 UX P2-2）。
       nav.resetSession();
-      toast.show(doneMsg, kind: ToastKind.success);
+      toast.show(doneMsg, kind: ToastKind.success, chime: true);
     } else {
       toast.show(l10nRestoreFailure(l10n, result.outcome),
-          kind: ToastKind.error);
+          kind: ToastKind.error, chime: true);
     }
     _refresh();
   }

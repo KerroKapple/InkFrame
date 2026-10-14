@@ -19,6 +19,7 @@ import '../../../core/di/paths.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/database_backup_service.dart';
 import '../../../core/interfaces/database_restore_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../storage/pg_controller.dart';
 import '../../../theme/app_theme.dart';
@@ -26,7 +27,7 @@ import '../../../theme/components/ink_button.dart';
 import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_overlay_dialog.dart';
 import '../../../theme/tokens.dart';
-import '../../generation/services/toast_service.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 
 class StartupErrorView extends ConsumerStatefulWidget {
   const StartupErrorView({super.key, required this.error});
@@ -239,8 +240,9 @@ class _StartupErrorViewState extends ConsumerState<StartupErrorView> {
       result = const RestoreFlowResult(outcome: RestoreOutcome.failed);
     }
     if (result.outcome != RestoreOutcome.restored) {
+      // 还原是分钟级的后台重操作，失败是它的结局 → chime（与设置页备份区同一口径）。
       toast.show(l10nRestoreFailure(l10n, result.outcome),
-          kind: ToastKind.error);
+          kind: ToastKind.error, chime: true);
     }
     if (mounted) {
       setState(() {

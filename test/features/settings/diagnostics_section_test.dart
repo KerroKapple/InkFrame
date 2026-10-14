@@ -12,11 +12,14 @@ import 'package:inkframe/core/di/project_archive.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/diagnostics_bundle_service.dart';
 import 'package:inkframe/core/interfaces/folder_opener.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/settings/widgets/diagnostics_section.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
+
+import '../../_harness/fake_toast_service.dart';
 
 class _SpyFolderOpener implements FolderOpener {
   final List<String> opened = <String>[];
@@ -42,26 +45,17 @@ class _FakeBundleService implements DiagnosticsBundleService {
   }
 }
 
-class _RecordingToast implements ToastService {
-  final List<({String message, ToastKind kind})> shown = [];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    shown.add((message: message, kind: kind));
-  }
-}
-
 void main() {
   late _SpyFolderOpener opener;
   late _FakeBundleService service;
-  late _RecordingToast toast;
+  late RecordingToastService toast;
   late AppPaths paths;
   String? lastSuggested;
 
   setUp(() {
     opener = _SpyFolderOpener();
     service = _FakeBundleService();
-    toast = _RecordingToast();
+    toast = RecordingToastService();
     lastSuggested = null;
     final tmp = Directory.systemTemp.createTempSync('ink_diag_ui_');
     addTearDown(() => tmp.deleteSync(recursive: true));
@@ -105,8 +99,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.exports, <String>['C:/tmp/diag.zip']);
-    expect(toast.shown.single.message, 'Diagnostics exported');
+    expect(toast.shown.single.title, 'Diagnostics exported');
     expect(toast.shown.single.kind, ToastKind.success);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '打包在后台跑，完成是「后台事件到达」');
     // clock → diagnosticsBundleFileName → picker 接线（评审 P3-4）。
     expect(
       lastSuggested,
@@ -137,12 +133,22 @@ void main() {
     expect(toast.shown, isEmpty);
   });
 
-  testWidgets('service 抛 LocalIOError → 失败 toast', (tester) async {
+  testWidgets('service 抛 LocalIOError → 失败卡，主按钮打开日志目录', (tester) async {
     service.error = const LocalIOError();
     await pump(tester, pickedPath: 'C:/tmp/diag.zip');
     await tester.tap(find.text('Export diagnostics…'));
     await tester.pumpAndSettle();
-    expect(toast.shown.single.message, 'Export failed — see the log folder for details');
+    expect(toast.shown.single.title, 'Export failed — see the log folder for details');
     expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isTrue, reason: '失败也是这次导出的结局');
+
+    // 文案让人去日志目录看详情——卡上的主按钮就是本区「打开日志目录」那条路径。
+    final ToastAction? primary = toast.shown.single.primary;
+    expect(primary, isNotNull);
+    expect(primary!.label, 'Open log folder');
+    expect(opener.opened, isEmpty, reason: '没点按钮之前不该自己打开目录');
+    primary.onPressed();
+    await tester.pump();
+    expect(opener.opened, <String>[paths.logs.path]);
   });
 }

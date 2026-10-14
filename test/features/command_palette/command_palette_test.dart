@@ -18,7 +18,7 @@ import 'package:inkframe/features/canvas/providers/canvas_selection_controller.d
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_dialog.dart';
 import 'package:inkframe/features/command_palette/widgets/command_palette_shortcuts.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
@@ -26,6 +26,7 @@ import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/theme/app_theme.dart';
 
 import '../../_harness/fake_repositories.dart';
+import '../../_harness/fake_toast_service.dart';
 import '../../helpers/recording_logger.dart';
 
 /// 空画布节点集（隔离 DB DI）。
@@ -173,16 +174,6 @@ class _FakeImportService implements ProjectImportService {
       const ImportResult(outcome: ImportOutcome.failed);
 }
 
-/// 记录 toast 调用的 fake。
-class _RecordingToast implements ToastService {
-  final List<String> messages = [];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    messages.add(message);
-  }
-}
-
 Future<ProviderContainer> _pumpShell(
   WidgetTester tester, {
   List<Override> overrides = const <Override>[],
@@ -264,7 +255,7 @@ void main() {
 
   testWidgets('studio 上下文能直接执行 Import project（回归 2026-08-31 审计 P0）',
       (tester) async {
-    final toast = _RecordingToast();
+    final toast = RecordingToastService();
     final container = await _pumpShell(tester, overrides: <Override>[
       openFilePickerProvider.overrideWithValue(() async => null),
       projectImportServiceProvider.overrideWith((ref) async => _FakeImportService()),
@@ -280,6 +271,7 @@ void main() {
     // picker 返回 null（用户取消）：面板已经关闭，且没有崩溃/挂起。
     expect(find.byType(CommandPaletteDialog), findsNothing);
     expect(container.read(projectImportBusyProvider), isFalse);
+    expect(toast.shown, isEmpty, reason: '用户取消选文件 ≠ 失败，不该弹任何卡');
   });
 
   testWidgets('canvas 上下文动作集：三种新建节点 + 返回/设置；无可导出节点时不出 Export video',

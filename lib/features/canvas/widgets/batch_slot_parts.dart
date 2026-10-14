@@ -8,12 +8,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/file_resolver.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/generation_controller.dart';
-import '../../generation/services/toast_service.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../models/batch_result.dart';
 import '../models/canvas_node.dart';
 

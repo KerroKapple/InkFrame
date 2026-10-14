@@ -1,41 +1,42 @@
-// 画布内 snackbar 提示（从 canvas_view 抽出，供画布各处 + 快捷键删除路径共用）。
+// 画布内提示（从 canvas_view 抽出，供画布各处 + 快捷键删除路径共用）。
+//
+// 走全应用唯一的通知出口 toastServiceProvider（窗口右下角的通知卡），不再自己往
+// ScaffoldMessenger 塞 SnackBar。函数名沿用旧名，画布里的调用点不用跟着改。
+// 拿 container 用 listen: false：这是一次性的副作用，不该让调用方订阅任何东西。
 
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
-import '../../../theme/app_theme.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 
-const _kSnackBarDuration = Duration(seconds: 2);
-
-// 删除防误伤（PL-4a）：Deleted · [Undo] 的驻留时长即撤销窗口（~5s）。
-const _kUndoSnackBarDuration = Duration(seconds: 5);
-
-/// 画布内轻量提示条。
-void showCanvasSnack(BuildContext context, String text) {
-  ScaffoldMessenger.maybeOf(
-    context,
-  )?.showSnackBar(SnackBar(content: Text(text), duration: _kSnackBarDuration));
+/// 画布内一句话提示。画布里报的几乎都是失败（建 / 删 / 挪 / 改没成），所以默认
+/// [ToastKind.error]——失败卡不自动消失，等用户关。不是失败的（「已删除」「已连线」）
+/// 由调用方显式传 [kind]。
+void showCanvasSnack(
+  BuildContext context,
+  String text, {
+  ToastKind kind = ToastKind.error,
+}) {
+  _toastsOf(context).show(text, kind: kind);
 }
 
-/// 删除防误伤（PL-4a）：弹一条带 Undo 动作的 snackbar，[onUndo] 在窗口内点击时
-/// 触发复原；窗口内不点 → snackbar 自行消失，软删生效。
+/// 删除防误伤（PL-4a）：弹一张可撤销卡，主按钮「撤销」触发 [onUndo] 复原。
+///
+/// 撤销卡停 8 秒（ToastKind.undo 的契约）；这段时间里不点，卡片自行收起，软删生效。
+/// 画布没有撤销快捷键——卡片收起之后就撤不回了。
 void showCanvasUndoSnack(
   BuildContext context, {
   required String message,
   required VoidCallback onUndo,
 }) {
-  final colors = context.inkColors;
-  ScaffoldMessenger.maybeOf(context)
-    ?..clearSnackBars()
-    ..showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: _kUndoSnackBarDuration,
-        action: SnackBarAction(
-          label: context.l10n.commonUndo,
-          textColor: colors.accent,
-          onPressed: onUndo,
-        ),
-      ),
-    );
+  _toastsOf(context).show(
+    message,
+    kind: ToastKind.undo,
+    primary: ToastAction(context.l10n.commonUndo, onUndo),
+  );
 }
+
+ToastService _toastsOf(BuildContext context) =>
+    ProviderScope.containerOf(context, listen: false).read(toastServiceProvider);

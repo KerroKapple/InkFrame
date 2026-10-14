@@ -13,7 +13,8 @@ import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/studio/models/project_with_canvases.dart';
 import 'package:inkframe/features/studio/providers/workspace_projects_provider.dart';
 import 'package:inkframe/features/studio/studio_home_screen.dart';
@@ -23,19 +24,10 @@ import 'package:inkframe/theme/app_theme.dart';
 
 import '../../_harness/fake_asset_bundle.dart';
 import '../../_harness/fake_repositories.dart';
+import '../../_harness/fake_toast_service.dart';
 import '../../_harness/fake_unit_of_work.dart';
 import '../../_harness/test_app.dart';
 import '../../helpers/recording_logger.dart';
-
-class _RecordingToastService implements ToastService {
-  final List<({String message, ToastKind kind})> calls =
-      <({String message, ToastKind kind})>[];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    calls.add((message: message, kind: kind));
-  }
-}
 
 /// create 必抛 LocalIOError 的画布仓储——驱动打开画布失败分支。
 class _FailingCreateCanvasRepository extends InMemoryCanvasRepository {
@@ -291,7 +283,7 @@ void main() {
 
   testWidgets('打开画布失败：InkError 收窄捕获 → error toast + logger.error 留痕',
       (tester) async {
-    final toast = _RecordingToastService();
+    final toast = RecordingToastService();
     final logger = RecordingLogger();
     await pumpInkApp(
       tester,
@@ -321,9 +313,11 @@ void main() {
     await tester.pumpAndSettle();
 
     // 用户可见：error toast
-    expect(toast.calls, hasLength(1));
-    expect(toast.calls.single.message, "Couldn't open canvas");
-    expect(toast.calls.single.kind, ToastKind.error);
+    expect(toast.shown, hasLength(1));
+    expect(toast.shown.single.title, "Couldn't open canvas");
+    expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isFalse,
+        reason: '打开画布是用户刚点的那一下，失败是即时回应，不是后台事件');
     // 可观测性：失败必须留 error 日志且保留原始 cause（裸 catch 吞错是缺陷）
     final errors = logger.byLevel(InkLogLevel.error);
     expect(errors, hasLength(1),

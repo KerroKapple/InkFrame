@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/canvas_style.dart';
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
@@ -216,17 +217,20 @@ class _CanvasBody extends ConsumerWidget {
   final String canvasId;
   final List<CanvasNode> nodes;
 
-  /// 连线结果事件 → snackbar 映射（ME-08：duplicate / failed 分流）。
+  /// 连线结果事件 → 通知卡映射（ME-08：duplicate / failed 分流）。
+  /// 连上了是 success；自连 / 已存在是没连成但什么也没坏，用户换个目标就行 → warning；
+  /// 只有写库失败才是 error（错误卡不自动消失）。
   void _onLinkEvent(BuildContext context, LinkActionEvent? event) {
     if (event == null) return;
     final l10n = context.l10n;
-    final text = switch (event.result) {
-      LinkActionResult.created => l10n.linkCreated,
-      LinkActionResult.selfLinkRejected => l10n.linkSelfNotAllowed,
-      LinkActionResult.duplicate => l10n.linkAlreadyExists,
-      LinkActionResult.failed => l10n.linkCreateFailed,
+    final (String text, ToastKind kind) = switch (event.result) {
+      LinkActionResult.created => (l10n.linkCreated, ToastKind.success),
+      LinkActionResult.selfLinkRejected =>
+        (l10n.linkSelfNotAllowed, ToastKind.warning),
+      LinkActionResult.duplicate => (l10n.linkAlreadyExists, ToastKind.warning),
+      LinkActionResult.failed => (l10n.linkCreateFailed, ToastKind.error),
     };
-    showCanvasSnack(context, text);
+    showCanvasSnack(context, text, kind: kind);
   }
 
   Future<void> _handleNodeTap(

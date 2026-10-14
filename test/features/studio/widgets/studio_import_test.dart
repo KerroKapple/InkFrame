@@ -9,7 +9,8 @@ import 'package:inkframe/core/di/database_restore.dart';
 import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/project_archive.dart';
 import 'package:inkframe/core/interfaces/project_import_service.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/widgets/shell_tab_bar.dart';
 import 'package:inkframe/features/studio/controllers/studio_state.dart';
@@ -20,6 +21,7 @@ import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/primitives/ink_ghost_button.dart';
 
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/shell_app.dart';
 import '../../../helpers/recording_logger.dart';
 
@@ -40,15 +42,6 @@ class _FakeImportService implements ProjectImportService {
   }
 }
 
-class _RecordingToast implements ToastService {
-  final List<({String message, ToastKind kind})> shown = [];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) {
-    shown.add((message: message, kind: kind));
-  }
-}
-
 List<ProjectWithCanvases> get _oneProject => <ProjectWithCanvases>[
       ProjectWithCanvases(
         id: 'p1',
@@ -60,16 +53,21 @@ List<ProjectWithCanvases> get _oneProject => <ProjectWithCanvases>[
 
 void main() {
   late _FakeImportService service;
-  late _RecordingToast toast;
+  late RecordingToastService toast;
 
   setUp(() {
     service = _FakeImportService();
-    toast = _RecordingToast();
+    toast = RecordingToastService();
   });
 
-  List<Override> overrides({String? pickedPath, List<ProjectWithCanvases> projects = const []}) => [
+  /// [picker] 给了就用它（测 picker 自己炸），否则返回固定的 [pickedPath]。
+  List<Override> overrides({
+    String? pickedPath,
+    OpenFilePicker? picker,
+    List<ProjectWithCanvases> projects = const [],
+  }) => [
         workspaceProjectsProvider.overrideWith((_) async => projects),
-        openFilePickerProvider.overrideWithValue(() async => pickedPath),
+        openFilePickerProvider.overrideWithValue(picker ?? (() async => pickedPath)),
         projectImportServiceProvider.overrideWith((ref) async => service),
         toastServiceProvider.overrideWithValue(toast),
         loggerProvider.overrideWithValue(RecordingLogger()),
@@ -91,10 +89,16 @@ void main() {
   }
 
   /// 零项目：空态卡片里的「Import project…」，只 pump Studio 屏。
-  Future<ProviderContainer> pumpStudio(WidgetTester tester, {String? pickedPath}) async {
+  Future<ProviderContainer> pumpStudio(
+    WidgetTester tester, {
+    String? pickedPath,
+    OpenFilePicker? picker,
+  }) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final container = ProviderContainer(overrides: overrides(pickedPath: pickedPath));
+    final container = ProviderContainer(
+      overrides: overrides(pickedPath: pickedPath, picker: picker),
+    );
     addTearDown(container.dispose);
     await tester.pumpWidget(
       UncontrolledProviderScope(
@@ -130,7 +134,10 @@ void main() {
 
     expect(service.paths, <String>['C:/tmp/p.zip']);
     expect(find.text('Importing…'), findsNothing);
-    expect(toast.shown.single.message, 'Project imported');
+    expect(toast.shown.single.title, 'Project imported');
+    expect(toast.shown.single.kind, ToastKind.success);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '导入是分钟级的后台重操作，完成是「后台事件到达」——该响一声');
     expect(container.read(selectedProjectIdProvider), 'new-proj');
     expect(container.read(projectImportBusyProvider), isFalse);
   }, timeout: const Timeout(Duration(seconds: 30)));
@@ -150,8 +157,10 @@ void main() {
     for (int i = 0; i < 4; i++) {
       await tester.pump();
     }
-    expect(toast.shown.single.message, 'Not an InkFrame project archive');
+    expect(toast.shown.single.title, 'Not an InkFrame project archive');
     expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isTrue,
+        reason: '失败也是这次导入的结局，同样是「后台事件到达」');
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('还原 busy 时标签栏导入禁用（三大重操作互斥）', (tester) async {
@@ -178,8 +187,26 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(service.paths, <String>['C:/tmp/p.zip']);
-    expect(toast.shown.single.message, 'Project imported');
+    expect(toast.shown.single.title, 'Project imported');
+    expect(toast.shown.single.kind, ToastKind.success);
     expect(container.read(selectedProjectIdProvider), 'new-proj');
+  });
+
+  testWidgets('picker 自己炸 → 「导入失败」错误卡，不响（导入还没开始，是即时回应）',
+      (tester) async {
+    await pumpStudio(
+      tester,
+      picker: () async => throw StateError('platform picker exploded'),
+    );
+
+    await tester.tap(find.text('Import project…'));
+    await tester.pumpAndSettle();
+
+    expect(service.paths, isEmpty);
+    expect(toast.shown.single.title, 'Import failed');
+    expect(toast.shown.single.kind, ToastKind.error);
+    expect(toast.shown.single.chime, isFalse,
+        reason: 'chime 只给后台事件；选文件就失败是用户刚点那一下的回应');
   });
 
   testWidgets('零项目空态：还原 busy 时导入按钮同样禁用（与标签栏同一把互斥锁）',

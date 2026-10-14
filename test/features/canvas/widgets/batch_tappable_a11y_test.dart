@@ -17,32 +17,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/widgets/batch_slot_parts.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
-import 'package:inkframe/features/generation/services/toast_service.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/theme/components/ink_primitives.dart';
 import 'package:inkframe/theme/primitives/ink_activatable.dart';
 
 import '../../../_harness/a11y.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 const Key _action = Key('batch.tappable.action');
 const Key _statusWord = Key('batch.tappable.statusWord');
 
-class _RecordingToast implements ToastService {
-  final List<({String message, ToastKind kind})> calls =
-      <({String message, ToastKind kind})>[];
-
-  @override
-  void show(String message, {ToastKind kind = ToastKind.info}) =>
-      calls.add((message: message, kind: kind));
-}
-
 /// 可点的动作 + 一个不可点的状态词并排：Tab 必须落在前者、跳过后者。
 Future<void> _pump(
   WidgetTester tester, {
   required Future<void> Function() action,
-  required _RecordingToast toast,
+  required RecordingToastService toast,
 }) =>
     pumpInkApp(
       tester,
@@ -73,9 +66,9 @@ Future<void> _pump(
     );
 
 void main() {
-  late _RecordingToast toast;
+  late RecordingToastService toast;
 
-  setUp(() => toast = _RecordingToast());
+  setUp(() => toast = RecordingToastService());
 
   testWidgets('可点的动作：Tab 到得了', (tester) async {
     await _pump(tester, toast: toast, action: () async {});
@@ -95,7 +88,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(runs, 1, reason: '回车必须和鼠标点击走同一条动作');
-    expect(toast.calls, isEmpty, reason: '动作成功不该弹 toast');
+    expect(toast.shown, isEmpty, reason: '动作成功不该弹 toast');
   });
 
   testWidgets('键盘激活失败 → 照旧落 toast（换壳不许换掉动作的执行口）',
@@ -110,11 +103,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      toast.calls.map((e) => e.kind).toList(),
+      toast.kinds,
       <ToastKind>[ToastKind.error],
       reason: 'runBatchSlotAction 的「失败落 toast」在键盘路径上必须同样成立',
     );
-    expect(toast.calls.single.message, 'API key is missing');
+    expect(toast.shown.single.title, 'API key is missing');
+    expect(toast.shown.single.chime, isFalse,
+        reason: 'slot 动作是用户刚点的那一下，失败是即时回应，不是后台事件');
   });
 
   testWidgets('onTap == null：不挂手势、连焦点壳都没有', (tester) async {
