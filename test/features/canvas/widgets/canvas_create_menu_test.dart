@@ -7,6 +7,7 @@
 //   - 平移工具开着：端口不可拖（拖的是画布）。
 //   - 没选中的卡（端口只在悬停时亮）：按在端口上慢慢往外拖，指针先越出卡片盒——还是拖线，卡片不被拖走（B2）。
 //   - 双击空白 / Tab / 空白处右键「新建…」：开的是同一个新建菜单（不带上下文）。
+//   - 空白处右键在抬起时开、锚点是按下点；按住右键拖动（拖画布）不开（B4）。
 //   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
 //   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
 //   - 从菜单开的对话框（泳道 / 导入脚本…）一打开就持焦，按键不穿到框后面的画布上（B1）；画布所在的路由上面
@@ -711,6 +712,41 @@ void main() {
 
       expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
       _expectPlainCreateMenuAt(tester, p);
+    });
+
+    // B4：原来右键一按下就开菜单——按住右键拖会把画布拖走，菜单还钉在原处。
+    testWidgets('空白处按住右键拖动：不开右键菜单（拖的是画布）', (tester) async {
+      await _pump(tester);
+      final TestGesture drag = await tester.startGesture(
+        const Offset(700, 500),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pump();
+      await drag.moveBy(const Offset(60, 0));
+      await tester.pump();
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing, reason: '按下 / 拖动时都不开');
+
+      await drag.up();
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing, reason: '挪出了点击容差：抬起也不开');
+    });
+
+    testWidgets('空白处右键单击：抬起时开，锚点是按下的那一点（容差内的手抖不挪锚点）', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      final TestGesture click = await tester.startGesture(
+        p,
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pump();
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing, reason: '按下时还不开');
+
+      await click.moveBy(const Offset(0.8, 0));
+      await click.up();
+      await tester.pumpAndSettle();
+      _expectMenuAt(tester, CanvasMenuKeys.blankMenu, p);
     });
 
     testWidgets('空白处右键菜单「全选」：选中画布上全部节点', (tester) async {

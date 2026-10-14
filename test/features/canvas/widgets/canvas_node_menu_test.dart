@@ -2,6 +2,7 @@
 // canvas_tool_actions / view_in_sequence / canvas_node_delete 的动作。
 //
 //   - 右键一张没选中的卡：先单选它，菜单开在按下点；右键已在多选里的卡：保持多选。
+//   - 右键在抬起时开；在卡片上按住右键拖动不开菜单、不改选中（B4）。
 //   - 各项的可用 / 置灰（不隐藏）条件。
 //   - 生成：先冲挂起的写入，再交空补丁走 submit。
 //   - 复制一份：类型 / typeConfig / 泳道 / 偏移 / 标签后缀，新节点单选、不挪相机，不复制边；多选每张配置卡各一份。
@@ -431,6 +432,25 @@ void main() {
 
       expect(_selection(c), <String>{'img', 'vid'});
       expect(_menu, findsOneWidget);
+    });
+
+    // B4：原来右键一按下就开菜单——按住右键拖会把画布拖走，菜单还钉在原处。
+    testWidgets('在卡片上按住右键拖动：不开节点菜单，选中不变', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final TestGesture drag = await tester.startGesture(
+        tester.getCenter(_card('img')),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pump();
+      await drag.moveBy(const Offset(60, 0));
+      await tester.pump();
+      expect(_menu, findsNothing, reason: '按下 / 拖动时都不开');
+
+      await drag.up();
+      await tester.pumpAndSettle();
+      expect(_menu, findsNothing, reason: '挪出了点击容差：抬起也不开');
+      expect(_selection(c), isEmpty, reason: '不是右键单击：不改选中');
     });
 
     testWidgets('右键卡片不开空白处右键菜单；点菜单外面关掉', (tester) async {
