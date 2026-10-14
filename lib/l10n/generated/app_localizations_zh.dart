@@ -1664,6 +1664,32 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasBlankMenuFitView => '适应视图';
 
   @override
+  String get canvasNodeMenuGenerate => '生成';
+
+  @override
+  String get canvasNodeMenuDuplicate => '复制一份';
+
+  @override
+  String get canvasNodeMenuSaveAsCharacter => '存为角色';
+
+  @override
+  String get canvasNodeMenuAddToLane => '加入泳道';
+
+  @override
+  String get canvasNodeMenuRemoveFromLane => '移出泳道';
+
+  @override
+  String get canvasNodeMenuLocateInSequence => '在序列中定位';
+
+  @override
+  String get canvasNodeMenuDelete => '删除';
+
+  @override
+  String canvasNodeCopyName(String name) {
+    return '$name 副本';
+  }
+
+  @override
   String get leftRailOutline => '大纲';
 
   @override
@@ -2766,6 +2792,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasOpenCreateMenu => '新建…';
+
+  @override
+  String get settingsShortcutCanvasDuplicate => '复制一份';
+
+  @override
+  String get settingsShortcutCanvasGenerate => '运行选中';
+
+  @override
+  String get settingsShortcutCanvasFitAll => '适应全部';
+
+  @override
+  String get settingsShortcutCanvasFitSelection => '适应选中';
 
   @override
   String get settingsPerformanceConcurrencyTitle => '并发与配额';

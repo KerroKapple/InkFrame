@@ -3146,11 +3146,59 @@ abstract class AppLocalizations {
   /// **'Select all'**
   String get canvasBlankMenuSelectAll;
 
-  /// Canvas right-click menu on empty space: same as the Fit cell of the zoom bar (back to the default camera)
+  /// Canvas right-click menu on empty space: same as the Fit cell of the zoom bar and Shift+1 — zooms out (never in) so every node on the canvas fits in view
   ///
   /// In en, this message translates to:
   /// **'Fit view'**
   String get canvasBlankMenuFitView;
+
+  /// Canvas right-click menu on a node: generate from this image / video config node (same as Generate on the prompt bar). Greyed out unless exactly one config node with a non-empty prompt is targeted
+  ///
+  /// In en, this message translates to:
+  /// **'Generate'**
+  String get canvasNodeMenuGenerate;
+
+  /// Canvas right-click menu on a node: copy each selected config node (same type, settings and lane), placed slightly down and to the right. Links and results are not copied
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get canvasNodeMenuDuplicate;
+
+  /// Canvas right-click menu on a result node with an image: create a project character from that image (asks for a name first)
+  ///
+  /// In en, this message translates to:
+  /// **'Save as character'**
+  String get canvasNodeMenuSaveAsCharacter;
+
+  /// Canvas right-click menu on a node: opens a submenu listing this canvas's lanes; picking one moves the selected nodes into it
+  ///
+  /// In en, this message translates to:
+  /// **'Add to lane'**
+  String get canvasNodeMenuAddToLane;
+
+  /// Last item of the Add to lane submenu: take the selected nodes out of their lanes
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from lane'**
+  String get canvasNodeMenuRemoveFromLane;
+
+  /// Canvas right-click menu on a node: switch to the Sequence tab and move the playhead to the shot this node belongs to
+  ///
+  /// In en, this message translates to:
+  /// **'Locate in sequence'**
+  String get canvasNodeMenuLocateInSequence;
+
+  /// Canvas right-click menu on a node: delete the selected nodes (an Undo notification follows)
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get canvasNodeMenuDelete;
+
+  /// Name given to a node made by Duplicate: the original node's name plus a copy suffix
+  ///
+  /// In en, this message translates to:
+  /// **'{name} copy'**
+  String canvasNodeCopyName(String name);
 
   /// Canvas left sidebar: the Outline page — rail button tooltip and the panel title
   ///
@@ -5095,6 +5143,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'New…'**
   String get settingsShortcutCanvasOpenCreateMenu;
+
+  /// Settings > Shortcuts row for Ctrl+D / ⌘D: copy the selected config nodes on the canvas
+  ///
+  /// In en, this message translates to:
+  /// **'Duplicate'**
+  String get settingsShortcutCanvasDuplicate;
+
+  /// Settings > Shortcuts row for Ctrl+Enter / ⌘↵: generate from the one selected image / video config node on the canvas
+  ///
+  /// In en, this message translates to:
+  /// **'Run selected'**
+  String get settingsShortcutCanvasGenerate;
+
+  /// Settings > Shortcuts row for Shift+1: zoom out (never in) so every node on the canvas fits in view
+  ///
+  /// In en, this message translates to:
+  /// **'Fit all'**
+  String get settingsShortcutCanvasFitAll;
+
+  /// Settings > Shortcuts row for Shift+2: zoom out (never in) so the selected nodes fit in view
+  ///
+  /// In en, this message translates to:
+  /// **'Fit selection'**
+  String get settingsShortcutCanvasFitSelection;
 
   /// No description provided for @settingsPerformanceConcurrencyTitle.
   ///

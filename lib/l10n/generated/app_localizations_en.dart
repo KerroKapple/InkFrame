@@ -1737,6 +1737,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get canvasBlankMenuFitView => 'Fit view';
 
   @override
+  String get canvasNodeMenuGenerate => 'Generate';
+
+  @override
+  String get canvasNodeMenuDuplicate => 'Duplicate';
+
+  @override
+  String get canvasNodeMenuSaveAsCharacter => 'Save as character';
+
+  @override
+  String get canvasNodeMenuAddToLane => 'Add to lane';
+
+  @override
+  String get canvasNodeMenuRemoveFromLane => 'Remove from lane';
+
+  @override
+  String get canvasNodeMenuLocateInSequence => 'Locate in sequence';
+
+  @override
+  String get canvasNodeMenuDelete => 'Delete';
+
+  @override
+  String canvasNodeCopyName(String name) {
+    return '$name copy';
+  }
+
+  @override
   String get leftRailOutline => 'Outline';
 
   @override
@@ -2893,6 +2919,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasOpenCreateMenu => 'New…';
+
+  @override
+  String get settingsShortcutCanvasDuplicate => 'Duplicate';
+
+  @override
+  String get settingsShortcutCanvasGenerate => 'Run selected';
+
+  @override
+  String get settingsShortcutCanvasFitAll => 'Fit all';
+
+  @override
+  String get settingsShortcutCanvasFitSelection => 'Fit selection';
 
   @override
   String get settingsPerformanceConcurrencyTitle => 'Concurrency and quota';

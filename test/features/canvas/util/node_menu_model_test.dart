@@ -3,7 +3,6 @@
 //
 // 变异对照：拿掉 isGenerableNode 的任一条（配置节点 / image·video / 提示词不空）、generationTarget 的「恰好一张」、
 // duplicateSources 的「只要配置节点」、characterSource 的「带图的产物」，对应用例当场红。
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/models/style_lane.dart';
@@ -25,7 +24,7 @@ CanvasNode _config(
       canvasId: 'c1',
       laneId: laneId,
       position: position,
-      typeConfig: <String, Object?>{if (prompt != null) 'prompt': prompt},
+      typeConfig: <String, Object?>{'prompt': ?prompt},
     );
 
 CanvasNode _result(String id, {String? imageUrl, String? videoUrl, String? laneId}) => CanvasNode(
@@ -37,8 +36,8 @@ CanvasNode _result(String id, {String? imageUrl, String? videoUrl, String? laneI
       canvasId: 'c1',
       laneId: laneId,
       typeConfig: <String, Object?>{
-        if (imageUrl != null) 'image_url': imageUrl,
-        if (videoUrl != null) 'video_url': videoUrl,
+        'image_url': ?imageUrl,
+        'video_url': ?videoUrl,
       },
     );
 
