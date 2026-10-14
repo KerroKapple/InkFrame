@@ -1234,15 +1234,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Create a sample project to explore the canvas, or start from an empty Studio.';
 
   @override
-  String get canvasRenderQueue => 'Render Queue';
-
-  @override
-  String get canvasRenderQueueExpand => 'Expand render queue';
-
-  @override
-  String get canvasRenderQueueCollapse => 'Collapse render queue';
-
-  @override
   String get canvasEmptyTitle => 'This canvas is empty';
 
   @override
@@ -1264,16 +1255,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get canvasRenderQueueEmpty => 'No active renders';
-
-  @override
   String get canvasRenderQueueStatusQueued => 'Queued';
 
   @override
   String get canvasRenderQueueCancel => 'Cancel job';
-
-  @override
-  String get canvasRenderQueueFailures => 'Recent failures';
 
   @override
   String get windowMinimize => 'Minimize';
@@ -1827,9 +1812,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get leftRailCharacterFilterHint => 'Search characters…';
 
   @override
-  String get canvasHeaderLanes => 'Lanes:';
-
-  @override
   String get canvasZoomFit => 'Fit';
 
   @override
@@ -1853,10 +1835,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorTabProperties => 'Properties';
 
   @override
-  String get inspectorTabStatus => 'Status';
+  String get inspectorTabHistory => 'History';
 
   @override
-  String get inspectorTabHistory => 'History';
+  String inspectorHistoryHeading(String name) {
+    return 'All takes of $name';
+  }
+
+  @override
+  String inspectorHistoryTake(int number) {
+    return 'Take $number';
+  }
+
+  @override
+  String inspectorHistorySeed(int seed) {
+    return 'Seed $seed';
+  }
+
+  @override
+  String get inspectorHistoryInUse => 'In use';
+
+  @override
+  String get inspectorHistoryEmpty => 'Nothing generated yet';
 
   @override
   String get inspectorNoSelection => 'Select a node to edit its parameters';
@@ -1866,28 +1866,33 @@ class AppLocalizationsEn extends AppLocalizations {
       'Parameters follow the selected node';
 
   @override
-  String get renderQueueTabExportHistory => 'Export history';
+  String taskCapsuleRunning(int count) {
+    return 'Generating $count';
+  }
 
   @override
-  String get renderQueueColTask => 'Task';
+  String taskCapsuleQueued(int count) {
+    return 'Queued $count';
+  }
 
   @override
-  String get renderQueueColType => 'Type';
+  String taskCapsuleTotal(int count) {
+    return 'Tasks $count';
+  }
 
   @override
-  String get renderQueueColProgress => 'Progress';
+  String taskCapsuleFailed(int count) {
+    return 'Failed $count';
+  }
 
   @override
-  String get renderQueueColElapsed => 'Elapsed';
-
-  @override
-  String get renderQueueColModel => 'Model';
+  String get taskPopoverTitle => 'Tasks';
 
   @override
   String get renderQueueClearDone => 'Clear finished';
 
   @override
-  String get renderQueueStatusRunning => 'Rendering';
+  String get renderQueueStatusRunning => 'Generating';
 
   @override
   String get renderQueueStatusDone => 'Done';
@@ -1919,10 +1924,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get shellActionImportScript => 'Import script';
-
-  @override
-  String get shellActionSequencePreview => 'Sequence preview';
+  String get shellActionViewInSequence => 'View in sequence';
 
   @override
   String get shellActionExportVideo => 'Export video';

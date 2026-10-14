@@ -1,7 +1,8 @@
-// CanvasHeaderBar：画布头 29px（稿 28 + 1px 下沿）——画布名 | 竖线 | 泳道名 | 撑开 | 缩放 %。
-// 稿右侧还有「自动保存 · 2 秒前」：仓库没有自动保存状态，不画（缺什么问用户）。
+// CanvasZoomBar：舞台左下的浮动缩放条（缩小 / % / 放大 / 适应），绑定 canvasTransformController。
 //
-// CanvasZoomBar：左下浮动缩放条（缩小 / % / 放大 / 适应），绑定 canvasTransformController。
+// 原来和画布头（CanvasHeaderBar）住在同一个文件。PR-6 页签去重把画布头整条删了（画布名在面包屑里，
+// 泳道名写在泳道上，缩放比例就在这条上），缩放条搬到自己的文件，内容不变。
+//
 // 缩小 / 放大画图标集 v1 的 zoomOut / zoomIn（原来是「−」「+」两个字符）；四格都走
 // InkActivatable——Tab 可达、Enter / Space 激活，图标格的名字由 semanticLabel + tooltip 说出。
 import 'package:flutter/material.dart';
@@ -13,86 +14,8 @@ import '../../../theme/components/ink_icon.dart';
 import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
-import '../models/style_lane.dart';
-import '../providers/canvas_lanes_controller.dart';
 import '../providers/canvas_transform_controller.dart';
-import '../providers/current_canvas_name.dart';
 import '../util/canvas_zoom.dart';
-
-class CanvasHeaderBar extends ConsumerWidget {
-  const CanvasHeaderBar({super.key, required this.canvasId});
-
-  final String canvasId;
-
-  /// 稿是 content-box：height 28 + border-bottom 1。
-  static const double height = 29;
-
-  /// 画布名的宽度上限：稿上画布名与泳道列表共用左侧，超长名在这里省略，不挤缩放读数。
-  static const double nameMaxWidth = 240;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final c = context.inkColors;
-    final t = context.inkTypography;
-    final l = context.l10n;
-    final String name = ref.watch(currentCanvasNameProvider).valueOrNull ?? l.canvasDefaultName;
-    final List<StyleLane> lanes =
-        ref.watch(canvasLanesControllerProvider(canvasId)).valueOrNull ?? const <StyleLane>[];
-    final TransformationController transform = ref.watch(canvasTransformControllerProvider(canvasId));
-
-    return Container(
-      height: height,
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
-      decoration: BoxDecoration(
-        color: c.surface2,
-        border: Border(bottom: BorderSide(color: c.borderStrong)),
-      ),
-      child: Row(
-        children: <Widget>[
-          // 画布名不参与 flex（它一参与就会和右侧 Spacer 均分宽度，把缩放读数推离中线——
-          // 画布 golden 抓到过），只封一个上限：超长时在 [nameMaxWidth] 处单行省略。
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: nameMaxWidth),
-            child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: t.bodyStrong.copyWith(color: c.fg1)),
-          ),
-          if (lanes.isNotEmpty) ...<Widget>[
-            const SizedBox(width: InkSpacing.s12),
-            Container(width: 1, height: 12, color: c.control),
-            const SizedBox(width: InkSpacing.s12),
-            Flexible(
-              child: Text.rich(
-                TextSpan(
-                  style: t.body.copyWith(color: c.fg5),
-                  children: <InlineSpan>[
-                    TextSpan(text: l.canvasHeaderLanes),
-                    for (int i = 0; i < lanes.length; i++) ...<InlineSpan>[
-                      if (i > 0) const TextSpan(text: ' · '),
-                      TextSpan(
-                        text: lanes[i].label.isEmpty ? l.laneUntitled : lanes[i].label,
-                        style: TextStyle(color: c.fg3),
-                      ),
-                    ],
-                  ],
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-          const Spacer(),
-          ValueListenableBuilder<Matrix4>(
-            valueListenable: transform,
-            builder: (BuildContext context, Matrix4 m, _) => Text(
-              '${(scaleOf(m) * 100).round()}%',
-              style: t.mono.copyWith(color: c.fg5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class CanvasZoomBar extends ConsumerWidget {
   const CanvasZoomBar({super.key, required this.canvasId});

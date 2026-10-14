@@ -11,10 +11,14 @@
 // 【2026-10-14 又删一件】`InkUnderlineField`（1px 底线的 22px 字段）最后一个消费点是
 // 左栏旧项目面板 canvas_project_panel.dart 的筛选框；左栏换成图标导航条后筛选框按稿是
 // 填色带边框的盒子，它就没人用了——同一道闸点出来的。
+// 【同日再删】`InkPanelMenuGlyph`（面板标题条右侧的「≡」）：最后一个消费点是检查器页签条，
+// 去重 PR 按稿把页签条改成「属性 / 历史」两页、右侧不再放「≡」。
 import 'package:flutter/widgets.dart';
 
 import '../app_theme.dart';
+import '../icons/ink_glyph.dart';
 import '../tokens.dart';
+import 'ink_icon.dart';
 
 /// 28px 面板标题条：选中项 surface3 底 + 1px accent 上边，其余 fg5；右侧可挂动作。
 class InkPanelTabs extends StatelessWidget {
@@ -96,39 +100,40 @@ class InkPanelTabs extends StatelessWidget {
   }
 }
 
-/// 面板标题条右侧的「≡」。
-class InkPanelMenuGlyph extends StatelessWidget {
-  const InkPanelMenuGlyph({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.inkColors;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
-      child: Center(child: Text('≡', style: context.inkTypography.body.copyWith(color: c.fg6))),
-    );
-  }
-}
-
 /// 次级按钮：透明底 + 1px controlStrong 边 + 3px 圆角。
 class InkSecondaryButton extends StatelessWidget {
-  /// [height] 为稿上 content 高，实际 +2 边框。
-  const InkSecondaryButton(this.label, {super.key, this.height = 24});
+  /// [height] 为稿上 content 高，实际 +2 边框。[leading] 非空时文字左边带一个 14px 图标
+  /// （稿：标签栏「在序列中查看」——左右内边距收成 10，图标与文字间距 6，图标与字同为 fg2）。
+  const InkSecondaryButton(this.label, {super.key, this.height = 24, this.leading});
   final String label;
   final double height;
+  final InkGlyph? leading;
 
   @override
   Widget build(BuildContext context) {
     final c = context.inkColors;
+    final Widget text = Text(label, style: context.inkTypography.body.copyWith(color: c.fg2));
+    final InkGlyph? glyph = leading;
     return Container(
       height: height + 2,
-      padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
+      padding: EdgeInsets.symmetric(
+        horizontal: glyph == null ? InkSpacing.s12 : InkSpacing.s10,
+      ),
       decoration: BoxDecoration(
         border: Border.all(color: c.controlStrong),
         borderRadius: BorderRadius.circular(InkRadius.s3),
       ),
       alignment: Alignment.center,
-      child: Text(label, style: context.inkTypography.body.copyWith(color: c.fg2)),
+      child: glyph == null
+          ? text
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                InkIcon(glyph, size: InkIconSize.s14, color: c.fg2),
+                const SizedBox(width: InkSpacing.s6),
+                text,
+              ],
+            ),
     );
   }
 }

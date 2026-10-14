@@ -2258,24 +2258,6 @@ abstract class AppLocalizations {
   /// **'Create a sample project to explore the canvas, or start from an empty Studio.'**
   String get onboardingStepSampleBody;
 
-  /// No description provided for @canvasRenderQueue.
-  ///
-  /// In en, this message translates to:
-  /// **'Render Queue'**
-  String get canvasRenderQueue;
-
-  /// No description provided for @canvasRenderQueueExpand.
-  ///
-  /// In en, this message translates to:
-  /// **'Expand render queue'**
-  String get canvasRenderQueueExpand;
-
-  /// No description provided for @canvasRenderQueueCollapse.
-  ///
-  /// In en, this message translates to:
-  /// **'Collapse render queue'**
-  String get canvasRenderQueueCollapse;
-
   /// No description provided for @canvasEmptyTitle.
   ///
   /// In en, this message translates to:
@@ -2312,29 +2294,17 @@ abstract class AppLocalizations {
   /// **'{count} selected'**
   String canvasSelectionCount(int count);
 
-  /// No description provided for @canvasRenderQueueEmpty.
-  ///
-  /// In en, this message translates to:
-  /// **'No active renders'**
-  String get canvasRenderQueueEmpty;
-
   /// No description provided for @canvasRenderQueueStatusQueued.
   ///
   /// In en, this message translates to:
   /// **'Queued'**
   String get canvasRenderQueueStatusQueued;
 
-  /// Render queue — tooltip/label on the per-job cancel control that stops a running or queued generation
+  /// Tasks popover above the status-bar task capsule — tooltip on the per-job cancel link that stops a running or queued generation
   ///
   /// In en, this message translates to:
   /// **'Cancel job'**
   String get canvasRenderQueueCancel;
-
-  /// Render queue — section header above the recently-failed jobs list
-  ///
-  /// In en, this message translates to:
-  /// **'Recent failures'**
-  String get canvasRenderQueueFailures;
 
   /// Window chrome minimize button a11y label
   ///
@@ -3290,12 +3260,6 @@ abstract class AppLocalizations {
   /// **'Search characters…'**
   String get leftRailCharacterFilterHint;
 
-  /// No description provided for @canvasHeaderLanes.
-  ///
-  /// In en, this message translates to:
-  /// **'Lanes:'**
-  String get canvasHeaderLanes;
-
   /// No description provided for @canvasZoomFit.
   ///
   /// In en, this message translates to:
@@ -3338,17 +3302,41 @@ abstract class AppLocalizations {
   /// **'Properties'**
   String get inspectorTabProperties;
 
-  /// No description provided for @inspectorTabStatus.
-  ///
-  /// In en, this message translates to:
-  /// **'Status'**
-  String get inspectorTabStatus;
-
   /// No description provided for @inspectorTabHistory.
   ///
   /// In en, this message translates to:
   /// **'History'**
   String get inspectorTabHistory;
+
+  /// Inspector History tab — caption above the take list; {name} is the config node the takes were generated from
+  ///
+  /// In en, this message translates to:
+  /// **'All takes of {name}'**
+  String inspectorHistoryHeading(String name);
+
+  /// Inspector History tab — one generated result; numbered oldest first, so the first one ever generated is Take 1
+  ///
+  /// In en, this message translates to:
+  /// **'Take {number}'**
+  String inspectorHistoryTake(int number);
+
+  /// Inspector History tab — the seed a take was generated with (only shown when it was recorded)
+  ///
+  /// In en, this message translates to:
+  /// **'Seed {seed}'**
+  String inspectorHistorySeed(int seed);
+
+  /// Inspector History tab — marks a take that feeds another node downstream (as its first frame, last frame or reference)
+  ///
+  /// In en, this message translates to:
+  /// **'In use'**
+  String get inspectorHistoryInUse;
+
+  /// No description provided for @inspectorHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing generated yet'**
+  String get inspectorHistoryEmpty;
 
   /// No description provided for @inspectorNoSelection.
   ///
@@ -3362,41 +3350,35 @@ abstract class AppLocalizations {
   /// **'Parameters follow the selected node'**
   String get inspectorHintFollowsSelection;
 
-  /// No description provided for @renderQueueTabExportHistory.
+  /// Status-bar task capsule — number of jobs generating right now
   ///
   /// In en, this message translates to:
-  /// **'Export history'**
-  String get renderQueueTabExportHistory;
+  /// **'Generating {count}'**
+  String taskCapsuleRunning(int count);
 
-  /// No description provided for @renderQueueColTask.
+  /// Status-bar task capsule — number of jobs waiting for a slot
   ///
   /// In en, this message translates to:
-  /// **'Task'**
-  String get renderQueueColTask;
+  /// **'Queued {count}'**
+  String taskCapsuleQueued(int count);
 
-  /// No description provided for @renderQueueColType.
+  /// Status-bar task capsule when every job has finished — how many finished jobs are still listed
   ///
   /// In en, this message translates to:
-  /// **'Type'**
-  String get renderQueueColType;
+  /// **'Tasks {count}'**
+  String taskCapsuleTotal(int count);
 
-  /// No description provided for @renderQueueColProgress.
+  /// Status-bar task capsule when every job has finished — how many of them failed
   ///
   /// In en, this message translates to:
-  /// **'Progress'**
-  String get renderQueueColProgress;
+  /// **'Failed {count}'**
+  String taskCapsuleFailed(int count);
 
-  /// No description provided for @renderQueueColElapsed.
+  /// No description provided for @taskPopoverTitle.
   ///
   /// In en, this message translates to:
-  /// **'Elapsed'**
-  String get renderQueueColElapsed;
-
-  /// No description provided for @renderQueueColModel.
-  ///
-  /// In en, this message translates to:
-  /// **'Model'**
-  String get renderQueueColModel;
+  /// **'Tasks'**
+  String get taskPopoverTitle;
 
   /// No description provided for @renderQueueClearDone.
   ///
@@ -3407,7 +3389,7 @@ abstract class AppLocalizations {
   /// No description provided for @renderQueueStatusRunning.
   ///
   /// In en, this message translates to:
-  /// **'Rendering'**
+  /// **'Generating'**
   String get renderQueueStatusRunning;
 
   /// No description provided for @renderQueueStatusDone.
@@ -3452,17 +3434,11 @@ abstract class AppLocalizations {
   /// **'{count} projects'**
   String statusBarProjects(int count);
 
-  /// No description provided for @shellActionImportScript.
+  /// Tab-bar button on the Canvas tab — switches to the Sequence tab and moves the playhead to the shot of the selected node
   ///
   /// In en, this message translates to:
-  /// **'Import script'**
-  String get shellActionImportScript;
-
-  /// No description provided for @shellActionSequencePreview.
-  ///
-  /// In en, this message translates to:
-  /// **'Sequence preview'**
-  String get shellActionSequencePreview;
+  /// **'View in sequence'**
+  String get shellActionViewInSequence;
 
   /// No description provided for @shellActionExportVideo.
   ///

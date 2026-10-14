@@ -4,8 +4,10 @@
 // 见那边的头注与 test/quality/no_reverse_layer_import_test.dart）。本层只管三件
 // 事：谁是当前标签、每格叫什么、点了去哪。另外两件（Workspace v2 稿）：
 // - after = 面包屑（标签 › 竖线 › 面包屑）
-// - actions = 画布标签且有画布时的三个按钮：导入脚本（对话框）/ 序列预览（= 序列标签）/
-//   导出视频（= 导出标签，主按钮）。序列与导出在本仓库已升格为标签，按钮只是稿上的快捷入口。
+// - actions = 画布标签且有画布时的两个按钮：在序列中查看（次级，带 sequence 图标：切到序列标签，
+//   并把播放头跳到当前选中节点所在的那一镜）/ 导出视频（= 导出标签，主按钮）。序列与导出在本仓库
+//   已升格为标签，按钮只是稿上的快捷入口。原来的「导入脚本」随 PR-6 页签去重撤掉——浮动工具条的
+//   「更多」里有同一个入口；「序列预览」改名「在序列中查看」，说的就是它真正做的事。
 //
 // 【标签条绝不进 chrome 的槽位】整条 InkWindowChrome 包在 DragToMoveArea 里，
 // 其 onDoubleTap 让其中任何单击等满 kDoubleTapTimeout(300ms)。标签是全应用最高
@@ -27,8 +29,6 @@
 // 即不可聚焦。#249 只改了 chip，这排动作还是裸 GestureDetector，同一条标签栏上
 // 两套语义；2026-10-10 抽出共用件后一起换过来（BOARD 210）。
 // 用例：test/features/shell/shell_tab_bar_actions_a11y_test.dart。
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -37,12 +37,13 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_shell_tab_bar.dart';
 import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/providers/canvas_focus_request.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_selection_controller.dart';
-import '../../canvas/providers/canvas_transform_controller.dart';
 import '../../export/delivery_keys.dart';
 import '../../export/models/delivery_plan.dart';
 import '../../export/open_export_dialog.dart';
@@ -56,13 +57,12 @@ import '../../sequence/models/sequence_lens.dart';
 import '../../sequence/providers/sequence_lens_provider.dart';
 import '../../sequence/providers/sequence_playhead.dart';
 import '../util/tab_availability.dart';
-import '../../canvas/util/node_position.dart';
 import '../../gallery/models/gallery_item.dart';
 import '../../gallery/providers/gallery_view.dart';
 import '../../gallery/widgets/gallery_actions.dart';
 import '../../../core/di/database_restore.dart';
 import '../../../core/di/project_archive.dart';
-import '../../storyboard/widgets/script_import_dialog.dart';
+import '../../storyboard/models/sequence_shot.dart';
 import '../../studio/project_import_flow.dart';
 import '../../studio/providers/project_export_busy.dart';
 import '../../studio/studio_home_screen.dart' show showStudioNewProjectDialog;
@@ -92,8 +92,7 @@ class ShellTabBar extends ConsumerWidget {
 
   static Key keyOf(ShellTab tab) => ValueKey<String>('shellTab-${tab.name}');
 
-  static const Key importScriptKey = Key('shellAction-importScript');
-  static const Key sequencePreviewKey = Key('shellAction-sequencePreview');
+  static const Key viewInSequenceKey = Key('shellAction-viewInSequence');
   static const Key exportVideoKey = Key('shellAction-exportVideo');
   static const Key importPackageKey = Key('shellAction-importPackage');
   static const Key newProjectKey = Key('shellAction-newProject');
@@ -161,9 +160,12 @@ class ShellTabBar extends ConsumerWidget {
               onTap: !canLocate
                   ? null
                   : () {
-                      // 与 galleryLocateInCanvas 同序：先切标签再选中。
+                      // 与 galleryLocateInCanvas 同一条路：切标签 + 挂起定位请求，画布落地时单选 + 居中
+                      // （从没进过画布标签时画布还没挂载，直接写选中会被 autoDispose 回收）。
                       nav.goTab(ShellTab.canvas);
-                      ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(lens.shots[shotIndex].nodeId);
+                      ref
+                          .read(canvasFocusRequestProvider.notifier)
+                          .request(canvasId: canvasId, nodeId: lens.shots[shotIndex].nodeId);
                     },
               child: Opacity(opacity: canLocate ? 1 : 0.5, child: InkSecondaryButton(l.shellActionLocateInCanvas)),
             ),
@@ -200,27 +202,13 @@ class ShellTabBar extends ConsumerWidget {
       actions: !showActions
           ? const <Widget>[]
           : <Widget>[
+              // 门控照旧：画布标签上有画布就可点（与原「序列预览」一样）；没有叙事链时序列标签
+              // 自己出「没有叙事链」的说明（sequence_tab.dart 的 hasNarrativeEdges）。
               _Action(
-                key: importScriptKey,
-                label: l.shellActionImportScript,
-                onTap: () => showScriptImportDialog(
-                  context,
-                  canvasId: canvasId,
-                  // 整条链从视口中心起铺（与画布工具条「更多 › 导入脚本…」同一种落点）。
-                  origin: pickViewportCenteredNodePosition(
-                    random: Random(),
-                    transform: ref.read(canvasTransformControllerProvider(canvasId)).value,
-                    viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
-                    nodeSize: defaultNodeSize(CanvasNodeType.shot),
-                  ),
-                ),
-                child: InkSecondaryButton(l.shellActionImportScript),
-              ),
-              _Action(
-                key: sequencePreviewKey,
-                label: l.shellActionSequencePreview,
-                onTap: () => nav.goTab(ShellTab.sequence),
-                child: InkSecondaryButton(l.shellActionSequencePreview),
+                key: viewInSequenceKey,
+                label: l.shellActionViewInSequence,
+                onTap: () => _viewInSequence(ref, canvasId),
+                child: InkSecondaryButton(l.shellActionViewInSequence, leading: InkGlyph.sequence),
               ),
               _Action(
                 key: exportVideoKey,
@@ -231,6 +219,27 @@ class ShellTabBar extends ConsumerWidget {
             ],
       items: _items(l, s, nav),
     );
+  }
+
+  /// 「在序列中查看」：切到序列标签；选中的节点在叙事链上 ⇒ 播放头跳到它那一镜。跳镜头走
+  /// selectShot——seekToken 自增，与点链表行同一个「用户 seek」入口，监视器据此换镜。没选中 /
+  /// 选中的不在链上 ⇒ 只切标签，播放头不动。
+  ///
+  /// 【临时订阅撑过这一帧】播放头是 autoDispose：序列标签第一次露面之前没有任何订阅者，裸 read
+  /// 写进去的值会在下一帧开头被 ProviderScope 回收——随后才 build 的序列屏订阅到的是一个全新的
+  /// 0 镜播放头，跳转等于没发生。listenManual 挂到这一帧画完（序列屏已经订阅上）再放手。
+  static void _viewInSequence(WidgetRef ref, String canvasId) {
+    final int index = shotIndexForSelection(
+      ref.read(sequenceLensProvider(canvasId)),
+      selection: ref.read(canvasSelectionControllerProvider(canvasId)),
+      nodes: ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[],
+    );
+    ref.read(shellControllerProvider.notifier).goTab(ShellTab.sequence);
+    if (index < 0) return;
+    final ProviderSubscription<SequencePlayhead> hold =
+        ref.listenManual<SequencePlayhead>(sequencePlayheadProvider(canvasId), (_, _) {});
+    ref.read(sequencePlayheadProvider(canvasId).notifier).selectShot(index);
+    WidgetsBinding.instance.addPostFrameCallback((_) => hold.close());
   }
 
   /// [lockedExcept] 非 null ⇒ 除它之外的每一格都**不可点 + 降 0.5**
@@ -406,4 +415,38 @@ class _Action extends StatelessWidget {
         focusRingRadius: BorderRadius.circular(InkRadius.s3),
         builder: (BuildContext context, bool hovered, bool focused) => child,
       );
+}
+
+/// 「在序列中查看」该跳到哪一镜：选中节点里链序最靠前的那一镜；没选中 / 都不在链上 ⇒ -1。
+///
+/// 一个节点「在」哪一镜（与 sequence_builder 的折叠同一口径）：
+///   - 它自己就是那一镜（shot.nodeId）；
+///   - 那一镜放的就是它（shot.artifactNodeId——选中的正是那张成片）；
+///   - 产物节点归到它的来源配置节点；配置节点若把产物借给了前面的 shot（折叠，不单独成镜），
+///     就落在借走它产物的那一镜上。
+int shotIndexForSelection(
+  SequenceLens lens, {
+  required Set<String> selection,
+  required List<CanvasNode> nodes,
+}) {
+  if (selection.isEmpty || lens.shots.isEmpty) return -1;
+  final Map<String, CanvasNode> byId = <String, CanvasNode>{for (final CanvasNode n in nodes) n.id: n};
+  int best = -1;
+  for (final String id in selection) {
+    final int i = _shotIndexOfNode(lens, id, byId);
+    if (i >= 0 && (best < 0 || i < best)) best = i;
+  }
+  return best;
+}
+
+int _shotIndexOfNode(SequenceLens lens, String id, Map<String, CanvasNode> byId) {
+  final CanvasNode? node = byId[id];
+  final String owner = node != null && node.role == NodeRole.result ? (node.sourceNodeId ?? id) : id;
+  for (int i = 0; i < lens.shots.length; i++) {
+    final SequenceShot shot = lens.shots[i];
+    if (shot.nodeId == owner || shot.artifactNodeId == id) return i;
+    final String? artifact = shot.artifactNodeId;
+    if (artifact != null && byId[artifact]?.sourceNodeId == owner) return i;
+  }
+  return -1;
 }

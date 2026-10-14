@@ -521,9 +521,6 @@
   "onboardingStepSampleTitle": "Start creating",
   "onboardingStepSampleBody": "Create a sample project to explore the canvas, or start from an empty Studio.",
 
-  "canvasRenderQueue": "Render Queue",
-  "canvasRenderQueueExpand": "Expand render queue",
-  "canvasRenderQueueCollapse": "Collapse render queue",
   "canvasEmptyTitle": "This canvas is empty",
   "canvasEmptySubtitle": "Add your first node to start storyboarding.",
   "canvasEmptyAddImage": "Add image node",
@@ -535,15 +532,10 @@
       "count": { "type": "int" }
     }
   },
-  "canvasRenderQueueEmpty": "No active renders",
   "canvasRenderQueueStatusQueued": "Queued",
   "canvasRenderQueueCancel": "Cancel job",
   "@canvasRenderQueueCancel": {
-    "description": "Render queue — tooltip/label on the per-job cancel control that stops a running or queued generation"
-  },
-  "canvasRenderQueueFailures": "Recent failures",
-  "@canvasRenderQueueFailures": {
-    "description": "Render queue — section header above the recently-failed jobs list"
+    "description": "Tasks popover above the status-bar task capsule — tooltip on the per-job cancel link that stops a running or queued generation"
   },
 
   "windowMinimize": "Minimize",
@@ -901,7 +893,6 @@
   "@leftRailCharacterFilterHint": {
     "description": "Placeholder of the filter field at the top of the Characters page; matches character names, case-insensitive"
   },
-  "canvasHeaderLanes": "Lanes:",
   "canvasZoomFit": "Fit",
   "canvasZoomIn": "Zoom in",
   "canvasZoomOut": "Zoom out",
@@ -910,18 +901,52 @@
   "promptBarChars": "{count} chars",
   "@promptBarChars": { "placeholders": { "count": { "type": "int" } } },
   "inspectorTabProperties": "Properties",
-  "inspectorTabStatus": "Status",
   "inspectorTabHistory": "History",
+  "inspectorHistoryHeading": "All takes of {name}",
+  "@inspectorHistoryHeading": {
+    "description": "Inspector History tab — caption above the take list; {name} is the config node the takes were generated from",
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "inspectorHistoryTake": "Take {number}",
+  "@inspectorHistoryTake": {
+    "description": "Inspector History tab — one generated result; numbered oldest first, so the first one ever generated is Take 1",
+    "placeholders": { "number": { "type": "int" } }
+  },
+  "inspectorHistorySeed": "Seed {seed}",
+  "@inspectorHistorySeed": {
+    "description": "Inspector History tab — the seed a take was generated with (only shown when it was recorded)",
+    "placeholders": { "seed": { "type": "int" } }
+  },
+  "inspectorHistoryInUse": "In use",
+  "@inspectorHistoryInUse": {
+    "description": "Inspector History tab — marks a take that feeds another node downstream (as its first frame, last frame or reference)"
+  },
+  "inspectorHistoryEmpty": "Nothing generated yet",
   "inspectorNoSelection": "Select a node to edit its parameters",
   "inspectorHintFollowsSelection": "Parameters follow the selected node",
-  "renderQueueTabExportHistory": "Export history",
-  "renderQueueColTask": "Task",
-  "renderQueueColType": "Type",
-  "renderQueueColProgress": "Progress",
-  "renderQueueColElapsed": "Elapsed",
-  "renderQueueColModel": "Model",
+  "taskCapsuleRunning": "Generating {count}",
+  "@taskCapsuleRunning": {
+    "description": "Status-bar task capsule — number of jobs generating right now",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "taskCapsuleQueued": "Queued {count}",
+  "@taskCapsuleQueued": {
+    "description": "Status-bar task capsule — number of jobs waiting for a slot",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "taskCapsuleTotal": "Tasks {count}",
+  "@taskCapsuleTotal": {
+    "description": "Status-bar task capsule when every job has finished — how many finished jobs are still listed",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "taskCapsuleFailed": "Failed {count}",
+  "@taskCapsuleFailed": {
+    "description": "Status-bar task capsule when every job has finished — how many of them failed",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "taskPopoverTitle": "Tasks",
   "renderQueueClearDone": "Clear finished",
-  "renderQueueStatusRunning": "Rendering",
+  "renderQueueStatusRunning": "Generating",
   "renderQueueStatusDone": "Done",
   "renderQueueStatusFailed": "Failed",
   "renderQueueStatusCancelled": "Cancelled",
@@ -933,8 +958,10 @@
   "@statusBarStorage": { "placeholders": { "path": { "type": "String" } } },
   "statusBarProjects": "{count} projects",
   "@statusBarProjects": { "placeholders": { "count": { "type": "int" } } },
-  "shellActionImportScript": "Import script",
-  "shellActionSequencePreview": "Sequence preview",
+  "shellActionViewInSequence": "View in sequence",
+  "@shellActionViewInSequence": {
+    "description": "Tab-bar button on the Canvas tab — switches to the Sequence tab and moves the playhead to the shot of the selected node"
+  },
   "shellActionExportVideo": "Export video",
   "shellMenuFile": "File",
   "shellMenuEdit": "Edit",

@@ -2,10 +2,13 @@
 //
 // 内容随当前标签：画布 = 项目 · 画布 / N 节点 · M 边 / 选中 K；Studio = N 个项目；
 // 其余标签只有右侧的存储路径 + 版本号。
+// 左侧各项之后是任务胶囊（shell_task_capsule.dart，PR-6 取代画布底栏的渲染队列）：job 是全局的，
+// 所以每个标签下都有；注册表空时胶囊连同它的间距一起不占位。点胶囊开任务弹层。
 //
 // 【条件 watch】画布计数只在 canvasId != null 时 watch 节点 / 边控制器——与画布标签体
 // 同条件，不额外炸开 boot 级测试的密封面；Studio 的项目数走 workspaceProjectsProvider
 //（外壳测试已密封为空表）。版本号 FutureProvider 失败（无平台通道）时留空。
+// 胶囊只 watch jobsRegistry（纯内存，不碰仓储），同样不扩大密封面。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -30,12 +33,16 @@ import '../../studio/models/project_with_canvases.dart';
 import '../../studio/providers/workspace_projects_provider.dart';
 import '../models/shell_state.dart';
 import '../providers/shell_controller.dart';
+import 'shell_task_capsule.dart';
 
 class ShellStatusBar extends ConsumerWidget {
   const ShellStatusBar({super.key});
 
   /// 稿是 content-box：height 22 + border-top 1。
   static const double height = 23;
+
+  /// 上沿描边（[height] 里的那 1px）。任务弹层按它算离状态栏上沿的距离。
+  static const double topBorder = 1;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -89,7 +96,7 @@ class ShellStatusBar extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s12),
       decoration: BoxDecoration(
         color: c.surface4,
-        border: Border(top: BorderSide(color: c.borderStrong)),
+        border: Border(top: BorderSide(color: c.borderStrong, width: topBorder)),
       ),
       child: Row(
         children: <Widget>[
@@ -97,6 +104,8 @@ class ShellStatusBar extends ConsumerWidget {
             if (i > 0) const SizedBox(width: InkSpacing.md),
             Flexible(child: Text(left[i], maxLines: 1, overflow: TextOverflow.ellipsis, style: style)),
           ],
+          // 任务胶囊紧跟左侧各项（画布标签下就在「选中 K」之后），项间距与左侧各项相同。
+          ShellTaskCapsule(leadingGap: left.isEmpty ? 0 : InkSpacing.md),
           const Spacer(),
           if (keyConfigured != null) ...<Widget>[
             Text(keyConfigured ? l.statusBarKeyConfigured : l.statusBarKeyMissing, style: style),
