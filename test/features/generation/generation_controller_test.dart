@@ -1127,7 +1127,8 @@ void main() {
       return cfg;
     }
 
-    void seedResult(String id, {required String source, String canvas = 'cvx'}) {
+    /// [slot] 非空：产物停在 config（100, 50）右侧那一列的第 slot 格上（生成时预建的落点）。
+    void seedResult(String id, {required String source, String canvas = 'cvx', int? slot}) {
       nodes.rows[id] = <String, Object?>{
         'id': id,
         'canvas_id': canvas,
@@ -1135,6 +1136,8 @@ void main() {
         'node_role': 'result',
         'source_node_id': source,
         'type_config': const <String, Object?>{},
+        if (slot != null) 'position_x': column,
+        if (slot != null) 'position_y': 50.0 + slot * (kNodeCardSize.height + kResultRowGap),
       };
     }
 
@@ -1162,12 +1165,12 @@ void main() {
       expect(nodes.creates.single['lane_id'], isNull);
     });
 
-    test('名下已有两个现存产物 → 新产物排第 3 格；别的 config / 别的画布的产物不算', () async {
+    test('前两格都有现存产物 → 新产物排第 3 格；别的 config / 别的画布的产物不算', () async {
       final cfg = await seedPlacedConfig();
-      seedResult('r-a', source: cfg);
-      seedResult('r-b', source: cfg);
-      seedResult('r-other-config', source: 'cfg-other');
-      seedResult('r-other-canvas', source: cfg, canvas: 'cvy');
+      seedResult('r-a', source: cfg, slot: 0);
+      seedResult('r-b', source: cfg, slot: 1);
+      seedResult('r-other-config', source: 'cfg-other', slot: 2);
+      seedResult('r-other-canvas', source: cfg, canvas: 'cvy', slot: 2);
 
       await buildCtrl().submitFromConfigNode(cfg);
 
@@ -1177,6 +1180,18 @@ void main() {
         created['position_y'],
         50.0 + 2 * (kNodeCardSize.height + kResultRowGap),
       );
+    });
+
+    test('删掉中间那一张后再生成：新产物补进空出来的格，不叠在最后一张上', () async {
+      final cfg = await seedPlacedConfig();
+      // 原来第 0、1、2 格各一张，第 0 格那张删了（软删的行不在 rows 里）。
+      seedResult('r-1', source: cfg, slot: 1);
+      seedResult('r-2', source: cfg, slot: 2);
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(nodes.creates.single['position_y'], 50.0,
+          reason: '原来按现存数量取第 2 格，正好叠在 r-2 上');
     });
 
     test('连着生成两次：第二个产物排到第一个下面一格', () async {

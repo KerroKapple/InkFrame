@@ -12,6 +12,7 @@ import 'package:inkframe/features/canvas/providers/canvas_selection_controller.d
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_prompt_bar.dart';
+import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/test_app.dart';
@@ -90,20 +91,35 @@ void main() {
     expect(baseStyle.right, closeTo(bar.right - 12 - 1, 1.5), reason: '基础风格贴右，不被平分到中间');
   });
 
-  group('宽度跟着舞台走', () {
+  group('宽度跟着舞台走；居中压不到左下缩放条时照常居中', () {
     for (final (double stage, double expected) in const <(double, double)>[
-      (697.0, 480.0), // 0.6 倍只有 418 → 下限
       (1014.0, 608.4), // 60%
       (1977.0, 880.0), // 0.6 倍 1186 → 上限
-      (500.0, 468.0), // 放不下 480 + 两侧 16 → 舞台宽减两侧 16
     ]) {
-      testWidgets('舞台 $stage → 条宽 $expected', (tester) async {
+      testWidgets('舞台 $stage → 条宽 $expected，居中', (tester) async {
         await _pumpInStage(tester, stage);
         expect(tester.getSize(_surface).width, closeTo(expected, 0.01));
         // 对齐壳居中：条子两侧到舞台边的距离相等。
         final Rect bar = tester.getRect(_surface);
         final Rect stageRect = tester.getRect(find.byType(CanvasPromptBar));
         expect(bar.left - stageRect.left, closeTo(stageRect.right - bar.right, 0.01));
+      });
+    }
+  });
+
+  group('居中会压到左下缩放条 / 泳道工具栏时：在右边那段里居中，放不下再收窄', () {
+    for (final (double stage, double width, double left) in const <(double, double, double)>[
+      // 窗宽 1280、左右栏都开：舞台 697，居中左沿只有 108.5——「适应」「+」整格被盖住。
+      (697.0, 480.0, 188.5), // 右边那段 697 − 176 − 16 = 505，480 放得下，在里面居中
+      (500.0, 308.0, 176.0), // 右边那段只剩 308：收窄到 308，贴着预留区右沿
+    ]) {
+      testWidgets('舞台 $stage → 条宽 $width、左沿 $left', (tester) async {
+        await _pumpInStage(tester, stage);
+        final Rect bar = tester.getRect(_surface);
+        final Rect stageRect = tester.getRect(find.byType(CanvasPromptBar));
+        expect(bar.width, closeTo(width, 0.01));
+        expect(bar.left - stageRect.left, closeTo(left, 0.01));
+        expect(bar.left - stageRect.left, greaterThanOrEqualTo(InkToolbarSize.stageBottomLeftReserve));
       });
     }
   });

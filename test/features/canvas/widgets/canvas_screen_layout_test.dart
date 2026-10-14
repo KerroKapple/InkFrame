@@ -64,11 +64,17 @@ void main() {
     expect(toolbar.top, closeTo(stage.top + InkSpacing.s12, 0.5));
     // 舞台顶部让出的那一条（初始相机、竖向泳道标题栏、顶部浮层都按它让位）要装得下整条工具条。
     expect(toolbar.bottom, lessThanOrEqualTo(stage.top + InkToolbarSize.stageTopInset));
+
     expect(toolbar.center.dx, closeTo(stage.center.dx, 0.5));
 
     final Rect zoom = tester.getRect(find.byType(CanvasZoomBar));
     expect(zoom.left, closeTo(stage.left + InkSpacing.s12, 0.5));
     expect(zoom.bottom, closeTo(stage.bottom - InkSpacing.s12, 0.5));
+    // 左下那一簇的预留宽度（提示词条居中会压到时让开它）：缩放条与叠在上面的泳道工具栏，右沿 + 一档
+    // 间隙都得落在里面。改了它们的宽度，这里会红——跟着改 InkToolbarSize.stageBottomLeftReserve。
+    final Rect lanes = tester.getRect(find.byType(LaneToolbar));
+    expect(zoom.right + InkSpacing.s12, lessThanOrEqualTo(stage.left + InkToolbarSize.stageBottomLeftReserve));
+    expect(lanes.right + InkSpacing.s12, lessThanOrEqualTo(stage.left + InkToolbarSize.stageBottomLeftReserve));
   }, timeout: const Timeout(Duration(seconds: 15)));
 
   testWidgets('舞台浮层给工具条与缩放条让位：连线提示从工具条下沿以下开始，泳道工具栏叠在缩放条之上',

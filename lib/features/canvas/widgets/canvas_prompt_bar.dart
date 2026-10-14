@@ -2,7 +2,8 @@
 //
 // 宽度跟着舞台走（util/prompt_bar_width.dart）：舞台宽 × 0.6，夹在 480–880；舞台窄于 512 时
 // 取舞台宽减两侧 16。可用宽度从 LayoutBuilder 读——canvas_screen 把条子挂在
-// Positioned(left: 0, right: 0, bottom: 16) > Center 下，最大宽度就是舞台宽。
+// Positioned(left: 0, right: 0, bottom: 16) 下，最大宽度就是舞台宽。水平位置照常居中，居中会压到左下
+// 缩放条 / 泳道工具栏时改在右边那段里居中（promptBarPlacement）。
 // surface4 @0.96 底 + control 边 + 6px 圆角 + 0 10 30 阴影，两行：
 //   行一 11px：6×6 琥珀方点 + 目标节点名 + 供应商 · 片长 · 运镜 | 右：基础风格 [prefix] 已附加
 //   行二：提示词正文（prompt 档 13/1.6，最小高 40）+ 字数 + 「生成 ⌘↵」（Windows 显示 Ctrl+Enter）
@@ -71,16 +72,25 @@ class CanvasPromptBar extends ConsumerWidget {
     // 最大可用宽度 = 舞台宽（见头注）。对齐壳自己居中、高度只包内容：父级给紧约束
     // （比如直接塞进定宽盒）也不会把条子撑满，父级多给的高度也不吃。
     return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) => Align(
-        alignment: Alignment.bottomCenter,
-        heightFactor: 1,
-        child: _PromptBarBody(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final Widget body = _PromptBarBody(
           key: ValueKey<String>(target.id),
           canvasId: canvasId,
           node: target,
-          width: promptBarWidth(constraints.maxWidth),
-        ),
-      ),
+          width: promptBarPlacement(constraints.maxWidth).width,
+        );
+        if (!constraints.maxWidth.isFinite) {
+          return Align(alignment: Alignment.bottomCenter, heightFactor: 1, child: body);
+        }
+        return Align(
+          alignment: Alignment.bottomLeft,
+          heightFactor: 1,
+          child: Padding(
+            padding: EdgeInsets.only(left: promptBarPlacement(constraints.maxWidth).left),
+            child: body,
+          ),
+        );
+      },
     );
   }
 }

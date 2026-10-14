@@ -599,7 +599,8 @@ class GenerationController {
   /// 起一缩放就和 config 错开（起始边 400、缩到 0.5 就差出 200px），产出线跟着歪；
   /// 同道则共用同一份分道位移，任何缩放下都贴在 config 右边。
   ///
-  /// 数不出现存产物（读库失败）就落第 0 格——落点只关乎好不好看，不值得拦下一次生成。
+  /// 落在这一列第一个空着的格（nextResultSlot）；读库失败就落第 0 格——落点只关乎好不好看，不值得
+  /// 拦下一次生成。
   Future<Offset> _resultPlacement({
     required Map<String, Object?> cfgRow,
     required String canvasId,
@@ -611,11 +612,15 @@ class GenerationController {
     );
     var index = 0;
     try {
-      index = liveResultCount(await nodes.listByCanvas(canvasId), configNodeId);
+      index = nextResultSlot(
+        await nodes.listByCanvas(canvasId),
+        configNodeId: configNodeId,
+        configPosition: configPosition,
+      );
     } on InkError catch (e) {
       logger?.warn(
         _logModule,
-        'existing result count failed; placing result at slot 0 (swallowed)',
+        'existing result slots unreadable; placing result at slot 0 (swallowed)',
         extra: {'config_node_id': configNodeId, 'reason': e.toString()},
       );
     }

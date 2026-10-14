@@ -90,4 +90,50 @@ void main() {
       expect(liveResultCount(const <Map<String, Object?>>[], 'cfg'), 0);
     });
   });
+
+  group('nextResultSlot', () {
+    Map<String, Object?> result(String id, int slot, {String source = 'cfg', Object? deletedAt}) {
+      final Offset at = resultNodePosition(configPosition: config, index: slot);
+      return <String, Object?>{
+        'id': id,
+        'node_role': 'result',
+        'source_node_id': source,
+        'deleted_at': deletedAt,
+        'position_x': at.dx,
+        'position_y': at.dy,
+      };
+    }
+
+    int next(List<Map<String, Object?>> rows) =>
+        nextResultSlot(rows, configNodeId: 'cfg', configPosition: config);
+
+    test('没有产物：第 0 格；前三格都有：第 3 格', () {
+      expect(next(const <Map<String, Object?>>[]), 0);
+      expect(next(<Map<String, Object?>>[result('r0', 0), result('r1', 1), result('r2', 2)]), 3);
+    });
+
+    test('删掉中间一张：补进空出来的那一格，不叠在最后一张上', () {
+      expect(
+        next(<Map<String, Object?>>[
+          result('r0', 0, deletedAt: DateTime.utc(2026)),
+          result('r1', 1),
+          result('r2', 2),
+        ]),
+        0,
+      );
+      // 原来按「现存数量」取第 k 格：数到 2，正好叠在 r2 上。
+      expect(next(<Map<String, Object?>>[result('r1', 1), result('r2', 2)]), 0);
+      expect(next(<Map<String, Object?>>[result('r0', 0), result('r2', 2)]), 1);
+    });
+
+    test('被拖离格位的产物不占格；别的 config 的产物也不算', () {
+      final Map<String, Object?> moved = <String, Object?>{
+        ...result('r1', 1),
+        'position_x': 2000.0,
+      };
+      expect(next(<Map<String, Object?>>[result('r0', 0), moved]), 1);
+      expect(next(<Map<String, Object?>>[result('x0', 0, source: 'cfg-2')]), 0);
+    });
+  });
+
 }
