@@ -199,6 +199,24 @@ void main() {
     expect(find.text('hello'), findsNothing);
   });
 
+  testWidgets('铃铛历史开着：卡片栈让位——不画、不可命中；关上后回来', (tester) async {
+    final ProviderContainer c = await _pumpLayer(tester);
+    _toasts(c).show('hello', kind: ToastKind.error);
+    await tester.pump();
+    await tester.pump(_settle);
+    expect(find.byType(InkToastCard), findsOneWidget);
+
+    c.read(toastCenterProvider.notifier).openHistory();
+    await tester.pump();
+    expect(find.byType(InkToastCard), findsNothing, reason: '面板开着时卡片栈应 offstage');
+    expect(find.byType(InkToastCard, skipOffstage: false), findsOneWidget,
+        reason: '只是让位，卡片状态仍在');
+
+    c.read(toastCenterProvider.notifier).closeHistory();
+    await tester.pump();
+    expect(find.byType(InkToastCard), findsOneWidget);
+  });
+
   testWidgets('× 关卡：淡出后移除', (tester) async {
     final ProviderContainer c = await _pumpLayer(tester);
     _toasts(c).show('boom', kind: ToastKind.error);

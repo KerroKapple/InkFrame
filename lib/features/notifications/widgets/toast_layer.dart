@@ -37,13 +37,13 @@ import 'job_notification_listener.dart';
 
 /// ToastKind → 呈现侧的类型（theme 层不认识 core 的枚举）。
 InkToastTone toastToneOf(ToastKind kind) => switch (kind) {
-      ToastKind.info => InkToastTone.info,
-      ToastKind.success => InkToastTone.success,
-      ToastKind.warning => InkToastTone.warning,
-      ToastKind.error => InkToastTone.error,
-      ToastKind.progress => InkToastTone.progress,
-      ToastKind.undo => InkToastTone.undo,
-    };
+  ToastKind.info => InkToastTone.info,
+  ToastKind.success => InkToastTone.success,
+  ToastKind.warning => InkToastTone.warning,
+  ToastKind.error => InkToastTone.error,
+  ToastKind.progress => InkToastTone.progress,
+  ToastKind.undo => InkToastTone.undo,
+};
 
 /// 缩略图绝对路径 → 按显示尺寸缩略解码的 ImageProvider（LB-23：别把原图整张塞进
 /// ImageCache）。卡片与铃铛历史共用。
@@ -51,12 +51,11 @@ ImageProvider<Object> toastThumbnailImage(
   BuildContext context,
   String absolutePath,
   double logicalSize,
-) =>
-    ResizeImage.resizeIfNeeded(
-      (logicalSize * MediaQuery.devicePixelRatioOf(context)).round(),
-      null,
-      FileImage(File(absolutePath)),
-    );
+) => ResizeImage.resizeIfNeeded(
+  (logicalSize * MediaQuery.devicePixelRatioOf(context)).round(),
+  null,
+  FileImage(File(absolutePath)),
+);
 
 class ToastLayer extends ConsumerStatefulWidget {
   const ToastLayer({super.key, required this.child});
@@ -96,10 +95,7 @@ class _ToastLayerState extends ConsumerState<ToastLayer> {
     return JobNotificationListener(
       child: Stack(
         fit: StackFit.expand,
-        children: <Widget>[
-          widget.child,
-          const _ToastStack(),
-        ],
+        children: <Widget>[widget.child, const _ToastStack()],
       ),
     );
   }
@@ -141,29 +137,36 @@ class _ToastStack extends ConsumerWidget {
       right: InkSpacing.md,
       bottom: ShellStatusBar.height,
       width: narrow ? null : InkToastSize.width,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: InkSpacing.md),
-        // MouseRegion 恒在树里：卡片栈被抽空时它若跟着卸载，onExit 就不会来，
-        // ToastCenter 会一直以为鼠标还停在上面。
-        child: MouseRegion(
-          hitTestBehavior: HitTestBehavior.deferToChild,
-          onEnter: (_) => center.setHovered(true),
-          onExit: (_) => center.setHovered(false),
-          child: Semantics(
-            container: any,
-            explicitChildNodes: true,
-            label: any ? context.l10n.toastRegion : null,
-            child: Material(
-              type: MaterialType.transparency,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: <Widget>[
-                  for (int i = 0; i < children.length; i++) ...<Widget>[
-                    if (i > 0) const SizedBox(height: InkSpacing.sm),
-                    children[i],
+      // 铃铛历史开着时卡片栈让位：不画、不接指针（同一批卡都在面板里），状态与动画照留。
+      // 用 Offstage 而不是拿掉子树——MouseRegion 留在树上，鼠标「离开」照常送达。
+      child: Visibility(
+        visible: !s.historyOpen,
+        maintainState: true,
+        maintainAnimation: true,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: InkSpacing.md),
+          // MouseRegion 恒在树里：卡片栈被抽空时它若跟着卸载，onExit 就不会来，
+          // ToastCenter 会一直以为鼠标还停在上面。
+          child: MouseRegion(
+            hitTestBehavior: HitTestBehavior.deferToChild,
+            onEnter: (_) => center.setHovered(true),
+            onExit: (_) => center.setHovered(false),
+            child: Semantics(
+              container: any,
+              explicitChildNodes: true,
+              label: any ? context.l10n.toastRegion : null,
+              child: Material(
+                type: MaterialType.transparency,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    for (int i = 0; i < children.length; i++) ...<Widget>[
+                      if (i > 0) const SizedBox(height: InkSpacing.sm),
+                      children[i],
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -175,11 +178,7 @@ class _ToastStack extends ConsumerWidget {
 
 /// 一张卡的进场 / 退场动画 + 接线（ToastEntry → InkToastCard）。
 class _ToastSlot extends ConsumerStatefulWidget {
-  const _ToastSlot({
-    super.key,
-    required this.entry,
-    required this.onDismiss,
-  });
+  const _ToastSlot({super.key, required this.entry, required this.onDismiss});
 
   final ToastEntry entry;
   final VoidCallback onDismiss;
@@ -190,10 +189,14 @@ class _ToastSlot extends ConsumerStatefulWidget {
 
 class _ToastSlotState extends ConsumerState<_ToastSlot>
     with TickerProviderStateMixin {
-  late final AnimationController _enter =
-      AnimationController(vsync: this, duration: InkMotion.normal);
-  late final AnimationController _exit =
-      AnimationController(vsync: this, duration: InkMotionSpring.popoverOut);
+  late final AnimationController _enter = AnimationController(
+    vsync: this,
+    duration: InkMotion.normal,
+  );
+  late final AnimationController _exit = AnimationController(
+    vsync: this,
+    duration: InkMotionSpring.popoverOut,
+  );
   bool _started = false;
   bool _reduce = false;
 

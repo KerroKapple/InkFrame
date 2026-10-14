@@ -169,7 +169,9 @@ class ToastCenter extends Notifier<ToastCenterState> implements ToastService {
     return const ToastCenterState();
   }
 
-  bool get _paused => _hovered || !_windowActive;
+  /// 停表的三种情况：鼠标停在卡片栈上、窗口不在前台、铃铛历史开着（卡片栈这时让位给
+  /// 面板、整个藏起来，没人看得见的卡不该偷偷走完）。
+  bool get _paused => _hovered || !_windowActive || state.historyOpen;
 
   // ===== ToastService =====
 
@@ -266,11 +268,13 @@ class ToastCenter extends Notifier<ToastCenterState> implements ToastService {
     final ToastCenterState s = state;
     if (s.historyOpen && s.unreadIds.isEmpty) return;
     state = s.copyWith(historyOpen: true, unreadIds: const <int>{});
+    _syncTicker();
   }
 
   void closeHistory() {
     if (!state.historyOpen) return;
     state = state.copyWith(historyOpen: false);
+    _syncTicker();
   }
 
   /// 清空历史（右下角在场的卡不受影响）。

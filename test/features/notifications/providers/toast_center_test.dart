@@ -200,6 +200,24 @@ void main() {
       });
     });
 
+    test('铃铛历史开着：倒计时暂停（卡片栈让位给面板），关上后接着走', () {
+      fakeAsync((async) {
+        final ProviderContainer c = _container();
+        _center(c).show('hello');
+        async.elapse(_ms(1000));
+        _center(c).openHistory();
+        expect(async.periodicTimerCount, 0, reason: '暂停时不该空转 tick');
+        async.elapse(const Duration(seconds: 30));
+        expect(_activeTitles(c), <String>['hello'], reason: '面板开着期间不该走表');
+        _center(c).closeHistory();
+        async.elapse(_ms(2800)); // 累计 3.8s
+        expect(_activeTitles(c), <String>['hello']);
+        async.elapse(_ms(400));
+        expect(_activeTitles(c), isEmpty);
+        c.dispose();
+      });
+    });
+
     test('窗口不在前台：倒计时暂停，回到前台接着走', () {
       fakeAsync((async) {
         final ProviderContainer c = _container();
