@@ -11,6 +11,8 @@
 //     字形与设计稿的差异属预期。
 //   - 等宽只给数值 / 时间码 / 路径 / ID：JetBrains Mono（打包），回落 Consolas / Menlo。
 //   - 正文 12 是桌面工具常规密度，不再往下压：11 只给元信息，10 只给徽标与时间码。
+//   - 提示词输入单列一档 13/1.6（提示词条与节点文字稿）：长提示词要连着写、连着读，
+//     12 读久了累眼；只给写提示词的输入框用，不往别处扩。
 import 'package:flutter/widgets.dart';
 
 const String _sans = 'Noto Sans SC';
@@ -34,6 +36,7 @@ class InkTypography {
   const InkTypography({
     required this.body,
     required this.bodyStrong,
+    required this.prompt,
     required this.meta,
     required this.micro,
     required this.sectionTitle,
@@ -47,6 +50,7 @@ class InkTypography {
   factory InkTypography.defaults({double scale = 1.0}) => InkTypography(
         body: _sansStyle(12, FontWeight.w400, 1.45, scale),
         bodyStrong: _sansStyle(12, FontWeight.w500, 1.45, scale),
+        prompt: _sansStyle(13, FontWeight.w400, 1.6, scale),
         meta: _sansStyle(11, FontWeight.w400, 1.45, scale),
         micro: _sansStyle(10, FontWeight.w400, 1.3, scale),
         sectionTitle: _sansStyle(15, FontWeight.w500, 1.3, scale),
@@ -59,6 +63,7 @@ class InkTypography {
 
   final TextStyle body; // 12/400 正文
   final TextStyle bodyStrong; // 12/500 面板标题 / 选中标签 / 节点名
+  final TextStyle prompt; // 13/400 行高 1.6：提示词输入框（长文连着写，12 读久了累眼）
   final TextStyle meta; // 11/400 元信息、辅助说明
   final TextStyle micro; // 10/400 徽标、极小标签
   final TextStyle sectionTitle; // 15/500 区块标题
@@ -68,10 +73,11 @@ class InkTypography {
   final TextStyle nano; // 9/400 批量 slot 的「已选」徽标 / 失败文案（300px 栏内）
   final TextStyle monoNano; // 9 等宽：批量 slot 的序号与 seed（300px 栏内）
 
-  /// 全部八档（测试遍历用）。
+  /// 全部档位（测试遍历用）。
   List<TextStyle> get all => <TextStyle>[
         body,
         bodyStrong,
+        prompt,
         meta,
         micro,
         sectionTitle,
@@ -85,6 +91,7 @@ class InkTypography {
   InkTypography scaled(double scale) => InkTypography(
         body: _scale(body, 12, scale),
         bodyStrong: _scale(bodyStrong, 12, scale),
+        prompt: _scale(prompt, 13, scale),
         meta: _scale(meta, 11, scale),
         micro: _scale(micro, 10, scale),
         sectionTitle: _scale(sectionTitle, 15, scale),

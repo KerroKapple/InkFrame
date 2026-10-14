@@ -13,8 +13,13 @@
 // 删除走 Delete 键——[onStartLink] / [onDelete] 保留在 API 上供上层继续持有，
 // 本卡片不再渲染它们。
 //
-// 图区内容：result 节点 = 缩略图（image / video）；config 节点 = 提示词摘要，
-// video config 另列出「起始帧 ← X · 结束帧 ← Y · 运镜」。
+// 图区内容：result 节点 = 缩略图（image / video）；还没出图 / 文件丢了的 result 占位 =
+// 左下角一行 11px 小字（[_ThumbLabel]）。
+// config 节点（提示词条与节点文字稿）：正文（提示词 / 文本 / 镜头备注）贴图区顶部、最多三行，
+// 12/1.55 fg2；图区底部另起一行 10px fg5 摘要——video config 是「起始帧 ← X · 结束帧 ← Y ·
+// 运镜」，image config 是镜头语言摘要（设了才画）。以前 video 有入边时摘要会顶掉提示词，
+// 现在两样都画。画布缩到 kCompactCardScale（0.6）以下时正文与摘要都收起，只留居中的类型
+// 图标——那个缩放下几行小字糊成一团，谁也读不了。
 //
 // 拖拽（HI-13）：位移累积在本卡片局部状态（Transform.translate），每帧只重建
 // 自身；onPanEnd 把累计位移一次性回调 onDragEnd，由上层提交 controller。
@@ -27,13 +32,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/file_resolver.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/models/provider_capabilities.dart';
+import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_icon.dart';
+import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/style_lane.dart';
+import '../providers/canvas_compact_cards.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/node_active_job.dart';
@@ -92,6 +101,15 @@ class NodeCard extends ConsumerStatefulWidget {
   /// 入 / 出端口圆点的测试锚点（每张卡片内唯一）。
   static const Key inPortKey = ValueKey<String>('node-card-in-port');
   static const Key outPortKey = ValueKey<String>('node-card-out-port');
+
+  /// config 卡图区正文（提示词 / 文本 / 镜头备注）的测试锚点。
+  static const Key configTextKey = ValueKey<String>('node-card-config-text');
+
+  /// config 卡图区底部摘要行的测试锚点。
+  static const Key configSummaryKey = ValueKey<String>('node-card-config-summary');
+
+  /// 缩小态居中类型图标的测试锚点。
+  static const Key compactGlyphKey = ValueKey<String>('node-card-compact-glyph');
 
   @override
   ConsumerState<NodeCard> createState() => _NodeCardState();
@@ -435,14 +453,12 @@ class _NodeBody extends StatelessWidget {
       }
       return _ResultBody(node: node, resolver: resolver);
     }
-    if (node.type == CanvasNodeType.video) {
-      return _VideoConfigBody(node: node);
-    }
     return _ConfigBody(node: node);
   }
 }
 
-/// 图区左下角 11px fg6 说明文字（稿：padding 8 10，行高 1.45）。
+/// 图区左下角 11px fg6 说明文字（稿：padding 8 10，行高 1.45）——只剩 result 占位在用
+/// （还没出图 / 文件丢了）；config 卡的正文与摘要走 [_ConfigText]。
 class _ThumbLabel extends StatelessWidget {
   const _ThumbLabel(this.text);
   final String text;
@@ -466,25 +482,118 @@ class _ThumbLabel extends StatelessWidget {
   }
 }
 
-class _ConfigBody extends StatelessWidget {
+/// config 卡图区：常态画正文 + 底部摘要行，缩小态只画居中的类型图标。
+///
+/// 缩小态读 [canvasCompactCardsProvider]——它只在越过阈值那一下翻转，缩放的每一帧不会
+/// 把卡片拖进重建。单测里的节点可以没有 canvasId（见 CanvasNode 头注）：没有画布就谈不上
+/// 缩放，按常态画。
+class _ConfigBody extends ConsumerWidget {
   const _ConfigBody({required this.node});
   final CanvasNode node;
 
   @override
-  Widget build(BuildContext context) {
-    final String? text = switch (node.type) {
-      CanvasNodeType.shot => node.typeConfig['shot_notes'] as String?,
-      CanvasNodeType.text => node.textContent,
-      _ => node.promptText,
-    };
-    if (text == null || text.trim().isEmpty) return const SizedBox.shrink();
-    return _ThumbLabel(text.trim());
+  Widget build(BuildContext context, WidgetRef ref) {
+    final String canvasId = node.canvasId ?? '';
+    final bool compact = canvasId.isNotEmpty && ref.watch(canvasCompactCardsProvider(canvasId));
+    if (compact) {
+      return Center(
+        child: InkIcon(
+          _configGlyph(node.type),
+          key: NodeCard.compactGlyphKey,
+          size: InkIconSize.md,
+          color: context.inkColors.fg6,
+        ),
+      );
+    }
+    if (node.type == CanvasNodeType.video) return _VideoConfigText(node: node);
+    final ShotLanguage lang = node.shotLanguage;
+    return _ConfigText(
+      text: _configMainText(node),
+      // 底部行：image config = 镜头语言摘要（设了才画）；text / shot 没有底部行。
+      summary: node.type == CanvasNodeType.image && !lang.isEmpty
+          ? shotLanguageSummary(context, lang)
+          : null,
+    );
   }
 }
 
-/// video config：起始帧 ← X · 结束帧 ← Y · 运镜（稿）；无入边时退回提示词。
-class _VideoConfigBody extends ConsumerWidget {
-  const _VideoConfigBody({required this.node});
+/// config 卡的正文：shot = 镜头备注，text = 正文，image / video = 提示词。
+/// 去首尾空白；空串归 null（= 不画正文）。
+String? _configMainText(CanvasNode node) {
+  final String? raw = switch (node.type) {
+    CanvasNodeType.shot => node.typeConfig['shot_notes'] as String?,
+    CanvasNodeType.text => node.textContent,
+    CanvasNodeType.image || CanvasNodeType.video => node.promptText,
+  };
+  final String? trimmed = raw?.trim();
+  return (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+}
+
+/// 缩小态的类型图标：image / video / text 与工具条新建节点同一枚；shot 用「剧本」——
+/// 镜头卡的正文就是从剧本拆出来的镜头备注。
+InkGlyph _configGlyph(CanvasNodeType type) => switch (type) {
+      CanvasNodeType.image => InkGlyph.imageConfig,
+      CanvasNodeType.video => InkGlyph.videoConfig,
+      CanvasNodeType.text => InkGlyph.text,
+      CanvasNodeType.shot => InkGlyph.script,
+    };
+
+/// config 卡图区的文字排布：正文贴顶、最多三行省略，摘要单行贴底；两样都没有时图区留空。
+class _ConfigText extends StatelessWidget {
+  const _ConfigText({required this.text, required this.summary});
+
+  /// 正文（已去首尾空白）；null = 不画。
+  final String? text;
+
+  /// 底部摘要行；null = 不画。
+  final String? summary;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? body = text;
+    final String? line = summary;
+    if (body == null && line == null) return const SizedBox.shrink();
+    final colors = context.inkColors;
+    final typo = context.inkTypography;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: InkSpacing.s10, horizontal: InkSpacing.s12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          // 正文占满摘要行以外的高度并贴顶；没有正文时这块空着，摘要照样贴底。
+          // 放大界面字号后三行放不下时按这块的高度裁掉，不会把摘要行挤出图区。
+          Expanded(
+            child: body == null
+                ? const SizedBox.shrink()
+                : Align(
+                    alignment: Alignment.topLeft,
+                    child: Text(
+                      body,
+                      key: NodeCard.configTextKey,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: typo.body.copyWith(color: colors.fg2, height: 1.55),
+                    ),
+                  ),
+          ),
+          if (line != null)
+            Text(
+              line,
+              key: NodeCard.configSummaryKey,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: typo.micro.copyWith(color: colors.fg5),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// video config：正文 = 提示词；底部摘要行 = 起始帧 ← X · 结束帧 ← Y · 运镜（稿）。
+/// 以前有入边时摘要会顶掉提示词；现在两样都画，摘要只占底部一行。
+class _VideoConfigText extends ConsumerWidget {
+  const _VideoConfigText({required this.node});
   final CanvasNode node;
 
   @override
@@ -514,12 +623,10 @@ class _VideoConfigBody extends ConsumerWidget {
     final CameraMovement? camera = parseCameraMovement(node.cameraName);
     if (camera != null) parts.add(cameraMovementLabel(context, camera));
 
-    if (parts.isEmpty) {
-      final String? prompt = node.promptText;
-      if (prompt == null || prompt.trim().isEmpty) return const SizedBox.shrink();
-      return _ThumbLabel(prompt.trim());
-    }
-    return _ThumbLabel(parts.join(' · '));
+    return _ConfigText(
+      text: _configMainText(node),
+      summary: parts.isEmpty ? null : parts.join(' · '),
+    );
   }
 }
 

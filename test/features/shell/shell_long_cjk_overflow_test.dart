@@ -177,9 +177,9 @@ void main() {
       if (t.overflow != TextOverflow.ellipsis) {
         problems.add('「$head…」overflow=${t.overflow}（要 ellipsis）');
       }
-      // 节点图区的提示词摘要按稿是两行 clamp，其余都是单行；都必须有行数上限。
-      if (t.maxLines == null || t.maxLines! > 2) {
-        problems.add('「$head…」maxLines=${t.maxLines}（要 1 或 2）');
+      // 节点图区的正文按稿是三行 clamp（提示词条与节点文字稿），其余都是单行；都必须有行数上限。
+      if (t.maxLines == null || t.maxLines! > 3) {
+        problems.add('「$head…」maxLines=${t.maxLines}（要 1–3）');
       }
       final RenderBox box = e.renderObject! as RenderBox;
       final Rect r = box.localToGlobal(Offset.zero) & box.size;
