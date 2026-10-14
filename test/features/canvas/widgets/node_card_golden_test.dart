@@ -85,6 +85,11 @@ void main() {
           selected: false,
           onTap: () {},
           onDragEnd: (_) {},
+          // 端口按需显示后，未选中未悬停的卡片只画挂着线的那一侧端口。现有基线是在
+          // 「两侧端口常驻」时拍的，这里按「两侧都连着线」的待机卡片来画，基线照旧
+          // 有效；没连线的待机卡片（不画端口）由 node_card_ports_test 守。
+          hasInEdge: true,
+          hasOutEdge: true,
         ),
         size: _surface,
         overrides: <Override>[

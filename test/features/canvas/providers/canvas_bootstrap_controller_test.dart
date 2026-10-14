@@ -7,6 +7,9 @@
 // 名下两个 result 节点 + 文件落到画布的 images/ 下）——内置示例页就是这么被
 // 「并入短剧示例」的。成片是 best-effort：资产加载 / 写盘失败不许把示例项目
 // 整体拖垮。本文件把这几条都钉死。
+//
+// 成片落点与生成路径同一条规则（config 卡右侧一列，第 k 个往下错开 k 格），并与
+// config 同道——原来排成一横排，config → 第二张的产出线得从第一张卡底下穿过去。
 import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -183,7 +186,11 @@ void main() {
       for (final Map<String, Object?> r in results) {
         expect(r['source_node_id'], config['id'], reason: 'result 必须挂在 config 下');
         expect(r['type'], 'image');
-        expect(r['lane_id'], isNull, reason: '产物不进泳道（与生成路径一致）');
+        expect(
+          r['lane_id'],
+          config['lane_id'],
+          reason: '产物与 config 同道（与生成路径一致：同道才同一套坐标）',
+        );
         final Map<String, Object?> cfg = r['type_config'] as Map<String, Object?>;
         final String rel = cfg['image_url']! as String;
         expect(rel, startsWith('images/'));
@@ -199,6 +206,33 @@ void main() {
               (r['type_config'] as Map<String, Object?>)['image_url'] as String)
           .toSet();
       expect(urls, hasLength(kSampleArtifactAssets.length));
+    });
+
+    test('两张成片排在 config 卡右侧一列：第一张与 config 顶对齐，第二张往下一格', () async {
+      final ProviderContainer c =
+          ProviderContainer(overrides: seals(bundle: fullBundle()));
+      addTearDown(c.dispose);
+
+      final String canvasId = await c
+          .read(canvasBootstrapControllerProvider)
+          .createSample(projectName: 'P', canvasName: 'C', seed: _seed);
+
+      final List<Map<String, Object?>> rows =
+          await nodes.listByCanvas(canvasId);
+      Map<String, Object?> resultFor(String imageUrl) => rows.singleWhere(
+            (Map<String, Object?> r) =>
+                r['node_role'] == 'result' &&
+                (r['type_config'] as Map<String, Object?>)['image_url'] ==
+                    imageUrl,
+          );
+      final Map<String, Object?> first = resultFor('images/sample-1.jpg');
+      final Map<String, Object?> second = resultFor('images/sample-2.jpg');
+
+      // config 在 (120, 90)：列 x = 120 + 卡宽 224 + 列距 64；行距 = 卡高 191 + 48。
+      expect(first['position_x'], 408.0);
+      expect(first['position_y'], 90.0);
+      expect(second['position_x'], 408.0, reason: '同一列，不再排成一横排');
+      expect(second['position_y'], 329.0);
     });
 
     test('资产加载失败：示例项目照样建成，只是没有成片节点', () async {

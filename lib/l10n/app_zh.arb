@@ -267,6 +267,7 @@
   "inspectorRoleReference": "参考帧",
   "inspectorRoleFirstFrame": "起始帧",
   "inspectorRoleLastFrame": "结束帧",
+  "canvasEdgeLabelReference": "参考",
   "inspectorRemoveInput": "移除输入",
   "inspectorInputsLabelCounted": "输入（{count}/{max}）",
   "@inspectorInputsLabelCounted": {

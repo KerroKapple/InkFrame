@@ -4,6 +4,11 @@
 // 选中 accent；outline 画在盒子外一圈）| 6 | 16px 状态行（状态文字 + 等宽 meta）。
 // 无外框、无阴影、无标题条底色。端口在图区垂直中心向外偏移 5px：入=空心，出=实心。
 //
+// 端口按需显示（画布重设计稿 › 画布交互）：悬停 / 选中 / 连线模式（起点或候选）时两侧
+// 都亮出来，供连线；平时只留真挂着连线的那一侧（[NodeCard.hasInEdge] /
+// [NodeCard.hasOutEdge]，由画布按存量边 + 产出线算好传进来）——没连线的卡片不再
+// 挂着两颗悬空的小圆点。悬停态是本卡片的局部状态（MouseRegion），不进 provider。
+//
 // 稿上没有卡片角落的连线 / 删除小圆钮：连线走工具条「连线」（选中节点后），
 // 删除走 Delete 键——[onStartLink] / [onDelete] 保留在 API 上供上层继续持有，
 // 本卡片不再渲染它们。
@@ -49,6 +54,8 @@ class NodeCard extends ConsumerStatefulWidget {
     this.onDelete,
     this.isLinkSource = false,
     this.isLinkCandidate = false,
+    this.hasInEdge = false,
+    this.hasOutEdge = false,
   });
 
   final CanvasNode node;
@@ -74,7 +81,17 @@ class NodeCard extends ConsumerStatefulWidget {
   /// 连线模式下此节点是否为合法目标（非起点 → 高亮为点击候选）。
   final bool isLinkCandidate;
 
+  /// 入口这一侧真挂着一条画出来的线（存量边或推导的产出线）→ 入端口常驻。
+  final bool hasInEdge;
+
+  /// 出口这一侧真挂着一条画出来的线 → 出端口常驻。
+  final bool hasOutEdge;
+
   static const double thumbHeight = 126; // 224 × 9 / 16
+
+  /// 入 / 出端口圆点的测试锚点（每张卡片内唯一）。
+  static const Key inPortKey = ValueKey<String>('node-card-in-port');
+  static const Key outPortKey = ValueKey<String>('node-card-out-port');
 
   @override
   ConsumerState<NodeCard> createState() => _NodeCardState();
@@ -82,6 +99,9 @@ class NodeCard extends ConsumerStatefulWidget {
 
 class _NodeCardState extends ConsumerState<NodeCard> {
   bool _dragging = false;
+
+  /// 鼠标悬停在卡片上——两侧端口都亮出来（供连线）。
+  bool _hovered = false;
 
   /// 拖拽中的累计位移——只重建本卡片，不推全画布 state。
   Offset _dragOffset = Offset.zero;
@@ -126,6 +146,11 @@ class _NodeCardState extends ConsumerState<NodeCard> {
     broadcast.state = (nodeId: widget.node.id, delta: _dragOffset);
   }
 
+  void _setHovered(bool value) {
+    if (_hovered == value || !mounted) return;
+    setState(() => _hovered = value);
+  }
+
   @override
   Widget build(BuildContext context) {
     final node = widget.node;
@@ -138,11 +163,17 @@ class _NodeCardState extends ConsumerState<NodeCard> {
     // 稿：shot 节点只有出端口。
     final bool hasIn =
         !(node.type == CanvasNodeType.shot && node.role == NodeRole.config);
+    // 端口按需显示：悬停 / 选中 / 连线模式两侧都亮；平时只留挂着线的那一侧。
+    final bool revealPorts = _hovered || highlighted;
+    final bool showInPort = hasIn && (revealPorts || widget.hasInEdge);
+    final bool showOutPort = revealPorts || widget.hasOutEdge;
 
     return Transform.translate(
       offset: _dragOffset,
       child: MouseRegion(
         cursor: _dragging ? SystemMouseCursors.grabbing : SystemMouseCursors.grab,
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
         child: GestureDetector(
           // opaque：卡片内任何位置（含空图区）都可点选 / 拖拽。
           behavior: HitTestBehavior.opaque,
@@ -219,11 +250,12 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                           ),
                         ),
                       ),
-                      if (hasIn)
+                      if (showInPort)
                         Positioned(
                           left: -5,
                           top: NodeCard.thumbHeight / 2 - 5,
                           child: Container(
+                            key: NodeCard.inPortKey,
                             width: 10,
                             height: 10,
                             decoration: BoxDecoration(
@@ -233,15 +265,17 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                             ),
                           ),
                         ),
-                      Positioned(
-                        right: -5,
-                        top: NodeCard.thumbHeight / 2 - 5,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(color: outPort, shape: BoxShape.circle),
+                      if (showOutPort)
+                        Positioned(
+                          right: -5,
+                          top: NodeCard.thumbHeight / 2 - 5,
+                          child: Container(
+                            key: NodeCard.outPortKey,
+                            width: 10,
+                            height: 10,
+                            decoration: BoxDecoration(color: outPort, shape: BoxShape.circle),
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ),
