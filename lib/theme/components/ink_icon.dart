@@ -1,14 +1,13 @@
 // InkIcon：图标集 v1 的唯一绘制入口。
 //
 // 路径来自 theme/icons/ink_glyph.dart（与设计稿同一份数据），由 svg_path_data.dart 解析成 Path，
-// 在这里按目标尺寸等比缩放后描边 / 填充。单色：颜色显式传入，否则跟随 IconTheme，
-// 再否则落到 fg3——和稿上 SVG 用 currentColor 的意思一样。
+// 在这里按目标尺寸等比缩放后描边 / 填充。单色：颜色显式传入，否则跟随 IconTheme
+// （和 Flutter 的 Icon 一样；稿上 SVG 用 currentColor 也是这个意思）。
 //
 // 没给 [InkIcon.semanticLabel] 时图标对读屏透明：按钮自己的 Semantics 负责说出名字，
 // 图标再报一遍只会重复。
 import 'package:flutter/widgets.dart';
 
-import '../app_theme.dart';
 import '../icons/ink_glyph.dart';
 import '../icons/svg_path_data.dart';
 import '../tokens.dart';
@@ -29,8 +28,8 @@ class InkIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color resolved =
-        color ?? IconTheme.of(context).color ?? context.inkColors.fg3;
+    // IconTheme.of 在没有祖先时也会给出兜底色，所以这里不会是 null。
+    final Color resolved = color ?? IconTheme.of(context).color!;
     final Widget painted = CustomPaint(
       size: Size.square(size),
       painter: _InkGlyphPainter(glyph: glyph, color: resolved),
