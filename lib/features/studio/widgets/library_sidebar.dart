@@ -1,4 +1,4 @@
-// 库面板（Screens 稿第 1 屏）：220 + 1px 右描边，surface3。
+// 库面板（Screens 稿第 1 屏）：220 + 1px 右描边，surface3。行首图标用图标集 v1。
 //   「库」标题 → 行 28：全部项目（选中，带计数）/ 回收站（计数，点开回收站对话框）
 //   → 撑开 → 底部 30 高「设置」行（打开设置层）。
 // 稿上的「最近打开 / 归档 / 最近画布」仓库没有对应数据（无「最近打开」记录、无归档标记），不画。
@@ -8,6 +8,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_icon.dart';
+import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/tokens.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
@@ -50,6 +52,7 @@ class LibrarySidebar extends ConsumerWidget {
           ),
           _NavRow(
             key: allProjectsKey,
+            glyph: InkGlyph.projects,
             label: l.studioLibraryAllProjects,
             count: projectCount,
             selected: true,
@@ -57,6 +60,7 @@ class LibrarySidebar extends ConsumerWidget {
           ),
           _NavRow(
             key: trashKey,
+            glyph: InkGlyph.trash,
             label: l.studioTrash,
             count: trashCount,
             selected: false,
@@ -82,11 +86,7 @@ class LibrarySidebar extends ConsumerWidget {
                   decoration: BoxDecoration(border: Border(top: BorderSide(color: c.borderStrong))),
                   child: Row(
                     children: <Widget>[
-                      Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: c.fg6)),
-                      ),
+                      InkIcon(InkGlyph.settings, size: InkIconSize.sm, color: c.fg6),
                       const SizedBox(width: InkSpacing.s10),
                       Text(l.studioSettings, style: t.body.copyWith(color: c.fg4)),
                     ],
@@ -101,15 +101,17 @@ class LibrarySidebar extends ConsumerWidget {
   }
 }
 
-/// 稿：28 高，padding 0 12，gap 10：12×10 方框（选中琥珀边）+ 名称 + 等宽 10px 计数。
+/// 稿：28 高，padding 0 12，gap 10：16px 图标（选中琥珀色）+ 名称 + 等宽 10px 计数。
 class _NavRow extends StatelessWidget {
   const _NavRow({
     super.key,
+    required this.glyph,
     required this.label,
     required this.count,
     required this.selected,
     required this.onTap,
   });
+  final InkGlyph glyph;
   final String label;
   final int? count;
   final bool selected;
@@ -125,15 +127,7 @@ class _NavRow extends StatelessWidget {
       color: selected ? c.surface5 : null,
       child: Row(
         children: <Widget>[
-          // 稿是 content-box：12×10 + 1px 边 ⇒ 14×12。
-          Container(
-            width: 14,
-            height: 12,
-            decoration: BoxDecoration(
-              border: Border.all(color: selected ? c.accent : c.fg6),
-              borderRadius: BorderRadius.circular(InkRadius.s1),
-            ),
-          ),
+          InkIcon(glyph, size: InkIconSize.sm, color: selected ? c.accent : c.fg6),
           const SizedBox(width: InkSpacing.s10),
           Expanded(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,

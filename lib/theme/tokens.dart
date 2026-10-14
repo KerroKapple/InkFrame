@@ -325,6 +325,22 @@ class InkShadow {
   ];
 }
 
+/// 图标尺寸（图标集 v1，见 theme/icons/ink_glyph.dart）。
+///
+/// 路径画在 [grid] 边长的网格上，按目标尺寸等比缩放；描边宽度 [gridStroke] 随之一起缩
+/// （20 → 1.5，16 → 1.2），和设计稿里 SVG 的缩放方式一致。
+class InkIconSize {
+  InkIconSize._();
+  static const double sm = 16; // 列表行、紧凑工具格、状态栏
+  static const double md = 20; // 导航条、工具条（网格原尺寸）
+
+  /// 路径数据所在网格的边长。
+  static const double grid = 20;
+
+  /// 网格原尺寸下的描边宽度。
+  static const double gridStroke = 1.5;
+}
+
 /// 动画时长（MediaQuery.disableAnimations 时由上层替换为 Duration.zero）。
 class InkMotion {
   InkMotion._();
