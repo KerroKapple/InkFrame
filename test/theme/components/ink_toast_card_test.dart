@@ -1,8 +1,6 @@
 // InkToastCard：通知卡呈现件的契约（纯数据 + 回调；文案全部由调用方给——theme 层不碰 ARB）。
 //
 // 进行中那条有转圈 / 不确定态动画：全文件只 pump 固定帧，不 pumpAndSettle。
-import 'dart:typed_data';
-
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
