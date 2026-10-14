@@ -6,7 +6,7 @@
 //   连线 = 选中恰好一个节点时可用；点击进入 / 退出连线模式（linkModeController）
 //   文本 / 图像 / 视频节点 = addNode（视口中心落点，与 FAB 同源）
 //   泳道 = 新建泳道对话框（与 LaneToolbar 同源）
-// 图标沿用稿上的 12×12（+1.5 边 = 15）描边方框占位，实现时换项目图标集。
+// 图标用图标集 v1（theme/icons/ink_glyph.dart），16px。
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -15,6 +15,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_icon.dart';
+import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_lanes_controller.dart';
@@ -96,17 +98,17 @@ class CanvasToolRail extends ConsumerWidget {
     }
 
     final List<_Tool> tools = <_Tool>[
-      _Tool('select', l.canvasToolSelect, _Shape.square1, active: !linking,
+      _Tool('select', l.canvasToolSelect, InkGlyph.select, active: !linking,
           onTap: linking ? () => ref.read(linkModeControllerProvider(canvasId).notifier).cancel() : null),
-      _Tool('pan', l.canvasToolPan, _Shape.circle, onTap: null),
-      _Tool('link', l.canvasToolLink, _Shape.pill, active: linking, onTap: canLink ? toggleLink : null),
-      _Tool('text', l.canvasToolTextNode, _Shape.square0,
+      _Tool('pan', l.canvasToolPan, InkGlyph.pan, onTap: null),
+      _Tool('link', l.canvasToolLink, InkGlyph.link, active: linking, onTap: canLink ? toggleLink : null),
+      _Tool('text', l.canvasToolTextNode, InkGlyph.text,
           onTap: () => _addNode(context, ref, CanvasNodeType.text)),
-      _Tool('image', l.canvasToolImageNode, _Shape.square2,
+      _Tool('image', l.canvasToolImageNode, InkGlyph.imageConfig,
           onTap: () => _addNode(context, ref, CanvasNodeType.image)),
-      _Tool('video', l.canvasToolVideoNode, _Shape.square3,
+      _Tool('video', l.canvasToolVideoNode, InkGlyph.videoConfig,
           onTap: () => _addNode(context, ref, CanvasNodeType.video)),
-      _Tool('lane', l.canvasToolLane, _Shape.cupBottom, onTap: () => _addLane(context, ref)),
+      _Tool('lane', l.canvasToolLane, InkGlyph.lane, onTap: () => _addLane(context, ref)),
     ];
 
     return Container(
@@ -128,13 +130,11 @@ class CanvasToolRail extends ConsumerWidget {
   }
 }
 
-enum _Shape { square1, circle, pill, square0, square2, square3, cupBottom }
-
 class _Tool {
-  const _Tool(this.id, this.name, this.shape, {this.active = false, required this.onTap});
+  const _Tool(this.id, this.name, this.glyph, {this.active = false, required this.onTap});
   final String id;
   final String name;
-  final _Shape shape;
+  final InkGlyph glyph;
   final bool active;
   final VoidCallback? onTap;
 }
@@ -177,34 +177,11 @@ class _ToolCellState extends State<_ToolCell> {
                 color: t.active ? c.accent : (_hover && enabled ? c.surface5 : null),
                 borderRadius: BorderRadius.circular(InkRadius.s3),
               ),
-              // 稿是 content-box：12×12 + 1.5px 边 ⇒ 15×15。
-              child: Container(
-                width: 15,
-                height: 15,
-                decoration: BoxDecoration(
-                  border: Border.all(color: fg, width: 1.5),
-                  borderRadius: _radius(t.shape),
-                ),
-              ),
+              child: InkIcon(t.glyph, size: InkIconSize.sm, color: fg),
             ),
           ),
         ),
       ),
     );
   }
-
-  static BorderRadius _radius(_Shape s) => switch (s) {
-        _Shape.square1 => BorderRadius.circular(InkRadius.s1),
-        _Shape.circle => BorderRadius.circular(InkRadius.pill),
-        _Shape.pill => const BorderRadius.horizontal(
-            left: Radius.circular(InkRadius.s1),
-            right: Radius.circular(InkRadius.bentoBtn),
-          ),
-        _Shape.square0 => BorderRadius.zero,
-        _Shape.square2 => BorderRadius.circular(InkRadius.xs),
-        _Shape.square3 => BorderRadius.circular(InkRadius.s3),
-        _Shape.cupBottom => const BorderRadius.vertical(
-            bottom: Radius.circular(InkRadius.bentoBtn),
-          ),
-      };
 }
