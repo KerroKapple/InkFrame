@@ -3,6 +3,9 @@
 // 断言的是行为不是存在性：meta 行的引用数由真 galleryGraphProvider + 真节点行算出
 // （config 记、result 不记）、删除必须过二次确认且真的落到 softDelete、改名真的改库、
 // 检查器「管理」链接真的把左栏页签切到角色页。
+//
+// 失败提示走 toastServiceProvider（右下角错误卡，画在 app 顶层的 ToastLayer 里）——这里只
+// pump 面板、没有那一层，所以 _pumpPanel 一律覆盖成 RecordingToastService，断言记下来的卡。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -14,18 +17,21 @@ import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/character_asset_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/project_panel_tab.dart';
 import 'package:inkframe/features/canvas/widgets/character_edit_dialog.dart';
 import 'package:inkframe/features/canvas/widgets/character_library_panel.dart';
 import 'package:inkframe/features/canvas/widgets/characters_section.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
 
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_character.dart';
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 const String _kProjectId = 'p1';
@@ -140,6 +146,7 @@ Future<void> _pumpPanel(
   WidgetTester tester,
   List<Override> overrides, {
   Size surfaceSize = const Size(400, 700),
+  RecordingToastService? toast,
 }) async {
   await pumpInkApp(
     tester,
@@ -149,7 +156,10 @@ Future<void> _pumpPanel(
         child: CharacterLibraryPanel(projectId: _kProjectId),
       ),
     ),
-    overrides: overrides,
+    overrides: <Override>[
+      ...overrides,
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
+    ],
     surfaceSize: surfaceSize,
   );
   await tester.pumpAndSettle();
@@ -254,14 +264,15 @@ void main() {
   // 这两条路径根本不导入任何文件。原实现一律弹「角色导入失败」，等于把磁盘满 /
   // 连接断说成「导入失败」，把用户引向一个跟本次操作无关的方向。
 
-  testWidgets('改名失败 → SnackBar 是该 InkError 的文案，不是「角色导入失败」', (
+  testWidgets('改名失败 → 错误卡是该 InkError 的文案，不是「角色导入失败」', (
     WidgetTester tester,
   ) async {
+    final RecordingToastService toast = RecordingToastService();
     final FakeCharacterRepo repo =
         FakeCharacterRepo(<String, Map<String, Object?>>{
           'c1': _characterRow('c1', name: '行者'),
         })..failUpdate = true;
-    await _pumpPanel(tester, await _overrides(repo));
+    await _pumpPanel(tester, await _overrides(repo), toast: toast);
     final AppLocalizations l = _l(tester);
 
     await tester.tap(find.byKey(const ValueKey<String>('character-menu-c1')));
@@ -273,10 +284,11 @@ void main() {
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
 
-    expect(find.text(l.errorLocalIO), findsOneWidget);
+    expect(toast.titles, <String>[l.errorLocalIO]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(
-      find.text(l.inspectorCharactersImportFailed),
-      findsNothing,
+      toast.titles,
+      isNot(contains(l.inspectorCharactersImportFailed)),
       reason: '改名不导入任何文件，套导入文案是误导',
     );
     // 乐观更新要回滚：名字仍是旧的，不假装成功。
@@ -284,14 +296,15 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('删除失败 → SnackBar 是该 InkError 的文案，不是「角色导入失败」', (
+  testWidgets('删除失败 → 错误卡是该 InkError 的文案，不是「角色导入失败」', (
     WidgetTester tester,
   ) async {
+    final RecordingToastService toast = RecordingToastService();
     final _SoftDeleteFailsRepo repo =
         _SoftDeleteFailsRepo(<String, Map<String, Object?>>{
           'c1': _characterRow('c1', name: '行者'),
         });
-    await _pumpPanel(tester, await _overrides(repo));
+    await _pumpPanel(tester, await _overrides(repo), toast: toast);
     final AppLocalizations l = _l(tester);
 
     await tester.tap(find.byKey(const ValueKey<String>('character-menu-c1')));
@@ -303,10 +316,11 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text(l.errorLocalIO), findsOneWidget);
+    expect(toast.titles, <String>[l.errorLocalIO]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(
-      find.text(l.inspectorCharactersImportFailed),
-      findsNothing,
+      toast.titles,
+      isNot(contains(l.inspectorCharactersImportFailed)),
       reason: '删除不导入任何文件，套导入文案是误导',
     );
     // 乐观删除要回滚：行还在。
@@ -324,6 +338,7 @@ void main() {
     WidgetTester tester,
   ) async {
     _stubFilePicker(tester);
+    final RecordingToastService toast = RecordingToastService();
     final FakeCharacterRepo repo = FakeCharacterRepo();
     await _pumpPanel(
       tester,
@@ -333,6 +348,7 @@ void main() {
           const CharacterAssetError('path escapes project root'),
         ),
       ),
+      toast: toast,
     );
     final AppLocalizations l = _l(tester);
 
@@ -343,7 +359,8 @@ void main() {
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
 
-    expect(find.text(l.inspectorCharactersImportFailed), findsOneWidget);
+    expect(toast.titles, <String>[l.inspectorCharactersImportFailed]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(
       tester.takeException(),
       isNull,
@@ -357,6 +374,7 @@ void main() {
     WidgetTester tester,
   ) async {
     _stubFilePicker(tester);
+    final RecordingToastService toast = RecordingToastService();
     final FakeCharacterRepo repo = FakeCharacterRepo();
     await _pumpPanel(
       tester,
@@ -366,6 +384,7 @@ void main() {
           const FileSystemException('source file vanished'),
         ),
       ),
+      toast: toast,
     );
     final AppLocalizations l = _l(tester);
 
@@ -376,12 +395,36 @@ void main() {
     await tester.tap(find.text(l.characterSave));
     await tester.pumpAndSettle();
 
-    expect(find.text(l.inspectorCharactersImportFailed), findsOneWidget);
+    expect(toast.titles, <String>[l.inspectorCharactersImportFailed]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(
       tester.takeException(),
       isNull,
       reason: 'FileSystemException 不是 InkError，漏接就会变成未捕获异步异常',
     );
+    expect(repo.rows, isEmpty);
+  });
+
+  // 第三类：仓储自己抛 InkError（磁盘满 / 连接断）——文案走 l10nError，与改名 / 删除同口径。
+  testWidgets('新建角色：仓储抛 InkError → 错误卡是该 InkError 的文案', (
+    WidgetTester tester,
+  ) async {
+    _stubFilePicker(tester);
+    final RecordingToastService toast = RecordingToastService();
+    final FakeCharacterRepo repo = FakeCharacterRepo()..failCreate = true;
+    await _pumpPanel(tester, await _overrides(repo), toast: toast);
+    final AppLocalizations l = _l(tester);
+
+    await tester.tap(find.byKey(const ValueKey<String>('character-new')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), '行者');
+    await tester.pump();
+    await tester.tap(find.text(l.characterSave));
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>[l.errorLocalIO]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(tester.takeException(), isNull);
     expect(repo.rows, isEmpty);
   });
 

@@ -5,9 +5,13 @@ import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/canvas_repository.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/widgets/lane_toolbar.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
+
+import '../../../_harness/fake_toast_service.dart';
 
 // ---- fake 实现 ----
 
@@ -77,11 +81,16 @@ class _FakeStyleLaneRepo implements StyleLaneRepository {
   Future<int> hardDelete(String id) async => 1;
 }
 
-/// 可配：读出指定方向 / 读失败；记下每次 update 的 patch。
+/// 可配：读出指定方向 / 读失败 / 写失败；记下每次 update 的 patch（失败的那次也记）。
 class _ConfigurableCanvasRepo extends _FakeCanvasRepo {
-  _ConfigurableCanvasRepo({this.direction = 'horizontal', this.readFails = false});
+  _ConfigurableCanvasRepo({
+    this.direction = 'horizontal',
+    this.readFails = false,
+    this.updateFails = false,
+  });
   final String direction;
   final bool readFails;
+  final bool updateFails;
   final List<Map<String, Object?>> updates = <Map<String, Object?>>[];
 
   @override
@@ -95,16 +104,25 @@ class _ConfigurableCanvasRepo extends _FakeCanvasRepo {
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
     updates.add(patch);
+    if (updateFails) {
+      throw const LocalIOError(extra: <String, Object?>{'op': 'update'});
+    }
     return 1;
   }
 }
 
-Future<void> _pumpToolbar(WidgetTester tester, CanvasRepository repo) async {
+Future<void> _pumpToolbar(
+  WidgetTester tester,
+  CanvasRepository repo, {
+  RecordingToastService? toast,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: <Override>[
         canvasRepositoryProvider.overrideWith((ref) async => repo),
         styleLaneRepositoryProvider.overrideWith((ref) async => _FakeStyleLaneRepo()),
+        // 失败提示走 toastServiceProvider；不覆盖就落到真 ToastCenter，没有卡片层可断言。
+        toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -155,6 +173,21 @@ void main() {
     expect(repo.updates.single['lane_direction'], 'horizontal');
     expect(find.byTooltip('Toggle lane direction'), findsOneWidget);
   });
+
+  // 写库失败要说一声：方向没翻过去，不说 = 用户以为点空了。
+  testWidgets('切换方向写库失败 ⇒ 错误卡「Failed to update lane」', (tester) async {
+    final repo = _ConfigurableCanvasRepo(updateFails: true);
+    final toast = RecordingToastService();
+    await _pumpToolbar(tester, repo, toast: toast);
+
+    await tester.tap(find.text('Horizontal'));
+    await tester.pump();
+
+    expect(repo.updates, hasLength(1), reason: '前置：写请求确实发出去了');
+    expect(toast.titles, <String>['Failed to update lane']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+  });
+
   testWidgets('LaneToolbar 渲染添加按钮和方向切换按钮', (tester) async {
     await tester.pumpWidget(
       ProviderScope(

@@ -6,9 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/errors/ink_error.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/canvas_lanes_controller.dart';
 import '../util/lane_geometry.dart';
 import 'lane_edit_dialog.dart';
@@ -92,7 +94,7 @@ class LaneToolbar extends ConsumerWidget {
     if (r == null) return;
     if (!context.mounted) return;
     final ctx = context;
-    // 不 await：fire-and-forget，失败走 snackbar。
+    // 不 await：fire-and-forget，失败弹错误通知卡。
     unawaited(() async {
       try {
         await ref
@@ -104,17 +106,14 @@ class LaneToolbar extends ConsumerWidget {
             );
       } on InkError catch (_) {
         if (!ctx.mounted) return;
-        ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(
-          SnackBar(
-            content: Text(ctx.l10n.laneCreateFailed),
-            duration: const Duration(seconds: 2),
-          ),
-        );
+        ref
+            .read(toastServiceProvider)
+            .show(ctx.l10n.laneCreateFailed, kind: ToastKind.error);
       }
     }());
   }
 
-  /// 切换方向并持久化；失败走 snackbar（与新增泳道一致的错误反馈）。
+  /// 切换方向并持久化；失败弹错误通知卡（与新增泳道一致的错误反馈）。
   Future<void> _onToggleDirection(
     BuildContext context,
     WidgetRef ref,
@@ -127,12 +126,9 @@ class LaneToolbar extends ConsumerWidget {
       await setLaneDirection(ref, canvasId, flipped);
     } on InkError catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.laneUpdateFailed),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ref
+          .read(toastServiceProvider)
+          .show(context.l10n.laneUpdateFailed, kind: ToastKind.error);
     }
   }
 }

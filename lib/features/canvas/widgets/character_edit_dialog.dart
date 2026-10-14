@@ -23,6 +23,7 @@ import '../../../core/di/character_assets.dart';
 import '../../../core/di/providers.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/character_asset_service.dart';
+import '../../../core/interfaces/toast_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
@@ -31,6 +32,7 @@ import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
 import '../providers/character_usage.dart';
@@ -493,7 +495,7 @@ class _CharacterEditDialogState extends ConsumerState<CharacterEditDialog> {
     );
   }
 
-  /// 仓储 / 资产层只抛 InkError 与 CharacterAssetError；失败给 SnackBar 并回 false，
+  /// 仓储 / 资产层只抛 InkError 与 CharacterAssetError；失败弹错误通知卡并回 false，
   /// 让调用方别继续走"成功"分支（例如失败时不关框）。
   Future<bool> _guard(Future<void> Function() action) async {
     try {
@@ -508,10 +510,12 @@ class _CharacterEditDialogState extends ConsumerState<CharacterEditDialog> {
     }
   }
 
+  /// 错误卡画在所有路由之上（编辑框开着也看得见），不自动消失，等用户关。
   void _toast() {
     if (!mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(content: Text(context.l10n.inspectorCharactersImportFailed)),
+    ref.read(toastServiceProvider).show(
+      context.l10n.inspectorCharactersImportFailed,
+      kind: ToastKind.error,
     );
   }
 }

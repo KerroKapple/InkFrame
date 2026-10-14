@@ -2,17 +2,20 @@
 //
 // 居中插图占位 + 主副标题 + 双 CTA（添加图片节点 / 添加视频节点）。
 // 整块外层 GestureDetector 仍负责"点空白"语义：取消连线模式 + 清选中。
-// CTA 调 canvasNodesControllerProvider(canvasId).addNode(...)，失败弹 snackbar。
+// CTA 调 canvasNodesControllerProvider(canvasId).addNode(...)，失败弹错误通知卡
+// （toastServiceProvider）。
 
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/primitives/ink_amber_button.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../../shell/widgets/shell_empty_state.dart';
 import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/canvas_node.dart';
@@ -60,12 +63,9 @@ class CanvasEmptyState extends ConsumerWidget {
           );
     } catch (_) {
       if (!context.mounted) return;
-      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-        SnackBar(
-          content: Text(context.l10n.canvasAddNodeFailed),
-          duration: const Duration(seconds: 2),
-        ),
-      );
+      ref
+          .read(toastServiceProvider)
+          .show(context.l10n.canvasAddNodeFailed, kind: ToastKind.error);
     }
   }
 

@@ -4,13 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/canvas_repository.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_prompt_bar.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 // 提示词条只在恰好选中一个 image / video config 节点时出现；fake 隔离 DB DI。
@@ -27,6 +31,7 @@ class _Selected extends CanvasSelectionController {
 }
 
 // 最小化 fake：仅实现 findById（返回 base_style 字段），update 记录调用。
+// readFails / updateFails：读 / 写抛 InkError，走两条失败提示。
 class _FakeCanvasRepository implements CanvasRepository {
   @override
   Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
@@ -35,24 +40,32 @@ class _FakeCanvasRepository implements CanvasRepository {
   _FakeCanvasRepository({
     String prefix = 'pre',
     String suffix = 'suf',
+    this.readFails = false,
+    this.updateFails = false,
   })  : _prefix = prefix,
         _suffix = suffix;
 
   final String _prefix;
   final String _suffix;
+  final bool readFails;
+  final bool updateFails;
 
   Map<String, Object?>? lastPatch;
 
   @override
-  Future<Map<String, Object?>?> findById(String id) async => <String, Object?>{
-        'id': id,
-        'base_style_prefix': _prefix,
-        'base_style_suffix': _suffix,
-      };
+  Future<Map<String, Object?>?> findById(String id) async {
+    if (readFails) throw const LocalIOError();
+    return <String, Object?>{
+      'id': id,
+      'base_style_prefix': _prefix,
+      'base_style_suffix': _suffix,
+    };
+  }
 
   @override
   Future<int> update(String id, Map<String, Object?> patch) async {
     lastPatch = patch;
+    if (updateFails) throw const LocalIOError();
     return 1;
   }
 
@@ -78,6 +91,27 @@ class _FakeCanvasRepository implements CanvasRepository {
 
   @override
   Future<int> hardDelete(String id) async => 1;
+}
+
+/// 失败用例的装配：overrides 同下面两条，外加把通知出口换成 RecordingToastService
+/// （这里没有卡片层可看，断言记下来的卡）。
+Future<void> _pumpBar(
+  WidgetTester tester,
+  _FakeCanvasRepository repo,
+  RecordingToastService toast,
+) async {
+  await pumpInkApp(
+    tester,
+    const Scaffold(body: CanvasPromptBar(canvasId: 'cv1')),
+    overrides: <Override>[
+      currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
+      canvasRepositoryProvider.overrideWith((_) async => repo),
+      canvasNodesControllerProvider.overrideWith(_OneNodeController.new),
+      canvasSelectionControllerProvider.overrideWith(_Selected.new),
+      toastServiceProvider.overrideWithValue(toast),
+    ],
+  );
+  await tester.pumpAndSettle();
 }
 
 void main() {
@@ -133,5 +167,44 @@ void main() {
     expect(repo.lastPatch, isNotNull);
     expect(repo.lastPatch!['base_style_prefix'], 'new-pre');
     expect(repo.lastPatch!['base_style_suffix'], 'old-suf');
+  });
+
+  // 读不到已存值就不能开编辑器（空预填 + 保存 = 已存前后缀被覆盖为空，#199 评审 P2-3），
+  // 但得说一声为什么点了没反应。
+  testWidgets('读已存基底风格失败 → 不开编辑器，弹该 InkError 文案的错误卡', (tester) async {
+    final repo = _FakeCanvasRepository(readFails: true);
+    final toast = RecordingToastService();
+    await _pumpBar(tester, repo, toast);
+
+    await tester.tap(find.byKey(CanvasPromptBar.baseStyleKey));
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Project base style'), findsNothing);
+    expect(toast.titles, <String>[
+      'Local disk I/O error. Check space and permissions.',
+    ]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(repo.lastPatch, isNull);
+  });
+
+  testWidgets('保存写库失败 → 错误卡「Failed to update base style」', (tester) async {
+    final repo = _FakeCanvasRepository(updateFails: true);
+    final toast = RecordingToastService();
+    await _pumpBar(tester, repo, toast);
+
+    await tester.tap(find.byKey(CanvasPromptBar.baseStyleKey));
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.text('Project base style'), findsOneWidget);
+
+    // 第 0 个 TextField 是提示词条自己的输入框，对话框的前缀框是第 1 个。
+    await tester.enterText(find.byType(TextField).at(1), 'new-pre');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(repo.lastPatch, isNotNull, reason: '前置：写请求确实发出去了');
+    expect(toast.titles, <String>['Failed to update base style']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
   });
 }

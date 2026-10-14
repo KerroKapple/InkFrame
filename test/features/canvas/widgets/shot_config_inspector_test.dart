@@ -5,12 +5,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/widgets/shot_config_inspector.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 void main() {
@@ -43,13 +46,20 @@ void main() {
       edgeRepo = InMemoryEdgeRepository();
     });
 
-    Future<void> pump(WidgetTester tester, CanvasNode node) async {
+    Future<void> pump(
+      WidgetTester tester,
+      CanvasNode node, {
+      RecordingToastService? toast,
+    }) async {
       await pumpInkApp(
         tester,
         Scaffold(body: ShotConfigInspector(node: node)),
         overrides: [
           nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
           edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+          // 失败提示走 toastServiceProvider，只在要断言提示的用例里覆盖：「切换选中」那条
+          // 会拿两条 override 重新 pump，而 ProviderScope 不许增删 override（只许更新）。
+          if (toast != null) toastServiceProvider.overrideWithValue(toast),
         ],
       );
       await tester.pumpAndSettle();
@@ -185,8 +195,9 @@ void main() {
       );
     });
 
-    testWidgets('连线失败 → 节点已创建 + 专用连线失败 snackbar', (tester) async {
+    testWidgets('连线失败 → 节点已创建 + 专用连线失败错误卡', (tester) async {
       edgeRepo = _FailingEdgeRepository();
+      final toast = RecordingToastService();
       const node = CanvasNode(
         id: 'shot-4',
         label: '',
@@ -195,7 +206,7 @@ void main() {
         canvasId: canvasId,
         typeConfig: <String, Object?>{'shot_notes': 'crane shot over city'},
       );
-      await pump(tester, node);
+      await pump(tester, node, toast: toast);
 
       await tester.tap(find.text('Generate image from notes'));
       await tester.pumpAndSettle();
@@ -205,14 +216,31 @@ void main() {
         hasLength(1),
       );
       expect(edgeRepo.rows, isEmpty);
-      expect(
-        find.text('Image node added, but linking failed'),
-        findsOneWidget,
+      // 只报连线失败：节点已经建出来了，再报「Failed to add node」就是谎报。
+      expect(toast.titles, <String>['Image node added, but linking failed']);
+      expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    });
+
+    testWidgets('建节点失败 → 只报「Failed to add node」错误卡，不再去连线', (tester) async {
+      nodeRepo = _FailingNodeRepository();
+      final toast = RecordingToastService();
+      const node = CanvasNode(
+        id: 'shot-6',
+        label: '',
+        type: CanvasNodeType.shot,
+        role: NodeRole.config,
+        canvasId: canvasId,
+        typeConfig: <String, Object?>{'shot_notes': 'slow push in on face'},
       );
-      expect(find.text('Failed to add node'), findsNothing);
-      // 排掉 snackbar 自动关闭 timer。
-      await tester.pump(const Duration(seconds: 3));
-      await tester.pump();
+      await pump(tester, node, toast: toast);
+
+      await tester.tap(find.text('Generate image from notes'));
+      await tester.pumpAndSettle();
+
+      expect(nodeRepo.rows, isEmpty);
+      expect(edgeRepo.rows, isEmpty, reason: '节点都没建出来，没有可连的目标');
+      expect(toast.titles, <String>['Failed to add node']);
+      expect(toast.kinds, <ToastKind>[ToastKind.error]);
     });
 
     testWidgets('连击生成按钮只创建一套节点+边（in-flight 防重）', (tester) async {
@@ -244,6 +272,25 @@ void main() {
       expect(edgeRepo.rows, hasLength(1));
     });
   });
+}
+
+class _FailingNodeRepository extends InMemoryNodeRepository {
+  @override
+  Future<String> create({
+    required String canvasId,
+    required String type,
+    required String nodeRole,
+    String label = '',
+    String? sourceNodeId,
+    String? laneId,
+    double positionX = 0,
+    double positionY = 0,
+    double width = 240,
+    double height = 240,
+    int zIndex = 0,
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) async =>
+      throw const LocalIOError();
 }
 
 class _FailingEdgeRepository extends InMemoryEdgeRepository {

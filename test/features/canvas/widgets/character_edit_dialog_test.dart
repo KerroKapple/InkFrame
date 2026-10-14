@@ -9,15 +9,18 @@ import 'package:inkframe/core/db/columns.dart';
 import 'package:inkframe/core/di/character_assets.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/widgets/character_edit_dialog.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 
 import '../../../_harness/a11y.dart';
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/fake_character.dart';
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 const String _kProjectId = 'p1';
@@ -107,6 +110,7 @@ Future<void> _open(
   required FakeCharacterAssetService assets,
   int maxRefs = 6,
   Map<String, List<String>> configCharacterIds = const <String, List<String>>{},
+  RecordingToastService? toast,
 }) async {
   final InMemoryCanvasRepository canvases = InMemoryCanvasRepository();
   final InMemoryNodeRepository nodes = InMemoryNodeRepository();
@@ -139,6 +143,8 @@ Future<void> _open(
       batchResultRepositoryProvider.overrideWith(
         (_) async => FakeBatchResultRepo(),
       ),
+      // 失败提示走 toastServiceProvider；这里没有卡片层，换成 RecordingToastService 断言。
+      toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
     ],
     surfaceSize: const Size(900, 1000),
   );
@@ -299,11 +305,17 @@ void main() {
 
   // 钉 _save 里 `if (!await _guard(...)) return;` 的早退。既有用例没有一条走失败路径，
   // 把早退删成 `await _guard(...)` 也全绿；删掉后写库失败仍然关框，用户以为存上了。
-  testWidgets('保存失败：框不关，出 SnackBar', (WidgetTester tester) async {
+  testWidgets('保存失败：框不关，弹错误卡', (WidgetTester tester) async {
+    final RecordingToastService toast = RecordingToastService();
     final FakeCharacterRepo repo = FakeCharacterRepo(
       <String, Map<String, Object?>>{_kCharacterId: _row()},
     )..failUpdate = true;
-    await _open(tester, repo: repo, assets: FakeCharacterAssetService());
+    await _open(
+      tester,
+      repo: repo,
+      assets: FakeCharacterAssetService(),
+      toast: toast,
+    );
 
     await tester.enterText(
       find.byKey(const ValueKey<String>('character-name-field')),
@@ -317,7 +329,8 @@ void main() {
       findsOneWidget,
       reason: '写库失败却关框 = 用户以为存上了',
     );
-    expect(find.byType(SnackBar), findsOneWidget);
+    expect(toast.titles, <String>[_l(tester).inspectorCharactersImportFailed]);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(repo.rows[_kCharacterId]!['name'], '行者');
   });
 

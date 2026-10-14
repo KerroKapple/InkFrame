@@ -8,7 +8,9 @@ import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/preferences.dart';
 import 'package:inkframe/core/di/project_archive.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/project_import_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/models/app_preferences.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -165,6 +167,25 @@ class _RecordingNodesController extends CanvasNodesController {
     added.add(type);
     return CanvasNode(id: 'n1', label: label, type: type, canvasId: arg);
   }
+}
+
+/// addNode 一律抛 InkError 的 fake：⌘K「添加节点」失败那条提示的入口。
+class _FailingNodesController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async =>
+      const <CanvasNode>[];
+
+  @override
+  Future<CanvasNode> addNode({
+    required String label,
+    required CanvasNodeType type,
+    NodeRole role = NodeRole.config,
+    String? sourceNodeId,
+    Offset position = Offset.zero,
+    Size? size,
+    Map<String, Object?> typeConfig = const <String, Object?>{},
+  }) async =>
+      throw const LocalIOError();
 }
 
 /// 导入流程测试用 fake service。
@@ -383,6 +404,26 @@ void main() {
     expect(_RecordingNodesController.added, <CanvasNodeType>[
       CanvasNodeType.video,
     ]);
+  });
+
+  // 建节点失败要说一声：画布上什么都没多出来，不说 = 用户以为命令没执行。
+  // 提示走全应用的通知出口（错误卡，不自动消失），不再是 Material 的底部提示条。
+  testWidgets('Add image node 失败 → 错误卡「Failed to add node」', (tester) async {
+    final toast = RecordingToastService();
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_FailingNodesController.new),
+      toastServiceProvider.overrideWithValue(toast),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas('c1');
+    await _warmNodes(container, 'c1');
+    await _pressCtrlK(tester);
+
+    await tester.tap(find.text('Add image node'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(CommandPaletteDialog), findsNothing);
+    expect(toast.titles, <String>['Failed to add node']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
   });
 
   testWidgets('搜索过滤动作；无命中显示 no-results 文案', (tester) async {

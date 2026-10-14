@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/errors/ink_error.dart';
+import '../../core/interfaces/toast_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
 import '../canvas/models/canvas_edge.dart';
@@ -19,6 +20,7 @@ import '../canvas/providers/canvas_transform_controller.dart';
 import '../canvas/util/node_position.dart';
 import '../export/util/export_order.dart';
 import '../export/widgets/export_video_dialog.dart';
+import '../notifications/providers/toast_service_provider.dart';
 import '../shell/models/shell_state.dart';
 import '../shell/providers/shell_controller.dart';
 import '../studio/project_import_flow.dart';
@@ -138,12 +140,7 @@ Future<void> _addNode(
         );
   } on InkError {
     if (!context.mounted) return;
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        content: Text(failedMsg),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
   }
 }
 
