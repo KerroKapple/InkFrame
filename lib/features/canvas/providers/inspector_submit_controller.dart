@@ -523,6 +523,24 @@ class InspectorSubmitController
     }
   }
 
+  /// 带着挂起的编辑提交生成（画布 Ctrl+↵ / ⌘↵ 与节点右键菜单「生成」）：手里没有终稿快照的入口用它。
+  ///
+  /// 终稿 = 失败等重试的 `_unsaved` + 还没发射的防抖 patch（同一个键取防抖里的——那是用户最后敲进去的值；与
+  /// [flushPendingWrites] 同一个合并顺序），一并交给 [submit]：终稿与生成走的是 submit 那一条写入链，生成读到的
+  /// 就是用户最后敲进去的那句——与提示词条带着最新文本提交是同一个效果。
+  ///
+  /// 不借退出路径的 [flushPendingWrites]：那一笔写失败会直接按「已用尽」记账、不再重试，接着的 submit 读到
+  /// 库里的旧提示词，白生成一次。并进终稿之后，终稿写不进去 submit 就停在失败态、不发起生成。
+  ///
+  /// 重试表里与防抖同键的旧值一并换成新值：失败重试还在排队的话，它晚到也只会把同一份终稿再写一遍，
+  /// 不会把旧值盖回去（「每键留最新值」，与 _onWriteFailed 同一条规则）。
+  Future<void> submitWithPending() {
+    for (final MapEntry<String, Object?> e in _pendingDebounced.entries) {
+      if (_unsaved.containsKey(e.key)) _unsaved[e.key] = e.value;
+    }
+    return submit(<String, Object?>{..._unsaved, ..._pendingDebounced});
+  }
+
   /// await 之后写提交状态的唯一入口：控制器已销毁就什么都不做
   /// （`state =` 在 dispose 后会抛 StateError）。
   void _setSubmitState(InspectorSubmitState next) {

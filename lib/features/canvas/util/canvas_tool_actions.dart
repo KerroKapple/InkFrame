@@ -11,7 +11,8 @@
 // 不留半截）、从出端口拖到另一张卡上连线（linkByPortDrop，走连线模式那一条 linkTo）、全选。
 //
 // PR-8b 节点右键菜单与四个新键的动作也在这里，菜单与快捷键各调同一个函数：
-//   - 生成（generateNode，Ctrl+↵ / ⌘↵）：与提示词条「生成」同一条 InspectorSubmitController.submit；
+//   - 生成（generateNode，Ctrl+↵ / ⌘↵）：InspectorSubmitController.submitWithPending——挂起的编辑并进终稿，与提示词条
+//     「生成」走同一条 submit；
 //   - 复制一份（duplicateNodes，Ctrl+D / ⌘D）：同类型 / 同 typeConfig / 同泳道，右下各偏一个 lg；
 //   - 适应全部 / 适应选中（fitAllNodes / fitSelectedNodes，Shift+1 / Shift+2）：缩放条「适应」与空白处
 //     右键菜单「适应视图」都是适应全部；⌘0 仍是缩放复位，不归这里；
@@ -369,17 +370,18 @@ Future<void> addNodeFromMenu(
 /// 生成 [nodeId]（画布 Ctrl+↵ / ⌘↵ 与节点右键菜单「生成」共用；可不可生成的判据是
 /// node_menu_model.generationTarget，调用方先判）。在忙（提交中 / 生成中）⇒ 不动。
 ///
-/// 走提示词条「生成」那一条 InspectorSubmitController.submit，但**提示词不从画布节点里取**：提示词条里敲的字
-/// 只经防抖落库（savePromptDebounced），不回写画布节点——内存里的 node.promptText 可能是旧的。拿旧值去
-/// submit 会把用户刚敲的字盖掉，而 submit 自己又会丢掉还没发射的防抖写入。所以先把挂起的写入冲下去
-/// （flushPendingWrites 在同一条写入链上排队，先于终稿落库），终稿只交空补丁——生成读的是库里那一行，
-/// 就是用户最后敲进去的那句。提示词条自己的「生成」手里有最新文本，照旧带着它提交。
+/// 走 InspectorSubmitController.submitWithPending，**提示词不从画布节点里取**：提示词条里敲的字只经防抖落库
+/// （savePromptDebounced），不回写画布节点——内存里的 node.promptText 可能是旧的，拿它去 submit 会把用户刚敲的
+/// 字盖掉。submitWithPending 把还没发射的防抖 patch（连同写失败等重试的那几个键）并进终稿一并提交：生成读到的
+/// 就是用户最后敲进去的那句，与提示词条带着最新文本提交是同一个效果。
+///
+/// 不再借退出路径的 flushPendingWrites 先冲一笔：那一笔写失败会直接按「已用尽」记账、不再重试，接着
+/// submit 读到库里的旧提示词，白生成一次（B8）。
 void generateNode(WidgetRef ref, {required String nodeId}) {
   final InspectorSubmitController submit =
       ref.read(inspectorSubmitControllerProvider(nodeId).notifier);
   if (submit.isBusy) return;
-  unawaited(submit.flushPendingWrites());
-  unawaited(submit.submit(const <String, Object?>{}));
+  unawaited(submit.submitWithPending());
 }
 
 /// 「复制一份」的落点偏移：往右下各一个 lg（与 24px 网格底同一步长）。

@@ -3,16 +3,20 @@
 //   - GenerationError / InkError → 结构化 InspectorSubmitError（不产生用户文案）
 //   - busy 期间重复 submit 不二次发起
 //   - savePromptDebounced 防抖：窗口内多次输入只落最后一次
+//   - submitWithPending：挂起的编辑（防抖 + 写失败等重试的键）并进终稿一并提交（B8）
 
 import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
+
+import '../../../helpers/recording_logger.dart';
 
 class _FakeNodeRepository implements NodeRepository {
   final List<Map<String, Object?>> patches = [];
@@ -50,6 +54,28 @@ class _GatedNodeRepository implements NodeRepository {
     started++;
     final Completer<void>? g = _gates[started];
     if (g != null) await g.future;
+    patches.add(Map<String, Object?>.of(patch));
+    return 1;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      throw UnimplementedError('${invocation.memberName}');
+}
+
+/// 前 [failures] 次 patchTypeConfig 抛 LocalIOError（仓储层把 PgException 翻成的正是这个），其后正常落盘。
+class _FlakyNodeRepository implements NodeRepository {
+  int failures = 0;
+
+  /// 真正落盘的 patch（按落盘顺序）。
+  final List<Map<String, Object?>> patches = <Map<String, Object?>>[];
+
+  @override
+  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async {
+    if (failures > 0) {
+      failures--;
+      throw const LocalIOError(extra: <String, Object?>{'op': 'patchTypeConfig'});
+    }
     patches.add(Map<String, Object?>.of(patch));
     return 1;
   }
@@ -267,6 +293,72 @@ void main() {
     expect(repo.patches, [
       {'camera': 'orbit'},
     ]);
+  });
+
+  // B8：画布 Ctrl+↵ / 节点菜单「生成」原来先借退出路径的 flushPendingWrites 冲一笔、再交空补丁——那一笔写失败就按
+  // 「已用尽」记账、不再重试，接着 submit 读到库里的旧提示词，白生成一次。
+  group('submitWithPending', () {
+    test('还没发射的防抖 patch 并进终稿：只写一笔，发起生成时库里已经是最新提示词', () async {
+      List<Map<String, Object?>>? landedAtSubmit;
+      final gen = _FakeGenerationController(onSubmit: (_) async {
+        landedAtSubmit = List<Map<String, Object?>>.of(repo.patches);
+        return 'job-1';
+      });
+      final container = makeContainer(gen);
+      final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      ctrl.savePromptDebounced('newest words');
+      await ctrl.submitWithPending();
+
+      expect(repo.patches, <Map<String, Object?>>[
+        <String, Object?>{'prompt': 'newest words'},
+      ]);
+      expect(landedAtSubmit, <Map<String, Object?>>[
+        <String, Object?>{'prompt': 'newest words'},
+      ], reason: '生成读到的就是用户最后敲进去的那句');
+      expect(gen.submitted, <String>['n1']);
+
+      // 防抖已经被终稿吃掉：窗口过了也不再补写一笔。
+      await Future<void>.delayed(
+        InspectorSubmitController.debounceDuration + const Duration(milliseconds: 100),
+      );
+      expect(repo.patches, hasLength(1));
+    });
+
+    test('写失败等重试的键也并进终稿；排着的重试晚到只会把同一份终稿再写一遍，不把旧值盖回去', () async {
+      final _FlakyNodeRepository flaky = _FlakyNodeRepository()..failures = 1;
+      final gen = _FakeGenerationController();
+      final container = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) => Future.value(flaky)),
+        generationControllerProvider.overrideWith((ref) => Future.value(gen)),
+        loggerProvider.overrideWithValue(RecordingLogger()),
+      ]);
+      addTearDown(container.dispose);
+      final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      // ① 一笔自动保存写失败，进重试表（prompt 旧稿 + camera）。
+      await ctrl.saveConfig(const <String, Object?>{'prompt': 'old draft', 'camera': 'orbit'});
+      expect(flaky.patches, isEmpty);
+      // ② 接着又敲了字，防抖还没发射。
+      ctrl.savePromptDebounced('new draft');
+
+      await ctrl.submitWithPending();
+
+      expect(flaky.patches.first, <String, Object?>{'prompt': 'new draft', 'camera': 'orbit'},
+          reason: '终稿 = 重试表 + 防抖，同一个键取防抖里的新值');
+      expect(gen.submitted, <String>['n1']);
+
+      // ③ 排着的重试（首次退避 400ms）晚到：写的也是新稿。
+      await Future<void>.delayed(
+        InspectorSubmitController.retryBackoff.first + const Duration(milliseconds: 300),
+      );
+      expect(flaky.patches.last['prompt'], 'new draft');
+      expect(
+        flaky.patches.where((Map<String, Object?> p) => p['prompt'] == 'old draft'),
+        isEmpty,
+        reason: '重试不得把旧稿盖回终稿头上',
+      );
+    });
   });
 
   // 「在途写入」与 submit() 竞序（2026-08-31 审计 W3 P1；BOARD 第 196 行）。

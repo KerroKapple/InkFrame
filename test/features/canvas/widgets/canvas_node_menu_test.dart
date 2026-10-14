@@ -4,7 +4,7 @@
 //   - 右键一张没选中的卡：先单选它，菜单开在按下点；右键已在多选里的卡：保持多选。
 //   - 右键在抬起时开；在卡片上按住右键拖动不开菜单、不改选中（B4）。
 //   - 各项的可用 / 置灰（不隐藏）条件。
-//   - 生成：先冲挂起的写入，再交空补丁走 submit。
+//   - 生成：走 submitWithPending——还没发射的防抖 patch 并进终稿一并 submit，不借退出路径的 flush（B8）。
 //   - 复制一份：类型 / typeConfig / 泳道 / 偏移 / 标签后缀，新节点单选、不挪相机，不复制边；多选每张配置卡各一份。
 //   - 存为角色：起名框 → createFromImage 收到解析出来的绝对路径；没有活动项目时置灰。
 //   - 加入泳道 ›：子菜单列出泳道 + 移出泳道，当前那条打勾不可点，moveNode 的参数，多选整批。
@@ -543,15 +543,33 @@ void main() {
     });
   });
 
-  testWidgets('生成：走提示词条那一条 submit——先冲挂起的写入，再交空补丁（提示词以库里那一行为准）', (tester) async {
+  testWidgets('生成：走提示词条那一条 submit——没有挂起的编辑时交空补丁（提示词以库里那一行为准），不调 flush',
+      (tester) async {
     await _pump(tester);
     await _openMenuOn(tester, 'img');
 
     await _pick(tester, 'Generate');
 
-    expect(_RecordingSubmit.log, <String>['flush:img', 'submit:img']);
+    expect(_RecordingSubmit.log, <String>['submit:img']);
     expect(_RecordingSubmit.configs, <Map<String, Object?>>[<String, Object?>{}]);
     expect(_menu, findsNothing, reason: '执行之后菜单收起');
+  });
+
+  // B8：原来先借退出路径的 flushPendingWrites 冲一笔、再交空补丁——那一笔写失败就按「已用尽」记账，接着 submit
+  // 读到库里的旧提示词，白生成一次。
+  testWidgets('生成：防抖还没发射时，终稿里带着最新提示词', (tester) async {
+    final ProviderContainer c = await _pump(tester);
+    c.read(inspectorSubmitControllerProvider('img').notifier).savePromptDebounced('boat at dusk');
+    await _openMenuOn(tester, 'img');
+
+    await _pick(tester, 'Generate');
+
+    expect(_RecordingSubmit.log, <String>['submit:img'], reason: '不借退出路径的 flushPendingWrites');
+    expect(_RecordingSubmit.configs, <Map<String, Object?>>[
+      <String, Object?>{'prompt': 'boat at dusk'},
+    ]);
+    // 收尾：替身的 submit 不落库，也就没收掉防抖计时器——让它到点走完（替身没跑真 build，那一笔写入是空操作）。
+    await tester.pump(InspectorSubmitController.debounceDuration);
   });
 
   group('复制一份', () {
