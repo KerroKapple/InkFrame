@@ -268,6 +268,10 @@
   "nodeDeleteFailed": "Failed to delete node",
   "edgeDeleteFailed": "Failed to delete link",
   "nodeMoveFailed": "Failed to move node",
+  "canvasNodeJoinedLane": "Moved into lane “{lane}”",
+  "@canvasNodeJoinedLane": { "placeholders": { "lane": { "type": "String" } } },
+  "canvasNodeLeftLane": "Moved out of lane “{lane}”",
+  "@canvasNodeLeftLane": { "placeholders": { "lane": { "type": "String" } } },
   "edgeDeleted": "Link deleted",
   "undoFailed": "Couldn't undo",
 

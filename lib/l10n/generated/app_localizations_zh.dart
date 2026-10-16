@@ -614,6 +614,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get nodeMoveFailed => '节点移动失败';
 
   @override
+  String canvasNodeJoinedLane(String lane) {
+    return '已移入泳道「$lane」';
+  }
+
+  @override
+  String canvasNodeLeftLane(String lane) {
+    return '已移出泳道「$lane」';
+  }
+
+  @override
   String get edgeDeleted => '连线已删除';
 
   @override

@@ -3,6 +3,8 @@
 // Lanes 稿：道体铺 0.10 alpha 的弱底色（不干扰缩略图），道首（横向左缘 / 竖向上缘）加一条
 // 3px 满饱和色轨——远看能分辨，近看不抢戏；没有 tint 的道色轨取 control。
 // collapsedIds 中的泳道收成 kCollapsedLaneSize 的轨：不铺底色，色轨与分界线照画。
+// 拖卡片途中，松手会换进的那条道（dropTargetLaneId，判定见 util/drop_placement.dart 的 cardDropTargetLane）
+// 叠一层强调色弱底 + 一圈强调色描边：换道之前就看得见要进哪条道。
 import 'package:flutter/material.dart';
 
 import '../models/style_lane.dart';
@@ -18,6 +20,8 @@ class LaneBackground extends StatelessWidget {
     required this.dividerColor,
     required this.railFallbackColor,
     this.collapsedIds = const <String>{},
+    this.dropTargetLaneId,
+    this.dropTargetColor,
   });
 
   final List<StyleLane> lanes;
@@ -29,8 +33,18 @@ class LaneBackground extends StatelessWidget {
   /// 折叠态泳道 id 集：收成 36px 轨，不铺底色。
   final Set<String> collapsedIds;
 
+  /// 拖卡片途中松手会换进的那条道（高亮）；null = 不换道 / 没在拖。
+  final String? dropTargetLaneId;
+
+  /// 目标道高亮用的颜色（token accent）；null 时不画高亮。
+  final Color? dropTargetColor;
+
   /// 稿：道首色轨 3px。
   static const double railThickness = 3;
+
+  /// 目标道高亮：弱底的不透明度与描边粗细。
+  static const double dropTargetFillAlpha = 0.12;
+  static const double dropTargetStroke = 2;
 
   @override
   Widget build(BuildContext context) {
@@ -43,6 +57,8 @@ class LaneBackground extends StatelessWidget {
         dividerColor: dividerColor,
         railFallbackColor: railFallbackColor,
         collapsedIds: collapsedIds,
+        dropTargetLaneId: dropTargetLaneId,
+        dropTargetColor: dropTargetColor,
       ),
     );
   }
@@ -62,6 +78,8 @@ class _LanePainter extends CustomPainter {
     required this.dividerColor,
     required this.railFallbackColor,
     required this.collapsedIds,
+    required this.dropTargetLaneId,
+    required this.dropTargetColor,
   });
 
   final List<StyleLane> lanes;
@@ -70,6 +88,8 @@ class _LanePainter extends CustomPainter {
   final Color dividerColor;
   final Color railFallbackColor;
   final Set<String> collapsedIds;
+  final String? dropTargetLaneId;
+  final Color? dropTargetColor;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -108,6 +128,30 @@ class _LanePainter extends CustomPainter {
         }
       }
     }
+    _paintDropTarget(canvas, rects);
+  }
+
+  /// 拖卡片的目标道：弱底 + 内描边，画在底色与分界线之上（卡片仍在这一层之上）。
+  void _paintDropTarget(Canvas canvas, List<Rect> rects) {
+    final Color? color = dropTargetColor;
+    final String? target = dropTargetLaneId;
+    if (color == null || target == null) return;
+    for (var i = 0; i < lanes.length; i++) {
+      if (lanes[i].id != target) continue;
+      final Rect rect = rects[i];
+      canvas.drawRect(
+        rect,
+        Paint()..color = color.withValues(alpha: LaneBackground.dropTargetFillAlpha),
+      );
+      canvas.drawRect(
+        rect.deflate(LaneBackground.dropTargetStroke / 2),
+        Paint()
+          ..color = color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = LaneBackground.dropTargetStroke,
+      );
+      return;
+    }
   }
 
   @override
@@ -116,6 +160,8 @@ class _LanePainter extends CustomPainter {
       old.dividerColor != dividerColor ||
       old.railFallbackColor != railFallbackColor ||
       old.collapsedIds != collapsedIds ||
+      old.dropTargetLaneId != dropTargetLaneId ||
+      old.dropTargetColor != dropTargetColor ||
       !_sameLanes(old.lanes, lanes);
 
   bool _sameLanes(List<StyleLane> a, List<StyleLane> b) {

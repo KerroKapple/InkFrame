@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/di/canvas_style.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/toast_service.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_error_banner.dart';
@@ -58,6 +59,7 @@ import '../providers/canvas_lanes_controller.dart';
 import '../providers/lane_collapse_controller.dart';
 import '../util/lane_geometry.dart';
 import '../util/lane_pin_geometry.dart';
+import '../../notifications/providers/toast_service_provider.dart';
 import '../../shell/widgets/shell_empty_state.dart';
 import 'canvas_empty_state.dart';
 import 'canvas_grid_painter.dart';
@@ -645,6 +647,23 @@ class _CanvasStage extends ConsumerWidget {
           );
     }
 
+    // 拖卡片途中松手会换进哪条道（泳道背景层据此高亮）：与松手时 _NodeCardSlot 的 resolveCardDrop
+    // 同一个判定。拖的不是本画布的卡（广播是全局的）= null。
+    String? dropTargetLaneOf(NodeDragDelta? drag) {
+      if (drag == null) return null;
+      for (final CanvasNode n in nodes) {
+        if (n.id != drag.nodeId) continue;
+        return cardDropTargetLane(
+          node: n,
+          dragDelta: drag.delta,
+          laneSlices: laneSlices,
+          direction: direction,
+          scale: scaleOf(transformController.value),
+        );
+      }
+      return null;
+    }
+
     return Container(
       color: colors.surface1,
       // 视口尺寸上报给缩放层（围绕视口中心缩放需要）。
@@ -698,14 +717,21 @@ class _CanvasStage extends ConsumerWidget {
                 Positioned.fill(
                   child: laneShifted(
                     IgnorePointer(
-                      child: LaneBackground(
-                        lanes: lanes,
-                        direction: direction,
-                        canvasExtent:
-                            horizontal ? size.width : size.height,
-                        dividerColor: colors.borderSubtle,
-                        railFallbackColor: colors.control,
-                        collapsedIds: collapsedIds,
+                      // 拖卡片途中高亮松手会换进的那条道：.select 掉每帧的位移，只在目标道翻转时重建这一层。
+                      child: Consumer(
+                        builder: (context, ref, _) => LaneBackground(
+                          lanes: lanes,
+                          direction: direction,
+                          canvasExtent:
+                              horizontal ? size.width : size.height,
+                          dividerColor: colors.borderSubtle,
+                          railFallbackColor: colors.control,
+                          collapsedIds: collapsedIds,
+                          dropTargetLaneId: ref.watch(
+                            nodeDragDeltaProvider.select(dropTargetLaneOf),
+                          ),
+                          dropTargetColor: colors.accent,
+                        ),
                       ),
                     ),
                   ),
@@ -811,6 +837,7 @@ class _CanvasStage extends ConsumerWidget {
                       child: _NodeCardSlot(
                         node: node,
                         canvasId: canvasId,
+                        lanes: lanes,
                         laneSlices: laneSlices,
                         direction: direction,
                         transform: transformController,
@@ -865,6 +892,7 @@ class _CanvasStage extends ConsumerWidget {
                                     node: node,
                                     lane: lane,
                                     canvasId: canvasId,
+                                    lanes: lanes,
                                     laneSlices: laneSlices,
                                     direction: direction,
                                     transform: transformController,
@@ -1257,6 +1285,7 @@ class _NodeCardSlot extends ConsumerWidget {
     required this.node,
     this.lane,
     required this.canvasId,
+    required this.lanes,
     required this.laneSlices,
     required this.direction,
     required this.transform,
@@ -1272,6 +1301,9 @@ class _NodeCardSlot extends ConsumerWidget {
   /// 所在泳道（稿：卡片底部「继承 X」行）；无道节点为 null。
   final StyleLane? lane;
   final String canvasId;
+
+  /// 本画布的全部泳道：拖动换道后的提示卡要写出进了 / 出了哪条道的名字。
+  final List<StyleLane> lanes;
   final List<({String id, double size})> laneSlices;
   final LaneDirection direction;
 
@@ -1296,6 +1328,88 @@ class _NodeCardSlot extends ConsumerWidget {
   static Offset? _toStage(BuildContext context, Offset global) => context
       .findAncestorRenderObjectOfType<_RenderStageSpace>()
       ?.globalToLocal(global);
+
+  /// 泳道 [laneId] 在提示卡上的名字（没起名 = 「未命名泳道」，道已不在也按没起名写）。
+  String _laneName(AppLocalizations l, String? laneId) {
+    for (final StyleLane candidate in lanes) {
+      if (candidate.id == laneId) {
+        return candidate.label.isEmpty ? l.laneUntitled : candidate.label;
+      }
+    }
+    return l.laneUntitled;
+  }
+
+  /// 拖卡片松手：落位置；归属泳道只在真拖过去了时才改（判定在 util/drop_placement.dart 的 resolveCardDrop，
+  /// 误拖一两个像素不换道——演示 O2）。改了归属就弹一张撤销卡「已移入 / 移出泳道 X」，「撤销」把卡片挪回
+  /// 原位置、原泳道。
+  ///
+  /// 提示要用的东西（文案、通知服务、容器）在 await 之前取齐：换了道，卡片会被挪进另一个分道位移组重新挂载，
+  /// 这个插槽的 context / ref 当场失效，等写库回来再取就晚了。
+  void _commitDrag(BuildContext context, WidgetRef ref, Offset totalDelta) {
+    final CardDrop drop = resolveCardDrop(
+      node: node,
+      dragDelta: totalDelta,
+      laneSlices: laneSlices,
+      direction: direction,
+      scale: scaleOf(transform.value),
+    );
+    final AppLocalizations l = context.l10n;
+    final ToastService toasts = ref.read(toastServiceProvider);
+    final ProviderContainer container =
+        ProviderScope.containerOf(context, listen: false);
+    final CanvasNodesController nodesCtrl =
+        ref.read(canvasNodesControllerProvider(canvasId).notifier);
+    final String nodeId = node.id;
+    final Offset origin = node.position;
+    final String? fromLaneId = node.laneId;
+    final String moveFailed = l.nodeMoveFailed;
+    final String undoFailed = l.undoFailed;
+    final String undoLabel = l.commonUndo;
+    // 没换道 = null（不弹卡）。从 A 道拖进 B 道写「已移入 B」。
+    final String? laneMessage = !drop.changed
+        ? null
+        : drop.laneId == null
+            ? l.canvasNodeLeftLane(_laneName(l, fromLaneId))
+            : l.canvasNodeJoinedLane(_laneName(l, drop.laneId));
+
+    // 撤销：挪回拖动前的位置（按此刻的位置算位移，期间被别处挪过也回得去）+ 原泳道。节点已不在（被删了）就不动。
+    Future<void> undo() async {
+      CanvasNode? current;
+      for (final CanvasNode n
+          in container.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+              const <CanvasNode>[]) {
+        if (n.id == nodeId) current = n;
+      }
+      if (current == null) return;
+      try {
+        await nodesCtrl.moveNode(
+          nodeId,
+          origin - current.position,
+          laneId: fromLaneId,
+        );
+      } on InkError catch (_) {
+        toasts.show(undoFailed, kind: ToastKind.error);
+      }
+    }
+
+    // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，补用户提示。
+    Future<void> move() async {
+      try {
+        await nodesCtrl.moveNode(nodeId, drop.delta, laneId: drop.laneId);
+      } on InkError catch (_) {
+        toasts.show(moveFailed, kind: ToastKind.error);
+        return;
+      }
+      if (laneMessage == null) return;
+      toasts.show(
+        laneMessage,
+        kind: ToastKind.undo,
+        primary: ToastAction(undoLabel, () => unawaited(undo())),
+      );
+    }
+
+    unawaited(move());
+  }
 
   PortDragCallbacks _portDrag(BuildContext context, WidgetRef ref) {
     WireDragController wire() =>
@@ -1349,44 +1463,9 @@ class _NodeCardSlot extends ConsumerWidget {
         lane: lane,
         selected: selected,
         onTap: onTap,
-        onDragEnd: (totalDelta) {
-          // 泳道钉死模型：落点中心先经"原道锚定"映射到屏幕坐标判归属，
-          // 再按"新道锚定"逆映射回世界坐标——保证换道落点视觉位置不变。
-          // 判定本体在 util/drop_placement.dart（resolveLaneDrop），新建菜单的落点调的是同一个函数。
-          final horizontal = direction == LaneDirection.horizontal;
-          final center =
-              node.position +
-              totalDelta +
-              Offset(kNodeCardSize.width / 2, kNodeCardSize.height / 2);
-          final crossWorld = horizontal ? center.dy : center.dx;
-          final drop = resolveLaneDrop(
-            centerCrossWorld: crossWorld,
-            fromLaneId: node.laneId,
-            laneSlices: laneSlices,
-            direction: direction,
-            scale: scaleOf(transform.value),
-          );
-          final laneId = drop.laneId;
-          final newCrossWorld = drop.crossWorld;
-          final adjustedDelta = horizontal
-              ? Offset(totalDelta.dx, totalDelta.dy + newCrossWorld - crossWorld)
-              : Offset(
-                  totalDelta.dx + newCrossWorld - crossWorld, totalDelta.dy);
-          // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，补用户提示。
-          Future<void> move() async {
-            try {
-              await ref
-                  .read(canvasNodesControllerProvider(canvasId).notifier)
-                  .moveNode(node.id, adjustedDelta, laneId: laneId);
-            } on InkError catch (_) {
-              if (context.mounted) {
-                showCanvasSnack(context, context.l10n.nodeMoveFailed);
-              }
-            }
-          }
-
-          move();
-        },
+        // 泳道钉死模型：落点中心先经"原道锚定"映射到屏幕坐标判归属，再按"新道锚定"逆映射回世界坐标——
+        // 保证换道落点视觉位置不变（resolveCardDrop 里调的 resolveLaneDrop，新建菜单的落点调的是同一个函数）。
+        onDragEnd: (Offset totalDelta) => _commitDrag(context, ref, totalDelta),
         onStartLink: () =>
             ref.read(linkModeControllerProvider(canvasId).notifier).start(node.id),
         onDelete: onDelete,
