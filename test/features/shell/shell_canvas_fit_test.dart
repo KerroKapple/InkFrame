@@ -3,6 +3,7 @@
 // 画布级 pump 量不出这件事：舞台上方压着的浮动工具条、左下的缩放条都是 canvas_screen 在外壳里摆的，
 // 画布区的大小也由外壳的三栏（左栏 | 画布区 | 检查器）决定。这里在真外壳里按 Shift+1，再点一次缩放条
 // 「适应」，两条路都要把卡片框进同一块。
+// 选中一张图像配置时底部会出提示词条：适应全部要连它一起让开，最下面那张不被条子盖住。
 // 全外壳测试禁 pumpAndSettle（见 test/_harness/shell_app.dart）。
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -13,9 +14,11 @@ import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_tool_actions.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_prompt_bar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_toolbar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_zoom_bar.dart';
@@ -54,7 +57,11 @@ Future<void> _frames(WidgetTester tester, [int n = 4]) async {
   }
 }
 
-Future<ProviderContainer> _pumpOnCanvas(WidgetTester tester, String prefix) async {
+Future<ProviderContainer> _pumpOnCanvas(
+  WidgetTester tester,
+  String prefix, {
+  List<CanvasNode>? nodes,
+}) async {
   final paths = await setupTempPaths(tester, prefix);
   await pumpInkShell(
     tester,
@@ -65,7 +72,7 @@ Future<ProviderContainer> _pumpOnCanvas(WidgetTester tester, String prefix) asyn
       project: ProjectRef(id: 'p1', name: 'Alpha'),
     ),
     extraOverrides: <Override>[
-      canvasNodesControllerProvider.overrideWith(() => FakeNodesController(_nodes)),
+      canvasNodesControllerProvider.overrideWith(() => FakeNodesController(nodes ?? _nodes)),
       canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
       canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
@@ -114,6 +121,38 @@ void main() {
 
     expect(scaleOf(c.read(canvasTransformControllerProvider(_canvasId)).value), lessThan(1.0));
     _expectAllCardsFramed(tester);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('选中一张图像配置（提示词条显示）时 Shift+1：最下面那张也落在条子上沿之上，不被盖住', (tester) async {
+    // 最下面那张就是选中的图像配置：适应全部之后它贴着留白的下沿，正是条子所在的那一截。
+    final List<CanvasNode> nodes = <CanvasNode>[
+      textNode('left', 'Left', -1200, canvasId: _canvasId),
+      const CanvasNode(
+        id: 'img',
+        label: 'Image',
+        type: CanvasNodeType.image,
+        canvasId: _canvasId,
+        position: Offset(600, 1800),
+      ),
+    ];
+    final ProviderContainer c = await _pumpOnCanvas(tester, 'ink_shell_fit_bar_shown_', nodes: nodes);
+    c.read(canvasSelectionControllerProvider(_canvasId).notifier).select('img');
+    await _frames(tester);
+    final Rect bar = tester.getRect(find.byKey(CanvasPromptBar.surfaceKey));
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.shiftLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.shiftLeft);
+    await _frames(tester, 2);
+
+    final Rect card = tester.getRect(_card('img'));
+    expect(
+      tester.getRect(find.byKey(CanvasPromptBar.surfaceKey)).top,
+      moreOrLessEquals(bar.top, epsilon: 0.5),
+      reason: '前提：适应前后条子高度不变',
+    );
+    expect(card.bottom, lessThanOrEqualTo(bar.top + 0.5), reason: '选中的那张不能被提示词条盖住：$card vs $bar');
+    expect(tester.getRect(_card('left')).top, greaterThanOrEqualTo(tester.getRect(find.byType(CanvasToolbar)).bottom));
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('缩放条「适应」= 适应全部：同样把所有卡片框进画布区', (tester) async {

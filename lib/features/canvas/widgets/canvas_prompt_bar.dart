@@ -10,10 +10,15 @@
 // 提示词框 1 行起、随内容长到 8 行，再多就在框内滚动。条子底边贴舞台底（bottom 16），
 // 内容变多只会往上长。回车 = 换行；⌘↵ / Ctrl+↵ = 生成。
 //
+// 条子把自己画出来的高度报给 canvasPromptBarHeightProvider（不显示时报 0），「适应全部 / 适应选中」据此在底部
+// 让出它（canvas_tool_actions.canvasFitInsets）。
+//
 // 只在恰好选中一个 image / video config 节点时出现。提示词经 savePromptDebounced 落库，
 // ⌘↵ / 按钮走 InspectorSubmitController.submit({'prompt'})。
 // 稿上的「≈ 0.42」预估费用：只有 image 供应商有 costModel，且稿未定义视频费用——本条先不画。
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -29,6 +34,7 @@ import '../../../theme/tokens.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/canvas_prompt_bar_height.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
@@ -54,7 +60,10 @@ class CanvasPromptBar extends ConsumerWidget {
   static const Key generateKey = Key('canvas.promptBar.generate');
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) =>
+      _HeightReporter(canvasId: canvasId, child: _bar(ref));
+
+  Widget _bar(WidgetRef ref) {
     final Set<String> selected = ref.watch(canvasSelectionControllerProvider(canvasId));
     if (selected.length != 1) return const SizedBox.shrink();
     final List<CanvasNode> nodes =
@@ -92,6 +101,62 @@ class CanvasPromptBar extends ConsumerWidget {
         );
       },
     );
+  }
+}
+
+/// 把 [child] 此刻画出来的高度报给 canvasPromptBarHeightProvider（条子不显示时 child 是 0 高的空盒，报 0）。
+class _HeightReporter extends ConsumerStatefulWidget {
+  const _HeightReporter({required this.canvasId, required this.child});
+
+  final String canvasId;
+  final Widget child;
+
+  @override
+  ConsumerState<_HeightReporter> createState() => _HeightReporterState();
+}
+
+class _HeightReporterState extends ConsumerState<_HeightReporter> {
+  void _report(double height) {
+    if (!mounted) return;
+    ref.read(canvasPromptBarHeightProvider(widget.canvasId).notifier).report(height);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // 订阅着它：provider 是 autoDispose，没人订阅时报进去的值会在帧末被回收，「适应」读到的永远是 0。
+    ref.listen<double>(canvasPromptBarHeightProvider(widget.canvasId), (_, _) {});
+    return _HeightObserver(onHeight: _report, child: widget.child);
+  }
+}
+
+/// 排版后高度变了就在帧后回调一次（排版期间不能改 provider）。
+class _HeightObserver extends SingleChildRenderObjectWidget {
+  const _HeightObserver({required this.onHeight, required super.child});
+
+  final ValueChanged<double> onHeight;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) => _RenderHeightObserver(onHeight);
+
+  @override
+  void updateRenderObject(BuildContext context, _RenderHeightObserver renderObject) {
+    renderObject.onHeight = onHeight;
+  }
+}
+
+class _RenderHeightObserver extends RenderProxyBox {
+  _RenderHeightObserver(this.onHeight);
+
+  ValueChanged<double> onHeight;
+  double? _reported;
+
+  @override
+  void performLayout() {
+    super.performLayout();
+    final double height = size.height;
+    if (height == _reported) return;
+    _reported = height;
+    SchedulerBinding.instance.addPostFrameCallback((_) => onHeight(height));
   }
 }
 

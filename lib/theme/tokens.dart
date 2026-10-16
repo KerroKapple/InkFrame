@@ -383,6 +383,13 @@ class InkToolbarSize {
   /// 底部居中的提示词条居中时会压到这一段，就改在右边剩下的那段里居中（prompt_bar_width.dart）。
   /// 由 canvas_screen_layout_test 守着：两条的右沿 + 12 都得落在这里面，改了它们的宽度这里跟着改。
   static const double stageBottomLeftReserve = 176;
+
+  /// 底部提示词条的 bottom：条子底边离舞台底。
+  static const double promptBarBottom = 16;
+
+  /// 提示词条显示时，「适应全部 / 适应选中」底部除了条子自己的高度还要让出的那一截：条子 bottom 16 + 10 间隙
+  /// （canvas_tool_actions.canvasFitInsets）。条子高度随提示词行数变，不是令牌，运行时量。
+  static const double promptBarClearance = 26;
 }
 
 /// 通知卡（右下角，画布重设计稿 › 通知）。间距 / 圆角 / 阴影仍走 InkSpacing / InkRadius / InkShadow。
