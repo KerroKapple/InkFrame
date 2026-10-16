@@ -22,6 +22,7 @@ import 'package:inkframe/features/canvas/widgets/image_result_inspector.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
 
 import '../../../_harness/fake_batch_result.dart';
+import '../../../_harness/fake_repositories.dart' show InMemoryEdgeRepository;
 import '../../../_harness/fake_unit_of_work.dart';
 import '../../../_harness/test_app.dart';
 
@@ -177,6 +178,9 @@ List<Override> overridesFor(
     fileResolverServiceProvider.overrideWithValue(_resolver),
     batchResultRepositoryProvider.overrideWith((ref) async => repo),
     nodeRepositoryProvider.overrideWith((ref) async => _nodes),
+    // ImageResultInspector 的动作行要问序列 lens「这张在不在链上」，lens 会读边控制器——
+    // 不覆盖就会去连真库。
+    edgeRepositoryProvider.overrideWith((ref) async => InMemoryEdgeRepository()),
     generationControllerProvider.overrideWith((ref) async => _gen),
     jobQueueServiceProvider.overrideWith((ref) async => _queue),
     unitOfWorkProvider.overrideWith(
