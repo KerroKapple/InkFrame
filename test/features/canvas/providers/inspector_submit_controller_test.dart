@@ -325,7 +325,7 @@ void main() {
       expect(repo.patches, hasLength(1));
     });
 
-    test('写失败等重试的键也并进终稿；排着的重试晚到只会把同一份终稿再写一遍，不把旧值盖回去', () async {
+    test('写失败等重试的键也并进终稿；终稿落库后重试表清空、排着的重试取消，旧值不会被写回去', () async {
       final _FlakyNodeRepository flaky = _FlakyNodeRepository()..failures = 1;
       final gen = _FakeGenerationController();
       final container = ProviderContainer(overrides: [
@@ -348,16 +348,77 @@ void main() {
           reason: '终稿 = 重试表 + 防抖，同一个键取防抖里的新值');
       expect(gen.submitted, <String>['n1']);
 
-      // ③ 排着的重试（首次退避 400ms）晚到：写的也是新稿。
+      // ③ 终稿落库即把这些键从重试表里划掉：排着的重试（首次退避 400ms）跟着取消，不再补写。
+      expect(ctrl.hasPendingWrites, isFalse);
       await Future<void>.delayed(
         InspectorSubmitController.retryBackoff.first + const Duration(milliseconds: 300),
       );
+      expect(flaky.patches, hasLength(1), reason: '重试已取消');
       expect(flaky.patches.last['prompt'], 'new draft');
       expect(
         flaky.patches.where((Map<String, Object?> p) => p['prompt'] == 'old draft'),
         isEmpty,
         reason: '重试不得把旧稿盖回终稿头上',
       );
+    });
+  });
+
+  // 终稿这一笔的成败记进自动保存的账：成功划掉重试表里的键，失败把终稿记进重试表。
+  group('终稿写入记账', () {
+    ProviderContainer makeFlakyContainer(_FlakyNodeRepository flaky, GenerationController gen) {
+      final container = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) => Future.value(flaky)),
+        generationControllerProvider.overrideWith((ref) => Future.value(gen)),
+        loggerProvider.overrideWithValue(RecordingLogger()),
+      ]);
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    test('防抖里的编辑并进终稿、终稿写失败：进重试表等自动重试；再按一次生成仍是用户最后敲的那句', () async {
+      final _FlakyNodeRepository flaky = _FlakyNodeRepository()..failures = 1;
+      final gen = _FakeGenerationController();
+      final container = makeFlakyContainer(flaky, gen);
+      final ProviderSubscription<InspectorAutoSaveState> status =
+          container.listen(inspectorAutoSaveStatusProvider('n1'), (_, _) {});
+      final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      ctrl.savePromptDebounced('newest words');
+      await ctrl.submitWithPending();
+
+      expect(flaky.patches, isEmpty, reason: '前提：终稿这一笔写失败');
+      expect(gen.submitted, isEmpty, reason: '写不进去不发起生成');
+      expect(status.read(), isA<InspectorAutoSaveRetrying>(), reason: '终稿记进了重试表，不是悄悄丢掉');
+      expect(ctrl.hasPendingWrites, isTrue);
+
+      // 自动重试之前用户又按了一次生成：防抖早已被上一次吃掉，终稿只能从重试表里来。
+      await ctrl.submitWithPending();
+
+      expect(flaky.patches, <Map<String, Object?>>[
+        <String, Object?>{'prompt': 'newest words'},
+      ], reason: '生成读到的仍是用户最后敲的那句，不是库里的旧稿');
+      expect(gen.submitted, <String>['n1']);
+      expect(status.read(), isA<InspectorAutoSaveClean>());
+    });
+
+    test('自动保存失败到用尽（退出路径）之后带着挂起的编辑生成成功：「未保存 · 重试」消掉', () async {
+      final _FlakyNodeRepository flaky = _FlakyNodeRepository()..failures = 1;
+      final gen = _FakeGenerationController();
+      final container = makeFlakyContainer(flaky, gen);
+      final ProviderSubscription<InspectorAutoSaveState> status =
+          container.listen(inspectorAutoSaveStatusProvider('n1'), (_, _) {});
+      final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      ctrl.savePromptDebounced('draft');
+      await ctrl.flushPendingWrites();
+      expect(status.read(), isA<InspectorAutoSaveFailed>(), reason: '前提：退出路径那一笔失败即用尽，不再自动重试');
+
+      await ctrl.submitWithPending();
+
+      expect(flaky.patches.single, <String, Object?>{'prompt': 'draft'});
+      expect(gen.submitted, <String>['n1']);
+      expect(status.read(), isA<InspectorAutoSaveClean>(), reason: '终稿已落库，重试表里的键划掉');
+      expect(ctrl.hasPendingWrites, isFalse);
     });
   });
 

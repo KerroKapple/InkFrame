@@ -486,6 +486,11 @@ class InspectorSubmitController
   /// 终稿写入与自动保存走**同一条**串行链（[_serialized]）：已经发射的在途
   /// 自动保存会排在终稿**之前**落库，旧 patch 再也盖不到终稿头上
   /// （BOARD 第 196 行）。顺带保证 `submitFromConfigNode` 读到的那一行就是终稿。
+  ///
+  /// 终稿这一笔的成败也记进自动保存的账（与 [_attemptWrite] 同一套）：写成功，这些键从失败重试表里划掉
+  /// （之前自动保存失败留下的「未保存 · 重试」随之消掉）；写失败，终稿进重试表、按退避自动重试——
+  /// 防抖里还没发射的编辑已经被并进终稿、从防抖里取消了，不记下来就只剩输入框里那份，库里还是旧的，
+  /// 下一次生成又读到旧提示词。生成本身的失败（缺 Key、配置不合法……）与写入无关，不记账。
   Future<void> submit(Map<String, Object?> finalConfig) async {
     if (isBusy) return;
     // 还没发射的防抖 patch 直接丢掉：终稿是检查器按当前 provider 能力裁剪过的
@@ -495,12 +500,18 @@ class InspectorSubmitController
     final link = ref.keepAlive();
     state = const InspectorSubmitSubmitting();
     try {
-      await _serialized(() async {
-        final nodes = await ref.read(nodeRepositoryProvider.future);
-        if (!_alive) return;
-        await nodes.patchTypeConfig(arg, finalConfig);
-      });
+      try {
+        await _serialized(() async {
+          final nodes = await ref.read(nodeRepositoryProvider.future);
+          if (!_alive) return;
+          await nodes.patchTypeConfig(arg, finalConfig);
+        });
+      } on InkError catch (e) {
+        if (_alive) _onWriteFailed(finalConfig, e);
+        rethrow;
+      }
       if (!_alive) return;
+      _onWriteSucceeded(finalConfig.keys);
       _setSubmitState(const InspectorSubmitRunning());
       final controller = await ref.read(generationControllerProvider.future);
       if (!_alive) return;
