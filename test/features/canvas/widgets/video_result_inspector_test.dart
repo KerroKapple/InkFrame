@@ -11,6 +11,7 @@ import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/playable_video_path.dart';
 import 'package:inkframe/features/canvas/widgets/result_inspector_parts.dart';
 import 'package:inkframe/features/canvas/widgets/video_result_inspector.dart';
 import 'package:inkframe/theme/primitives/ink_activatable.dart';
@@ -85,7 +86,7 @@ void main() {
     );
   });
 
-  Future<void> pump(WidgetTester tester) async {
+  Future<void> pump(WidgetTester tester, {List<Override> extra = const <Override>[]}) async {
     await pumpInkApp(
       tester,
       Scaffold(body: SingleChildScrollView(child: VideoResultInspector(node: result))),
@@ -93,6 +94,7 @@ void main() {
         nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
         edgeRepositoryProvider.overrideWith((ref) async => InMemoryEdgeRepository()),
         fileResolverServiceProvider.overrideWithValue(_MissingFileResolver()),
+        ...extra,
       ],
       surfaceSize: const Size(301, 900),
     );
@@ -125,6 +127,16 @@ void main() {
     expect(act(ResultInspectorKeys.locateSource).onTap, isNotNull);
     expect(act(ResultInspectorKeys.play).onTap, isNull);
     expect(act(ResultInspectorKeys.viewInSequence).onTap, isNull);
+  });
+
+  testWidgets('视频文件在 ⇒ 播放可点（预览与动作行同一个回调）', (tester) async {
+    await pump(tester, extra: <Override>[
+      playableVideoPathProvider.overrideWith((ref, node) => '/videos/j1.mp4'),
+    ]);
+    InkActivatable act(Key key) => tester.widget<InkActivatable>(
+          find.descendant(of: find.byKey(key), matching: find.byType(InkActivatable)).first,
+        );
+    expect(act(ResultInspectorKeys.play).onTap, isNotNull);
   });
 
   testWidgets('还没出片 ⇒ 预览是占位，不去解析文件', (tester) async {

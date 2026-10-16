@@ -130,6 +130,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorSeedLabel => 'Seed';
 
   @override
+  String get inspectorTextContentLabel => 'Content';
+
+  @override
+  String get inspectorTextContentHint =>
+      'Write the text that connected nodes will add to their prompt…';
+
+  @override
+  String get inspectorResultDimensionsLabel => 'Dimensions';
+
+  @override
+  String get inspectorResultLocateSource => 'Locate source node';
+
+  @override
+  String get inspectorResultPlay => 'Play';
+
+  @override
   String get inspectorSeedHint => 'Random';
 
   @override
