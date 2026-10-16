@@ -3,24 +3,18 @@
 // 动作按当前路由上下文组装（canvas / gallery / settings / studio）；
 // label 经 context.l10n 解析后快照进 CommandAction，执行闭包在面板关闭后
 // 由调用方以 (context, ref) 触发，await 之后一律先查 context.mounted。
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../core/errors/ink_error.dart';
-import '../../core/interfaces/toast_service.dart';
 import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
 import '../canvas/models/canvas_edge.dart';
 import '../canvas/models/canvas_node.dart';
 import '../canvas/providers/canvas_edges_controller.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
-import '../canvas/providers/canvas_transform_controller.dart';
-import '../canvas/util/node_position.dart';
+import '../canvas/util/canvas_tool_actions.dart';
 import '../export/util/export_order.dart';
 import '../export/widgets/export_video_dialog.dart';
-import '../notifications/providers/toast_service_provider.dart';
 import '../shell/models/shell_state.dart';
 import '../shell/providers/shell_controller.dart';
 import '../studio/project_import_flow.dart';
@@ -117,32 +111,15 @@ List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   ];
 }
 
+/// 与工具条、I / G / T 同一条路（canvas_tool_actions.addNodeAtViewportCenter）：视口中心 + 散布、判泳道、
+/// 新节点只单选不挪相机，失败弹错误卡「添加节点失败」。
 Future<void> _addNode(
   BuildContext context,
   WidgetRef ref,
   String canvasId,
   CanvasNodeType type,
-) async {
-  final label = context.l10n.canvasNodeDefaultLabel;
-  final failedMsg = context.l10n.canvasAddNodeFailed;
-  try {
-    await ref.read(canvasNodesControllerProvider(canvasId).notifier).addNode(
-          label: label,
-          type: type,
-          // 债150：视口中心落点（视口未上报回退旧固定区随机）。
-          position: pickViewportCenteredNodePosition(
-            random: Random(),
-            transform:
-                ref.read(canvasTransformControllerProvider(canvasId)).value,
-            viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
-            nodeSize: defaultNodeSize(type),
-          ),
-        );
-  } on InkError {
-    if (!context.mounted) return;
-    ref.read(toastServiceProvider).show(failedMsg, kind: ToastKind.error);
-  }
-}
+) =>
+    addNodeAtViewportCenter(context, ref, canvasId: canvasId, type: type);
 
 void _openExport(BuildContext context, WidgetRef ref, String canvasId) {
   // EX-1′：与顶栏入口同一条排序路径（narrative 链序）。

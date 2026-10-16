@@ -841,6 +841,48 @@ void main() {
     expect(_recorder(container).added, <CanvasNodeType>[CanvasNodeType.image]);
   });
 
+  // B6 延伸：CTA 自己的点击赢了手势竞技场，外层「点空白」收不到——焦点得在按下时就要回来。
+  testWidgets('空画布：在输入框里打完字再点 CTA「添加视频节点」，按 I 照样建出节点（焦点回到画布）', (tester) async {
+    final fieldController = TextEditingController();
+    addTearDown(fieldController.dispose);
+
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: CanvasShortcuts(
+          isActive: true,
+          child: Column(
+            children: <Widget>[
+              const Expanded(child: CanvasView()),
+              TextField(controller: fieldController),
+            ],
+          ),
+        ),
+      ),
+      overrides: _canvasOverrides(const <CanvasNode>[]),
+    );
+    await tester.pumpAndSettle();
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(CanvasView)),
+    );
+
+    await tester.tap(find.byType(TextField));
+    await tester.enterText(find.byType(TextField), 'hello');
+    await tester.pumpAndSettle();
+    expect(isEditingText(), isTrue);
+
+    await tester.tap(find.text('Add video node'));
+    await tester.pumpAndSettle();
+    expect(isEditingText(), isFalse, reason: '按在 CTA 上：焦点回到画布');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyI);
+    await tester.pumpAndSettle();
+    expect(
+      _recorder(container).added,
+      <CanvasNodeType>[CanvasNodeType.video, CanvasNodeType.image],
+    );
+  });
+
   testWidgets('焦点在画布里的按钮上：空格是按钮的「激活」，不起临时平移', (tester) async {
     final FocusNode buttonFocus = FocusNode(debugLabel: 'inspector-button');
     addTearDown(buttonFocus.dispose);
