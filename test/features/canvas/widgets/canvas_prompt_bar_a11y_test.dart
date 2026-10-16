@@ -17,13 +17,14 @@ import 'package:inkframe/features/canvas/widgets/canvas_prompt_bar.dart';
 import '../../../_harness/a11y.dart';
 import '../../../_harness/test_app.dart';
 
-/// 「生成」只在提示词非空时可点，所以两种节点各一个。
+/// 「生成」只在提示词非空（且供应商配了 Key，见 _pump）时可点，所以两种节点各一个。
+/// 供应商写死在节点上：终稿就只有提示词一项（没存过供应商的节点另见 canvas_prompt_bar_generate_gate_test）。
 const CanvasNode _withPrompt = CanvasNode(
   id: 'n1',
   label: 'Shot',
   type: CanvasNodeType.image,
   canvasId: 'cv1',
-  typeConfig: <String, Object?>{'prompt': 'a cat'},
+  typeConfig: <String, Object?>{'prompt': 'a cat', 'provider_id': 'gemini-image'},
 );
 const CanvasNode _emptyPrompt = CanvasNode(
   id: 'n1',
@@ -65,6 +66,8 @@ Future<void> _pump(WidgetTester tester, CanvasNode node) async {
       canvasNodesControllerProvider.overrideWith(() => _Nodes(node)),
       canvasSelectionControllerProvider.overrideWith(_Selected.new),
       inspectorSubmitControllerProvider.overrideWith(_RecordingSubmit.new),
+      // 本文件只看可达性：Key 一律当已配（没配 Key 的置灰见 canvas_prompt_bar_generate_gate_test）。
+      inspectorHasApiKeyProvider.overrideWith((ref, String providerId) async => true),
     ],
   );
   await tester.pumpAndSettle();

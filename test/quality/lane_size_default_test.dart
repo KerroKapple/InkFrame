@@ -77,18 +77,25 @@ void main() {
     );
   });
 
-  // 示例成片按生成同一条规则排在 config 右侧一列、往下错开；示例泳道的带厚
-  // kSampleLaneSize 必须把整列都装下——否则首启就看到成片压在泳道下沿上。
-  test('示例 config 与全部示例成片都落在示例泳道带内', () {
+  // 示例有两镜：config 上下排（sampleShotPosition），每镜的成片按生成同一条规则落在它右侧
+  // 第 0 格；示例泳道的带厚 kSampleLaneSize 必须把每一镜的 config 与成片都装下——否则首启
+  // 就看到第二镜压在泳道下沿上。
+  test('示例每一镜的 config 与成片都落在示例泳道带内', () {
     expect(kSampleLaneSize, greaterThanOrEqualTo(kDefaultLaneSize));
-    for (int k = 0; k < kSampleArtifactAssets.length; k++) {
-      final Offset p = resultNodePosition(configPosition: kSampleNodePosition, index: k);
-      expect(p.dy, greaterThanOrEqualTo(0));
-      expect(
-        p.dy + kNodeCardSize.height,
-        lessThanOrEqualTo(kSampleLaneSize),
-        reason: '第 $k 张示例成片纵向溢出了示例泳道带',
-      );
+    expect(kSampleArtifactAssets, hasLength(kSampleShotCount),
+        reason: '第 i 张成片归第 i 镜：两边数目得对得上');
+    expect(sampleShotPosition(0), kSampleNodePosition);
+    for (int i = 0; i < kSampleShotCount; i++) {
+      final Offset config = sampleShotPosition(i);
+      final Offset result = resultNodePosition(configPosition: config, index: 0);
+      for (final Offset p in <Offset>[config, result]) {
+        expect(p.dy, greaterThanOrEqualTo(0));
+        expect(
+          p.dy + kNodeCardSize.height,
+          lessThanOrEqualTo(kSampleLaneSize),
+          reason: '第 $i 镜的卡片纵向溢出了示例泳道带',
+        );
+      }
     }
   });
 }

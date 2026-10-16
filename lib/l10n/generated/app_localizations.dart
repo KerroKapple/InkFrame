@@ -254,12 +254,6 @@ abstract class AppLocalizations {
   /// **'Ink Style'**
   String get canvasSampleLaneLabel;
 
-  /// No description provided for @canvasSampleLaneStylePrompt.
-  ///
-  /// In en, this message translates to:
-  /// **'traditional Chinese ink painting, soft brush strokes, misty atmosphere'**
-  String get canvasSampleLaneStylePrompt;
-
   /// No description provided for @canvasSampleNodeLabel.
   ///
   /// In en, this message translates to:
@@ -271,6 +265,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A lone boat drifting on a misty river at dawn, distant mountains fading into the fog'**
   String get canvasSampleNodePrompt;
+
+  /// No description provided for @canvasSampleSecondNodeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Second Shot'**
+  String get canvasSampleSecondNodeLabel;
+
+  /// No description provided for @canvasSampleSecondNodePrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'A lone traveler in a straw hat on a cliff path, overlooking a river winding through a sea of clouds'**
+  String get canvasSampleSecondNodePrompt;
 
   /// No description provided for @inspectorTitle.
   ///

@@ -38,6 +38,7 @@ import '../providers/canvas_lanes_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../providers/prompt_presets_controller.dart';
+import '../util/generate_gate.dart';
 import 'characters_section.dart';
 import 'inspector_rows.dart';
 import 'inspector_status_panel.dart';
@@ -94,17 +95,15 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
     final caps = ref.read(providerCapabilitiesListProvider);
     final tc = widget.node.typeConfig;
 
-    final savedProviderId = tc['provider_id'] as String?;
     final savedResolution = _parseResolution(tc['resolution']);
-    final defaultProviderId = caps.isNotEmpty ? caps.first.providerId : null;
-    // 默认值链：节点已存 > 上次使用（须仍在能力列表，防自定义 provider 已删）> first。
-    final lastUsed =
-        ref.read(preferencesServiceProvider).current.lastImageProviderId;
-    final lastUsedValid =
-        lastUsed != null && caps.any((c) => c.providerId == lastUsed)
-            ? lastUsed
-            : null;
-    _providerId = savedProviderId ?? lastUsedValid ?? defaultProviderId;
+    // 默认值链：节点已存 > 上次使用（须仍在能力列表，防自定义 provider 已删）> first——与提示词条判
+    // 「生成」可不可点同一条链（util/generate_gate.dart）。
+    _providerId = resolveConfigProviderId(
+      savedProviderId: tc['provider_id'] as String?,
+      lastUsedProviderId:
+          ref.read(preferencesServiceProvider).current.lastImageProviderId,
+      candidates: configProviderCandidates(CanvasNodeType.image, caps),
+    );
     final selectedCaps = caps.where((c) => c.providerId == _providerId);
     final sel = selectedCaps.isNotEmpty ? selectedCaps.first : null;
     final defaultResolution = sel != null && sel.supportedResolutions.isNotEmpty

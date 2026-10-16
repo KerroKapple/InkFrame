@@ -17,6 +17,7 @@ import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
 import '../providers/inspector_submit_controller.dart';
+import '../util/generate_gate.dart';
 
 /// 该 config 节点当前活跃（非终态）的 job——从注册表镜像取最近一条。
 JobState? _activeJobFor(List<JobState> jobs, String nodeId) {
@@ -80,17 +81,18 @@ class InspectorStatusBinding extends ConsumerWidget {
     final hasKey = pid != null &&
         (ref.watch(inspectorHasApiKeyProvider(pid)).valueOrNull ?? false);
 
-    String? disabledReason;
-    if (promptEmpty) {
-      disabledReason = disabledEmptyPromptText;
-    } else if (!hasKey) {
-      disabledReason = disabledNoKeyText;
-    }
+    // 能不能点与画布底部提示词条同一个判据（util/generate_gate.dart）。
+    final GenerateBlockReason? block =
+        generateBlockReason(promptEmpty: promptEmpty, hasApiKey: hasKey);
     return InspectorStatusPanel(
       view: activeJob != null ? _jobToInspectorView(activeJob) : state,
       generateLabel: generateLabel,
-      canSubmit: !promptEmpty && hasKey,
-      disabledReason: disabledReason,
+      canSubmit: block == null,
+      disabledReason: switch (block) {
+        GenerateBlockReason.emptyPrompt => disabledEmptyPromptText,
+        GenerateBlockReason.missingApiKey => disabledNoKeyText,
+        null => null,
+      },
       onSubmit: onSubmit,
     );
   }

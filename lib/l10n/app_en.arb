@@ -33,9 +33,10 @@
   "canvasSampleProjectName": "Sample Project",
   "canvasSampleCanvasName": "Canvas 1",
   "canvasSampleLaneLabel": "Ink Style",
-  "canvasSampleLaneStylePrompt": "traditional Chinese ink painting, soft brush strokes, misty atmosphere",
   "canvasSampleNodeLabel": "First Shot",
   "canvasSampleNodePrompt": "A lone boat drifting on a misty river at dawn, distant mountains fading into the fog",
+  "canvasSampleSecondNodeLabel": "Second Shot",
+  "canvasSampleSecondNodePrompt": "A lone traveler in a straw hat on a cliff path, overlooking a river winding through a sea of clouds",
 
   "inspectorTitle": "Config",
   "inspectorPromptLabel": "Prompt",

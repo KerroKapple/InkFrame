@@ -27,6 +27,7 @@ import '../../theme/primitives/ink_noir_card.dart';
 import '../../theme/tokens.dart';
 import '../../services/project_archive_service.dart';
 import '../canvas/providers/canvas_bootstrap_controller.dart';
+import '../canvas/util/sample_seed.dart';
 import '../gallery/util/gallery_time.dart';
 import '../generation/models/job_state.dart';
 import '../generation/providers/jobs_registry.dart';
@@ -230,7 +231,7 @@ class _ResumeBar extends ConsumerWidget {
   }
 }
 
-/// 示例项目：建项目 + 画布并切到画布（ON-2）。
+/// 示例项目：建项目 + 画布并切到画布（ON-2）。工作库列表由 createSample 自己失效（画布切换胶囊即刻可见）。
 Future<void> createStudioSampleProject(BuildContext context, WidgetRef ref) async {
   final l10n = context.l10n;
   final failedMsg = l10n.studioCreateSampleFailed;
@@ -239,12 +240,7 @@ Future<void> createStudioSampleProject(BuildContext context, WidgetRef ref) asyn
     await bootstrap.createSample(
       projectName: l10n.canvasSampleProjectName,
       canvasName: l10n.canvasSampleCanvasName,
-      seed: (
-        laneLabel: l10n.canvasSampleLaneLabel,
-        laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
-        nodeLabel: l10n.canvasSampleNodeLabel,
-        nodePrompt: l10n.canvasSampleNodePrompt,
-      ),
+      seed: sampleSeedOf(l10n),
     );
   } on InkError catch (e, st) {
     ref.read(loggerProvider).error(

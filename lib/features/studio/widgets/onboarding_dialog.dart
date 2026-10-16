@@ -27,6 +27,7 @@ import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../canvas/providers/canvas_bootstrap_controller.dart';
+import '../../canvas/util/sample_seed.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../../settings/providers/settings_page.dart';
 import '../../settings/util/settings_page_label.dart';
@@ -142,12 +143,7 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
       await bootstrap.createSample(
         projectName: l10n.canvasSampleProjectName,
         canvasName: l10n.canvasSampleCanvasName,
-        seed: (
-          laneLabel: l10n.canvasSampleLaneLabel,
-          laneStylePrompt: l10n.canvasSampleLaneStylePrompt,
-          nodeLabel: l10n.canvasSampleNodeLabel,
-          nodePrompt: l10n.canvasSampleNodePrompt,
-        ),
+        seed: sampleSeedOf(l10n),
       );
     } on InkError {
       // 捕获集 = createSample 真实抛出集（仓储链路只抛 InkError）。

@@ -5,7 +5,7 @@
 // Positioned(left: 0, right: 0, bottom: 16) 下，最大宽度就是舞台宽。水平位置照常居中，居中会压到左下
 // 缩放条 / 泳道工具栏时改在右边那段里居中（promptBarPlacement）。
 // surface4 @0.96 底 + control 边 + 6px 圆角 + 0 10 30 阴影，两行：
-//   行一 11px：6×6 琥珀方点 + 目标节点名 + 供应商 · 片长 · 运镜 | 右：基础风格 [prefix] 已附加
+//   行一 11px：6×6 琥珀方点 + 目标节点名 + 供应商 · 片长 · 运镜 | 右：基底风格 [prefix] 已附加
 //   行二：提示词正文（prompt 档 13/1.6，最小高 40）+ 字数 + 「生成 ⌘↵」（Windows 显示 Ctrl+Enter）
 // 提示词框 1 行起、随内容长到 8 行，再多就在框内滚动。条子底边贴舞台底（bottom 16），
 // 内容变多只会往上长。回车 = 换行；⌘↵ / Ctrl+↵ = 生成。
@@ -15,6 +15,11 @@
 //
 // 只在恰好选中一个 image / video config 节点时出现。提示词经 savePromptDebounced 落库，
 // ⌘↵ / 按钮走 InspectorSubmitController.submit({'prompt'})。
+//
+// 「生成」能不能点与检查器的生成按钮同一个判据（util/generate_gate.dart）：提示词非空 + 供应商配了 Key，
+// 供应商按检查器同一条链取（节点已存 > 上次使用 > 第一个）；点不动时 tooltip 给检查器同一句原因。
+// ⌘↵ 也过这道闸——没配 Key 时按下去什么都不发，而不是发出去再报「生成失败」。节点还没存过供应商时，
+// 终稿把判 Key 的那个供应商一并写进去：不然生成路径会落回默认供应商，判的和用的不是同一个。
 // 稿上的「≈ 0.42」预估费用：只有 image 供应商有 costModel，且稿未定义视频费用——本条先不画。
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -23,7 +28,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/shortcut_labels.dart';
+import '../../../core/di/preferences.dart';
 import '../../../core/di/providers.dart';
+import '../../../core/models/app_preferences.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
@@ -38,6 +45,7 @@ import '../providers/canvas_prompt_bar_height.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
+import '../util/generate_gate.dart';
 import '../util/prompt_bar_width.dart';
 import 'base_style_action.dart';
 import 'inspector_status_panel.dart';
@@ -52,7 +60,7 @@ class CanvasPromptBar extends ConsumerWidget {
   /// 会撑满父级给的宽度，量外层量不出条子多宽。
   static const Key surfaceKey = Key('canvas.promptBar.surface');
 
-  /// 「基础风格」入口的测试锚点。
+  /// 「基底风格」入口的测试锚点。
   static const Key baseStyleKey = Key('canvas.promptBar.baseStyle');
 
   /// 「生成」按钮的测试锚点。挂在公开类上（而不是私有 `_GenerateButton` 的静态
@@ -187,12 +195,43 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
     super.dispose();
   }
 
+  /// 判 Key / 写进终稿的供应商：与检查器同一条链（util/generate_gate.dart）。
+  String? _resolveProviderId(List<ProviderCapabilities> all) {
+    final CanvasNode node = widget.node;
+    final AppPreferences prefs = ref.read(preferencesServiceProvider).current;
+    return resolveConfigProviderId(
+      savedProviderId: node.typeConfig['provider_id'] as String?,
+      lastUsedProviderId: node.type == CanvasNodeType.video
+          ? prefs.lastVideoProviderId
+          : prefs.lastImageProviderId,
+      candidates: configProviderCandidates(node.type, all),
+    );
+  }
+
+  /// [providerId] 配没配 Key（检查器同一个缓存 provider）。供应商解析不出来 ⇒ 当作没配。
+  bool _hasApiKey(String? providerId, {required bool watch}) {
+    if (providerId == null) return false;
+    final AsyncValue<bool> v = watch
+        ? ref.watch(inspectorHasApiKeyProvider(providerId))
+        : ref.read(inspectorHasApiKeyProvider(providerId));
+    return v.valueOrNull ?? false;
+  }
+
   void _submit() {
     final String text = _prompt.text.trim();
-    if (text.isEmpty) return;
+    final String? providerId = _resolveProviderId(ref.read(providerCapabilitiesListProvider));
+    final GenerateBlockReason? block = generateBlockReason(
+      promptEmpty: text.isEmpty,
+      hasApiKey: _hasApiKey(providerId, watch: false),
+    );
+    if (block != null) return;
     ref
         .read(inspectorSubmitControllerProvider(widget.node.id).notifier)
-        .submit(<String, Object?>{'prompt': text});
+        .submit(<String, Object?>{
+      'prompt': text,
+      // 节点还没存过供应商：把判 Key 的那个写进终稿（见头注）；存过的不动，库里那一份才是检查器最后选的。
+      if (widget.node.typeConfig['provider_id'] == null) 'provider_id': providerId,
+    });
   }
 
   @override
@@ -219,6 +258,20 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
         ref.watch(canvasBaseStyleProvider(widget.canvasId)).valueOrNull?.prefix.trim() ?? '';
     final InspectorSubmitState submitState = ref.watch(inspectorSubmitControllerProvider(node.id));
     final bool busy = submitState is InspectorSubmitSubmitting || submitState is InspectorSubmitRunning;
+    final String? gateProviderId = _resolveProviderId(ref.watch(providerCapabilitiesListProvider));
+    final GenerateBlockReason? block = generateBlockReason(
+      promptEmpty: _prompt.text.trim().isEmpty,
+      hasApiKey: _hasApiKey(gateProviderId, watch: true),
+    );
+    final bool isVideo = node.type == CanvasNodeType.video;
+    // 点不动的原因：与检查器同一组文案（图像 / 视频各一组）。
+    final String? blockedText = switch (block) {
+      GenerateBlockReason.emptyPrompt =>
+        isVideo ? l.inspectorVideoGenerateDisabledEmptyPrompt : l.inspectorGenerateDisabledEmptyPrompt,
+      GenerateBlockReason.missingApiKey =>
+        isVideo ? l.inspectorVideoGenerateDisabledNoKey : l.inspectorGenerateDisabledNoKey,
+      null => null,
+    };
 
     return Container(
       key: CanvasPromptBar.surfaceKey,
@@ -238,8 +291,8 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
             children: <Widget>[
               InkSquareDot(size: 6, color: c.accent),
               const SizedBox(width: InkSpacing.sm),
-              // 名字 + 摘要整组吃掉剩余宽度，基础风格贴右。原来名字是 Flexible、后面跟 Spacer：
-              // 两个 flex 1 平分剩余空间，基础风格就被推到条子中间。
+              // 名字 + 摘要整组吃掉剩余宽度，基底风格贴右。原来名字是 Flexible、后面跟 Spacer：
+              // 两个 flex 1 平分剩余空间，基底风格就被推到条子中间。
               Expanded(
                 child: Row(
                   children: <Widget>[
@@ -313,8 +366,10 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
                   style: t.monoSmall.copyWith(color: c.fg6)),
               const SizedBox(width: InkSpacing.sm),
               _GenerateButton(
-                enabled: !busy && _prompt.text.trim().isNotEmpty,
+                enabled: !busy && block == null,
                 label: busy ? l.inspectorStatusSubmitting : l.inspectorGenerate,
+                // 在途时按钮写着「提交中」，不再挂原因。
+                tooltip: busy ? null : blockedText,
                 onTap: _submit,
               ),
             ],
@@ -326,7 +381,7 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
 
 }
 
-/// 「基础风格：{prefix} 已附加」——点击打开基底风格编辑器；无前缀时只显示标签。
+/// 「基底风格：{prefix} 已附加」——点击打开基底风格编辑器；无前缀时只显示标签。
 class _BaseStyleChip extends ConsumerWidget {
   const _BaseStyleChip({required this.canvasId, required this.prefix});
   final String canvasId;
@@ -377,10 +432,18 @@ class _BaseStyleChip extends ConsumerWidget {
 /// 手搓的 Semantics + MouseRegion + GestureDetector——⌘↵ 之外键盘到不了它
 /// （BOARD 214）。
 class _GenerateButton extends StatelessWidget {
-  const _GenerateButton({required this.enabled, required this.label, required this.onTap});
+  const _GenerateButton({
+    required this.enabled,
+    required this.label,
+    required this.onTap,
+    this.tooltip,
+  });
   final bool enabled;
   final String label;
   final VoidCallback onTap;
+
+  /// 点不动时的原因（检查器同一句）；可点时为 null。
+  final String? tooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -389,7 +452,8 @@ class _GenerateButton extends StatelessWidget {
     return InkActivatable(
       key: CanvasPromptBar.generateKey,
       semanticLabel: label,
-      // 禁用（提示词为空 / 在途）时给 null 而不是空闭包 ⇒ 连焦点都到不了，
+      tooltip: tooltip,
+      // 禁用（提示词为空 / 没配 Key / 在途）时给 null 而不是空闭包 ⇒ 连焦点都到不了，
       // 不会出现"聚焦上去按回车什么都不发生"的假可达。
       onTap: enabled ? onTap : null,
       // 子件是 3px 圆角的主按钮；环走前景装饰，不参与布局 ⇒ 不撑宽提示词条。
