@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/core/constants/default_providers.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
@@ -153,6 +154,8 @@ Future<ProviderContainer> _pump(
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
       toastServiceProvider.overrideWithValue(RecordingToastService()),
       inspectorSubmitControllerProvider.overrideWith(_RecordingSubmit.new),
+      // 提示词条的 ⌘↵ 过「配了 Key」这道闸（util/generate_gate.dart）：本文件不看这道闸，一律当已配。
+      inspectorHasApiKeyProvider.overrideWith((ref, String providerId) async => true),
     ],
     surfaceSize: const Size(1200, 800),
   );
@@ -422,7 +425,8 @@ void main() {
 
     expect(_RecordingSubmit.log, <String>['submit:img'], reason: '只有提示词条那一次，画布的生成没跟着触发');
     expect(_RecordingSubmit.configs, <Map<String, Object?>>[
-      <String, Object?>{'prompt': 'boat at dawn'},
+      // 节点没存过供应商：提示词条把判 Key 的那个（默认链落到能力表第一个）一并写进终稿。
+      <String, Object?>{'prompt': 'boat at dawn', 'provider_id': kDefaultImageProviderId},
     ]);
   });
 }

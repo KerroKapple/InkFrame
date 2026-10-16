@@ -23,6 +23,7 @@ import '../../generation/services/cost_estimator.dart';
 import '../models/canvas_node.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
+import '../util/generate_gate.dart';
 import 'characters_section.dart';
 import 'inspector_rows.dart';
 import 'inspector_status_panel.dart';
@@ -55,17 +56,14 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     final caps = _videoCaps();
     final tc = widget.node.typeConfig;
 
-    final savedProviderId = tc['provider_id'] as String?;
-    // 默认值链：节点已存 > 上次使用（须仍在能力列表）> first。
-    final lastUsed =
-        ref.read(preferencesServiceProvider).current.lastVideoProviderId;
-    final lastUsedValid =
-        lastUsed != null && caps.any((c) => c.providerId == lastUsed)
-            ? lastUsed
-            : null;
-    _providerId = savedProviderId ??
-        lastUsedValid ??
-        (caps.isNotEmpty ? caps.first.providerId : null);
+    // 默认值链：节点已存 > 上次使用（须仍在能力列表）> first——与提示词条判「生成」可不可点
+    // 同一条链（util/generate_gate.dart）。
+    _providerId = resolveConfigProviderId(
+      savedProviderId: tc['provider_id'] as String?,
+      lastUsedProviderId:
+          ref.read(preferencesServiceProvider).current.lastVideoProviderId,
+      candidates: caps,
+    );
     final selected = _selectedCaps(caps);
     // 钳制到当前 provider 支持集，避免 DropdownButton "value 不在 items" 断言：
     // 持久化的旧值若不被当前 provider 支持，退回 first / null。
@@ -82,14 +80,10 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     _lang = widget.node.shotLanguage;
   }
 
-  List<ProviderCapabilities> _videoCaps() => ref
-      .read(providerCapabilitiesListProvider)
-      .where(
-        (c) =>
-            c.modes.contains(GenerationMode.textToVideo) ||
-            c.modes.contains(GenerationMode.imageToVideo),
-      )
-      .toList(growable: false);
+  List<ProviderCapabilities> _videoCaps() => configProviderCandidates(
+        CanvasNodeType.video,
+        ref.read(providerCapabilitiesListProvider),
+      );
 
   ProviderCapabilities? _selectedCaps(List<ProviderCapabilities> all) {
     if (_providerId == null || all.isEmpty) return null;

@@ -52,6 +52,8 @@ List<Override> _overrides() => <Override>[
       canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
       inspectorSubmitControllerProvider.overrideWith(_CountingSubmitController.new),
+      // 提示词条的 ⌘↵ 过「配了 Key」这道闸（util/generate_gate.dart）：本文件只看撞键，一律当已配。
+      inspectorHasApiKeyProvider.overrideWith((ref, String providerId) async => true),
     ];
 
 const ShellState _onCanvas = ShellState(

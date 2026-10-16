@@ -166,4 +166,97 @@ void main() {
       return;
     }
   });
+
+  // 示例项目现在是两镜 + 第一镜 → 第二镜一条叙事边（序列标签打开就不空）：边是第五个独立
+  // 仓储。它接错会话的话，「边那一步失败」时项目 / 画布 / 泳道 / 两镜节点都会留下来。
+  test('示例项目同构：叙事边那一步失败 ⇒ 项目 / 画布 / 泳道 / 节点 / 边一行不剩', () async {
+    try {
+      final h = req();
+      final uow = _uow(h.conn);
+
+      await expectLater(
+        uow.run((scope) async {
+          final pid = await scope.projects.create(name: 'Sample');
+          final cid = await scope.canvas.create(projectId: pid, name: 'C');
+          final lid = await scope.styleLanes.create(canvasId: cid, label: 'L');
+          final first = await scope.nodes.create(
+            canvasId: cid,
+            type: 'image',
+            nodeRole: 'config',
+            laneId: lid,
+          );
+          await scope.nodes.create(
+            canvasId: cid,
+            type: 'image',
+            nodeRole: 'config',
+            laneId: lid,
+          );
+          // 不存在的 target_node_id ⇒ FK 违例 ⇒ 整个事务回滚。
+          await scope.edges.create(
+            canvasId: cid,
+            sourceNodeId: first,
+            targetNodeId: '00000000-0000-0000-0000-000000000000',
+            edgeType: 'narrative',
+          );
+        }),
+        throwsA(isA<LocalIOError>()),
+      );
+
+      expect(
+        <String, int>{
+          'projects': await _count(h.conn, 'projects'),
+          'canvases': await _count(h.conn, 'canvases'),
+          'style_lanes': await _count(h.conn, 'style_lanes'),
+          'nodes': await _count(h.conn, 'nodes'),
+          'edges': await _count(h.conn, 'edges'),
+        },
+        <String, int>{
+          'projects': 0,
+          'canvases': 0,
+          'style_lanes': 0,
+          'nodes': 0,
+          'edges': 0,
+        },
+        reason: '有表留下了行 ⇒ 那个仓储的写入逃出了事务（接错会话）',
+      );
+    } on _Skip {
+      return;
+    }
+  });
+
+  test('示例项目同构：两镜 + 叙事边全部成功 ⇒ 两个节点、一条边', () async {
+    try {
+      final h = req();
+      final uow = _uow(h.conn);
+
+      await uow.run((scope) async {
+        final pid = await scope.projects.create(name: 'Sample');
+        final cid = await scope.canvas.create(projectId: pid, name: 'C');
+        final lid = await scope.styleLanes.create(canvasId: cid, label: 'L');
+        final first = await scope.nodes.create(
+          canvasId: cid,
+          type: 'image',
+          nodeRole: 'config',
+          laneId: lid,
+        );
+        final second = await scope.nodes.create(
+          canvasId: cid,
+          type: 'image',
+          nodeRole: 'config',
+          laneId: lid,
+        );
+        await scope.edges.create(
+          canvasId: cid,
+          sourceNodeId: first,
+          targetNodeId: second,
+          edgeType: 'narrative',
+        );
+      });
+
+      expect(await _count(h.conn, 'nodes'), 2);
+      expect(await _count(h.conn, 'edges'), 1);
+    } on _Skip {
+      return;
+    }
+  });
 }

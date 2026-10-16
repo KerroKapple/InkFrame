@@ -173,6 +173,7 @@ void main() {
     final canvases = InMemoryCanvasRepository();
     final lanes = InMemoryStyleLaneRepository();
     final nodes = InMemoryNodeRepository();
+    final edges = InMemoryEdgeRepository();
     final container = ProviderContainer(overrides: <Override>[
       workspaceProjectsProvider.overrideWith(
         (_) async => const <ProjectWithCanvases>[],
@@ -193,6 +194,7 @@ void main() {
           canvas: canvases,
           styleLanes: lanes,
           nodes: nodes,
+          edges: edges,
         )),
       ),
     ]);
@@ -216,15 +218,23 @@ void main() {
     expect(projects.rows.values.single['name'], 'Sample Project');
     expect(canvases.rows.values.single['name'], 'Canvas 1');
     expect(container.read(currentCanvasIdProvider), isNotNull);
-    // ON-2b：演示内容一并种入（1 泳道 + 1 预填 prompt 的 image config 节点）
+    // ON-2b：演示内容一并种入（1 泳道 + 两镜预填 prompt 的 image config 节点 + 一条叙事边）
     expect(lanes.rows.values.single['label'], 'Ink Style');
-    final node = nodes.rows.values.single;
-    expect(node['type'], 'image');
-    expect(node['lane_id'], lanes.rows.keys.single);
+    expect(nodes.rows, hasLength(2));
+    for (final Map<String, Object?> node in nodes.rows.values) {
+      expect(node['type'], 'image');
+      expect(node['lane_id'], lanes.rows.keys.single);
+      expect(
+        (node['type_config'] as Map<String, Object?>)['prompt'],
+        isNotEmpty,
+      );
+    }
+    // 两镜的节点名都走 ARB（sampleSeedOf）
     expect(
-      (node['type_config'] as Map<String, Object?>)['prompt'],
-      isNotEmpty,
+      nodes.rows.values.map((Map<String, Object?> n) => n['label']).toSet(),
+      <String>{'First Shot', 'Second Shot'},
     );
+    expect(edges.rows.values.single['edge_type'], 'narrative');
   });
 
   testWidgets('StudioHome loading 态：CircularProgressIndicator',

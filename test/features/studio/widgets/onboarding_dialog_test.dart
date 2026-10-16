@@ -717,6 +717,7 @@ void main() {
       final InMemoryCanvasRepository canvases = InMemoryCanvasRepository();
       final InMemoryStyleLaneRepository lanes = InMemoryStyleLaneRepository();
       final InMemoryNodeRepository nodes = InMemoryNodeRepository();
+      final InMemoryEdgeRepository edges = InMemoryEdgeRepository();
       final ProviderContainer container = await _pumpAndOpen(
         tester,
         overrides: _overrides(
@@ -739,6 +740,7 @@ void main() {
                 canvas: canvases,
                 styleLanes: lanes,
                 nodes: nodes,
+                edges: edges,
               )),
             ),
           ],
@@ -756,9 +758,13 @@ void main() {
       expect(container.read(currentCanvasIdProvider), isNotNull);
       expect(prefs.current.onboardingCompleted, isTrue);
       expect(find.text('Welcome to InkFrame'), findsNothing);
-      // ON-2b：演示内容一并种入。
+      // ON-2b：演示内容一并种入（两镜 + 一条叙事边）。
       expect(lanes.rows, hasLength(1));
-      expect(nodes.rows.values.single['lane_id'], lanes.rows.keys.single);
+      expect(nodes.rows, hasLength(2));
+      for (final Map<String, Object?> node in nodes.rows.values) {
+        expect(node['lane_id'], lanes.rows.keys.single);
+      }
+      expect(edges.rows, hasLength(1));
     });
 
     // 失败时向导还开着（modal）：通知卡画在所有路由之上，挡不住；旧 SnackBar
