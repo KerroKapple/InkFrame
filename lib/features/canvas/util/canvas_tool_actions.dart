@@ -53,6 +53,7 @@ import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_focus_request.dart';
 import '../providers/canvas_lanes_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/canvas_prompt_bar_height.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
@@ -190,15 +191,27 @@ void selectAllNodes(WidgetRef ref, {required String canvasId}) {
       .selectAll(nodes.map((CanvasNode n) => n.id));
 }
 
-/// 适应视口的留白：顶部让出浮动工具条那一条（与舞台顶部浮层同一个 stageTopInset），底部让出左下缩放条
-/// 那一截（stageBottomInset），左右各一个 lg。底部提示词条（只在选中一张图像 / 视频配置时出现）这一版没有
-/// 令牌，不扣。
+/// 适应视口的基本留白：顶部让出浮动工具条那一条（与舞台顶部浮层同一个 stageTopInset），底部让出左下缩放条
+/// 那一截（stageBottomInset），左右各一个 lg。提示词条显示时底部另算，见 [canvasFitInsets]。
 const EdgeInsets kCanvasFitInsets = EdgeInsets.fromLTRB(
   InkSpacing.lg,
   InkToolbarSize.stageTopInset,
   InkSpacing.lg,
   InkToolbarSize.stageBottomInset,
 );
+
+/// 适应视口实际用的留白：[kCanvasFitInsets]，提示词条显示时（[promptBarHeight] > 0）底部改让出条子——条子高度
+/// 加上它离舞台底的距离与一档间隙（promptBarClearance），与缩放条那一截取大的。条子只在恰好选中一张图像 / 视频
+/// 配置时出现：这时按适应全部，最下面一排卡会贴着留白的下沿，不让就被条子压住（适应选中只框那一张、居中摆，
+/// 碰不到条子，但同样按这份留白算）。
+EdgeInsets canvasFitInsets({required double promptBarHeight}) => promptBarHeight <= 0
+    ? kCanvasFitInsets
+    : kCanvasFitInsets.copyWith(
+        bottom: max(
+          InkToolbarSize.stageBottomInset,
+          promptBarHeight + InkToolbarSize.promptBarClearance,
+        ),
+      );
 
 /// 适应全部（Shift+1；缩放条「适应」、空白处右键菜单「适应视图」同一个动作）：把画布上所有看得见的卡片
 /// 框进视口（只缩小、不放大，见 viewport_fit.dart）。画布上没有卡片 ⇒ 回到初始相机。视口还没量出来 ⇒ 不动。
@@ -270,7 +283,9 @@ void _fitNodes(
         : const <({String id, double size})>[],
     direction: direction,
     viewportSize: ref.read(canvasViewportSizeProvider(canvasId)),
-    insets: kCanvasFitInsets,
+    insets: canvasFitInsets(
+      promptBarHeight: ref.read(canvasPromptBarHeightProvider(canvasId)),
+    ),
   );
   if (next != null) transform.value = next;
 }

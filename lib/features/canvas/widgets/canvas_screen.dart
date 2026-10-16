@@ -66,7 +66,7 @@ class CanvasScreen extends ConsumerWidget {
                     Positioned(
                       left: 0,
                       right: 0,
-                      bottom: 16,
+                      bottom: InkToolbarSize.promptBarBottom,
                       child: CanvasPromptBar(canvasId: canvasId),
                     ),
                     // 最后画：压在舞台浮层（连线提示等）之上，那些浮层的 top 已让出
