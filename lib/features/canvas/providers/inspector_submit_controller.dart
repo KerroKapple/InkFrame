@@ -543,14 +543,10 @@ class InspectorSubmitController
   /// 不借退出路径的 [flushPendingWrites]：那一笔写失败会直接按「已用尽」记账、不再重试，接着的 submit 读到
   /// 库里的旧提示词，白生成一次。并进终稿之后，终稿写不进去 submit 就停在失败态、不发起生成。
   ///
-  /// 重试表里与防抖同键的旧值一并换成新值：失败重试还在排队的话，它晚到也只会把同一份终稿再写一遍，
-  /// 不会把旧值盖回去（「每键留最新值」，与 _onWriteFailed 同一条规则）。
-  Future<void> submitWithPending() {
-    for (final MapEntry<String, Object?> e in _pendingDebounced.entries) {
-      if (_unsaved.containsKey(e.key)) _unsaved[e.key] = e.value;
-    }
-    return submit(<String, Object?>{..._unsaved, ..._pendingDebounced});
-  }
+  /// 重试表里排着的旧值不会被写回去：终稿落库即把这些键从重试表里划掉、排着的重试随之取消；终稿写失败则以终稿
+  /// 的新值记进重试表（见 [submit]）。
+  Future<void> submitWithPending() =>
+      submit(<String, Object?>{..._unsaved, ..._pendingDebounced});
 
   /// await 之后写提交状态的唯一入口：控制器已销毁就什么都不做
   /// （`state =` 在 dispose 后会抛 StateError）。
