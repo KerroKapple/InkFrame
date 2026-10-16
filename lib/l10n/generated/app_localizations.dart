@@ -314,6 +314,36 @@ abstract class AppLocalizations {
   /// **'Seed'**
   String get inspectorSeedLabel;
 
+  /// No description provided for @inspectorTextContentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Content'**
+  String get inspectorTextContentLabel;
+
+  /// No description provided for @inspectorTextContentHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Write the text that connected nodes will add to their prompt…'**
+  String get inspectorTextContentHint;
+
+  /// No description provided for @inspectorResultDimensionsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Dimensions'**
+  String get inspectorResultDimensionsLabel;
+
+  /// No description provided for @inspectorResultLocateSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Locate source node'**
+  String get inspectorResultLocateSource;
+
+  /// No description provided for @inspectorResultPlay.
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get inspectorResultPlay;
+
   /// No description provided for @inspectorSeedHint.
   ///
   /// In en, this message translates to:

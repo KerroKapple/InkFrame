@@ -2,8 +2,9 @@
 //   - image + config → ImageConfigInspector
 //   - video + config → VideoConfigInspector
 //   - shot  + config → ShotConfigInspector
-//   - image + result → ImageResultInspector（有 slot 时渲染 BatchResultsGrid）
-//   - video/text + result、text config → 不渲染 Inspector
+//   - text  + config → TextNodeInspector
+//   - image + result → ImageResultInspector（有 slot 时渲染 BatchResultsGrid，否则单张预览）
+//   - video + result → VideoResultInspector
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,8 +14,11 @@ import 'package:inkframe/features/canvas/widgets/batch_results_grid.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
 import 'package:inkframe/features/canvas/widgets/image_result_inspector.dart';
 import 'package:inkframe/features/canvas/widgets/node_inspector_router.dart';
+import 'package:inkframe/features/canvas/widgets/result_inspector_parts.dart';
 import 'package:inkframe/features/canvas/widgets/shot_config_inspector.dart';
+import 'package:inkframe/features/canvas/widgets/text_node_inspector.dart';
 import 'package:inkframe/features/canvas/widgets/video_config_inspector.dart';
+import 'package:inkframe/features/canvas/widgets/video_result_inspector.dart';
 
 import '../../../_harness/fake_batch_result.dart';
 import '../../../_harness/test_app.dart';
@@ -91,7 +95,7 @@ void main() {
     expect(find.byType(ImageConfigInspector), findsNothing);
   });
 
-  testWidgets('image result 节点 + 无 slot（单张生成）→ 不占面板空间', (tester) async {
+  testWidgets('image result 节点 + 无 slot（单张生成）→ 不画网格，画单张预览', (tester) async {
     const node = CanvasNode(
       id: 'n1',
       label: '',
@@ -111,9 +115,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(ImageResultInspector), findsOneWidget);
     expect(find.byType(BatchResultsGrid), findsNothing);
+    // 演示 F2：单张生成时面板不再整块留空。
+    expect(find.byKey(ResultInspectorKeys.preview), findsOneWidget);
   });
 
-  testWidgets('video result 节点 → 不渲染 Inspector', (tester) async {
+  testWidgets('video result 节点 → VideoResultInspector（预览 + 参数 + 动作）', (tester) async {
     const node = CanvasNode(
       id: 'n1',
       label: '',
@@ -125,8 +131,30 @@ void main() {
       tester,
       const Scaffold(body: NodeInspectorRouter(node: node)),
     );
+    await tester.pumpAndSettle();
+    expect(find.byType(VideoResultInspector), findsOneWidget);
+    expect(find.byKey(ResultInspectorKeys.preview), findsOneWidget);
     expect(find.byType(ImageResultInspector), findsNothing);
     expect(find.byType(VideoConfigInspector), findsNothing);
+    expect(find.byType(ImageConfigInspector), findsNothing);
+  });
+
+  testWidgets('text 节点 → TextNodeInspector（正文输入框）', (tester) async {
+    const node = CanvasNode(
+      id: 'n1',
+      label: '',
+      type: CanvasNodeType.text,
+      role: NodeRole.config,
+      typeConfig: <String, Object?>{'text': 'opening narration'},
+    );
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: NodeInspectorRouter(node: node)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(TextNodeInspector), findsOneWidget);
+    expect(find.byKey(TextNodeInspector.contentFieldKey), findsOneWidget);
+    expect(find.text('opening narration'), findsOneWidget);
     expect(find.byType(ImageConfigInspector), findsNothing);
   });
 }

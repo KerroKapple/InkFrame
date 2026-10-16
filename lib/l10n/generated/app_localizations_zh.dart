@@ -117,6 +117,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorSeedLabel => '种子';
 
   @override
+  String get inspectorTextContentLabel => '正文';
+
+  @override
+  String get inspectorTextContentHint => '写下正文——连到的节点生成时会把它并进提示词…';
+
+  @override
+  String get inspectorResultDimensionsLabel => '尺寸';
+
+  @override
+  String get inspectorResultLocateSource => '定位来源节点';
+
+  @override
+  String get inspectorResultPlay => '播放';
+
+  @override
   String get inspectorSeedHint => '随机';
 
   @override
