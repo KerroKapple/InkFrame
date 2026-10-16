@@ -266,7 +266,7 @@ lib/
 │   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
 │   │   ├── settings_screen.dart       # SettingsScreen (壳走 theme 层的 InkOverlayDialog + 左导航 + 各页正文 + 底部条 完成/导出诊断包); pages = 常规 / API 密钥 / 快捷键 / 性能 / 节点布局 / 网络 / 存储 / 关于（后三页里快捷键 / 性能 / 网络是 P7 补的只读页）
 │   │   ├── providers/
-│   │   ├── util/                      # shortcut_catalog.dart（快捷键页的清单：从真正注册的 Shortcuts 表反推 + kOverlayDismissActivator + 画布按住空格平移 CanvasToolKeys.holdToPan）+ proxy_status.dart（网络页：env 代理只读快照，凭据掩码，复用 core/net 的 proxyRuleFor）
+│   │   ├── util/                      # shortcut_catalog.dart（快捷键页的清单：从真正注册的 Shortcuts 表反推 + kOverlayDismissActivator + 画布按住空格平移 CanvasToolKeys.holdToPan）+ proxy_status.dart（网络页：env 代理只读快照，凭据掩码，复用 core/net 的 proxyRuleFor）+ api_key_placeholder.dart（Key 输入框占位提示按 Provider 家族给：sk- / AIza / 通用；设置页 Key 表与引导第 2 步共用）+ settings_page_label.dart（页名，左导航与引导底部「打开设置 › 〈页名〉」共用）+ secure_store_name.dart（Key 存在哪的叫法：macOS 钥匙串 / Windows 凭据管理器）
 │   │   └── widgets/
 │   ├── shell/                         # Persistent-tab app shell — the sole host after unlock; lib/app.dart's body is just InkShell (no routing predicates left there). See lib/features/shell/README.md for the invariants
 │   │   ├── models/                    # shell_state.dart (ShellTab / ShellOverlay / ProjectRef / ShellState — hand-written value object, 8 named transitions incl. closeCanvas / closeProject context-invalidation, no copyWith)

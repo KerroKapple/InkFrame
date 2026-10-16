@@ -23,6 +23,7 @@ import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../settings/providers/api_key_scope_controller.dart';
 import '../../settings/util/api_key_placeholder.dart';
+import '../../settings/util/secure_store_name.dart';
 import '../util/onboarding_provider_choices.dart';
 import 'onboarding_anchors.dart';
 // -------------------------------------------------------- 第 2 步：配置密钥
@@ -203,7 +204,7 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
       _VerifyOutcome.verified => (
           glyph: '✓',
           color: c.success,
-          text: l10n.onboardingKeyVerified,
+          text: l10n.onboardingKeyVerified(secureStoreName(l10n)),
           mono: false,
         ),
       _VerifyOutcome.savedUnverified => (

@@ -27,7 +27,9 @@ import '../../theme/components/ink_overlay_dialog.dart';
 import '../../theme/tokens.dart';
 import '../shell/providers/shell_controller.dart';
 import 'providers/settings_page.dart';
+import 'util/secure_store_name.dart';
 import 'util/settings_footer_note.dart';
+import 'util/settings_page_label.dart';
 import 'util/shortcut_catalog.dart' show kOverlayDismissActivator;
 import 'widgets/about_section.dart';
 import 'widgets/api_keys_section.dart';
@@ -106,7 +108,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           onClose: _close,
           // 底部条按当前页说话：只有「API 密钥」页写钥匙串，三个只读页什么都不写。
           footerNote: switch (footerNoteKindOf(page)) {
-            SettingsFooterNoteKind.keychain => context.l10n.settingsFooterNote,
+            SettingsFooterNoteKind.keychain =>
+              context.l10n.settingsFooterNote(secureStoreName(context.l10n)),
             SettingsFooterNoteKind.live => context.l10n.settingsFooterNoteLive,
             SettingsFooterNoteKind.readOnly =>
               context.l10n.settingsFooterNoteReadOnly,
@@ -144,16 +147,7 @@ class _Nav extends StatelessWidget {
   final SettingsPage selected;
   final ValueChanged<SettingsPage> onSelect;
 
-  static String _label(BuildContext context, SettingsPage p) => switch (p) {
-        SettingsPage.general => context.l10n.settingsNavGeneral,
-        SettingsPage.apiKeys => context.l10n.settingsApiKeysSection,
-        SettingsPage.shortcuts => context.l10n.settingsNavShortcuts,
-        SettingsPage.performance => context.l10n.settingsNavPerformance,
-        SettingsPage.nodeLayout => context.l10n.settingsNavNodeLayout,
-        SettingsPage.network => context.l10n.settingsNavNetwork,
-        SettingsPage.storage => context.l10n.settingsStorageSection,
-        SettingsPage.about => context.l10n.settingsAboutSection,
-      };
+  static String _label(BuildContext context, SettingsPage p) => settingsPageLabel(context.l10n, p);
 
   @override
   Widget build(BuildContext context) {

@@ -29,6 +29,7 @@ import '../../../theme/typography.dart';
 import '../../canvas/providers/canvas_bootstrap_controller.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../../settings/providers/settings_page.dart';
+import '../../settings/util/settings_page_label.dart';
 import '../../settings/widgets/language_section.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
@@ -493,17 +494,7 @@ class _SettingsLink extends StatelessWidget {
 
   /// 页名与设置浮层左导航用同一批 ARB key——链接上写的就是用户点过去在左导航
   /// 上看到的那个字。
-  static String _pageName(AppLocalizations l10n, SettingsPage page) =>
-      switch (page) {
-        SettingsPage.general => l10n.settingsNavGeneral,
-        SettingsPage.apiKeys => l10n.settingsApiKeysSection,
-        SettingsPage.shortcuts => l10n.settingsNavShortcuts,
-        SettingsPage.performance => l10n.settingsNavPerformance,
-        SettingsPage.nodeLayout => l10n.settingsNavNodeLayout,
-        SettingsPage.network => l10n.settingsNavNetwork,
-        SettingsPage.storage => l10n.settingsStorageSection,
-        SettingsPage.about => l10n.settingsAboutSection,
-      };
+  static String _pageName(AppLocalizations l10n, SettingsPage page) => settingsPageLabel(l10n, page);
 
   @override
   Widget build(BuildContext context) {

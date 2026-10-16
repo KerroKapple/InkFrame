@@ -449,7 +449,8 @@ void main() {
 
       expect(secure.snapshot[_geminiStorageKey], 'sk-good');
       expect(
-        find.text('Verified · written to the system keychain'),
+        // 测试宿主不是 macOS，按 Windows 的叫法说。
+        find.text('Verified · written to Windows Credential Manager'),
         findsOneWidget,
       );
       expect(_keyUnderlineColor(tester), colors.control);
