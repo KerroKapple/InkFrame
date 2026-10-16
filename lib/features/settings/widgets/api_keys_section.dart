@@ -30,6 +30,7 @@ import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/api_key_scope_controller.dart';
+import '../util/api_key_placeholder.dart';
 
 class ApiKeysSection extends ConsumerWidget {
   const ApiKeysSection({super.key});
@@ -215,7 +216,8 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
         ),
         key_: InkInput(
           controller: _ctrl,
-          hintText: context.l10n.settingsApiKeyPlaceholder,
+          // 占位提示按家族给（Gemini 是 AIza…，不是 sk-…），与首启向导同一个判据。
+          hintText: apiKeyPlaceholderText(context.l10n, _providerId),
           enabled: !loading,
         ),
         status: _Status(isSet: loading ? null : isSet),

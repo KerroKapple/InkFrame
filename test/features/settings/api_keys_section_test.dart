@@ -328,6 +328,41 @@ void main() {
     expect(toast.kinds, <ToastKind>[ToastKind.info]);
   });
 
+  // 演示里发现：占位提示一律 `sk-...`，Gemini 那行也是——而 Gemini 的 Key 是
+  // `AIza` 开头。占位要随家族走，自定义端点不猜前缀。
+  testWidgets('Key 输入框的占位提示随家族走：Gemini AIza…、DashScope sk-…、自定义不猜',
+      (tester) async {
+    const geminiId = 'gemini-image';
+    const dashscopeId = 'wanx-image';
+    const customId = 'custom:my-relay';
+    final caps = [
+      fakeImageCapabilities(id: geminiId),
+      fakeImageCapabilities(id: dashscopeId),
+      fakeImageCapabilities(id: customId).copyWith(displayName: 'My Relay'),
+    ];
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+      overrides: [
+        providerRegistryProvider.overrideWithValue(
+          CachingProviderRegistry({
+            for (final c in caps) c.providerId: () => FakeProvider(capabilities: c),
+          }),
+        ),
+        providerCapabilitiesListProvider.overrideWithValue(caps),
+        secureStorageServiceProvider.overrideWithValue(_FakeSecure()),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    // 行序 = 注册顺序（按 scope 折叠后的 LinkedHashMap）。
+    final hints = tester
+        .widgetList<TextField>(find.byType(TextField))
+        .map((f) => f.decoration?.hintText)
+        .toList();
+    expect(hints, <String?>['AIza...', 'sk-...', 'Paste your API key']);
+  });
+
   testWidgets('custom:* 行显示 displayName 而非裸 id（GAP-1 顺带修）', (tester) async {
     const customId = 'custom:my-relay';
     final caps = fakeImageCapabilities(id: customId)
