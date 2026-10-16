@@ -1,7 +1,8 @@
 // 检查器「历史」页（PR-6）：选中节点的 take 列表。
 //
-// 面板本体：配置节点列名下全部 take（新 → 旧，「take N」按时间正序编号）、产物节点列同源兄弟并高亮
-// 自己、「在用」（有 data 出边：首帧 / 尾帧 / 参考）、meta = 相对时间 · 种子、空态。
+// 面板本体：配置节点列名下全部 take（新 → 旧，「take N」按时间正序编号；名下只有一个写「成片」，与左栏
+// 素材页同一个编号函数）、产物节点列同源兄弟并高亮自己、「在用」（有 data 出边：首帧 / 尾帧 / 参考）、
+// meta = 相对时间 · 种子、空态。
 // 外壳级：点一行 = 单选那个产物 + 移到视口中心，页签留在历史页、那一行变成高亮。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -69,6 +70,16 @@ final CanvasNode _other = _take('o1', at: DateTime.utc(2026, 5, 2, 9), source: '
 /// 名下什么都没有的配置节点。
 const CanvasNode _blank = CanvasNode(id: 'blank', label: 'Blank', type: CanvasNodeType.image, canvasId: 'c1');
 
+/// 名下只有一个产物的配置节点：那一个是「成片」。
+const CanvasNode _soloConfig = CanvasNode(
+  id: 'solo',
+  label: 'Lone boat',
+  type: CanvasNodeType.image,
+  canvasId: 'c1',
+  typeConfig: <String, Object?>{'prompt': 'a lone boat'},
+);
+final CanvasNode _soloTake = _take('soloTake', at: DateTime.utc(2026, 5, 2, 8), source: 'solo');
+
 /// r2 当了下游视频的首帧 ⇒ 在用。
 const List<CanvasEdge> _edges = <CanvasEdge>[
   CanvasEdge(
@@ -81,7 +92,7 @@ const List<CanvasEdge> _edges = <CanvasEdge>[
   ),
 ];
 
-List<CanvasNode> get _all => <CanvasNode>[_config, _r1, _r2, _r3, _other, _blank];
+List<CanvasNode> get _all => <CanvasNode>[_config, _r1, _r2, _r3, _other, _blank, _soloConfig, _soloTake];
 
 Future<void> _pumpPanel(WidgetTester tester, CanvasNode selected) async {
   await pumpInkApp(
@@ -187,6 +198,15 @@ void main() {
       );
       expect(_inRow('r1', find.text('${l.galleryTimeDaysAgo(1)} · ${l.inspectorHistorySeed(902)}')), findsOneWidget);
       expect(_inRow('r3', find.text(l.galleryTimeHoursAgo(1))), findsOneWidget, reason: '没有 seed 就只写时间');
+    });
+
+    testWidgets('名下只有一个产物：那一行写「成片」，不写 take 1（与左栏素材页同一口径）', (tester) async {
+      await _pumpPanel(tester, _soloConfig);
+      final AppLocalizations l = _l(tester);
+
+      expect(_row('soloTake'), findsOneWidget);
+      expect(_inRow('soloTake', find.text(l.inspectorHistoryFinal)), findsOneWidget);
+      expect(find.text(l.inspectorHistoryTake(1)), findsNothing);
     });
 
     testWidgets('名下没有产物：一行「还没有生成过」，没有 take 行', (tester) async {

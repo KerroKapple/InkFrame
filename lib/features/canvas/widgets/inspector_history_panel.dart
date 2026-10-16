@@ -5,7 +5,8 @@
 //   - 选中产物节点 ⇒ 它的兄弟（同一个 sourceNodeId，含它自己），当前这张高亮（surface5 底）；
 //     没有来源的孤儿产物只列它自己。
 // 顶部说明「<节点名> 的全部 take」：配置节点用它自己的引用名（nodeRefName）；产物节点用它来源的那个。
-// 行：72×41 缩略（cover、圆角 3、1px outline）|「take N」（N 按时间正序，最早的是 take 1）
+// 行：72×41 缩略（cover、圆角 3、1px outline）|「take N」（N 按时间正序，最早的是 take 1；名下只有一个写
+//   「成片」——号由 util/take_numbers.dart 的 takeNumbersOn 给，与左栏素材页的格子同一个函数）
 //   + meta（10 号 fg5）：相对时间（复用画廊的 galleryTimeAgo）· 种子（type_config 里有 seed 才写）。
 // 「在用」= 这个 take 有 data 出边（首帧 / 尾帧 / 参考，往下游流）：缩略描边换 accent，右侧写「在用」。
 // 稿上的图钉「固定」没有数据模型，不画。
@@ -31,6 +32,7 @@ import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../util/node_artifacts.dart';
+import '../util/take_numbers.dart';
 import 'left_rail/left_rail_actions.dart';
 import 'node_card.dart' show nodeRefName;
 
@@ -74,6 +76,8 @@ class InspectorHistoryPanel extends ConsumerWidget {
     final String? projectId = ref.watch(activeProjectProvider)?.id;
     final DateTime now = ref.watch(clockProvider).nowUtc();
     final CanvasNode owner = _ownerOf(node, nodes);
+    // take 号与左栏素材页同一个函数：按时间正序、最早的是 take 1；名下只有一个 ⇒ 不在表里 =「成片」。
+    final Map<String, int> takeNumbers = takeNumbersOn(nodes);
 
     return ListView(
       padding: EdgeInsets.zero,
@@ -92,8 +96,7 @@ class InspectorHistoryPanel extends ConsumerWidget {
             canvasId: canvasId,
             projectId: projectId,
             take: takes[i],
-            // takes 是新 → 旧；编号按时间正序，最早的是 take 1。
-            number: takes.length - i,
+            number: takeNumbers[takes[i].id],
             meta: _metaOf(l, takes[i], now),
             current: takes[i].id == node.id,
             inUse: flowing.contains(takes[i].id),
@@ -149,7 +152,9 @@ class _TakeRow extends ConsumerWidget {
   final String canvasId;
   final String? projectId;
   final CanvasNode take;
-  final int number;
+
+  /// take 号；null =「成片」（名下只有这一个）。
+  final int? number;
   final String meta;
   final bool current;
   final bool inUse;
@@ -166,6 +171,7 @@ class _TakeRow extends ConsumerWidget {
     final File? file = (rel == null || pid == null)
         ? null
         : galleryResolveFile(ref, projectId: pid, canvasId: canvasId, relativePath: rel);
+    final int? n = number;
     return InkActivatable(
       key: InspectorHistoryPanel.takeKey(take.id),
       onTap: onTap,
@@ -205,7 +211,7 @@ class _TakeRow extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   Text(
-                    l.inspectorHistoryTake(number),
+                    n == null ? l.inspectorHistoryFinal : l.inspectorHistoryTake(n),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: t.body.copyWith(color: c.fg2),

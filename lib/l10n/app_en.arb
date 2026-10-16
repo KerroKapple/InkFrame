@@ -982,6 +982,8 @@
     "placeholders": { "name": { "type": "String" } }
   },
   "inspectorHistoryTake": "Take {number}",
+  "inspectorHistoryFinal": "Final",
+  "@inspectorHistoryFinal": {"description": "Inspector History tab: label of the only take when a config has exactly one result (same rule as the asset tiles' 'final')."},
   "@inspectorHistoryTake": {
     "description": "Inspector History tab — one generated result; numbered oldest first, so the first one ever generated is Take 1",
     "placeholders": { "number": { "type": "int" } }

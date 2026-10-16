@@ -3,10 +3,11 @@
 // 面板头「大纲」+ 画布切换胶囊（有活动项目才画）→ 筛选框（名称或提示词，不区分大小写）→ 分组列表。
 // 分组由 util/outline_model.dart 的 buildCanvasOutline 产出，这里只渲染：
 //   - 组头 26（上外边距 6）：泳道色点 8×8 圆角 2（手动 tint → 风格词推断 → control，与泳道底色同一
-//     口径）+ 泳道名 + 等宽计数「N 镜」；「未分泳道」「未入链」没有色点，未入链的计数只写数字。
-//   - 镜头行 40：序号（等宽 10 号、宽 16，链序两位补零，未入链不画）| 44×25 缩略（最新产物；没有产物 =
-//     thumb 底 + 类型图标）| 名称 / 类型 | 状态（node_card.dart 的 nodeStatusOf，与节点卡同一判据）。
-//     选中行 surface5 底。
+//     口径）+ 泳道名 + 等宽计数「N 镜」（N = 组内不同镜号的个数，不是行数：镜头和借出产物的配置同一镜）；
+//     「未分泳道」「未入链」没有色点，未入链的计数只写数字（行数）。
+//   - 镜头行 40：镜号（等宽 10 号、宽 16，两位补零；序列的口径，与序列视图 / 画廊 / ⌘K 同一个号，见
+//     outline_model.dart；没有镜号的不画）| 44×25 缩略（最新产物；没有产物 = thumb 底 + 类型图标）| 名称 /
+//     类型 | 状态（node_card.dart 的 nodeStatusOf，与节点卡同一判据）。选中行 surface5 底。
 //   - 产物子行 26：「└」+ 28×16 缩略 + 「成片 · 图像 / 视频」，名下多于 1 个时「 · 共 N 个」；
 //     有活动 job 时再加一行「生成中…」（缩略位是 thumb 色空块）。
 // 点镜头行 / 产物子行 = 在画布上单选该节点并把它移到视口中心（left_rail_actions.dart）。
@@ -175,11 +176,10 @@ class _GroupHeader extends StatelessWidget {
       OutlineGroupKind.unassigned => l.leftRailGroupNoLane,
       OutlineGroupKind.unchained => l.leftRailGroupNotInSequence,
     };
-    final int n = group.shots.length;
-    // 未入链的不是序列里的镜，计数只写数字（稿）。
+    // 未入链的不是序列里的镜，计数只写数字（稿：行数）；其余组数的是组内不同镜号（几行同一镜只算一镜）。
     final String count = group.kind == OutlineGroupKind.unchained
-        ? n.toString()
-        : l.leftRailGroupShotCount(n);
+        ? group.shots.length.toString()
+        : l.leftRailGroupShotCount(group.shotCount);
     return Padding(
       padding: const EdgeInsets.only(top: InkSpacing.s6),
       child: Container(

@@ -737,6 +737,7 @@
   "inspectorHistoryHeading": "{name} 的全部 take",
   "@inspectorHistoryHeading": { "placeholders": { "name": { "type": "String" } } },
   "inspectorHistoryTake": "take {number}",
+  "inspectorHistoryFinal": "成片",
   "@inspectorHistoryTake": { "placeholders": { "number": { "type": "int" } } },
   "inspectorHistorySeed": "种子 {seed}",
   "@inspectorHistorySeed": { "placeholders": { "seed": { "type": "int" } } },

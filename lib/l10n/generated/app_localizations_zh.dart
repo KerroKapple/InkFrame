@@ -1836,6 +1836,9 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get inspectorHistoryFinal => '成片';
+
+  @override
   String inspectorHistorySeed(int seed) {
     return '种子 $seed';
   }

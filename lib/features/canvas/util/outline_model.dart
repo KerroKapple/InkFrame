@@ -6,12 +6,24 @@
 //   b. 不在链上的配置节点进「未入链」，放在最后，按位置 (dx, dy, id) 排、不编号。
 //   空组不出：没有镜头的泳道不画组头，筛选后一个都不匹配的组整组不画。
 //
-// 「在链上」的判据只有一份：[narrativeChainMembers]——narrative 边两端都在节点集里。
-// ⌘K 镜头组的「序列 003」与这里的「01」都从 [narrativeSequenceIndex] 来，两处不会走岔。
+// 「在链上」的判据只有一份：[narrativeChainMembers]——narrative 边两端都在节点集里。组内行序是叙事链序
+// （[narrativeSequenceIndex]，不折叠：链上每个节点都排得上位置）。
 //
-// 链序号是**全画布**的叙事链序（1 起），不是组内序号：同一镜在大纲、⌘K、画廊里是同一个号。
+// 镜号（行首的「01」、⌘K 镜头组的「序列 003」）用**序列的口径**：[sequenceShotNumbers]——序列 lens 折叠后的
+// 镜序（全画布的，1 起，不是组内序号），节点归哪一镜复用「在序列中查看」的判据
+// （sequence/util/shot_index.dart）。同一张图在大纲、⌘K、序列视图、画廊（「序列 002」）里因此是同一个号。
+// 几种节点由此共号或无号：
+//   - 借出产物的配置节点与借走它产物的那一镜同号（「导入剧本 + 用本镜备注生成图像」那条主路径：镜头 →
+//     图像配置，图挂在配置名下，序列里放在镜头那一镜）；
+//   - 链上但不在任何一镜里的节点（折叠时被跳过：自己没产物没备注，也没借到、没被借）不编号，仍留在泳道组里。
+// 组头「N 镜」是组内不同镜号的个数（[OutlineGroup.shotCount]），不是行数。
+//
+// 「未入链」组列的是不在链上的**全部**配置节点（有没有产物都列）；序列标签状态栏的「未入链 · N」只数其中
+// 有产物的（SequenceLens.unchainedCount）——两处口径不同，数字对不上是正常的。
 import 'package:flutter/foundation.dart';
 
+import '../../sequence/models/sequence_lens.dart';
+import '../../sequence/util/shot_index.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/style_lane.dart';
@@ -35,7 +47,9 @@ Set<String> narrativeChainMembers(
   return members;
 }
 
-/// 链上节点 → 1 起的链序号；顺序 = 叙事链序（[orderByNarrativeChain]）。不在链上的节点不在表里。
+/// 链上节点 → 1 起的**链序**（叙事链 DFS 序，[orderByNarrativeChain]，不折叠）。不在链上的节点不在表里。
+///
+/// 只给大纲排组内行序用；显示出来的镜号不是它，是 [sequenceShotNumbers]（序列折叠后的镜序）。
 Map<String, int> narrativeSequenceIndex(
   List<CanvasNode> nodes,
   List<CanvasEdge> edges,
@@ -52,7 +66,21 @@ Map<String, int> narrativeSequenceIndex(
   };
 }
 
-/// 一行镜头：配置节点 + 链序号 + 名下最新产物。
+/// 节点 → 它所在那一镜的镜号（1 起），序列的口径：大纲行首的镜号、⌘K 镜头组的「序列 NNN」都从这里取，
+/// 与序列视图、画廊的序号是同一个数。
+///
+/// 镜 = 序列 lens 的镜（[buildSequenceLens]：叙事链折叠后只留链上的镜——「借产物」的后继并进前一镜，
+/// 既无产物也无备注的节点跳过）；节点归哪一镜 = [shotIndexByNode]（与「在序列中查看」同一判据：产物归
+/// 来源配置节点，借出产物的配置节点归借走它的那一镜）。不在任何一镜里的节点不在表里。
+Map<String, int> sequenceShotNumbers(List<CanvasNode> nodes, List<CanvasEdge> edges) {
+  final SequenceLens lens = buildSequenceLens(nodes: nodes, edges: edges);
+  return <String, int>{
+    for (final MapEntry<String, int> e in shotIndexByNode(lens, nodes: nodes).entries)
+      e.key: e.value + 1,
+  };
+}
+
+/// 一行镜头：配置节点 + 镜号 + 名下最新产物。
 @immutable
 class OutlineShot {
   const OutlineShot({
@@ -64,7 +92,8 @@ class OutlineShot {
 
   final CanvasNode node;
 
-  /// 全画布叙事链序（1 起）；未入链为 null（不编号）。
+  /// 所在那一镜的镜号（1 起，序列口径，[sequenceShotNumbers]）；未入链、或链上但不在任何一镜里为 null
+  /// （不编号）。
   final int? sequence;
 
   /// 名下最新的产物（result 节点，[resultsFor] 口径：按 created_at 取最新）；没有为 null。
@@ -96,6 +125,12 @@ class OutlineGroup {
 
   /// 至少一行（空组不产出）。
   final List<OutlineShot> shots;
+
+  /// 组内不同镜号的个数（组头「N 镜」）：同一镜的几行（镜头 + 借出产物的配置）只算一镜，没有镜号的行不算。
+  int get shotCount => <int>{
+        for (final OutlineShot s in shots)
+          if (s.sequence case final int n) n,
+      }.length;
 }
 
 /// 一次分组的结果。
@@ -123,7 +158,9 @@ CanvasOutline buildCanvasOutline({
     for (final CanvasNode n in nodes)
       if (n.role == NodeRole.config) n,
   ];
-  final Map<String, int> sequence = narrativeSequenceIndex(nodes, edges);
+  // 链序只管「谁在链上、组内怎么排」；行首显示的镜号走序列口径。
+  final Map<String, int> chainOrder = narrativeSequenceIndex(nodes, edges);
+  final Map<String, int> shotNumber = sequenceShotNumbers(nodes, edges);
 
   final String q = query.trim().toLowerCase();
   bool matches(CanvasNode n) {
@@ -148,7 +185,7 @@ CanvasOutline buildCanvasOutline({
     );
     return OutlineShot(
       node: n,
-      sequence: sequence[n.id],
+      sequence: shotNumber[n.id],
       latest: results.isEmpty ? null : results.first,
       artifactCount: results.length,
     );
@@ -156,13 +193,13 @@ CanvasOutline buildCanvasOutline({
 
   final List<CanvasNode> chained = <CanvasNode>[
     for (final CanvasNode n in configs)
-      if (sequence.containsKey(n.id)) n,
-  ]..sort((CanvasNode a, CanvasNode b) => sequence[a.id]!.compareTo(sequence[b.id]!));
+      if (chainOrder.containsKey(n.id)) n,
+  ]..sort((CanvasNode a, CanvasNode b) => chainOrder[a.id]!.compareTo(chainOrder[b.id]!));
   // 没有边时 orderByNarrativeChain 退化成按 (dx, dy, id) 排——「按位置」借它的口径，不另写比较器。
   final List<CanvasNode> unchained = orderByNarrativeChain(
     nodes: <CanvasNode>[
       for (final CanvasNode n in configs)
-        if (!sequence.containsKey(n.id)) n,
+        if (!chainOrder.containsKey(n.id)) n,
     ],
     edges: const <CanvasEdge>[],
   );

@@ -1916,6 +1916,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get inspectorHistoryFinal => 'Final';
+
+  @override
   String inspectorHistorySeed(int seed) {
     return 'Seed $seed';
   }

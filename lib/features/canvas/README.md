@@ -37,18 +37,18 @@ util/       无副作用的几何/命中/预设工具
 - `canvas_screen` — 整屏骨架：左栏（43px 导航条 + 可收起的 241 面板）| 画布区（`canvas_view` 舞台 + 浮层：顶部居中 `canvas_toolbar` / 底部居中提示词条 / 左下 `canvas_zoom_bar`）| 检查器；外层包 `canvas_shortcuts`（删除/Esc/全选/缩放 + 工具单键 V/H/I/G/T/F/L + 按住空格平移 + Ctrl+\ / ⌘\ 开合左栏；`isActive` 由外壳按标签可见性下传）。PR-6 页签去重撤掉了舞台上方的画布头（画布名在面包屑、泳道名写在泳道上、缩放比例在缩放条）和底部的渲染队列（任务进度挪到外壳状态栏的任务胶囊 + 任务弹层，见 `features/shell/widgets/shell_task_capsule.dart`），舞台上沿贴外壳标签栏、下沿贴状态栏。窗口 chrome 与面包屑在外壳 `ShellChrome`
 - `canvas_zoom_bar` — 舞台左下的浮动缩放条（缩小 / % / 放大 / 适应），四格都走 `InkActivatable`
 - `canvas_toolbar` — 舞台顶部居中的浮动工具条：选择 · 平移 | 图像 · 视频 · 文本 · 分镜 · 泳道 · 连线 | 更多（导入脚本）。取代原左侧 37px 工具条与右下角加号
-- `left_rail/` — 画布左栏（PR-4）：`canvas_left_rail`（43px 图标导航条：大纲 / 素材 / 角色 + 快捷键 / 收起）· `left_rail_panel`（241 面板宿主）· `outline_panel`（泳道分组的镜头行 + 产物子行，点行 = 单选 + 移到视口中心）· `canvas_switcher`（大纲面板头的画布切换胶囊）· `assets_panel` / `assets_model`（本画布 / 项目全部 + 类型 chip + 两列网格，数据复用画廊）· `left_panel_parts`（面板头 / 筛选框）· `left_rail_actions`（定位：单选 + 居中）；角色页仍是 `character_library_panel`（顶上加了面板头 + 筛选）
+- `left_rail/` — 画布左栏（PR-4）：`canvas_left_rail`（43px 图标导航条：大纲 / 素材 / 角色 + 快捷键 / 收起）· `left_rail_panel`（241 面板宿主）· `outline_panel`（泳道分组的镜头行 + 产物子行，点行 = 单选 + 移到视口中心）· `canvas_switcher`（大纲面板头的画布切换胶囊）· `assets_panel` / `assets_model`（本画布 / 项目全部 + 类型 chip + 两列网格，数据复用画廊；开页即让画廊图失效一次，删掉的节点格子立刻消失）· `left_panel_parts`（面板头 / 筛选框）· `left_rail_actions`（定位：单选 + 居中）；角色页仍是 `character_library_panel`（顶上加了面板头 + 筛选）
 - `canvas_view` / `edge_painter` — 画布视口与连线绘制
 - `node_card` / `video_node_body` — 节点卡片各形态
 - `canvas_inspector_panel` — 右侧检查器：页签「属性 / 历史」（原「状态」页签只画不挂交互，已删——状态内嵌在各配置检查器的 `inspector_status_panel` 里）
-- `inspector_history_panel` — 检查器「历史」页：选中配置节点 = 名下全部 take（`node_artifacts.resultsFor`，新 → 旧），选中产物节点 = 同一来源的兄弟、当前那张高亮；「take N」按时间正序编号；有 data 出边（首帧 / 尾帧 / 参考）的 take 标「在用」；点一行 = 单选 + 居中（`left_rail_actions.focusNodeOnCanvas`）
+- `inspector_history_panel` — 检查器「历史」页：选中配置节点 = 名下全部 take（`node_artifacts.resultsFor`，新 → 旧），选中产物节点 = 同一来源的兄弟、当前那张高亮；「take N」按时间正序编号（`util/take_numbers`，与素材页同一个号；名下只有一个写「成片」）；有 data 出边（首帧 / 尾帧 / 参考）的 take 标「在用」；点一行 = 单选 + 居中（`left_rail_actions.focusNodeOnCanvas`）
 - `node_inspector_router` — 按 (role, type) 分发：config → `image_config_inspector` / `video_config_inspector` / `shot_config_inspector`（前二者共用 `inspector_status_panel`）；result+image → `image_result_inspector`
 - `node_inputs_section` — config 节点入边列表 + role 切换（reference/first_frame/last_frame，按能力位门控），被 image/video config inspector 挂载
 - `batch_results_grid` — 结果节点的批量/变体槽位网格（挂载于 `image_result_inspector`）
-- `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`
+- `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`（挂在外壳根 `InkShell`，不随画布页挂载）
 
 ## util
-`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars` · `canvas_tool_actions`（工具条与单键快捷键共用：视口中心建节点 / 建泳道 / 切连线 / 选择工具）· `outline_model`（左栏大纲分组 + 「在链上」/ 链序号的唯一判据，⌘K 共用）· `viewport_focus`（保持缩放、把节点移到视口中心）
+`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars` · `canvas_tool_actions`（工具条与单键快捷键共用：视口中心建节点 / 建泳道 / 切连线 / 选择工具）· `outline_model`（左栏大纲分组 + 「在链上」的唯一判据；镜号走序列口径 `sequenceShotNumbers`，⌘K 共用）· `take_numbers`（take 号，素材页与检查器历史页共用）· `viewport_focus`（保持缩放、把节点移到视口中心）
 
 ## 数据流（生成一次图/视频）
 1. 选中 config 节点 → `node_inspector_router` 渲染对应 inspector
