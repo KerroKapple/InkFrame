@@ -38,6 +38,7 @@ import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_tool_mode.dart';
+import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
 import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
@@ -330,6 +331,12 @@ Future<void> _expectDialogOwnsKeys(
     <String>{selected},
     reason: 'Esc 没落到画布上：选中不变',
   );
+}
+
+/// 相机此刻的平移量（视口坐标）。
+Offset _cameraOf(ProviderContainer c) {
+  final Matrix4 m = c.read(canvasTransformControllerProvider('c1')).value;
+  return Offset(m.storage[12], m.storage[13]);
 }
 
 void _expectMenuAt(WidgetTester tester, Key key, Offset at) {
@@ -930,9 +937,11 @@ void main() {
       expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
     });
 
-    testWidgets('空白处右键单击：抬起时开，锚点是按下的那一点（容差内的手抖不挪锚点）', (tester) async {
-      await _pump(tester);
+    testWidgets('空白处右键单击：抬起时开，锚点是按下的那个舞台点（容差内的手抖相机跟着挪，锚点随之落在光标下）',
+        (tester) async {
+      final ProviderContainer c = await _pump(tester);
       const Offset p = Offset(700, 500);
+      final Offset cameraBefore = _cameraOf(c);
       final TestGesture click = await tester.startGesture(
         p,
         kind: PointerDeviceKind.mouse,
@@ -944,7 +953,11 @@ void main() {
       await click.moveBy(const Offset(0.8, 0));
       await click.up();
       await tester.pumpAndSettle();
-      _expectMenuAt(tester, CanvasMenuKeys.blankMenu, p);
+      // 右键按住时 InteractiveViewer 的平移识别器独自在竞技场里，按下即胜出、没有拖动阈值：0.8px 的手抖让相机
+      // 跟着挪了 0.8px。菜单锚在按下的那个舞台点上——它随相机走，正落在松手时光标所在的位置。
+      final Offset cameraMoved = _cameraOf(c) - cameraBefore;
+      expect(cameraMoved.distance, lessThanOrEqualTo(1), reason: '前提：手抖在点击容差之内');
+      _expectMenuAt(tester, CanvasMenuKeys.blankMenu, p + cameraMoved);
     });
 
     testWidgets('空白处右键菜单「全选」：选中画布上全部节点', (tester) async {
@@ -1070,9 +1083,11 @@ void main() {
       );
     });
 
-    // 第一层单独钉：照「收菜单时要回焦点 → 开对话框」的时序走一遍，换成一个什么都不 autofocus 的框。以后新加的
-    // 对话框入口忘了另外两层（关菜单不还焦点、框里 autofocus），也得靠这一层兜住。
-    testWidgets('画布所在的路由上面压着对话框：收菜单的焦点回收与舞台按下的回收都不要焦点', (tester) async {
+    // 菜单那一层单独钉：选了一项、同一拍推上来一个**不** autofocus 的框（以后新加的对话框入口可能就是这样）。
+    // 菜单的焦点节点卸载时手里要是还拿着焦点，Flutter 会把焦点还给作用域里上一个持焦的（画布），而且这一步
+    // 晚于对话框推上来时的焦点请求——画布赢、按键穿过框。菜单选项当场把焦点还给画布，卸载时菜单已不持焦。
+    testWidgets('菜单选了一项、同一拍推上来一个不 autofocus 的框：焦点归框，不被菜单卸载还给画布；框关了回画布',
+        (tester) async {
       final ProviderContainer c = await _pump(tester);
       c.read(canvasSelectionControllerProvider('c1').notifier).select('img');
       await tester.pump();
@@ -1084,9 +1099,49 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(CanvasMenuKeys.blankMenu), findsOneWidget, reason: '前提：菜单开着、菜单持焦');
 
+      // 「适应视图」选了就关菜单、自己不开框；框由测试在同一拍推上来——与「导入脚本…」开框的时序相同。
       final BuildContext canvas = tester.element(find.byType(CanvasView));
-      c.read(canvasMenuRequestProvider('c1').notifier).close();
-      CanvasShortcuts.reclaimFocusIfOrphaned(canvas);
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(CanvasMenuKeys.blankMenu),
+          matching: find.text('Fit view'),
+        ),
+      );
+      unawaited(
+        showDialog<void>(
+          context: canvas,
+          builder: (BuildContext _) => const AlertDialog(content: Text('bare dialog')),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('bare dialog'), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pumpAndSettle();
+      expect(_nodesOf(c).removed, isEmpty, reason: 'Backspace 没落到框后面的画布上');
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+      await tester.pump();
+      expect(c.read(linkModeControllerProvider('c1')), isNull, reason: 'L 不得在画布上进连线');
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.text('bare dialog'), findsNothing, reason: 'Esc 关的是框');
+      expect(
+        c.read(canvasSelectionControllerProvider('c1')),
+        <String>{'img'},
+        reason: 'Esc 没落到画布上：选中不变',
+      );
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
+      await tester.pump();
+      expect(c.read(linkModeControllerProvider('c1')), 'img', reason: '框关掉后焦点回到画布，L 照常进连线');
+    });
+
+    // 路由那一层单独钉：框压在上面时，画布这边「要回焦点」的入口（舞台按下、收菜单后的帧后补焦点）一个都不抢。
+    testWidgets('画布所在的路由上面压着对话框：舞台按下的回收与帧后补焦点都不要焦点', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      c.read(canvasSelectionControllerProvider('c1').notifier).select('img');
+      await tester.pump();
+      final BuildContext canvas = tester.element(find.byType(CanvasView));
       unawaited(
         showDialog<void>(
           context: canvas,
@@ -1098,10 +1153,24 @@ void main() {
 
       CanvasShortcuts.reclaimFocus(canvas);
       await tester.pump();
-
       await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
       await tester.pumpAndSettle();
-      expect(_nodesOf(c).removed, isEmpty, reason: '焦点没被要回画布：Backspace 不删框后面选中的卡');
+      expect(_nodesOf(c).removed, isEmpty, reason: '舞台按下的回收没把焦点要回画布');
+
+      // 帧后补焦点只在「焦点落空」时动手：先造一个落空——焦点落在画布所在的作用域本身。作用域 requestFocus
+      // 会直接落到它记着的子节点（画布）上，所以再 unfocus 一次，交回作用域自己。
+      final FocusScopeNode canvasScope = FocusScope.of(canvas);
+      canvasScope.requestFocus();
+      await tester.pump();
+      FocusManager.instance.primaryFocus!.unfocus();
+      await tester.pump();
+      expect(FocusManager.instance.primaryFocus, same(canvasScope), reason: '前提：焦点落空在画布的作用域上');
+      CanvasShortcuts.reclaimFocusIfOrphaned(canvas);
+      await tester.pump();
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+      await tester.pumpAndSettle();
+      expect(_nodesOf(c).removed, isEmpty, reason: '帧后补焦点没把焦点要回画布');
       await tester.sendKeyEvent(LogicalKeyboardKey.keyL);
       await tester.pump();
       expect(c.read(linkModeControllerProvider('c1')), isNull, reason: 'L 不得在画布上进连线');

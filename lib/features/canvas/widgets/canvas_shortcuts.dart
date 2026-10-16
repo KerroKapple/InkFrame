@@ -360,7 +360,8 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   final bool isActive;
   final Widget child;
 
-  /// 画布舞台按下指针时调用：把键盘焦点要回最近的 CanvasShortcuts（不在其下则无事）。
+  /// 把键盘焦点当场要回最近的 CanvasShortcuts（不在其下则无事）：画布舞台按下指针时、新建菜单选了一项 / 按 Esc
+  /// 收起时（菜单那边见 create_node_menu.dart 的 _dismiss）。
   static void reclaimFocus(BuildContext context) =>
       context.findAncestorStateOfType<_CanvasShortcutsState>()?._reclaimFocus();
 
@@ -370,9 +371,7 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   /// 帧后再判：桌面上点到文本框外面，文本框自己的失焦与收菜单是同一次按下里的两件事，谁先谁后不定，
   /// 失焦又在微任务里才落地——收菜单的这一刻还看不出焦点最后落在哪。
   ///
-  /// 本层所在的路由上面压着对话框时一律不要（见 _CanvasShortcutsState._onTopRoute）：菜单收起、对话框刚推上来
-  /// 的那一帧，菜单的焦点节点已经卸掉、对话框还没人持焦，主焦点正好是空的——不拦这一道，焦点就被要回画布，
-  /// 按键穿过对话框打到画布上。
+  /// 本层所在的路由上面压着对话框时一律不要（见 _CanvasShortcutsState._onTopRoute）。
   static void reclaimFocusIfOrphaned(BuildContext context) => context
       .findAncestorStateOfType<_CanvasShortcutsState>()
       ?._reclaimFocusIfOrphaned();
@@ -412,8 +411,8 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
 
   /// 本层所在的路由此刻是不是最上面那一层。上面压着对话框（起名框 / 泳道框 / 导入框 / 命令面板……）时键盘归
   /// 那个框，本层一概不抢焦点——抢过来的话按键穿过对话框打到画布上：Backspace 删掉框后面选中的卡、L / I / T / H / F
-  /// 在画布上起作用、Esc 关不掉框。这一道判在「要回焦点」的地方，以后新加的对话框入口不用各自记得让。
-  /// 不在任何路由里（单测直接挂）按「在最上面」算。
+  /// 在画布上起作用、Esc 关不掉框。判在本层每一个「要回焦点」的入口上（舞台按下、菜单收起后的帧后补焦点），
+  /// 以后新加的入口照样受它约束。不在任何路由里（单测直接挂）按「在最上面」算。
   bool get _onTopRoute => ModalRoute.isCurrentOf(context) ?? true;
 
   /// 在画布舞台上按下鼠标：把键盘焦点要回本层。在提示词条 / 检查器的文本框里打完字
