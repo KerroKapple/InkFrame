@@ -52,7 +52,7 @@ void main() {
   });
 
   group('resolveConfigProviderId', () {
-    final List<ProviderCapabilities> caps = kAllProviderCapabilities;
+    const List<ProviderCapabilities> caps = kAllProviderCapabilities;
     final String first = caps.first.providerId;
     final String other = caps[1].providerId;
 

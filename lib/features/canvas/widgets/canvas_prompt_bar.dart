@@ -5,7 +5,7 @@
 // Positioned(left: 0, right: 0, bottom: 16) 下，最大宽度就是舞台宽。水平位置照常居中，居中会压到左下
 // 缩放条 / 泳道工具栏时改在右边那段里居中（promptBarPlacement）。
 // surface4 @0.96 底 + control 边 + 6px 圆角 + 0 10 30 阴影，两行：
-//   行一 11px：6×6 琥珀方点 + 目标节点名 + 供应商 · 片长 · 运镜 | 右：基础风格 [prefix] 已附加
+//   行一 11px：6×6 琥珀方点 + 目标节点名 + 供应商 · 片长 · 运镜 | 右：基底风格 [prefix] 已附加
 //   行二：提示词正文（prompt 档 13/1.6，最小高 40）+ 字数 + 「生成 ⌘↵」（Windows 显示 Ctrl+Enter）
 // 提示词框 1 行起、随内容长到 8 行，再多就在框内滚动。条子底边贴舞台底（bottom 16），
 // 内容变多只会往上长。回车 = 换行；⌘↵ / Ctrl+↵ = 生成。
@@ -60,7 +60,7 @@ class CanvasPromptBar extends ConsumerWidget {
   /// 会撑满父级给的宽度，量外层量不出条子多宽。
   static const Key surfaceKey = Key('canvas.promptBar.surface');
 
-  /// 「基础风格」入口的测试锚点。
+  /// 「基底风格」入口的测试锚点。
   static const Key baseStyleKey = Key('canvas.promptBar.baseStyle');
 
   /// 「生成」按钮的测试锚点。挂在公开类上（而不是私有 `_GenerateButton` 的静态
@@ -291,8 +291,8 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
             children: <Widget>[
               InkSquareDot(size: 6, color: c.accent),
               const SizedBox(width: InkSpacing.sm),
-              // 名字 + 摘要整组吃掉剩余宽度，基础风格贴右。原来名字是 Flexible、后面跟 Spacer：
-              // 两个 flex 1 平分剩余空间，基础风格就被推到条子中间。
+              // 名字 + 摘要整组吃掉剩余宽度，基底风格贴右。原来名字是 Flexible、后面跟 Spacer：
+              // 两个 flex 1 平分剩余空间，基底风格就被推到条子中间。
               Expanded(
                 child: Row(
                   children: <Widget>[
@@ -381,7 +381,7 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
 
 }
 
-/// 「基础风格：{prefix} 已附加」——点击打开基底风格编辑器；无前缀时只显示标签。
+/// 「基底风格：{prefix} 已附加」——点击打开基底风格编辑器；无前缀时只显示标签。
 class _BaseStyleChip extends ConsumerWidget {
   const _BaseStyleChip({required this.canvasId, required this.prefix});
   final String canvasId;
