@@ -259,6 +259,8 @@
   "nodeDeleteFailed": "节点删除失败",
   "edgeDeleteFailed": "连线删除失败",
   "nodeMoveFailed": "节点移动失败",
+  "canvasNodeJoinedLane": "已移入泳道「{lane}」",
+  "canvasNodeLeftLane": "已移出泳道「{lane}」",
   "edgeDeleted": "连线已删除",
   "undoFailed": "撤销失败",
 

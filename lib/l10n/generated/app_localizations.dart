@@ -1196,6 +1196,18 @@ abstract class AppLocalizations {
   /// **'Failed to move node'**
   String get nodeMoveFailed;
 
+  /// No description provided for @canvasNodeJoinedLane.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved into lane “{lane}”'**
+  String canvasNodeJoinedLane(String lane);
+
+  /// No description provided for @canvasNodeLeftLane.
+  ///
+  /// In en, this message translates to:
+  /// **'Moved out of lane “{lane}”'**
+  String canvasNodeLeftLane(String lane);
+
   /// No description provided for @edgeDeleted.
   ///
   /// In en, this message translates to:

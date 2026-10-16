@@ -645,6 +645,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nodeMoveFailed => 'Failed to move node';
 
   @override
+  String canvasNodeJoinedLane(String lane) {
+    return 'Moved into lane “$lane”';
+  }
+
+  @override
+  String canvasNodeLeftLane(String lane) {
+    return 'Moved out of lane “$lane”';
+  }
+
+  @override
   String get edgeDeleted => 'Link deleted';
 
   @override
