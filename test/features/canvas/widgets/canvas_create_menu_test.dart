@@ -15,8 +15,9 @@
 //     新节点只单选不挪相机；双击 / 右键「新建…」/ 拖线松手仍落在指定点、不加散布。
 //   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
 //   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
-//   - 从菜单开的对话框（泳道 / 导入脚本…）一打开就持焦，按键不穿到框后面的画布上（B1）；画布所在的路由上面
-//     压着对话框时，画布一概不要焦点（第一层兜底，换一个没有 autofocus 的框照样成立）。
+//   - 从菜单开的对话框（泳道 / 导入脚本…）一打开就持焦，按键不穿到框后面的画布上（B1）；选了一项、同一拍推上来
+//     一个不 autofocus 的框，焦点也归框（菜单当场把焦点还给画布，卸载时不再把焦点还回去）；画布所在的路由上面
+//     压着对话框时，画布这边要回焦点的入口一个都不抢。
 //
 // 变异对照：拿掉 addNodeFromMenu 的回滚 ⇒「边写失败」红；拿掉 Esc 里取消拖线那一层 ⇒「拖线途中 Esc」红；
 // 把 Tab 的 _CanvasFocusedAction 换成不设门的 Action ⇒「打字时 Tab」「按钮上 Tab」两条红。
@@ -840,6 +841,78 @@ void main() {
       expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
     });
 
+    // 平台把 move 合并掉时，抬起事件可能直接带着挪出去的位置来：抬起这一下也得判容差。用原始指针事件，
+    // 两下用同一个设备（TestGesture 每次换一个设备号，测不到这一条）。
+    testWidgets('按下后没报 move、抬起时已在容差外（move 被合并）：不算单击，接着在原处按一下不开菜单', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      await tester.sendEventToBinding(const PointerDownEvent(
+        pointer: 91,
+        device: 91,
+        kind: PointerDeviceKind.mouse,
+        buttons: kPrimaryButton,
+        position: p,
+      ));
+      await tester.sendEventToBinding(const PointerUpEvent(
+        pointer: 91,
+        device: 91,
+        kind: PointerDeviceKind.mouse,
+        position: Offset(740, 500),
+      ));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.sendEventToBinding(const PointerDownEvent(
+        pointer: 92,
+        device: 91,
+        kind: PointerDeviceKind.mouse,
+        buttons: kPrimaryButton,
+        position: p,
+      ));
+      await tester.sendEventToBinding(const PointerUpEvent(
+        pointer: 92,
+        device: 91,
+        kind: PointerDeviceKind.mouse,
+        position: p,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing, reason: '抬起时已在容差外：第一下是拖，不是单击');
+    });
+
+    testWidgets('两下来自不同设备（鼠标点一下、紧接着触摸点一下）：不算双击', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      await tester.sendEventToBinding(const PointerDownEvent(
+        pointer: 93,
+        device: 93,
+        kind: PointerDeviceKind.mouse,
+        buttons: kPrimaryButton,
+        position: p,
+      ));
+      await tester.sendEventToBinding(const PointerUpEvent(
+        pointer: 93,
+        device: 93,
+        kind: PointerDeviceKind.mouse,
+        position: p,
+      ));
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.sendEventToBinding(const PointerDownEvent(
+        pointer: 94,
+        device: 94,
+        kind: PointerDeviceKind.touch,
+        buttons: kPrimaryButton,
+        position: p,
+      ));
+      await tester.sendEventToBinding(const PointerUpEvent(
+        pointer: 94,
+        device: 94,
+        kind: PointerDeviceKind.touch,
+        position: p,
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing);
+    });
+
     testWidgets('真正的双击（鼠标，两下都在原处抬起）：照常在双击点开新建菜单', (tester) async {
       await _pump(tester);
       const Offset p = Offset(700, 500);
@@ -852,6 +925,22 @@ void main() {
       await tester.pumpAndSettle();
 
       _expectPlainCreateMenuAt(tester, p);
+    });
+
+    // 容差取平移阈值（鼠标 2px），不取单击识别器的 1px：鼠标点一下手抖 1.5px 是常事，画布没动，双击不该失灵。
+    testWidgets('第一下手抖 1.5px 再抬起（没到平移阈值）：仍算一次点击，双击照常开菜单', (tester) async {
+      await _pump(tester);
+      const Offset p = Offset(700, 500);
+      final TestGesture mouse = await tester.startGesture(p, kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.moveBy(const Offset(1.5, 0));
+      await mouse.up();
+      await tester.pump(const Duration(milliseconds: 50));
+      await mouse.down(p);
+      await mouse.up();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsOneWidget);
     });
 
     testWidgets('单击空白不开菜单：两下隔得比双击窗口久，也不算双击', (tester) async {
@@ -902,6 +991,60 @@ void main() {
     });
 
     // B4：原来右键一按下就开菜单——按住右键拖会把画布拖走，菜单还钉在原处。
+    testWidgets('右键按下后没报 move、抬起时已在容差外（move 被合并）：不开右键菜单', (tester) async {
+      await _pump(tester);
+      await tester.sendEventToBinding(const PointerDownEvent(
+        pointer: 95,
+        device: 95,
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryButton,
+        position: Offset(700, 500),
+      ));
+      await tester.sendEventToBinding(const PointerUpEvent(
+        pointer: 95,
+        device: 95,
+        kind: PointerDeviceKind.mouse,
+        position: Offset(760, 500),
+      ));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
+    });
+
+    testWidgets('右键单击手抖 1.5px（没到平移阈值）：照常开右键菜单', (tester) async {
+      await _pump(tester);
+      final TestGesture click = await tester.startGesture(
+        const Offset(700, 500),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await click.moveBy(const Offset(1.5, 0));
+      await click.up();
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsOneWidget);
+    });
+
+    testWidgets('在卡片上按着右键时卡片被删，再松手：不开菜单、不报错', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final TestGesture press = await tester.startGesture(
+        tester.getCenter(_card('img')),
+        kind: PointerDeviceKind.mouse,
+        buttons: kSecondaryMouseButton,
+      );
+      await tester.pump();
+      await c.read(canvasNodesControllerProvider('c1').notifier).removeNode('img');
+      await tester.pump();
+      expect(_card('img'), findsNothing, reason: '前提：卡片已经拆了');
+
+      await press.up();
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull, reason: '抬起不得落到已拆的卡片插槽上查祖先');
+      expect(find.byKey(CanvasMenuKeys.nodeMenu), findsNothing);
+      expect(find.byKey(CanvasMenuKeys.blankMenu), findsNothing);
+    });
+
     testWidgets('空白处按住右键拖动：不开右键菜单（拖的是画布）', (tester) async {
       await _pump(tester);
       final TestGesture drag = await tester.startGesture(

@@ -1566,8 +1566,8 @@ class _RenderStageSpace extends RenderProxyBox {}
 ///
 /// 不用 GestureDetector 的 onDoubleTap：双击识别器一进手势竞技场，连线层原来的单击（选连线 / 点空白
 /// 清选中）就得等它放弃，每一次单击都慢 300ms。这里只听原始指针事件、自己数两下，不进竞技场，单击照旧即时生效：
-///   - 第一下得真是一次单击：按下到抬起没挪出点击容差（computeHitSlop：鼠标 1px、触摸 kTouchSlop，与单击识别器
-///     同一个口径）——拖画布那一下不算第一下；按下时这一层上没有别的指针按着——双指捏合不算；
+///   - 第一下得真是一次点击：按下到抬起没挪出点击容差（[_withinClickSlop]）——拖画布那一下不算第一下；按下时这一层上
+///     没有别的指针按着——双指捏合不算；
 ///   - 第二下在 [kDoubleTapTimeout] 之内（从第一下按下起算）、离第一下 [kDoubleTapSlop] 之内、同一个设备落下才算，
 ///     落下当场报。
 /// 右键单击交给 [_SecondaryClickDetector]（抬起时报按下点）。回调给的是本层的局部坐标 = 舞台坐标。
@@ -1613,9 +1613,7 @@ class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
     _firstReleased = false;
   }
 
-  /// [position] 还在 [down] 的点击容差里（没挪出去就还是单击，挪出去就是在拖）。
-  bool _withinTapSlop(PointerDownEvent down, Offset position) =>
-      (position - down.position).distance <= computeHitSlop(down.kind, null);
+  bool _withinTapSlop(PointerDownEvent down, Offset position) => _withinClickSlop(context, down, position);
 
   void _onPointerDown(PointerDownEvent event) {
     final bool othersPressed = _pressed.isNotEmpty;
@@ -1628,7 +1626,6 @@ class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
     }
     final PointerDownEvent? first = _first;
     if (first != null &&
-        _firstReleased &&
         first.device == event.device &&
         (event.position - first.position).distance <= kDoubleTapSlop) {
       _reset();
@@ -1644,6 +1641,7 @@ class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
   void _onPointerMove(PointerMoveEvent event) {
     final PointerDownEvent? first = _first;
     if (first == null || _firstReleased || event.pointer != first.pointer) return;
+    if (!mounted) return;
     // 第一下按着挪出了点击容差：这是在拖画布，不是单击。
     if (!_withinTapSlop(first, event.position)) _reset();
   }
@@ -1652,6 +1650,7 @@ class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
     _pressed.remove(event.pointer);
     final PointerDownEvent? first = _first;
     if (first == null || _firstReleased || event.pointer != first.pointer) return;
+    if (!mounted) return;
     if (_withinTapSlop(first, event.position)) {
       _firstReleased = true;
     } else {
@@ -1678,10 +1677,17 @@ class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
       );
 }
 
+/// 一次按下到 [position] 还算不算「点」：挪过的距离没超过平移阈值（computePanSlop：鼠标 2px、触摸 kPanSlop，带上
+/// 设备的手势设置）——主键在画布上真被拖起来的就是这个距离。不用单击识别器的 1px（computeHitSlop）：鼠标点一下
+/// 手抖 1.5px 是常事，画布没动、用户也没在拖，双击 / 右键菜单不该因此失灵。
+bool _withinClickSlop(BuildContext context, PointerDownEvent down, Offset position) =>
+    (position - down.position).distance <=
+        computePanSlop(down.kind, MediaQuery.maybeGestureSettingsOf(context));
+
 /// 右键单击：次键按下 → 抬起，中间没挪出点击容差才算，**抬起时**报，交回的是按下那一下的事件（菜单锚在按下点）。
 ///
 /// 原来按下就开菜单：按住右键拖会把画布拖走（InteractiveViewer 的缩放 / 平移识别器不挑键），菜单还钉在原处（B4）。
-/// 容差与单击识别器同一个口径（computeHitSlop：鼠标 1px、触摸 kTouchSlop）——挪出去就是在拖，不是单击。
+/// 容差见 [_withinClickSlop]——挪出去就是在拖，不是单击。
 /// 只听原始指针事件、不进手势竞技场：卡片的单击 / 拖动、连线层的单击都不受影响。
 class _SecondaryClickDetector extends StatefulWidget {
   const _SecondaryClickDetector({
@@ -1701,8 +1707,7 @@ class _SecondaryClickDetectorState extends State<_SecondaryClickDetector> {
   /// 还没抬起的那一下右键按下；挪出容差、换了键、被取消就清掉。
   PointerDownEvent? _down;
 
-  bool _withinSlop(PointerDownEvent down, Offset position) =>
-      (position - down.position).distance <= computeHitSlop(down.kind, null);
+  bool _withinSlop(PointerDownEvent down, Offset position) => _withinClickSlop(context, down, position);
 
   void _onPointerDown(PointerDownEvent event) {
     if (event.buttons == kSecondaryButton) _down = event;
@@ -1711,6 +1716,8 @@ class _SecondaryClickDetectorState extends State<_SecondaryClickDetector> {
   void _onPointerMove(PointerMoveEvent event) {
     final PointerDownEvent? down = _down;
     if (down == null || event.pointer != down.pointer) return;
+    // 拆了之后命中路径照样把这根指针的事件送来：不再判（判容差要读 context）。
+    if (!mounted) return;
     if (event.buttons != kSecondaryButton || !_withinSlop(down, event.position)) {
       _down = null;
     }
@@ -1720,6 +1727,8 @@ class _SecondaryClickDetectorState extends State<_SecondaryClickDetector> {
     final PointerDownEvent? down = _down;
     if (down == null || event.pointer != down.pointer) return;
     _down = null;
+    // 按着右键时这一层被拆了（卡片被删）：命中路径按指针缓存着，抬起照样送到这里，但卡片已经不在了——不开菜单。
+    if (!mounted) return;
     if (_withinSlop(down, event.position)) widget.onSecondaryClick(down);
   }
 
