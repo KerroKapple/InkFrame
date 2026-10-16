@@ -14,6 +14,7 @@ class InkInput extends StatelessWidget {
     this.minLines,
     this.maxLines = 1,
     this.enabled = true,
+    this.autofocus = false,
   });
 
   final TextEditingController controller;
@@ -27,6 +28,10 @@ class InkInput extends StatelessWidget {
 
   /// 禁用时不可编辑（busy 等场景与其余交互一致）。
   final bool enabled;
+
+  /// 挂上就持焦（直通 TextField.autofocus：作用域里还没有别的焦点才生效，不从已经持焦的控件手里抢）。
+  /// 对话框的第一个输入框用它：框常从画布开，焦点不落进框里，按键就穿到框后面的画布上。
+  final bool autofocus;
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +53,7 @@ class InkInput extends StatelessWidget {
           minLines: minLines,
           maxLines: maxLines,
           enabled: enabled,
+          autofocus: autofocus,
           cursorColor: colors.accent,
           style: typo.body.copyWith(color: colors.fg2),
           decoration: InputDecoration(

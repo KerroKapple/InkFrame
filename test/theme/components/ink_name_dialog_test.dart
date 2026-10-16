@@ -95,6 +95,17 @@ void main() {
     expect(results, <String?>[null]);
   });
 
+  // B1：框常从画布菜单开（「存为角色」）。不持焦的话主焦点会被画布要回去，按键穿过框打到画布上。
+  testWidgets('一打开输入框就持焦（autofocus）：不用先点一下就能打字', (
+    WidgetTester tester,
+  ) async {
+    await open(tester);
+    expect(
+      tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasPrimaryFocus,
+      isTrue,
+    );
+  });
+
   testWidgets('标题 / 提示 / 两个按钮文案全部由调用方给', (WidgetTester tester) async {
     await open(tester);
     expect(find.text('New character'), findsOneWidget);

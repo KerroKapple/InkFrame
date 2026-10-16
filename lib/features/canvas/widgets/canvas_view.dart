@@ -8,9 +8,12 @@
 //   - 可播放性 IO 判定在 playableVideoPathProvider；连线编排在 LinkActionController
 //   - 新建菜单（create_node_menu.dart）：从卡片出端口拖线（_NodeCardSlot 报拖线、_PendingWireLayer 画
 //     实时虚线、舞台层判落点——落在卡上 = linkTo，落在空白 = 带上下文开菜单）、空白处双击 / 右键
-//     （_BlankPointerDetector）都开它；菜单宿主 CanvasMenuHost 包在 _CanvasBody 最外层
-//   - 节点右键菜单（PR-8b，同一个宿主）：卡片插槽收右键按下，舞台层先处理选中（没选中的先单选它，已在
+//     （_BlankPointerDetector）都开它；菜单宿主 CanvasMenuHost 包在 _CanvasBody 最外层。拖线途中源卡没了
+//     （被删）由 _CanvasBody 看着节点集取消拖线——卡片插槽已经卸载，它自己收不了
+//   - 节点右键菜单（PR-8b，同一个宿主）：卡片插槽收右键单击，舞台层先处理选中（没选中的先单选它，已在
 //     多选里的保持多选）再在按下点开菜单
+//   - 右键（空白处与卡片上）都是抬起时开、按下到抬起没挪出点击容差才开，锚点用按下点（_SecondaryClickDetector）：
+//     按住右键拖动是拖画布，不开菜单
 
 import 'dart:async';
 
@@ -337,11 +340,30 @@ class _CanvasBody extends ConsumerWidget {
     selectionCtrl.select(node.id, toggle: modifierHeld);
   }
 
+  /// 拖线途中源卡没了（Delete 键 / 撤销 / 别处删掉）：取消拖线（B5）。
+  ///
+  /// 源卡的插槽跟着卸载，拖线手势随之销毁、松手再也回调不到；插槽自己收不了——它卸载之后 ref 已不可用
+  /// （原来 NodeCard.dispose 里补的那一手因此从没生效过）。拖线状态不收，实时虚线与其余卡片的「可连目标」
+  /// 高亮就一直挂着。节点集在这一层是知道的，所以在这里看着：源不在当前节点集里了就取消。
+  void _cancelOrphanedWire(WidgetRef ref, List<CanvasNode>? next) {
+    if (next == null) return;
+    final WireDrag? drag = ref.read(canvasWireDragProvider(canvasId));
+    if (drag == null) return;
+    for (final CanvasNode n in next) {
+      if (n.id == drag.sourceNodeId) return;
+    }
+    ref.read(canvasWireDragProvider(canvasId).notifier).cancel();
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     ref.listen<LinkActionEvent?>(
       linkActionControllerProvider(canvasId),
       (_, next) => _onLinkEvent(context, next),
+    );
+    ref.listen<AsyncValue<List<CanvasNode>>>(
+      canvasNodesControllerProvider(canvasId),
+      (_, AsyncValue<List<CanvasNode>> next) => _cancelOrphanedWire(ref, next.valueOrNull),
     );
 
     // 本层不再 watch 选中/链接态——这两类高频变化下沉到各插槽各自 watch，
@@ -530,7 +552,7 @@ class _CanvasStage extends ConsumerWidget {
       onEmptyTap();
     }
 
-    // 空白处双击 → 在双击点开新建菜单；空白处右键 → 在那一点开空白处右键菜单（create_node_menu.dart）。
+    // 空白处双击 → 在双击点开新建菜单；空白处右键单击 → 在按下的那一点开空白处右键菜单（create_node_menu.dart）。
     // 压着连线不算空白：连线自己的右键菜单不归这一版。菜单锚点是视口坐标（舞台坐标过一遍相机）。
     void onBlankDoubleDown(Offset stagePoint) {
       if (edgeAt(stagePoint) != null) return;
@@ -539,16 +561,16 @@ class _CanvasStage extends ConsumerWidget {
           );
     }
 
-    void onBlankSecondaryDown(Offset stagePoint) {
+    void onBlankSecondaryClick(Offset stagePoint) {
       if (edgeAt(stagePoint) != null) return;
       ref.read(canvasMenuRequestProvider(canvasId).notifier).openBlank(
             MatrixUtils.transformPoint(transformController.value, stagePoint),
           );
     }
 
-    // 卡片上按右键 → 节点右键菜单开在按下的那一点。右键一张没被选中的卡：先把选中换成它；右键一张已在
+    // 卡片上右键单击 → 节点右键菜单开在按下的那一点。右键一张没被选中的卡：先把选中换成它；右键一张已在
     // 选中集里的卡（多选）：保持多选——菜单作用在整个选中集上（node_menu_model.nodeMenuTargets）。
-    void onNodeSecondaryDown(CanvasNode node, Offset stagePoint) {
+    void onNodeSecondaryClick(CanvasNode node, Offset stagePoint) {
       if (!ref.read(canvasSelectionControllerProvider(canvasId)).contains(node.id)) {
         ref.read(canvasSelectionControllerProvider(canvasId).notifier).select(node.id);
       }
@@ -715,7 +737,7 @@ class _CanvasStage extends ConsumerWidget {
                   Positioned.fill(
                     child: _BlankPointerDetector(
                       onDoubleDown: onBlankDoubleDown,
-                      onSecondaryDown: onBlankSecondaryDown,
+                      onSecondaryClick: onBlankSecondaryClick,
                       child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
                       onTapDown: onEdgeLayerTap,
@@ -795,7 +817,7 @@ class _CanvasStage extends ConsumerWidget {
                         hasInEdge: ports.inbound.contains(node.id),
                         hasOutEdge: ports.outbound.contains(node.id),
                         onTap: () => onNodeTap(node),
-                        onSecondaryDown: (Offset p) => onNodeSecondaryDown(node, p),
+                        onSecondaryClick: (Offset p) => onNodeSecondaryClick(node, p),
                         onWireDrop: onWireDrop,
                         onDelete: () => deleteNodeWithUndo(
                           context,
@@ -850,8 +872,8 @@ class _CanvasStage extends ConsumerWidget {
                                     hasOutEdge:
                                         ports.outbound.contains(node.id),
                                     onTap: () => onNodeTap(node),
-                                    onSecondaryDown: (Offset p) =>
-                                        onNodeSecondaryDown(node, p),
+                                    onSecondaryClick: (Offset p) =>
+                                        onNodeSecondaryClick(node, p),
                                     onWireDrop: onWireDrop,
                                     onDelete: () => deleteNodeWithUndo(
                                       context,
@@ -1229,7 +1251,7 @@ _selectedEdgeGeometry({
 /// 按存量边 + 产出线整层算一次传进来。
 ///
 /// 出端口拖线也从这里报：指针的全局坐标换成舞台坐标写进 canvasWireDragProvider，松手时把这条拖线
-/// 交给舞台层（[onWireDrop]）判落点。卡片上的右键按下同样换成舞台坐标交给舞台层（[onSecondaryDown]）。
+/// 交给舞台层（[onWireDrop]）判落点。卡片上的右键单击同样把按下点换成舞台坐标交给舞台层（[onSecondaryClick]）。
 class _NodeCardSlot extends ConsumerWidget {
   const _NodeCardSlot({
     required this.node,
@@ -1241,7 +1263,7 @@ class _NodeCardSlot extends ConsumerWidget {
     required this.hasInEdge,
     required this.hasOutEdge,
     required this.onTap,
-    required this.onSecondaryDown,
+    required this.onSecondaryClick,
     required this.onDelete,
     required this.onWireDrop,
   });
@@ -1261,8 +1283,9 @@ class _NodeCardSlot extends ConsumerWidget {
   final bool hasOutEdge;
   final VoidCallback onTap;
 
-  /// 在本卡上按下右键：给的是按下点的舞台坐标（舞台层换成视口坐标开节点右键菜单）。
-  final ValueChanged<Offset> onSecondaryDown;
+  /// 在本卡上右键单击（抬起时报，见 [_SecondaryClickDetector]）：给的是**按下点**的舞台坐标（舞台层换成视口坐标
+  /// 开节点右键菜单）。
+  final ValueChanged<Offset> onSecondaryClick;
   final VoidCallback onDelete;
 
   /// 从本卡出端口拖线后松手：舞台层判落点（连线 / 开新建菜单 / 什么都不做）。
@@ -1313,13 +1336,12 @@ class _NodeCardSlot extends ConsumerWidget {
     );
     // 拖线期间的高亮与连线模式同一套样式：源卡片 = 起点，其余卡片 = 可连的目标。
     final String? activeSourceId = linkSourceId ?? wireSourceId;
-    // 右键：只听按下事件（与空白处的右键同一做法），不进手势竞技场——卡片的单击 / 拖动不受影响。
-    // 平移生效时舞台内容整层不收指针（_PanGate），这里也就收不到，平移时不开菜单。
-    return Listener(
-      onPointerDown: (PointerDownEvent event) {
-        if (event.buttons != kSecondaryButton) return;
-        final Offset? stage = _toStage(context, event.position);
-        if (stage != null) onSecondaryDown(stage);
+    // 右键单击（与空白处的右键同一做法）：只听原始指针事件、不进手势竞技场——卡片的单击 / 拖动不受影响；
+    // 按住右键拖动不算。平移生效时舞台内容整层不收指针（_PanGate），这里也就收不到，平移时不开菜单。
+    return _SecondaryClickDetector(
+      onSecondaryClick: (PointerDownEvent down) {
+        final Offset? stage = _toStage(context, down.position);
+        if (stage != null) onSecondaryClick(stage);
       },
       child: RepaintBoundary(
       child: NodeCard(
@@ -1543,18 +1565,23 @@ class _RenderStageSpace extends RenderProxyBox {}
 /// 空白处的双击与右键：包在连线层上——卡片盖着的地方到不了这一层，收到的就是空白处的指针。
 ///
 /// 不用 GestureDetector 的 onDoubleTap：双击识别器一进手势竞技场，连线层原来的单击（选连线 / 点空白
-/// 清选中）就得等它放弃，每一次单击都慢 300ms。这里只听按下事件、自己数两下：第二下在
-/// [kDoubleTapTimeout] 之内、[kDoubleTapSlop] 之内落下就算双击；不进竞技场，单击照旧即时生效。
-/// 右键（次键按下）直接报。回调给的是本层的局部坐标 = 舞台坐标。
+/// 清选中）就得等它放弃，每一次单击都慢 300ms。这里只听原始指针事件、自己数两下，不进竞技场，单击照旧即时生效：
+///   - 第一下得真是一次点击：按下到抬起没挪出点击容差（[_withinClickSlop]）——拖画布那一下不算第一下；按下时这一层上
+///     没有别的指针按着——双指捏合不算；
+///   - 第二下在 [kDoubleTapTimeout] 之内（从第一下按下起算）、离第一下 [kDoubleTapSlop] 之内、同一个设备落下才算，
+///     落下当场报。
+/// 右键单击交给 [_SecondaryClickDetector]（抬起时报按下点）。回调给的是本层的局部坐标 = 舞台坐标。
 class _BlankPointerDetector extends StatefulWidget {
   const _BlankPointerDetector({
     required this.onDoubleDown,
-    required this.onSecondaryDown,
+    required this.onSecondaryClick,
     required this.child,
   });
 
   final ValueChanged<Offset> onDoubleDown;
-  final ValueChanged<Offset> onSecondaryDown;
+
+  /// 右键单击：给的是按下点（本层局部坐标 = 舞台坐标）。
+  final ValueChanged<Offset> onSecondaryClick;
   final Widget child;
 
   @override
@@ -1562,8 +1589,15 @@ class _BlankPointerDetector extends StatefulWidget {
 }
 
 class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
-  /// 上一下主键按下的全局位置；双击窗口一过就清掉。
-  Offset? _firstDown;
+  /// 这一层上此刻按着的指针（双指捏合的第二根手指落下时，第一根还在这里面）。
+  final Set<int> _pressed = <int>{};
+
+  /// 候选的第一下（主键按下那一下的事件）；双击窗口一过、挪出点击容差、被别的指针打断就清掉。
+  PointerDownEvent? _first;
+
+  /// 第一下已经在点击容差内抬起——它是一次单击。没抬起之前落下的第二下不算。
+  bool _firstReleased = false;
+
   Timer? _window;
 
   @override
@@ -1575,30 +1609,141 @@ class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
   void _reset() {
     _window?.cancel();
     _window = null;
-    _firstDown = null;
+    _first = null;
+    _firstReleased = false;
   }
 
+  bool _withinTapSlop(PointerDownEvent down, Offset position) => _withinClickSlop(context, down, position);
+
   void _onPointerDown(PointerDownEvent event) {
-    if (event.buttons == kSecondaryButton) {
+    final bool othersPressed = _pressed.isNotEmpty;
+    _pressed.add(event.pointer);
+    // 另有指针按着（双指捏合）、或不是主键（右键菜单归外面那层 _SecondaryClickDetector）：都不是双击的一下，
+    // 还打断候选。
+    if (othersPressed || event.buttons != kPrimaryButton) {
       _reset();
-      widget.onSecondaryDown(event.localPosition);
       return;
     }
-    if (event.buttons != kPrimaryButton) return;
-    final Offset? first = _firstDown;
-    if (first != null && (event.position - first).distance <= kDoubleTapSlop) {
+    final PointerDownEvent? first = _first;
+    if (first != null &&
+        first.device == event.device &&
+        (event.position - first.position).distance <= kDoubleTapSlop) {
       _reset();
       widget.onDoubleDown(event.localPosition);
       return;
     }
     _window?.cancel();
-    _firstDown = event.position;
+    _first = event;
+    _firstReleased = false;
     _window = Timer(kDoubleTapTimeout, _reset);
   }
 
+  void _onPointerMove(PointerMoveEvent event) {
+    final PointerDownEvent? first = _first;
+    if (first == null || _firstReleased || event.pointer != first.pointer) return;
+    if (!mounted) return;
+    // 第一下按着挪出了点击容差：这是在拖画布，不是单击。
+    if (!_withinTapSlop(first, event.position)) _reset();
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    _pressed.remove(event.pointer);
+    final PointerDownEvent? first = _first;
+    if (first == null || _firstReleased || event.pointer != first.pointer) return;
+    if (!mounted) return;
+    if (_withinTapSlop(first, event.position)) {
+      _firstReleased = true;
+    } else {
+      _reset();
+    }
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    _pressed.remove(event.pointer);
+    if (event.pointer == _first?.pointer) _reset();
+  }
+
   @override
-  Widget build(BuildContext context) =>
-      Listener(onPointerDown: _onPointerDown, child: widget.child);
+  Widget build(BuildContext context) => _SecondaryClickDetector(
+        onSecondaryClick: (PointerDownEvent down) =>
+            widget.onSecondaryClick(down.localPosition),
+        child: Listener(
+          onPointerDown: _onPointerDown,
+          onPointerMove: _onPointerMove,
+          onPointerUp: _onPointerUp,
+          onPointerCancel: _onPointerCancel,
+          child: widget.child,
+        ),
+      );
+}
+
+/// 一次按下到 [position] 还算不算「点」：挪过的距离没超过平移阈值（computePanSlop：鼠标 2px、触摸 kPanSlop，带上
+/// 设备的手势设置）——主键在画布上真被拖起来的就是这个距离。不用单击识别器的 1px（computeHitSlop）：鼠标点一下
+/// 手抖 1.5px 是常事，画布没动、用户也没在拖，双击 / 右键菜单不该因此失灵。
+bool _withinClickSlop(BuildContext context, PointerDownEvent down, Offset position) =>
+    (position - down.position).distance <=
+        computePanSlop(down.kind, MediaQuery.maybeGestureSettingsOf(context));
+
+/// 右键单击：次键按下 → 抬起，中间没挪出点击容差才算，**抬起时**报，交回的是按下那一下的事件（菜单锚在按下点）。
+///
+/// 原来按下就开菜单：按住右键拖会把画布拖走（InteractiveViewer 的缩放 / 平移识别器不挑键），菜单还钉在原处（B4）。
+/// 容差见 [_withinClickSlop]——挪出去就是在拖，不是单击。
+/// 只听原始指针事件、不进手势竞技场：卡片的单击 / 拖动、连线层的单击都不受影响。
+class _SecondaryClickDetector extends StatefulWidget {
+  const _SecondaryClickDetector({
+    required this.onSecondaryClick,
+    required this.child,
+  });
+
+  /// 右键单击成立。给的是按下那一下的事件：要局部坐标取 localPosition，要全局坐标取 position。
+  final ValueChanged<PointerDownEvent> onSecondaryClick;
+  final Widget child;
+
+  @override
+  State<_SecondaryClickDetector> createState() => _SecondaryClickDetectorState();
+}
+
+class _SecondaryClickDetectorState extends State<_SecondaryClickDetector> {
+  /// 还没抬起的那一下右键按下；挪出容差、换了键、被取消就清掉。
+  PointerDownEvent? _down;
+
+  bool _withinSlop(PointerDownEvent down, Offset position) => _withinClickSlop(context, down, position);
+
+  void _onPointerDown(PointerDownEvent event) {
+    if (event.buttons == kSecondaryButton) _down = event;
+  }
+
+  void _onPointerMove(PointerMoveEvent event) {
+    final PointerDownEvent? down = _down;
+    if (down == null || event.pointer != down.pointer) return;
+    // 拆了之后命中路径照样把这根指针的事件送来：不再判（判容差要读 context）。
+    if (!mounted) return;
+    if (event.buttons != kSecondaryButton || !_withinSlop(down, event.position)) {
+      _down = null;
+    }
+  }
+
+  void _onPointerUp(PointerUpEvent event) {
+    final PointerDownEvent? down = _down;
+    if (down == null || event.pointer != down.pointer) return;
+    _down = null;
+    // 按着右键时这一层被拆了（卡片被删）：命中路径按指针缓存着，抬起照样送到这里，但卡片已经不在了——不开菜单。
+    if (!mounted) return;
+    if (_withinSlop(down, event.position)) widget.onSecondaryClick(down);
+  }
+
+  void _onPointerCancel(PointerCancelEvent event) {
+    if (event.pointer == _down?.pointer) _down = null;
+  }
+
+  @override
+  Widget build(BuildContext context) => Listener(
+        onPointerDown: _onPointerDown,
+        onPointerMove: _onPointerMove,
+        onPointerUp: _onPointerUp,
+        onPointerCancel: _onPointerCancel,
+        child: widget.child,
+      );
 }
 
 /// 拖线中的实时虚线（从源卡片的出点到指针）：只随拖线状态与相机重建，不连带舞台；不在拖线时什么都不画。

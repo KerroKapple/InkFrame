@@ -4,6 +4,7 @@
 //   - 适应全部：所有卡片都落进视口扣掉留白的那一块；适应选中只框选中的卡（且只缩小、不放大）；
 //   - 打字时让位：焦点在文本框里，四个键一概不动画布；
 //   - 提示词条里按 Ctrl+↵：只提交一次（提示词条自己那一下），画布这层不跟着再提交。
+//   - Ctrl+↵ 走 submitWithPending：还没发射的防抖 patch 并进终稿，不借退出路径的 flushPendingWrites（B8）。
 //
 // 变异对照：把四个键的 _EditingAwareAction 换成不设门的 CallbackAction ⇒「打字时让位」红；_generateSelection
 // 不要求「恰好一张」⇒「选中两张」红；fitSelectedNodes 改框全部 ⇒「适应选中」红。
@@ -227,7 +228,7 @@ void main() {
   });
 
   group('Ctrl+↵ 生成选中', () {
-    testWidgets('恰好选中一张可生成的配置卡：先冲挂起的写入，再提交一次', (tester) async {
+    testWidgets('恰好选中一张可生成的配置卡：提交一次，不走退出路径的 flush', (tester) async {
       final ProviderContainer c = await _pump(tester);
       _select(c, <String>['img']);
       await tester.pump();
@@ -235,7 +236,29 @@ void main() {
       await _sendCtrl(tester, LogicalKeyboardKey.enter);
       await tester.pumpAndSettle();
 
-      expect(_RecordingSubmit.log, <String>['flush:img', 'submit:img']);
+      expect(_RecordingSubmit.log, <String>['submit:img']);
+      expect(_RecordingSubmit.configs, <Map<String, Object?>>[<String, Object?>{}],
+          reason: '没有挂起的编辑：终稿是空补丁，生成读库里那一行');
+    });
+
+    // B8：原来先借退出路径的 flushPendingWrites 冲一笔、再交空补丁——那一笔写失败就按「已用尽」记账、不再重试，
+    // 接着 submit 读到库里的旧提示词，白生成一次。现在还没发射的防抖 patch 直接并进终稿一并提交。
+    testWidgets('防抖还没发射时按 Ctrl+↵：终稿里带着最新提示词，不调 flushPendingWrites', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      _select(c, <String>['img']);
+      await tester.pump();
+      // 提示词条刚敲完字：防抖窗口还没过，这一笔还没落库。
+      c.read(inspectorSubmitControllerProvider('img').notifier).savePromptDebounced('boat at dusk');
+
+      await _sendCtrl(tester, LogicalKeyboardKey.enter);
+      await tester.pumpAndSettle();
+
+      expect(_RecordingSubmit.log, <String>['submit:img'], reason: '不借退出路径的 flushPendingWrites');
+      expect(_RecordingSubmit.configs, <Map<String, Object?>>[
+        <String, Object?>{'prompt': 'boat at dusk'},
+      ]);
+      // 收尾：替身的 submit 不落库，也就没收掉防抖计时器——让它到点走完（替身没跑真 build，那一笔写入是空操作）。
+      await tester.pump(InspectorSubmitController.debounceDuration);
     });
 
     testWidgets('选中两张 / 选中的不能生成：不提交', (tester) async {
@@ -397,7 +420,7 @@ void main() {
     await _sendCtrl(tester, LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
 
-    expect(_RecordingSubmit.log, <String>['submit:img'], reason: '只有提示词条那一次，画布的生成（会先冲写入）没跟着触发');
+    expect(_RecordingSubmit.log, <String>['submit:img'], reason: '只有提示词条那一次，画布的生成没跟着触发');
     expect(_RecordingSubmit.configs, <Map<String, Object?>>[
       <String, Object?>{'prompt': 'boat at dawn'},
     ]);

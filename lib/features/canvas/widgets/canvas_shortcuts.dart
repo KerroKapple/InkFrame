@@ -360,7 +360,8 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   final bool isActive;
   final Widget child;
 
-  /// 画布舞台按下指针时调用：把键盘焦点要回最近的 CanvasShortcuts（不在其下则无事）。
+  /// 把键盘焦点当场要回最近的 CanvasShortcuts（不在其下则无事）：画布舞台按下指针时、新建菜单选了一项 / 按 Esc
+  /// 收起时（菜单那边见 create_node_menu.dart 的 _dismiss）。
   static void reclaimFocus(BuildContext context) =>
       context.findAncestorStateOfType<_CanvasShortcutsState>()?._reclaimFocus();
 
@@ -369,6 +370,8 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   /// Delete / Esc / 工具单键全都收不到。别的控件已经拿到焦点（点到了别的文本框、开了对话框）就不抢。
   /// 帧后再判：桌面上点到文本框外面，文本框自己的失焦与收菜单是同一次按下里的两件事，谁先谁后不定，
   /// 失焦又在微任务里才落地——收菜单的这一刻还看不出焦点最后落在哪。
+  ///
+  /// 本层所在的路由上面压着对话框时一律不要（见 _CanvasShortcutsState._onTopRoute）。
   static void reclaimFocusIfOrphaned(BuildContext context) => context
       .findAncestorStateOfType<_CanvasShortcutsState>()
       ?._reclaimFocusIfOrphaned();
@@ -406,16 +409,24 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     });
   }
 
+  /// 本层所在的路由此刻是不是最上面那一层。上面压着对话框（起名框 / 泳道框 / 导入框 / 命令面板……）时键盘归
+  /// 那个框，本层一概不抢焦点——抢过来的话按键穿过对话框打到画布上：Backspace 删掉框后面选中的卡、L / I / T / H / F
+  /// 在画布上起作用、Esc 关不掉框。判在本层每一个「要回焦点」的入口上（舞台按下、菜单收起后的帧后补焦点），
+  /// 以后新加的入口照样受它约束。不在任何路由里（单测直接挂）按「在最上面」算。
+  bool get _onTopRoute => ModalRoute.isCurrentOf(context) ?? true;
+
   /// 在画布舞台上按下鼠标：把键盘焦点要回本层。在提示词条 / 检查器的文本框里打完字
   /// 再点画布，文本框的 onTapOutside 只会把焦点交还给路由作用域——本层不持焦，
-  /// Delete / Esc / 工具单键全都收不到，直到切一次标签才恢复。
+  /// Delete / Esc / 工具单键全都收不到，直到切一次标签才恢复。上面压着对话框时不要（[_onTopRoute]）。
   void _reclaimFocus() {
-    if (widget.isActive && !_focusNode.hasPrimaryFocus) _focusNode.requestFocus();
+    if (widget.isActive && _onTopRoute && !_focusNode.hasPrimaryFocus) {
+      _focusNode.requestFocus();
+    }
   }
 
   void _reclaimFocusIfOrphaned() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !widget.isActive) return;
+      if (!mounted || !widget.isActive || !_onTopRoute) return;
       final FocusNode? focused = primaryFocus;
       if (focused == null || identical(focused, _focusNode.enclosingScope)) {
         _focusNode.requestFocus();
@@ -665,6 +676,7 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
   }
 
   /// 新建菜单开在视口中心（不带连线上下文）。视口还没上报尺寸（首帧前）时不知道中心在哪，不开。
+  /// 菜单里不带上下文的项与 I / G / T 同一条路（落在视口中心 + 散布），见 CanvasMenuRequest.viewportCentered。
   void _openCreateMenu() {
     final String? canvasId = ref.read(currentCanvasIdProvider);
     if (canvasId == null) return;
@@ -672,7 +684,7 @@ class _CanvasShortcutsState extends ConsumerState<CanvasShortcuts> {
     if (viewport.isEmpty) return;
     ref
         .read(canvasMenuRequestProvider(canvasId).notifier)
-        .openCreate(viewport.center(Offset.zero));
+        .openCreate(viewport.center(Offset.zero), viewportCentered: true);
   }
 
   // ===== PR-8b：动作本体在 util/canvas_tool_actions.dart，与节点右键菜单共用 =====

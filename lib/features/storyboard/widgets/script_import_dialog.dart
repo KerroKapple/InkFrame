@@ -101,6 +101,8 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
             children: <Widget>[
               InkInput(
                 controller: _ctrl,
+                // 一打开就持焦：框常从画布开（空白处右键「导入脚本…」），按键不能穿到框后面的画布上。
+                autofocus: true,
                 hintText: l.scriptImportHint,
                 minLines: 4,
                 maxLines: 8,

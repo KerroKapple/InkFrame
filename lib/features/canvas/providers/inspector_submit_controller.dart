@@ -486,6 +486,11 @@ class InspectorSubmitController
   /// 终稿写入与自动保存走**同一条**串行链（[_serialized]）：已经发射的在途
   /// 自动保存会排在终稿**之前**落库，旧 patch 再也盖不到终稿头上
   /// （BOARD 第 196 行）。顺带保证 `submitFromConfigNode` 读到的那一行就是终稿。
+  ///
+  /// 终稿这一笔的成败也记进自动保存的账（与 [_attemptWrite] 同一套）：写成功，这些键从失败重试表里划掉
+  /// （之前自动保存失败留下的「未保存 · 重试」随之消掉）；写失败，终稿进重试表、按退避自动重试——
+  /// 防抖里还没发射的编辑已经被并进终稿、从防抖里取消了，不记下来就只剩输入框里那份，库里还是旧的，
+  /// 下一次生成又读到旧提示词。生成本身的失败（缺 Key、配置不合法……）与写入无关，不记账。
   Future<void> submit(Map<String, Object?> finalConfig) async {
     if (isBusy) return;
     // 还没发射的防抖 patch 直接丢掉：终稿是检查器按当前 provider 能力裁剪过的
@@ -495,12 +500,18 @@ class InspectorSubmitController
     final link = ref.keepAlive();
     state = const InspectorSubmitSubmitting();
     try {
-      await _serialized(() async {
-        final nodes = await ref.read(nodeRepositoryProvider.future);
-        if (!_alive) return;
-        await nodes.patchTypeConfig(arg, finalConfig);
-      });
+      try {
+        await _serialized(() async {
+          final nodes = await ref.read(nodeRepositoryProvider.future);
+          if (!_alive) return;
+          await nodes.patchTypeConfig(arg, finalConfig);
+        });
+      } on InkError catch (e) {
+        if (_alive) _onWriteFailed(finalConfig, e);
+        rethrow;
+      }
       if (!_alive) return;
+      _onWriteSucceeded(finalConfig.keys);
       _setSubmitState(const InspectorSubmitRunning());
       final controller = await ref.read(generationControllerProvider.future);
       if (!_alive) return;
@@ -522,6 +533,20 @@ class InspectorSubmitController
       link.close();
     }
   }
+
+  /// 带着挂起的编辑提交生成（画布 Ctrl+↵ / ⌘↵ 与节点右键菜单「生成」）：手里没有终稿快照的入口用它。
+  ///
+  /// 终稿 = 失败等重试的 `_unsaved` + 还没发射的防抖 patch（同一个键取防抖里的——那是用户最后敲进去的值；与
+  /// [flushPendingWrites] 同一个合并顺序），一并交给 [submit]：终稿与生成走的是 submit 那一条写入链，生成读到的
+  /// 就是用户最后敲进去的那句——与提示词条带着最新文本提交是同一个效果。
+  ///
+  /// 不借退出路径的 [flushPendingWrites]：那一笔写失败会直接按「已用尽」记账、不再重试，接着的 submit 读到
+  /// 库里的旧提示词，白生成一次。并进终稿之后，终稿写不进去 submit 就停在失败态、不发起生成。
+  ///
+  /// 重试表里排着的旧值不会被写回去：终稿落库即把这些键从重试表里划掉、排着的重试随之取消；终稿写失败则以终稿
+  /// 的新值记进重试表（见 [submit]）。
+  Future<void> submitWithPending() =>
+      submit(<String, Object?>{..._unsaved, ..._pendingDebounced});
 
   /// await 之后写提交状态的唯一入口：控制器已销毁就什么都不做
   /// （`state =` 在 dispose 后会抛 StateError）。

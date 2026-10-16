@@ -155,6 +155,13 @@ void main() {
     expect(find.textContaining('Auto picks from the prompt'), findsNothing);
   });
 
+  // B1：框常从画布开（F / 新建菜单「泳道」）。不持焦的话主焦点会被画布要回去，按键穿过框打到画布上。
+  testWidgets('一打开名称框就持焦（autofocus）：第一个输入框是名称，不用先点一下', (tester) async {
+    await open(tester, null);
+    final EditableText name = tester.widget<EditableText>(find.byType(EditableText).first);
+    expect(name.focusNode.hasPrimaryFocus, isTrue);
+  });
+
   testWidgets('底部条：厚度说明 + 取消 / 保存；不再是 AlertDialog', (tester) async {
     await open(tester, null);
     expect(find.text('Thickness is not set here — drag the divider.'), findsOneWidget);

@@ -137,7 +137,12 @@ class _LaneEditDialogState extends State<_LaneEditDialog> {
                       // 名称
                       Text(l10n.laneNameLabel, style: label),
                       const SizedBox(height: InkSpacing.s6),
-                      InkInput(controller: _labelCtrl, hintText: l10n.laneNameHint),
+                      InkInput(
+                        controller: _labelCtrl,
+                        // 一打开就持焦：框常从画布开（F / 新建菜单「泳道」），按键不能穿到框后面的画布上。
+                        autofocus: true,
+                        hintText: l10n.laneNameHint,
+                      ),
                       const SizedBox(height: InkSpacing.md),
 
                       // 风格提示词（多行）+ 说明

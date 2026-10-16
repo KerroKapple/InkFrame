@@ -3,9 +3,10 @@
 // 一个宿主、三种菜单：
 //   - 新建菜单，四个入口：从卡片出端口拖到空白处松手（带「从哪张卡拖出来」的连线上下文）、双击舞台空白、
 //     画布持焦时按 Tab、空白处右键菜单里的「新建…」。菜单项判据在 util/create_menu_model.dart，建节点 /
-//     连线 / 回滚在 util/canvas_tool_actions.dart（addNodeFromMenu）。
+//     连线 / 回滚在 util/canvas_tool_actions.dart（addNodeFromMenu）。新节点落在菜单锚点上；Tab 开的菜单例外——
+//     它的锚点只是视口中心，不带上下文的项与工具条 / I / G / T 同一条路，落在「视口中心 + 散布」。
 //   - 空白处右键菜单。
-//   - 节点右键菜单（PR-8b）：卡片上按右键（canvas_view 的卡片插槽报上来）。右键一张没被选中的卡，画布先把
+//   - 节点右键菜单（PR-8b）：卡片上右键单击（canvas_view 的卡片插槽在抬起时报上来，按住右键拖动不算）。右键一张没被选中的卡，画布先把
 //     选中换成它；右键一张已在多选里的卡，保持多选。可用 / 置灰的判据在 util/node_menu_model.dart，动作在
 //     util/canvas_tool_actions.dart（与 Ctrl+↵ / Ctrl+D 共用），「在序列中定位」走
 //     sequence/util/view_in_sequence.dart（与标签栏「在序列中查看」共用），删除走 canvas_node_delete.dart。
@@ -17,7 +18,8 @@
 //     实时虚线层与卡片高亮读，Esc 取消。
 //   - CanvasMenuHost：包在画布区外层（canvas_view 的 _CanvasBody），菜单经 OverlayPortal 浮到 Overlay 上，
 //     锚点跟着画布区走（CompositedTransformFollower，与铃铛下拉同一做法）。点外面关（TapRegion）；
-//     焦点整个离开菜单也关（开对话框 / 切标签 / 命令面板盖上来）；关菜单时焦点还给画布，单键快捷键接着能用。
+//     焦点整个离开菜单也关（开对话框 / 切标签 / 命令面板盖上来）；选了一项 / Esc 关菜单时焦点当场还给画布，
+//     单键快捷键接着能用——选的项要开对话框也先还，对话框推上来再自己要走（理由见 _CanvasMenuHostState._dismiss）。
 //   - CanvasMenuPanel：菜单本体。新建菜单顶上是搜索框（一打开就持焦，直接打字过滤）；右键菜单没有。
 //     ↑ / ↓ 移动高亮（鼠标悬停也移），↵ 执行，Esc 关。项可以置灰（不隐藏；↑ / ↓ 跳过它）、标危险色（删除）、
 //     打勾（子菜单里「当前所在」那一项），也可以带子菜单（行尾 ›）：悬停 / 点击 / → / ↵ 打开，← / Esc 收回。
@@ -137,6 +139,7 @@ class CanvasMenuRequest {
     required this.anchor,
     this.sourceNodeId,
     this.nodeId,
+    this.viewportCentered = false,
   });
 
   final CanvasMenuKind kind;
@@ -149,6 +152,10 @@ class CanvasMenuRequest {
 
   /// 节点右键菜单：右键的是哪张卡（[kind] 为 [CanvasMenuKind.node] 时非空）。
   final String? nodeId;
+
+  /// Tab 开在视口中心的新建菜单：锚点不是用户点出来的位置。不带上下文的项与工具条 / I / G / T 同一条路，
+  /// 落在「视口中心 + 散布」（canvas_tool_actions.addNodeAtViewportCenter），不落在锚点上。
+  final bool viewportCentered;
 }
 
 /// 画布上此刻开着的菜单，按画布分族。纯 UI 态，不落库。
@@ -163,12 +170,18 @@ class CanvasMenuController
   @override
   CanvasMenuRequest? build(String canvasId) => null;
 
-  /// 开新建菜单；[sourceNodeId] 非空 = 带连线上下文（从那张卡的出端口拖出来的）。
-  void openCreate(Offset anchor, {String? sourceNodeId}) =>
+  /// 开新建菜单；[sourceNodeId] 非空 = 带连线上下文（从那张卡的出端口拖出来的）。[viewportCentered]：Tab 开的、
+  /// 锚点就是视口中心（见 [CanvasMenuRequest.viewportCentered]）。
+  void openCreate(
+    Offset anchor, {
+    String? sourceNodeId,
+    bool viewportCentered = false,
+  }) =>
       state = CanvasMenuRequest(
         kind: CanvasMenuKind.create,
         anchor: anchor,
         sourceNodeId: sourceNodeId,
+        viewportCentered: viewportCentered,
       );
 
   /// 开空白处右键菜单。
@@ -280,15 +293,18 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
     }
   }
 
-  /// 关 [request] 那一个菜单（已经换成别的菜单就不动）。[restoreFocus]：菜单拿着焦点（搜索框 / 菜单本身），
-  /// 它一拆焦点就落空、画布快捷键全收不到——帧后焦点要是还落空就还给画布（CanvasShortcuts 那边判）。
-  /// 焦点是自己走掉的（开了对话框 / 切了标签）就传 false，不抢。
-  void _dismiss(CanvasMenuRequest request, {required bool restoreFocus}) {
+  /// 关 [request] 那一个菜单（已经换成别的菜单就不动），焦点按 [focus] 交接（见 [_MenuFocusHandoff]）。
+  void _dismiss(CanvasMenuRequest request, {required _MenuFocusHandoff focus}) {
     if (!identical(ref.read(canvasMenuRequestProvider(widget.canvasId)), request)) {
       return;
     }
+    // 先交焦点、再关菜单：菜单的焦点节点卸载时手里要是还拿着主焦点，Flutter 会把焦点还给作用域里上一个
+    // 持焦的节点（FocusAttachment.detach → previouslyFocusedChild），也就是画布。卸载发生在帧尾，晚于这一下
+    // 接着推上来的对话框的焦点请求——画布赢，按键穿过对话框打到画布上（Backspace 删掉框后面选中的卡）。
+    // 当场还给画布，卸载时菜单已经不持焦，对话框随后的焦点请求就是最后一个，不管它自己 autofocus 没有。
+    if (focus == _MenuFocusHandoff.toCanvas) CanvasShortcuts.reclaimFocus(context);
     ref.read(canvasMenuRequestProvider(widget.canvasId).notifier).close(request);
-    if (restoreFocus) CanvasShortcuts.reclaimFocusIfOrphaned(context);
+    if (focus == _MenuFocusHandoff.toCanvasIfOrphaned) CanvasShortcuts.reclaimFocusIfOrphaned(context);
   }
 
   CanvasNode? _nodeById(String? id) {
@@ -303,7 +319,7 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
   }
 
   void _pickCreate(CanvasMenuRequest request, CreateMenuAction action) {
-    _dismiss(request, restoreFocus: true);
+    _dismiss(request, focus: _MenuFocusHandoff.toCanvas);
     final String canvasId = widget.canvasId;
     if (action == CreateMenuAction.lane) {
       addLaneViaDialog(context, ref, canvasId: canvasId);
@@ -314,6 +330,11 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
         ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ?? const <CanvasNode>[];
     final CanvasNodeType? type = createdNodeType(action, source: source, nodes: nodes);
     if (type == null) return;
+    // Tab 开在视口中心的菜单、不带上下文的项：与工具条 / I / G / T 同一条路——视口中心 + 散布、判泳道、只单选。
+    if (request.viewportCentered && request.sourceNodeId == null) {
+      addNodeAtViewportCenter(context, ref, canvasId: canvasId, type: type);
+      return;
+    }
     addNodeFromMenu(
       context,
       ref,
@@ -337,7 +358,7 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
         // 原地换成新建菜单：同一个锚点，不带上下文。
         ref.read(canvasMenuRequestProvider(canvasId).notifier).openCreate(request.anchor);
       case BlankMenuAction.importScript:
-        _dismiss(request, restoreFocus: true);
+        _dismiss(request, focus: _MenuFocusHandoff.toCanvas);
         // 整条链从右键那一点起铺。导入的镜头不进泳道，按不在道里的卡算世界坐标。
         showScriptImportDialog(
           context,
@@ -348,10 +369,10 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
           ),
         );
       case BlankMenuAction.selectAll:
-        _dismiss(request, restoreFocus: true);
+        _dismiss(request, focus: _MenuFocusHandoff.toCanvas);
         selectAllNodes(ref, canvasId: canvasId);
       case BlankMenuAction.fitView:
-        _dismiss(request, restoreFocus: true);
+        _dismiss(request, focus: _MenuFocusHandoff.toCanvas);
         fitAllNodes(ref, canvasId: canvasId);
     }
   }
@@ -362,7 +383,7 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
     final String? nodeId = request.nodeId;
     // 「加入泳道 ›」那一行只开子菜单，不会交回来；防御一手。
     if (nodeId == null || pick.action == NodeMenuAction.laneSubmenu) return;
-    _dismiss(request, restoreFocus: true);
+    _dismiss(request, focus: _MenuFocusHandoff.toCanvas);
     final String canvasId = widget.canvasId;
     final Set<String> targets = nodeMenuTargets(
       ref.read(canvasSelectionControllerProvider(canvasId)),
@@ -431,8 +452,9 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
             canvasId: widget.canvasId,
             link: _link,
             request: r,
-            onDismiss: () => _dismiss(r, restoreFocus: true),
-            onFocusLost: () => _dismiss(r, restoreFocus: false),
+            onDismiss: () => _dismiss(r, focus: _MenuFocusHandoff.toCanvas),
+            onTapOutside: () => _dismiss(r, focus: _MenuFocusHandoff.toCanvasIfOrphaned),
+            onFocusLost: () => _dismiss(r, focus: _MenuFocusHandoff.keep),
             onPickCreate: (CreateMenuAction a) => _pickCreate(r, a),
             onPickBlank: (BlankMenuAction a) => _pickBlank(r, a),
             onPickNode: (NodeMenuPick p) => _pickNode(r, p),
@@ -444,6 +466,19 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
   }
 }
 
+/// 关菜单时焦点怎么交接（[_CanvasMenuHostState._dismiss]）。
+enum _MenuFocusHandoff {
+  /// 选了一项 / Esc：菜单此刻一定拿着焦点，也没有别的控件在抢——当场还给画布，单键快捷键接着能用。
+  /// 选的项要开对话框（泳道 / 导入脚本… / 存为角色）也一样：对话框推上来时会自己要焦点。
+  toCanvas,
+
+  /// 点到菜单外面：同一次按下里，被点到的文本框可能正在拿焦点——帧后焦点还落空才还给画布。
+  toCanvasIfOrphaned,
+
+  /// 焦点已经自己离开了菜单（开了对话框 / 切了标签 / 命令面板盖上来）：不动。
+  keep,
+}
+
 /// 浮层根：铺满 Overlay 的 Align（本身不吃点击）+ 跟着画布区走的一块（与画布区同大），菜单在这一块里
 /// 按锚点摆放。
 class _CanvasMenuLayer extends ConsumerWidget {
@@ -453,6 +488,7 @@ class _CanvasMenuLayer extends ConsumerWidget {
     required this.link,
     required this.request,
     required this.onDismiss,
+    required this.onTapOutside,
     required this.onFocusLost,
     required this.onPickCreate,
     required this.onPickBlank,
@@ -462,7 +498,11 @@ class _CanvasMenuLayer extends ConsumerWidget {
   final String canvasId;
   final LayerLink link;
   final CanvasMenuRequest request;
+  /// 菜单里按 Esc 关。
   final VoidCallback onDismiss;
+
+  /// 点到菜单外面关。
+  final VoidCallback onTapOutside;
   final VoidCallback onFocusLost;
   final ValueChanged<CreateMenuAction> onPickCreate;
   final ValueChanged<BlankMenuAction> onPickBlank;
@@ -723,7 +763,7 @@ class _CanvasMenuLayer extends ConsumerWidget {
             // 点在子菜单里不算点外面。
             child: TapRegion(
               groupId: CanvasMenuPanel.tapRegionGroup,
-              onTapOutside: (_) => onDismiss(),
+              onTapOutside: (_) => onTapOutside(),
               child: TextFieldTapRegion(child: panel),
             ),
           ),

@@ -4,6 +4,14 @@
 // （一份只捕 InkError、一份什么都捕）。工具条和快捷键都调这里——同一个动作只有一条路径，
 // 点按钮和按键的结果不会不一样。
 //
+// 建节点只有一条路：addNodeFromMenu——建节点、判泳道写 laneId、新节点只单选不挪相机、写库失败弹错误卡，要连线时
+// 连好线、不留半截。入口只在「落在哪」上分两种：
+//   - 不带落点的：工具条建节点键、I / G / T、Tab 开的新建菜单里不带上下文的项、空画布的三个建节点 CTA、⌘K 的
+//     新建节点——落在「视口中心 + 散布」
+//     （addNodeAtViewportCenter 算好这一点再交给它；散布防连建叠成一摞）。菜单项上标着 I / G / T，走的就是这几个键
+//     的那一条路；
+//   - 带落点的：拖线松手、双击空白、空白处右键「新建…」——落在那一点（菜单锚点），不加散布。
+//
 // 与 canvas_node_delete.dart 同一类：要 BuildContext（弹框 / 出提示）的画布动作。
 // 建泳道要开泳道编辑框，所以这里反向引了 widgets/lane_edit_dialog.dart。
 //
@@ -11,7 +19,8 @@
 // 不留半截）、从出端口拖到另一张卡上连线（linkByPortDrop，走连线模式那一条 linkTo）、全选。
 //
 // PR-8b 节点右键菜单与四个新键的动作也在这里，菜单与快捷键各调同一个函数：
-//   - 生成（generateNode，Ctrl+↵ / ⌘↵）：与提示词条「生成」同一条 InspectorSubmitController.submit；
+//   - 生成（generateNode，Ctrl+↵ / ⌘↵）：InspectorSubmitController.submitWithPending——挂起的编辑并进终稿，与提示词条
+//     「生成」走同一条 submit；
 //   - 复制一份（duplicateNodes，Ctrl+D / ⌘D）：同类型 / 同 typeConfig / 同泳道，右下各偏一个 lg；
 //   - 适应全部 / 适应选中（fitAllNodes / fitSelectedNodes，Shift+1 / Shift+2）：缩放条「适应」与空白处
 //     右键菜单「适应视图」都是适应全部；⌘0 仍是缩放复位，不归这里；
@@ -36,6 +45,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/tokens.dart';
 import '../../notifications/providers/toast_service_provider.dart';
+import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
 import '../models/style_lane.dart';
@@ -78,32 +88,47 @@ Offset viewportCenteredNodeOrigin(
       nodeSize: defaultNodeSize(type),
     );
 
-/// 在视口中心建一个 [type] 节点；写库失败弹错误卡「添加节点失败」。
+/// 「视口中心 + 散布」那一点换成视口坐标：新卡片的左上角画在这里（[viewportCenteredNodeOrigin] 的世界坐标过一遍
+/// 相机）。判泳道吃的是视口坐标（[menuNodePlacement]），与带落点的入口同一种输入。
+Offset viewportCenteredNodePoint(
+  WidgetRef ref, {
+  required String canvasId,
+  required CanvasNodeType type,
+  Random? random,
+}) =>
+    MatrixUtils.transformPoint(
+      ref.read(canvasTransformControllerProvider(canvasId)).value,
+      worldToStage(
+        viewportCenteredNodeOrigin(ref, canvasId: canvasId, type: type, random: random),
+      ),
+    );
+
+/// 在「视口中心 + 散布」建一个 [type] 节点：工具条建节点键、I / G / T、Tab 新建菜单里不带上下文的项共用。
+/// 落点算好之后与新建菜单同一条路（[addNodeFromMenu]）：判泳道写 laneId、新节点只单选不挪相机、写库失败弹
+/// 错误卡「添加节点失败」。
 Future<void> addNodeAtViewportCenter(
   BuildContext context,
   WidgetRef ref, {
   required String canvasId,
   required CanvasNodeType type,
   Random? random,
-}) async {
-  // 文案在 await 之前取：await 之后 context 可能已卸载。
-  final String label = context.l10n.canvasNodeDefaultLabel;
-  final String failed = context.l10n.canvasAddNodeFailed;
-  try {
-    await ref.read(canvasNodesControllerProvider(canvasId).notifier).addNode(
-          label: label,
+}) =>
+    addNodeFromMenu(
+      context,
+      ref,
+      canvasId: canvasId,
+      type: type,
+      placement: menuNodePlacement(
+        ref,
+        canvasId: canvasId,
+        viewportPoint: viewportCenteredNodePoint(
+          ref,
+          canvasId: canvasId,
           type: type,
-          position: viewportCenteredNodeOrigin(
-            ref,
-            canvasId: canvasId,
-            type: type,
-            random: random,
-          ),
-        );
-  } on InkError catch (_) {
-    if (context.mounted) showCanvasSnack(context, failed);
-  }
-}
+          random: random,
+        ),
+      ),
+    );
 
 /// 开「新建泳道」对话框，确认后建泳道；写库失败弹错误卡「创建泳道失败」。
 Future<void> addLaneViaDialog(
@@ -265,7 +290,8 @@ Future<void> linkByPortDrop(
       .linkTo(targetNodeId);
 }
 
-/// 新建菜单的落点：视口里的 [viewportPoint]（菜单锚点）→ 新卡片左上角的世界坐标 + 泳道归属。
+/// 新建节点的落点：视口里的 [viewportPoint]（菜单锚点，或「视口中心 + 散布」那一点）→ 新卡片左上角的世界坐标 +
+/// 泳道归属。
 /// 相机、泳道切片（有效厚度，折叠的道按轨宽算）与方向都取此刻的现值，判定本体见 drop_placement.dart。
 NodePlacement menuNodePlacement(
   WidgetRef ref, {
@@ -284,15 +310,19 @@ NodePlacement menuNodePlacement(
       ],
       ref.read(laneCollapseProvider(canvasId)),
     ),
-    direction: ref.read(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
-        LaneDirection.horizontal,
+    // 没有泳道就不判道，也就不必去读泳道方向（与 _fitNodes 同口径）：工具条 / 单键建节点不为这个去碰画布仓储。
+    direction: lanes.isEmpty
+        ? LaneDirection.horizontal
+        : (ref.read(canvasLaneDirectionProvider(canvasId)).valueOrNull ??
+            LaneDirection.horizontal),
   );
 }
 
-/// 新建菜单建节点：在 [placement] 建一个 [type] 配置节点；给了 [edge] 就再从 [sourceNodeId] 连一条线到它。
+/// 建节点的唯一一条路（见头注）：在 [placement] 建一个 [type] 配置节点；给了 [edge] 就再从 [sourceNodeId] 连一条线到它。
 ///
 /// 写入顺序 = 先建节点（落进泳道的再写泳道归属）、再连线。**不留半截**：节点建好之后任何一步失败，
 /// 都把刚建的节点删掉（removeNode 同一个事务里级联软删它身上已有的线），再弹错误卡「添加节点失败」。
+/// 「下一镜」的叙事边排在锚点已有的分叉之后（sortOrder 见 create_menu_model.nextNarrativeSortOrder）。
 /// 成功后挂一条定位请求——新节点在画布下一帧被单选（canvas_view 的 _PendingFocusApplier 落地，
 /// 不在这里直接写选中）。
 Future<void> addNodeFromMenu(
@@ -309,10 +339,21 @@ Future<void> addNodeFromMenu(
   final String failed = context.l10n.canvasAddNodeFailed;
   final CanvasNodesController nodes =
       ref.read(canvasNodesControllerProvider(canvasId).notifier);
-  final CanvasEdgesController edges =
-      ref.read(canvasEdgesControllerProvider(canvasId).notifier);
+  final CreateMenuEdge? link = edge;
+  // 要连线才取连线控制器：不带上下文的建节点（工具条 / 单键 / Tab 菜单）用不着它。
+  final CanvasEdgesController? edges = link != null && sourceNodeId != null
+      ? ref.read(canvasEdgesControllerProvider(canvasId).notifier)
+      : null;
   final CanvasFocusRequestController focus =
       ref.read(canvasFocusRequestProvider.notifier);
+  // 叙事边的序号按此刻锚点已有的出边算（同样在 await 之前取）；别的边不排序，取默认 0。
+  final int sortOrder = edge?.type == EdgeType.narrative && sourceNodeId != null
+      ? nextNarrativeSortOrder(
+          anchorId: sourceNodeId,
+          edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
+              const <CanvasEdge>[],
+        )
+      : 0;
 
   final CanvasNode created;
   try {
@@ -329,13 +370,13 @@ Future<void> addNodeFromMenu(
   }
 
   try {
-    final CreateMenuEdge? link = edge;
-    if (link != null && sourceNodeId != null) {
+    if (edges != null && link != null && sourceNodeId != null) {
       await edges.addEdge(
         sourceNodeId: sourceNodeId,
         targetNodeId: created.id,
         edgeType: link.type,
         role: link.role,
+        sortOrder: sortOrder,
       );
     }
   } on InkError catch (_) {
@@ -349,7 +390,7 @@ Future<void> addNodeFromMenu(
     return;
   }
 
-  // 只单选、不挪相机：新节点就落在用户刚点的地方（拖线松手点 / 双击点 / 右键点 / Tab 的视口中心）。
+  // 只单选、不挪相机：新节点就落在用户眼前（拖线松手点 / 双击点 / 右键点 / 视口中心）。
   focus.request(canvasId: canvasId, nodeId: created.id, center: false);
 }
 
@@ -358,17 +399,18 @@ Future<void> addNodeFromMenu(
 /// 生成 [nodeId]（画布 Ctrl+↵ / ⌘↵ 与节点右键菜单「生成」共用；可不可生成的判据是
 /// node_menu_model.generationTarget，调用方先判）。在忙（提交中 / 生成中）⇒ 不动。
 ///
-/// 走提示词条「生成」那一条 InspectorSubmitController.submit，但**提示词不从画布节点里取**：提示词条里敲的字
-/// 只经防抖落库（savePromptDebounced），不回写画布节点——内存里的 node.promptText 可能是旧的。拿旧值去
-/// submit 会把用户刚敲的字盖掉，而 submit 自己又会丢掉还没发射的防抖写入。所以先把挂起的写入冲下去
-/// （flushPendingWrites 在同一条写入链上排队，先于终稿落库），终稿只交空补丁——生成读的是库里那一行，
-/// 就是用户最后敲进去的那句。提示词条自己的「生成」手里有最新文本，照旧带着它提交。
+/// 走 InspectorSubmitController.submitWithPending，**提示词不从画布节点里取**：提示词条里敲的字只经防抖落库
+/// （savePromptDebounced），不回写画布节点——内存里的 node.promptText 可能是旧的，拿它去 submit 会把用户刚敲的
+/// 字盖掉。submitWithPending 把还没发射的防抖 patch（连同写失败等重试的那几个键）并进终稿一并提交：生成读到的
+/// 就是用户最后敲进去的那句，与提示词条带着最新文本提交是同一个效果。
+///
+/// 不再借退出路径的 flushPendingWrites 先冲一笔：那一笔写失败会直接按「已用尽」记账、不再重试，接着
+/// submit 读到库里的旧提示词，白生成一次（B8）。
 void generateNode(WidgetRef ref, {required String nodeId}) {
   final InspectorSubmitController submit =
       ref.read(inspectorSubmitControllerProvider(nodeId).notifier);
   if (submit.isBusy) return;
-  unawaited(submit.flushPendingWrites());
-  unawaited(submit.submit(const <String, Object?>{}));
+  unawaited(submit.submitWithPending());
 }
 
 /// 「复制一份」的落点偏移：往右下各一个 lg（与 24px 网格底同一步长）。

@@ -151,6 +151,24 @@ String? createdEdgeSourceId(
   return source.id;
 }
 
+/// 「下一镜」新叙事边的 sortOrder：锚点 [anchorId] 现有出向 narrative 边的 sortOrder 最大值 + 1；一条都没有 ⇒ 0。
+///
+/// 叙事链给同源的分叉按 (sortOrder, 边 id) 排（narrative_order.dart）。不设就是默认的 0，与锚点已有的分支同序，
+/// 谁先谁后落到边 id（UUID）上——新镜可能插到已有分支前面，序列与导出的顺序跟着变。取最大值 + 1（不是条数：
+/// 已有的序号可能不连续），新镜固定排在已有分支之后，与「下一镜」接在后面的字面意思一致；已有分支的相对顺序
+/// 不动，也不去改别的边。
+int nextNarrativeSortOrder({
+  required String anchorId,
+  required List<CanvasEdge> edges,
+}) {
+  int? highest;
+  for (final CanvasEdge e in edges) {
+    if (e.sourceNodeId != anchorId || e.edgeType != EdgeType.narrative) continue;
+    if (highest == null || e.sortOrder > highest) highest = e.sortOrder;
+  }
+  return highest == null ? 0 : highest + 1;
+}
+
 /// 这一项要连的线（源 → 新节点）；不连线的项 ⇒ null。
 CreateMenuEdge? createdEdge(CreateMenuAction action) => switch (action) {
       CreateMenuAction.asFirstFrame => (type: EdgeType.data, role: EdgeRole.firstFrame),

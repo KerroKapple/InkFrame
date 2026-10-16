@@ -57,6 +57,8 @@ class _InkNameDialogState extends State<InkNameDialog> {
       title: Text(widget.title),
       content: InkInput(
         controller: _ctrl,
+        // 一打开焦点就在输入框里：框是从画布菜单之类的地方开的，按键不能穿到框后面去。
+        autofocus: true,
         hintText: widget.hint,
         // 每次输入重建一次，确认键的可用态才跟得上（禁用态的唯一依据）。
         onChanged: (_) => setState(() {}),

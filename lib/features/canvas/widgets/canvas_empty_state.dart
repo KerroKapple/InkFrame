@@ -1,27 +1,27 @@
 // CanvasEmptyState：当前画布没有节点时的引导态。
 //
 // 居中插图占位 + 主副标题 + 双 CTA（添加图片节点 / 添加视频节点）。
-// 整块外层 GestureDetector 仍负责"点空白"语义：取消连线模式 + 清选中。
-// CTA 调 canvasNodesControllerProvider(canvasId).addNode(...)，失败弹错误通知卡
-// （toastServiceProvider）。
+// 整块按下都把键盘焦点要回画布（与舞台按下同一个口，CTA 上按下也算）；外层 GestureDetector 负责"点空白"语义：
+// 取消连线模式 + 清选中。
+// 建节点的三个 CTA 与工具条、I / G / T 同一条路（canvas_tool_actions.addNodeAtViewportCenter）：视口中心 + 散布、
+// 判泳道、新节点只单选不挪相机，失败弹错误通知卡「添加节点失败」。
 
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/primitives/ink_amber_button.dart';
 import '../../../theme/primitives/ink_ghost_button.dart';
-import '../../notifications/providers/toast_service_provider.dart';
 import '../../shell/widgets/shell_empty_state.dart';
 import '../../storyboard/widgets/script_import_dialog.dart';
 import '../models/canvas_node.dart';
-import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_transform_controller.dart';
+import '../util/canvas_tool_actions.dart';
 import '../util/node_position.dart';
+import 'canvas_shortcuts.dart';
 
 class CanvasEmptyState extends ConsumerWidget {
   const CanvasEmptyState({
@@ -33,13 +33,13 @@ class CanvasEmptyState extends ConsumerWidget {
 
   final String canvasId;
 
-  /// 点击空白区域（非 CTA）时的回调：用于退出连线模式 + 清选中。
+  /// 点击空白区域（非 CTA）时的回调：用于退出连线模式 + 清选中。键盘焦点由本层自己要回画布，不归它。
   final VoidCallback onBackgroundTap;
 
   /// 随机源注入口（测试用）；null 时每次取系统熵。
   final Random? random;
 
-  /// 债150：视口中心落点（视口未上报时回退旧固定区随机——测试语义不变）。
+  /// 导入脚本的铺链起点：视口中心（债150；视口未上报时回退旧固定区随机）。
   Offset _pickPosition(WidgetRef ref, CanvasNodeType type) =>
       pickViewportCenteredNodePosition(
         random: random ?? Random(),
@@ -52,22 +52,8 @@ class CanvasEmptyState extends ConsumerWidget {
     BuildContext context,
     WidgetRef ref,
     CanvasNodeType type,
-  ) async {
-    try {
-      await ref
-          .read(canvasNodesControllerProvider(canvasId).notifier)
-          .addNode(
-            label: context.l10n.canvasNodeDefaultLabel,
-            type: type,
-            position: _pickPosition(ref, type),
-          );
-    } catch (_) {
-      if (!context.mounted) return;
-      ref
-          .read(toastServiceProvider)
-          .show(context.l10n.canvasAddNodeFailed, kind: ToastKind.error);
-    }
-  }
+  ) =>
+      addNodeAtViewportCenter(context, ref, canvasId: canvasId, type: type, random: random);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -93,7 +79,12 @@ class CanvasEmptyState extends ConsumerWidget {
   /// 是这一屏里唯一一处「别人家的按钮」。
   Widget _body(BuildContext context, WidgetRef ref) {
     final l = context.l10n;
-    return GestureDetector(
+    // 按下就把键盘焦点要回画布（与舞台按下时同一个口，B6）：在提示词条 / 检查器之类的文本框里打完字再点空画布，
+    // 文本框的失焦只把焦点交还给路由作用域，画布不持焦——Delete / Esc / 工具单键全收不到。只听原始指针事件：
+    // 按在 CTA 上也算（CTA 自己的点击赢了手势竞技场，外层的 onTap 收不到）。
+    return Listener(
+      onPointerDown: (PointerDownEvent _) => CanvasShortcuts.reclaimFocus(context),
+      child: GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onBackgroundTap,
       child: Container(
@@ -130,6 +121,7 @@ class CanvasEmptyState extends ConsumerWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

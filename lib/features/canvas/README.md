@@ -48,7 +48,7 @@ util/       无副作用的几何/命中/预设工具
 - `lane_*`（background/title_bar/toolbar/edit_dialog）/ `base_style_editor_dialog` / `canvas_empty_state` / `video_lightbox` / `canvas_job_listener`（挂在外壳根 `InkShell`，不随画布页挂载）
 
 ## util
-`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars` · `canvas_tool_actions`（工具条与单键快捷键共用：视口中心建节点 / 建泳道 / 切连线 / 选择工具）· `outline_model`（左栏大纲分组 + 「在链上」的唯一判据；镜号走序列口径 `sequenceShotNumbers`，⌘K 共用）· `take_numbers`（take 号，素材页与检查器历史页共用）· `viewport_focus`（保持缩放、把节点移到视口中心）
+`node_position` · `edge_hit_test` · `lane_geometry` · `lane_tint` · `base_style_presets` · `canvas_job_effects` · `canvas_zoom` · `canvas_node_delete` · `canvas_snackbars` · `canvas_tool_actions`（工具条与单键快捷键共用：视口中心 + 散布建节点〔与新建菜单同一条 addNodeFromMenu：判泳道、只单选〕/ 建泳道 / 切连线 / 选择工具）· `outline_model`（左栏大纲分组 + 「在链上」的唯一判据；镜号走序列口径 `sequenceShotNumbers`，⌘K 共用）· `take_numbers`（take 号，素材页与检查器历史页共用）· `viewport_focus`（保持缩放、把节点移到视口中心）
 
 ## 数据流（生成一次图/视频）
 1. 选中 config 节点 → `node_inspector_router` 渲染对应 inspector
