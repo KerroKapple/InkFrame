@@ -192,6 +192,127 @@ void main() {
     });
   });
 
+  // 拖卡片松手（演示 O2）：误拖几个像素不换道；真拖过道边界才换。卡片高 191（中心 = y + 95.5）、宽 224（中心 = x + 112）。
+  group('resolveCardDrop（拖卡片松手的归属泳道）', () {
+    const _Slices lanes = <({String id, double size})>[
+      (id: 'a', size: 300.0),
+      (id: 'b', size: 200.0),
+    ];
+
+    CanvasNode card({String? laneId, Offset position = const Offset(0, 50)}) => CanvasNode(
+          id: 'n',
+          label: 'card',
+          type: CanvasNodeType.image,
+          laneId: laneId,
+          position: position,
+        );
+
+    CardDrop dropOf(
+      CanvasNode node,
+      Offset delta, {
+      double scale = 1,
+      LaneDirection direction = LaneDirection.horizontal,
+    }) =>
+        resolveCardDrop(
+          node: node,
+          dragDelta: delta,
+          laneSlices: lanes,
+          direction: direction,
+          scale: scale,
+        );
+
+    test('道里轻推几个像素：还在原道，位移原样', () {
+      final CardDrop drop = dropOf(card(laneId: 'a'), const Offset(0, 3));
+      expect(drop.laneId, 'a');
+      expect(drop.changed, isFalse);
+      _expectOffset(drop.delta, const Offset(0, 3));
+    });
+
+    test('不在道里、但中心压在 a 带上的卡：轻推不会被顺手收进 a（旧判定会）', () {
+      final CardDrop drop = dropOf(card(), const Offset(2, 3));
+      expect(drop.laneId, isNull);
+      expect(drop.changed, isFalse);
+      _expectOffset(drop.delta, const Offset(2, 3));
+      // 对照：只看松手时中心落在哪条带（原来的判定）会把它收进 a——这就是演示里那 2px 的误拖。
+      expect(
+        resolveLaneDrop(
+          centerCrossWorld: 50 + 95.5 + 3,
+          fromLaneId: null,
+          laneSlices: lanes,
+          direction: LaneDirection.horizontal,
+          scale: 1,
+        ).laneId,
+        'a',
+      );
+    });
+
+    test('同一张卡在 a 带里拖远一点（没出带）：也不收进 a——中心没跨过带的边界', () {
+      final CardDrop drop = dropOf(card(), const Offset(0, 60));
+      expect(drop.laneId, isNull);
+      expect(drop.changed, isFalse);
+    });
+
+    test('中心刚越过分界线、没进够迟滞深度：不换道', () {
+      // 中心 290 → 309：进了 b，但只深 9 < kLaneChangeMargin。拖动 19 > kLaneChangeMinDrag。
+      final CardDrop drop = dropOf(card(laneId: 'a', position: const Offset(0, 194.5)), const Offset(0, 19));
+      expect(drop.laneId, 'a');
+      expect(drop.changed, isFalse);
+    });
+
+    test('拖动距离按屏幕像素量：缩小时世界坐标里拖得多，屏幕上没过最小拖动距离也不换道', () {
+      // 缩放 0.5：中心屏幕 298（a）→ 313（b，深 13 > 迟滞），但屏幕上只拖了 15 ≤ kLaneChangeMinDrag。
+      final CardDrop drop = dropOf(card(position: const Offset(0, 500.5)), const Offset(0, 30), scale: 0.5);
+      expect(drop.laneId, isNull);
+      expect(drop.changed, isFalse);
+    });
+
+    test('真拖进另一条道：换道，横截位移按新道的锚定换算（屏幕位置不变）', () {
+      // 缩放 0.5：中心 145.5 → 屏幕 72.75（a）；拖 500 → 屏幕 322.75（b）；b 的锚定：300 + 22.75 / 0.5 = 345.5。
+      final CardDrop drop = dropOf(card(laneId: 'a'), const Offset(0, 500), scale: 0.5);
+      expect(drop.laneId, 'b');
+      expect(drop.changed, isTrue);
+      _expectOffset(drop.delta, const Offset(0, 345.5 - 145.5));
+    });
+
+    test('拖出所有道：归属清空，换成全局变换下的位移', () {
+      // b 里中心 445.5 → 645.5：出了泳道栈（厚 500）；全局 645.5 ⇒ 位移 200。
+      final CardDrop drop = dropOf(card(laneId: 'b', position: const Offset(0, 350)), const Offset(0, 200));
+      expect(drop.laneId, isNull);
+      expect(drop.changed, isTrue);
+      _expectOffset(drop.delta, const Offset(0, 200));
+    });
+
+    test('竖向泳道按横坐标判', () {
+      // 中心 x 162 → 412：进了 b（300..500）。
+      final CardDrop drop = dropOf(
+        card(laneId: 'a', position: const Offset(50, 0)),
+        const Offset(250, 0),
+        direction: LaneDirection.vertical,
+      );
+      expect(drop.laneId, 'b');
+      expect(drop.changed, isTrue);
+      _expectOffset(drop.delta, const Offset(250, 0));
+    });
+
+    test('cardDropTargetLane：只在松手会换进某条道时给出那条道', () {
+      String? targetOf(CanvasNode node, Offset delta, {double scale = 1}) => cardDropTargetLane(
+            node: node,
+            dragDelta: delta,
+            laneSlices: lanes,
+            direction: LaneDirection.horizontal,
+            scale: scale,
+          );
+      expect(targetOf(card(laneId: 'a'), const Offset(0, 500), scale: 0.5), 'b');
+      expect(targetOf(card(laneId: 'a'), const Offset(0, 3)), isNull, reason: '轻推不换道');
+      expect(targetOf(card(), const Offset(2, 3)), isNull, reason: '压在 a 上的自由卡轻推不进 a');
+      expect(
+        targetOf(card(laneId: 'b', position: const Offset(0, 350)), const Offset(0, 200)),
+        isNull,
+        reason: '拖出所有道：没有目标道可亮',
+      );
+    });
+  });
+
   test('viewportToWorld：初始相机下 = 视口坐标 − 让出的工具条那一条', () {
     _expectOffset(
       viewportToWorld(const Offset(10, 100), initialCanvasTransform()),
