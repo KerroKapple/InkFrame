@@ -22,6 +22,8 @@ import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../settings/providers/api_key_scope_controller.dart';
+import '../../settings/util/api_key_placeholder.dart';
+import '../../settings/util/secure_store_name.dart';
 import '../util/onboarding_provider_choices.dart';
 import 'onboarding_anchors.dart';
 // -------------------------------------------------------- 第 2 步：配置密钥
@@ -141,6 +143,11 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
         _KeyField(
           controller: _ctrl,
           enabled: providerId != null && !_busy,
+          // 占位提示随选中那一家变（Gemini 是 AIza…），与设置页 Key 表同一个判据。
+          // 全不可选时输入框本就禁用，给不猜前缀的那句。
+          hintText: providerId == null
+              ? context.l10n.settingsApiKeyPlaceholderGeneric
+              : apiKeyPlaceholderText(context.l10n, providerId),
           failed: _outcome == _VerifyOutcome.failed,
           onVerify: () => _verify(providerId),
           onChanged: _onChanged,
@@ -197,7 +204,7 @@ class _OnboardingKeysStepState extends ConsumerState<OnboardingKeysStep> {
       _VerifyOutcome.verified => (
           glyph: '✓',
           color: c.success,
-          text: l10n.onboardingKeyVerified,
+          text: l10n.onboardingKeyVerified(secureStoreName(l10n)),
           mono: false,
         ),
       _VerifyOutcome.savedUnverified => (
@@ -417,6 +424,7 @@ class _KeyField extends StatelessWidget {
   const _KeyField({
     required this.controller,
     required this.enabled,
+    required this.hintText,
     required this.failed,
     required this.onVerify,
     required this.onChanged,
@@ -425,6 +433,9 @@ class _KeyField extends StatelessWidget {
 
   final TextEditingController controller;
   final bool enabled;
+
+  /// 输入框占位提示，按选中的 Provider 家族给（见 api_key_placeholder.dart）。
+  final String hintText;
   final bool failed;
   final VoidCallback onVerify;
   final ValueChanged<String> onChanged;
@@ -468,7 +479,7 @@ class _KeyField extends StatelessWidget {
                   cursorColor: c.accent,
                   style: t.mono.copyWith(color: c.fg2),
                   decoration: InputDecoration.collapsed(
-                    hintText: l10n.settingsApiKeyPlaceholder,
+                    hintText: hintText,
                     hintStyle: t.mono.copyWith(color: c.fg6),
                   ),
                 ),

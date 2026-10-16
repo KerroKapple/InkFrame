@@ -33,6 +33,7 @@ import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 import 'package:inkframe/theme/app_theme.dart';
+import 'package:inkframe/theme/primitives/ink_activatable.dart';
 import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/a11y.dart';
@@ -361,6 +362,75 @@ void main() {
     });
   });
 
+  // 演示发现的两处：空输入时「验证」看上去像能点（点了什么都不发生）；占位提示一律
+  // `sk-...`，可 Gemini 的 Key 是 `AIza` 开头。
+  group('第 2 步 Key 输入框：禁用态与占位提示', () {
+    double verifyOpacity(WidgetTester tester) => tester
+        .widget<Opacity>(find.descendant(
+          of: find.byKey(OnboardingDialog.verifyKey),
+          matching: find.byType(Opacity),
+        ))
+        .opacity;
+
+    VoidCallback? verifyOnTap(WidgetTester tester) => tester
+        .widget<InkActivatable>(find.byKey(OnboardingDialog.verifyKey))
+        .onTap;
+
+    testWidgets('空输入 / 只有空白：「验证」画成禁用（半透明、不接点击）；有字才亮',
+        (WidgetTester tester) async {
+      final FakeSecureStorage secure = FakeSecureStorage();
+      await _pumpAndOpen(
+        tester,
+        overrides: _overrides(
+          prefs: InMemoryPreferencesService(),
+          secure: secure,
+        ),
+      );
+      await _gotoKeysStep(tester);
+
+      expect(verifyOnTap(tester), isNull, reason: '空输入时不该有一个能点的「验证」');
+      expect(verifyOpacity(tester), 0.5, reason: '禁用要看得出来，与其余 Ink 次按钮同一个口径');
+
+      await _typeKey(tester, '   ');
+      expect(verifyOnTap(tester), isNull, reason: '只有空白等于没填');
+      expect(verifyOpacity(tester), 0.5);
+
+      await _typeKey(tester, 'AIza-real');
+      expect(verifyOnTap(tester), isNotNull);
+      expect(verifyOpacity(tester), 1);
+
+      // 清空回去，又变回禁用——不是「亮过一次就一直亮」。
+      await _typeKey(tester, '');
+      expect(verifyOnTap(tester), isNull);
+      expect(verifyOpacity(tester), 0.5);
+      expect(secure.snapshot, isEmpty);
+    });
+
+    testWidgets('占位提示随选中那一家走：Gemini AIza…，DashScope sk-…',
+        (WidgetTester tester) async {
+      await _pumpAndOpen(
+        tester,
+        overrides: _overrides(
+          prefs: InMemoryPreferencesService(),
+          secure: FakeSecureStorage(),
+        ),
+      );
+      await _gotoKeysStep(tester);
+
+      String? hint() =>
+          tester.widget<TextField>(find.byType(TextField)).decoration?.hintText;
+
+      // 默认选中 Gemini。
+      expect(_radioChecked(tester, OnboardingProviderSlot.gemini), isTrue);
+      expect(hint(), 'AIza...');
+
+      await tester.tap(find.byKey(
+          OnboardingDialog.providerRowKey(OnboardingProviderSlot.dashscope)));
+      await tester.pumpAndSettle();
+      expect(hint(), 'sk-...');
+    });
+  });
+
   group('第 2 步 Key 验证三态', () {
     testWidgets('验证通过：落盘并显示成功行', (WidgetTester tester) async {
       final FakeSecureStorage secure = FakeSecureStorage();
@@ -379,7 +449,8 @@ void main() {
 
       expect(secure.snapshot[_geminiStorageKey], 'sk-good');
       expect(
-        find.text('Verified · written to the system keychain'),
+        // 测试宿主不是 macOS，按 Windows 的叫法说。
+        find.text('Verified · written to Windows Credential Manager'),
         findsOneWidget,
       );
       expect(_keyUnderlineColor(tester), colors.control);
@@ -548,7 +619,10 @@ void main() {
     // P7：底部那句「之后可在设置里调整」现在点得动。向导是 modal 路由、设置浮层
     // 在它【之下】，所以这条跳转必须先走正常出口（落 onboardingCompleted）再开浮层
     // ——否则浮层开在看不见的层里，而且标记被旁路、下次冷启又弹向导。
-    testWidgets('底部「打开设置 › 性能」：落标记、关向导、浮层开在性能页',
+    //
+    // 链接指向哪一页随步走：第 1 步选语言 → 常规，第 2 步配 Key → API 密钥，
+    // 第 3 步 → 性能。此前三步都指「性能」，点过去找不到刚才那一项（演示发现）。
+    testWidgets('第 1 步底部「打开设置 › 常规」：落标记、关向导、浮层开在常规页',
         (WidgetTester tester) async {
       final InMemoryPreferencesService prefs = InMemoryPreferencesService();
       final ProviderContainer container = await _pumpAndOpen(
@@ -556,6 +630,9 @@ void main() {
         overrides: _overrides(prefs: prefs, secure: FakeSecureStorage()),
       );
       expect(container.read(shellControllerProvider).overlay, isNull);
+      // 先把页钉到别处：证明落在常规页是链接写的，不是 provider 的默认值。
+      container.read(settingsPageProvider.notifier).state = SettingsPage.about;
+      expect(find.text('Open Settings › General'), findsOneWidget);
 
       await tester.tap(find.byKey(OnboardingDialog.settingsLinkKey));
       await tester.pumpAndSettle();
@@ -566,7 +643,54 @@ void main() {
         container.read(shellControllerProvider).overlay,
         ShellOverlay.settings,
       );
+      expect(container.read(settingsPageProvider), SettingsPage.general);
+    });
+
+    testWidgets('第 2 步底部「打开设置 › API keys」：浮层开在 API 密钥页',
+        (WidgetTester tester) async {
+      final InMemoryPreferencesService prefs = InMemoryPreferencesService();
+      final ProviderContainer container = await _pumpAndOpen(
+        tester,
+        overrides: _overrides(prefs: prefs, secure: FakeSecureStorage()),
+      );
+      await _gotoKeysStep(tester);
+      expect(find.text('Open Settings › API keys'), findsOneWidget);
+
+      await tester.tap(find.byKey(OnboardingDialog.settingsLinkKey));
+      await tester.pumpAndSettle();
+
+      expect(prefs.current.onboardingCompleted, isTrue);
+      expect(
+        container.read(shellControllerProvider).overlay,
+        ShellOverlay.settings,
+      );
+      expect(container.read(settingsPageProvider), SettingsPage.apiKeys);
+    });
+
+    testWidgets('第 3 步底部「打开设置 › 性能」：浮层开在性能页',
+        (WidgetTester tester) async {
+      final InMemoryPreferencesService prefs = InMemoryPreferencesService();
+      final ProviderContainer container = await _pumpAndOpen(
+        tester,
+        overrides: _overrides(prefs: prefs, secure: FakeSecureStorage()),
+      );
+      await _gotoKeysStep(tester);
+      await tester.tap(find.byKey(OnboardingDialog.nextKey));
+      await tester.pumpAndSettle();
+      expect(find.byKey(OnboardingDialog.createSampleKey), findsOneWidget);
+      expect(find.text('Open Settings › Performance'), findsOneWidget);
+
+      await tester.tap(find.byKey(OnboardingDialog.settingsLinkKey));
+      await tester.pumpAndSettle();
+
+      expect(prefs.current.onboardingCompleted, isTrue);
       expect(container.read(settingsPageProvider), SettingsPage.performance);
+    });
+
+    test('settingsPageForStep：语言 → 常规、Key → API 密钥、首个项目 → 性能', () {
+      expect(OnboardingDialog.settingsPageForStep(0), SettingsPage.general);
+      expect(OnboardingDialog.settingsPageForStep(1), SettingsPage.apiKeys);
+      expect(OnboardingDialog.settingsPageForStep(2), SettingsPage.performance);
     });
 
     testWidgets('第 3 步「从空白开始」：落标记并关闭', (WidgetTester tester) async {

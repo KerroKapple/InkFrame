@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/secure_storage.dart';
 import '../../../l10n/l10n_x.dart';
+import '../../settings/util/secure_store_name.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../shell/models/shell_state.dart';
@@ -53,7 +54,7 @@ class StudioProviderBanner extends ConsumerWidget {
             ),
             const SizedBox(width: InkSpacing.s12),
             Flexible(
-              child: Text(l.studioNoKeyBannerHint, maxLines: 1, overflow: TextOverflow.ellipsis,
+              child: Text(l.studioNoKeyBannerHint(secureStoreName(l)), maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: t.body.copyWith(color: c.fg5)),
             ),
             const Spacer(),

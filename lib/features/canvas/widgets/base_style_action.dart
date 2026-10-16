@@ -1,6 +1,6 @@
 // 基底风格编辑入口（原 CanvasToolBar 的唯一动作，工具条本身随 Workspace v2 稿撤掉）。
 //
-// 入口挂在画布底部提示词条的「基础风格」标签上（canvas_prompt_bar.dart）。
+// 入口挂在画布底部提示词条的「基底风格」标签上（canvas_prompt_bar.dart）。
 // 读 / 写失败都走全应用唯一的通知出口 toastServiceProvider（错误卡，等用户关）。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

@@ -29,6 +29,7 @@ import '../../../theme/typography.dart';
 import '../../canvas/providers/canvas_bootstrap_controller.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../../settings/providers/settings_page.dart';
+import '../../settings/util/settings_page_label.dart';
 import '../../settings/widgets/language_section.dart';
 import '../../shell/models/shell_state.dart';
 import '../../shell/providers/shell_controller.dart';
@@ -86,8 +87,19 @@ class OnboardingDialog extends ConsumerStatefulWidget {
   static const Key startEmptyKey = Key('onboarding.startEmpty');
   static const Key createSampleKey = Key('onboarding.createSample');
 
-  /// 底部提示里的「打开设置 › 性能」链接。
+  /// 底部提示里的「打开设置 › …」链接（指向哪一页随步走，见 [settingsPageForStep]）。
   static const Key settingsLinkKey = Key('onboarding.settingsLink');
+
+  /// 底部「打开设置 › …」该落在哪一页——随当前步走，纯函数。
+  ///
+  /// 此前三步都指「性能」，可第 1 步选的是语言（在「常规」页）、第 2 步配的是
+  /// Key（在「API 密钥」页），点过去找不到刚才那一项。第 3 步（首个项目）设置里
+  /// 没有对应页，沿用原来的「性能」。
+  static SettingsPage settingsPageForStep(int step) => switch (step) {
+        0 => SettingsPage.general,
+        1 => SettingsPage.apiKeys,
+        _ => SettingsPage.performance,
+      };
 
   @override
   ConsumerState<OnboardingDialog> createState() => _OnboardingDialogState();
@@ -150,7 +162,8 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
     await _finish();
   }
 
-  /// 底部提示里的「打开设置 › 性能」：关向导 → 开设置浮层并落在性能页。
+  /// 底部提示里的「打开设置 › …」：关向导 → 开设置浮层并落在本步对应的那一页
+  /// （[OnboardingDialog.settingsPageForStep]）。
   ///
   /// 为什么要先关向导：向导是 barrierDismissible=false 的 modal 路由，设置浮层
   /// 盖在外壳内容区里、位置在它【之下】——不关就等于把浮层开在看不见的层。
@@ -158,8 +171,9 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
   /// 还会再弹一次向导。
   ///
   /// ref 的两次 read 都在首个 await 之前：_finish() 之后本 State 已被 pop 卸载。
-  Future<void> _openPerformanceSettings() async {
-    ref.read(settingsPageProvider.notifier).state = SettingsPage.performance;
+  Future<void> _openSettings() async {
+    ref.read(settingsPageProvider.notifier).state =
+        OnboardingDialog.settingsPageForStep(_step);
     final ShellNavigator nav = ref.read(shellControllerProvider.notifier);
     await _finish();
     nav.openOverlay(ShellOverlay.settings);
@@ -223,9 +237,10 @@ class _OnboardingDialogState extends ConsumerState<OnboardingDialog> {
                 ),
                 _Footer(
                   lastStep: lastStep,
+                  settingsPage: OnboardingDialog.settingsPageForStep(_step),
                   onSecondary: _finish,
                   onPrimary: _primaryAction,
-                  onOpenSettings: _openPerformanceSettings,
+                  onOpenSettings: _openSettings,
                 ),
               ],
             ),
@@ -377,12 +392,16 @@ class _StepTab extends StatelessWidget {
 class _Footer extends StatelessWidget {
   const _Footer({
     required this.lastStep,
+    required this.settingsPage,
     required this.onSecondary,
     required this.onPrimary,
     required this.onOpenSettings,
   });
 
   final bool lastStep;
+
+  /// 链接指向的设置页——只用来写链接文字，跳转本身由 [onOpenSettings] 做。
+  final SettingsPage settingsPage;
   final Future<void> Function() onSecondary;
   final Future<void> Function() onPrimary;
   final Future<void> Function() onOpenSettings;
@@ -418,9 +437,9 @@ class _Footer extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: InkSpacing.s6),
-                // P7：性能页补上了，这句话终于指得到地方——点它直达
-                // 「设置 › 性能」。窄窗下先把上面那句省略号掉，链接不裁。
-                _SettingsLink(onTap: onOpenSettings),
+                // 点它直达本步对应的设置页（语言 → 常规、Key → API 密钥、
+                // 首个项目 → 性能）。窄窗下先把上面那句省略号掉，链接不裁。
+                _SettingsLink(page: settingsPage, onTap: onOpenSettings),
               ],
             ),
           ),
@@ -465,18 +484,25 @@ class _Footer extends StatelessWidget {
   }
 }
 
-/// 底部那句提示后面的链接：「打开设置 › 性能」。11px 琥珀文字，不画按钮框
+/// 底部那句提示后面的链接：「打开设置 › 〈页名〉」。11px 琥珀文字，不画按钮框
 /// ——它是一句话的延长，不是第三个动作按钮。
 class _SettingsLink extends StatelessWidget {
-  const _SettingsLink({required this.onTap});
+  const _SettingsLink({required this.page, required this.onTap});
 
+  final SettingsPage page;
   final Future<void> Function() onTap;
+
+  /// 页名与设置浮层左导航用同一批 ARB key——链接上写的就是用户点过去在左导航
+  /// 上看到的那个字。
+  static String _pageName(AppLocalizations l10n, SettingsPage page) => settingsPageLabel(l10n, page);
 
   @override
   Widget build(BuildContext context) {
     final InkColors c = context.inkColors;
     final InkTypography t = context.inkTypography;
-    final String label = context.l10n.onboardingFooterSettingsLink;
+    final AppLocalizations l10n = context.l10n;
+    final String label =
+        l10n.onboardingFooterSettingsLinkTo(_pageName(l10n, page));
     return Semantics(
       button: true,
       label: label,

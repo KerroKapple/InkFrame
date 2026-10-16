@@ -2189,8 +2189,8 @@ abstract class AppLocalizations {
   /// No description provided for @onboardingKeyVerified.
   ///
   /// In en, this message translates to:
-  /// **'Verified · written to the system keychain'**
-  String get onboardingKeyVerified;
+  /// **'Verified · written to {store}'**
+  String onboardingKeyVerified(String store);
 
   /// Label for a provider row drawn in the design that has no adapter in this build
   ///
@@ -3947,8 +3947,8 @@ abstract class AppLocalizations {
   /// No description provided for @studioNoKeyBannerHint.
   ///
   /// In en, this message translates to:
-  /// **'Keys go to the system keychain, never the database.'**
-  String get studioNoKeyBannerHint;
+  /// **'Keys go to {store}, never the database.'**
+  String studioNoKeyBannerHint(String store);
 
   /// No description provided for @studioNoKeyBannerDismiss.
   ///
@@ -4637,8 +4637,8 @@ abstract class AppLocalizations {
   /// No description provided for @settingsFooterNote.
   ///
   /// In en, this message translates to:
-  /// **'Changes apply immediately and are written to the keychain'**
-  String get settingsFooterNote;
+  /// **'Changes apply immediately and are written to {store}'**
+  String settingsFooterNote(String store);
 
   /// Settings dialog footer note on pages whose changes are saved locally
   ///
@@ -5270,11 +5270,35 @@ abstract class AppLocalizations {
   /// **'Via {target}'**
   String settingsNetworkViaProxy(String target);
 
-  /// No description provided for @onboardingFooterSettingsLink.
+  /// No description provided for @onboardingFooterSettingsLinkTo.
   ///
   /// In en, this message translates to:
-  /// **'Open Settings › Performance'**
-  String get onboardingFooterSettingsLink;
+  /// **'Open Settings › {page}'**
+  String onboardingFooterSettingsLinkTo(String page);
+
+  /// No description provided for @settingsApiKeyPlaceholderGemini.
+  ///
+  /// In en, this message translates to:
+  /// **'AIza...'**
+  String get settingsApiKeyPlaceholderGemini;
+
+  /// No description provided for @settingsApiKeyPlaceholderGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste your API key'**
+  String get settingsApiKeyPlaceholderGeneric;
+
+  /// No description provided for @secureStoreNameMac.
+  ///
+  /// In en, this message translates to:
+  /// **'the macOS Keychain'**
+  String get secureStoreNameMac;
+
+  /// No description provided for @secureStoreNameWindows.
+  ///
+  /// In en, this message translates to:
+  /// **'Windows Credential Manager'**
+  String get secureStoreNameWindows;
 
   /// No description provided for @studioTrashFooterNote.
   ///

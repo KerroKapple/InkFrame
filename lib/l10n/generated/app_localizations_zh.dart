@@ -1142,7 +1142,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingKeyVerify => '验证';
 
   @override
-  String get onboardingKeyVerified => '验证通过 · 已写入系统钥匙串';
+  String onboardingKeyVerified(String store) {
+    return '验证通过 · 已写入$store';
+  }
 
   @override
   String onboardingProviderComingSoon(String name) {
@@ -1809,7 +1811,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasZoomOut => '缩小';
 
   @override
-  String get promptBarBaseStyle => '基础风格';
+  String get promptBarBaseStyle => '基底风格';
 
   @override
   String get promptBarAttached => '已附加';
@@ -2031,7 +2033,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryParamPrompt => '最终提示词';
 
   @override
-  String get galleryParamBaseStyle => '基础风格';
+  String get galleryParamBaseStyle => '基底风格';
 
   @override
   String galleryKeyframeRef(String role, String source) {
@@ -2122,7 +2124,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get studioSettings => '设置';
 
   @override
-  String get studioNoKeyBannerHint => 'Key 存入系统钥匙串，不进数据库。';
+  String studioNoKeyBannerHint(String store) {
+    return 'Key 存入$store，不进数据库。';
+  }
 
   @override
   String get studioNoKeyBannerDismiss => '关闭';
@@ -2517,7 +2521,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsColumnStatus => '状态';
 
   @override
-  String get settingsFooterNote => '改动即时生效并写入钥匙串';
+  String settingsFooterNote(String store) {
+    return '改动即时生效并写入$store';
+  }
 
   @override
   String get settingsFooterNoteLive => '改动即时生效';
@@ -2863,7 +2869,21 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get onboardingFooterSettingsLink => '打开设置 › 性能';
+  String onboardingFooterSettingsLinkTo(String page) {
+    return '打开设置 › $page';
+  }
+
+  @override
+  String get settingsApiKeyPlaceholderGemini => 'AIza...';
+
+  @override
+  String get settingsApiKeyPlaceholderGeneric => '粘贴 API Key';
+
+  @override
+  String get secureStoreNameMac => 'macOS 钥匙串';
+
+  @override
+  String get secureStoreNameWindows => 'Windows 凭据管理器';
 
   @override
   String get studioTrashFooterNote => '恢复即时生效；回收站里的项目仍保留全部文件。';

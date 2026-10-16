@@ -1191,8 +1191,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingKeyVerify => 'Verify';
 
   @override
-  String get onboardingKeyVerified =>
-      'Verified · written to the system keychain';
+  String onboardingKeyVerified(String store) {
+    return 'Verified · written to $store';
+  }
 
   @override
   String onboardingProviderComingSoon(String name) {
@@ -2207,8 +2208,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get studioSettings => 'Settings';
 
   @override
-  String get studioNoKeyBannerHint =>
-      'Keys go to the system keychain, never the database.';
+  String studioNoKeyBannerHint(String store) {
+    return 'Keys go to $store, never the database.';
+  }
 
   @override
   String get studioNoKeyBannerDismiss => 'Dismiss';
@@ -2614,8 +2616,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsColumnStatus => 'Status';
 
   @override
-  String get settingsFooterNote =>
-      'Changes apply immediately and are written to the keychain';
+  String settingsFooterNote(String store) {
+    return 'Changes apply immediately and are written to $store';
+  }
 
   @override
   String get settingsFooterNoteLive => 'Changes apply immediately';
@@ -2991,7 +2994,21 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get onboardingFooterSettingsLink => 'Open Settings › Performance';
+  String onboardingFooterSettingsLinkTo(String page) {
+    return 'Open Settings › $page';
+  }
+
+  @override
+  String get settingsApiKeyPlaceholderGemini => 'AIza...';
+
+  @override
+  String get settingsApiKeyPlaceholderGeneric => 'Paste your API key';
+
+  @override
+  String get secureStoreNameMac => 'the macOS Keychain';
+
+  @override
+  String get secureStoreNameWindows => 'Windows Credential Manager';
 
   @override
   String get studioTrashFooterNote =>
