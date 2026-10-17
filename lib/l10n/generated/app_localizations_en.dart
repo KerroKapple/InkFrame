@@ -775,9 +775,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchResultsLabel => 'Batch results';
 
   @override
-  String get inspectorShotTitle => 'Shot';
-
-  @override
   String get inspectorShotNotesLabel => 'Shot notes';
 
   @override
@@ -808,10 +805,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sequencePreviewTitle => 'Sequence preview';
-
-  @override
-  String get sequencePreviewTooltip =>
-      'Preview the storyboard in narrative order';
 
   @override
   String get sequencePreviewDisabledTooltip =>

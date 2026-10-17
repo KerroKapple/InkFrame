@@ -740,9 +740,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchResultsLabel => '批量结果';
 
   @override
-  String get inspectorShotTitle => '镜头';
-
-  @override
   String get inspectorShotNotesLabel => '镜头备注';
 
   @override
@@ -771,9 +768,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sequencePreviewTitle => '序列预览';
-
-  @override
-  String get sequencePreviewTooltip => '按叙事顺序预览镜头';
 
   @override
   String get sequencePreviewDisabledTooltip => '用叙事连线把镜头串起来后即可预览序列';

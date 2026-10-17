@@ -336,7 +336,6 @@
 
   "batchResultsLabel": "Batch results",
 
-  "inspectorShotTitle": "Shot",
   "inspectorShotNotesLabel": "Shot notes",
   "inspectorShotNotesHint": "Describe this shot (camera, action, mood)…",
   "inspectorShotGenerateImage": "Generate image from notes",
@@ -348,7 +347,6 @@
   "inspectorShotParamHint": "Recorded as intent — the provider you pick when generating decides what is actually supported.",
 
   "sequencePreviewTitle": "Sequence preview",
-  "sequencePreviewTooltip": "Preview the storyboard in narrative order",
   "sequencePreviewDisabledTooltip": "Link shots with narrative edges to preview a sequence",
   "sequencePreviewEmpty": "Nothing to preview yet",
   "sequencePreviewNoArtifact": "Not generated yet",

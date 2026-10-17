@@ -325,7 +325,6 @@
 
   "batchResultsLabel": "批量结果",
 
-  "inspectorShotTitle": "镜头",
   "inspectorShotNotesLabel": "镜头备注",
   "inspectorShotNotesHint": "描述这个镜头（机位、动作、氛围）…",
   "inspectorShotGenerateImage": "用备注生成图片",
@@ -337,7 +336,6 @@
   "inspectorShotParamHint": "这里记的是意图——真正能不能做到，由生成时选的 provider 决定。",
 
   "sequencePreviewTitle": "序列预览",
-  "sequencePreviewTooltip": "按叙事顺序预览镜头",
   "sequencePreviewDisabledTooltip": "用叙事连线把镜头串起来后即可预览序列",
   "sequencePreviewEmpty": "暂时没有可预览的内容",
   "sequencePreviewNoArtifact": "尚未生成",
