@@ -13,6 +13,8 @@
 //   - 在序列中定位：切到序列标签，播放头跳到那一镜。
 //   - 删除：走撤销卡；多选一次 removeNodes 整批（失败一张不删、只出失败卡、没有撤销卡），撤销一次 restoreAll。
 //     变异：canvas_node_delete.dart 多选分支改回逐个 removeNode ⇒「多选：整批删除」红（batchRemoved 为空）。
+//     撤销时 restoreAll 抛 InkError ⇒ 出 undoFailed 错误卡。变异：删掉 canvas_node_delete.dart 里 _restoreAll 的
+//     on InkError 分支 ⇒「多选撤销失败」红（异常漏出、没有 undoFailed 卡）。
 //   - 存为角色的起名框一打开就持焦（B1）：不点输入框直接按 Backspace / L / Esc，按键不穿到框后面的画布上。
 //   - 失败分支（B10）：复制一份中途写库失败（已复制出来的照样选中 + 错误卡）；存为角色的四种失败（产物路径解析
 //     被拒 / 仓储 InkError / 资产服务 CharacterAssetError / 文件系统 FileSystemException）各出对应的错误卡。
@@ -146,7 +148,12 @@ typedef _Moved = ({String id, Offset delta, String? laneId});
 
 /// 节点：增 / 挪 / 删都落在内存态里，并记下收到了什么。新节点 id 依次是 new-1、new-2……
 class _Nodes extends CanvasNodesController {
-  _Nodes(this._seed, {this.failAddAt, this.failRemoveNodes = false});
+  _Nodes(
+    this._seed, {
+    this.failAddAt,
+    this.failRemoveNodes = false,
+    this.failRestoreAll = false,
+  });
   final List<CanvasNode> _seed;
 
   /// 第几次 addNode（1 起）写库失败、抛 InkError（这一次照样记进 [added]，但不建节点）；null = 不失败。
@@ -154,6 +161,9 @@ class _Nodes extends CanvasNodesController {
 
   /// 为真时 removeNodes 整批失败：照样记进 [batchRemoved]，但不改内存、抛 InkError（整批回滚）。
   final bool failRemoveNodes;
+
+  /// 为真时 restoreAll 失败：照样记 [restoreAllCalls]，但不改内存、抛 InkError（撤销整批回滚）。
+  final bool failRestoreAll;
 
   final List<_Added> added = <_Added>[];
   final List<_Moved> moved = <_Moved>[];
@@ -265,6 +275,9 @@ class _Nodes extends CanvasNodesController {
   @override
   Future<int> restoreAll(List<NodeDeletion> deletions) async {
     restoreAllCalls++;
+    if (failRestoreAll) {
+      throw const LocalIOError(extra: <String, Object?>{'op': 'restoreAll'});
+    }
     final List<CanvasNode> previous = state.valueOrNull ?? const <CanvasNode>[];
     final Set<String> present = <String>{for (final CanvasNode n in previous) n.id};
     final List<CanvasNode> back = <CanvasNode>[
@@ -383,6 +396,7 @@ Future<ProviderContainer> _pump(
   bool withProject = true,
   int? failAddAt,
   bool failRemoveNodes = false,
+  bool failRestoreAll = false,
   FileResolverService? resolver,
 }) async {
   await pumpInkApp(
@@ -399,7 +413,12 @@ Future<ProviderContainer> _pump(
         ),
       ),
       canvasNodesControllerProvider.overrideWith(
-        () => _Nodes(nodes, failAddAt: failAddAt, failRemoveNodes: failRemoveNodes),
+        () => _Nodes(
+          nodes,
+          failAddAt: failAddAt,
+          failRemoveNodes: failRemoveNodes,
+          failRestoreAll: failRestoreAll,
+        ),
       ),
       canvasEdgesControllerProvider.overrideWith(() => _Edges(edges)),
       canvasLanesControllerProvider.overrideWith(() => _Lanes(lanes)),
@@ -1084,6 +1103,25 @@ void main() {
       expect(_nodesOf(c).restoreAllCalls, 1, reason: '多选撤销走一次 restoreAll，不逐个 restore');
       expect(_card('img'), findsOneWidget);
       expect(_card('vid'), findsOneWidget);
+    });
+
+    // 变异：删掉 canvas_node_delete.dart 里 _restoreAll 的 on InkError 分支 ⇒ 本条红（没有 undoFailed 卡）。
+    testWidgets('多选撤销失败（restoreAll 抛 InkError）⇒ 出 undoFailed 错误卡', (tester) async {
+      final ProviderContainer c = await _pump(tester, failRestoreAll: true);
+      c.read(canvasSelectionControllerProvider('c1').notifier).selectAll(<String>['img', 'vid']);
+      await tester.pump();
+      await _openMenuOn(tester, 'vid');
+      await _pick(tester, 'Delete');
+      expect(_toastOf(c).kinds, <ToastKind>[ToastKind.undo]);
+
+      // RecordingToastService 不画卡：直接按卡上的「撤销」。
+      _toastOf(c).shown.single.primary!.onPressed();
+      await tester.pump();
+
+      expect(_nodesOf(c).restoreAllCalls, 1);
+      // en 文案以 app_en.arb 的 undoFailed 为准。
+      expect(_toastOf(c).shown.last.title, "Couldn't undo");
+      expect(_toastOf(c).shown.last.kind, ToastKind.error);
     });
   });
 }
