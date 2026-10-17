@@ -5701,6 +5701,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select exactly one node'**
   String get appActionReasonSelectOneNode;
+
+  /// Canvas hint capsule after keyboard zoom or Fit: current zoom percentage
+  ///
+  /// In en, this message translates to:
+  /// **'Zoom {percent}%'**
+  String canvasCapsuleZoom(int percent);
 }
 
 class _AppLocalizationsDelegate

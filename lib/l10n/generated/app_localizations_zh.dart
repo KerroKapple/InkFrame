@@ -3112,4 +3112,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appActionReasonSelectOneNode => '只选中一个节点';
+
+  @override
+  String canvasCapsuleZoom(int percent) {
+    return '缩放 $percent%';
+  }
 }

@@ -3244,4 +3244,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appActionReasonSelectOneNode => 'Select exactly one node';
+
+  @override
+  String canvasCapsuleZoom(int percent) {
+    return 'Zoom $percent%';
+  }
 }
