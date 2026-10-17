@@ -1,4 +1,4 @@
-// 新建菜单本体（create_node_menu.dart 的 CanvasMenuPanel）：搜索框一打开就持焦、打字按文字过滤
+// 新建菜单本体（create_node_menu.dart 的 InkMenuPanel）：搜索框一打开就持焦、打字按文字过滤
 // （不区分大小写的包含匹配）、一项都没匹配上出一行说明；↑ / ↓ 移动高亮（首尾相接、跨分组）、↵ 执行高亮项、
 // Esc 关；鼠标悬停也移动高亮；点一行 = 执行它。没有搜索框的空白处右键菜单焦点落在菜单本身，键盘一样能用，
 // 菜单开着时别的键不往外漏。
@@ -22,38 +22,38 @@ import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/test_app.dart';
 
-const List<List<CanvasMenuEntry<String>>> _groups = <List<CanvasMenuEntry<String>>>[
-  <CanvasMenuEntry<String>>[
-    CanvasMenuEntry<String>(value: 'a', label: 'Alpha'),
-    CanvasMenuEntry<String>(value: 'b', label: 'Beta', keyHint: 'B'),
+const List<List<InkMenuEntry<String>>> _groups = <List<InkMenuEntry<String>>>[
+  <InkMenuEntry<String>>[
+    InkMenuEntry<String>(value: 'a', label: 'Alpha'),
+    InkMenuEntry<String>(value: 'b', label: 'Beta', keyHint: 'B'),
   ],
-  <CanvasMenuEntry<String>>[
-    CanvasMenuEntry<String>(value: 'c', label: 'Gamma'),
+  <InkMenuEntry<String>>[
+    InkMenuEntry<String>(value: 'c', label: 'Gamma'),
   ],
 ];
 
 /// 置灰 / 危险 / 打勾 / 子菜单（节点右键菜单那一套）的夹具：第一项置灰；第三项带子菜单，子菜单第一项是
 /// 打勾的「当前所在」（不可点）；最后一组是危险项。
-const List<List<CanvasMenuEntry<String>>> _richGroups = <List<CanvasMenuEntry<String>>>[
-  <CanvasMenuEntry<String>>[
-    CanvasMenuEntry<String>(value: 'off', label: 'Off', enabled: false),
-    CanvasMenuEntry<String>(value: 'on', label: 'On'),
-    CanvasMenuEntry<String>(
+const List<List<InkMenuEntry<String>>> _richGroups = <List<InkMenuEntry<String>>>[
+  <InkMenuEntry<String>>[
+    InkMenuEntry<String>(value: 'off', label: 'Off', enabled: false),
+    InkMenuEntry<String>(value: 'on', label: 'On'),
+    InkMenuEntry<String>(
       value: 'lanes',
       label: 'Lanes',
-      submenu: <List<CanvasMenuEntry<String>>>[
-        <CanvasMenuEntry<String>>[
-          CanvasMenuEntry<String>(value: 'here', label: 'Here', checked: true, enabled: false),
-          CanvasMenuEntry<String>(value: 'there', label: 'There'),
+      submenu: <List<InkMenuEntry<String>>>[
+        <InkMenuEntry<String>>[
+          InkMenuEntry<String>(value: 'here', label: 'Here', checked: true, enabled: false),
+          InkMenuEntry<String>(value: 'there', label: 'There'),
         ],
-        <CanvasMenuEntry<String>>[
-          CanvasMenuEntry<String>(value: 'none', label: 'None'),
+        <InkMenuEntry<String>>[
+          InkMenuEntry<String>(value: 'none', label: 'None'),
         ],
       ],
     ),
   ],
-  <CanvasMenuEntry<String>>[
-    CanvasMenuEntry<String>(value: 'kill', label: 'Kill', danger: true),
+  <InkMenuEntry<String>>[
+    InkMenuEntry<String>(value: 'kill', label: 'Kill', danger: true),
   ],
 ];
 
@@ -67,7 +67,7 @@ class _Probe {
 Future<_Probe> _pump(
   WidgetTester tester, {
   bool searchable = true,
-  List<List<CanvasMenuEntry<String>>> groups = _groups,
+  List<List<InkMenuEntry<String>>> groups = _groups,
   Alignment alignment = Alignment.topLeft,
 }) async {
   final _Probe probe = _Probe();
@@ -81,8 +81,8 @@ Future<_Probe> _pump(
         },
         child: Align(
           alignment: alignment,
-          child: CanvasMenuPanel<String>(
-            width: CanvasMenuPanel.createWidth,
+          child: InkMenuPanel<String>(
+            width: InkMenuPanel.createWidth,
             groups: groups,
             onSelected: probe.picked.add,
             onDismiss: () => probe.dismissed++,
@@ -231,7 +231,7 @@ void main() {
       expect(opacityOf(tester, 'Off'), 0.5);
       expect(opacityOf(tester, 'On'), 1.0);
       final InkColors colors =
-          tester.element(find.byType(CanvasMenuPanel<String>)).inkColors;
+          tester.element(find.byType(InkMenuPanel<String>)).inkColors;
       expect(tester.widget<Text>(find.text('Kill')).style?.color, colors.danger);
       expect(tester.widget<Text>(find.text('On')).style?.color, colors.fg2);
     });
@@ -350,12 +350,12 @@ void main() {
       await tester.tap(find.text('Lanes'));
       await tester.pumpAndSettle();
 
-      final Rect panel = tester.getRect(find.byType(CanvasMenuPanel<String>));
+      final Rect panel = tester.getRect(find.byType(InkMenuPanel<String>));
       final Rect sub = tester.getRect(submenu());
       expect(sub.left, closeTo(panel.right, 0.5));
       expect(
         tester.getCenter(find.text('There')).dy - tester.getCenter(find.text('Here')).dy,
-        closeTo(CanvasMenuPanel.rowHeight, 0.5),
+        closeTo(InkMenuPanel.rowHeight, 0.5),
       );
       expect(tester.getCenter(find.text('Here')).dy, closeTo(tester.getCenter(find.text('Lanes')).dy, 0.5),
           reason: '子菜单第一行与父行同高');
@@ -366,7 +366,7 @@ void main() {
       await tester.tap(find.text('Lanes'));
       await tester.pumpAndSettle();
 
-      final Rect panel = tester.getRect(find.byType(CanvasMenuPanel<String>));
+      final Rect panel = tester.getRect(find.byType(InkMenuPanel<String>));
       final Rect sub = tester.getRect(submenu());
       expect(sub.right, closeTo(panel.left, 0.5));
     });
