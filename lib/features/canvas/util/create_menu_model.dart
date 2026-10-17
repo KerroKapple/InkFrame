@@ -19,6 +19,9 @@ import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import 'node_artifacts.dart';
 
+// 菜单搜索过滤的实体在 theme 层（菜单面板自己也用），这里转出口，画布侧照旧从本文件拿。
+export '../../../theme/components/ink_menu_panel.dart' show filterMenuGroups;
+
 /// 新建菜单里的一项。
 enum CreateMenuAction {
   /// 当首帧 · 新建视频配置：源 → 新节点一条 data 边，角色首帧。
@@ -99,26 +102,6 @@ List<List<CreateMenuAction>> createMenuGroups({
     if (sourceCarriesImage(source, nodes)) kImageSourceActions,
     if (narrativeAnchorOf(source, nodes) != null) const <CreateMenuAction>[CreateMenuAction.nextShot],
   ];
-}
-
-/// 搜索过滤：按 [labelOf] 给出的文字做不区分大小写的包含匹配；整组都没匹配上的组不出
-/// （不留孤零零的分隔线）。[query] 去首尾空白后为空 ⇒ 原样返回。
-List<List<E>> filterMenuGroups<E>(
-  List<List<E>> groups,
-  String query,
-  String Function(E entry) labelOf,
-) {
-  final String q = query.trim().toLowerCase();
-  if (q.isEmpty) return groups;
-  final List<List<E>> out = <List<E>>[];
-  for (final List<E> group in groups) {
-    final List<E> kept = <E>[
-      for (final E entry in group)
-        if (labelOf(entry).toLowerCase().contains(q)) entry,
-    ];
-    if (kept.isNotEmpty) out.add(kept);
-  }
-  return out;
 }
 
 /// 这一项要建的节点类型；泳道不建节点 ⇒ null。「下一镜」= 叙事锚点的类型（没有源 / 没有锚点也是 null）。

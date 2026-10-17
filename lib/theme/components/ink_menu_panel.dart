@@ -30,9 +30,9 @@ abstract final class InkMenuPanelKeys {
 }
 
 /// 搜索过滤：按 [labelOf] 给出的文字做不区分大小写的包含匹配；整组都没匹配上的组不出（不留孤零零的
-/// 分隔线）。[query] 去首尾空白后为空 ⇒ 原样返回。与 features/canvas/util/create_menu_model.dart 的
-/// filterMenuGroups 同一个口径——theme 层不能反向 import 它，这里留一份。
-List<List<E>> _filterMenu<E>(
+/// 分隔线）。[query] 去首尾空白后为空 ⇒ 原样返回。全应用只有这一份：features/canvas/util/create_menu_model.dart
+/// 原样 re-export 给画布侧用（theme 层不能反向 import features，所以实体放这边）。
+List<List<E>> filterMenuGroups<E>(
   List<List<E>> groups,
   String query,
   String Function(E entry) labelOf,
@@ -231,7 +231,7 @@ class _InkMenuPanelState<T> extends State<InkMenuPanel<T>> {
   }
 
   List<List<InkMenuEntry<T>>> get _visibleGroups =>
-      _filterMenu<InkMenuEntry<T>>(
+      filterMenuGroups<InkMenuEntry<T>>(
         widget.groups,
         _query,
         (InkMenuEntry<T> entry) => entry.label,
