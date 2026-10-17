@@ -1157,5 +1157,7 @@
   "settingsNotificationDwell": "停留时长",
   "settingsNotificationDwellStandard": "标准",
   "settingsNotificationDwellLong": "加长",
-  "settingsNotificationDwellNever": "不自动关闭"
+  "settingsNotificationDwellNever": "不自动关闭",
+  "durationSeconds": "{seconds} 秒",
+  "durationEstimated": "~{duration}"
 }

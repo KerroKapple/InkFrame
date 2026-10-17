@@ -3169,4 +3169,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsNotificationDwellNever => 'Until dismissed';
+
+  @override
+  String durationSeconds(int seconds) {
+    return '${seconds}s';
+  }
+
+  @override
+  String durationEstimated(String duration) {
+    return '~$duration';
+  }
 }

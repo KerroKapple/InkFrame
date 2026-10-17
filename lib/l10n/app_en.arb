@@ -1459,5 +1459,17 @@
   "settingsNotificationDwell": "Keep on screen",
   "settingsNotificationDwellStandard": "Standard",
   "settingsNotificationDwellLong": "Longer",
-  "settingsNotificationDwellNever": "Until dismissed"
+  "settingsNotificationDwellNever": "Until dismissed",
+  "durationSeconds": "{seconds}s",
+  "@durationSeconds": {
+    "placeholders": {
+      "seconds": { "type": "int" }
+    }
+  },
+  "durationEstimated": "~{duration}",
+  "@durationEstimated": {
+    "placeholders": {
+      "duration": { "type": "String" }
+    }
+  }
 }
