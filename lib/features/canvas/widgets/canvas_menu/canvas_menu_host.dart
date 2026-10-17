@@ -1,6 +1,6 @@
 // 画布菜单的宿主：新建菜单 / 空白处右键菜单 / 节点右键菜单（含「加入泳道 ›」子菜单）共用一个。
 //
-// CanvasMenuHost 包在画布区外层（canvas_view 的 _CanvasBody），按 canvasMenuRequestProvider（canvas_menu_request.dart）
+// CanvasMenuHost 包在画布区外层（canvas_view 的 _CanvasBody），按 canvasMenuRequestProvider（providers/canvas_menu_state.dart）
 // 开关浮层：菜单经 OverlayPortal 浮到 Overlay 上，锚点跟着画布区走（CompositedTransformFollower，与铃铛下拉同一
 // 做法）。点外面关（TapRegion）；焦点整个离开菜单也关（开对话框 / 切标签 / 命令面板盖上来）；选了一项 / Esc 关菜单
 // 时焦点当场还给画布，单键快捷键接着能用——选的项要开对话框也先还，对话框推上来再自己要走（理由见
@@ -175,7 +175,7 @@ class _CanvasMenuHostState extends ConsumerState<CanvasMenuHost> {
 /// 关菜单时焦点怎么交接（[_CanvasMenuHostState._dismiss]）。
 enum _MenuFocusHandoff {
   /// 选了一项 / Esc：菜单此刻一定拿着焦点，也没有别的控件在抢——当场还给画布，单键快捷键接着能用。
-  /// 选的项要开对话框（泳道 / 导入脚本… / 存为角色）也一样：对话框推上来时会自己要焦点。
+  /// 选的项要开对话框（泳道 / 导入剧本… / 存为角色）也一样：对话框推上来时会自己要焦点。
   toCanvas,
 
   /// 点到菜单外面：同一次按下里，被点到的文本框可能正在拿焦点——帧后焦点还落空才还给画布。

@@ -1,9 +1,9 @@
 // 舞台外的菜单弹层（canvas_menu/canvas_menu_popover.dart 的 CanvasMenuPopover）：anchor 为 null 不出面板，给一个
-// 全局点就开在那一点（左上角对准），右 / 下放不下往回收进 Overlay；点外面 / Esc ⇒ onDismiss，点一行 ⇒ onSelected；
-// 子菜单里点击不算点外面（与宿主共用 InkMenuPanel.tapRegionGroup）。
+// 全局点就开在那一点（左上角对准），右 / 下放不下往回收进 Overlay；点外面 / 面板失焦 / Esc ⇒ onDismiss，点一行 ⇒
+// onSelected；子菜单里点击不算点外面（与宿主共用 InkMenuPanel.tapRegionGroup）。
 //
 // 拿掉 TapRegion 的 onTapOutside ⇒「点外面 ⇒ onDismiss 调一次」红；拿掉 CanvasMenuAnchorLayout 的回收 ⇒
-// 「右边 / 下边放不下」红。
+// 「右边 / 下边放不下」红；_onFocusChange 里删掉 widget.onDismiss() ⇒「面板失焦」红。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -38,8 +38,13 @@ class _Probe {
   int dismissed = 0;
 }
 
-/// 挂一个 CanvasMenuPopover，锚点由 [anchor] 控制（改它的值 = 父层重建传新的 anchor）。
-Future<_Probe> _pump(WidgetTester tester, ValueNotifier<Offset?> anchor) async {
+/// 挂一个 CanvasMenuPopover，锚点由 [anchor] 控制（改它的值 = 父层重建传新的 anchor）。[child] 是触发菜单的
+/// 那块界面，缺省铺满一块不可聚焦的空白。
+Future<_Probe> _pump(
+  WidgetTester tester,
+  ValueNotifier<Offset?> anchor, {
+  Widget child = const SizedBox.expand(),
+}) async {
   final _Probe probe = _Probe();
   await pumpInkApp(
     tester,
@@ -54,7 +59,7 @@ Future<_Probe> _pump(WidgetTester tester, ValueNotifier<Offset?> anchor) async {
           onDismiss: () => probe.dismissed++,
           emptyText: 'Nothing here',
           panelKey: _panelKey,
-          child: const SizedBox.expand(),
+          child: child,
         ),
       ),
     ),
@@ -116,6 +121,32 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
     expect(probe.dismissed, 1);
+  });
+
+  testWidgets('面板失焦（焦点被旁边的输入框拿走）⇒ onDismiss', (tester) async {
+    final ValueNotifier<Offset?> anchor = ValueNotifier<Offset?>(const Offset(300, 200));
+    addTearDown(anchor.dispose);
+    final FocusNode field = FocusNode(debugLabel: 'popoverTest.field');
+    addTearDown(field.dispose);
+    final _Probe probe = await _pump(
+      tester,
+      anchor,
+      child: Column(
+        children: <Widget>[
+          const Expanded(child: SizedBox.expand()),
+          TextField(focusNode: field),
+        ],
+      ),
+    );
+    expect(find.byKey(_panelKey), findsOneWidget);
+    expect(field.hasFocus, isFalse, reason: '前提：开着菜单时焦点在面板上');
+
+    // 不点（点会走「点外面」那条路）：直接把焦点交给输入框，只剩「面板失焦」这一条。
+    field.requestFocus();
+    await tester.pump();
+    expect(field.hasFocus, isTrue);
+    expect(probe.dismissed, greaterThanOrEqualTo(1));
+    expect(probe.picked, isEmpty);
   });
 
   testWidgets('点一行 ⇒ onSelected 收到它的 value', (tester) async {

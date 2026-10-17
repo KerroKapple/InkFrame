@@ -12,6 +12,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../models/canvas_node.dart';
 import '../../providers/canvas_escape_ladder.dart';
+import '../../providers/canvas_menu_state.dart';
 import '../../providers/canvas_nodes_controller.dart';
 import '../../providers/canvas_selection_controller.dart';
 import '../../providers/canvas_tool_mode.dart';
@@ -21,7 +22,6 @@ import '../../util/canvas_node_delete.dart';
 import '../../util/canvas_tool_actions.dart';
 import '../../util/canvas_zoom.dart';
 import '../../util/node_menu_model.dart';
-import '../create_node_menu.dart';
 import 'canvas_intents.dart';
 import 'canvas_key_binding.dart';
 import 'canvas_tool_keys.dart';
@@ -41,10 +41,12 @@ final List<CanvasKeyBinding> coreCanvasKeys = <CanvasKeyBinding>[
     onInvoke: (CanvasKeyContext c, Intent _) => deleteCanvasSelection(c),
   ),
   // Esc 不对文本编辑让位：输入框失焦本身就是阶梯上的一层。无事可剥时不消费，冒泡给祖先。
+  // includeRepeats: false——Esc 一次只剥一层，按住不放不能靠自动重复连剥下去（在输入框里按久了会接着
+  // 清掉选中；菜单里按久了，关菜单之后接着清掉右键时设好的选中）。
   CanvasKeyBinding(
     id: 'canvasEscape',
     activators: const <ShortcutActivator>[
-      SingleActivator(LogicalKeyboardKey.escape),
+      SingleActivator(LogicalKeyboardKey.escape, includeRepeats: false),
     ],
     intent: const CanvasEscapeIntent(),
     gate: CanvasKeyGate.always,

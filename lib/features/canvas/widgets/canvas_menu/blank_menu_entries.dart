@@ -1,4 +1,4 @@
-// 空白处右键菜单的四项（menu_registry.dart 的表里 scope = blank 的那几条）：新建… · 导入脚本… | 全选 · 适应视图。
+// 空白处右键菜单的四项（menu_registry.dart 的表里 scope = blank 的那几条）：新建… · 导入剧本… | 全选 · 适应视图。
 //
 // 这一版不放「粘贴」「导入媒体」：没有后端（画布没有剪贴板，也没有媒体导入的写入路径），按「无后端不画」
 // 不放（BOARD 有记）。组号按 menu_registry.dart 头注的约定：10 新建 · 导入 / 50 选择 · 视图。
@@ -74,7 +74,7 @@ void _runCreate(CanvasMenuContext c) => c.ref
     .read(canvasMenuRequestProvider(c.canvasId).notifier)
     .openCreate(c.request.anchor);
 
-/// 与工具条「更多 → 导入脚本…」同一句：开的是同一个导入框。
+/// 与工具条「更多 → 导入剧本…」同一句：开的是同一个导入框。
 InkMenuEntry<String> _buildImportScript(CanvasMenuContext c) => InkMenuEntry<String>(
       value: _importScriptId,
       label: c.context.l10n.canvasAddImportScript,

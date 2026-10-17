@@ -1,9 +1,10 @@
 // 新建菜单项判据（util/create_menu_model.dart）：带不带连线上下文、源是什么，菜单就出哪些项；
-// 每一项建什么节点、连什么线；搜索过滤。
+// 每一项建什么节点、连什么线。
 //
 // 钉的几条：图像源出首帧 / 尾帧 / 参考（拿掉 sourceCarriesImage 的判断，视频产物那条红）；
 // 「下一镜」的叙事边只连配置节点：配置卡以自己为锚，产物卡以它的来源配置节点为锚（见 create_menu_model
 // 头注）；空组不出、不留孤立分隔线。「下一镜」新边的 sortOrder 排在锚点已有的叙事分叉之后（B7）。
+// 搜索过滤 filterMenuGroups 在 theme 层，用例在 test/theme/components/ink_menu_panel_test.dart。
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -236,32 +237,6 @@ void main() {
       for (final CreateMenuAction a in kPlainCreateActions) {
         expect(createdEdge(a), isNull, reason: a.name);
       }
-    });
-  });
-
-  group('filterMenuGroups', () {
-    final List<List<String>> groups = <List<String>>[
-      <String>['Alpha', 'Beta'],
-      <String>['Gamma'],
-    ];
-    String label(String s) => s;
-
-    test('不区分大小写的包含匹配', () {
-      expect(filterMenuGroups<String>(groups, 'LPH', label), <List<String>>[
-        <String>['Alpha'],
-      ]);
-      expect(filterMenuGroups<String>(groups, 'a', label), groups);
-    });
-
-    test('整组都没匹配上的组不出（不留孤立的分隔线）', () {
-      expect(filterMenuGroups<String>(groups, 'gam', label), <List<String>>[
-        <String>['Gamma'],
-      ]);
-    });
-
-    test('一项都没匹配上 ⇒ 空；空白查询原样返回', () {
-      expect(filterMenuGroups<String>(groups, 'zzz', label), isEmpty);
-      expect(filterMenuGroups<String>(groups, '   ', label), groups);
     });
   });
 

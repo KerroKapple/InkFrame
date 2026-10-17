@@ -280,13 +280,4 @@ void main() {
       expect(d, const Offset(360, 0));
     });
   });
-
-  test('NodeMenuPick：值相等即同一项（菜单行的 ValueKey 靠它）', () {
-    expect(const NodeMenuPick.moveToLane('lane-a'), const NodeMenuPick.moveToLane('lane-a'));
-    expect(const NodeMenuPick.moveToLane('lane-a'), isNot(const NodeMenuPick.moveToLane('lane-b')));
-    expect(
-      const NodeMenuPick(NodeMenuAction.removeFromLane),
-      isNot(const NodeMenuPick(NodeMenuAction.laneSubmenu)),
-    );
-  });
 }

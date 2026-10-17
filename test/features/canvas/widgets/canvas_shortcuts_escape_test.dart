@@ -1,13 +1,15 @@
 // Esc 阶梯在 CanvasShortcuts 上的接线（KeyMap ›「Esc 阶梯」）。
 //
-// 钉四件事：
+// 钉五件事：
 //   ① 焦点在子树里的文本框（提示词条 / 检查器 / 左栏筛选框）按 Esc：只失焦，选中与选中的边都不动——
 //      改动前 CanvasEscapeIntent 不对文字让位，这一下会把选中清空。
+//   ①′ 在文本框里按住 Esc（按下 + 自动重复）：同样只失焦，自动重复不接着往下剥。
 //   ② 失焦后焦点回到画布本身：紧接着按 H 立刻生效（光 unfocus 只会把焦点交给路由作用域）。
 //   ③ 无事可剥时 Esc 不被消费，冒泡给祖先；有东西可剥时消费、祖先收不到。
 //   ④ 后续切片登记的层（这里用查找条）按层序参与判序，排在选中之前；注销后不再参与。
 //
 // 变异对照：canvas_shortcuts.dart 里把传给 handle(local:) 的 textField 一项删掉 ⇒ ① 红；
+// shortcuts/core_canvas_keys.dart 里 Esc 激活器去掉 includeRepeats: false ⇒ ①′ 红；
 // textField 层 dismiss 里删掉 requestFocus ⇒ ② 红；Esc 绑定的 enabledWhen 改成恒 true ⇒ ③ 红。
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -109,6 +111,30 @@ void main() {
     );
     expect(container.read(selectedEdgeControllerProvider('c1')), 'e1');
     expect(field.text, 'hello', reason: 'Esc 不改文本');
+  });
+
+  testWidgets('输入框里按住 Esc（按下 + 若干自动重复）：只失焦，选中还在', (tester) async {
+    final TextEditingController field = TextEditingController(text: 'hello');
+    addTearDown(field.dispose);
+    final ProviderContainer container = await _pump(tester, field: field);
+    await _selectThenFocusField(tester, container);
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    for (int i = 0; i < 3; i++) {
+      await tester.sendKeyRepeatEvent(LogicalKeyboardKey.escape);
+      await tester.pump();
+    }
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(isEditingText(), isFalse, reason: '按下那一下让文本框失焦');
+    expect(
+      container.read(canvasSelectionControllerProvider('c1')),
+      <String>{'a'},
+      reason: '自动重复不再接着剥：按住 Esc 也只剥输入框这一层',
+    );
+    expect(container.read(selectedEdgeControllerProvider('c1')), 'e1');
   });
 
   testWidgets('失焦后焦点回到画布：紧接着按 H 生效；再按 Esc 才清空选中', (tester) async {
