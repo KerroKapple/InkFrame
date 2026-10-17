@@ -335,7 +335,7 @@ void main() {
   testWidgets('更多 = kMoreMenuActionIds 逐项：项数一致，文字依次是动作表里那一行的文案', (tester) async {
     await _pump(tester);
     final AppLocalizations l =
-        AppLocalizations.of(tester.element(find.byType(CanvasToolbar)))!;
+        AppLocalizations.of(tester.element(find.byType(CanvasToolbar)));
 
     await tester.tap(_key('more'));
     await tester.pumpAndSettle();
@@ -360,7 +360,7 @@ void main() {
     final InMemoryNodeRepository nodeRepo = InMemoryNodeRepository();
     await _pump(tester, nodeRepo: nodeRepo, shell: const ShellState());
     final AppLocalizations l =
-        AppLocalizations.of(tester.element(find.byType(CanvasToolbar)))!;
+        AppLocalizations.of(tester.element(find.byType(CanvasToolbar)));
 
     await tester.tap(_key('more'));
     await tester.pumpAndSettle();

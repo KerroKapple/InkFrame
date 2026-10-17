@@ -91,7 +91,7 @@ class _Rig {
   final WidgetRef ref;
   final ProviderContainer container;
 
-  AppLocalizations get l => AppLocalizations.of(context)!;
+  AppLocalizations get l => AppLocalizations.of(context);
 
   AppActionContext get c => AppActionContext.read(context, ref);
 
