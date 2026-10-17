@@ -144,7 +144,7 @@ void main() {
   for (final (CanvasNodeType type, String en, String zh) in const [
     (CanvasNodeType.text, 'Text', '文本'),
     (CanvasNodeType.video, 'Video', '视频'),
-    (CanvasNodeType.shot, 'Shot', '分镜'),
+    (CanvasNodeType.shot, 'Shot', '镜头'),
   ]) {
     testWidgets('${type.name} 标题条：空 label 回退本地化类型名 (en/zh)',
         (tester) async {

@@ -721,7 +721,13 @@
       "count": { "type": "int" }
     }
   },
-  "scriptImportConfirm": "Create shots",
+  "scriptImportConfirm": "{count, plural, =0{Create shots} =1{Create 1 shot} other{Create {count} shots}}",
+  "@scriptImportConfirm": {
+    "description": "Script import dialog confirm button; count = shots the pasted script splits into (0 = nothing yet, button disabled)",
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "scriptImportDone": "{count, plural, =1{1 shot added to the canvas} other{{count} shots added to the canvas}}",
   "@scriptImportDone": {
     "description": "Snackbar after a successful script import",

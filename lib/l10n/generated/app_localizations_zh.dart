@@ -72,7 +72,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasNodeVideoType => '视频';
 
   @override
-  String get canvasNodeShotType => '分镜';
+  String get canvasNodeShotType => '镜头';
 
   @override
   String get canvasLoadFailed => '加载画布失败';
@@ -740,13 +740,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchResultsLabel => '批量结果';
 
   @override
-  String get inspectorShotTitle => '分镜';
+  String get inspectorShotTitle => '镜头';
 
   @override
-  String get inspectorShotNotesLabel => '分镜备注';
+  String get inspectorShotNotesLabel => '镜头备注';
 
   @override
-  String get inspectorShotNotesHint => '描述这个分镜（机位、动作、氛围）…';
+  String get inspectorShotNotesHint => '描述这个镜头（机位、动作、氛围）…';
 
   @override
   String get inspectorShotGenerateImage => '用备注生成图片';
@@ -773,10 +773,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sequencePreviewTitle => '序列预览';
 
   @override
-  String get sequencePreviewTooltip => '按叙事顺序预览分镜';
+  String get sequencePreviewTooltip => '按叙事顺序预览镜头';
 
   @override
-  String get sequencePreviewDisabledTooltip => '用叙事连线把分镜串起来后即可预览序列';
+  String get sequencePreviewDisabledTooltip => '用叙事连线把镜头串起来后即可预览序列';
 
   @override
   String get sequencePreviewEmpty => '暂时没有可预览的内容';
@@ -808,7 +808,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasAddVideoNode => '添加视频节点';
 
   @override
-  String get canvasAddShotNode => '添加分镜节点';
+  String get canvasAddShotNode => '添加镜头节点';
 
   @override
   String get canvasAddNodeFailed => '添加节点失败';
@@ -1222,7 +1222,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasEmptyAddVideo => '添加视频节点';
 
   @override
-  String get canvasEmptyAddShot => '添加分镜节点';
+  String get canvasEmptyAddShot => '添加镜头节点';
 
   @override
   String canvasSelectionCount(int count) {
@@ -1543,16 +1543,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get commandBackToStudio => '返回工作室';
 
   @override
-  String get canvasAddImportScript => '导入脚本…';
+  String get canvasAddImportScript => '导入剧本…';
 
   @override
-  String get canvasEmptyImportScript => '导入脚本';
+  String get canvasEmptyImportScript => '导入剧本';
 
   @override
-  String get scriptImportTitle => '导入脚本';
+  String get scriptImportTitle => '导入剧本';
 
   @override
-  String get scriptImportHint => '把脚本粘进来。每一镜变成一个节点，按顺序串成一条链。';
+  String get scriptImportHint => '把剧本粘进来。每一镜变成一个镜头节点，按顺序串成一条链。';
 
   @override
   String get scriptImportStrategyLabel => '拆分方式';
@@ -1580,7 +1580,15 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get scriptImportConfirm => '创建分镜';
+  String scriptImportConfirm(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '创建 $count 个镜头',
+      zero: '创建镜头',
+    );
+    return '$_temp0';
+  }
 
   @override
   String scriptImportDone(int count) {
@@ -1593,7 +1601,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get scriptImportFailed => '脚本导入失败，画布未做改动。';
+  String get scriptImportFailed => '剧本导入失败，画布未做改动。';
 
   @override
   String get inspectorGroupModel => '模型';
@@ -1605,7 +1613,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorGroupCamera => '镜头运动';
 
   @override
-  String get inspectorGroupShot => '分镜';
+  String get inspectorGroupShot => '镜头';
 
   @override
   String get inspectorEstimatedCostLabel => '预估费用';
@@ -1643,7 +1651,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get canvasToolLane => '泳道';
 
   @override
-  String get canvasToolShotNode => '分镜节点';
+  String get canvasToolShotNode => '镜头节点';
 
   @override
   String get canvasToolMore => '更多';
@@ -2072,7 +2080,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get galleryLineageTitle => '血缘 · 当前线';
 
   @override
-  String get galleryLineageShotText => '分镜文本';
+  String get galleryLineageShotText => '镜头文本';
 
   @override
   String galleryLineageChosenOf(int count) {

@@ -1,4 +1,4 @@
-// SB-2 脚本导入对话框：粘贴 → 实时预览 → 一键建成分镜链。
+// SB-2 剧本导入对话框：粘贴 → 实时预览 → 一键建成镜头链。
 //
 // 预览是这张卡的定心丸。拆分规则（SB-1）再讲究也有猜错的时候，用户得先看见
 // 「拆成了几镜、每镜叫什么」才敢按创建；策略切换后预览立刻重算，等于把规则
@@ -17,7 +17,7 @@ import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/script_import_controller.dart';
 import '../util/script_splitter.dart';
 
-/// 打开脚本导入对话框。[origin] 是第一镜的左上角世界坐标（缺省世界原点）。
+/// 打开剧本导入对话框。[origin] 是第一镜的左上角世界坐标（缺省世界原点）。
 Future<void> showScriptImportDialog(
   BuildContext context, {
   required String canvasId,
@@ -101,7 +101,7 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
             children: <Widget>[
               InkInput(
                 controller: _ctrl,
-                // 一打开就持焦：框常从画布开（空白处右键「导入脚本…」），按键不能穿到框后面的画布上。
+                // 一打开就持焦：框常从画布开（空白处右键「导入剧本…」），按键不能穿到框后面的画布上。
                 autofocus: true,
                 hintText: l.scriptImportHint,
                 minLines: 4,
@@ -142,7 +142,9 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
         ),
         FilledButton(
           onPressed: (_busy || drafts.isEmpty) ? null : _confirm,
-          child: Text(l.scriptImportConfirm),
+          // 写出数量，与预览头「N 镜」同一个 N；0 镜走 ARB 的 =0 分支「创建镜头」。
+          // 忙碌中文本没动、N 也不变——按钮只置灰，不闪回 0。
+          child: Text(l.scriptImportConfirm(drafts.length)),
         ),
       ],
     );

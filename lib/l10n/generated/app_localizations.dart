@@ -2990,11 +2990,11 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 shot} other{{count} shots}}'**
   String scriptImportShotCount(int count);
 
-  /// No description provided for @scriptImportConfirm.
+  /// Script import dialog confirm button; count = shots the pasted script splits into (0 = nothing yet, button disabled)
   ///
   /// In en, this message translates to:
-  /// **'Create shots'**
-  String get scriptImportConfirm;
+  /// **'{count, plural, =0{Create shots} =1{Create 1 shot} other{Create {count} shots}}'**
+  String scriptImportConfirm(int count);
 
   /// Snackbar after a successful script import
   ///
