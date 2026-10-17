@@ -148,7 +148,7 @@ class _CascadeNodesController extends CanvasNodesController {
   }
 }
 
-/// restore 抛 InkError → 触发 canvas_view 的 undoFailed 兜底提示。
+/// restore 抛 InkError → 触发 util/canvas_node_delete.dart 的 undoFailed 兜底提示。
 class _RestoreFailNodesController extends _FakeNodesController {
   _RestoreFailNodesController(super.seed);
 
@@ -210,7 +210,7 @@ class _ErrorEdgesController extends CanvasEdgesController {
   }
 }
 
-/// 节点加载失败 → 画布整屏 _LoadError（GAP-3:文案须走 l10n）。
+/// 节点加载失败 → 画布整屏 CanvasLoadError（stage/stage_overlays.dart；GAP-3:文案须走 l10n）。
 class _ErrorNodesController extends CanvasNodesController {
   @override
   Future<List<CanvasNode>> build(String canvasId) async {
@@ -456,7 +456,7 @@ void main() {
     );
   });
 
-  testWidgets('节点加载失败 → _LoadError 走 l10n 文案而非 raw toString（GAP-3）',
+  testWidgets('节点加载失败 → CanvasLoadError 走 l10n 文案而非 raw toString（GAP-3）',
       (tester) async {
     await pumpInkApp(
       tester,
@@ -616,7 +616,7 @@ void main() {
           canvasEdgesControllerProvider.overrideWith(() => edges),
           // 泳道恒空且不触 PG，避免加载失败横幅混入额外 close 图标。
           canvasLanesControllerProvider.overrideWith(() => _EmptyLanesController()),
-          // 方向同理密封（GAP-3 后 _EdgeLaneErrorSlot 也 watch 它）。
+          // 方向同理密封（GAP-3 后 stage/stage_edge_layer.dart 的 EdgeLaneErrorSlot 也 watch 它）。
           canvasLaneDirectionProvider('c1').overrideWith(
             (_) async => LaneDirection.horizontal,
           ),

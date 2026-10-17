@@ -207,6 +207,11 @@ class _RecordingFlushRegistry implements PendingWriteRegistry {
 
   @override
   Future<void> flushAll() async => onFlush();
+
+  /// 编辑口不是退出序列该叫的：叫到就抛，冲刷记录随之缺席，顺序断言当场变红。
+  @override
+  Future<void> flushBeforeEdit() async =>
+      throw StateError('teardown must flush through flushAll');
 }
 
 /// 无副作用窗口状态：默认容器用它，绝不触真实 window_manager / screen_retriever。

@@ -3,6 +3,8 @@
 // 每次 revert / apply 消费各自脚本的下一条：
 // - [CanvasCommandOutcome]：直接返回；
 // - [InkError]：抛出（测「命令抛 InkError ⇒ 栈视同 failed」）；
+// - 其他 [Error] / [Exception]（如 StateError）：原样抛出（测「非 InkError 照常上抛、
+//   busy 在 finally 复位」）；
 // - `Completer<CanvasCommandOutcome>`：等测试自己 complete（测撤销在途时的竞态）。
 // 脚本用完之后一律返回 [CanvasCommandOutcome.done]。
 //
@@ -69,6 +71,7 @@ class ScriptedCanvasCommand extends CanvasCommand {
     final Object entry = script.removeAt(0);
     if (entry is CanvasCommandOutcome) return entry;
     if (entry is InkError) throw entry;
+    if (entry is Error || entry is Exception) throw entry;
     if (entry is Completer<CanvasCommandOutcome>) return entry.future;
     throw ArgumentError.value(entry, 'script', 'unsupported script entry');
   }

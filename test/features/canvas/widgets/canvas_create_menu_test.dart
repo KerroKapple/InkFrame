@@ -15,12 +15,17 @@
 //     新节点只单选不挪相机；双击 / 右键「新建…」/ 拖线松手仍落在指定点、不加散布。
 //   - 打字时 Tab 不开菜单；焦点在画布里的按钮上，Tab 照常走焦点遍历。
 //   - 视频产物源：菜单不出首帧 / 尾帧 / 参考。
-//   - 从菜单开的对话框（泳道 / 导入脚本…）一打开就持焦，按键不穿到框后面的画布上（B1）；选了一项、同一拍推上来
+//   - 菜单开着时拖线的源卡被删：一项都不出，也不退回不带上下文的项。
+//   - 有选中时菜单里按一次 Esc 只关菜单、选中保留；再按一次才清选中。
+//   - 从菜单开的对话框（泳道 / 导入剧本…）一打开就持焦，按键不穿到框后面的画布上（B1）；选了一项、同一拍推上来
 //     一个不 autofocus 的框，焦点也归框（菜单当场把焦点还给画布，卸载时不再把焦点还回去）；画布所在的路由上面
 //     压着对话框时，画布这边要回焦点的入口一个都不抢。
 //
-// 变异对照：拿掉 addNodeFromMenu 的回滚 ⇒「边写失败」红；拿掉 Esc 里取消拖线那一层 ⇒「拖线途中 Esc」红；
-// 把 Tab 的 _CanvasFocusedAction 换成不设门的 Action ⇒「打字时 Tab」「按钮上 Tab」两条红。
+// 变异对照：拿掉 addNodeFromMenu 的回滚 ⇒「边写失败」红；拿掉 Esc 阶梯里取消拖线那一层
+// （providers/canvas_escape_ladder.dart 的 wireDrag）⇒「拖线途中 Esc」红；把 shortcuts/core_canvas_keys.dart 里
+// canvasOpenCreateMenu 的 gate 从 CanvasKeyGate.canvasFocused 改成 notEditingText 或 always ⇒「打字时 Tab」
+// 「按钮上 Tab」两条红；删掉 canvas_menu/create_menu_entries.dart 的 buildCreateMenuGroups 里「源卡已不在 ⇒ 空表」
+// 那个判断 ⇒「拖线的源卡被删」红。
 import 'dart:async';
 
 import 'package:flutter/gestures.dart';
@@ -719,6 +724,38 @@ void main() {
       expect(find.text(_reference), findsNothing);
     });
 
+    // 拖出来的那张卡在菜单开着时被删（Delete 键 / 撤销 / 别处删掉）：一项都不出——既不出带上下文的项
+    // （源已经不在），也不退回不带上下文的那一组（那就成了另一个菜单）。
+    testWidgets('菜单开着时拖线的源卡被删：一项都不出，也不退回不带上下文的项', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      final Offset grab = await _revealPort(tester, c, 'img');
+      await _dragWire(tester, grab, const Offset(700, 500));
+      expect(find.text(_firstFrame), findsOneWidget, reason: '前提：带上下文的菜单开着');
+
+      await _nodesOf(c).removeNode('img');
+      await tester.pumpAndSettle();
+
+      final Finder menu = find.byKey(CanvasMenuKeys.createMenu);
+      expect(menu, findsOneWidget, reason: '菜单还开着（请求没变）');
+      for (final String label in <String>[
+        _firstFrame,
+        _lastFrame,
+        _reference,
+        _nextShot,
+        ..._plainLabels,
+      ]) {
+        expect(
+          find.descendant(of: menu, matching: find.text(label)),
+          findsNothing,
+          reason: label,
+        );
+      }
+      expect(
+        find.descendant(of: menu, matching: find.text('No matching actions')),
+        findsOneWidget,
+      );
+    });
+
     testWidgets('菜单键盘：↓ ↵ 执行第二项（视频配置），节点落在视口中心（+ 散布，与 G 同一条路）、不连线、被单选',
         (tester) async {
       final ProviderContainer c = await _pump(tester);
@@ -752,6 +789,29 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(CanvasMenuKeys.createMenu), findsOneWidget,
           reason: '焦点回到了画布本身，Tab 又归它');
+    });
+
+    // 菜单里的 Esc 只剥菜单这一层：有选中时也不连着清选中。节点右键菜单那边同一条见 canvas_node_menu_test
+    // 「菜单里的 Esc」组——面板 dismiss 之后漏出 Esc 的变异由那边守（这里搜索框此刻还持着主焦点，漏出来的
+    // Esc 落到阶梯的「输入框」那一层，只失焦、清不掉选中）。
+    testWidgets('有选中时菜单里按一次 Esc 只关菜单、选中保留；再按一次才清选中', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      c.read(canvasSelectionControllerProvider('c1').notifier).select('img');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsOneWidget);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(find.byKey(CanvasMenuKeys.createMenu), findsNothing, reason: '第一下关菜单');
+      expect(c.read(canvasSelectionControllerProvider('c1')), <String>{'img'},
+          reason: '一次 Esc 只剥菜单这一层');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(c.read(canvasSelectionControllerProvider('c1')), isEmpty,
+          reason: '焦点回到了画布：第二下清选中');
     });
 
     testWidgets('点菜单外面：菜单关掉，什么都不建', (tester) async {
@@ -1199,7 +1259,7 @@ void main() {
       await _expectDialogOwnsKeys(tester, c, dialog: find.byType(Dialog), selected: 'img');
     });
 
-    testWidgets('空白处右键 →「导入脚本…」：导入框一打开就持焦', (tester) async {
+    testWidgets('空白处右键 →「导入剧本…」：导入框一打开就持焦', (tester) async {
       final ProviderContainer c = await _pump(tester);
       c.read(canvasSelectionControllerProvider('c1').notifier).select('img');
       await tester.pump();
@@ -1242,7 +1302,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(CanvasMenuKeys.blankMenu), findsOneWidget, reason: '前提：菜单开着、菜单持焦');
 
-      // 「适应视图」选了就关菜单、自己不开框；框由测试在同一拍推上来——与「导入脚本…」开框的时序相同。
+      // 「适应视图」选了就关菜单、自己不开框；框由测试在同一拍推上来——与「导入剧本…」开框的时序相同。
       final BuildContext canvas = tester.element(find.byType(CanvasView));
       await tester.tap(
         find.descendant(

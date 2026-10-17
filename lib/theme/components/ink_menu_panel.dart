@@ -30,8 +30,7 @@ abstract final class InkMenuPanelKeys {
 }
 
 /// 搜索过滤：按 [labelOf] 给出的文字做不区分大小写的包含匹配；整组都没匹配上的组不出（不留孤零零的
-/// 分隔线）。[query] 去首尾空白后为空 ⇒ 原样返回。全应用只有这一份：features/canvas/util/create_menu_model.dart
-/// 原样 re-export 给画布侧用（theme 层不能反向 import features，所以实体放这边）。
+/// 分隔线）。[query] 去首尾空白后为空 ⇒ 原样返回。菜单面板自己用（带搜索框时按它过滤），全应用只有这一份。
 List<List<E>> filterMenuGroups<E>(
   List<List<E>> groups,
   String query,

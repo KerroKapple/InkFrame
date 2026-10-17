@@ -1,4 +1,4 @@
-// canvas_zoom 纯函数单测（PL-2）：钳制上下限、复位、步进方向、围绕视口中心、缩放到 100%。
+// canvas_zoom 纯函数单测（PL-2）：钳制上下限、初始相机、步进方向、围绕视口中心、缩放到 100%。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
@@ -48,9 +48,9 @@ void main() {
     expect(scaleOf(result), closeTo(kCanvasMinScale, 1e-9));
   });
 
-  test('复位 → 初始相机（scale=1、世界原点对准视口左上再往下让出工具条）', () {
-    final m = resetTransform();
-    expect(m, initialCanvasTransform());
+  // 变异对照：initialCanvasTransform 的 y 平移去掉 `+ InkToolbarSize.stageTopInset` ⇒ 原点断言红。
+  test('初始相机：scale=1、世界原点对准视口左上再往下让出工具条', () {
+    final m = initialCanvasTransform();
     expect(scaleOf(m), 1.0);
     // 舞台中央的世界原点（kStageOrigin）映射到屏幕 (0, stageTopInset)：顶上那一条留给浮动工具条。
     expect(
@@ -105,9 +105,13 @@ void main() {
       });
     }
 
+    // 平移取二进制下不精确的小数：走通用支点路径时新平移是 cx - (cx - tx)，800×600 视口下
+    // -37.3 → -37.300000000000011、52.7 → 52.699999999999989，Matrix4 逐元素比较就不等了。
+    // 整数平移守不住这一点（cx - (cx - tx) 一点误差都没有）。
+    // 变异对照：删掉 actualSizeTransform 里 `if (s == target) return current.clone();` ⇒ 本条红。
     test('已是 100%：原样返回（不抖动、不重置平移）', () {
       final current = Matrix4.identity()
-        ..translateByDouble(-37.0, 52.0, 0.0, 1.0);
+        ..translateByDouble(-37.3, 52.7, 0.0, 1.0);
 
       final result = actualSizeTransform(current, viewport);
 

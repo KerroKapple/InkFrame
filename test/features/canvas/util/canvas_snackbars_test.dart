@@ -115,6 +115,25 @@ void main() {
     expect(undos, 1, reason: '卡上的「撤销」就是调用方给的 onUndo');
   });
 
+  test('showUndoToast：不靠 context 也出同一张 undo 卡（层可能已卸载的调用点用它）', () {
+    final RecordingToastService direct = RecordingToastService();
+    int undos = 0;
+    showUndoToast(
+      direct,
+      message: 'Link deleted',
+      undoLabel: 'Undo',
+      onUndo: () => undos += 1,
+    );
+
+    final RecordedToast card = direct.shown.single;
+    expect(card.title, 'Link deleted');
+    expect(card.kind, ToastKind.undo);
+    expect(card.chime, isFalse);
+    expect(card.primary?.label, 'Undo');
+    card.primary!.onPressed();
+    expect(undos, 1);
+  });
+
   testWidgets('showCanvasUndoSnack：按钮文案走 l10n（zh 下是 commonUndo 的中文）',
       (tester) async {
     await _pumpTrigger(

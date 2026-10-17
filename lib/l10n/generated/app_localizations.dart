@@ -1424,12 +1424,6 @@ abstract class AppLocalizations {
   /// **'Batch results'**
   String get batchResultsLabel;
 
-  /// No description provided for @inspectorShotTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Shot'**
-  String get inspectorShotTitle;
-
   /// No description provided for @inspectorShotNotesLabel.
   ///
   /// In en, this message translates to:
@@ -1489,12 +1483,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sequence preview'**
   String get sequencePreviewTitle;
-
-  /// No description provided for @sequencePreviewTooltip.
-  ///
-  /// In en, this message translates to:
-  /// **'Preview the storyboard in narrative order'**
-  String get sequencePreviewTooltip;
 
   /// No description provided for @sequencePreviewDisabledTooltip.
   ///

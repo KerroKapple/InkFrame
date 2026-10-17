@@ -27,7 +27,7 @@ class PaletteEntry {
   final PaletteGroup group;
   final String id;
   final String name;
-  /// 10px 路径面包屑（「山径破晓 › 画布 02 › 分镜」）。
+  /// 10px 路径面包屑（「山径破晓 › 画布 02 › 镜头 01」）。
   final String path;
   /// ↵ 打开。
   final PaletteRun run;

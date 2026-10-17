@@ -1,4 +1,4 @@
-// 挂起的定位请求在画布上落地（canvas_focus_request.dart + canvas_view.dart 的 _PendingFocusApplier）。
+// 挂起的定位请求在画布上落地（canvas_focus_request.dart + stage/stage_overlays.dart 的 PendingFocusApplier）。
 //
 // 跨画布定位时目标画布是切过去才挂上来的，在切换那一刻直接写它的选中会被 autoDispose 回收——
 // 请求挂起，画布节点载入、视口上报尺寸之后帧后落地：单选 + 移到视口中心，并消费掉请求。

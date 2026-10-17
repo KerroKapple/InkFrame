@@ -4,6 +4,7 @@
 //   - busy 期间重复 submit 不二次发起
 //   - savePromptDebounced 防抖：窗口内多次输入只落最后一次
 //   - submitWithPending：挂起的编辑（防抖 + 写失败等重试的键）并进终稿一并提交（B8）
+//   - flushBeforeEdit：撤销 / 重做前的编辑口，写失败照常退避重试（#12）
 
 import 'dart:async';
 
@@ -13,6 +14,7 @@ import 'package:inkframe/core/di/logger.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
+import 'package:inkframe/core/logging/logger_service.dart';
 import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
 import 'package:inkframe/features/generation/generation_controller.dart';
 
@@ -419,6 +421,83 @@ void main() {
       expect(gen.submitted, <String>['n1']);
       expect(status.read(), isA<InspectorAutoSaveClean>(), reason: '终稿已落库，重试表里的键划掉');
       expect(ctrl.hasPendingWrites, isFalse);
+    });
+  });
+
+  // #12：撤销 / 重做之前的冲写走编辑口 flushBeforeEdit。原来借的是退出口 flushPendingWrites——
+  // 那一笔写失败直接按「已用尽」记账（Failed、不再自动重试），连接池换连接那一瞬的失败本来
+  // 400ms 退避一次就能自愈，却变成检查器里红色的「未保存 + 重试」。
+  group('flushBeforeEdit（撤销 / 重做前的编辑口）', () {
+    late _FlakyNodeRepository flaky;
+    late RecordingLogger logger;
+
+    ProviderContainer makeFlakyContainer() {
+      final container = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) => Future.value(flaky)),
+        generationControllerProvider
+            .overrideWith((ref) => Future.value(_FakeGenerationController())),
+        loggerProvider.overrideWithValue(logger),
+      ]);
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    setUp(() {
+      flaky = _FlakyNodeRepository();
+      logger = RecordingLogger();
+    });
+
+    test('写失败 ⇒ 进重试态而不是 Failed，退避后自动重试照常落盘', () async {
+      flaky.failures = 1;
+      final container = makeFlakyContainer();
+      final ProviderSubscription<InspectorAutoSaveState> status =
+          container.listen(inspectorAutoSaveStatusProvider('n1'), (_, _) {});
+      final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      ctrl.savePromptDebounced('typed right before undo');
+      await ctrl.flushBeforeEdit();
+
+      expect(flaky.patches, isEmpty, reason: '前提：冲的这一笔写失败');
+      final InspectorAutoSaveState afterFlush = status.read();
+      expect(afterFlush, isA<InspectorAutoSaveRetrying>(),
+          reason: '编辑口不是退出路径：失败照常记一次、排退避重试，不按「已用尽」记账');
+      expect((afterFlush as InspectorAutoSaveRetrying).attempt, 1);
+      expect(ctrl.hasPendingWrites, isTrue);
+      expect(logger.byLevel(InkLogLevel.error), isEmpty, reason: '不记「auto-save gave up」');
+
+      await Future<void>.delayed(
+        InspectorSubmitController.retryBackoff.first + const Duration(milliseconds: 300),
+      );
+
+      expect(flaky.patches, <Map<String, Object?>>[
+        <String, Object?>{'prompt': 'typed right before undo'},
+      ], reason: '退避重试照常触发，瞬断自愈');
+      expect(status.read(), isA<InspectorAutoSaveClean>());
+    });
+
+    test('成功：重试表 + 防抖合成一笔立刻写出，防抖窗口过后不再补写', () async {
+      flaky.failures = 1;
+      final container = makeFlakyContainer();
+      final ProviderSubscription<InspectorAutoSaveState> status =
+          container.listen(inspectorAutoSaveStatusProvider('n1'), (_, _) {});
+      final ctrl = container.read(inspectorSubmitControllerProvider('n1').notifier);
+
+      // 一笔自动保存失败进了重试表，接着又敲了字、防抖还没发射。
+      await ctrl.saveConfig(const <String, Object?>{'prompt': 'old', 'camera': 'orbit'});
+      ctrl.savePromptDebounced('new');
+
+      await ctrl.flushBeforeEdit();
+
+      expect(flaky.patches, <Map<String, Object?>>[
+        <String, Object?>{'prompt': 'new', 'camera': 'orbit'},
+      ], reason: '同一个键取防抖里的新值');
+      expect(ctrl.hasPendingWrites, isFalse);
+      expect(status.read(), isA<InspectorAutoSaveClean>());
+
+      await Future<void>.delayed(
+        InspectorSubmitController.debounceDuration + const Duration(milliseconds: 100),
+      );
+      expect(flaky.patches, hasLength(1), reason: '防抖已被这一笔吃掉');
     });
   });
 

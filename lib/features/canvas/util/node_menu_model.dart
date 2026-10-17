@@ -17,7 +17,8 @@ import '../models/style_lane.dart';
 import 'lane_geometry.dart';
 import 'lane_pin_geometry.dart';
 
-/// 节点菜单里的一项。
+/// 节点菜单里的一项。菜单行的值是 menu_registry 的 String id，用它的名字拼：`node.<name>`
+/// （widgets/canvas_menu/node_menu_entries.dart）。
 enum NodeMenuAction {
   /// 生成（Ctrl+↵ / ⌘↵）：与提示词条「生成」同一条 submit。
   generate,
@@ -28,46 +29,15 @@ enum NodeMenuAction {
   /// 存为角色（带图的产物节点）。
   saveAsCharacter,
 
-  /// 「加入泳道 ›」那一行本身：只开子菜单，不执行。
+  /// 「加入泳道 ›」那一行本身：只开子菜单，不执行。子菜单的行是 `node.laneSubmenu:<laneId>`，
+  /// 「移出泳道」是 `node.laneSubmenu:`（冒号后为空）。
   laneSubmenu,
-
-  /// 子菜单里的一条泳道：整批移进去。
-  moveToLane,
-
-  /// 子菜单最后一项：移出泳道。
-  removeFromLane,
 
   /// 在序列中定位。
   locateInSequence,
 
   /// 删除（Del）：走带撤销卡的删除。
   delete,
-}
-
-/// 菜单交回来的一次选择：动作 + （加入泳道时）目标泳道。值相等即同一项——菜单行的 ValueKey 靠它。
-@immutable
-class NodeMenuPick {
-  const NodeMenuPick(this.action) : laneId = null;
-
-  /// 子菜单里的一条泳道。
-  const NodeMenuPick.moveToLane(String this.laneId)
-      : action = NodeMenuAction.moveToLane;
-
-  final NodeMenuAction action;
-
-  /// [NodeMenuAction.moveToLane] 的目标泳道；其余为 null。
-  final String? laneId;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is NodeMenuPick && other.action == action && other.laneId == laneId;
-
-  @override
-  int get hashCode => Object.hash(action, laneId);
-
-  @override
-  String toString() => 'NodeMenuPick($action, laneId: $laneId)';
 }
 
 /// 菜单作用在哪些节点上：[nodeId]（右键的那张）在选中集里 ⇒ 整个选中集；不在 ⇒ 只有它。

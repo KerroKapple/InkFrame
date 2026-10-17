@@ -12,8 +12,9 @@
 // _serialized：落库顺序 = 发起顺序，在途的旧 patch 盖不到终稿头上。
 //
 // 本控制器实现 [PendingWriteFlushable] 并把自己注册进 [PendingWriteRegistry]：
-// 退出序列在关连接池之前会叫它把挂起内容冲掉（BOARD 第 201 行）。注册方向是
-// feature → core，退出路径不认识检查器。
+// 退出序列在关连接池之前会叫它把挂起内容冲掉（BOARD 第 201 行）；撤销 / 重做之前
+// 走另一个口 flushBeforeEdit，失败照常退避重试（#12）。注册方向是 feature → core，
+// 退出路径与撤销栈都不认识检查器。
 //
 // JobState 绑定点（agent-generation slice 落地后接线）：
 //   jobStateProvider(nodeId) 可在 build 中 watch 并派生 running 进度，
@@ -305,13 +306,7 @@ class InspectorSubmitController
     // 在途时又排一笔重复写入。
     _retry?.cancel();
     _retry = null;
-    // `_unsaved` 在前、`_pendingDebounced` 在后：同一个键取更新的那份——防抖里
-    // 存的是用户最后敲进去的值，`_unsaved` 里是上一次写失败留下的旧值。
-    final Map<String, Object?> merged = <String, Object?>{
-      ..._unsaved,
-      ..._pendingDebounced,
-    };
-    _cancelPendingDebounce();
+    final Map<String, Object?> merged = _takePendingPatch();
     if (merged.isEmpty) return;
     // finally 复位：这个标志只许盖住**这一笔**写入的失败记账。留成常开模式等于
     // 把「自动重试」永久关掉——实践上退出之后没人再写，但一个会悄悄改变正常路径
@@ -322,6 +317,36 @@ class InspectorSubmitController
     } finally {
       _exitFlush = false;
     }
+  }
+
+  /// 编辑口（撤销 / 重做之前，#12）：把挂起内容合成一笔立刻写出去，让命令读到的库是
+  /// 用户最后改的样子。
+  ///
+  /// 与 [flushPendingWrites] 的区别全在失败记账上：app 还要接着跑，所以**不置**
+  /// [_exitFlush]、**不停**排着的退避重试——这一笔写失败就按正常的失败记账走
+  /// （进重试表、[InspectorAutoSaveRetrying]、400ms / 1200ms 退避），连接池换连接
+  /// 那一瞬的失败照样自愈，不会被记成「已用尽」。
+  ///
+  /// 不抛（契约要求）：[_attemptWrite] 自己收 InkError 并记日志。
+  @override
+  Future<void> flushBeforeEdit() async {
+    final Map<String, Object?> merged = _takePendingPatch();
+    if (merged.isEmpty) return;
+    await _attemptWrite(merged);
+  }
+
+  /// 取出挂起内容并合成一笔：失败等重试的 `_unsaved` + 还没发射的防抖 patch；防抖随之
+  /// 取消（它的内容已经在这一笔里了）。
+  ///
+  /// `_unsaved` 在前、`_pendingDebounced` 在后：同一个键取更新的那份——防抖里
+  /// 存的是用户最后敲进去的值，`_unsaved` 里是上一次写失败留下的旧值。
+  Map<String, Object?> _takePendingPatch() {
+    final Map<String, Object?> merged = <String, Object?>{
+      ..._unsaved,
+      ..._pendingDebounced,
+    };
+    _cancelPendingDebounce();
+    return merged;
   }
 
   /// 用户点「重试」：重置退避计数，立刻再试一次未落盘的更改。

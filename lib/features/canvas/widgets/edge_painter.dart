@@ -11,7 +11,7 @@
 // 端口圆点由 NodeCard 自己画，本层不画。
 //
 // 从出端口拖线时的实时虚线（[PendingWirePainter]，画布重设计稿 › 拖线到空白处 → 建节点）也在本文件：
-// 同一条 edgePath 贝塞尔、同一个虚线切法，只是它画在卡片之上（canvas_view 舞台的最上层），
+// 同一条 edgePath 贝塞尔、同一个虚线切法，只是它画在卡片之上（stage/stage_edge_layer.dart 的 PendingWireLayer，挂在舞台最上层），
 // 拖过别的卡片时线不会被压住。
 import 'dart:math' as math;
 import 'dart:ui' show PathMetric, Tangent;
@@ -69,7 +69,7 @@ class EdgePainter extends CustomPainter {
 
   final List<CanvasNode> nodes;
 
-  /// 颜色槽 → 颜色（令牌由 canvas_view 取），外加标签胶囊底色。
+  /// 颜色槽 → 颜色（令牌由 stage/stage_edge_layer.dart 的 StageEdgeLayer 取），外加标签胶囊底色。
   final EdgePalette palette;
 
   /// 标签字体（10px micro），颜色由本层按连线色覆盖。

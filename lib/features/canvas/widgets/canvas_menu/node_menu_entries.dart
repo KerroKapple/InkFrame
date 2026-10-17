@@ -1,5 +1,6 @@
 // 节点右键菜单的六项（menu_registry.dart 的表里 scope = node 的那几条）。稿：生成 · 复制一份 | 存为角色 ·
-// 加入泳道 › · 在序列中定位 | 删除。卡片上右键单击（canvas_view 的卡片插槽在抬起时报上来，按住右键拖动不算）：
+// 加入泳道 › · 在序列中定位 | 删除。卡片上右键单击（stage/node_card_slot.dart 的 NodeCardSlot 在抬起时报上来，
+// 按住右键拖动不算）：
 // 右键一张没被选中的卡，画布先把选中换成它；右键一张已在多选里的卡，保持多选。
 //
 // 不可用的项置灰、不隐藏，判据全在 util/node_menu_model.dart；动作在 util/canvas_tool_actions.dart（与 Ctrl+↵ /

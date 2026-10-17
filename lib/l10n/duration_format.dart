@@ -1,5 +1,8 @@
-// 全应用唯一的「时长 / 耗时」写法：不到 60 秒写「N 秒」，满 60 秒写 m:ss，满 1 小时写 h:mm:ss；
+// 全应用统一的「时长 / 耗时」写法：不到 60 秒写「N 秒」，满 60 秒写 m:ss，满 1 小时写 h:mm:ss；
 // 估算值前加「~」。片长 / 估时长走 formatDurationLabel，计时器（已用 / 排队 / 用时）走 formatElapsed。
+//
+// 现状：新代码统一走这里。画廊（gallery_tile / gallery_info_panel）与产物检查器（result_inspector_parts）
+// 的片长仍走 gallery_time.galleryFormatDuration 的 HH:MM:SS，待迁；迁完删掉那个函数后再把这里写成「唯一」。
 //
 // m:ss / h:mm:ss 是格式量（同 formatCostUsd 的口径），不入 ARB；「N 秒」与「~」前缀走 ARB。
 // 纯函数：不读时钟，只依赖传进来的 AppLocalizations。

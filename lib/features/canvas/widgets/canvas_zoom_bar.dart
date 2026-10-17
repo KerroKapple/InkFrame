@@ -7,7 +7,8 @@
 // InkActivatable——Tab 可达、Enter / Space 激活，图标格的名字由 semanticLabel + tooltip 说出。
 //
 // 「适应」= 适应全部（PR-8b）：把画布上所有卡片框进视口（只缩小、不放大），与 Shift+1、空白处右键菜单
-// 「适应视图」同一个动作（canvas_tool_actions.dart 的 fitAllNodes）。原来它只是把相机复位——复位留给 ⌘0。
+// 「适应视图」同一个动作（canvas_tool_actions.dart 的 fitAllNodes）。原来它只是把相机复位；现在 ⌘0 是缩放到 100%
+// 并保持视口中心（core_canvas_keys.dart 的 resetCanvasZoom），不回初始相机。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

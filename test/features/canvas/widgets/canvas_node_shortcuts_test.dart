@@ -1,4 +1,4 @@
-// PR-8b 画布四个新键（canvas_shortcuts.dart）：Ctrl+D 复制一份、Ctrl+↵ 生成选中、Shift+1 适应全部、Shift+2 适应选中。
+// PR-8b 画布四个新键（shortcuts/core_canvas_keys.dart）：Ctrl+D 复制一份、Ctrl+↵ 生成选中、Shift+1 适应全部、Shift+2 适应选中。
 //
 //   - 每个键各一条正向用例；
 //   - 适应全部：所有卡片都落进视口扣掉留白的那一块；适应选中只框选中的卡（且只缩小、不放大）；
@@ -6,8 +6,9 @@
 //   - 提示词条里按 Ctrl+↵：只提交一次（提示词条自己那一下），画布这层不跟着再提交。
 //   - Ctrl+↵ 走 submitWithPending：还没发射的防抖 patch 并进终稿，不借退出路径的 flushPendingWrites（B8）。
 //
-// 变异对照：把四个键的 _EditingAwareAction 换成不设门的 CallbackAction ⇒「打字时让位」红；_generateSelection
-// 不要求「恰好一张」⇒「选中两张」红；fitSelectedNodes 改框全部 ⇒「适应选中」红。
+// 变异对照：把 shortcuts/core_canvas_keys.dart 里这四条绑定（canvasDuplicate / canvasGenerate / canvasFitAll /
+// canvasFitSelection）的 gate 从 CanvasKeyGate.notEditingText 改成 CanvasKeyGate.always ⇒「打字时让位」红；
+// generateCanvasSelection 不要求「恰好一张」⇒「选中两张」红；fitSelectedNodes 改框全部 ⇒「适应选中」红。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -330,7 +331,7 @@ void main() {
     });
 
     // KeyMap Q5-B：⌘0 = 缩放到 100%、保持视口中心，不是适应，也不回初始相机。
-    // 变异对照：resetCanvasZoom 改回 resetTransform() ⇒ 中心点断言红。
+    // 变异对照：resetCanvasZoom 改回 initialCanvasTransform() ⇒ 中心点断言红。
     testWidgets('⌘0 / Ctrl+0 是 100% 不是适应：适应全部之后按它，scale 回到 1、中心不动', (tester) async {
       final ProviderContainer c = await _pump(tester);
       await _sendShift(tester, LogicalKeyboardKey.digit1);

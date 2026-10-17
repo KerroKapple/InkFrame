@@ -1,4 +1,5 @@
-// InMemoryPendingWriteRegistry 单测：退出前冲刷挂起写入的注册表契约。
+// InMemoryPendingWriteRegistry 单测：冲刷挂起写入的注册表契约（退出口 flushAll +
+// 撤销 / 重做前的编辑口 flushBeforeEdit）。
 //
 // 这一层的全部职责就是「问一圈谁有挂起内容、并发冲一遍、用超时封顶」。两条最
 // 要紧的性质在这里钉住：
@@ -121,6 +122,84 @@ void main() {
     await expectLater(registry.flushAll(), completes);
   });
 
+  test('flushAll 走目标的退出口，不碰编辑口', () async {
+    final target = _FakeFlushable(pending: true);
+    final registry = makeRegistry()..register(target);
+
+    await registry.flushAll();
+
+    expect(target.flushCalls, 1);
+    expect(target.editFlushCalls, 0);
+  });
+
+  // #12：撤销 / 重做之前的冲写走编辑口。退出口的失败记账会把一次瞬断记成「已用尽」、
+  // 停掉自动重试，日志还会把每次撤销记成一次关机冲刷。
+  group('flushBeforeEdit（编辑口）', () {
+    test('只冲有挂起内容的对象，且走目标的编辑口、不碰退出口', () async {
+      final dirty = _FakeFlushable(pending: true);
+      final clean = _FakeFlushable(pending: false);
+      final registry = makeRegistry()
+        ..register(dirty)
+        ..register(clean);
+
+      await registry.flushBeforeEdit();
+
+      expect(dirty.editFlushCalls, 1);
+      expect(dirty.flushCalls, 0, reason: '借退出口 = 失败即用尽、停掉自动重试');
+      expect(clean.editFlushCalls, 0);
+      expect(clean.flushCalls, 0);
+    });
+
+    test('日志措辞中性：不写 before shutdown，也不记在 teardown 的 module 下', () async {
+      final registry = makeRegistry()..register(_FakeFlushable(pending: true));
+
+      await registry.flushBeforeEdit();
+
+      expect(logger.records, isNotEmpty, reason: '前置：有挂起内容时会留一行冲刷记录');
+      for (final record in logger.records) {
+        expect(record.msg, isNot(contains('shutdown')));
+        expect(record.module, isNot('teardown.flush'));
+      }
+    });
+
+    test('全都干净 → 不留日志、不 await 任何目标', () async {
+      final target = _FakeFlushable(pending: false);
+      final registry = makeRegistry()..register(target);
+
+      await registry.flushBeforeEdit();
+
+      expect(target.editFlushCalls, 0);
+      expect(logger.records, isEmpty);
+    });
+
+    test('超时：按时返回，记 warn 不记 error（app 还在跑，没写完的目标自己接着重试）', () async {
+      final stuck = _FakeFlushable(pending: true, gate: Completer<void>());
+      final registry = makeRegistry(timeout: const Duration(milliseconds: 80))
+        ..register(stuck);
+
+      await registry.flushBeforeEdit();
+
+      expect(logger.byLevel(InkLogLevel.error), isEmpty);
+      final warns = logger.byLevel(InkLogLevel.warn);
+      expect(warns, hasLength(1), reason: '放弃等待要留痕');
+      expect(warns.single.extra?['still_pending'], 1);
+      stuck.gate!.complete();
+    });
+
+    test('一个对象抛出不阻断其余对象，且整体不抛', () async {
+      final boom = _FakeFlushable(pending: true, throws: true);
+      final ok = _FakeFlushable(pending: true);
+      final registry = makeRegistry()
+        ..register(boom)
+        ..register(ok);
+
+      await expectLater(registry.flushBeforeEdit(), completes);
+
+      expect(ok.editFlushCalls, 1);
+      expect(logger.byLevel(InkLogLevel.error), hasLength(1));
+    });
+  });
+
   test('默认超时远小于 AppDelegate 的 15s native 兜底', () {
     expect(
       InMemoryPendingWriteRegistry.defaultTimeout,
@@ -142,7 +221,12 @@ class _FakeFlushable implements PendingWriteFlushable {
   final Completer<void>? gate;
 
   bool _pending;
+
+  /// 退出口被叫了几次。
   int flushCalls = 0;
+
+  /// 编辑口被叫了几次。
+  int editFlushCalls = 0;
 
   @override
   bool get hasPendingWrites => _pending;
@@ -150,6 +234,16 @@ class _FakeFlushable implements PendingWriteFlushable {
   @override
   Future<void> flushPendingWrites() async {
     flushCalls++;
+    await _drain();
+  }
+
+  @override
+  Future<void> flushBeforeEdit() async {
+    editFlushCalls++;
+    await _drain();
+  }
+
+  Future<void> _drain() async {
     if (throws) throw StateError('flush blew up');
     if (gate != null) {
       await gate!.future;

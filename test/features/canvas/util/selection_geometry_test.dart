@@ -1,6 +1,6 @@
 // 选区几何（util/selection_geometry.dart）：框选命中 + 框选结果合并 + 选区包围盒。
 //
-// 命中口径（Selection Q1 → A）：碰到即算——只碰到一角、恰好贴边（交集面积 0）都算，离开 1px 不算。
+// 命中口径（Selection Q1 → A）：碰到即算——只碰到一角、恰好贴边（交集面积 0）都算，离开 1px 不算（贴边与离开 1px 在上下左右四个方向各验一遍）。
 // 卡片矩形按渲染位置算（世界 + kStageOrigin + 分道位移），折叠道里的卡不参与命中也不计入包围盒。
 // 数据：卡片 kNodeCardSize = 224×191，舞台原点 kStageOrigin = (50000, 50000)，横向泳道 L1 厚 400、L2 厚 300。
 import 'package:flutter/widgets.dart';
@@ -75,21 +75,51 @@ void main() {
       expect(_hits(box, <CanvasNode>[a]), {'a'});
     });
 
-    test('恰好贴着边（交集面积 0）也算', () {
-      final Rect box = _box(Offset(right, 50), Offset(right + 80, 100));
-      expect(box.left, kStageOrigin.dx + right);
-      expect(_hits(box, <CanvasNode>[a]), {'a'});
-    });
+    // 四个方向各一组：框在卡的右 / 左 / 下 / 上，「贴边」与「离开 1px」只差 1px。
+    // _touches 的四个比较各由一个方向守着——任一比较换成 true，该方向「离开 1px」变红；
+    // 任一 <= 换成 <（半开区间），该方向「贴边」变红。
+    final List<({String side, Rect touch, Rect gap})> sides =
+        <({String side, Rect touch, Rect gap})>[
+      (
+        side: '右',
+        touch: _box(Offset(right, 50), Offset(right + 80, 100)),
+        gap: _box(Offset(right + 1, 50), Offset(right + 80, 100)),
+      ),
+      (
+        side: '左',
+        touch: _box(const Offset(-80, 50), const Offset(0, 100)),
+        gap: _box(const Offset(-80, 50), const Offset(-1, 100)),
+      ),
+      (
+        side: '下',
+        touch: _box(Offset(50, bottom), Offset(100, bottom + 80)),
+        gap: _box(Offset(50, bottom + 1), Offset(100, bottom + 80)),
+      ),
+      (
+        side: '上',
+        touch: _box(const Offset(50, -80), const Offset(100, 0)),
+        gap: _box(const Offset(50, -80), const Offset(100, -1)),
+      ),
+    ];
+
+    for (final ({String side, Rect touch, Rect gap}) c in sides) {
+      test('框在卡${c.side}边：恰好贴着边（交集面积 0）也算', () {
+        // 贴边框与卡只共一条边：交集面积确实为 0，不是重叠了一截。
+        final Rect card = kStageOrigin & kNodeCardSize;
+        final Rect overlap = c.touch.intersect(card);
+        expect(overlap.width * overlap.height, 0);
+        expect(_hits(c.touch, <CanvasNode>[a]), {'a'});
+      });
+
+      test('框在卡${c.side}边：离开 1px 不算', () {
+        expect(_hits(c.gap, <CanvasNode>[a]), isEmpty);
+      });
+    }
 
     test('宽为 0 的框贴着边照样按闭区间判', () {
       final Rect box = _box(Offset(right, 50), Offset(right, 100));
       expect(box.width, 0);
       expect(_hits(box, <CanvasNode>[a]), {'a'});
-    });
-
-    test('离开 1px 不算', () {
-      final Rect box = _box(Offset(right + 1, 50), Offset(right + 80, 100));
-      expect(_hits(box, <CanvasNode>[a]), isEmpty);
     });
 
     test('折叠道里的卡不命中', () {
@@ -172,6 +202,7 @@ void main() {
     Rect? bounds(
       Set<String> ids,
       List<CanvasNode> nodes, {
+      Matrix4? transform,
       Set<String> collapsed = const <String>{},
     }) =>
         selectionBounds(
@@ -179,7 +210,7 @@ void main() {
           nodes: nodes,
           lanes: _lanes,
           direction: LaneDirection.horizontal,
-          transform: Matrix4.identity(),
+          transform: transform ?? Matrix4.identity(),
           collapsedLaneIds: collapsed,
         );
 
@@ -201,6 +232,18 @@ void main() {
 
       expect(bounds({'b', 'ghost'}, nodes, collapsed: {'L1'}), isNull);
       expect(bounds(<String>{}, nodes), isNull);
+    });
+
+    test('泳道里的卡按分道位移后的位置计入包围盒（缩放 0.5）', () {
+      // 数据同 marqueeHits 那条：c 在 L2（起始边 400）、世界 (0,0)，缩放 0.5 时纵向分道位移 = 400。
+      // 缩放 1 时分道位移为 0——只有缩放 ≠ 1 才分得出「按当前相机算、带分道位移」。
+      // 卡片矩形在舞台坐标里，尺寸恒为 kNodeCardSize，不随缩放变（与 nodeStageRect 同口径）。
+      final CanvasNode c = _node('c', Offset.zero, laneId: 'L2');
+      final Matrix4 half = Matrix4.diagonal3Values(0.5, 0.5, 1);
+      expect(
+        bounds({'c'}, <CanvasNode>[c], transform: half),
+        (kStageOrigin + const Offset(0, 400)) & kNodeCardSize,
+      );
     });
   });
 }

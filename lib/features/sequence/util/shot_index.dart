@@ -1,8 +1,9 @@
 // 一个节点在序列的哪一镜：纯函数，不碰 ref、不碰外壳。
 //
 // 判据只有一份（[_shotIndexOfNode]，与 sequence_builder 的折叠同一口径），几处共用：
-//   - 「在序列中查看 / 定位」跳到哪一镜、节点右键菜单的「在序列中定位」可不可点：[shotIndexForSelection]
-//     （view_in_sequence.dart 与 canvas/widgets/create_node_menu.dart）；
+//   - 「在序列中查看 / 定位」跳到哪一镜、节点右键菜单与产物检查器的「在序列中定位」可不可点：
+//     [shotIndexForSelection]（view_in_sequence.dart、canvas/widgets/canvas_menu/node_menu_entries.dart 与
+//     canvas/widgets/result_inspector_parts.dart）；
 //   - 镜号：[shotIndexByNode] 一次给出每个节点所在那一镜——左栏大纲行首的镜号、⌘K 镜头组的「序列 NNN」由它来
 //     （经 canvas/util/outline_model.dart 的 sequenceShotNumbers），与序列视图、画廊的序号是同一个数。
 //

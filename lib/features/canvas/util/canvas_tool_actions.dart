@@ -23,7 +23,7 @@
 //     「生成」走同一条 submit；
 //   - 复制一份（duplicateNodes，Ctrl+D / ⌘D）：同类型 / 同 typeConfig / 同泳道，右下各偏一个 lg；
 //   - 适应全部 / 适应选中（fitAllNodes / fitSelectedNodes，Shift+1 / Shift+2）：缩放条「适应」与空白处
-//     右键菜单「适应视图」都是适应全部；⌘0 仍是缩放复位，不归这里；
+//     右键菜单「适应视图」都是适应全部；⌘0 是缩放到 100%（保持视口中心），不归这里；
 //   - 存为角色（saveNodeAsCharacter）：与角色库「新建角色」同一条 createFromImage；
 //   - 加入 / 移出泳道（moveNodesToLane）：走 moveNode，多选整批。
 // 存为角色要开起名框，所以本文件又反向引了 theme 层的 InkNameDialog 与 widgets/node_card.dart 的显示名。
