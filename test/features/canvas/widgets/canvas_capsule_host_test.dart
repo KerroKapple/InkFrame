@@ -2,11 +2,16 @@
 // 换标签即收、悬停停表、不走通知、不进 Esc 链。
 //
 // 装置：pumpInkApp 里一块定宽的「舞台」（Stack），宿主挂在里面，与 canvas_screen.dart 一样是 Stack 的直接孩子。
+// 「同轴」两条用例另挂真提示词条（与 canvas_screen.dart 同样的 Positioned(left 0, right 0, bottom 16)），
+// 条子自己量高度报给 provider，胶囊的中心与条子本体（surfaceKey）的中心直接比，不拿 promptBarPlacement 自证。
 // 胶囊有 120ms 交叉淡入：全文件只 pump 固定时长，不 pumpAndSettle。
 //
 // 变异对照：
 //   - 宿主 bottom 写成 h + InkCanvasCapsuleSize.stageBottom（漏了间隙 8）⇒「条高 60：底边离舞台底 84」红；
-//   - 宿主 left / right 写成 0 ⇒「左右各让出 171」红；
+//   - 宿主不让 sideReserve（_capsuleSpan 的 half 只取右侧那一项）⇒「左右各让出 171」与「条子显示 + 长文案」红；
+//   - _capsuleSpan 的 center 不论条子显示与否都取舞台中心（stageWidth / 2）⇒「提示词条显示：胶囊与条子同轴」红
+//     （舞台 855 时条子为左下那一簇让位，条子中心比舞台中心偏右约 80）；
+//   - center 不论条子显示与否都取条子中心 ⇒ 同一条用例后半段「条子收起回到舞台中心」红；
 //   - 控制器 show 去掉同 dedupeKey 的原地分支（总是换卡）⇒「同 dedupeKey 不重放淡入」红；
 //   - visible 变 false 不 dismiss ⇒「visible 变 false 立即收」红；
 //   - MouseRegion 不接 setHovered ⇒「悬停停表」红。
@@ -16,13 +21,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_capsule.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_prompt_bar_height.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_capsule_host.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_prompt_bar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
@@ -31,6 +40,7 @@ import 'package:inkframe/theme/components/ink_canvas_capsule.dart';
 import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/fake_canvas.dart';
+import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
@@ -39,12 +49,29 @@ const Key _stageKey = Key('test.stage');
 const String _long =
     'Connected after shot 7 · and a very long description that will never fit in the middle of the stage';
 
-/// 舞台宽 [stageWidth]、高 400；[visible] 驱动宿主的可见性；[shortcuts] 时外包 CanvasShortcuts（Esc 用例）。
+/// 选中它，提示词条就出现（image config 节点）。
+const CanvasNode _imageNode = CanvasNode(
+  id: 'img',
+  label: 'Shot',
+  type: CanvasNodeType.image,
+  canvasId: _cv,
+  typeConfig: <String, Object?>{'prompt': 'a cat'},
+);
+
+/// 打字不落库：同轴用例只看版式，防抖保存的计时器与仓储都不该被碰到。
+class _NoSave extends InspectorSubmitController {
+  @override
+  void savePromptDebounced(String prompt) {}
+}
+
+/// 舞台宽 [stageWidth]、高 400；[visible] 驱动宿主的可见性；[shortcuts] 时外包 CanvasShortcuts（Esc 用例）；
+/// [promptBar] 时照 canvas_screen.dart 在宿主前挂真提示词条，节点表换成 [_imageNode]。
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   double stageWidth = 900,
   ValueNotifier<bool>? visible,
   bool shortcuts = false,
+  bool promptBar = false,
   RecordingToastService? toasts,
 }) async {
   final ValueNotifier<bool> vis = visible ?? ValueNotifier<bool>(true);
@@ -58,6 +85,13 @@ Future<ProviderContainer> _pump(
         builder: (BuildContext context, bool v, _) => Stack(
           children: <Widget>[
             const Positioned.fill(child: SizedBox.expand()),
+            if (promptBar)
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: InkToolbarSize.promptBarBottom,
+                child: CanvasPromptBar(canvasId: _cv),
+              ),
             CanvasCapsuleHost(canvasId: _cv, visible: v),
           ],
         ),
@@ -73,11 +107,17 @@ Future<ProviderContainer> _pump(
       shellControllerProvider.overrideWith(
         () => ShellNavigator(initial: const ShellState(tab: ShellTab.canvas, canvasId: _cv)),
       ),
-      canvasNodesControllerProvider.overrideWith(() => FakeNodesController(twoNodes)),
+      canvasNodesControllerProvider.overrideWith(
+        () => FakeNodesController(promptBar ? const <CanvasNode>[_imageNode] : twoNodes),
+      ),
       canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
       canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
       toastServiceProvider.overrideWithValue(toasts ?? RecordingToastService()),
+      if (promptBar) ...<Override>[
+        canvasRepositoryProvider.overrideWith((_) async => InMemoryCanvasRepository()),
+        inspectorSubmitControllerProvider.overrideWith(_NoSave.new),
+      ],
     ],
   );
   await tester.pump();
@@ -112,6 +152,54 @@ void main() {
     expect(_capsule(tester).bottom, closeTo(_stage(tester).bottom - InkCanvasCapsuleSize.stageBottom, 0.5));
     expect(InkCanvasCapsuleSize.stageBottom, 16);
     expect(_capsule(tester).center.dx, closeTo(_stage(tester).center.dx, 0.5));
+  });
+
+  testWidgets('提示词条显示：胶囊与条子同轴（舞台 855，条子为左下让位而偏右）；条子收起回到舞台中心', (tester) async {
+    final ProviderContainer c = await _pump(tester, stageWidth: 855, promptBar: true);
+    c.read(canvasSelectionControllerProvider(_cv).notifier).replace(<String>[_imageNode.id]);
+    await tester.pump();
+    await tester.pump();
+    await _showAndSettle(tester, c, const CanvasCapsuleMessage.zoom(80));
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(CanvasPromptBar.surfaceKey), findsOneWidget);
+    expect(c.read(canvasPromptBarHeightProvider(_cv)), greaterThan(0), reason: '条子把自己的高度报上来了');
+    final Rect stage = _stage(tester);
+    final Rect bar = tester.getRect(find.byKey(CanvasPromptBar.surfaceKey));
+    // 前提：这个舞台宽下条子确实为左下那一簇让了位——否则条子中心 = 舞台中心，本条守不住任何东西。
+    expect((bar.center.dx - stage.center.dx).abs(), greaterThan(40));
+
+    final Rect capsule = _capsule(tester);
+    expect(capsule.center.dx, closeTo(bar.center.dx, 0.5));
+    expect(capsule.bottom, lessThanOrEqualTo(bar.top + 0.5), reason: '胶囊在条子上方');
+    expect(capsule.left, greaterThanOrEqualTo(stage.left + InkCanvasCapsuleSize.sideReserve - 0.5));
+    expect(capsule.right, lessThanOrEqualTo(stage.right + 0.5));
+
+    c.read(canvasSelectionControllerProvider(_cv).notifier).clear();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    expect(find.byKey(CanvasPromptBar.surfaceKey), findsNothing);
+    expect(c.read(canvasPromptBarHeightProvider(_cv)), 0);
+    expect(_capsule(tester).center.dx, closeTo(stage.center.dx, 0.5));
+    expect(_capsule(tester).bottom, closeTo(stage.bottom - InkCanvasCapsuleSize.stageBottom, 0.5));
+  });
+
+  testWidgets('提示词条显示 + 长文案：左不越过缩放条让位线、右不出舞台，文字省略', (tester) async {
+    final ProviderContainer c = await _pump(tester, stageWidth: 855, promptBar: true);
+    c.read(canvasSelectionControllerProvider(_cv).notifier).replace(<String>[_imageNode.id]);
+    await tester.pump();
+    await tester.pump();
+    await _showAndSettle(tester, c, const CanvasCapsuleMessage(text: _long));
+
+    expect(tester.takeException(), isNull);
+    final Rect stage = _stage(tester);
+    final Rect bar = tester.getRect(find.byKey(CanvasPromptBar.surfaceKey));
+    final Rect r = _capsule(tester);
+    expect(r.center.dx, closeTo(bar.center.dx, 0.5));
+    expect(r.left, greaterThanOrEqualTo(stage.left + InkCanvasCapsuleSize.sideReserve - 0.5));
+    expect(r.right, lessThanOrEqualTo(stage.right - InkSpacing.md + 0.5));
+    expect(tester.widget<Text>(find.text(_long)).overflow, TextOverflow.ellipsis);
   });
 
   testWidgets('条高 60：底边离舞台底 84（条子上方 8），条高变了跟着动', (tester) async {
