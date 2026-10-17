@@ -3052,4 +3052,64 @@ class AppLocalizationsZh extends AppLocalizations {
   String durationEstimated(String duration) {
     return '~$duration';
   }
+
+  @override
+  String get appActionRedo => '重做';
+
+  @override
+  String get appActionCut => '剪切';
+
+  @override
+  String get appActionCopy => '复制';
+
+  @override
+  String get appActionPaste => '粘贴';
+
+  @override
+  String get appActionFind => '查找…';
+
+  @override
+  String get appActionImportMedia => '导入媒体…';
+
+  @override
+  String get appActionNewNote => '便签';
+
+  @override
+  String get appActionWrapInLane => '包成泳道';
+
+  @override
+  String get appActionFocusNotifications => '通知';
+
+  @override
+  String get appActionCommandPalette => '命令面板…';
+
+  @override
+  String get appActionReasonComingSoon => '即将推出';
+
+  @override
+  String get appActionReasonOpenCanvas => '先打开一个画布';
+
+  @override
+  String get appActionReasonSelectNodes => '先选中节点';
+
+  @override
+  String get appActionReasonSelectOneConfig => '选中一个配置节点才能生成';
+
+  @override
+  String get appActionReasonSelectOneImage => '选中一张图像产物';
+
+  @override
+  String get appActionReasonNotInLane => '选中的节点不在泳道里';
+
+  @override
+  String get appActionReasonNotInSequence => '选中的节点不在序列里';
+
+  @override
+  String get appActionReasonNoVideo => '还没有可导出的视频';
+
+  @override
+  String get appActionReasonNoProject => '先打开一个项目';
+
+  @override
+  String get appActionReasonSelectOneNode => '只选中一个节点';
 }

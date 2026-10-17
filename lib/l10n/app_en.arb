@@ -1475,5 +1475,25 @@
     "placeholders": {
       "duration": { "type": "String" }
     }
-  }
+  },
+  "appActionRedo": "Redo",
+  "appActionCut": "Cut",
+  "appActionCopy": "Copy",
+  "appActionPaste": "Paste",
+  "appActionFind": "Find…",
+  "appActionImportMedia": "Import media…",
+  "appActionNewNote": "Note",
+  "appActionWrapInLane": "Wrap in lane",
+  "appActionFocusNotifications": "Notifications",
+  "appActionCommandPalette": "Command palette…",
+  "appActionReasonComingSoon": "Coming soon",
+  "appActionReasonOpenCanvas": "Open a canvas first",
+  "appActionReasonSelectNodes": "Select nodes first",
+  "appActionReasonSelectOneConfig": "Select one config node to generate",
+  "appActionReasonSelectOneImage": "Select one image result",
+  "appActionReasonNotInLane": "The selection isn't in a lane",
+  "appActionReasonNotInSequence": "The selection isn't in the sequence",
+  "appActionReasonNoVideo": "No video to export yet",
+  "appActionReasonNoProject": "Open a project first",
+  "appActionReasonSelectOneNode": "Select exactly one node"
 }

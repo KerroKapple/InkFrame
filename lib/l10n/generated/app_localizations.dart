@@ -5581,6 +5581,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'~{duration}'**
   String durationEstimated(String duration);
+
+  /// No description provided for @appActionRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get appActionRedo;
+
+  /// No description provided for @appActionCut.
+  ///
+  /// In en, this message translates to:
+  /// **'Cut'**
+  String get appActionCut;
+
+  /// No description provided for @appActionCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get appActionCopy;
+
+  /// No description provided for @appActionPaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get appActionPaste;
+
+  /// No description provided for @appActionFind.
+  ///
+  /// In en, this message translates to:
+  /// **'Find…'**
+  String get appActionFind;
+
+  /// No description provided for @appActionImportMedia.
+  ///
+  /// In en, this message translates to:
+  /// **'Import media…'**
+  String get appActionImportMedia;
+
+  /// No description provided for @appActionNewNote.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get appActionNewNote;
+
+  /// No description provided for @appActionWrapInLane.
+  ///
+  /// In en, this message translates to:
+  /// **'Wrap in lane'**
+  String get appActionWrapInLane;
+
+  /// No description provided for @appActionFocusNotifications.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get appActionFocusNotifications;
+
+  /// No description provided for @appActionCommandPalette.
+  ///
+  /// In en, this message translates to:
+  /// **'Command palette…'**
+  String get appActionCommandPalette;
+
+  /// No description provided for @appActionReasonComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get appActionReasonComingSoon;
+
+  /// No description provided for @appActionReasonOpenCanvas.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a canvas first'**
+  String get appActionReasonOpenCanvas;
+
+  /// No description provided for @appActionReasonSelectNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Select nodes first'**
+  String get appActionReasonSelectNodes;
+
+  /// No description provided for @appActionReasonSelectOneConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Select one config node to generate'**
+  String get appActionReasonSelectOneConfig;
+
+  /// No description provided for @appActionReasonSelectOneImage.
+  ///
+  /// In en, this message translates to:
+  /// **'Select one image result'**
+  String get appActionReasonSelectOneImage;
+
+  /// No description provided for @appActionReasonNotInLane.
+  ///
+  /// In en, this message translates to:
+  /// **'The selection isn\'t in a lane'**
+  String get appActionReasonNotInLane;
+
+  /// No description provided for @appActionReasonNotInSequence.
+  ///
+  /// In en, this message translates to:
+  /// **'The selection isn\'t in the sequence'**
+  String get appActionReasonNotInSequence;
+
+  /// No description provided for @appActionReasonNoVideo.
+  ///
+  /// In en, this message translates to:
+  /// **'No video to export yet'**
+  String get appActionReasonNoVideo;
+
+  /// No description provided for @appActionReasonNoProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a project first'**
+  String get appActionReasonNoProject;
+
+  /// No description provided for @appActionReasonSelectOneNode.
+  ///
+  /// In en, this message translates to:
+  /// **'Select exactly one node'**
+  String get appActionReasonSelectOneNode;
 }
 
 class _AppLocalizationsDelegate
