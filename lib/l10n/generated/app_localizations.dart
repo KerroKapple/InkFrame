@@ -5581,6 +5581,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Until dismissed'**
   String get settingsNotificationDwellNever;
+
+  /// No description provided for @durationSeconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{seconds}s'**
+  String durationSeconds(int seconds);
+
+  /// No description provided for @durationEstimated.
+  ///
+  /// In en, this message translates to:
+  /// **'~{duration}'**
+  String durationEstimated(String duration);
 }
 
 class _AppLocalizationsDelegate

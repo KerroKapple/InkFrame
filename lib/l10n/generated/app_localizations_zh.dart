@@ -3040,4 +3040,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsNotificationDwellNever => '不自动关闭';
+
+  @override
+  String durationSeconds(int seconds) {
+    return '$seconds 秒';
+  }
+
+  @override
+  String durationEstimated(String duration) {
+    return '~$duration';
+  }
 }
