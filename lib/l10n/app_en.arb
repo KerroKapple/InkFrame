@@ -641,7 +641,7 @@
   "exportVideoNoResultsTooltip": "No video results on this canvas yet",
   "exportVideoNoProjectTooltip": "No project context — reopen this canvas from Studio",
   "exportVideoDialogTitle": "Export video",
-  "exportVideoDialogHint": "Selected clips are joined in list order. Re-runs of the same shot are listed too — only the newest take of each is selected.",
+  "exportVideoDialogHint": "Selected clips are joined in list order. Re-runs of the same shot are listed too — only the current take of each is selected.",
   "exportVideoOutputNameLabel": "Output file name (optional)",
   "exportVideoOutputNameHint": "Leave empty for a timestamped name",
   "exportVideoInvalidName": "File name cannot contain \\ / : * ? \" < > |, '..', control characters, or reserved device names",

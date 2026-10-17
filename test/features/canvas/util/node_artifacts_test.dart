@@ -35,7 +35,7 @@ CanvasNode _config(String id, {String? pinned}) => CanvasNode(
       type: CanvasNodeType.shot,
       canvasId: 'c1',
       typeConfig: <String, Object?>{
-        if (pinned != null) 'pinned_result_id': pinned,
+        'pinned_result_id': ?pinned,
       },
     );
 
