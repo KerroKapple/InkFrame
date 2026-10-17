@@ -5,7 +5,7 @@
 // 画布挂上来是空选中。画廊「在画布中定位」、⌘K 产物定位、左栏素材格跨画布定位原先都这样丢选中。
 //
 // 本 provider 不随画布走（非 autoDispose、不分画布），请求只活到被消费：CanvasView 在节点载入、
-// 视口上报尺寸之后落地并消费（canvas_view.dart 的 _PendingFocusApplier）。
+// 视口上报尺寸之后落地并消费（widgets/stage/stage_overlays.dart 的 PendingFocusApplier）。
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
