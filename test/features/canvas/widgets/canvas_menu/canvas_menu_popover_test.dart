@@ -51,7 +51,7 @@ Future<_Probe> _pump(
     Scaffold(
       body: ValueListenableBuilder<Offset?>(
         valueListenable: anchor,
-        builder: (BuildContext context, Offset? value, Widget? child) =>
+        builder: (BuildContext context, Offset? value, Widget? _) =>
             CanvasMenuPopover<String>(
           anchor: value,
           groups: _groups,
