@@ -5,12 +5,17 @@
 // 排序 / 过滤 / 派发用自造的表（items:）测，不碰真菜单项——build 只返回固定的 InkMenuEntry，上下文里的
 // BuildContext / WidgetRef 是不会被读到的 Fake。拿掉组内按序号排 ⇒「先按 group 再按 order 排」红；
 // menuItemForPick 整串比 id ⇒「认 <id>:<参数> 与裸 id」红。
+//
+// 真表里只有「新建…」这一条单独测：它原地换成新建菜单，不调 dismiss（关了再开会先把焦点还给画布）。
+// 给它的 run 开头加一行 c.dismiss?.call() ⇒「空白处『新建…』原地换成新建菜单」红。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_menu/canvas_menu_request.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_menu/menu_registry.dart';
 import 'package:inkframe/theme/components/ink_menu_panel.dart';
+
+import '../../../../_harness/test_app.dart';
 
 class _FakeContext extends Fake implements BuildContext {}
 
@@ -127,5 +132,61 @@ void main() {
     expect(menuItemForPick(CanvasMenuScope.node, 'node.lanes:l1', items: items), isNull);
     expect(menuItemForPick(CanvasMenuScope.blank, 'node.lane:l1', items: items), isNull);
     expect(menuItemForPick(CanvasMenuScope.node, 'blank.x', items: items), isNull);
+  });
+
+  testWidgets('空白处「新建…」原地换成新建菜单：不调 dismiss、请求中间不经过 null、锚点不变', (tester) async {
+    late WidgetRef ref;
+    late BuildContext ctx;
+    await pumpInkApp(
+      tester,
+      Consumer(
+        builder: (BuildContext context, WidgetRef r, Widget? child) {
+          ref = r;
+          ctx = context;
+          return const SizedBox.shrink();
+        },
+      ),
+    );
+    final ProviderContainer container = ProviderScope.containerOf(ctx);
+
+    // 先挂监听再开菜单：请求 provider 是 autoDispose 的，没人听会被收掉。
+    final List<CanvasMenuRequest?> log = <CanvasMenuRequest?>[];
+    final ProviderSubscription<CanvasMenuRequest?> sub = container.listen<CanvasMenuRequest?>(
+      canvasMenuRequestProvider('c1'),
+      (CanvasMenuRequest? previous, CanvasMenuRequest? next) => log.add(next),
+    );
+    addTearDown(sub.close);
+
+    const Offset p = Offset(140, 90);
+    container.read(canvasMenuRequestProvider('c1').notifier).openBlank(p);
+    final CanvasMenuRequest blank = container.read(canvasMenuRequestProvider('c1'))!;
+    expect(blank.kind, CanvasMenuKind.blank);
+    log.clear();
+
+    // dismiss 照宿主的样子真关菜单：变异后会在日志里留下一个 null。
+    int dismissed = 0;
+    final CanvasMenuItemDef? create = menuItemForPick(CanvasMenuScope.blank, 'blank.create');
+    expect(create, isNotNull);
+    await create!.run(
+      CanvasMenuContext(
+        context: ctx,
+        ref: ref,
+        canvasId: 'c1',
+        request: blank,
+        targets: const <String>{},
+        picked: 'blank.create',
+        dismiss: () {
+          dismissed++;
+          container.read(canvasMenuRequestProvider('c1').notifier).close(blank);
+        },
+      ),
+    );
+
+    expect(dismissed, 0);
+    expect(log, isNotEmpty);
+    expect(log.where((CanvasMenuRequest? r) => r == null), isEmpty, reason: '$log');
+    expect(log.last!.kind, CanvasMenuKind.create);
+    expect(log.last!.anchor, p);
+    expect(log.last!.sourceNodeId, isNull);
   });
 }

@@ -2,7 +2,7 @@
 // 后续都走它——GapsCanvas 稿：「更多」改用画布菜单组件，键位、置灰、↑↓ ↵ Esc 与右键同一套，不再用 Material
 // showMenu）。画布舞台上的菜单不走它，走 CanvasMenuHost（锚点跟着画布区走、开关看 canvasMenuRequestProvider）。
 //
-// 开关由调用方的 [CanvasMenuPopover.anchor] 决定：null ⇒ 收起；给一个全局点 ⇒ 经 OverlayPortal 浮到 Overlay 上，
+// 开关由调用方的 [CanvasMenuPopover.anchor] 决定：null ⇒ 收起；给一个全局点 ⇒ 在常挂的 OverlayPortal 浮层里画出来，
 // 左上角对准它，右边 / 下边放不下往回收（CanvasMenuAnchorLayout，与宿主同一个）。点外面 / 面板失焦 / Esc ⇒
 // onDismiss；选一项 ⇒ onSelected（关不关由调用方定）。与宿主共用 InkMenuPanel.tapRegionGroup：点在子菜单里
 // 不算点外面。设计缺口：菜单栏下拉的宽度、相对标签的锚点稿上没给尺寸，这里先只支持「左上角对准一个点」。
@@ -60,21 +60,21 @@ class _CanvasMenuPopoverState<T> extends State<CanvasMenuPopover<T>> {
   @override
   void initState() {
     super.initState();
-    // 还没挂上时 show() 只是记一笔，OverlayPortal 挂上那一刻生效（与宿主同）。
-    if (widget.anchor != null) _portal.show();
+    // 浮层一直挂着，开关只看 anchor：null 时 _buildMenu 画一个空盒子。OverlayPortal 跟着父层重建，
+    // 浮层里的菜单自然拿到新的 anchor。还没挂上时 show() 只是记一笔，OverlayPortal 挂上那一刻生效。
+    // 不在 didUpdateWidget 里 show / hide：那时还在 build 阶段，OverlayPortal 已挂上时两者都会断言失败。
+    _portal.show();
   }
 
   @override
   void didUpdateWidget(CanvasMenuPopover<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     final Offset? anchor = widget.anchor;
-    if (anchor == oldWidget.anchor) return;
-    if (anchor == null) {
-      if (_portal.isShowing) _portal.hide();
-    } else {
-      // 每开一次（含换个点再开）都 show 一次：后开的菜单压在其它浮层之上。
-      _portal.show();
-    }
+    if (anchor == null || anchor == oldWidget.anchor) return;
+    // 每开一次（含换个点再开）帧后再 show 一次：后开的菜单压在其它浮层之上。
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.anchor != null) _portal.show();
+    });
   }
 
   /// 焦点整个离开菜单（点到别的输入框 / 开了对话框 / 切了标签）：当成关菜单。
