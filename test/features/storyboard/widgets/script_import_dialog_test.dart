@@ -1,7 +1,8 @@
-// SB-2 脚本导入对话框：粘贴 → 实时预览 → 一键建链。
+// SB-2 剧本导入对话框：粘贴 → 实时预览 → 一键建链。
 //
 // 预览是这张卡的定心丸——拆分规则再讲究，用户也得先看见「拆成了几镜、每镜叫什么」
 // 才敢按下创建。所以预览必须随文本与策略实时变，不能等到点了创建才知道结果。
+// 创建按钮也写出数量（「创建 3 个镜头」），与预览头的「N 镜」同一个 N。
 //
 // 成败提示走通知卡（toastServiceProvider）：成功时对话框已关，失败时对话框还开着
 // ——通知卡画在所有路由之上，两种时机都看得见。
@@ -41,7 +42,11 @@ void main() {
   });
 
   /// 打开对话框，返回记下的通知卡。
-  Future<RecordingToastService> pump(WidgetTester tester, {UnitOfWork? uow}) async {
+  Future<RecordingToastService> pump(
+    WidgetTester tester, {
+    UnitOfWork? uow,
+    Locale locale = const Locale('en'),
+  }) async {
     final UnitOfWork unitOfWork = uow ??
         FakeUnitOfWork(
           FakeRepositoryScope(nodes: nodeRepo, edges: edgeRepo),
@@ -62,6 +67,7 @@ void main() {
         unitOfWorkProvider.overrideWith((ref) async => unitOfWork),
         toastServiceProvider.overrideWithValue(toast),
       ],
+      locale: locale,
     );
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
@@ -73,7 +79,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // B1：框常从画布开（空白处右键「导入脚本…」）。不持焦的话主焦点会被画布要回去，按键穿过框打到画布上。
+  // B1：框常从画布开（空白处右键「导入剧本…」）。不持焦的话主焦点会被画布要回去，按键穿过框打到画布上。
   testWidgets('一打开粘贴框就持焦（autofocus）：不用先点一下就能粘贴', (tester) async {
     await pump(tester);
     expect(
@@ -101,8 +107,9 @@ void main() {
     expect(find.text('1. 山径破晓'), findsOneWidget);
     expect(find.text('2. 渡索桥'), findsOneWidget);
     expect(find.text('3. 茶棚避雨'), findsOneWidget);
+    // 按钮写出数量，与预览头「3 shots」同一个 N。
     final ButtonStyleButton confirm =
-        tester.widget(find.widgetWithText(FilledButton, 'Create shots'));
+        tester.widget(find.widgetWithText(FilledButton, 'Create 3 shots'));
     expect(confirm.onPressed, isNotNull);
   });
 
@@ -116,13 +123,41 @@ void main() {
 
     // 同一段文本共 4 个非空行。
     expect(find.text('4 shots'), findsOneWidget);
+    // 按钮跟着策略一起重算，不停在旧的 3。
+    expect(find.widgetWithText(FilledButton, 'Create 4 shots'), findsOneWidget);
+    expect(find.text('Create 3 shots'), findsNothing);
+  });
+
+  testWidgets('单镜文本 → 按钮写 Create 1 shot（单数）', (tester) async {
+    await pump(tester);
+    await paste(tester, '就一镜');
+
+    final ButtonStyleButton confirm =
+        tester.widget(find.widgetWithText(FilledButton, 'Create 1 shot'));
+    expect(confirm.onPressed, isNotNull);
+  });
+
+  testWidgets('zh：标题「导入剧本」，按钮「创建 3 个镜头」，清空后回到「创建镜头」并置灰',
+      (tester) async {
+    await pump(tester, locale: const Locale('zh'));
+
+    expect(find.text('导入剧本'), findsOneWidget);
+    await paste(tester, threeShots);
+    final ButtonStyleButton confirm =
+        tester.widget(find.widgetWithText(FilledButton, '创建 3 个镜头'));
+    expect(confirm.onPressed, isNotNull);
+
+    await paste(tester, '');
+    final ButtonStyleButton empty =
+        tester.widget(find.widgetWithText(FilledButton, '创建镜头'));
+    expect(empty.onPressed, isNull);
   });
 
   testWidgets('点创建 → 建出 shot 链、对话框关闭、成功提示', (tester) async {
     final RecordingToastService toast = await pump(tester);
     await paste(tester, threeShots);
 
-    await tester.tap(find.text('Create shots'));
+    await tester.tap(find.text('Create 3 shots'));
     await tester.pumpAndSettle();
 
     expect(nodeRepo.rows, hasLength(3));
@@ -146,7 +181,7 @@ void main() {
     final RecordingToastService toast = await pump(tester);
     await paste(tester, '就一镜');
 
-    await tester.tap(find.text('Create shots'));
+    await tester.tap(find.text('Create 1 shot'));
     await tester.pumpAndSettle();
 
     expect(nodeRepo.rows, hasLength(1));
@@ -159,7 +194,7 @@ void main() {
         await pump(tester, uow: _ThrowingUnitOfWork());
     await paste(tester, threeShots);
 
-    await tester.tap(find.text('Create shots'));
+    await tester.tap(find.text('Create 3 shots'));
     await tester.pumpAndSettle();
 
     expect(nodeRepo.rows, isEmpty);
