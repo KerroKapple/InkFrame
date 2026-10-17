@@ -238,14 +238,40 @@ void main() {
     expect(scaleOf(_ivTransform(tester)), lessThan(zoomedIn));
   });
 
-  testWidgets('⌘0（Ctrl+0）缩放复位到初始相机', (tester) async {
-    await _pump(tester, nodes: twoNodes);
+  // KeyMap Q5-B：⌘0 是「缩放到 100%、保持视口中心」，不再跳回初始相机（初始相机常落在空处）。
+  // 变异对照：resetCanvasZoom 改回 resetTransform() ⇒ 中心点断言与 isNot(初始相机) 红。
+  testWidgets('⌘0（Ctrl+0）缩放到 100%、保持视口中心', (tester) async {
+    final container = await _pump(
+      tester,
+      nodes: twoNodes,
+      surfaceSize: const Size(800, 600),
+    );
 
     await _sendCtrl(tester, LogicalKeyboardKey.equal);
-    expect(_ivTransform(tester), isNot(initialCanvasTransform()));
+    await _sendCtrl(tester, LogicalKeyboardKey.equal);
+    // 再手动平移一段：保证 100% 之后的相机与初始相机不同（单靠缩放，中心点不动也可能巧合回到原处）。
+    final controller = container.read(canvasTransformControllerProvider('c1'));
+    controller.value = Matrix4.translationValues(-90, 70, 0)
+      ..multiply(controller.value);
+    await tester.pump();
+    expect(scaleOf(_ivTransform(tester)), greaterThan(1.0));
+
+    final size = container.read(canvasViewportSizeProvider('c1'));
+    expect(size, isNot(Size.zero), reason: '前提：视口尺寸已上报');
+    final center = Offset(size.width / 2, size.height / 2);
+    final sceneAtCenter = MatrixUtils.transformPoint(
+      Matrix4.inverted(_ivTransform(tester)),
+      center,
+    );
 
     await _sendCtrl(tester, LogicalKeyboardKey.digit0);
-    expect(_ivTransform(tester), initialCanvasTransform());
+
+    final m = _ivTransform(tester);
+    expect(scaleOf(m), 1.0);
+    final mapped = MatrixUtils.transformPoint(m, sceneAtCenter);
+    expect(mapped.dx, closeTo(center.dx, 1e-6));
+    expect(mapped.dy, closeTo(center.dy, 1e-6));
+    expect(m, isNot(initialCanvasTransform()));
   });
 
   // ===== D2：缩放围绕视口中心（viewport size 存活，不自毁复位 Size.zero）=====

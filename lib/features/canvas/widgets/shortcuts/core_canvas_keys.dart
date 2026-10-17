@@ -317,10 +317,13 @@ void zoomCanvasBy(
   );
 }
 
-/// 缩放复位（⌘0 / Ctrl+0）：回到初始相机。
+/// 缩放复位（⌘0 / Ctrl+0）：缩放到 100%、视口中心对着的内容不动（KeyMap Q5-B）；不回初始相机——
+/// 初始相机常落在空处，回内容有 Shift+1。已是 100% 时相机不动。
 void resetCanvasZoom(WidgetRef ref, {required String canvasId}) {
-  ref.read(canvasTransformControllerProvider(canvasId)).value =
-      resetTransform();
+  final TransformationController controller =
+      ref.read(canvasTransformControllerProvider(canvasId));
+  final Size size = ref.read(canvasViewportSizeProvider(canvasId));
+  controller.value = actualSizeTransform(controller.value, size);
 }
 
 /// I / G / T：在视口中心建一个 intent 指定类型的节点（与工具条建节点键同一条路径）。

@@ -1,4 +1,4 @@
-// canvas_zoom 纯函数单测（PL-2）：钳制上下限、复位、步进方向、围绕视口中心。
+// canvas_zoom 纯函数单测（PL-2）：钳制上下限、复位、步进方向、围绕视口中心、缩放到 100%。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
@@ -79,5 +79,58 @@ void main() {
     final mapped = MatrixUtils.transformPoint(zoomed, sceneAtCenter);
     expect(mapped.dx, closeTo(center.dx, 1e-6));
     expect(mapped.dy, closeTo(center.dy, 1e-6));
+  });
+
+  // ===== 缩放到 100%（⌘0 / Ctrl+0）=====
+  group('actualSizeTransform', () {
+    // 任意缩放 + 平移下：scale 精确变成 1，变换前落在视口中心的场景点，变换后仍在视口中心。
+    // 变异对照：目标 scale 写成 scaleOf(current) ⇒ scale 断言红；支点按 (0,0) 算 ⇒ 中心点断言红。
+    for (final double s in <double>[2.5, kCanvasMinScale, kCanvasMaxScale]) {
+      test('100%：scale $s 下 scale 变成 1，视口中心的场景点不动', () {
+        final center = Offset(viewport.width / 2, viewport.height / 2);
+        final current = Matrix4.identity()
+          ..translateByDouble(120.0, -80.0, 0.0, 1.0)
+          ..scaleByDouble(s, s, 1.0, 1.0);
+        final sceneAtCenter = MatrixUtils.transformPoint(
+          Matrix4.inverted(current),
+          center,
+        );
+
+        final result = actualSizeTransform(current, viewport);
+
+        expect(scaleOf(result), 1.0);
+        final mapped = MatrixUtils.transformPoint(result, sceneAtCenter);
+        expect(mapped.dx, closeTo(center.dx, 1e-6));
+        expect(mapped.dy, closeTo(center.dy, 1e-6));
+      });
+    }
+
+    test('已是 100%：原样返回（不抖动、不重置平移）', () {
+      final current = Matrix4.identity()
+        ..translateByDouble(-37.0, 52.0, 0.0, 1.0);
+
+      final result = actualSizeTransform(current, viewport);
+
+      expect(result, current);
+    });
+
+    // 首帧前视口尺寸还没上报：支点退化为 (0,0)，与 zoomedTransform 一致；不抛错、不跳回初始相机。
+    // 变异对照：Size.zero 时提前 return initialCanvasTransform() ⇒ 原点断言红。
+    test('视口尺寸为零：以原点为锚、不抛错', () {
+      final current = Matrix4.identity()
+        ..translateByDouble(120.0, -80.0, 0.0, 1.0)
+        ..scaleByDouble(2.5, 2.5, 1.0, 1.0);
+      final sceneAtOrigin = MatrixUtils.transformPoint(
+        Matrix4.inverted(current),
+        Offset.zero,
+      );
+
+      final result = actualSizeTransform(current, Size.zero);
+
+      expect(scaleOf(result), 1.0);
+      final mapped = MatrixUtils.transformPoint(result, sceneAtOrigin);
+      expect(mapped.dx, closeTo(0, 1e-6));
+      expect(mapped.dy, closeTo(0, 1e-6));
+    });
   });
 }
