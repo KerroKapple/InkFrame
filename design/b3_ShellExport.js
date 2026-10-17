@@ -150,7 +150,7 @@ const s1Edges = row(147, 46, [
   { badge: bEdge('Esc 一次一层'), mock: `<div style="display: flex; flex-direction: column; gap: 1px; font-size: 9px">${['菜单', '@ 弹层', '查找条', '框选进行中', '工具锁', '清空选中'].map((t, i) => `<div style="height: 10px; display: flex; align-items: center; gap: 5px; font-size: 9px; color: ${i === 0 ? T.accent : T.fg4}"><span style="font-family: ${MONO}; font-size: 9px; color: ${T.fg6}; width: 8px">${i + 1}</span>${t}${i === 0 ? `<span style="color: ${T.fg5}">← 先关</span>` : ''}</div>`).join('')}</div>`,
     cap: '菜单开着按 Esc 只关菜单、焦点回进来前的位置；再按才轮到下一层' },
   { badge: bEdge('交付进行中'), mock: `${strip({ open: '文件', gear: 'dis' })}${menuAt('文件', `${mr('导出视频…')}${mr('设置…', '', { dis: true, hot: true, note: '交付中' })}`, 160, MW6)}`,
-    cap: `${now}：交付在途 ⚙ 变灰（${code('deliveryBusyProvider')}）；菜单里「设置…」同一判据` },
+    cap: `${now}：交付在途设置键变灰（${code('deliveryBusyProvider')}）；菜单里「设置…」同一判据` },
   { badge: bEdge('有新版本'), mock: `${strip({ open: '帮助', dot: '帮助' })}${menuAt('帮助', `${mr('有新版本 0.9.0 · 下载', '', { accent: true, hot: true })}${mr('关于 InkFrame')}`, 160, MW6)}`,
     cap: '与关于页共用检查结果；「帮助」与左栏帮助键同时挂琥珀点' },
   { badge: bEdge('macOS'), mock: `

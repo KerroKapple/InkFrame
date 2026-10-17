@@ -266,7 +266,7 @@ const s6 = halfSection('设置 · 快捷键页', 'P2', `现状：${code('shortcu
     S('空态', '没有空态', '现状', { mock: box(`${txt('至少有 ⌘K 与 Esc 两行', T.fg5)}<div style="margin-top: 4px">${txt('待定键不上屏', T.fg6)}</div>`), cap: '表永远非空；未登记的键不出现，不画「待定」行' }),
   ],
   [
-    F(1, '⚙ → 快捷键', '现状', { mock: box(`<div style="display: flex; gap: 4px; align-items: center">${ic('settings', 12)}${arrow}${txt('左导航第 3 项「快捷键」', T.fg2)}</div><div style="margin-top: 4px">${txt('设置是浮层，不写路由', T.fg5)}</div>`), cap: '也可从左栏导航条底部「快捷键」键直接开到这一页' }),
+    F(1, '设置 → 快捷键', '现状', { mock: box(`<div style="display: flex; gap: 4px; align-items: center">${ic('settings', 12)}${arrow}${txt('左导航第 3 项「快捷键」', T.fg2)}</div><div style="margin-top: 4px">${txt('设置是浮层，不写路由', T.fg5)}</div>`), cap: '也可从左栏导航条底部「快捷键」键直接开到这一页' }),
     F(2, '读表', '新增', { mock: box(`${groupRow('指针 · 画布')}${setRow('框选', '左键拖空白')}${setRow('平移', '右键拖 · 中键拖')}`, 'padding: 1px 6px'), cap: `指针手势无法反推，单写 ${code('pointer_gesture_catalog')}` }),
     F(3, 'Esc 关浮层', '现状', { mock: box(`${kline(keys('Esc'), '关设置（kOverlayDismissActivator）')}${kline(txt('编辑框开着'), '先关框，再按一次关浮层', T.fg5)}`), cap: '设置自持焦，晚于兜底夺焦；关了焦点回原标签' }),
   ],
