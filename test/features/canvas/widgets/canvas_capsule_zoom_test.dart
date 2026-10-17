@@ -8,7 +8,9 @@
 //   - resetCanvasZoom 去掉 showZoomCapsule ⇒「Ctrl 0 出 Zoom 100%」红；
 //   - _fitNodes 去掉 showZoomCapsule ⇒「Shift 1 适应全部出比例」「缩放条 Fit 出比例」红；
 //   - 改成在 canvasTransformController 上挂 listener 统一出胶囊 ⇒「滚轮缩放不出」「缩放条 + − 不出」红；
-//   - _fitNodes 在 next == null / 没东西可框时也出 ⇒「Shift 2 无选中：不出」红。
+//   - _fitNodes 没东西可框（resetWhenEmpty: false）时也出 ⇒「Shift 2 选中的卡都在折叠道里：不出」红；
+//   - _fitNodes 在 next == null（视口未量出）时也出 ⇒「视口未量出时 Shift 1：不出」红。
+//   「Shift 2 无选中：不出」守不到 _fitNodes——fitSelectedNodes 在选中为空时先返回了，它只守入口那一道。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -20,7 +22,9 @@ import 'package:inkframe/features/canvas/providers/canvas_capsule.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
+import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_zoom_bar.dart';
@@ -59,7 +63,11 @@ Future<void> _frames(WidgetTester tester, [int n = 4]) async {
   }
 }
 
-Future<ProviderContainer> _pumpOnCanvas(WidgetTester tester, String prefix) async {
+Future<ProviderContainer> _pumpOnCanvas(
+  WidgetTester tester,
+  String prefix, {
+  List<CanvasNode>? nodes,
+}) async {
   final paths = await setupTempPaths(tester, prefix);
   await pumpInkShell(
     tester,
@@ -70,7 +78,7 @@ Future<ProviderContainer> _pumpOnCanvas(WidgetTester tester, String prefix) asyn
       project: ProjectRef(id: 'p1', name: 'Alpha'),
     ),
     extraOverrides: <Override>[
-      canvasNodesControllerProvider.overrideWith(() => FakeNodesController(_nodes)),
+      canvasNodesControllerProvider.overrideWith(() => FakeNodesController(nodes ?? _nodes)),
       canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
       canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
@@ -183,6 +191,57 @@ void main() {
     final Matrix4 before = c.read(canvasTransformControllerProvider(_canvasId)).value.clone();
 
     await _shift(tester, LogicalKeyboardKey.digit2);
+    await _frames(tester, 2);
+
+    expect(c.read(canvasTransformControllerProvider(_canvasId)).value, before);
+    _expectNoCapsule(tester, c);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('Shift 2 选中的卡都在折叠道里：相机不动，不出胶囊', (tester) async {
+    // 走进 _fitNodes 的「没东西可框」分支（resetWhenEmpty: false）：选中非空，但看得见的为空。
+    const String lane = 'lane-folded';
+    final ProviderContainer c = await _pumpOnCanvas(
+      tester,
+      'ink_capsule_fit_sel_folded_',
+      nodes: <CanvasNode>[
+        ..._nodes,
+        const CanvasNode(
+          id: 'folded',
+          label: 'Folded',
+          type: CanvasNodeType.text,
+          canvasId: _canvasId,
+          laneId: lane,
+          position: Offset(600, 300),
+        ),
+      ],
+    );
+    c.read(canvasSelectionControllerProvider(_canvasId).notifier).select('folded');
+    c.read(laneCollapseProvider(_canvasId).notifier).toggle(lane);
+    await _frames(tester, 2);
+    expect(
+      c.read(canvasSelectionControllerProvider(_canvasId)),
+      <String>{'folded'},
+      reason: '前提：选中还在，Shift 2 走得进 _fitNodes',
+    );
+    expect(c.read(laneCollapseProvider(_canvasId)), contains(lane), reason: '前提：道已折叠');
+    final Matrix4 before = c.read(canvasTransformControllerProvider(_canvasId)).value.clone();
+
+    await _shift(tester, LogicalKeyboardKey.digit2);
+    await _frames(tester, 2);
+
+    expect(c.read(canvasTransformControllerProvider(_canvasId)).value, before);
+    _expectNoCapsule(tester, c);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('视口未量出时 Shift 1：相机不动，不出胶囊', (tester) async {
+    // 走进 _fitNodes 的 next == null 分支：有卡可框，但视口是 Size.zero（fitArea 返回 null）。
+    final ProviderContainer c = await _pumpOnCanvas(tester, 'ink_capsule_fit_no_viewport_');
+    final Matrix4 before = c.read(canvasTransformControllerProvider(_canvasId)).value.clone();
+
+    // 置零后不 pump、紧接着按键：舞台 LayoutBuilder 的帧后回调还来不及把真实尺寸写回来。
+    c.read(canvasViewportSizeProvider(_canvasId).notifier).setSize(Size.zero);
+    expect(c.read(canvasViewportSizeProvider(_canvasId)), Size.zero, reason: '前提：视口未量出');
+    await _shift(tester, LogicalKeyboardKey.digit1);
     await _frames(tester, 2);
 
     expect(c.read(canvasTransformControllerProvider(_canvasId)).value, before);
