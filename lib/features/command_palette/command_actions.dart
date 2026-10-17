@@ -1,24 +1,15 @@
-// 命令面板动作集（PL-1 首版：写死 ≤6 个，全部来自已存在的真实能力）。
+// 命令面板的动作组：全部来自应用级动作表（app_actions/app_action_catalog.dart 的 kAppActions），按上下文过滤。
 //
-// 动作按当前路由上下文组装（canvas / gallery / settings / studio）；
-// label 经 context.l10n 解析后快照进 CommandAction，执行闭包在面板关闭后
-// 由调用方以 (context, ref) 触发，await 之后一律先查 context.mounted。
+// 上下文规则（设置浮层 / 画布 / 有项目的画廊 / 其余）编码在动作表各行的 inPalette 里，顺序 = 表的顺序；
+// 这里只做「inPalette 命中、可用且启用」的过滤（⌘K 不画禁用行：PaletteEntry 没有禁用态）。
+// label 经 context.l10n 解析后快照进 CommandAction，执行闭包在面板关闭后由调用方以 (context, ref) 触发，
+// 那一刻重新取外壳状态（AppActionContext.read）；await 之后一律先查 context.mounted（在各动作的执行体里）。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
-import '../canvas/models/canvas_edge.dart';
-import '../canvas/models/canvas_node.dart';
-import '../canvas/providers/canvas_edges_controller.dart';
-import '../canvas/providers/canvas_nodes_controller.dart';
-import '../canvas/util/canvas_tool_actions.dart';
-import '../export/util/export_order.dart';
-import '../export/widgets/export_video_dialog.dart';
-import '../shell/models/shell_state.dart';
-import '../shell/providers/shell_controller.dart';
-import '../studio/project_import_flow.dart';
-import '../studio/studio_home_screen.dart' show createStudioSampleProject;
+import '../app_actions/app_action.dart';
+import '../app_actions/app_action_catalog.dart';
 
 /// 单个可执行命令：图标 + 已本地化 label + 执行闭包。
 @immutable
@@ -36,154 +27,20 @@ class CommandAction {
   final Future<void> Function(BuildContext context, WidgetRef ref) run;
 }
 
-/// 组装当前上下文可用的命令（≤6）。
-///
-/// - canvas 打开：三种新建节点 + 导出视频（有可导出 result 时）+ 返回/设置
-/// - gallery：返回 Studio + 设置
-/// - settings：返回 Studio
-/// - studio 首页：导入项目 + 短剧示例 + 设置（零项目空态下项目卡菜单不存在,
-///   导入必须能从这里够到——2026-08-31 审计 P0-3；P7 起「内置示例」浮层已并入
-///   短剧示例项目，这里跟着换成建示例项目）
+/// 组装当前上下文可用的命令：动作表里 inPalette 命中、此刻可用且启用的行，按表的顺序。
 List<CommandAction> buildCommandActions(BuildContext context, WidgetRef ref) {
   final l = context.l10n;
-  final s = ref.read(shellControllerProvider);
-  // fix round 1（M-4）：overlay 判断提到最前，与 app.dart 的 overlay-first
-  // 判序保持一致（R25）——浮层可以盖在画布或画廊之上（openOverlay 刻意保留
-  // canvasId/project），若 overlay 判断排在后面，"画布/画廊上开着 Settings
-  // 时按 ⌘K" 会拿到画布/画廊动作集而非当前真正可见的 Settings 动作集。
-  if (s.overlay != null) {
-    return switch (s.overlay!) {
-      ShellOverlay.settings => <CommandAction>[_backToStudio(l)],
-    };
-  }
-  final canvasId = s.canvasId;
-  // fix round 2（R33）：同步 app.dart 的 tab==canvas 判据——goTab() 同样
-  // 保留 canvasId（标签保活语义），若这里只看 canvasId != null，回到
-  // Studio 后 ⌘K 仍会拿到对着当前不可见画布动刀的动作集（addNode/export）。
-  if (s.tab == ShellTab.canvas && canvasId != null) {
-    // 画布打开期间 CanvasScreen 常驻 watch 该 provider，read 即为已加载态。
-    final videoNodes = exportableVideoNodes(
-      ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
-          const <CanvasNode>[],
-    );
-    // BOARD 210：projectId 看外壳的项目上下文，与 _openExport 同源；不再摸节点数据。
-    final canExport = videoNodes.isNotEmpty && s.project != null;
-    return <CommandAction>[
-      CommandAction(
-        id: 'addImageNode',
-        icon: Icons.add_photo_alternate_outlined,
-        label: l.canvasAddImageNode,
-        run: (c, r) => _addNode(c, r, canvasId, CanvasNodeType.image),
-      ),
-      CommandAction(
-        id: 'addVideoNode',
-        icon: Icons.videocam_outlined,
-        label: l.canvasAddVideoNode,
-        run: (c, r) => _addNode(c, r, canvasId, CanvasNodeType.video),
-      ),
-      CommandAction(
-        id: 'addShotNode',
-        icon: Icons.movie_outlined,
-        label: l.canvasAddShotNode,
-        run: (c, r) => _addNode(c, r, canvasId, CanvasNodeType.shot),
-      ),
-      if (canExport)
-        CommandAction(
-          id: 'exportVideo',
-          icon: Icons.file_download_outlined,
-          label: l.exportVideoLabel,
-          run: (c, r) async => _openExport(c, r, canvasId),
-        ),
-      _backToStudio(l),
-      _openSettings(l),
-    ];
-  }
-  if (s.tab == ShellTab.gallery && s.project != null) {
-    return <CommandAction>[_backToStudio(l), _openSettings(l)];
-  }
-  // studio：短剧示例是全局动作,项目卡菜单在零项目空态下不存在——命令面板
-  // 与空态 CTA 一起保证零项目用户也够得到（评审 P1-1）。2026-08-31 审计 P0：
-  // 导入项目此前在这里完全够不到，见 studio/project_import_flow.dart。
+  final AppActionContext c = AppActionContext.read(context, ref);
   return <CommandAction>[
-    _importProject(l),
-    _createSampleProject(l),
-    _openSettings(l),
+    for (final AppAction a in kAppActions)
+      if (a.inPalette?.call(c) == true && a.isAvailable(c) && a.isEnabled(c))
+        CommandAction(
+          id: a.id,
+          icon: a.icon ?? Icons.bolt_outlined,
+          label: a.labelFor(c, l),
+          run: (BuildContext ctx, WidgetRef r) async {
+            await a.run(AppActionContext.read(ctx, r));
+          },
+        ),
   ];
 }
-
-/// 与工具条、I / G / T 同一条路（canvas_tool_actions.addNodeAtViewportCenter）：视口中心 + 散布、判泳道、
-/// 新节点只单选不挪相机，失败弹错误卡「添加节点失败」。
-Future<void> _addNode(
-  BuildContext context,
-  WidgetRef ref,
-  String canvasId,
-  CanvasNodeType type,
-) =>
-    addNodeAtViewportCenter(context, ref, canvasId: canvasId, type: type);
-
-void _openExport(BuildContext context, WidgetRef ref, String canvasId) {
-  // EX-1′：与顶栏入口同一条排序路径（narrative 链序）。
-  final videoNodes = orderVideoNodesForExport(
-    allNodes: ref.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
-        const <CanvasNode>[],
-    edges: ref.read(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
-        const <CanvasEdge>[],
-  );
-  if (videoNodes.isEmpty) return; // 面板打开到执行之间节点已变化：静默不弹
-  // R86：projectId 走外壳的项目上下文，与 export_tab.dart 同源（spec §8.2 点名
-  // 要迁的【两个】写点之外的第三处，T10 漏下了）。
-  //
-  // 旧写法取 videoNodes.first.projectId，而启用判据（canExport）取的是
-  // exportableVideoNodes(...).first——**候选集相同、排序不同**：
-  // orderVideoNodesForExport 先按 narrative 链序、链外的再按 position.x 追加。
-  // 只要「链序第一个」与「原序第一个」不是同一节点、且前者 project_id 为空
-  // （存量行允许），⌘K 面板里就会出现「Export video」、点下去什么都不发生
-  // ——正是 spec 要消灭的「看着能点、点了没反应」，只是换到了命令面板这条入口。
-  final projectId = ref.read(shellControllerProvider).project?.id;
-  if (projectId == null) return; // 外壳尚无项目上下文：静默不弹
-  showExportVideoDialog(context, projectId: projectId, videoNodes: videoNodes);
-}
-
-CommandAction _backToStudio(AppLocalizations l) => CommandAction(
-      id: 'backToStudio',
-      icon: Icons.arrow_back,
-      label: l.commandBackToStudio,
-      // T11 退掉了这里原有的 `clearLastCanvas: true` 写点（R26 的恢复决定
-      // 在 T11 落地后失效）。理由：标签模型下切到 Studio 标签【不等于关闭
-      // 画布】——画布还在保活宿主里活着，用户只是去看另一个标签。旧语义
-      // 「主动回首页 = 下次启动停在 Studio」绑的是互斥路由时代「回家即离开
-      // 画布」的前提，那个前提没有了。而且它与标签条上的 Studio 标签行为
-      // 不自洽（同一个动作，一条静默清记录、一条不清），也会在用户明确
-      // 打开 shellKeepLastCanvas 的情况下背着他把记录清掉。
-      // 现在「下次启动是否回到上次画布」的唯一真相源是该偏好开关。
-      run: (context, ref) async {
-        ref.read(shellControllerProvider.notifier).goTab(ShellTab.studio);
-      },
-    );
-
-/// 短剧示例：原「内置示例」浮层的继任者——打包的两张成片现在是这个真项目里的
-/// 真产物（P7）。建完直接落在画布上，与 Studio 空态 / 网格虚线格同一条路径。
-CommandAction _createSampleProject(AppLocalizations l) => CommandAction(
-      id: 'createSampleProject',
-      icon: Icons.auto_awesome_outlined,
-      label: l.studioCreateSampleProject,
-      run: (context, ref) => createStudioSampleProject(context, ref),
-    );
-
-CommandAction _importProject(AppLocalizations l) => CommandAction(
-      id: 'importProject',
-      icon: Icons.unarchive_outlined,
-      label: l.studioImportProject,
-      run: (context, ref) => runProjectImportFlow(context, ref),
-    );
-
-CommandAction _openSettings(AppLocalizations l) => CommandAction(
-      id: 'openSettings',
-      icon: Icons.settings_outlined,
-      label: l.studioOpenSettings,
-      run: (context, ref) async {
-        ref
-            .read(shellControllerProvider.notifier)
-            .openOverlay(ShellOverlay.settings);
-      },
-    );

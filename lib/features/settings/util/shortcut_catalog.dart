@@ -233,6 +233,16 @@ final Map<int, String> _keyLabels = <int, String>{
   // 适应全部 / 适应选中（CanvasToolKeys.fitAll / fitSelection）：⇧1 / Shift+1、⇧2 / Shift+2。
   LogicalKeyboardKey.digit1.keyId: '1',
   LogicalKeyboardKey.digit2.keyId: '2',
+  // 第二批动作的键位（app_actions/planned_keys.dart 的 PlannedKeys）：撤销 / 重做 Z、Y，剪切 / 复制 X、C，
+  // 导入媒体 U，便签 N，通知 F6（粘贴 V、包成泳道 G、查找 F 上面已有）。注册表里还没有这些键，快捷键页行集不变；
+  // 认领它们是为了动作表的 keyLabel 在菜单栏 / 撤销卡上出得了字。
+  LogicalKeyboardKey.keyZ.keyId: 'Z',
+  LogicalKeyboardKey.keyY.keyId: 'Y',
+  LogicalKeyboardKey.keyX.keyId: 'X',
+  LogicalKeyboardKey.keyC.keyId: 'C',
+  LogicalKeyboardKey.keyU.keyId: 'U',
+  LogicalKeyboardKey.keyN.keyId: 'N',
+  LogicalKeyboardKey.f6.keyId: 'F6',
 };
 
 /// 按平台换字的按键（同样按 keyId 索引，理由同上）。回车：macOS 画 ↵、其余平台写 Enter——生成选中

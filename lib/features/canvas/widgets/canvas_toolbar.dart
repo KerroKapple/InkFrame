@@ -10,28 +10,30 @@
 //   选择键不亮（点选择 = 退出连线，与旧工具条同义）。
 // - 建节点 / 泳道 / 连线：点下即生效，动作本体在 util/canvas_tool_actions.dart，
 //   与 I / G / T / F / L 快捷键是同一条路径。连线键只在恰好选中一个节点或已在连线模式时可按。
-// - 更多：小菜单，目前只有「导入剧本…」——整条链从视口中心起铺。
+// - 更多：小菜单，项表是 util/more_menu_model.dart 的 kMoreMenuActionIds，每项的文案 / 判据 / 执行取应用级动作表
+//   （app_actions/app_action_catalog.dart）里同 id 的那一行——与菜单栏、⌘K 同一行动作。目前只有「导入剧本…」
+//   （整条链从视口中心起铺）。不可用的项灰着不藏，悬停说原因。
 // - 每个键都走 InkActivatable（Tab 可达、Enter / Space 激活、焦点环）；tooltip =「名称  键位」，
 //   键位取 canvas_shortcuts.dart 的 CanvasToolKeys，与快捷键表同源——改键位不会只改一半。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_icon.dart';
 import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
-import '../../storyboard/widgets/script_import_dialog.dart';
+import '../../app_actions/app_action.dart';
+import '../../app_actions/app_action_catalog.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_tool_mode.dart';
 import '../providers/link_mode_controller.dart';
 import '../util/canvas_tool_actions.dart';
+import '../util/more_menu_model.dart';
 import 'canvas_shortcuts.dart';
-
-/// 「更多」菜单项。
-enum _MoreAction { importScript }
 
 class CanvasToolbar extends ConsumerWidget {
   const CanvasToolbar({super.key, required this.canvasId});
@@ -194,34 +196,37 @@ class CanvasToolbar extends ConsumerWidget {
       Offset.zero & overlay.size,
     );
     final InkColors c = anchor.inkColors;
-    final _MoreAction? picked = await showMenu<_MoreAction>(
+    final AppLocalizations l = anchor.l10n;
+    final AppActionContext ctx = AppActionContext.read(anchor, ref);
+    // 项表逐项取动作表的行：不可用的不画；不启用的画灰行，悬停说原因。
+    final List<PopupMenuEntry<String>> items = <PopupMenuEntry<String>>[];
+    for (final String id in kMoreMenuActionIds) {
+      final AppAction? action = appActionById(id);
+      if (action == null || !action.isAvailable(ctx)) continue;
+      final bool enabled = action.isEnabled(ctx);
+      final Widget label = Text(
+        action.labelFor(ctx, l),
+        style: anchor.inkTypography.body.copyWith(color: enabled ? c.fg2 : c.fg6),
+      );
+      items.add(
+        PopupMenuItem<String>(
+          value: id,
+          enabled: enabled,
+          child: enabled
+              ? label
+              : Tooltip(message: action.disabledReason(ctx, l) ?? '', child: label),
+        ),
+      );
+    }
+    final String? picked = await showMenu<String>(
       context: anchor,
       position: position,
       color: c.surface4,
-      items: <PopupMenuEntry<_MoreAction>>[
-        PopupMenuItem<_MoreAction>(
-          value: _MoreAction.importScript,
-          child: Text(
-            anchor.l10n.canvasAddImportScript,
-            style: anchor.inkTypography.body.copyWith(color: c.fg2),
-          ),
-        ),
-      ],
+      items: items,
     );
     if (picked == null || !anchor.mounted) return;
-    switch (picked) {
-      case _MoreAction.importScript:
-        // 整条链从视口中心起铺——第一镜正对着用户，后续沿 x 轴排开。
-        await showScriptImportDialog(
-          anchor,
-          canvasId: canvasId,
-          origin: viewportCenteredNodeOrigin(
-            ref,
-            canvasId: canvasId,
-            type: CanvasNodeType.shot,
-          ),
-        );
-    }
+    // 执行那一刻重取外壳状态：菜单开着到选中之间外壳可能变了。
+    await appActionById(picked)?.run(AppActionContext.read(anchor, ref));
   }
 }
 

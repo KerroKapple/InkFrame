@@ -5,7 +5,8 @@
 // 2. 模式键：默认选择亮；点平移 → 平移亮、选择暗；按住空格（临时平移）平移键也亮。
 // 3. 建节点键：图像 / 视频 / 文本 / 分镜各建对应类型；写库失败 → 错误卡「Failed to add node」。
 // 4. 连线键：没选中 / 选中两个时禁用；恰好选中一个时可按，点了以它为源进连线，再点退出。
-// 5. 泳道键开「新建泳道」框、保存即建；更多 → 导入脚本… 开脚本导入框（不建节点）。
+// 5. 泳道键开「新建泳道」框、保存即建；更多 → 导入脚本… 开脚本导入框（不建节点）；「更多」的项 = kMoreMenuActionIds
+//    逐项取动作表的行，不能用的灰着、悬停说原因。
 // 6. 键盘可达：聚焦后回车 = 点击；不可按的键不可聚焦。
 //
 // 写库走真控制器 + 内存仓储（与旧加号测试同一套），失败卡覆盖成 RecordingToastService 断言。
@@ -21,9 +22,15 @@ import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_tool_mode.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
+import 'package:inkframe/features/app_actions/app_action_catalog.dart';
+import 'package:inkframe/features/app_actions/app_action_ids.dart';
+import 'package:inkframe/features/canvas/util/more_menu_model.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_toolbar.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
+import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/features/storyboard/widgets/script_import_dialog.dart';
+import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/components/ink_icon.dart';
 import 'package:inkframe/theme/icons/ink_glyph.dart';
 import 'package:inkframe/theme/tokens.dart';
@@ -68,11 +75,16 @@ class _FailingNodeRepository extends InMemoryNodeRepository {
       throw const LocalIOError();
 }
 
+/// 外壳默认播种成「画布标签在前台、打开的是 cv1」：「更多」的项取动作表的行，判据看外壳此刻看得见的画布
+/// （生产里工具条只在画布标签可见时点得到，外壳的 canvasId 就是它这张）。
+const ShellState _onCanvas = ShellState(tab: ShellTab.canvas, canvasId: _canvasId);
+
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   InMemoryNodeRepository? nodeRepo,
   InMemoryStyleLaneRepository? laneRepo,
   RecordingToastService? toast,
+  ShellState shell = _onCanvas,
 }) async {
   final InMemoryNodeRepository nodes = nodeRepo ?? InMemoryNodeRepository();
   final InMemoryStyleLaneRepository lanes =
@@ -89,6 +101,7 @@ Future<ProviderContainer> _pump(
       nodeRepositoryProvider.overrideWith((ref) async => nodes),
       styleLaneRepositoryProvider.overrideWith((ref) async => lanes),
       toastServiceProvider.overrideWithValue(toast ?? RecordingToastService()),
+      shellControllerProvider.overrideWith(() => ShellNavigator(initial: shell)),
     ],
     surfaceSize: const Size(800, 600),
   );
@@ -317,6 +330,54 @@ void main() {
 
     expect(find.byType(ScriptImportDialog), findsOneWidget);
     expect(nodeRepo.rows, isEmpty, reason: '打开对话框本身不该建节点');
+  });
+
+  testWidgets('更多 = kMoreMenuActionIds 逐项：项数一致，文字依次是动作表里那一行的文案', (tester) async {
+    await _pump(tester);
+    final AppLocalizations l =
+        AppLocalizations.of(tester.element(find.byType(CanvasToolbar)))!;
+
+    await tester.tap(_key('more'));
+    await tester.pumpAndSettle();
+
+    final Finder items =
+        find.byWidgetPredicate((Widget w) => w is PopupMenuItem<String>);
+    expect(items, findsNWidgets(kMoreMenuActionIds.length));
+    double? lastY;
+    for (int i = 0; i < kMoreMenuActionIds.length; i++) {
+      final String label = appActionById(kMoreMenuActionIds[i])!.label(l);
+      final Finder text =
+          find.descendant(of: items.at(i), matching: find.text(label));
+      expect(text, findsOneWidget, reason: '第 ${i + 1} 项应是「$label」');
+      final double y = tester.getTopLeft(text).dy;
+      if (lastY != null) expect(y, greaterThan(lastY), reason: label);
+      lastY = y;
+    }
+  });
+
+  // 不可用的项灰着不藏，悬停说原因（外壳此刻没有看得见的画布 ⇒ 导入剧本「先打开一个画布」）。
+  testWidgets('更多：不能用的项灰着、带原因 tooltip，点了不执行', (tester) async {
+    final InMemoryNodeRepository nodeRepo = InMemoryNodeRepository();
+    await _pump(tester, nodeRepo: nodeRepo, shell: const ShellState());
+    final AppLocalizations l =
+        AppLocalizations.of(tester.element(find.byType(CanvasToolbar)))!;
+
+    await tester.tap(_key('more'));
+    await tester.pumpAndSettle();
+
+    final String label = appActionById(AppActionIds.importScript)!.label(l);
+    final PopupMenuItem<String> item = tester.widget<PopupMenuItem<String>>(
+      find.ancestor(
+        of: find.text(label),
+        matching: find.byWidgetPredicate((Widget w) => w is PopupMenuItem<String>),
+      ),
+    );
+    expect(item.enabled, isFalse);
+    expect(find.byTooltip(l.appActionReasonOpenCanvas), findsOneWidget);
+
+    await tester.tap(find.text(label), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    expect(find.byType(ScriptImportDialog), findsNothing);
   });
 
   testWidgets('键盘可达：聚焦图像键按回车 = 点它；不可按的连线键也不可聚焦', (tester) async {

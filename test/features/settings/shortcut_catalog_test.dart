@@ -299,5 +299,49 @@ void main() {
         isNull,
       );
     });
+
+    // 第二批动作的键位（PlannedKeys）要在菜单栏 / 撤销卡上出字：Z / Y / X / C / U / N / F6 必须被认领。
+    test('第二批键位：Z / Y / X / C / U / N / F6 出得了字（重做 Windows Ctrl+Y、macOS ⌘⇧Z）', () {
+      final Map<LogicalKeyboardKey, String> letters = <LogicalKeyboardKey, String>{
+        LogicalKeyboardKey.keyZ: 'Z',
+        LogicalKeyboardKey.keyY: 'Y',
+        LogicalKeyboardKey.keyX: 'X',
+        LogicalKeyboardKey.keyC: 'C',
+        LogicalKeyboardKey.keyU: 'U',
+      };
+      letters.forEach((LogicalKeyboardKey k, String label) {
+        expect(
+          formatShortcutActivator(SingleActivator(k, meta: true), isMac: true),
+          '⌘$label',
+        );
+        expect(
+          formatShortcutActivator(SingleActivator(k, control: true), isMac: false),
+          'Ctrl+$label',
+        );
+      });
+      expect(
+        formatShortcutActivator(
+          const SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true),
+          isMac: true,
+        ),
+        '⌘⇧Z',
+      );
+      for (final bool isMac in <bool>[true, false]) {
+        expect(
+          formatShortcutActivator(
+            const SingleActivator(LogicalKeyboardKey.keyN),
+            isMac: isMac,
+          ),
+          'N',
+        );
+        expect(
+          formatShortcutActivator(
+            const SingleActivator(LogicalKeyboardKey.f6),
+            isMac: isMac,
+          ),
+          'F6',
+        );
+      }
+    });
   });
 }
