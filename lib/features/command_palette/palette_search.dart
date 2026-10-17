@@ -13,6 +13,7 @@ import '../../l10n/generated/app_localizations.dart';
 import '../../l10n/l10n_x.dart';
 import '../canvas/models/canvas_edge.dart';
 import '../canvas/models/canvas_node.dart';
+import '../canvas/models/canvas_node_take.dart';
 import '../canvas/providers/canvas_edges_controller.dart';
 import '../canvas/providers/canvas_nodes_controller.dart';
 import '../canvas/providers/canvas_focus_request.dart';
@@ -69,6 +70,18 @@ String _tabLabel(AppLocalizations l, ShellState s) => switch (s.overlay) {
         },
     };
 
+/// 镜头组一行的缩略（画布相对路径）：[config] 当前 take（固定的 ?? 最新的，[currentResultFor]）的
+/// 首帧缩略，图片产物没有缩略就用图本身；名下没有产物为 null。[nodes] 是画布已加载的全量节点。
+@visibleForTesting
+String? shotThumbRelativePath(CanvasNode config, List<CanvasNode> nodes) {
+  final CanvasNode? current = currentResultFor(
+    sourceNodeId: config.id,
+    nodes: nodes,
+    pinnedResultId: config.pinnedResultId,
+  );
+  return current?.thumbnailUrl ?? current?.imageUrl;
+}
+
 List<PaletteEntry> _shotEntries(
   BuildContext context,
   WidgetRef ref,
@@ -98,8 +111,7 @@ List<PaletteEntry> _shotEntries(
     final String third = seq == null
         ? nodeTypeLabel(context, n.type)
         : l.commandPaletteSequenceSegment(seq.toString().padLeft(3, '0'));
-    final CanvasNode? latest = latestResultFor(sourceNodeId: n.id, nodes: nodes);
-    final String? thumbRel = latest?.thumbnailUrl ?? latest?.imageUrl;
+    final String? thumbRel = shotThumbRelativePath(n, nodes);
     final File? thumb = thumbRel == null || s.project == null
         ? null
         : galleryResolveFile(ref, projectId: s.project!.id, canvasId: canvasId, relativePath: thumbRel);

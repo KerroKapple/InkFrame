@@ -66,7 +66,7 @@ class SequenceShot {
   ///
   /// 为什么不让下游自己从 [nodeId] 反查：sequence_builder 会把后继 config 的产物
   /// 「借」给前面的 shot（见该文件头注），借来的产物挂在**别人**名下，
-  /// `latestResultFor(sourceNodeId: shot.nodeId)` 查不到。P6 交付要按镜取
+  /// `currentResultFor(sourceNodeId: shot.nodeId)` 查不到。P6 交付要按镜取
   /// provider / seed / 提示词 / 像素尺寸，必须有这条回指。
   final String? artifactNodeId;
 

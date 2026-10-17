@@ -236,14 +236,14 @@ class _ShotBlock extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final CanvasNode node = shot.node;
-    final CanvasNode? latest = shot.latest;
+    final CanvasNode? current = shot.current;
     final JobState? job = ref.watch(nodeActiveJobProvider(node.id));
     // 只订阅「这两个节点选没选中」：选中换到别的行时，不相干的行不重建。
     final (bool shotSelected, bool artifactSelected) = ref.watch(
       canvasSelectionControllerProvider(canvasId).select(
         (Set<String> s) => (
           s.contains(node.id),
-          latest != null && s.contains(latest.id),
+          current != null && s.contains(current.id),
         ),
       ),
     );
@@ -255,19 +255,19 @@ class _ShotBlock extends ConsumerWidget {
           canvasId: canvasId,
           projectId: projectId,
           shot: shot,
-          status: nodeStatusOf(node, job: job, hasArtifact: latest != null),
+          status: nodeStatusOf(node, job: job, hasArtifact: current != null),
           selected: shotSelected,
           onTap: () => focusNodeOnCanvas(ref, canvasId: canvasId, node: node),
         ),
-        if (latest != null)
+        if (current != null)
           _ArtifactRow(
             key: OutlinePanel.artifactKey(node.id),
             canvasId: canvasId,
             projectId: projectId,
-            result: latest,
+            result: current,
             count: shot.artifactCount,
             selected: artifactSelected,
-            onTap: () => focusNodeOnCanvas(ref, canvasId: canvasId, node: latest),
+            onTap: () => focusNodeOnCanvas(ref, canvasId: canvasId, node: current),
           ),
         if (job != null) _GeneratingRow(key: OutlinePanel.generatingKey(node.id)),
       ],
@@ -337,7 +337,7 @@ class _ShotRow extends StatelessWidget {
             _Thumb(
               canvasId: canvasId,
               projectId: projectId,
-              result: shot.latest,
+              result: shot.current,
               width: thumbWidth,
               height: thumbHeight,
               outlined: true,

@@ -604,7 +604,7 @@
   "exportVideoNoResultsTooltip": "画布上还没有视频生成结果",
   "exportVideoNoProjectTooltip": "没有项目上下文——请从 Studio 重新打开这个画布",
   "exportVideoDialogTitle": "导出视频",
-  "exportVideoDialogHint": "选中的视频将按列表顺序拼接。同一镜重跑的旧 take 也会列出，默认只勾每镜最新的那一条。",
+  "exportVideoDialogHint": "选中的视频将按列表顺序拼接。同一镜重跑的旧 take 也会列出，默认只勾每镜当前的那一条。",
   "exportVideoOutputNameLabel": "输出文件名（可选）",
   "exportVideoOutputNameHint": "留空使用时间戳默认名",
   "exportVideoInvalidName": "文件名不能包含 \\ / : * ? \" < > | 字符、「..」、控制字符或系统保留名",

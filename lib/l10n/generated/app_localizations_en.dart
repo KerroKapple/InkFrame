@@ -1523,7 +1523,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get exportVideoDialogHint =>
-      'Selected clips are joined in list order. Re-runs of the same shot are listed too — only the newest take of each is selected.';
+      'Selected clips are joined in list order. Re-runs of the same shot are listed too — only the current take of each is selected.';
 
   @override
   String get exportVideoOutputNameLabel => 'Output file name (optional)';

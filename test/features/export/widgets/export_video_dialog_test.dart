@@ -148,6 +148,7 @@ Future<void> _pumpDialog(
   FileResolverService? resolver,
   List<CanvasNode> Function(List<CanvasNode>)? order,
   RecordingToastService? toast,
+  Map<String, String> pinnedBySource = const <String, String>{},
 }) async {
   // EX-1′ 起排序不在对话框内，走调用方同一条路径 orderVideoNodesForExport
   // （无 narrative 边时等价于旧的 position.x 升序）。[order] 可替换掉这一步，
@@ -174,6 +175,7 @@ Future<void> _pumpDialog(
             ctx,
             projectId: 'p1',
             videoNodes: videoNodes,
+            pinnedBySource: pinnedBySource,
           ),
           child: const Text('open'),
         ),
@@ -301,11 +303,13 @@ void main() {
   group('同一镜的多个 take（BOARD 194）', () {
     Future<void> pumpTwoTakes(
       WidgetTester tester,
-      _FakeVideoExportService service,
-    ) =>
+      _FakeVideoExportService service, {
+      Map<String, String> pinnedBySource = const <String, String>{},
+    }) =>
         _pumpDialog(
           tester,
           service: service,
+          pinnedBySource: pinnedBySource,
           nodes: <CanvasNode>[
             _shotConfig('cfg-s1'),
             // 刻意让旧 take 的 position.x 更小：按 x 排会把旧的排前面，
@@ -374,6 +378,33 @@ void main() {
         tester.getTopLeft(find.text('Earlier take')).dy,
         greaterThan(tester.getTopLeft(find.text('new')).dy),
       );
+    });
+
+    testWidgets('pinnedBySource 指向旧 take → 默认勾旧的、最新那行标「旧 take」', (tester) async {
+      final service = _FakeVideoExportService();
+      await pumpTwoTakes(
+        tester,
+        service,
+        pinnedBySource: const <String, String>{'cfg-s1': 'node-old'},
+      );
+
+      // 列表序不变（新→旧成组），默认勾选换成固定的那条。
+      expect(
+        tester.getTopLeft(find.text('new')).dy,
+        lessThan(tester.getTopLeft(find.text('old')).dy),
+      );
+      expect(_checkboxValues(tester), <bool?>[false, true]);
+
+      // 「旧 take」标记跟着当前集走：这次挂在最新那行（与 'new' 同一行，在 'old' 之上）。
+      expect(find.text('Earlier take'), findsOneWidget);
+      expect(
+        tester.getTopLeft(find.text('Earlier take')).dy,
+        lessThan(tester.getTopLeft(find.text('old')).dy),
+      );
+
+      await tester.tap(find.text('Export'));
+      await tester.pumpAndSettle();
+      expect(service.lastInputs, <String>['canvases/c1/videos/old.mp4']);
     });
   });
 

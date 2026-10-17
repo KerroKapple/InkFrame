@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../../core/models/shot_language.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/models/canvas_node_take.dart';
 import '../../canvas/util/node_artifacts.dart';
 import '../../storyboard/models/sequence_shot.dart';
 import '../../storyboard/util/sequence_builder.dart';
@@ -303,23 +304,36 @@ class _Chosen {
   final int count;
 }
 
-/// 上游 config「选定」的产物：有 promoted slot 用它（名后缀 #n），否则最新 result。
+/// 上游 config「选定」的产物：先看固定，再看 promoted slot（名后缀 #n），否则当前 take。
 ///
-/// promoted 在 DB 上没有唯一约束，单选语义由 BatchResultsController.promote 维持——
-/// 但它只清**同一个 result 节点**内的旧标记。同一 config 重跑过就会有两个容器，两边
-/// 各自转正就有两行 promoted。所以这里取的是**最新容器**上的那一个：跟「否则用最新
-/// result」同一口径，也跟检查器里挂着「当前」徽标的那一格一致。
+/// 1. 配置节点固定了某个 take（`pinned_result_id`）且它仍是活的产物（[currentResultFor]
+///    认它：在 [_resultContainersOf] 的容器里、有产物 url）→ 选它：它自己的 slot 里有
+///    promoted 就写「名 #n」、缩略用那格的 outputUrl，否则写名、缩略用它的 thumbnail / image。
+/// 2. 没固定 / 固定的已不在：promoted 在 DB 上没有唯一约束，单选语义由
+///    BatchResultsController.promote 维持——但它只清**同一个 result 节点**内的旧标记。同一
+///    config 重跑过就会有两个容器，两边各自转正就有两行 promoted。所以这里取的是**最新容器**
+///    上的那一个：跟「否则用当前 take（此时就是最新的）」同一口径，也跟检查器里挂着「当前」
+///    徽标的那一格一致。
 _Chosen _chosenArtifactOf(GalleryGraph graph, List<CanvasNode> nodes, CanvasNode u) {
   final int count = _artifactCountOf(graph, nodes, u);
+  final String? pin = u.pinnedResultId;
+  final CanvasNode? current = currentResultFor(sourceNodeId: u.id, nodes: nodes, pinnedResultId: pin);
+  if (pin != null && current != null && current.id == pin) {
+    for (final GalleryBatchSlot s in graph.slotsOf(current.id)) {
+      if (s.promoted) {
+        return _Chosen(label: '${u.label} #${s.slotIndex + 1}', thumbPath: s.outputUrl, count: count);
+      }
+    }
+    return _Chosen(label: u.label, thumbPath: current.thumbnailUrl ?? current.imageUrl, count: count);
+  }
   for (final GalleryBatchSlot s in _slotsOfConfig(graph, nodes, u)) {
     if (s.promoted) {
       return _Chosen(label: '${u.label} #${s.slotIndex + 1}', thumbPath: s.outputUrl, count: count);
     }
   }
-  final CanvasNode? latest = latestResultFor(sourceNodeId: u.id, nodes: nodes);
   return _Chosen(
     label: u.label,
-    thumbPath: latest?.thumbnailUrl ?? latest?.imageUrl,
+    thumbPath: current?.thumbnailUrl ?? current?.imageUrl,
     count: count,
   );
 }

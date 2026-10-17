@@ -1,4 +1,4 @@
-// 导出视频对话框：video result 勾选（默认**每镜最新一条**，见
+// 导出视频对话框：video result 勾选（默认**每镜当前一条**，见
 // `util/export_take_selection.dart`）+ 手动排序（默认序由
 // `util/export_order.dart` 按 narrative 链算好后传入，无链退回 position.x）
 // + 输出名预校验 + concat 触发与成败反馈。
@@ -31,10 +31,15 @@ const double _kThumbHeight = 36;
 /// 打开导出对话框。[videoNodes] 须已由 `orderVideoNodesForExport` 过滤并排好序
 /// （EX-1′ 起排序移出对话框——链序需要全量节点与边，对话框只拿得到 video
 /// result 子集）。
+///
+/// [pinnedBySource]：配置节点 id → 它固定的产物 id（`pinnedResultIdsBySource`）。
+/// [videoNodes] 里没有配置节点，固定 id 只能由调用方从全量节点里算好传进来；
+/// 缺省为空 = 没有固定，默认勾每镜最新那条。
 Future<void> showExportVideoDialog(
   BuildContext context, {
   required String projectId,
   required List<CanvasNode> videoNodes,
+  Map<String, String> pinnedBySource = const <String, String>{},
 }) {
   return showDialog<void>(
     context: context,
@@ -42,6 +47,7 @@ Future<void> showExportVideoDialog(
     builder: (_) => _ExportVideoDialog(
       projectId: projectId,
       videoNodes: videoNodes,
+      pinnedBySource: pinnedBySource,
     ),
   );
 }
@@ -50,10 +56,12 @@ class _ExportVideoDialog extends ConsumerStatefulWidget {
   const _ExportVideoDialog({
     required this.projectId,
     required this.videoNodes,
+    required this.pinnedBySource,
   });
 
   final String projectId;
   final List<CanvasNode> videoNodes;
+  final Map<String, String> pinnedBySource;
 
   @override
   ConsumerState<_ExportVideoDialog> createState() => _ExportVideoDialogState();
@@ -62,12 +70,12 @@ class _ExportVideoDialog extends ConsumerStatefulWidget {
 class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
   late final List<CanvasNode> _rows;
 
-  /// 每镜最新 take 的 id（BOARD 194）。两处用：默认勾选集 = 它；不在其中的行
-  /// 就是被顶下去的旧 take，给「旧 take」标记。
+  /// 每镜当前 take（固定的 ?? 最新的）的 id（BOARD 194）。两处用：默认勾选集 = 它；
+  /// 不在其中的行就是这一镜不用的那几条，给「旧 take」标记。
   ///
   /// 与 [_selected] 分开存是刻意的：勾选态会被用户改，而「这行是不是旧 take」
   /// 是关于数据的事实，不随勾选变。
-  late final Set<String> _latestTakes;
+  late final Set<String> _currentTakes;
   late final Set<String> _selected;
   final TextEditingController _nameCtrl = TextEditingController();
 
@@ -78,8 +86,8 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
     // position.x）——这里只照单全收，用户仍可手动上下移。
     _rows = <CanvasNode>[...widget.videoNodes];
     // **只改默认勾选，不改候选集**：旧 take 照样列出、照样能手动勾回去。
-    _latestTakes = latestTakeNodeIds(_rows);
-    _selected = <String>{..._latestTakes};
+    _currentTakes = currentTakeNodeIds(_rows, pinnedBySource: widget.pinnedBySource);
+    _selected = <String>{..._currentTakes};
   }
 
   @override
@@ -266,9 +274,9 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // 默认没勾的那几行得说清为什么：同一镜有更新的 take 把它顶下去了
-                  // （勾回来仍然可以）。标记跟的是数据事实，不跟勾选态。
-                  if (!_latestTakes.contains(node.id)) ...<Widget>[
+                  // 默认没勾的那几行得说清为什么：同一镜当前用的是另一个 take（更新的，
+                  // 或被固定的那个）（勾回来仍然可以）。标记跟的是数据事实，不跟勾选态。
+                  if (!_currentTakes.contains(node.id)) ...<Widget>[
                     const SizedBox(width: InkSpacing.xs),
                     _olderTakeBadge(context),
                   ],

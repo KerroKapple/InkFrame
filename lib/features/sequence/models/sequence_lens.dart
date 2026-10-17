@@ -109,7 +109,7 @@ SequenceLens buildSequenceLens({
   int unchained = 0;
   for (final CanvasNode n in nodes) {
     if (n.role != NodeRole.config || onChain.contains(n.id)) continue;
-    if (latestResultFor(sourceNodeId: n.id, nodes: nodes) != null) unchained++;
+    if (currentResultFor(sourceNodeId: n.id, nodes: nodes) != null) unchained++;
   }
 
   return SequenceLens(

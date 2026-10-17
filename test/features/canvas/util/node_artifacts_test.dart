@@ -29,22 +29,25 @@ CanvasNode _result(
       },
     );
 
-CanvasNode _config(String id) => CanvasNode(
+CanvasNode _config(String id, {String? pinned}) => CanvasNode(
       id: id,
       label: id,
       type: CanvasNodeType.shot,
       canvasId: 'c1',
+      typeConfig: <String, Object?>{
+        'pinned_result_id': ?pinned,
+      },
     );
 
 void main() {
-  group('latestResultFor', () {
+  group('currentResultFor · 没固定时 = 最新', () {
     test('无候选 → null', () {
-      expect(latestResultFor(sourceNodeId: 'x', nodes: const []), isNull);
+      expect(currentResultFor(sourceNodeId: 'x', nodes: const []), isNull);
     });
 
     test('单个候选直接返回', () {
       final r = _result('r1', source: 'cfg', url: 'a.mp4');
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: [_config('cfg'), r])?.id,
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: [_config('cfg'), r])?.id,
           'r1');
     });
 
@@ -56,7 +59,7 @@ void main() {
         _result('old', source: 'cfg', url: 'old.mp4',
             createdAt: DateTime.utc(2026, 8, 1)),
       ];
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'new');
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'new');
     });
 
     test('created_at 全缺失时退回列表序末位（保持确定性,不返回 null）', () {
@@ -64,7 +67,7 @@ void main() {
         _result('first', source: 'cfg', url: 'a.mp4'),
         _result('last', source: 'cfg', url: 'b.mp4'),
       ];
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'last');
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'last');
     });
 
     test('部分缺 created_at：有时间戳的优先,缺的当最旧', () {
@@ -73,7 +76,7 @@ void main() {
             createdAt: DateTime.utc(2026, 1, 1)),
         _result('nostamp', source: 'cfg', url: 'b.mp4'),
       ];
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'stamped');
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'stamped');
     });
 
     test('只认 role==result——config 节点即便 sourceNodeId 匹配也不算产物', () {
@@ -85,7 +88,7 @@ void main() {
         sourceNodeId: 'cfg',
         typeConfig: <String, Object?>{'video_url': 'x.mp4'},
       );
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: [impostor]), isNull);
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: [impostor]), isNull);
     });
 
     test('url 为空的 result 不算产物（生成中/失败的占位节点）', () {
@@ -98,18 +101,18 @@ void main() {
         sourceNodeId: 'cfg',
         typeConfig: <String, Object?>{},
       );
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: [empty]), isNull);
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: [empty]), isNull);
     });
 
     test('sourceNodeId 不匹配的 result 不算', () {
       final other = _result('r1', source: 'someone-else', url: 'a.mp4');
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: [other]), isNull);
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: [other]), isNull);
     });
 
     test('image 产物同样识别（url 键不同,SB-6 图片镜要用）', () {
       final img = _result('r1',
           source: 'cfg', url: 'a.png', type: CanvasNodeType.image);
-      expect(latestResultFor(sourceNodeId: 'cfg', nodes: [img])?.id, 'r1');
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: [img])?.id, 'r1');
     });
 
     test('accept 可收窄产物类型（EX-1′ 只要 video）', () {
@@ -117,7 +120,7 @@ void main() {
           source: 'cfg', url: 'a.png', type: CanvasNodeType.image);
       final vid = _result('vid', source: 'cfg', url: 'a.mp4');
       expect(
-        latestResultFor(
+        currentResultFor(
           sourceNodeId: 'cfg',
           nodes: [img, vid],
           accept: (n) => n.type == CanvasNodeType.video,
@@ -125,12 +128,103 @@ void main() {
         'vid',
       );
       expect(
-        latestResultFor(
+        currentResultFor(
           sourceNodeId: 'cfg',
           nodes: [img],
           accept: (n) => n.type == CanvasNodeType.video,
         ),
         isNull,
+      );
+    });
+  });
+
+  group('currentResultFor · 固定的 ?? 最新的', () {
+    // 两个 take：old 旧、new 新；列表序刻意把新的放前面（z_index 陷阱照旧）。
+    List<CanvasNode> takes() => <CanvasNode>[
+          _result('new', source: 'cfg', url: 'new.mp4', createdAt: DateTime.utc(2026, 8, 7)),
+          _result('old', source: 'cfg', url: 'old.mp4', createdAt: DateTime.utc(2026, 8, 1)),
+        ];
+
+    test('没固定 → 与最新同', () {
+      final nodes = <CanvasNode>[_config('cfg'), ...takes()];
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'new');
+    });
+
+    test('固定的 take 活着 → 取固定的', () {
+      final nodes = <CanvasNode>[_config('cfg', pinned: 'old'), ...takes()];
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'old');
+    });
+
+    test('固定的被软删（不在 nodes 里）→ 回落最新；放回后又是它', () {
+      final config = _config('cfg', pinned: 'old');
+      final newTake = _result('new', source: 'cfg', url: 'new.mp4', createdAt: DateTime.utc(2026, 8, 7));
+      final oldTake = _result('old', source: 'cfg', url: 'old.mp4', createdAt: DateTime.utc(2026, 8, 1));
+      // listByCanvas 不返回软删行：固定 id 在候选里找不到。
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: <CanvasNode>[config, newTake])?.id, 'new');
+      // restore 后又在列表里：固定自然回来（删产物时不清 pinned_result_id）。
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: <CanvasNode>[config, newTake, oldTake])?.id, 'old');
+    });
+
+    test('固定 id 指向别的配置的产物 → 回落最新', () {
+      final nodes = <CanvasNode>[
+        _config('cfg', pinned: 'foreign'),
+        ...takes(),
+        _result('foreign', source: 'other', url: 'f.mp4', createdAt: DateTime.utc(2026, 1, 1)),
+      ];
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'new');
+    });
+
+    test('固定的是 url 为空的占位 → 回落最新', () {
+      final nodes = <CanvasNode>[
+        _config('cfg', pinned: 'pending'),
+        ...takes(),
+        CanvasNode(
+          id: 'pending',
+          label: 'pending',
+          type: CanvasNodeType.video,
+          role: NodeRole.result,
+          canvasId: 'c1',
+          sourceNodeId: 'cfg',
+          createdAt: DateTime.utc(2026, 1, 1),
+        ),
+      ];
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'new');
+    });
+
+    test('accept 刷掉固定的 → 回落', () {
+      final nodes = <CanvasNode>[
+        _config('cfg', pinned: 'img'),
+        _result('img', source: 'cfg', url: 'a.png', type: CanvasNodeType.image, createdAt: DateTime.utc(2026, 1, 1)),
+        _result('vid', source: 'cfg', url: 'a.mp4', createdAt: DateTime.utc(2026, 1, 2)),
+        _result('vid-old', source: 'cfg', url: 'b.mp4', createdAt: DateTime.utc(2025, 12, 1)),
+      ];
+      // 不带 accept 时固定的 img 是当前——证明下面的回落是 accept 造成的。
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: nodes)?.id, 'img');
+      expect(
+        currentResultFor(
+          sourceNodeId: 'cfg',
+          nodes: nodes,
+          accept: (n) => n.type == CanvasNodeType.video,
+        )?.id,
+        'vid',
+      );
+    });
+
+    test('显式 pinnedResultId 优先，nodes 里没有配置节点也生效', () {
+      // 大纲分桶 / 导出候选：手里只有产物，没有配置节点。
+      expect(currentResultFor(sourceNodeId: 'cfg', nodes: takes())?.id, 'new');
+      expect(
+        currentResultFor(sourceNodeId: 'cfg', nodes: takes(), pinnedResultId: 'old')?.id,
+        'old',
+      );
+      // 显式给了就以它为准，不再去读配置节点上的固定。
+      expect(
+        currentResultFor(
+          sourceNodeId: 'cfg',
+          nodes: <CanvasNode>[_config('cfg', pinned: 'new'), ...takes()],
+          pinnedResultId: 'old',
+        )?.id,
+        'old',
       );
     });
   });
