@@ -3,8 +3,6 @@
 // 钉的是：register 立刻参与判序、unregister 后不再参与、同 id 二次登记以后者为准、handle(local:) 覆盖
 // 同 id、handle 的返回值（剥了一层 = true）；以及五档核心层各自剥什么、不剥什么——尤其是选中那一层
 // 节点和边两个都清，连线排在平移之前（设计缺口的拍板：连线 > 工具锁 > 平移）。
-import 'dart:ui';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/providers/canvas_escape_ladder.dart';
