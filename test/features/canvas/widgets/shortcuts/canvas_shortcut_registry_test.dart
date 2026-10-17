@@ -1,6 +1,6 @@
 // 画布快捷键注册表（kCanvasKeyRegistry）的结构约束：后续切片往表里追加一行时，这里兜底。
 //
-// 变异对照：core_canvas_keys.dart 里 L 键去掉 includeRepeats: false ⇒「新键不吃自动重复」红。
+// 变异对照：core_canvas_keys.dart 里 L 键或 Esc 去掉 includeRepeats: false ⇒「新键不吃自动重复」红。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
@@ -9,9 +9,9 @@ import 'package:inkframe/features/canvas/widgets/shortcuts/canvas_shortcut_regis
 
 /// 改写前就吃自动重复的老键（按住 Delete 连删、按住 ⌘+ 连续放大是有意的）。写死在这里：
 /// 后续切片加键不许改这份名单——新键一律 includeRepeats: false。
+/// Esc 不在名单里：它现在是一次剥一层（Esc 阶梯），不再是幂等的「清选中」，按住连发会连剥好几层。
 const Set<String> _repeatWhitelist = <String>{
   'canvasDelete',
-  'canvasEscape',
   'canvasSelectAll',
   'canvasZoomIn',
   'canvasZoomOut',

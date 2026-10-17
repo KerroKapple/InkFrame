@@ -11,7 +11,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../util/escape_ladder.dart';
-import '../widgets/create_node_menu.dart';
+import 'canvas_menu_state.dart';
 import 'canvas_selection_controller.dart';
 import 'canvas_tool_mode.dart';
 import 'link_mode_controller.dart';

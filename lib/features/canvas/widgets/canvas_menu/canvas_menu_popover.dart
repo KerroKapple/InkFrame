@@ -34,7 +34,9 @@ class CanvasMenuPopover<T> extends StatefulWidget {
   /// 选了一项（子菜单里的也算）。弹层不自己收，由调用方决定（通常把 [anchor] 置回 null）。
   final ValueChanged<T> onSelected;
 
-  /// 点外面 / 面板失焦 / Esc。
+  /// 点外面 / 面板失焦 / Esc。可能一次关调两次：点到外面一个能拿焦点的控件时，「点外面」与「面板失焦」
+  /// 各报一次。弹层自己不防重（画布宿主靠 identical(request) 防，这里没有那一层），调用方必须写成幂等的
+  /// （例如只是把 [anchor] 置回 null）。
   final VoidCallback onDismiss;
 
   /// 一项都没有时那一行的文案。
@@ -77,7 +79,8 @@ class _CanvasMenuPopoverState<T> extends State<CanvasMenuPopover<T>> {
     });
   }
 
-  /// 焦点整个离开菜单（点到别的输入框 / 开了对话框 / 切了标签）：当成关菜单。
+  /// 焦点整个离开菜单（点到别的输入框 / 开了对话框 / 切了标签）：当成关菜单。点到外面的输入框时
+  /// onTapOutside 也会报一次，onDismiss 可能被调两次——调用方须幂等（见 [CanvasMenuPopover.onDismiss]）。
   void _onFocusChange(bool hasFocus) {
     if (!hasFocus) widget.onDismiss();
   }

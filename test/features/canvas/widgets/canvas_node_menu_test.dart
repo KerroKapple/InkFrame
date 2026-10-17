@@ -1,8 +1,10 @@
-// 节点右键菜单（PR-8b）接到画布上：canvas_view 的卡片右键 → create_node_menu 的节点菜单 →
-// canvas_tool_actions / view_in_sequence / canvas_node_delete 的动作。
+// 节点右键菜单（PR-8b）接到画布上：卡片插槽（stage/node_card_slot.dart）的右键 → canvas_view 开节点菜单 →
+// canvas_menu/node_menu_entries.dart 的各项 → canvas_tool_actions / view_in_sequence / canvas_node_delete 的动作。
 //
 //   - 右键一张没选中的卡：先单选它，菜单开在按下点；右键已在多选里的卡：保持多选。
 //   - 右键在抬起时开；在卡片上按住右键拖动不开菜单、不改选中（B4）。
+//   - 菜单开着时右键的卡被删：一项都不出。
+//   - 菜单里按一次 Esc 只关菜单、选中保留，再按一次才清选中；按住 Esc 也只关菜单。
 //   - 各项的可用 / 置灰（不隐藏）条件。
 //   - 生成：走 submitWithPending——还没发射的防抖 patch 并进终稿一并 submit，不借退出路径的 flush（B8）。
 //   - 复制一份：类型 / typeConfig / 泳道 / 偏移 / 标签后缀，新节点单选、不挪相机，不复制边；多选每张配置卡各一份。
@@ -14,8 +16,10 @@
 //   - 失败分支（B10）：复制一份中途写库失败（已复制出来的照样选中 + 错误卡）；存为角色的四种失败（产物路径解析
 //     被拒 / 仓储 InkError / 资产服务 CharacterAssetError / 文件系统 FileSystemException）各出对应的错误卡。
 //
-// 变异对照：拿掉任一可用条件 ⇒「可用 / 置灰」组对应的那一条红；_pickNode 只对右键的那张做复制 / 移道 / 删除
-// （不看选中集）⇒ 三条「多选」用例红。
+// 变异对照：拿掉任一可用条件 ⇒「可用 / 置灰」组对应的那一条红；canvas_menu/node_menu_entries.dart 的
+// _runDuplicate / _runLaneSubmenu / _runDelete 把 c.targets 换成 {c.request.nodeId!}（只对右键的那张、不看选中集）
+// ⇒ 三条「多选」用例红；删掉 buildNodeMenuGroups 里「卡已经不在 ⇒ 空表」那个判断 ⇒「右键的卡被删」红。
+// 菜单里 Esc 的两条变异见「菜单里的 Esc」组头注。
 import 'dart:io' show File, FileSystemException;
 
 import 'package:flutter/gestures.dart';
@@ -492,6 +496,69 @@ void main() {
       await tester.tapAt(const Offset(1100, 700));
       await tester.pumpAndSettle();
       expect(_menu, findsNothing);
+    });
+
+    // 规则 2：菜单开着时右键的那张卡被删（Delete 键 / 撤销 / 别处删掉）⇒ 一项都不出——不能对已删的 id
+    // 照常出六项、「删除」还能点。
+    testWidgets('菜单开着时右键的卡被删：一项都不出，只剩空行', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await _openMenuOn(tester, 'img');
+      expect(_item('Delete'), findsOneWidget, reason: '前提：菜单照常出项');
+
+      await _nodesOf(c).removeNode('img');
+      await tester.pumpAndSettle();
+
+      expect(_menu, findsOneWidget, reason: '菜单还开着（请求没变）');
+      for (final String label in _labels) {
+        expect(
+          find.descendant(of: _menu, matching: find.text(label)),
+          findsNothing,
+          reason: '卡已经不在了：$label 不出',
+        );
+      }
+      expect(
+        find.descendant(of: _menu, matching: find.text('No matching actions')),
+        findsOneWidget,
+      );
+    });
+  });
+
+  // 菜单里的 Esc 只关菜单：面板自己接住 Esc（关菜单、焦点交回画布），不再冒泡给画布的 Esc 阶梯——
+  // 右键时设好的选中留着，再按一次 Esc 才清。
+  // 变异对照：ink_menu_panel.dart 的 _onKey 里 Esc 那一支改成 dismiss 之后 return KeyEventResult.ignored ⇒
+  // 「按一次 Esc 只关菜单」红（Esc 冒泡到画布，阶梯此刻菜单已关、不在打字，落到选中那一层把选中清掉）；
+  // shortcuts/core_canvas_keys.dart 的 Esc 激活器去掉 includeRepeats: false ⇒「按住 Esc」红。
+  group('菜单里的 Esc', () {
+    testWidgets('按一次 Esc 只关菜单、选中保留；再按一次才清选中', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await _openMenuOn(tester, 'img');
+      expect(_selection(c), <String>{'img'}, reason: '前提：右键先单选了它');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(_menu, findsNothing, reason: '第一下关菜单');
+      expect(_selection(c), <String>{'img'}, reason: '一次 Esc 只剥菜单这一层');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(_selection(c), isEmpty, reason: '焦点回到了画布：第二下清选中');
+    });
+
+    testWidgets('按住 Esc（按下 + 若干自动重复）：只关菜单，选中还在', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await _openMenuOn(tester, 'img');
+
+      await tester.sendKeyDownEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+      expect(_menu, findsNothing);
+      for (int i = 0; i < 3; i++) {
+        await tester.sendKeyRepeatEvent(LogicalKeyboardKey.escape);
+        await tester.pump();
+      }
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.escape);
+      await tester.pumpAndSettle();
+
+      expect(_selection(c), <String>{'img'}, reason: '自动重复不接着剥：关菜单之后选中还在');
     });
   });
 

@@ -8,7 +8,7 @@
 //     视频产物不出前三项——首帧 / 尾帧 / 参考是图像语义。
 //   - 不带上下文：图像配置 · 视频配置 · 文本 · 镜头 · 泳道。
 //
-// 【叙事边只连配置节点】仓库里建 narrative 边的只有两处：导入脚本（shot → shot）与 shot 检查器的
+// 【叙事边只连配置节点】仓库里建 narrative 边的只有两处：导入剧本（shot → shot）与 shot 检查器的
 // 「用本镜备注生成」（shot → image / video 配置）。读侧全把叙事链当成「配置节点的序列」：export_order
 // 头注写明 result 节点「自己不在 narrative 链上」，sequence_builder 不让 result 独立成镜，左栏大纲只列链上的
 // 配置节点。text 节点进了链也成不了一镜（没有备注、没有产物，buildSequence 直接跳过）。所以「下一镜」的叙事
@@ -18,9 +18,6 @@
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import 'node_artifacts.dart';
-
-// 菜单搜索过滤的实体在 theme 层（菜单面板自己也用），这里转出口，画布侧照旧从本文件拿。
-export '../../../theme/components/ink_menu_panel.dart' show filterMenuGroups;
 
 /// 新建菜单里的一项。
 enum CreateMenuAction {

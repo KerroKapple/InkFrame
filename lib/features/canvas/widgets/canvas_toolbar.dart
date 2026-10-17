@@ -1,6 +1,6 @@
 // CanvasToolbar：画布舞台顶部居中的浮动工具条（画布重设计稿「画布页 · 改后」，图标集 v1）。
 //
-// 一座浮岛，三组：选择 · 平移 | 图像 · 视频 · 文本 · 分镜 · 泳道 · 连线 | 更多。
+// 一座浮岛，三组：选择 · 平移 | 图像 · 视频 · 文本 · 镜头 · 泳道 · 连线 | 更多。
 // 取代原来的左侧 37px 工具条（七个几乎一样的方块挤在左沿，左沿要让给导航条）和右下角
 // 32×32 加号（建节点藏在一层菜单后面）。画布四角各有归属：顶部居中 = 本条、底部居中 =
 // 提示词条、左下 = 缩放条、右下 = 通知卡。
@@ -10,7 +10,7 @@
 //   选择键不亮（点选择 = 退出连线，与旧工具条同义）。
 // - 建节点 / 泳道 / 连线：点下即生效，动作本体在 util/canvas_tool_actions.dart，
 //   与 I / G / T / F / L 快捷键是同一条路径。连线键只在恰好选中一个节点或已在连线模式时可按。
-// - 更多：小菜单，目前只有「导入脚本…」——整条链从视口中心起铺。
+// - 更多：小菜单，目前只有「导入剧本…」——整条链从视口中心起铺。
 // - 每个键都走 InkActivatable（Tab 可达、Enter / Space 激活、焦点环）；tooltip =「名称  键位」，
 //   键位取 canvas_shortcuts.dart 的 CanvasToolKeys，与快捷键表同源——改键位不会只改一半。
 import 'package:flutter/material.dart';
@@ -109,7 +109,7 @@ class CanvasToolbar extends ConsumerWidget {
             onTap: () => addNode(CanvasNodeType.text),
           ),
         ),
-        // 分镜没有单键（稿未分配），tooltip 只有名称。
+        // 镜头没有单键（稿未分配），tooltip 只有名称。
         _ToolButton(
           key: keyOf('shot'),
           tool: _Tool(

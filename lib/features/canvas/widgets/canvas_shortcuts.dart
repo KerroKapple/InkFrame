@@ -16,7 +16,8 @@
 // Ctrl+\（macOS ⌘\）开合左栏（PR-4）：同样对文本编辑让位——在筛选框 / 提示词条里打字时
 // 不该把左栏收起来。键位常量在 CanvasToolKeys，导航条「收起」键的 tooltip 与它同源。
 //
-// Tab = 新建…（新建菜单，开在视口中心；create_node_menu.dart）。Tab 本来是焦点遍历键，所以它的门槛
+// Tab = 新建…（新建菜单，开在视口中心；shortcuts/core_canvas_keys.dart 的 openCanvasCreateMenu →
+// canvasMenuRequestProvider）。Tab 本来是焦点遍历键，所以它的门槛
 // 比别的单键更严：不只对文本编辑让位，而是**只在本层自己持主焦点时**才接管（CanvasKeyGate.canvasFocused）。
 // 焦点落在本层子树里的任何控件上（工具条键、检查器按钮、缩放条格子、左栏行、菜单里的行），Tab 都原样
 // 放行给 WidgetsApp 的焦点遍历；本层之外的控件按 Tab 根本到不了这里。Shift+Tab 不绑。
@@ -30,8 +31,8 @@
 //     不会提交两次。
 //   - Ctrl+D / ⌘D 复制一份（选中的配置卡各一份）。
 //   - Shift+1 适应全部、Shift+2 适应选中（两个平台同键）。
-// ⌘0 / Ctrl+0 = 缩放复位（行为见 shortcuts/core_canvas_keys.dart 的 resetCanvasZoom），不是适应
-// ——两件事各有各的键。
+// ⌘0 / Ctrl+0 = 缩放到 100%，视口中心对着的内容不动（shortcuts/core_canvas_keys.dart 的 resetCanvasZoom →
+// util/canvas_zoom.dart 的 actualSizeTransform），不回初始相机，也不是适应——两件事各有各的键。
 // 节点右键菜单行尾的键位提示从本表取（shortcut_catalog 的 canvasShortcutLabel），与设置「快捷键」页同源。
 //
 // 键位、门槛、回调、快捷键页文案都登记在注册表（shortcuts/canvas_shortcut_registry.dart 的
@@ -85,12 +86,13 @@ class CanvasShortcuts extends ConsumerStatefulWidget {
   final bool isActive;
   final Widget child;
 
-  /// 把键盘焦点当场要回最近的 CanvasShortcuts（不在其下则无事）：画布舞台按下指针时、新建菜单选了一项 / 按 Esc
-  /// 收起时（菜单那边见 create_node_menu.dart 的 _dismiss）。
+  /// 把键盘焦点当场要回最近的 CanvasShortcuts（不在其下则无事）：画布舞台或空态画布（canvas_empty_state）
+  /// 按下指针时；画布菜单（新建 / 空白处右键 / 节点右键）选了一项或按 Esc 收起时（菜单那边见
+  /// canvas_menu/canvas_menu_host.dart 的 _CanvasMenuHostState._dismiss）。
   static void reclaimFocus(BuildContext context) =>
       context.findAncestorStateOfType<_CanvasShortcutsState>()?._reclaimFocus();
 
-  /// 画布上的浮层（新建菜单）收掉之后调用：焦点「落空」了才要回本层——主焦点是空的，或者落回了本层
+  /// 画布上的浮层（画布菜单）收掉之后调用：焦点「落空」了才要回本层——主焦点是空的，或者落回了本层
   /// 所在的作用域本身（没有任何具体控件持焦）。被收掉的菜单里的搜索框失焦就落在那儿；不要回来的话
   /// Delete / Esc / 工具单键全都收不到。别的控件已经拿到焦点（点到了别的文本框、开了对话框）就不抢。
   /// 帧后再判：桌面上点到文本框外面，文本框自己的失焦与收菜单是同一次按下里的两件事，谁先谁后不定，

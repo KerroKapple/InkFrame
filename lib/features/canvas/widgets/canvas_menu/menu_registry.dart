@@ -31,9 +31,6 @@ enum CanvasMenuScope {
 
   /// 空白处右键菜单。
   blank,
-
-  /// 新建菜单（本表暂不用，留位：新建菜单由 CreateMenuAction 驱动）。
-  create,
 }
 
 /// 一项菜单 build / run 时拿到的上下文。
