@@ -89,7 +89,3 @@ Matrix4 initialCanvasTransform() => Matrix4.identity()
     0.0,
     1.0,
   );
-
-/// 回到初始相机（scale=1、对准世界原点），与 [initialCanvasTransform] 同值。
-/// ⌘0 / Ctrl+0 不走这里：那是「缩放到 100%、保持视口中心」，见 [actualSizeTransform]（KeyMap Q5-B）。
-Matrix4 resetTransform() => initialCanvasTransform();

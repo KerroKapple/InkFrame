@@ -18,6 +18,7 @@ import '../../providers/canvas_nodes_controller.dart';
 import '../../providers/canvas_selection_controller.dart';
 import '../../providers/canvas_tool_mode.dart';
 import '../../providers/link_mode_controller.dart';
+import '../../util/canvas_snackbars.dart';
 import '../../util/canvas_zoom.dart';
 import '../../util/drop_placement.dart';
 import '../../util/lane_geometry.dart';
@@ -153,10 +154,11 @@ class NodeCardSlot extends ConsumerWidget {
         return;
       }
       if (laneMessage == null) return;
-      toasts.show(
-        laneMessage,
-        kind: ToastKind.undo,
-        primary: ToastAction(undoLabel, () => unawaited(undo())),
+      showUndoToast(
+        toasts,
+        message: laneMessage,
+        undoLabel: undoLabel,
+        onUndo: () => unawaited(undo()),
       );
     }
 

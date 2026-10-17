@@ -24,6 +24,7 @@ import '../../providers/canvas_lanes_controller.dart';
 import '../../providers/canvas_selection_controller.dart';
 import '../../providers/node_drag_delta.dart';
 import '../../providers/selected_edge_controller.dart';
+import '../../util/canvas_snackbars.dart';
 import '../../util/edge_hit_test.dart';
 import '../../util/edge_style.dart';
 import '../../util/lane_geometry.dart';
@@ -153,14 +154,12 @@ class StageEdgeDeleteOverlay extends ConsumerWidget {
     try {
       final removed = await edgesCtrl.removeEdge(edge.id);
       if (removed == null) return;
-      // 同 showCanvasUndoSnack：撤销卡，主按钮「撤销」复原。
-      toasts.show(
-        l.edgeDeleted,
-        kind: ToastKind.undo,
-        primary: ToastAction(
-          l.commonUndo,
-          () => _restoreEdge(toasts, l, edgesCtrl, removed),
-        ),
+      // 撤销卡，主按钮「撤销」复原；通知服务与文案都是 await 之前取好的。
+      showUndoToast(
+        toasts,
+        message: l.edgeDeleted,
+        undoLabel: l.commonUndo,
+        onUndo: () => _restoreEdge(toasts, l, edgesCtrl, removed),
       );
     } on InkError catch (_) {
       // 删失败：EdgesController 已回滚内存，SelectedEdge 已清。回滚让连线**冒回来**，

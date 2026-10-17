@@ -171,7 +171,7 @@ EdgeStyle resolveEdgeStyle({
   return onChain ? base._onChain() : base;
 }
 
-/// 颜色槽 → 实际颜色，外加标签胶囊的底色。值由 widget 层从令牌取（canvas_view）。
+/// 颜色槽 → 实际颜色，外加标签胶囊的底色。值由 widget 层从令牌取（stage/stage_edge_layer.dart 的 StageEdgeLayer）。
 @immutable
 class EdgePalette {
   const EdgePalette({
