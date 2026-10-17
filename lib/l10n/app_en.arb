@@ -1495,5 +1495,12 @@
   "appActionReasonNotInSequence": "The selection isn't in the sequence",
   "appActionReasonNoVideo": "No video to export yet",
   "appActionReasonNoProject": "Open a project first",
-  "appActionReasonSelectOneNode": "Select exactly one node"
+  "appActionReasonSelectOneNode": "Select exactly one node",
+  "canvasCapsuleZoom": "Zoom {percent}%",
+  "@canvasCapsuleZoom": {
+    "description": "Canvas hint capsule after keyboard zoom or Fit: current zoom percentage",
+    "placeholders": {
+      "percent": { "type": "int" }
+    }
+  }
 }

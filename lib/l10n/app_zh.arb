@@ -1177,5 +1177,6 @@
   "appActionReasonNotInSequence": "选中的节点不在序列里",
   "appActionReasonNoVideo": "还没有可导出的视频",
   "appActionReasonNoProject": "先打开一个项目",
-  "appActionReasonSelectOneNode": "只选中一个节点"
+  "appActionReasonSelectOneNode": "只选中一个节点",
+  "canvasCapsuleZoom": "缩放 {percent}%"
 }

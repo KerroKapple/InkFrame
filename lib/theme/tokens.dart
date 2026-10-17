@@ -421,7 +421,8 @@ class InkCanvasCapsuleSize {
   static const double barGap = 24;
 
   /// 胶囊左右两侧各让出的宽度：缩放条 left 12 + 条宽 143（InkToolbarSize.zoomBarWidth）+ 间隙 16。
-  /// 左右对称让，胶囊才能在舞台上水平居中。由 canvas_screen_layout_test 守着：缩放条右沿 + 16 不越过它。
+  /// 只有左侧真靠它让开缩放条（右侧只留 InkSpacing.md）；胶囊中心随提示词条：条子显示时与条子同轴，否则在舞台正中。
+  /// 由 canvas_screen_layout_test 守着：缩放条右沿 + 16 不越过它。
   static const double sideReserve = 171;
 
   /// 两侧让位之后剩下的宽度小于本值就不画（舞台太窄，画出来只剩一个省略号）；计时照走。
