@@ -70,5 +70,68 @@ void main() {
       ctrl.selectAll(<String>['b', 'a']); // 顺序不同但等价
       expect(identical(s(), before), isTrue);
     });
+
+    // 批量方法（框选 / 浮动条 / 对齐等共用的集合运算）：结果与当前集合相等时一律不赋值。
+    test('replace 整体替换', () {
+      ctrl.select('a');
+      ctrl.replace(<String>['b', 'c']);
+      expect(s(), {'b', 'c'});
+    });
+
+    test('replace 集合相等时不改变 state 引用', () {
+      ctrl.replace(<String>['a', 'b']);
+      final before = s();
+      ctrl.replace(<String>['b', 'a']);
+      expect(identical(s(), before), isTrue);
+    });
+
+    test('replace 空集 = 清空', () {
+      ctrl.select('a');
+      ctrl.replace(const <String>[]);
+      expect(s(), isEmpty);
+    });
+
+    test('addAll 并入，已在的不重复', () {
+      ctrl.select('a');
+      ctrl.addAll(<String>['a', 'b']);
+      expect(s(), {'a', 'b'});
+    });
+
+    test('addAll 没有新增时不改变引用', () {
+      ctrl.replace(<String>['a', 'b']);
+      final before = s();
+      ctrl.addAll(<String>['b', 'a']);
+      expect(identical(s(), before), isTrue);
+      ctrl.addAll(const <String>[]);
+      expect(identical(s(), before), isTrue);
+    });
+
+    test('toggleAll 逐个取反', () {
+      ctrl.replace(<String>['a', 'b']);
+      ctrl.toggleAll(<String>['b', 'c']);
+      expect(s(), {'a', 'c'});
+    });
+
+    test('toggleAll 空输入不改变引用', () {
+      ctrl.replace(<String>['a']);
+      final before = s();
+      ctrl.toggleAll(const <String>[]);
+      expect(identical(s(), before), isTrue);
+    });
+
+    test('removeAll 只去掉在的', () {
+      ctrl.replace(<String>['a', 'b']);
+      ctrl.removeAll(<String>['b', 'x']);
+      expect(s(), {'a'});
+    });
+
+    test('removeAll 一个都不在时不改变引用', () {
+      ctrl.replace(<String>['a', 'b']);
+      final before = s();
+      ctrl.removeAll(<String>['x', 'y']);
+      expect(identical(s(), before), isTrue);
+      ctrl.removeAll(const <String>[]);
+      expect(identical(s(), before), isTrue);
+    });
   });
 }
