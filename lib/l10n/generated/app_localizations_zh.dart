@@ -2794,7 +2794,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsShortcutCanvasDelete => '删除选中节点';
 
   @override
-  String get settingsShortcutCanvasEscape => '取消连线 / 清空选择';
+  String get settingsShortcutCanvasEscape => '逐层退出（菜单 · 输入框 · 工具 · 选中）';
 
   @override
   String get settingsShortcutCanvasSelectAll => '全选节点';
@@ -2806,7 +2806,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsShortcutCanvasZoomOut => '缩小';
 
   @override
-  String get settingsShortcutCanvasZoomReset => '缩放复位';
+  String get settingsShortcutCanvasZoomReset => '复位 100%';
 
   @override
   String get settingsShortcutCanvasSelectTool => '选择工具';

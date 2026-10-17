@@ -20,6 +20,7 @@ import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_tool_actions.dart';
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
@@ -328,22 +329,39 @@ void main() {
       expect(_ivTransform(tester), before);
     });
 
-    testWidgets('⌘0 / Ctrl+0 仍是缩放复位：适应全部之后按它回到初始相机', (tester) async {
-      await _pump(tester);
+    // KeyMap Q5-B：⌘0 = 缩放到 100%、保持视口中心，不是适应，也不回初始相机。
+    // 变异对照：resetCanvasZoom 改回 resetTransform() ⇒ 中心点断言红。
+    testWidgets('⌘0 / Ctrl+0 是 100% 不是适应：适应全部之后按它，scale 回到 1、中心不动', (tester) async {
+      final ProviderContainer c = await _pump(tester);
       await _sendShift(tester, LogicalKeyboardKey.digit1);
-      expect(_ivTransform(tester), isNot(initialCanvasTransform()));
+      await tester.pumpAndSettle();
+      expect(scaleOf(_ivTransform(tester)), lessThan(1.0), reason: '前提：适应全部缩小了');
+
+      final Size size = c.read(canvasViewportSizeProvider('c1'));
+      final Offset center = Offset(size.width / 2, size.height / 2);
+      final Offset sceneAtCenter = MatrixUtils.transformPoint(
+        Matrix4.inverted(_ivTransform(tester)),
+        center,
+      );
 
       await _sendCtrl(tester, LogicalKeyboardKey.digit0);
 
-      expect(_ivTransform(tester), initialCanvasTransform());
+      final Matrix4 m = _ivTransform(tester);
+      expect(scaleOf(m), 1.0);
+      final Offset mapped = MatrixUtils.transformPoint(m, sceneAtCenter);
+      expect(mapped.dx, closeTo(center.dx, 1e-6));
+      expect(mapped.dy, closeTo(center.dy, 1e-6));
+      expect(m, isNot(initialCanvasTransform()));
     });
 
     testWidgets('空白处右键菜单「适应视图」= 适应全部：与 Shift+1 同一个结果，行尾的键位提示是 Shift+1', (tester) async {
-      await _pump(tester);
+      final ProviderContainer c = await _pump(tester);
       await _sendShift(tester, LogicalKeyboardKey.digit1);
       await tester.pumpAndSettle();
       final Matrix4 viaKey = _ivTransform(tester).clone();
-      await _sendCtrl(tester, LogicalKeyboardKey.digit0);
+      // 前提：相机先回初始相机（⌘0 已是 100% 而非回初始相机，这里直接写控制器）。
+      c.read(canvasTransformControllerProvider('c1')).value = initialCanvasTransform();
+      await tester.pump();
       expect(_ivTransform(tester), initialCanvasTransform(), reason: '前提：先复位');
 
       // 右下角是空白（卡片都在左上一带或视口外）。

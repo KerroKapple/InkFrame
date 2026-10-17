@@ -1,123 +1,153 @@
-// 设置「快捷键」页的只读清单：从**真正注册的** Shortcuts 表反推。
+// 设置「快捷键」页的只读清单：从**真正注册的**绑定反推。
 //
 // 为什么不写死一张展示表：手抄的清单会和绑定分叉——有人改了键位、列表照旧，
-// 用户照着列表按一个早就不存在的键。这里的输入就是生产代码里那几张表
-// （canvas_shortcuts.dart 的 kCanvasShortcuts、palette_activators.dart 的
+// 用户照着列表按一个早就不存在的键。这里的输入就是生产代码里那几处真相源
+// （画布快捷键注册表 canvas_shortcut_registry.dart 的 kCanvasKeyRegistry、palette_activators.dart 的
 // kCommandPaletteActivators、本文件的 kOverlayDismissActivator——设置浮层
-// 的 Esc 也从这里取），谁加绑定谁自动上屏。
-// 画布的「按住空格临时平移」不在 kCanvasShortcuts 里（要按下与松开两个事件，
+// 的 Esc 也从这里取），谁加绑定谁自动上屏：动作名、分组都跟着注册表那一条走。
+// 画布的「按住空格临时平移」不在注册表里（要按下与松开两个事件，
 // 由 CanvasShortcuts 的 onKeyEvent 处理），按键取自它自己用的那个常量
-// CanvasToolKeys.holdToPan——与 kOverlayDismissActivator 同一种收法。
+// CanvasToolKeys.holdToPan——与 kOverlayDismissActivator 同一种收法，行排在「平移工具」之后。
 //
-// 新增 Intent 没在 [shortcutActionOf] 认领 ⇒ shortcut_catalog_test 打红；
-// 新增按键没在 [_keyLabels] 认领 ⇒ 该动作在某平台出不了键位，同一个测试打红。
+// 新增按键没在 [_keyLabels] 认领 ⇒ 该动作在某平台出不了键位，shortcut_catalog_test 打红。
 //
 // 键位符号不进 ARB（与 core/constants/shortcut_labels.dart 同约定）：⌘ / Ctrl
-// 是平台符号，翻译它只会制造错误。动作名走 ARB，由呈现层按 [ShortcutAction] 取。
+// 是平台符号，翻译它只会制造错误。动作名走 ARB，由呈现层调 [ShortcutRow.label] 取。
 //
 // 回车按平台换字（[_platformKeyLabels]）：macOS 画 ↵、其余平台写 Enter——与提示词条「生成」按钮尾标
 // （submitShortcutLabel：⌘↵ / Ctrl+Enter）同一个拍板，同一个动作在两处不写成两样。
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../canvas/models/canvas_node.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../canvas/widgets/canvas_shortcuts.dart';
+import '../../canvas/widgets/shortcuts/canvas_key_binding.dart';
+import '../../canvas/widgets/shortcuts/canvas_shortcut_registry.dart';
 import '../../command_palette/palette_activators.dart';
 
 /// 浮层（设置）的关闭键——SettingsScreen 的 CallbackShortcuts 与本清单同源。
 const SingleActivator kOverlayDismissActivator =
     SingleActivator(LogicalKeyboardKey.escape);
 
-/// 清单上的动作。声明序 == 列表显示序：全局两条在前，画布的在后（编辑 / 缩放 / 工具）。
-enum ShortcutAction {
-  commandPalette,
-  overlayDismiss,
-  canvasDelete,
-  canvasEscape,
-  canvasSelectAll,
-  canvasDuplicate,
-  canvasGenerate,
-  canvasZoomIn,
-  canvasZoomOut,
-  canvasZoomReset,
-  canvasFitAll,
-  canvasFitSelection,
-  canvasSelectTool,
-  canvasPanTool,
-  canvasHoldPan,
-  canvasAddImageNode,
-  canvasAddVideoNode,
-  canvasAddTextNode,
-  canvasAddLane,
-  canvasOpenCreateMenu,
-  canvasToggleLink,
-  canvasToggleLeftRail,
-}
+/// 清单里不来自画布注册表的三行的 id。
+const String _commandPaletteId = 'commandPalette';
+const String _overlayDismissId = 'overlayDismiss';
+const String _holdPanId = 'canvasHoldPan';
 
-/// 画布表里的 Intent → 动作标识；未认领返回 null（测试打红，不静默丢行）。
-ShortcutAction? shortcutActionOf(Intent intent) => switch (intent) {
-      DeleteSelectionIntent() => ShortcutAction.canvasDelete,
-      CanvasEscapeIntent() => ShortcutAction.canvasEscape,
-      SelectAllNodesIntent() => ShortcutAction.canvasSelectAll,
-      CanvasZoomInIntent() => ShortcutAction.canvasZoomIn,
-      CanvasZoomOutIntent() => ShortcutAction.canvasZoomOut,
-      CanvasZoomResetIntent() => ShortcutAction.canvasZoomReset,
-      CanvasSelectToolIntent() => ShortcutAction.canvasSelectTool,
-      CanvasTogglePanToolIntent() => ShortcutAction.canvasPanTool,
-      CanvasAddNodeIntent(type: CanvasNodeType.image) =>
-        ShortcutAction.canvasAddImageNode,
-      CanvasAddNodeIntent(type: CanvasNodeType.video) =>
-        ShortcutAction.canvasAddVideoNode,
-      CanvasAddNodeIntent(type: CanvasNodeType.text) =>
-        ShortcutAction.canvasAddTextNode,
-      CanvasAddLaneIntent() => ShortcutAction.canvasAddLane,
-      CanvasOpenCreateMenuIntent() => ShortcutAction.canvasOpenCreateMenu,
-      CanvasToggleLinkIntent() => ShortcutAction.canvasToggleLink,
-      CanvasToggleLeftRailIntent() => ShortcutAction.canvasToggleLeftRail,
-      CanvasDuplicateIntent() => ShortcutAction.canvasDuplicate,
-      CanvasGenerateIntent() => ShortcutAction.canvasGenerate,
-      CanvasFitAllIntent() => ShortcutAction.canvasFitAll,
-      CanvasFitSelectionIntent() => ShortcutAction.canvasFitSelection,
-      _ => null,
-    };
+/// 「按住空格平移」紧跟在这一行之后。
+const String _panToolId = 'canvasPanTool';
 
-/// 一行：一个动作 + 它在当前平台上的全部键位（去重、保持注册序）。
+/// 一行：一个动作（id + 分组 + 文案）+ 它在当前平台上的全部键位（去重、保持注册序）。
 @immutable
 class ShortcutRow {
-  const ShortcutRow({required this.action, required this.keys});
+  const ShortcutRow({
+    required this.id,
+    required this.group,
+    required this.label,
+    required this.keys,
+  });
 
-  final ShortcutAction action;
+  /// 画布行 = 注册表里的绑定 id；另有 commandPalette / overlayDismiss / canvasHoldPan 三行。
+  final String id;
+  final ShortcutGroup group;
+
+  /// 动作名（走 ARB）。
+  final String Function(AppLocalizations l) label;
   final List<String> keys;
 }
 
 /// 清单（纯函数，[isMac] 由呈现层按 defaultTargetPlatform 传入，便于两平台都测）。
-List<ShortcutRow> buildShortcutRows({required bool isMac}) {
-  final Map<ShortcutAction, List<String>> keys =
-      <ShortcutAction, List<String>>{};
+///
+/// 行序：先 ⌘K、浮层 Esc 两行（group app），再按注册表顺序逐 id 合并（listed == false 的跳过），
+/// 「按住空格平移」插在「平移工具」那一行之后（注册表里没有平移工具就排在最后）。
+/// 本平台一个键位都出不了字的行不上屏。[registry] 缺省 = kCanvasKeyRegistry（测试可传合成的）。
+List<ShortcutRow> buildShortcutRows({
+  required bool isMac,
+  List<CanvasKeyBinding>? registry,
+}) {
+  final List<String> order = <String>[];
+  final Map<String, ShortcutGroup> groups = <String, ShortcutGroup>{};
+  final Map<String, String Function(AppLocalizations l)> labels =
+      <String, String Function(AppLocalizations l)>{};
+  final Map<String, List<String>> keys = <String, List<String>>{};
 
-  void add(ShortcutAction? action, ShortcutActivator activator) {
-    if (action == null) return;
-    final String? label = formatShortcutActivator(activator, isMac: isMac);
-    if (label == null) return;
-    final List<String> list =
-        keys.putIfAbsent(action, () => <String>[]);
-    if (!list.contains(label)) list.add(label);
+  void add(
+    String id,
+    ShortcutGroup group,
+    String Function(AppLocalizations l) label,
+    Iterable<ShortcutActivator> activators,
+  ) {
+    if (!groups.containsKey(id)) {
+      order.add(id);
+      groups[id] = group;
+      labels[id] = label;
+    }
+    final List<String> list = keys.putIfAbsent(id, () => <String>[]);
+    for (final ShortcutActivator a in activators) {
+      final String? text = formatShortcutActivator(a, isMac: isMac);
+      if (text != null && !list.contains(text)) list.add(text);
+    }
   }
 
-  for (final SingleActivator a in kCommandPaletteActivators) {
-    add(ShortcutAction.commandPalette, a);
-  }
-  add(ShortcutAction.overlayDismiss, kOverlayDismissActivator);
-  kCanvasShortcuts.forEach(
-    (ShortcutActivator a, Intent i) => add(shortcutActionOf(i), a),
+  void addHoldPan() => add(
+        _holdPanId,
+        ShortcutGroup.tools,
+        (AppLocalizations l) => l.settingsShortcutCanvasHoldPan,
+        const <ShortcutActivator>[CanvasToolKeys.holdToPan],
+      );
+
+  add(
+    _commandPaletteId,
+    ShortcutGroup.app,
+    (AppLocalizations l) => l.settingsShortcutCommandPalette,
+    kCommandPaletteActivators,
   );
-  add(ShortcutAction.canvasHoldPan, CanvasToolKeys.holdToPan);
+  add(
+    _overlayDismissId,
+    ShortcutGroup.app,
+    (AppLocalizations l) => l.settingsShortcutOverlayDismiss,
+    const <ShortcutActivator>[kOverlayDismissActivator],
+  );
+  bool holdPanAdded = false;
+  for (final CanvasKeyBinding b in registry ?? kCanvasKeyRegistry) {
+    if (!b.listed) continue;
+    add(b.id, b.group, b.label, b.activators);
+    if (b.id == _panToolId && !holdPanAdded) {
+      addHoldPan();
+      holdPanAdded = true;
+    }
+  }
+  if (!holdPanAdded) addHoldPan();
 
   return <ShortcutRow>[
-    for (final ShortcutAction action in ShortcutAction.values)
-      if (keys[action] != null)
-        ShortcutRow(action: action, keys: keys[action]!),
+    for (final String id in order)
+      if (keys[id]!.isNotEmpty)
+        ShortcutRow(
+          id: id,
+          group: groups[id]!,
+          label: labels[id]!,
+          keys: keys[id]!,
+        ),
   ];
+}
+
+/// 注册表里 [id] 那一条绑定在本平台第一个出得了字的激活器；没有这条绑定 / 一个都出不了字 ⇒ null。
+///
+/// 菜单行尾、按钮 tooltip 要按 id 取键位时用它（与设置页清单同源）。
+ShortcutActivator? canvasBindingActivator(String id, {required bool isMac}) {
+  for (final CanvasKeyBinding b in kCanvasKeyRegistry) {
+    if (b.id != id) continue;
+    for (final ShortcutActivator a in b.activators) {
+      if (formatShortcutActivator(a, isMac: isMac) != null) return a;
+    }
+  }
+  return null;
+}
+
+/// 注册表里 [id] 那一条绑定在本平台的展示串（取 [canvasBindingActivator] 那一个）；出不了字 ⇒ null。
+String? canvasBindingLabel(String id, {required bool isMac}) {
+  final ShortcutActivator? a = canvasBindingActivator(id, isMac: isMac);
+  return a == null ? null : formatShortcutActivator(a, isMac: isMac);
 }
 
 /// [kCanvasShortcuts] 里第一条满足 [matches] 的绑定在本平台的展示串；一条都出不了字 ⇒ null。

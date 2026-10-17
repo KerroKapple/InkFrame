@@ -22,37 +22,6 @@ class ShortcutsSection extends StatelessWidget {
   /// 稿的键位列：右对齐等宽，宽度够放下「Ctrl+Shift+Delete」这类长串。
   static const double keyColumnWidth = 180;
 
-  static String actionLabel(AppLocalizations l, ShortcutAction a) =>
-      switch (a) {
-        ShortcutAction.commandPalette => l.settingsShortcutCommandPalette,
-        ShortcutAction.overlayDismiss => l.settingsShortcutOverlayDismiss,
-        ShortcutAction.canvasDelete => l.settingsShortcutCanvasDelete,
-        ShortcutAction.canvasEscape => l.settingsShortcutCanvasEscape,
-        ShortcutAction.canvasSelectAll => l.settingsShortcutCanvasSelectAll,
-        ShortcutAction.canvasDuplicate => l.settingsShortcutCanvasDuplicate,
-        ShortcutAction.canvasGenerate => l.settingsShortcutCanvasGenerate,
-        ShortcutAction.canvasZoomIn => l.settingsShortcutCanvasZoomIn,
-        ShortcutAction.canvasZoomOut => l.settingsShortcutCanvasZoomOut,
-        ShortcutAction.canvasZoomReset => l.settingsShortcutCanvasZoomReset,
-        ShortcutAction.canvasFitAll => l.settingsShortcutCanvasFitAll,
-        ShortcutAction.canvasFitSelection =>
-          l.settingsShortcutCanvasFitSelection,
-        ShortcutAction.canvasSelectTool => l.settingsShortcutCanvasSelectTool,
-        ShortcutAction.canvasPanTool => l.settingsShortcutCanvasPanTool,
-        ShortcutAction.canvasHoldPan => l.settingsShortcutCanvasHoldPan,
-        ShortcutAction.canvasAddImageNode =>
-          l.settingsShortcutCanvasAddImageNode,
-        ShortcutAction.canvasAddVideoNode =>
-          l.settingsShortcutCanvasAddVideoNode,
-        ShortcutAction.canvasAddTextNode => l.settingsShortcutCanvasAddTextNode,
-        ShortcutAction.canvasAddLane => l.settingsShortcutCanvasAddLane,
-        ShortcutAction.canvasOpenCreateMenu =>
-          l.settingsShortcutCanvasOpenCreateMenu,
-        ShortcutAction.canvasToggleLink => l.settingsShortcutCanvasToggleLink,
-        ShortcutAction.canvasToggleLeftRail =>
-          l.settingsShortcutCanvasToggleLeftRail,
-      };
-
   @override
   Widget build(BuildContext context) {
     final InkColors c = context.inkColors;
@@ -95,7 +64,7 @@ class ShortcutsSection extends StatelessWidget {
               children: <Widget>[
                 Expanded(
                   child: Text(
-                    actionLabel(l, row.action),
+                    row.label(l),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: t.body.copyWith(color: c.fg2),
