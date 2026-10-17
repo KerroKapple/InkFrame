@@ -9,7 +9,8 @@
 // 收起面板——收起时舞台左沿直接贴上导航条右沿。浮层都按舞台定位，不进左栏那一列。
 //
 // 画布区浮层（稿）：顶部居中浮动工具条（top 12）、底部居中提示词条（bottom 16）、
-// 左下缩放条（left 12 / bottom 12，canvas_zoom_bar.dart）；右下角留给通知卡。原来的左侧 37px
+// 左下缩放条（left 12 / bottom 12，canvas_zoom_bar.dart）、底部居中的轻提示胶囊（canvas_capsule_host.dart：
+// 「我刚做了什么」，只在本画布、不进铃铛）；右下角留给通知卡。原来的左侧 37px
 // 工具条与右下 32×32 加号已撤，它们的动作全部并进浮动工具条（canvas_toolbar.dart）。
 // 节点 Inspector 不再浮在画布里，改住右侧面板。
 //
@@ -20,6 +21,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../providers/current_canvas_id.dart';
+import 'canvas_capsule_host.dart';
 import 'canvas_inspector_panel.dart';
 import 'canvas_prompt_bar.dart';
 import 'canvas_shortcuts.dart';
@@ -69,6 +71,9 @@ class CanvasScreen extends ConsumerWidget {
                       bottom: InkToolbarSize.promptBarBottom,
                       child: CanvasPromptBar(canvasId: canvasId),
                     ),
+                    // 轻提示胶囊：底部居中，贴在提示词条上方 8（条子收起时离舞台底 16），两侧让出缩放条。
+                    // 本身就是 Positioned；换标签即收（visible）。
+                    CanvasCapsuleHost(canvasId: canvasId, visible: isVisible),
                     // 最后画：压在舞台浮层（连线提示等）之上，那些浮层的 top 已让出
                     // 工具条的高度（InkToolbarSize.stageTopInset）。
                     Positioned(

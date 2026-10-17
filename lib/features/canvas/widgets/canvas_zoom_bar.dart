@@ -9,6 +9,9 @@
 // 「适应」= 适应全部（PR-8b）：把画布上所有卡片框进视口（只缩小、不放大），与 Shift+1、空白处右键菜单
 // 「适应视图」同一个动作（canvas_tool_actions.dart 的 fitAllNodes）。原来它只是把相机复位；现在 ⌘0 是缩放到 100%
 // 并保持视口中心（core_canvas_keys.dart 的 resetCanvasZoom），不回初始相机。
+//
+// 整条定宽 kCanvasZoomBarWidth（百分比格定宽、居中）：比例变了条不伸缩，舞台底部轻提示胶囊的两侧让位线才站得住。
+// 本条的 + / − 走本地 zoom()，不出「缩放 N%」胶囊（比例就显示在条上）；「适应」走 fitAllNodes，自然出胶囊。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +24,9 @@ import '../../../theme/tokens.dart';
 import '../providers/canvas_transform_controller.dart';
 import '../util/canvas_tool_actions.dart';
 import '../util/canvas_zoom.dart';
+
+/// 缩放条的外宽（定宽）。舞台底部的轻提示胶囊两侧按它让位（InkCanvasCapsuleSize.sideReserve）。
+const double kCanvasZoomBarWidth = InkToolbarSize.zoomBarWidth;
 
 class CanvasZoomBar extends ConsumerWidget {
   const CanvasZoomBar({super.key, required this.canvasId});
@@ -42,32 +48,42 @@ class CanvasZoomBar extends ConsumerWidget {
       );
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: c.surface4,
-        border: Border.all(color: c.control),
-        borderRadius: BorderRadius.circular(InkRadius.s3),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          _ZoomCell(width: 27, label: l.canvasZoomOut, onTap: () => zoom(1 / kCanvasZoomStep), borderRight: true,
-              child: InkIcon(InkGlyph.zoomOut, size: InkIconSize.sm, color: c.fg3)),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s10),
-            child: ValueListenableBuilder<Matrix4>(
-              valueListenable: transform,
-              builder: (BuildContext context, Matrix4 m, _) =>
-                  Text('${(scaleOf(m) * 100).round()}%', style: t.mono.copyWith(color: c.fg3)),
+    return SizedBox(
+      width: kCanvasZoomBarWidth,
+      child: Container(
+        decoration: BoxDecoration(
+          color: c.surface4,
+          border: Border.all(color: c.control),
+          borderRadius: BorderRadius.circular(InkRadius.s3),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            _ZoomCell(width: 27, label: l.canvasZoomOut, onTap: () => zoom(1 / kCanvasZoomStep), borderRight: true,
+                child: InkIcon(InkGlyph.zoomOut, size: InkIconSize.sm, color: c.fg3)),
+            // 百分比格定宽、居中：比例从 10% 变到 300%，整条不伸缩（胶囊两侧的让位线按定宽算）。
+            SizedBox(
+              width: InkToolbarSize.zoomBarPercentCell,
+              child: Center(
+                child: ValueListenableBuilder<Matrix4>(
+                  valueListenable: transform,
+                  builder: (BuildContext context, Matrix4 m, _) => Text(
+                    '${(scaleOf(m) * 100).round()}%',
+                    maxLines: 1,
+                    softWrap: false,
+                    style: t.mono.copyWith(color: c.fg3),
+                  ),
+                ),
+              ),
             ),
-          ),
-          _ZoomCell(width: 27, label: l.canvasZoomIn, onTap: () => zoom(kCanvasZoomStep), borderLeft: true,
-              child: InkIcon(InkGlyph.zoomIn, size: InkIconSize.sm, color: c.fg3)),
-          // 「适应」格本身有字，读屏读这行字即可，不再另给标签（否则会念两遍）。
-          _ZoomCell(width: 41, onTap: () => fitAllNodes(ref, canvasId: canvasId), borderLeft: true,
-              child: Text(l.canvasZoomFit, style: t.meta.copyWith(color: c.fg3))),
-        ],
+            _ZoomCell(width: 27, label: l.canvasZoomIn, onTap: () => zoom(kCanvasZoomStep), borderLeft: true,
+                child: InkIcon(InkGlyph.zoomIn, size: InkIconSize.sm, color: c.fg3)),
+            // 「适应」格本身有字，读屏读这行字即可，不再另给标签（否则会念两遍）。
+            _ZoomCell(width: 41, onTap: () => fitAllNodes(ref, canvasId: canvasId), borderLeft: true,
+                child: Text(l.canvasZoomFit, style: t.meta.copyWith(color: c.fg3))),
+          ],
+        ),
       ),
     );
   }

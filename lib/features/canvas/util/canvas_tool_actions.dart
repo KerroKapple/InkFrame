@@ -23,7 +23,8 @@
 //     「生成」走同一条 submit；
 //   - 复制一份（duplicateNodes，Ctrl+D / ⌘D）：同类型 / 同 typeConfig / 同泳道，右下各偏一个 lg；
 //   - 适应全部 / 适应选中（fitAllNodes / fitSelectedNodes，Shift+1 / Shift+2）：缩放条「适应」与空白处
-//     右键菜单「适应视图」都是适应全部；⌘0 是缩放到 100%（保持视口中心），不归这里；
+//     右键菜单「适应视图」都是适应全部；⌘0 是缩放到 100%（保持视口中心），不归这里；真改了相机就在舞台底部
+//     出「缩放 N%」胶囊（providers/canvas_capsule.dart 的 showZoomCapsule，四个入口都汇到 _fitNodes）；
 //   - 存为角色（saveNodeAsCharacter）：与角色库「新建角色」同一条 createFromImage；
 //   - 加入 / 移出泳道（moveNodesToLane）：走 moveNode，多选整批。
 // 存为角色要开起名框，所以本文件又反向引了 theme 层的 InkNameDialog 与 widgets/node_card.dart 的显示名。
@@ -49,6 +50,7 @@ import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../models/character.dart';
 import '../models/style_lane.dart';
+import '../providers/canvas_capsule.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_focus_request.dart';
 import '../providers/canvas_lanes_controller.dart';
@@ -258,7 +260,11 @@ void _fitNodes(
       if (n.laneId == null || !collapsed.contains(n.laneId)) n,
   ];
   if (visible.isEmpty) {
-    if (resetWhenEmpty) transform.value = initialCanvasTransform();
+    // 胶囊只在真的写了相机时出：空画布适应全部回初始相机也算；适应选中没东西可框 ⇒ 不动、不出。
+    if (resetWhenEmpty) {
+      transform.value = initialCanvasTransform();
+      showZoomCapsule(ref, canvasId: canvasId);
+    }
     return;
   }
   final List<StyleLane> lanes =
@@ -287,7 +293,11 @@ void _fitNodes(
       promptBarHeight: ref.read(canvasPromptBarHeightProvider(canvasId)),
     ),
   );
-  if (next != null) transform.value = next;
+  // next == null：视口还没量出等，相机不动、也不出胶囊。
+  if (next != null) {
+    transform.value = next;
+    showZoomCapsule(ref, canvasId: canvasId);
+  }
 }
 
 /// 从出端口拖到另一张卡上松手：等价于「连线模式里选源 → 点目标」。先以 [sourceNodeId] 进连线模式，

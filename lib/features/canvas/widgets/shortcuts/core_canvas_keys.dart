@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../models/canvas_node.dart';
+import '../../providers/canvas_capsule.dart';
 import '../../providers/canvas_escape_ladder.dart';
 import '../../providers/canvas_menu_state.dart';
 import '../../providers/canvas_nodes_controller.dart';
@@ -303,7 +304,8 @@ void escapeCanvas(CanvasKeyContext c) {
       .handle(local: c.escapeRungs);
 }
 
-/// 围绕视口中心按 [factor] 缩放（⌘± / Ctrl±）。
+/// 围绕视口中心按 [factor] 缩放（⌘± / Ctrl±）。改完在舞台底部出「缩放 N%」胶囊——键盘缩放才出，
+/// 滚轮 / 捏合 / 缩放条 +、− 不走这里、不出（缩放条上一直显示着比例）。
 void zoomCanvasBy(
   WidgetRef ref, {
   required String canvasId,
@@ -317,15 +319,17 @@ void zoomCanvasBy(
     factor: factor,
     viewportSize: size,
   );
+  showZoomCapsule(ref, canvasId: canvasId);
 }
 
 /// 缩放复位（⌘0 / Ctrl+0）：缩放到 100%、视口中心对着的内容不动（KeyMap Q5-B）；不回初始相机——
-/// 初始相机常落在空处，回内容有 Shift+1。已是 100% 时相机不动。
+/// 初始相机常落在空处，回内容有 Shift+1。已是 100% 时相机不动，胶囊照出「缩放 100%」。
 void resetCanvasZoom(WidgetRef ref, {required String canvasId}) {
   final TransformationController controller =
       ref.read(canvasTransformControllerProvider(canvasId));
   final Size size = ref.read(canvasViewportSizeProvider(canvasId));
   controller.value = actualSizeTransform(controller.value, size);
+  showZoomCapsule(ref, canvasId: canvasId);
 }
 
 /// I / G / T：在视口中心建一个 intent 指定类型的节点（与工具条建节点键同一条路径）。
