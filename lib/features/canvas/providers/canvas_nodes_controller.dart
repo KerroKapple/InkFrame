@@ -8,6 +8,9 @@
 //
 // 失败策略：add/remove/move 采用"先改内存再持久化"。若 DB 失败则回滚内存并把错误
 // 冒泡到调用方；UI 层负责 toast（S4）。
+//
+// 批量写（文件末尾）：moveNodes / removeNodes / restoreAll / patchTypeConfigMany 各一个
+// 事务，失败整批回滚内存；replaceTypeConfig 单语句整列覆盖。都与单个写走同一条串行队列。
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +34,10 @@ final canvasNodesControllerProvider = AutoDisposeAsyncNotifierProviderFamily<
 /// removeNode 的撤销令牌（PL-4a）：被删节点 + 同事务级联软删的 edge id，
 /// 供 restore 精确复原节点及其关联连线。
 typedef NodeDeletion = ({CanvasNode node, List<String> edgeIds});
+
+/// moveNodes 里一张卡的挪法：与 moveNode(id, delta, laneId:) 同语义——
+/// 新位置 = 当前位置 + [delta]（夹在 ±kWorldReach），[laneId] 为 null 即移出泳道。
+typedef NodeMove = ({Offset delta, String? laneId});
 
 class CanvasNodesController
     extends AutoDisposeFamilyAsyncNotifier<List<CanvasNode>, String>
@@ -238,6 +245,254 @@ class CanvasNodesController
           NodeCol.positionY: newPos.dy,
           NodeCol.laneId: laneId,
         });
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+  }
+
+  // ===== 批量写：各一个事务，失败整批回滚内存 =====
+
+  /// 整组挪动：一个事务里逐个写 position_x / position_y / lane_id。
+  ///
+  /// 只处理此刻在内存里的 id（不在的跳过）；落点夹在 ±kWorldReach；laneId 为 null 即移出泳道。
+  /// 空 map 或一个都不在 ⇒ 不碰库。任一行写失败 ⇒ 内存整批回到调用前，InkError 上抛。
+  Future<void> moveNodes(Map<String, NodeMove> moves) {
+    if (moves.isEmpty) return Future<void>.value();
+    final requested = Map<String, NodeMove>.of(moves); // 调用方之后改 map 不影响这次
+    final uowFuture = ref.read(unitOfWorkProvider.future); // 入口解析，串行 op 内不触 ref
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      final byId = <String, CanvasNode>{for (final n in previous) n.id: n};
+      final targets = <String, ({Offset position, String? laneId})>{};
+      for (final entry in requested.entries) {
+        final node = byId[entry.key];
+        if (node == null) continue;
+        final raw = node.position + entry.value.delta;
+        targets[entry.key] = (
+          position: Offset(
+            raw.dx.clamp(-kWorldReach, kWorldReach),
+            raw.dy.clamp(-kWorldReach, kWorldReach),
+          ),
+          laneId: entry.value.laneId,
+        );
+      }
+      if (targets.isEmpty) return;
+      if (_alive) {
+        state = AsyncData([
+          for (final n in previous)
+            if (targets.containsKey(n.id))
+              n.copyWith(
+                position: targets[n.id]!.position,
+                laneId: targets[n.id]!.laneId,
+                clearLaneId: targets[n.id]!.laneId == null,
+              )
+            else
+              n,
+        ]);
+      }
+      try {
+        final uow = await uowFuture;
+        await uow.run((scope) async {
+          for (final entry in targets.entries) {
+            await scope.nodes.update(entry.key, <String, Object?>{
+              NodeCol.positionX: entry.value.position.dx,
+              NodeCol.positionY: entry.value.position.dy,
+              NodeCol.laneId: entry.value.laneId,
+            });
+          }
+        });
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+  }
+
+  /// 整批删除：一个事务里软删全部节点及其入 / 出边，返回撤销令牌（顺序 = [ids] 的迭代顺序）。
+  ///
+  /// 事务内分两段：**先**按 [ids] 顺序列完全部入 / 出边并去重（同一条边只归第一个列到它的节点的
+  /// 令牌），**再**统一软删边与节点——交错着「列一张删一张」的话，后面那张已经列不到本事务刚软删的
+  /// 边，去重形同虚设。不在内存里的 id 照 removeNode 口径仍软删、但不产令牌。空集合 ⇒ 不碰库。
+  /// 任一步失败 ⇒ 库里整批回滚（真事务），内存整批放回，InkError 上抛。
+  Future<List<NodeDeletion>> removeNodes(Set<String> ids) {
+    if (ids.isEmpty) return Future<List<NodeDeletion>>.value(const <NodeDeletion>[]);
+    final order = List<String>.of(ids, growable: false);
+    final idSet = order.toSet();
+    final canvasId = arg;
+    final uowFuture = ref.read(unitOfWorkProvider.future); // 入口解析，串行 op 内不触 ref
+    return serialize<List<NodeDeletion>>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      final byId = <String, CanvasNode>{for (final n in previous) n.id: n};
+      if (_alive) {
+        state = AsyncData(
+          previous.where((n) => !idSet.contains(n.id)).toList(growable: false),
+        ); // 乐观更新
+      }
+      try {
+        final uow = await uowFuture;
+        final edgeIdsOf = await uow.run((scope) async {
+          // 第一段：只读——列边、去重、归属。
+          final seen = <String>{};
+          final planned = <String, List<String>>{};
+          for (final id in order) {
+            final outgoing = await scope.edges.listOutgoing(id);
+            final incoming = await scope.edges.listIncoming(id);
+            final mine = <String>[];
+            for (final r in <Map<String, Object?>>[...outgoing, ...incoming]) {
+              final eid = r.reqId(EdgeCol.id);
+              if (seen.add(eid)) mine.add(eid);
+            }
+            planned[id] = mine;
+          }
+          // 第二段：写——先边后节点。
+          for (final id in order) {
+            for (final eid in planned[id]!) {
+              await scope.edges.softDelete(eid);
+            }
+          }
+          for (final id in order) {
+            await scope.nodes.softDelete(id);
+          }
+          return planned;
+        });
+        if (_alive) ref.invalidate(canvasEdgesControllerProvider(canvasId));
+        return <NodeDeletion>[
+          for (final id in order)
+            if (byId.containsKey(id))
+              (node: byId[id]!, edgeIds: edgeIdsOf[id] ?? const <String>[]),
+        ];
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+  }
+
+  /// 撤销 removeNodes：一个事务里复原全部令牌的节点与边（节点 / 边 id 各自去重）；
+  /// 内存里已经在的节点不重复插入。
+  ///
+  /// 返回 Σ nodes.restore 的受影响行数：全部为 0（行已被硬删）⇒ 调用方可判「对象已不在」。
+  /// 受影响行数为 0 的节点不留在内存里（库里没有它，留着就是一张点什么都写失败的卡）。
+  /// 失败 ⇒ 内存回到调用前、InkError 上抛。画布已关（provider 已 dispose）⇒ 直接返回 0。
+  Future<int> restoreAll(List<NodeDeletion> deletions) {
+    // 入口守卫（先于任何同步 ref.read），理由同 restore。
+    if (!_alive) return Future<int>.value(0);
+    if (deletions.isEmpty) return Future<int>.value(0);
+    final tokens = List<NodeDeletion>.of(deletions, growable: false);
+    final canvasId = arg;
+    final uowFuture = ref.read(unitOfWorkProvider.future);
+    return serialize<int>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      final present = <String>{for (final n in previous) n.id};
+      final inserted = <CanvasNode>[];
+      for (final d in tokens) {
+        if (present.add(d.node.id)) inserted.add(d.node);
+      }
+      if (_alive) state = AsyncData([...previous, ...inserted]); // 乐观复原
+      final nodeIds = <String>{for (final d in tokens) d.node.id};
+      final edgeIds = <String>{for (final d in tokens) ...d.edgeIds};
+      final gone = <String>{};
+      try {
+        final uow = await uowFuture;
+        final affected = await uow.run((scope) async {
+          var sum = 0;
+          for (final id in nodeIds) {
+            final n = await scope.nodes.restore(id);
+            if (n == 0) gone.add(id);
+            sum += n;
+          }
+          for (final eid in edgeIds) {
+            await scope.edges.restore(eid);
+          }
+          return sum;
+        });
+        if (_alive) {
+          ref.invalidate(canvasEdgesControllerProvider(canvasId));
+          final insertedIds = <String>{for (final n in inserted) n.id};
+          final phantom = gone.intersection(insertedIds);
+          if (phantom.isNotEmpty) {
+            state = AsyncData([
+              for (final n in state.valueOrNull ?? const <CanvasNode>[])
+                if (!phantom.contains(n.id)) n,
+            ]);
+          }
+        }
+        return affected;
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+  }
+
+  /// 多张卡的 type_config 一起 patch：一个事务里逐个 patchTypeConfig。
+  ///
+  /// 内存按 `{...旧, ...patch}` 合并——值为 null 即写 JSON null、不删键（与 jsonb `||` 一致）；
+  /// 不在内存的 id 跳过。任一行失败 ⇒ 内存整批回滚，InkError 上抛。
+  Future<void> patchTypeConfigMany(Map<String, Map<String, Object?>> patches) {
+    if (patches.isEmpty) return Future<void>.value();
+    final requested = <String, Map<String, Object?>>{
+      for (final e in patches.entries) e.key: Map<String, Object?>.of(e.value),
+    };
+    final uowFuture = ref.read(unitOfWorkProvider.future); // 入口解析，串行 op 内不触 ref
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      final present = <String>{for (final n in previous) n.id};
+      final targets = <String, Map<String, Object?>>{
+        for (final e in requested.entries)
+          if (present.contains(e.key)) e.key: e.value,
+      };
+      if (targets.isEmpty) return;
+      if (_alive) {
+        state = AsyncData([
+          for (final n in previous)
+            if (targets.containsKey(n.id))
+              n.copyWith(
+                typeConfig: <String, Object?>{...n.typeConfig, ...targets[n.id]!},
+              )
+            else
+              n,
+        ]);
+      }
+      try {
+        final uow = await uowFuture;
+        await uow.run((scope) async {
+          for (final e in targets.entries) {
+            await scope.nodes.patchTypeConfig(e.key, e.value);
+          }
+        });
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+  }
+
+  /// 整列覆盖一张卡的 type_config（撤销改参数时要删掉原来没有的键，patch 做不到）。
+  ///
+  /// 走 NodeRepository.update（type_config 整列 `::jsonb` 覆盖），单语句不需要事务；
+  /// 节点不在内存 ⇒ 什么也不做。失败 ⇒ 回滚该节点的 type_config，InkError 上抛。
+  Future<void> replaceTypeConfig(String id, Map<String, Object?> full) {
+    final repo = _repo; // 入口一次性解析，串行 op 内不再触 ref
+    final config = Map<String, Object?>.of(full);
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      if (!previous.any((n) => n.id == id)) return;
+      if (_alive) {
+        state = AsyncData([
+          for (final n in previous)
+            if (n.id == id) n.copyWith(typeConfig: config) else n,
+        ]);
+      }
+      try {
+        await repo.update(id, <String, Object?>{NodeCol.typeConfig: config});
       } on InkError catch (_) {
         if (_alive) state = AsyncData(previous);
         rethrow;

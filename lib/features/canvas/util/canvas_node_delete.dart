@@ -1,8 +1,8 @@
 // 节点删除防误伤（PL-4a 语义，单一删除路径）：节点卡片删除按钮与 Delete 快捷键共用。
 //
 // 单选：走单节点「Node deleted · Undo」，与 PL-4a 完全一致，不回归。
-// 多选：逐个删除并弹一条「N nodes deleted · Undo」；Undo 一次性复原全部
-//       （每个删除的撤销令牌都逐节点保留，不丢弃撤销入口）。
+// 多选：一次事务整批删除（removeNodes）——要么全删掉、弹一张「N nodes deleted · Undo」，
+//       要么一张都不删、只出「删除节点失败」；Undo 也是一次事务（restoreAll）把 N 张连同线放回。
 
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -44,7 +44,7 @@ Future<void> deleteNodeWithUndo(
 }
 
 /// 删除当前选中的一个或多个节点。单选下沉到 [deleteNodeWithUndo]（PL-4a 不回归）；
-/// 多选逐个删除后弹一张批量撤销卡。
+/// 多选一次事务整批删除后弹一张批量撤销卡；失败一张不删，只出失败卡、没有撤销卡。
 Future<void> deleteNodesWithUndo(
   BuildContext context,
   WidgetRef ref, {
@@ -62,25 +62,35 @@ Future<void> deleteNodesWithUndo(
   }
   final selectionCtrl = ref.read(canvasSelectionControllerProvider(canvasId).notifier);
   final nodesCtrl = ref.read(canvasNodesControllerProvider(canvasId).notifier);
-  final deletions = <NodeDeletion>[];
+  // 删前一次性移出选中；失败不恢复选中（维持现状）。
+  selectionCtrl.removeAll(nodeIds);
   try {
-    for (final id in nodeIds) {
-      selectionCtrl.removed(id);
-      final deletion = await nodesCtrl.removeNode(id);
-      if (deletion != null) deletions.add(deletion);
-    }
+    final deletions = await nodesCtrl.removeNodes(nodeIds);
+    if (!context.mounted || deletions.isEmpty) return;
+    showCanvasUndoSnack(
+      context,
+      message: context.l10n.nodesDeleted(deletions.length),
+      onUndo: () => _restoreAll(context, nodesCtrl, deletions),
+    );
   } on InkError catch (_) {
-    // 中途某个失败：已删的仍逐个可撤销，落到下方的批量撤销卡；另提示失败。
+    // 整批回滚：一张都没删，只告知失败，不出撤销卡。
     if (context.mounted) {
       showCanvasSnack(context, context.l10n.nodeDeleteFailed);
     }
   }
-  if (!context.mounted || deletions.isEmpty) return;
-  showCanvasUndoSnack(
-    context,
-    message: context.l10n.nodesDeleted(deletions.length),
-    onUndo: () => _restore(context, nodesCtrl, deletions),
-  );
+}
+
+/// 多选撤销：一次事务复原全部令牌；失败 → undoFailed 兜底提示。
+Future<void> _restoreAll(
+  BuildContext context,
+  CanvasNodesController ctrl,
+  List<NodeDeletion> deletions,
+) async {
+  try {
+    await ctrl.restoreAll(deletions);
+  } on InkError catch (_) {
+    if (context.mounted) showCanvasSnack(context, context.l10n.undoFailed);
+  }
 }
 
 /// 逐个复原撤销令牌；任一步失败 → undoFailed 兜底提示。
