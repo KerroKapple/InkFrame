@@ -424,6 +424,26 @@ void main() {
       expect(redoIds(), isEmpty);
       expect(st().busy, isFalse);
     });
+
+    test('重做在途时画布被关 ⇒ 完成后 undo / redo 都空', () async {
+      final Completer<CanvasCommandOutcome> gate =
+          Completer<CanvasCommandOutcome>();
+      ctrl().record(cmd('A', apply: <Object>[gate]));
+      await ctrl().undo();
+      expect(redoIds(), <String>['c1#1'], reason: '前置：A 已进重做栈');
+
+      final Future<CanvasUndoResult> pending = ctrl().redo();
+      await pumpEventQueue();
+      shell().closeCanvas();
+      expect(redoIds(), isEmpty, reason: '前置：已丢栈');
+
+      gate.complete(CanvasCommandOutcome.done);
+      final CanvasUndoResult r = await pending;
+      expect(r.status, CanvasUndoStatus.done);
+      expect(undoIds(), isEmpty, reason: '晚到的重做不许把步放回已丢的栈');
+      expect(redoIds(), isEmpty);
+      expect(st().busy, isFalse);
+    });
   });
 
   group('关画布丢栈', () {
@@ -488,6 +508,7 @@ void main() {
       expect(undoIds(), isEmpty);
       expect(redoIds(), isEmpty);
       final String d = ctrl().record(cmd('D'));
+      expect(d, 'c1#4', reason: 'seed 里 record 过三次，丢栈不重置序号');
       expect(undoIds(), <String>[d]);
     });
   });
