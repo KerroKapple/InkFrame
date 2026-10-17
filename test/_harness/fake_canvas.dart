@@ -16,7 +16,8 @@ import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 
-/// 内存 Fake：build 返回 seed，removeNode/restore 就地增删。
+/// 内存 Fake：build 返回 seed，removeNode / restore / removeNodes / restoreAll 就地增删，
+/// moveNodes 就地挪。
 class FakeNodesController extends CanvasNodesController {
   FakeNodesController(this._seed);
   final List<CanvasNode> _seed;
@@ -42,6 +43,52 @@ class FakeNodesController extends CanvasNodesController {
   Future<void> restore(NodeDeletion deletion) async {
     final previous = state.valueOrNull ?? const <CanvasNode>[];
     state = AsyncData([...previous, deletion.node]);
+  }
+
+  /// 整批删除：内存就地移除，按 [ids] 顺序给在内存里的节点各一个令牌（无边）。
+  @override
+  Future<List<NodeDeletion>> removeNodes(Set<String> ids) async {
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    final Map<String, CanvasNode> byId = <String, CanvasNode>{
+      for (final CanvasNode n in previous) n.id: n,
+    };
+    state = AsyncData(
+      previous.where((n) => !ids.contains(n.id)).toList(growable: false),
+    );
+    return <NodeDeletion>[
+      for (final String id in ids)
+        if (byId.containsKey(id)) (node: byId[id]!, edgeIds: const <String>[]),
+    ];
+  }
+
+  /// 整批复原：内存里已经在的不重复插入；返回实际插回的节点数。
+  @override
+  Future<int> restoreAll(List<NodeDeletion> deletions) async {
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    final Set<String> present = <String>{for (final CanvasNode n in previous) n.id};
+    final List<CanvasNode> back = <CanvasNode>[
+      for (final NodeDeletion d in deletions)
+        if (present.add(d.node.id)) d.node,
+    ];
+    state = AsyncData([...previous, ...back]);
+    return back.length;
+  }
+
+  /// 整组挪动：内存就地改位置 + 泳道（laneId 为 null 即移出泳道）。
+  @override
+  Future<void> moveNodes(Map<String, NodeMove> moves) async {
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    state = AsyncData([
+      for (final CanvasNode n in previous)
+        if (moves.containsKey(n.id))
+          n.copyWith(
+            position: n.position + moves[n.id]!.delta,
+            laneId: moves[n.id]!.laneId,
+            clearLaneId: moves[n.id]!.laneId == null,
+          )
+        else
+          n,
+    ]);
   }
 }
 
@@ -86,6 +133,14 @@ class RecordingNodesController extends FakeNodesController {
     required String? laneId,
   }) async {
     moved.add(id);
+  }
+
+  /// moveNodes 收到的整批挪法，按调用顺序（与 moveNode 一样只记不改内存）。
+  final List<Map<String, NodeMove>> movedBatches = <Map<String, NodeMove>>[];
+
+  @override
+  Future<void> moveNodes(Map<String, NodeMove> moves) async {
+    movedBatches.add(Map<String, NodeMove>.of(moves));
   }
 }
 

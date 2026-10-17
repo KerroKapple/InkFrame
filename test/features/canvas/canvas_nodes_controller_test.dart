@@ -1,7 +1,8 @@
 // CanvasNodesController 单测 —— 用 fake NodeRepository 打桩，不接真 PG。
 //
 // 覆盖：初始 load、addNode 乐观更新 + DB create 参数透传、removeNode 乐观删除 +
-// DB 失败回滚、moveNode 持久化位置 + 泳道 + InkError 回滚。
+// DB 失败回滚、moveNode 持久化位置 + 泳道 + InkError 回滚；批量写（moveNodes / removeNodes /
+// restoreAll / patchTypeConfigMany / replaceTypeConfig）各一个事务、失败整批回滚内存。
 
 import 'dart:async';
 import 'dart:ui' show Size;
@@ -25,10 +26,24 @@ class _FakeNodeRepository implements NodeRepository {
   final List<String> restored = <String>[];
   final List<Map<String, Object?>> updateCalls = <Map<String, Object?>>[];
 
+  final List<Map<String, Object?>> patchCalls = <Map<String, Object?>>[];
+
   String? createError;
   String? softDeleteError;
   String? restoreError;
   String? updateError;
+
+  /// 第 n 次（1 起，从本仓储建好起算）softDelete / update / patchTypeConfig 抛 LocalIOError；
+  /// null = 不按次数失败。与上面「每次都抛」的字符串开关并存。
+  int? failSoftDeleteAt;
+  int? failUpdateAt;
+  int? failPatchAt;
+  int _softDeleteCount = 0;
+  int _updateCount = 0;
+  int _patchCount = 0;
+
+  /// restore 返回的受影响行数（0 = 行已被硬删）。
+  int restoreAffected = 1;
 
   /// 置入后 create 会先 await 此 gate，用于制造两次 create 交错（LB-04）。
   Completer<void>? createGate;
@@ -95,6 +110,9 @@ class _FakeNodeRepository implements NodeRepository {
       throw LocalIOError(
           extra: {'op': 'softDelete', 'table': 'nodes', 'msg': softDeleteError});
     }
+    if (++_softDeleteCount == failSoftDeleteAt) {
+      throw LocalIOError(extra: {'op': 'softDelete', 'table': 'nodes', 'nth': failSoftDeleteAt});
+    }
     softDeleted.add(id);
     rows.removeWhere((r) => r['id'] == id);
     return 1;
@@ -118,13 +136,22 @@ class _FakeNodeRepository implements NodeRepository {
     if (updateError != null) {
       throw LocalIOError(extra: {'op': 'update', 'table': 'nodes', 'msg': updateError});
     }
+    if (++_updateCount == failUpdateAt) {
+      throw LocalIOError(extra: {'op': 'update', 'table': 'nodes', 'nth': failUpdateAt});
+    }
     final row = rows.firstWhere((r) => r['id'] == id, orElse: () => <String, Object?>{});
     row.addAll(patch);
     return 1;
   }
   @override
-  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async =>
-      0;
+  Future<int> patchTypeConfig(String id, Map<String, Object?> patch) async {
+    patchCalls.add(<String, Object?>{'id': id, 'patch': patch});
+    if (++_patchCount == failPatchAt) {
+      throw LocalIOError(
+          extra: {'op': 'patchTypeConfig', 'table': 'nodes', 'nth': failPatchAt});
+    }
+    return 1;
+  }
   @override
   Future<int> restore(String id) async {
     if (restoreError != null) {
@@ -132,7 +159,7 @@ class _FakeNodeRepository implements NodeRepository {
           extra: {'op': 'restore', 'table': 'nodes', 'msg': restoreError});
     }
     restored.add(id);
-    return 1;
+    return restoreAffected;
   }
 
   @override
@@ -712,6 +739,362 @@ void main() {
       final rolled = state.valueOrNull!.firstWhere((x) => x.id == n.id);
       expect(rolled.position, const Offset(10, 10));
       expect(rolled.laneId, isNull);
+    });
+  });
+
+  // 批量写：各一个事务、失败整批回滚内存。FakeUnitOfWork 不模拟库回滚——库里真回滚由
+  // test/storage/transaction_integration_test.dart 的「节点批量删除」两条真 PG 用例钉。
+  //
+  // 变异对照：
+  //   - removeNodes catch 里删掉 `state = AsyncData(previous)` ⇒「第 3 张 softDelete 失败 ⇒ 内存三张都回来」红
+  //   - 去掉 removeNodes 的边去重集合 ⇒「两张互连：共享边只软删一次」红
+  //   - 删掉 restoreAll「已在内存不重复插入」⇒「restoreAll 一次复原全部…每张只出现一次」红
+  //   - restoreAll 返回 deletions.length ⇒「restoreAll 返回受影响行数：行已硬删 ⇒ 0」红
+  //   - 删掉 moveNodes 的 clamp ⇒「moveNodes 越界落点 clamp」红
+  //   - 删掉 patchTypeConfigMany catch 里的回滚 ⇒「patchTypeConfigMany 失败整批回滚」红
+  //   - replaceTypeConfig 改调 patchTypeConfig ⇒「replaceTypeConfig 整列覆盖」红（update 未被调）
+  group('批量写', () {
+    Future<CanvasNodesController> ready() async {
+      await container.read(canvasNodesControllerProvider(canvasId).future);
+      return container.read(canvasNodesControllerProvider(canvasId).notifier);
+    }
+
+    List<CanvasNode> nodesNow() =>
+        container.read(canvasNodesControllerProvider(canvasId)).valueOrNull!;
+
+    CanvasNode nodeNow(String id) => nodesNow().firstWhere((n) => n.id == id);
+
+    Future<String> edge(String from, String to) => edgeRepo.create(
+          canvasId: canvasId,
+          sourceNodeId: from,
+          targetNodeId: to,
+          edgeType: 'data',
+        );
+
+    test('moveNodes 一个事务写全部位置 + lane_id，内存同步', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+          label: 'A', type: CanvasNodeType.image, position: const Offset(0, 0));
+      final b = await ctrl.addNode(
+        label: 'B',
+        type: CanvasNodeType.image,
+        laneId: 'lane-0',
+        position: const Offset(100, 100),
+      );
+
+      await ctrl.moveNodes(<String, NodeMove>{
+        a.id: (delta: const Offset(10, 20), laneId: 'lane-1'),
+        b.id: (delta: const Offset(-5, 5), laneId: null),
+      });
+
+      expect(repo.updateCalls, hasLength(2));
+      final byId = <Object?, Map<String, Object?>>{
+        for (final c in repo.updateCalls) c['id']: c,
+      };
+      expect(byId[a.id]!['position_x'], 10.0);
+      expect(byId[a.id]!['position_y'], 20.0);
+      expect(byId[a.id]!['lane_id'], 'lane-1');
+      expect(byId[b.id]!['position_x'], 95.0);
+      expect(byId[b.id]!['position_y'], 105.0);
+      expect(byId[b.id]!.containsKey('lane_id'), isTrue);
+      expect(byId[b.id]!['lane_id'], isNull, reason: 'laneId null = 移出泳道，要写进库');
+
+      expect(nodeNow(a.id).position, const Offset(10, 20));
+      expect(nodeNow(a.id).laneId, 'lane-1');
+      expect(nodeNow(b.id).position, const Offset(95, 105));
+      expect(nodeNow(b.id).laneId, isNull);
+    });
+
+    test('moveNodes 越界落点 clamp 到 ±kWorldReach', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+          label: 'A', type: CanvasNodeType.image, position: const Offset(50, 80));
+
+      await ctrl.moveNodes(<String, NodeMove>{
+        a.id: (delta: const Offset(-kWorldReach * 3, kWorldReach * 3), laneId: null),
+      });
+
+      expect(nodeNow(a.id).position, const Offset(-kWorldReach, kWorldReach));
+      expect(repo.updateCalls.single['position_x'], -kWorldReach);
+      expect(repo.updateCalls.single['position_y'], kWorldReach);
+    });
+
+    test('moveNodes 第 2 行 update 失败 ⇒ 内存两张都回原位、抛 LocalIOError', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+          label: 'A', type: CanvasNodeType.image, position: const Offset(10, 10));
+      final b = await ctrl.addNode(
+        label: 'B',
+        type: CanvasNodeType.image,
+        laneId: 'lane-0',
+        position: const Offset(200, 10),
+      );
+      repo.failUpdateAt = 2;
+
+      await expectLater(
+        ctrl.moveNodes(<String, NodeMove>{
+          a.id: (delta: const Offset(30, 30), laneId: 'lane-1'),
+          b.id: (delta: const Offset(30, 30), laneId: null),
+        }),
+        throwsA(isA<LocalIOError>()),
+      );
+
+      expect(nodeNow(a.id).position, const Offset(10, 10));
+      expect(nodeNow(a.id).laneId, isNull);
+      expect(nodeNow(b.id).position, const Offset(200, 10));
+      expect(nodeNow(b.id).laneId, 'lane-0');
+    });
+
+    test('moveNodes 不在内存的 id 跳过、空 map 不碰库', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+          label: 'A', type: CanvasNodeType.image, position: const Offset(0, 0));
+
+      await ctrl.moveNodes(const <String, NodeMove>{});
+      await ctrl.moveNodes(<String, NodeMove>{
+        'ghost': (delta: const Offset(1, 1), laneId: null),
+      });
+      expect(repo.updateCalls, isEmpty, reason: '空 map / 一个都不在 ⇒ 不碰库');
+
+      await ctrl.moveNodes(<String, NodeMove>{
+        'ghost': (delta: const Offset(1, 1), laneId: null),
+        a.id: (delta: const Offset(4, 4), laneId: null),
+      });
+      expect(repo.updateCalls.map((c) => c['id']), <Object?>[a.id]);
+      expect(nodesNow().map((n) => n.id), <String>[a.id]);
+      expect(nodeNow(a.id).position, const Offset(4, 4));
+    });
+
+    test('removeNodes 一次删三张 + 级联边，返回三个令牌', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final c = await ctrl.addNode(label: 'C', type: CanvasNodeType.image);
+      final d = await ctrl.addNode(label: 'D', type: CanvasNodeType.image);
+      final e1 = await edge(a.id, d.id);
+      final e2 = await edge(d.id, b.id);
+      final e3 = await edge(c.id, d.id);
+
+      final deletions = await ctrl.removeNodes(<String>{c.id, a.id, b.id});
+
+      expect(deletions.map((t) => t.node.id), <String>[c.id, a.id, b.id],
+          reason: '令牌顺序 = 入参迭代顺序');
+      expect(deletions[0].edgeIds, <String>[e3]);
+      expect(deletions[1].edgeIds, <String>[e1]);
+      expect(deletions[2].edgeIds, <String>[e2]);
+      expect(repo.softDeleted.toSet(), <String>{a.id, b.id, c.id});
+      expect(edgeRepo.softDeleted.toSet(), <String>{e1, e2, e3});
+      expect(nodesNow().map((n) => n.id), <String>[d.id]);
+    });
+
+    test('removeNodes 两张互连：共享边只软删一次、只记进一个令牌', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final e1 = await edge(a.id, b.id);
+      final e2 = await edge(b.id, a.id);
+
+      final deletions = await ctrl.removeNodes(<String>{a.id, b.id});
+
+      expect(edgeRepo.softDeleted, hasLength(2), reason: '每条边只软删一次');
+      expect(edgeRepo.softDeleted.toSet(), <String>{e1, e2});
+      expect(deletions.map((t) => t.node.id), <String>[a.id, b.id]);
+      expect(deletions[0].edgeIds.toSet(), <String>{e1, e2},
+          reason: '边归第一个列到它的节点');
+      expect(deletions[1].edgeIds, isEmpty, reason: '同一条边不进第二个令牌');
+    });
+
+    test('removeNodes 不在内存的 id 仍软删、不产令牌；空集合不碰库', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+
+      expect(await ctrl.removeNodes(const <String>{}), isEmpty);
+      expect(repo.softDeleted, isEmpty);
+
+      final deletions = await ctrl.removeNodes(<String>{'ghost', a.id});
+      expect(repo.softDeleted, <String>['ghost', a.id]);
+      expect(deletions.map((t) => t.node.id), <String>[a.id]);
+    });
+
+    test('removeNodes 第 3 张 softDelete 失败 ⇒ 内存三张都回来、抛 InkError', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final c = await ctrl.addNode(label: 'C', type: CanvasNodeType.image);
+      repo.failSoftDeleteAt = 3;
+
+      await expectLater(
+        ctrl.removeNodes(<String>{a.id, b.id, c.id}),
+        throwsA(isA<InkError>()),
+      );
+
+      expect(nodesNow().map((n) => n.id), <String>[a.id, b.id, c.id]);
+    });
+
+    test('restoreAll 一次复原全部节点和边，state 里每张只出现一次', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final c = await ctrl.addNode(label: 'C', type: CanvasNodeType.image);
+      final e1 = await edge(a.id, b.id);
+      final e2 = await edge(b.id, c.id);
+      final deletions = await ctrl.removeNodes(<String>{a.id, b.id});
+      expect(nodesNow().map((n) => n.id), <String>[c.id]);
+
+      // 再塞一张「节点此刻就在内存里」的令牌（c），边 id 与 b 的令牌重复。
+      final stale = (node: c, edgeIds: <String>[e2]);
+      final affected = await ctrl.restoreAll(<NodeDeletion>[...deletions, stale]);
+
+      final ids = nodesNow().map((n) => n.id).toList();
+      expect(ids, hasLength(3), reason: '已在内存的 c 不重复插入');
+      expect(ids.toSet(), <String>{a.id, b.id, c.id});
+      expect(repo.restored.toSet(), <String>{a.id, b.id, c.id});
+      expect(repo.restored, hasLength(3), reason: '节点 id 去重');
+      expect(edgeRepo.restored, hasLength(2), reason: '边 id 去重');
+      expect(edgeRepo.restored.toSet(), <String>{e1, e2});
+      expect(affected, 3);
+    });
+
+    test('restoreAll 失败 ⇒ 内存回到调用前', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final c = await ctrl.addNode(label: 'C', type: CanvasNodeType.image);
+      final deletions = await ctrl.removeNodes(<String>{a.id, b.id});
+      repo.restoreError = 'nope';
+
+      await expectLater(ctrl.restoreAll(deletions), throwsA(isA<LocalIOError>()));
+
+      expect(nodesNow().map((n) => n.id), <String>[c.id]);
+    });
+
+    test('restoreAll 在 dispose 后返回 0、不抛', () async {
+      final c = ProviderContainer(overrides: [
+        nodeRepositoryProvider.overrideWith((ref) async => repo),
+        edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
+        unitOfWorkProvider.overrideWith(
+          (ref) async => FakeUnitOfWork(
+            FakeRepositoryScope(nodes: repo, edges: edgeRepo),
+          ),
+        ),
+      ]);
+      await c.read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = c.read(canvasNodesControllerProvider(canvasId).notifier);
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final b = await ctrl.addNode(label: 'B', type: CanvasNodeType.image);
+      final deletions = await ctrl.removeNodes(<String>{a.id, b.id});
+      expect(deletions, hasLength(2));
+
+      c.dispose(); // 画布关闭 → notifier autoDispose，_alive=false
+
+      await expectLater(ctrl.restoreAll(deletions), completion(0));
+      expect(repo.restored, isEmpty, reason: 'dispose 后 restoreAll 不落 DB');
+    });
+
+    test('restoreAll 返回受影响行数：行已硬删 ⇒ 0', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(label: 'A', type: CanvasNodeType.image);
+      final deletions = await ctrl.removeNodes(<String>{a.id});
+      repo.restoreAffected = 0;
+
+      final affected = await ctrl.restoreAll(deletions);
+
+      expect(affected, 0, reason: '全部为 0 ⇒ 调用方判「对象已不在」');
+      expect(nodesNow().any((n) => n.id == a.id), isFalse,
+          reason: '库里没有的行不留在内存里');
+    });
+
+    test('patchTypeConfigMany 合并进内存 + 逐个 patchTypeConfig', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+        label: 'A',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'prompt': 'x', 'seed': 1},
+      );
+      final b = await ctrl.addNode(
+        label: 'B',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'prompt': 'y'},
+      );
+
+      await ctrl.patchTypeConfigMany(<String, Map<String, Object?>>{
+        a.id: <String, Object?>{'seed': 2, 'negative': null},
+        'ghost': <String, Object?>{'prompt': 'nobody'},
+        b.id: <String, Object?>{'prompt': 'z'},
+      });
+
+      expect(repo.patchCalls.map((c) => c['id']), <Object?>[a.id, b.id],
+          reason: '不在内存的 id 跳过');
+      expect(repo.patchCalls.first['patch'],
+          <String, Object?>{'seed': 2, 'negative': null});
+      expect(nodeNow(a.id).typeConfig,
+          <String, Object?>{'prompt': 'x', 'seed': 2, 'negative': null},
+          reason: 'null 写成 JSON null、不删键（与 jsonb || 一致）');
+      expect(nodeNow(b.id).typeConfig, <String, Object?>{'prompt': 'z'});
+    });
+
+    test('patchTypeConfigMany 第 2 行失败 ⇒ 内存整批回滚、抛 LocalIOError', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+        label: 'A',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'prompt': 'x'},
+      );
+      final b = await ctrl.addNode(
+        label: 'B',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'prompt': 'y'},
+      );
+      repo.failPatchAt = 2;
+
+      await expectLater(
+        ctrl.patchTypeConfigMany(<String, Map<String, Object?>>{
+          a.id: <String, Object?>{'prompt': 'x2'},
+          b.id: <String, Object?>{'prompt': 'y2'},
+        }),
+        throwsA(isA<LocalIOError>()),
+      );
+
+      expect(nodeNow(a.id).typeConfig, <String, Object?>{'prompt': 'x'});
+      expect(nodeNow(b.id).typeConfig, <String, Object?>{'prompt': 'y'});
+    });
+
+    test('replaceTypeConfig 整列覆盖：update 收到的 type_config 不含被删的键', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+        label: 'A',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'prompt': 'x', 'seed': 7},
+      );
+
+      await ctrl.replaceTypeConfig(a.id, <String, Object?>{'prompt': 'x'});
+
+      expect(repo.patchCalls, isEmpty, reason: 'patch 删不掉键，必须走 update 整列覆盖');
+      expect(repo.updateCalls, hasLength(1));
+      expect(repo.updateCalls.single['id'], a.id);
+      expect(repo.updateCalls.single['type_config'], <String, Object?>{'prompt': 'x'});
+      expect(nodeNow(a.id).typeConfig, <String, Object?>{'prompt': 'x'});
+
+      // 节点不在内存 ⇒ 什么也不做。
+      await ctrl.replaceTypeConfig('ghost', <String, Object?>{'prompt': 'y'});
+      expect(repo.updateCalls, hasLength(1));
+    });
+
+    test('replaceTypeConfig 失败 ⇒ 回滚该节点的 type_config', () async {
+      final ctrl = await ready();
+      final a = await ctrl.addNode(
+        label: 'A',
+        type: CanvasNodeType.image,
+        typeConfig: <String, Object?>{'prompt': 'x', 'seed': 7},
+      );
+      repo.updateError = 'disk full';
+
+      await expectLater(
+        ctrl.replaceTypeConfig(a.id, <String, Object?>{'prompt': 'x'}),
+        throwsA(isA<LocalIOError>()),
+      );
+
+      expect(nodeNow(a.id).typeConfig, <String, Object?>{'prompt': 'x', 'seed': 7});
     });
   });
 }

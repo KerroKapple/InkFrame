@@ -11,7 +11,8 @@
 //   - 存为角色：起名框 → createFromImage 收到解析出来的绝对路径；没有活动项目时置灰。
 //   - 加入泳道 ›：子菜单列出泳道 + 移出泳道，当前那条打勾不可点，moveNode 的参数，多选整批。
 //   - 在序列中定位：切到序列标签，播放头跳到那一镜。
-//   - 删除：走撤销卡；多选整批。
+//   - 删除：走撤销卡；多选一次 removeNodes 整批（失败一张不删、只出失败卡、没有撤销卡），撤销一次 restoreAll。
+//     变异：canvas_node_delete.dart 多选分支改回逐个 removeNode ⇒「多选：整批删除」红（batchRemoved 为空）。
 //   - 存为角色的起名框一打开就持焦（B1）：不点输入框直接按 Backspace / L / Esc，按键不穿到框后面的画布上。
 //   - 失败分支（B10）：复制一份中途写库失败（已复制出来的照样选中 + 错误卡）；存为角色的四种失败（产物路径解析
 //     被拒 / 仓储 InkError / 资产服务 CharacterAssetError / 文件系统 FileSystemException）各出对应的错误卡。
@@ -145,15 +146,26 @@ typedef _Moved = ({String id, Offset delta, String? laneId});
 
 /// 节点：增 / 挪 / 删都落在内存态里，并记下收到了什么。新节点 id 依次是 new-1、new-2……
 class _Nodes extends CanvasNodesController {
-  _Nodes(this._seed, {this.failAddAt});
+  _Nodes(this._seed, {this.failAddAt, this.failRemoveNodes = false});
   final List<CanvasNode> _seed;
 
   /// 第几次 addNode（1 起）写库失败、抛 InkError（这一次照样记进 [added]，但不建节点）；null = 不失败。
   final int? failAddAt;
 
+  /// 为真时 removeNodes 整批失败：照样记进 [batchRemoved]，但不改内存、抛 InkError（整批回滚）。
+  final bool failRemoveNodes;
+
   final List<_Added> added = <_Added>[];
   final List<_Moved> moved = <_Moved>[];
+
+  /// 单删（removeNode）收到的 id。
   final List<String> removed = <String>[];
+
+  /// 整批删（removeNodes）每次收到的 id 集合。
+  final List<Set<String>> batchRemoved = <Set<String>>[];
+
+  /// restoreAll 被调了几次。
+  int restoreAllCalls = 0;
 
   @override
   Future<List<CanvasNode>> build(String canvasId) async => _seed;
@@ -230,6 +242,37 @@ class _Nodes extends CanvasNodesController {
       ...state.valueOrNull ?? const <CanvasNode>[],
       deletion.node,
     ]);
+  }
+
+  @override
+  Future<List<NodeDeletion>> removeNodes(Set<String> ids) async {
+    batchRemoved.add(Set<String>.of(ids));
+    if (failRemoveNodes) {
+      throw const LocalIOError(extra: <String, Object?>{'op': 'removeNodes'});
+    }
+    final List<CanvasNode> previous = state.valueOrNull ?? const <CanvasNode>[];
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      for (final CanvasNode n in previous)
+        if (!ids.contains(n.id)) n,
+    ]);
+    return <NodeDeletion>[
+      for (final String id in ids)
+        for (final CanvasNode n in previous)
+          if (n.id == id) (node: n, edgeIds: const <String>[]),
+    ];
+  }
+
+  @override
+  Future<int> restoreAll(List<NodeDeletion> deletions) async {
+    restoreAllCalls++;
+    final List<CanvasNode> previous = state.valueOrNull ?? const <CanvasNode>[];
+    final Set<String> present = <String>{for (final CanvasNode n in previous) n.id};
+    final List<CanvasNode> back = <CanvasNode>[
+      for (final NodeDeletion d in deletions)
+        if (present.add(d.node.id)) d.node,
+    ];
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[...previous, ...back]);
+    return back.length;
   }
 }
 
@@ -339,6 +382,7 @@ Future<ProviderContainer> _pump(
   List<StyleLane> lanes = const <StyleLane>[],
   bool withProject = true,
   int? failAddAt,
+  bool failRemoveNodes = false,
   FileResolverService? resolver,
 }) async {
   await pumpInkApp(
@@ -354,7 +398,9 @@ Future<ProviderContainer> _pump(
           ),
         ),
       ),
-      canvasNodesControllerProvider.overrideWith(() => _Nodes(nodes, failAddAt: failAddAt)),
+      canvasNodesControllerProvider.overrideWith(
+        () => _Nodes(nodes, failAddAt: failAddAt, failRemoveNodes: failRemoveNodes),
+      ),
       canvasEdgesControllerProvider.overrideWith(() => _Edges(edges)),
       canvasLanesControllerProvider.overrideWith(() => _Lanes(lanes)),
       canvasLaneDirectionProvider('c1').overrideWith((_) async => LaneDirection.horizontal),
@@ -1000,9 +1046,44 @@ void main() {
 
       await _pick(tester, 'Delete');
 
-      expect(_nodesOf(c).removed.toSet(), <String>{'img', 'vid'});
+      // 一次 removeNodes 整批删（一个事务），不再逐个 removeNode。
+      expect(_nodesOf(c).batchRemoved, <Set<String>>[<String>{'img', 'vid'}]);
+      expect(_nodesOf(c).removed, isEmpty, reason: '多选不走单删');
       expect(_toastOf(c).titles, <String>['2 nodes deleted']);
       expect(_toastOf(c).kinds, <ToastKind>[ToastKind.undo]);
+    });
+
+    testWidgets('多选删除失败 ⇒ 一张不删、只出 Failed to delete node、没有撤销卡', (tester) async {
+      final ProviderContainer c = await _pump(tester, failRemoveNodes: true);
+      c.read(canvasSelectionControllerProvider('c1').notifier).selectAll(<String>['img', 'vid']);
+      await tester.pump();
+      await _openMenuOn(tester, 'vid');
+
+      await _pick(tester, 'Delete');
+
+      expect(_nodesOf(c).batchRemoved, <Set<String>>[<String>{'img', 'vid'}]);
+      expect(_toastOf(c).titles, <String>['Failed to delete node']);
+      expect(_toastOf(c).kinds, <ToastKind>[ToastKind.error]);
+      expect(_card('img'), findsOneWidget, reason: '整批回滚：两张卡都还在');
+      expect(_card('vid'), findsOneWidget, reason: '整批回滚：两张卡都还在');
+    });
+
+    testWidgets('多选删除后点撤销 ⇒ restoreAll 恰一次、两张都回来', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      c.read(canvasSelectionControllerProvider('c1').notifier).selectAll(<String>['img', 'vid']);
+      await tester.pump();
+      await _openMenuOn(tester, 'vid');
+      await _pick(tester, 'Delete');
+      expect(_card('img'), findsNothing);
+      expect(_card('vid'), findsNothing);
+
+      // RecordingToastService 不画卡：直接按卡上的「撤销」。
+      _toastOf(c).shown.single.primary!.onPressed();
+      await tester.pumpAndSettle();
+
+      expect(_nodesOf(c).restoreAllCalls, 1, reason: '多选撤销走一次 restoreAll，不逐个 restore');
+      expect(_card('img'), findsOneWidget);
+      expect(_card('vid'), findsOneWidget);
     });
   });
 }
