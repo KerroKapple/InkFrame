@@ -3,13 +3,16 @@
 // - 浮动工具条在舞台顶部居中（top 12）；
 // - 缩放条挪到舞台左下（left 12 / bottom 12），右下角留给通知卡；
 // - PR-6 页签去重撤掉了舞台上方的画布头和底部的渲染队列：舞台上沿紧贴外壳标签栏下沿，
-//   下沿紧贴状态栏上沿（两条都撤干净了才成立，留下任何一条都差出它的高度）。
+//   下沿紧贴状态栏上沿（两条都撤干净了才成立，留下任何一条都差出它的高度）；
+// - 轻提示胶囊两侧的让位线（InkCanvasCapsuleSize.sideReserve）在定宽缩放条右沿 + 16 之外。
 //
 // 走外壳级 pump：CanvasScreen 的左栏 / 检查器都要真 provider，只有外壳搭得起来。
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/features/canvas/providers/canvas_capsule.dart';
 import 'package:inkframe/features/canvas/providers/link_mode_controller.dart';
+import 'package:inkframe/features/canvas/widgets/canvas_capsule_host.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_toolbar.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_zoom_bar.dart';
@@ -18,6 +21,7 @@ import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/widgets/shell_status_bar.dart';
 import 'package:inkframe/features/shell/widgets/shell_tab_bar.dart';
 import 'package:inkframe/l10n/l10n_x.dart';
+import 'package:inkframe/theme/components/ink_canvas_capsule.dart';
 import 'package:inkframe/theme/tokens.dart';
 
 import '../../../_harness/shell_app.dart';
@@ -101,4 +105,31 @@ void main() {
     expect(lanes.left, closeTo(zoom.left, 0.5), reason: '两条左沿对齐');
   }, timeout: const Timeout(Duration(seconds: 15)));
 
+  testWidgets('胶囊左右让位线在缩放条右沿 + 16 之外；胶囊挂在舞台上、底边离舞台底 16', (tester) async {
+    final paths = await setupTempPaths(tester, 'ink_canvas_layout_');
+    await pumpInkShell(
+      tester,
+      paths: paths,
+      initial: const ShellState(tab: ShellTab.canvas, canvasId: 'cv-1'),
+    );
+
+    final Rect stage = tester.getRect(find.byType(CanvasView));
+    final Rect zoom = tester.getRect(find.byType(CanvasZoomBar));
+    // 缩放条定宽；胶囊两侧让出的 sideReserve 就是按它算的。改了缩放条的宽度，这里会红——跟着改
+    // InkToolbarSize.zoomBarWidth 与 InkCanvasCapsuleSize.sideReserve。
+    expect(zoom.width, closeTo(kCanvasZoomBarWidth, 0.5));
+    expect(zoom.right + InkSpacing.md, lessThanOrEqualTo(stage.left + InkCanvasCapsuleSize.sideReserve));
+
+    expect(find.byType(CanvasCapsuleHost), findsOneWidget);
+    ProviderScope.containerOf(tester.element(find.byType(CanvasView)))
+        .read(canvasCapsuleProvider('cv-1').notifier)
+        .show(const CanvasCapsuleMessage(text: 'Done'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    final Rect capsule = tester.getRect(find.byType(InkCanvasCapsule));
+    expect(capsule.bottom, closeTo(stage.bottom - InkCanvasCapsuleSize.stageBottom, 0.5));
+    expect(capsule.center.dx, closeTo(stage.center.dx, 0.5));
+    expect(capsule.left, greaterThanOrEqualTo(zoom.right + InkSpacing.md));
+  }, timeout: const Timeout(Duration(seconds: 15)));
 }

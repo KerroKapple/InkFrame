@@ -3,11 +3,14 @@
 // 「适应」= 适应全部（PR-8b）：把画布上所有卡片框进视口；画布上没有卡片时回到初始相机。原来它只是复位相机——
 // 复位留给 ⌘0。
 //
-// 变异对照：把「适应」格改回 initialCanvasTransform ⇒「适应 = 适应全部」红。
+// 变异对照：把「适应」格改回 initialCanvasTransform ⇒「适应 = 适应全部」红；
+// 百分比格改回按文字宽（Padding s10 撑开）⇒「缩放条固定宽」红（放大 / 适应两格随比例左右挪）；
+// 条上 + / − 改调 zoomCanvasBy ⇒「缩放条 + / − 不出轻提示胶囊」红。
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/canvas_capsule.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
@@ -127,5 +130,47 @@ void main() {
       ),
     );
     expect(scaleOf(fitted), lessThan(1.0));
+  });
+
+  testWidgets('缩放条固定宽 kCanvasZoomBarWidth：10% 与 300% 时同宽，后面几格不跟着挪', (tester) async {
+    final ProviderContainer container = await _pump(tester);
+    final TransformationController transform =
+        container.read(canvasTransformControllerProvider(_canvasId));
+    expect(kCanvasZoomBarWidth, InkToolbarSize.zoomBarWidth);
+
+    transform.value = Matrix4.diagonal3Values(kCanvasMinScale, kCanvasMinScale, 1);
+    await tester.pump();
+    expect(find.text('10%'), findsOneWidget);
+    final Rect barAt10 = tester.getRect(find.byType(CanvasZoomBar));
+    final Rect fitAt10 = tester.getRect(find.text('Fit'));
+    final Rect inAt10 = tester.getRect(_glyph(InkGlyph.zoomIn));
+
+    transform.value = Matrix4.diagonal3Values(kCanvasMaxScale, kCanvasMaxScale, 1);
+    await tester.pump();
+    expect(find.text('300%'), findsOneWidget);
+    expect(tester.takeException(), isNull, reason: '「300%」装得进百分比格');
+    final Rect barAt300 = tester.getRect(find.byType(CanvasZoomBar));
+
+    expect(barAt10.width, kCanvasZoomBarWidth);
+    expect(barAt300.width, kCanvasZoomBarWidth);
+    // 外面一层定宽框住了整条，还得看里面：百分比格按字宽撑开的话，放大 / 适应两格会跟着左右挪。
+    expect(tester.getRect(_glyph(InkGlyph.zoomIn)).left, closeTo(inAt10.left, 0.01));
+    expect(tester.getRect(find.text('Fit')).center.dx, closeTo(fitAt10.center.dx, 0.01));
+  });
+
+  testWidgets('缩放条 + / − 不出轻提示胶囊（比例就显示在条上）', (tester) async {
+    final ProviderContainer container = await _pump(tester);
+    final ProviderSubscription<CanvasCapsuleMessage?> capsule =
+        container.listen(canvasCapsuleProvider(_canvasId), (_, _) {});
+    addTearDown(capsule.close);
+
+    await tester.tap(_glyph(InkGlyph.zoomIn));
+    await tester.pump();
+    await tester.tap(_glyph(InkGlyph.zoomOut));
+    await tester.pump();
+
+    expect(scaleOf(container.read(canvasTransformControllerProvider(_canvasId)).value),
+        closeTo(1.0, 1e-9), reason: '前提：真的缩放过（放大一档再缩小一档回到 100%）');
+    expect(capsule.read(), isNull);
   });
 }

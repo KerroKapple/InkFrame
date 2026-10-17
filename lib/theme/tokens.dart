@@ -390,6 +390,43 @@ class InkToolbarSize {
   /// 提示词条显示时，「适应全部 / 适应选中」底部除了条子自己的高度还要让出的那一截：条子 bottom 16 + 10 间隙
   /// （canvas_tool_actions.canvasFitInsets）。条子高度随提示词行数变，不是令牌，运行时量。
   static const double promptBarClearance = 26;
+
+  /// 左下缩放条的外宽（定宽：百分比从 10% 变到 300% 时整条不伸缩）：外框 1 + 缩小格 27 + 百分比格 46
+  /// + 放大格 27 + 适应格 41 + 外框 1。格宽 27 / 41 写在 canvas_zoom_bar.dart 的 `_ZoomCell(width: ...)`
+  /// 里——改了它们这里跟着改（canvas_zoom_bar_test 量整条宽，canvas_screen_layout_test 量让位线）。
+  static const double zoomBarWidth = 143;
+
+  /// 缩放条中间百分比读数格的定宽：装得下最宽的「300%」（等宽 11 号四个字 ≈ 27）+ 左右各 10 内边距，
+  /// 取整到 46（原来按文字宽 + s10 内边距撑开，比例一变整条就跟着伸缩）。
+  static const double zoomBarPercentCell = 46;
+}
+
+/// 画布轻提示胶囊（GapsCanvas 稿 ›「画布轻提示胶囊」：舞台底部居中，「我刚做了什么」）。
+/// 圆角 / 底色 / 描边仍走 InkRadius.pill / surface4 / overlayBorder。
+///
+/// 每个数都写成令牌而不是在 widget 里现算（禁止对 token 做加减拼间距）；唯一的运行时加法是
+/// 「提示词条量出来的高度 h + [barGap]」——h 随提示词行数变，不是令牌。
+class InkCanvasCapsuleSize {
+  InkCanvasCapsuleSize._();
+
+  /// 胶囊高。
+  static const double height = 28;
+
+  /// 提示词条不显示时：胶囊底边离舞台底。
+  static const double stageBottom = 16;
+
+  /// 提示词条显示时：胶囊底边离舞台底 = 条高 h + 本值。本值 = 条子底边离舞台底 16
+  /// （InkToolbarSize.promptBarBottom）+ 胶囊与条子顶边之间的间隙 8，于是胶囊贴在条子上方 8。
+  /// 与 InkToolbarSize.promptBarClearance（= 26，「适应」的底部留白）不是一回事，别混用。
+  static const double barGap = 24;
+
+  /// 胶囊左右两侧各让出的宽度：缩放条 left 12 + 条宽 143（InkToolbarSize.zoomBarWidth）+ 间隙 16。
+  /// 只有左侧真靠它让开缩放条（右侧只留 InkSpacing.md）；胶囊中心随提示词条：条子显示时与条子同轴，否则在舞台正中。
+  /// 由 canvas_screen_layout_test 守着：缩放条右沿 + 16 不越过它。
+  static const double sideReserve = 171;
+
+  /// 两侧让位之后剩下的宽度小于本值就不画（舞台太窄，画出来只剩一个省略号）；计时照走。
+  static const double minWidth = 96;
 }
 
 /// 通知卡（右下角，画布重设计稿 › 通知）。间距 / 圆角 / 阴影仍走 InkSpacing / InkRadius / InkShadow。
