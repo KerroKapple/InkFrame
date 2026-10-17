@@ -9,7 +9,8 @@
 //   - _fitNodes 去掉 showZoomCapsule ⇒「Shift 1 适应全部出比例」「缩放条 Fit 出比例」红；
 //   - 改成在 canvasTransformController 上挂 listener 统一出胶囊 ⇒「滚轮缩放不出」「缩放条 + − 不出」红；
 //   - _fitNodes 没东西可框（resetWhenEmpty: false）时也出 ⇒「Shift 2 选中的卡都在折叠道里：不出」红；
-//   - _fitNodes 在 next == null（视口未量出）时也出 ⇒「视口未量出时 Shift 1：不出」红。
+//   - _fitNodes 在 next == null（视口未量出）时也出 ⇒「视口未量出时 Shift 1：不出」红；
+//   - 删掉 _fitNodes resetWhenEmpty 分支里的 showZoomCapsule ⇒「空画布 Shift 1：相机回初始、出 Zoom 100%」红。
 //   「Shift 2 无选中：不出」守不到 _fitNodes——fitSelectedNodes 在选中为空时先返回了，它只守入口那一道。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
@@ -184,6 +185,35 @@ void main() {
 
     expect(_scale(c), lessThan(1.0), reason: '前提：真的缩小了');
     expect(find.text(_zoomText(c)), findsOneWidget);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('空画布 Shift 1：相机回初始、出「Zoom 100%」', (tester) async {
+    // 走进 _fitNodes 的 resetWhenEmpty 分支：没有卡可框，适应全部把相机复位到 initialCanvasTransform()。
+    final ProviderContainer c = await _pumpOnCanvas(
+      tester,
+      'ink_capsule_fit_empty_',
+      nodes: const <CanvasNode>[],
+    );
+    // 直接写相机挪到非初始位置（缩小 + 平移）：不走快捷键，免得先出一枚胶囊。
+    c.read(canvasTransformControllerProvider(_canvasId)).value = Matrix4.identity()
+      ..translateByDouble(-300.0, -200.0, 0.0, 1.0)
+      ..scaleByDouble(0.6, 0.6, 1.0, 1.0);
+    await _frames(tester, 2);
+    expect(
+      c.read(canvasTransformControllerProvider(_canvasId)).value,
+      isNot(initialCanvasTransform()),
+      reason: '前提：相机不在初始位置',
+    );
+    expect(_scale(c), closeTo(0.6, 1e-9), reason: '前提：相机缩小过');
+    _expectNoCapsule(tester, c);
+
+    await _shift(tester, LogicalKeyboardKey.digit1);
+    await _frames(tester, 2);
+
+    expect(c.read(canvasTransformControllerProvider(_canvasId)).value, initialCanvasTransform());
+    expect(c.read(canvasCapsuleProvider(_canvasId)), isNotNull);
+    expect(find.text('Zoom 100%'), findsOneWidget);
+    expect(find.byType(InkCanvasCapsule), findsOneWidget);
   }, timeout: const Timeout(Duration(seconds: 30)));
 
   testWidgets('Shift 2 无选中：相机不动，不出胶囊', (tester) async {
