@@ -29,7 +29,7 @@ class _SpliceEdgeRepo implements EdgeRepository {
   final List<String> restored = <String>[];
   final List<Map<String, Object?>> updateCalls = <Map<String, Object?>>[];
 
-  /// 每一次写，按发生顺序：'softDelete:<id>' / 'update:<id>' / 'create:<src>-><tgt>'。
+  /// 每一次写，按发生顺序：`softDelete:<id>` / `update:<id>` / `create:<src>-><tgt>`。
   final List<String> ops = <String>[];
 
   bool createThrows = false;
