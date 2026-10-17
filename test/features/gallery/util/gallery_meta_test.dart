@@ -217,6 +217,72 @@ void main() {
         reason: '「当前选定」不能被拖动节点层级改掉');
   });
 
+  // 上游配置 cfg（图像）→ data(first_frame) → 视频 v8；cfg 名下两个 take：r1 旧、r2 新。
+  CanvasNode take8(String id, DateTime at, {Map<String, Object?> cfg = const <String, Object?>{}}) => CanvasNode(
+        id: id, label: '', type: CanvasNodeType.image, role: NodeRole.result,
+        canvasId: 'c8', sourceNodeId: 'cfg8', typeConfig: cfg,
+        position: Offset.zero, createdAt: at,
+      );
+  GalleryLineageRow firstRow8(CanvasNode config, {Map<String, List<GalleryBatchSlot>> slots = const <String, List<GalleryBatchSlot>>{}}) {
+    final GalleryGraph g = GalleryGraph(
+      canvases: const <GalleryCanvasInfo>[GalleryCanvasInfo(id: 'c8', name: '画布 08')],
+      nodesByCanvas: <String, List<CanvasNode>>{
+        'c8': <CanvasNode>[
+          config,
+          take8('r1', DateTime.utc(2026, 9, 1), cfg: <String, Object?>{'image_url': 'images/old.png'}),
+          take8('r2', DateTime.utc(2026, 9, 2), cfg: <String, Object?>{'image_url': 'images/new.png'}),
+          CanvasNode(id: 'v8', label: '镜头 08 · 图转视频', type: CanvasNodeType.video, canvasId: 'c8',
+              createdAt: DateTime.utc(2026, 9, 1)),
+          CanvasNode(id: 'v8r', label: '', type: CanvasNodeType.video, role: NodeRole.result, canvasId: 'c8',
+              sourceNodeId: 'v8', typeConfig: const <String, Object?>{'video_url': 'videos/v8.mp4'},
+              createdAt: DateTime.utc(2026, 9, 3)),
+        ],
+      },
+      edgesByCanvas: <String, List<CanvasEdge>>{
+        'c8': <CanvasEdge>[
+          const CanvasEdge(id: 'e8', canvasId: 'c8', sourceNodeId: 'cfg8', targetNodeId: 'v8',
+              edgeType: EdgeType.data, role: EdgeRole.firstFrame),
+        ],
+      },
+      slotsByNode: slots,
+    );
+    final GalleryItem v = galleryItemsFromGraph(g).firstWhere((GalleryItem i) => i.relativePath == 'videos/v8.mp4');
+    return galleryLineageFor(g, GalleryIndex.build(g), v).first;
+  }
+
+  CanvasNode config8({String? pinned}) => CanvasNode(
+        id: 'cfg8', label: '镜头 08 · 图像', type: CanvasNodeType.image, canvasId: 'c8',
+        typeConfig: <String, Object?>{'pinned_result_id': ?pinned},
+        createdAt: DateTime.utc(2026, 9, 1),
+      );
+
+  test('血缘：上游固定了旧 take → 缩略是旧 take', () {
+    // 没固定：最新的那个。
+    expect(firstRow8(config8()).thumbRelativePath, 'images/new.png');
+    final GalleryLineageRow pinned = firstRow8(config8(pinned: 'r1'));
+    expect(pinned.name, '镜头 08 · 图像');
+    expect(pinned.thumbRelativePath, 'images/old.png');
+    // 固定的已不在（软删）：回落最新。
+    expect(firstRow8(config8(pinned: 'gone')).thumbRelativePath, 'images/new.png');
+  });
+
+  test('血缘：固定的是转正过的批量容器 → 名后缀 #n、缩略用那一格（不让更新那批的转正盖过它）', () {
+    GalleryBatchSlot slot(String node, int i, {bool promoted = false}) => GalleryBatchSlot(
+          nodeId: node, canvasId: 'c8', slotIndex: i,
+          outputUrl: 'images/$node-$i.png',
+          createdAt: DateTime.utc(2026, 9, 1, i), promoted: promoted,
+        );
+    final Map<String, List<GalleryBatchSlot>> slots = <String, List<GalleryBatchSlot>>{
+      'r1': <GalleryBatchSlot>[slot('r1', 0), slot('r1', 1, promoted: true)],
+      'r2': <GalleryBatchSlot>[slot('r2', 0, promoted: true), slot('r2', 1)],
+    };
+    // 没固定：最新容器 r2 上转正的那格。
+    expect(firstRow8(config8(), slots: slots).name, '镜头 08 · 图像 #1');
+    final GalleryLineageRow pinned = firstRow8(config8(pinned: 'r1'), slots: slots);
+    expect(pinned.name, '镜头 08 · 图像 #2');
+    expect(pinned.thumbRelativePath, 'images/r1-1.png');
+  });
+
   test('图里找不到节点 → meta 空、血缘空，不抛', () {
     final GalleryItem ghost = GalleryItem(
       kind: GalleryItemKind.image,

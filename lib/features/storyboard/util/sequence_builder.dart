@@ -2,7 +2,7 @@
 //
 // 输入是画布的全量节点 + 边，输出是「第 N 镜放什么、放多久」。排序复用
 // SB-5 的 `orderByNarrativeChain`，产物查找复用 EX-1′ 首建的
-// `latestResultFor`——本卡只消费，不再造第二套（卡面裁决）。
+// `currentResultFor`（当前 take = 固定的 ?? 最新的）——本卡只消费，不再造第二套（卡面裁决）。
 //
 // ## 为什么需要「折叠」这一步
 //
@@ -25,8 +25,8 @@ import '../models/sequence_shot.dart';
 
 /// 按 narrative 链把 [nodes] / [edges] 编译成播放清单。
 ///
-/// 每镜的产物 = 该节点自己的最新 result；自己没有时，向它的 narrative 后继
-/// 里找第一个有产物的 config 节点借用（并把那个后继标记为已消费，不再单独成镜）。
+/// 每镜的产物 = 该节点自己的当前 take；自己没有时，向它的 narrative 后继
+/// 里找第一个有产物的 config 节点借用它的当前 take（并把那个后继标记为已消费，不再单独成镜）。
 ///
 /// 既无产物、也无 notes 的节点直接跳过——它对预览没有任何可展示内容
 /// （典型是纯 result 节点，它们本来就不该独立成镜）。
@@ -63,7 +63,7 @@ List<SequenceShot> buildSequence({
     // result 节点不独立成镜——它们是别人的产物，不是一镜。
     if (node.role == NodeRole.result) continue;
 
-    var artifact = latestResultFor(sourceNodeId: node.id, nodes: nodes);
+    var artifact = currentResultFor(sourceNodeId: node.id, nodes: nodes);
     if (artifact == null) {
       for (final e in successors[node.id] ?? const <CanvasEdge>[]) {
         final succ = byId[e.targetNodeId]!;
@@ -71,7 +71,7 @@ List<SequenceShot> buildSequence({
         // 已被前面的镜借走的产物不能再借一次——多个 shot 指向同一个 config
         // 时（分叉/汇合），同一张图会在序列里出现两遍。
         if (consumed.contains(succ.id)) continue;
-        final borrowed = latestResultFor(sourceNodeId: succ.id, nodes: nodes);
+        final borrowed = currentResultFor(sourceNodeId: succ.id, nodes: nodes);
         if (borrowed == null) continue;
         artifact = borrowed;
         consumed.add(succ.id);

@@ -26,6 +26,7 @@ import '../../sequence/models/sequence_lens.dart';
 import '../../sequence/util/shot_index.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
+import '../models/canvas_node_take.dart';
 import '../models/style_lane.dart';
 import 'narrative_order.dart';
 import 'node_artifacts.dart';
@@ -80,13 +81,13 @@ Map<String, int> sequenceShotNumbers(List<CanvasNode> nodes, List<CanvasEdge> ed
   };
 }
 
-/// 一行镜头：配置节点 + 镜号 + 名下最新产物。
+/// 一行镜头：配置节点 + 镜号 + 当前 take（固定的 ?? 最新的）。
 @immutable
 class OutlineShot {
   const OutlineShot({
     required this.node,
     this.sequence,
-    this.latest,
+    this.current,
     this.artifactCount = 0,
   });
 
@@ -96,10 +97,11 @@ class OutlineShot {
   /// （不编号）。
   final int? sequence;
 
-  /// 名下最新的产物（result 节点，[resultsFor] 口径：按 created_at 取最新）；没有为 null。
-  final CanvasNode? latest;
+  /// 当前 take（result 节点，[currentResultFor] 口径：配置节点固定的那个还活着就是它，否则按 created_at
+  /// 取最新）；没有产物为 null。
+  final CanvasNode? current;
 
-  /// 名下产物总数（同一口径）。> 1 时产物子行写「共 N 个」。
+  /// 名下产物总数（[resultsFor] 口径，固定与否不影响）。> 1 时产物子行写「共 N 个」。
   final int artifactCount;
 }
 
@@ -170,8 +172,9 @@ CanvasOutline buildCanvasOutline({
     return prompt != null && prompt.toLowerCase().contains(q);
   }
 
-  // 产物按来源分桶一次，再逐桶交给 resultsFor——「最新」只有那一个判官，这里不另写一份；
-  // 桶内保持节点列表原序（resultsFor 对缺时间戳的产物按原序取末位为最新）。
+  // 产物按来源分桶一次，再逐桶交给 resultsFor / currentResultFor——「当前」只有那一个判官，这里不另写
+  // 一份；桶内保持节点列表原序（resultsFor 对缺时间戳的产物按原序取末位为最新）。桶里没有配置节点，
+  // 固定的 take 得显式传 pinnedResultId。
   final Map<String, List<CanvasNode>> resultsBySource = <String, List<CanvasNode>>{};
   for (final CanvasNode n in nodes) {
     final String? source = n.sourceNodeId;
@@ -179,15 +182,12 @@ CanvasOutline buildCanvasOutline({
     (resultsBySource[source] ??= <CanvasNode>[]).add(n);
   }
   OutlineShot shotOf(CanvasNode n) {
-    final List<CanvasNode> results = resultsFor(
-      sourceNodeId: n.id,
-      nodes: resultsBySource[n.id] ?? const <CanvasNode>[],
-    );
+    final List<CanvasNode> bucket = resultsBySource[n.id] ?? const <CanvasNode>[];
     return OutlineShot(
       node: n,
       sequence: shotNumber[n.id],
-      latest: results.isEmpty ? null : results.first,
-      artifactCount: results.length,
+      current: currentResultFor(sourceNodeId: n.id, nodes: bucket, pinnedResultId: n.pinnedResultId),
+      artifactCount: resultsFor(sourceNodeId: n.id, nodes: bucket).length,
     );
   }
 

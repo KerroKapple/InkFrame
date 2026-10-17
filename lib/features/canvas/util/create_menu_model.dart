@@ -69,10 +69,10 @@ const List<CreateMenuAction> kImageSourceActions = <CreateMenuAction>[
 ];
 
 /// 源节点「带图像产物」：image 类型（配置或产物都算——图像配置连到视频上当首帧，是连线模式里
-/// 早就有的智能默认），或名下最新的产物是一张图。视频产物 / 视频配置不算。
+/// 早就有的智能默认），或名下当前的产物是一张图。视频产物 / 视频配置不算。
 bool sourceCarriesImage(CanvasNode source, List<CanvasNode> nodes) {
   if (source.type == CanvasNodeType.image) return true;
-  return latestResultFor(sourceNodeId: source.id, nodes: nodes)?.imageUrl != null;
+  return currentResultFor(sourceNodeId: source.id, nodes: nodes)?.imageUrl != null;
 }
 
 /// 「下一镜」的叙事锚点（narrative 边从它连出，新节点与它同类型）：源自己是 shot / image / video 的配置

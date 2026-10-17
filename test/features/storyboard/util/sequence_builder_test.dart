@@ -16,6 +16,7 @@ CanvasNode _shot(
   String? notes,
   int? durationMs,
   double x = 0,
+  String? pinned,
 }) =>
     CanvasNode(
       id: id,
@@ -26,18 +27,24 @@ CanvasNode _shot(
       typeConfig: <String, Object?>{
         'shot_notes': ?notes,
         'duration_ms': ?durationMs,
+        'pinned_result_id': ?pinned,
       },
     );
 
-CanvasNode _imageConfig(String id, {String? prompt}) => CanvasNode(
+CanvasNode _imageConfig(String id, {String? prompt, String? pinned}) => CanvasNode(
       id: id,
       label: id,
       type: CanvasNodeType.image,
       canvasId: 'c1',
-      typeConfig: <String, Object?>{'prompt': ?prompt},
+      typeConfig: <String, Object?>{'prompt': ?prompt, 'pinned_result_id': ?pinned},
     );
 
-CanvasNode _imageResult(String id, {required String source, String? url}) =>
+CanvasNode _imageResult(
+  String id, {
+  required String source,
+  String? url,
+  DateTime? createdAt,
+}) =>
     CanvasNode(
       id: id,
       label: id,
@@ -45,6 +52,7 @@ CanvasNode _imageResult(String id, {required String source, String? url}) =>
       role: NodeRole.result,
       canvasId: 'c1',
       sourceNodeId: source,
+      createdAt: createdAt,
       typeConfig: <String, Object?>{'image_url': url ?? '$id.png'},
     );
 
@@ -250,6 +258,32 @@ void main() {
       ];
       expect(buildSequence(nodes: nodes, edges: const []).single.canvasId,
           'c1');
+    });
+
+    test('配置固定了旧 take → 这一镜播旧 take', () {
+      final nodes = [
+        _shot('s1', notes: 'x', pinned: 'old'),
+        _imageResult('new', source: 's1', createdAt: DateTime.utc(2026, 8, 7)),
+        _imageResult('old', source: 's1', createdAt: DateTime.utc(2026, 8, 1)),
+      ];
+      final seq = buildSequence(nodes: nodes, edges: const []);
+      expect(seq.single.relativePath, 'old.png');
+      expect(seq.single.artifactNodeId, 'old');
+    });
+
+    test('借后继配置产物时同样用它的当前 take', () {
+      // shot 自己没产物，借链上后继 cfg 的——cfg 固定了旧 take，借来的就是旧 take。
+      final nodes = [
+        _shot('s1', notes: 'x'),
+        _imageConfig('cfg', prompt: 'p', pinned: 'old'),
+        _imageResult('new', source: 'cfg', createdAt: DateTime.utc(2026, 8, 7)),
+        _imageResult('old', source: 'cfg', createdAt: DateTime.utc(2026, 8, 1)),
+      ];
+      final edges = [_narr('e1', 's1', 'cfg')];
+      final seq = buildSequence(nodes: nodes, edges: edges);
+      expect(_ids(seq), ['s1']);
+      expect(seq.single.relativePath, 'old.png');
+      expect(seq.single.artifactNodeId, 'old');
     });
   });
 }

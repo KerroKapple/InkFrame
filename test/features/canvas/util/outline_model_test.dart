@@ -2,7 +2,7 @@
 //
 // 每一条都对着派工单 §3 的一句口径：组序跟泳道 sortOrder、组内按叙事链序、链上无泳道进
 // 「未分泳道」、不在链上进「未入链」（最后、按位置、不编号）、筛选按名称或提示词不区分大小写且
-// 整组都不匹配就不出、产物取最新一个并给出总数。
+// 整组都不匹配就不出、产物取当前 take（固定的 ?? 最新的）并给出总数。
 // 镜号是序列的口径（不是链上 DFS 序）：「镜号」组拿审查给的两个场景交叉核对——大纲每一行的号 ==
 // 序列 lens 里它所在那一镜的号（「在序列中查看」的判据）== 画廊写的「序列 NNN」。
 import 'package:flutter_test/flutter_test.dart';
@@ -21,6 +21,7 @@ CanvasNode _config(
   Offset position = Offset.zero,
   String prompt = '',
   CanvasNodeType type = CanvasNodeType.image,
+  String? pinned,
 }) =>
     CanvasNode(
       id: id,
@@ -28,7 +29,7 @@ CanvasNode _config(
       type: type,
       laneId: lane,
       position: position,
-      typeConfig: <String, Object?>{'prompt': prompt},
+      typeConfig: <String, Object?>{'prompt': prompt, 'pinned_result_id': ?pinned},
     );
 
 /// 镜头节点（剧本拆出来的那种）：正文是 shot_notes。
@@ -334,7 +335,7 @@ void main() {
   });
 
   group('产物子行', () {
-    test('最新一个（按 created_at，不按列表序）+ 总数', () {
+    test('没固定 → 当前 = 最新一个（按 created_at，不按列表序）+ 总数', () {
       final CanvasOutline o = _build(<CanvasNode>[
         _config('a'),
         // 列表序最后的是最旧的——取最新必须看时间，不能取末位。
@@ -344,11 +345,24 @@ void main() {
         _result('other', source: 'b', at: DateTime.utc(2026, 4)),
       ]);
       final OutlineShot s = o.groups.single.shots.single;
-      expect(s.latest?.id, 'new');
+      expect(s.current?.id, 'new');
       expect(s.artifactCount, 3, reason: '别的节点的产物不算');
     });
 
-    test('没有产物 → latest 为 null、count 0；只有占位（无 url）的 result 不算产物', () {
+    test('固定旧 take → OutlineShot.current 是旧的，artifactCount 不变', () {
+      // 产物分桶后桶里没有配置节点：固定 id 必须显式交给判据，否则这里会回落成最新。
+      final CanvasOutline o = _build(<CanvasNode>[
+        _config('a', pinned: 'old'),
+        _result('new', source: 'a', at: DateTime.utc(2026, 3)),
+        _result('mid', source: 'a', at: DateTime.utc(2026, 2)),
+        _result('old', source: 'a', at: DateTime.utc(2026, 1)),
+      ]);
+      final OutlineShot s = o.groups.single.shots.single;
+      expect(s.current?.id, 'old');
+      expect(s.artifactCount, 3);
+    });
+
+    test('没有产物 → current 为 null、count 0；只有占位（无 url）的 result 不算产物', () {
       final CanvasOutline o = _build(<CanvasNode>[
         _config('a'),
         const CanvasNode(
@@ -360,7 +374,7 @@ void main() {
         ),
       ]);
       final OutlineShot s = o.groups.single.shots.single;
-      expect(s.latest, isNull);
+      expect(s.current, isNull);
       expect(s.artifactCount, 0);
     });
   });
