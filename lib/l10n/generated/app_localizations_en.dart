@@ -3182,4 +3182,66 @@ class AppLocalizationsEn extends AppLocalizations {
   String durationEstimated(String duration) {
     return '~$duration';
   }
+
+  @override
+  String get appActionRedo => 'Redo';
+
+  @override
+  String get appActionCut => 'Cut';
+
+  @override
+  String get appActionCopy => 'Copy';
+
+  @override
+  String get appActionPaste => 'Paste';
+
+  @override
+  String get appActionFind => 'Find…';
+
+  @override
+  String get appActionImportMedia => 'Import media…';
+
+  @override
+  String get appActionNewNote => 'Note';
+
+  @override
+  String get appActionWrapInLane => 'Wrap in lane';
+
+  @override
+  String get appActionFocusNotifications => 'Notifications';
+
+  @override
+  String get appActionCommandPalette => 'Command palette…';
+
+  @override
+  String get appActionReasonComingSoon => 'Coming soon';
+
+  @override
+  String get appActionReasonOpenCanvas => 'Open a canvas first';
+
+  @override
+  String get appActionReasonSelectNodes => 'Select nodes first';
+
+  @override
+  String get appActionReasonSelectOneConfig =>
+      'Select one config node to generate';
+
+  @override
+  String get appActionReasonSelectOneImage => 'Select one image result';
+
+  @override
+  String get appActionReasonNotInLane => 'The selection isn\'t in a lane';
+
+  @override
+  String get appActionReasonNotInSequence =>
+      'The selection isn\'t in the sequence';
+
+  @override
+  String get appActionReasonNoVideo => 'No video to export yet';
+
+  @override
+  String get appActionReasonNoProject => 'Open a project first';
+
+  @override
+  String get appActionReasonSelectOneNode => 'Select exactly one node';
 }
