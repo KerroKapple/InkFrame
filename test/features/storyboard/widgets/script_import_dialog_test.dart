@@ -7,6 +7,8 @@
 // 成败提示走通知卡（toastServiceProvider）：成功时对话框已关，失败时对话框还开着
 // ——通知卡画在所有路由之上，两种时机都看得见。
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -27,6 +29,17 @@ class _ThrowingUnitOfWork implements UnitOfWork {
   @override
   Future<T> run<T>(Future<T> Function(RepositoryScope scope) action) async =>
       throw const LocalIOError();
+}
+
+/// run 卡在 [gate] 上、放行后抛错的 UoW：让「事务在途」停得住，测忙碌中的界面。
+class _GatedUnitOfWork implements UnitOfWork {
+  final Completer<void> gate = Completer<void>();
+
+  @override
+  Future<T> run<T>(Future<T> Function(RepositoryScope scope) action) async {
+    await gate.future;
+    throw const LocalIOError();
+  }
 }
 
 void main() {
@@ -205,5 +218,54 @@ void main() {
     );
     expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(find.text('Import script'), findsOneWidget, reason: '失败不该关掉对话框');
+    // #15：「可重试」= 按钮恢复可点、文字仍是 N。
+    final ButtonStyleButton retry =
+        tester.widget(find.widgetWithText(FilledButton, 'Create 3 shots'));
+    expect(retry.onPressed, isNotNull, reason: '失败后按钮必须恢复可点，否则再也重试不了');
+  });
+
+  testWidgets('zh：事务失败 → 失败提示「剧本导入失败，画布未做改动。」，按钮恢复可点', (tester) async {
+    final RecordingToastService toast =
+        await pump(tester, uow: _ThrowingUnitOfWork(), locale: const Locale('zh'));
+    await paste(tester, threeShots);
+
+    await tester.tap(find.text('创建 3 个镜头'));
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>['剧本导入失败，画布未做改动。']);
+    final ButtonStyleButton retry =
+        tester.widget(find.widgetWithText(FilledButton, '创建 3 个镜头'));
+    expect(retry.onPressed, isNotNull);
+  });
+
+  // #14：事务在途时粘贴框仍可编辑（不禁用，免得丢焦点）。按钮与预览头都钉在提交时的 N——
+  // 在提交的始终是那一份，不随框里的文字变、清空时也不闪回「Create shots」。
+  testWidgets('提交途中清空粘贴框：按钮仍是 Create 3 shots 且置灰、预览头仍是 3 shots；失败后回到当前文本',
+      (tester) async {
+    final _GatedUnitOfWork gated = _GatedUnitOfWork();
+    final RecordingToastService toast = await pump(tester, uow: gated);
+    await paste(tester, threeShots);
+
+    await tester.tap(find.text('Create 3 shots'));
+    await tester.pump();
+    await tester.enterText(find.byType(TextField), '');
+    await tester.pump();
+
+    final ButtonStyleButton busy =
+        tester.widget(find.widgetWithText(FilledButton, 'Create 3 shots'));
+    expect(busy.onPressed, isNull, reason: '忙碌中置灰');
+    expect(find.text('Create shots'), findsNothing, reason: '不闪回 0');
+    expect(find.text('3 shots'), findsOneWidget, reason: '预览头同样钉在提交时的 N');
+    expect(toast.titles, isEmpty, reason: '前提：事务还卡在途中');
+
+    gated.gate.complete();
+    await tester.pumpAndSettle();
+
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    // 复位后回到框里现在的文字：空框 ⇒「Create shots」并置灰。
+    final ButtonStyleButton empty =
+        tester.widget(find.widgetWithText(FilledButton, 'Create shots'));
+    expect(empty.onPressed, isNull);
+    expect(find.text('Nothing to import yet.'), findsOneWidget);
   });
 }

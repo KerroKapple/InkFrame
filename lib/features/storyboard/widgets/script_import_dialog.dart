@@ -49,6 +49,11 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
   ScriptSplitStrategy _strategy = ScriptSplitStrategy.blankLine;
   bool _busy = false;
 
+  /// 提交那一刻拆出来的镜头（#14）。忙碌中预览与按钮都画它，不画框里现在的文字：粘贴框
+  /// 忙碌中仍可编辑（不禁用——禁用会丢焦点，失败后还得手动把焦点要回来），而在提交的
+  /// 始终是这一份。
+  List<ShotDraft> _submitted = const <ShotDraft>[];
+
   @override
   void dispose() {
     _ctrl.dispose();
@@ -71,7 +76,10 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
     final ScriptImportController controller =
         ref.read(scriptImportControllerProvider(widget.canvasId));
 
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _submitted = drafts;
+    });
     try {
       await controller.importDrafts(drafts, origin: widget.origin);
       navigator.pop();
@@ -88,7 +96,9 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
   @override
   Widget build(BuildContext context) {
     final l = context.l10n;
-    final List<ShotDraft> drafts = _drafts;
+    // 忙碌中画提交时的那一份：用户在途中改框 / 清空，预览头「N 镜」与按钮的 N 都不跟着变、
+    // 不闪回 0；失败复位后回到框里现在的文字。
+    final List<ShotDraft> drafts = _busy ? _submitted : _drafts;
     return AlertDialog(
       title: Text(l.scriptImportTitle),
       // 内容整体可滚：AlertDialog 在小窗口下只给几百像素高，粘贴框+预览很容易顶满。
@@ -143,7 +153,8 @@ class _ScriptImportDialogState extends ConsumerState<ScriptImportDialog> {
         FilledButton(
           onPressed: (_busy || drafts.isEmpty) ? null : _confirm,
           // 写出数量，与预览头「N 镜」同一个 N；0 镜走 ARB 的 =0 分支「创建镜头」。
-          // 忙碌中文本没动、N 也不变——按钮只置灰，不闪回 0。
+          // 忙碌中按钮只置灰，N 是提交时记下的那一份（[_submitted]）——框里的文字
+          // 这时可能已经被改了，但在提交的不是它。
           child: Text(l.scriptImportConfirm(drafts.length)),
         ),
       ],

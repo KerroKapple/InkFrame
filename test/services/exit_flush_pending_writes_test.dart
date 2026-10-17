@@ -219,6 +219,9 @@ class _SpyRegistry implements PendingWriteRegistry {
 
   @override
   Future<void> flushAll() async {}
+
+  @override
+  Future<void> flushBeforeEdit() async {}
 }
 
 /// 可控失败次数的 nodes 仓储：落盘顺序记进共享的 [order]，用来钉住

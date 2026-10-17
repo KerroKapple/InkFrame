@@ -7,6 +7,7 @@
 // 规则摘要（详细见各方法注释）：
 // - [record] 只登记、不执行：调用方把操作做成功之后再 record；入 undo 顶、清空 redo。
 // - 撤销 / 重做 / 抽步都先冲挂起写入（检查器 500ms 防抖 patch），冲完再取栈顶。
+//   走编辑口 flushBeforeEdit，不借退出口 flushAll（#12）。
 // - revert / apply 的三种结果：done ⇒ 换栈；failed（含抛 InkError）⇒ 原地不动；
 //   gone ⇒ 这一步作废丢掉，**不**连带撤下一步。
 // - 只有一道 busy 闸，不排队：撤销在途时再按直接返回 busy。命令内部经各控制器
@@ -206,8 +207,9 @@ class CanvasHistoryController
     if (state.busy) return (status: CanvasUndoStatus.busy, step: null);
     _setBusy(true);
     try {
-      // app 级、永不抛、2s 封顶。
-      await ref.read(pendingWriteRegistryProvider).flushAll();
+      // app 级、永不抛、2s 封顶。走编辑口而不是退出口 flushAll：那一笔写失败要照常
+      // 退避重试，不能按「已用尽」记账、停掉所有自动重试（#12）。
+      await ref.read(pendingWriteRegistryProvider).flushBeforeEdit();
       return await body();
     } finally {
       _setBusy(false);
