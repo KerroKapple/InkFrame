@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>选择与批量编辑</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#141414}
+a{color:#C9A85B}a:hover{color:#D8B96C}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:left}
+button:focus-visible{outline:2px solid #C9A85B;outline-offset:1px}
+.hov:hover{background:#2E2E2E}
+.hovfg:hover{color:#E8E8E8}
+.amber:hover{background:#D8B96C}
+.toast{transition:transform 200ms cubic-bezier(.215,.61,.355,1)}
+.toast-in{animation:toastIn 200ms cubic-bezier(.215,.61,.355,1) both}
+.toast-out{animation:toastOut 150ms ease-in both}
+@keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes toastOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(8px)}}
+.toast .x{opacity:0;transition:opacity 120ms}
+.toast:hover .x,.toast:focus-within .x{opacity:1}
+.spin{animation:spin 900ms linear infinite;transform-origin:50% 50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pop{animation:popIn 150ms cubic-bezier(.215,.61,.355,1) both}
+@keyframes popIn{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.toast-in,.toast-out,.pop{animation-duration:120ms}.toast-in{animation-name:fadeIn}.spin{animation:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+</style>
+</helmet>
+
+<div style="width: 1280px; height: 1400px; position: relative; overflow: hidden; background: #1D1D1D; color: #D6D6D6; font-family: 'Noto Sans SC', 'Microsoft YaHei UI', 'PingFang SC', sans-serif; font-size: 12px; line-height: 1.45">
+  <div style="padding: 26px 32px 0">
+    <div style="display: flex; align-items: baseline; gap: 14px; margin-bottom: 14px">
+      <div style="font-size: 17px; font-weight: 500; color: #E8E8E8">选择与批量编辑</div>
+      <div style="color: #9E9E9E">一次选很多、一起挪、一起改、一起生成；换道和花钱之前先说清楚</div>
+    </div>
+    <div style="display: grid; grid-template-columns: 360px 380px minmax(0, 1fr); gap: 28px">
+      
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px"><div style="font-weight: 500; color: #E8E8E8">框选与加减选</div><div style="font-size: 11px; color: #8A8A8A">选择工具下在空白处拖</div></div>
+    <div style="position: relative; width: 360px; height: 140px; border-radius: 4px; overflow: hidden; background-color: #1A1A1A; background-image: linear-gradient(#222222 1px, transparent 1px), linear-gradient(90deg, #222222 1px, transparent 1px); background-size: 19.2px 19.2px; outline: 1px solid #1F1F1F; ">
+      
+  <div style="position: absolute; left: 14px; top: 28px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #C8C8C8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 01</div><div style="flex: 1"></div><div style="color: #6B6B6B">图像配置</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1px solid #2C2C2C; overflow: hidden"><div style="padding: 5px 6px; font-size: 8px; line-height: 1.5; color: #C8C8C8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">拂晓，雾江上一叶孤舟，渔夫收网。</div></div>
+  </div>
+      
+  <div style="position: absolute; left: 136px; top: 12px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">成片</div><div style="flex: 1"></div><div style="color: #6B6B6B">图像</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><img src="/_blob/0f59ca087c899ad45ec20cf62645907b" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+  </div>
+      
+  <div style="position: absolute; left: 168px; top: 72px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 02</div><div style="flex: 1"></div><div style="color: #6B6B6B">视频配置</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><div style="padding: 5px 6px; font-size: 8px; line-height: 1.5; color: #C8C8C8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">江面雾气渐散，孤舟驶出画面。</div></div>
+  </div>
+      
+  <div style="position: absolute; left: 282px; top: 30px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">远山参考</div><div style="flex: 1"></div><div style="color: #6B6B6B">图像</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><img src="/_blob/7bc119e45191cbc8a4a4e49a9e40097f" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+  </div>
+      <div style="position: absolute; left: 124px; top: 6px; width: 206px; height: 122px; box-sizing: border-box; border: 1px solid #C9A85B; background: rgba(201,168,91,0.08); border-radius: 1px"></div>
+      <div style="position: absolute; left: 262px; top: 116px; height: 18px; padding: 0 7px; border-radius: 9px; background: #262626; border: 1px solid #4A4A4A; color: #D6D6D6; font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; display: flex; align-items: center">已选 3</div>
+    </div>
+    
+  <div style="font-size: 11px; color: #9E9E9E; line-height: 1.6; margin-top: 10px">
+    <div>· 左键拖空白 = 框选（现在是拖画布，要改）；平移走 H / 空格 / 右键拖 / 中键拖</div><div>· 拖框：不按键替换；Shift 加选；Ctrl（mac 用 ⌘，因为 Ctrl+点在 mac 上是右键）反选</div><div>· 点卡：Shift / Ctrl / ⌘ 都是切换选中（canvas_view 现状）；改不改见 Q7</div><div>· 碰到框就算选中（Q1）；折叠泳道里的卡不参与；便签、文本照常可选</div><div>· 移动不到 4px 算点空白 = 清空；贴边自动平移</div><div>· Esc 取消框选并恢复原选中。Esc 顺序：菜单 > @ 弹层 > 查找条 > 框选中 > 工具锁 > 清空选中</div><div>· 泳道底色算空白，标题栏起拖仍是拖泳道；连线模式不起框</div><div><span style="color: #C9A85B">需</span>　选中控制器补 replace / addAll / toggleAll</div>
+  </div>
+  </div>
+      
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px"><div style="font-weight: 500; color: #E8E8E8">整组拖动</div><div style="font-size: 11px; color: #8A8A8A">PL-5 · 换道沿用 resolveCardDrop</div></div>
+    <div style="position: relative; width: 380px; height: 140px; border-radius: 4px; overflow: hidden; background-color: #1A1A1A; background-image: linear-gradient(#222222 1px, transparent 1px), linear-gradient(90deg, #222222 1px, transparent 1px); background-size: 19.2px 19.2px; outline: 1px solid #1F1F1F; ">
+      <div style="position: absolute; left: 0; right: 0; top: 0; height: 80px; box-sizing: border-box; border: 1px solid #C9A85B; background: #2A2318"></div>
+      
+  <div style="position: absolute; left: 8px; top: 8px; height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 3px; background: rgba(38,38,38,0.82); border: 1px solid #2C2C2C; font-size: 11px; ">
+    <div style="width: 8px; height: 8px; border-radius: 2px; background: #E8A87C"></div>
+    <div style="font-weight: 500; color: #E8E8E8">水墨风格</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #6B6B6B">2 镜</div>
+  </div>
+      <div style="position: absolute; left: 30px; top: 80px; width: 104px; height: 58px; box-sizing: border-box; border-radius: 3px; border: 1px dashed #3F3F3F"></div><div style="position: absolute; left: 150px; top: 84px; width: 104px; height: 58px; box-sizing: border-box; border-radius: 3px; border: 1px dashed #3F3F3F"></div>
+      
+  <div style="position: absolute; left: 104px; top: 24px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 03</div><div style="flex: 1"></div><div style="color: #6B6B6B">视频配置</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><div style="padding: 5px 6px; font-size: 8px; line-height: 1.5; color: #C8C8C8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">回望远山的侧脸，镜头缓推。</div></div>
+  </div>
+      
+  <div style="position: absolute; left: 224px; top: 30px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 04</div><div style="flex: 1"></div><div style="color: #6B6B6B">视频配置</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><div style="padding: 5px 6px; font-size: 8px; line-height: 1.5; color: #C8C8C8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">雾散，远山一层层浮出。</div></div>
+  </div>
+      <div style="position: absolute; right: 8px; top: 8px; height: 22px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 3px; background: #2A2318; border: 1px solid #6B5A38; color: #C9A85B; font-size: 10px"><svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.75 3.5h12.5a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1 -1.25 1.25h-12.5a1.25 1.25 0 0 1 -1.25 -1.25v-3a1.25 1.25 0 0 1 1.25 -1.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M3.75 11h12.5a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1 -1.25 1.25h-12.5a1.25 1.25 0 0 1 -1.25 -1.25v-3a1.25 1.25 0 0 1 1.25 -1.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5 6.25h3.5M5 13.75h3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>移入「水墨风格」· 2 张改继承风格</span></div>
+    </div>
+    
+  <div style="font-size: 11px; color: #9E9E9E; line-height: 1.6; margin-top: 10px">
+    <div>· 拖选中的任一张 = 整组走；拖没选中的卡 = 先单选再拖（同右键）</div><div>· 换道沿用已上线的 resolveCardDrop：屏幕拖动 > 18px、中心这一趟跨过带边界、进新带 ≥ 12px，三条都满足才换</div><div>· 整组只看抓住的那张卡判（Q2 已定 B），全组进同一条道；拖动中高亮目标道（cardDropTargetLane，与松手同一判定），卡组上方挂提示</div><div>· 起拖阈值只分「点」和「拖」，不参与判泳道</div><div>· 换了道弹撤销卡「已移入泳道「X」」，撤销 = 整组回原位、原道</div><div>· Shift = 只锁轴；Ctrl（⌘）= 原样放下：不吸附、不插进叙事线</div><div><span style="color: #C9A85B">需</span>　moveNodes 整组一个事务，失败整组回滚 + 错误卡；nodeDragDeltaProvider 改成带一组 id</div><div><span style="color: #C9A85B">需</span>　Ctrl Z 要画布撤销栈（见 UndoClipboard）</div>
+  </div>
+  </div>
+      
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px"><div style="font-weight: 500; color: #E8E8E8">选中后浮出的工具条</div><div style="font-size: 11px; color: #8A8A8A">跟着选区类型变</div></div>
+    <div style="padding: 12px 12px 2px; border-radius: 4px; background: #1A1A1A; outline: 1px solid #1F1F1F">
+      
+  <div style="margin-bottom: 8px">
+    <div style="font-size: 11px; color: #8A8A8A; margin-bottom: 4px">单选 · 配置节点（生成在提示词条上，这里不重复）</div><div style="display: inline-flex; align-items: center; gap: 1px; padding: 3px; background: #262626; border: 1px solid #3A3A3A; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 11px">
+        <div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.75 3.5h12.5a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1 -1.25 1.25h-12.5a1.25 1.25 0 0 1 -1.25 -1.25v-3a1.25 1.25 0 0 1 1.25 -1.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M3.75 11h12.5a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1 -1.25 1.25h-12.5a1.25 1.25 0 0 1 -1.25 -1.25v-3a1.25 1.25 0 0 1 1.25 -1.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5 6.25h3.5M5 13.75h3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>加入泳道</span></div><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="display: block; flex: none"><path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="#8A8A8A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><div style="width: 1px; height: 16px; background: #3A3A3A; margin: 0 2px"></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><span>复制一份</span></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M4 5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1 -1.5 1.5h-12a1.5 1.5 0 0 1 -1.5 -1.5v-7a1.5 1.5 0 0 1 1.5 -1.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.5 5v10M12.5 5v10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div><div style="width: 1px; height: 16px; background: #3A3A3A; margin: 0 2px"></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.55 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path><path d="M8.8 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path><path d="M14.05 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path></svg></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.5 5.5h13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5 5.5l.75 10.6a1.5 1.5 0 0 0 1.5 1.4h5.5a1.5 1.5 0 0 0 1.5-1.4L15 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 9v5M11.5 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></div>
+  </div>
+      
+  <div style="margin-bottom: 8px">
+    <div style="font-size: 11px; color: #8A8A8A; margin-bottom: 4px">单选 · 产物</div><div style="display: inline-flex; align-items: center; gap: 1px; padding: 3px; background: #262626; border: 1px solid #3A3A3A; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 11px">
+        <div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M7 6.75a3 3 0 1 0 6 0a3 3 0 1 0 -6 0z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4 16.75c.9-3.2 3.2-5 6-5s5.1 1.8 6 5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>存为角色</span></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M9.75 3.75H4.75a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.75 8.75v5l4.25-2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.75 2c0.487 1.95 1.3 2.762 3.25 3.25c-1.95 0.487 -2.762 1.3 -3.25 3.25c-0.487 -1.95 -1.3 -2.762 -3.25 -3.25c1.95 -0.487 2.762 -1.3 3.25 -3.25z" fill="currentColor" stroke="none"></path></svg><span>当下一镜的首帧</span></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M4 5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1 -1.5 1.5h-12a1.5 1.5 0 0 1 -1.5 -1.5v-7a1.5 1.5 0 0 1 1.5 -1.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.5 5v10M12.5 5v10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div><div style="width: 1px; height: 16px; background: #3A3A3A; margin: 0 2px"></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.55 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path><path d="M8.8 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path><path d="M14.05 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path></svg></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.5 5.5h13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5 5.5l.75 10.6a1.5 1.5 0 0 0 1.5 1.4h5.5a1.5 1.5 0 0 0 1.5-1.4L15 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 9v5M11.5 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></div>
+  </div>
+      
+  <div style="margin-bottom: 8px">
+    <div style="font-size: 11px; color: #8A8A8A; margin-bottom: 4px">多选</div><div style="display: inline-flex; align-items: center; gap: 1px; padding: 3px; background: #262626; border: 1px solid #3A3A3A; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 11px">
+        <div style="padding: 0 8px; font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #9E9E9E">4 个 · 约 $2.10</div><div style="width: 1px; height: 16px; background: #3A3A3A; margin: 0 2px"></div>
+        <div style="height: 26px; padding: 0 9px; border-radius: 3px; background: #C9A85B; color: #1D1D1D; font-weight: 500; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M6.25 4.25v11.5L15.5 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>生成 3 个</span></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><span>对齐</span></div><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="display: block; flex: none"><path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="#8A8A8A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.75 3.5h12.5a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1 -1.25 1.25h-12.5a1.25 1.25 0 0 1 -1.25 -1.25v-3a1.25 1.25 0 0 1 1.25 -1.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M3.75 11h12.5a1.25 1.25 0 0 1 1.25 1.25v3a1.25 1.25 0 0 1 -1.25 1.25h-12.5a1.25 1.25 0 0 1 -1.25 -1.25v-3a1.25 1.25 0 0 1 1.25 -1.25z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5 6.25h3.5M5 13.75h3.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>包成泳道</span></div><div style="width: 1px; height: 16px; background: #3A3A3A; margin: 0 2px"></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.55 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path><path d="M8.8 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path><path d="M14.05 10a1.2 1.2 0 1 0 2.4 0a1.2 1.2 0 1 0 -2.4 0z" fill="currentColor" stroke="none"></path></svg></div><div style="height: 26px; padding: 0 7px; border-radius: 3px; color: #C8C8C8; display: flex; align-items: center; gap: 5px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M3.5 5.5h13" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M5 5.5l.75 10.6a1.5 1.5 0 0 0 1.5 1.4h5.5a1.5 1.5 0 0 0 1.5-1.4L15 5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 9v5M11.5 9v5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></div>
+  </div>
+    </div>
+    
+  <div style="font-size: 11px; color: #9E9E9E; line-height: 1.6; margin-top: 10px">
+    <div>· 有选中、且不在拖动 / 平移 / 缩放 / 连线中才出；手停 150ms 后淡入</div><div>· 选区上方居中隔 8，顶到舞台顶部工具条就翻到下方；不进 Tab 序</div><div>· 按钮取自动作表、与右键同源；⋯ = 这一选区的右键菜单</div><div>· 「生成 N 个」只数配置节点（停用的不算），一个都没有就不出；不放颜色（节点无此字段）</div><div>· 「生成 N 个」与多选 Ctrl ↵ 都打开 TakesCost 的运行对话框：确认、清单 + 总价、单次上限 50、按 data 边依赖排队、停用的列「跳过 · 已停用」，规则只在那张板</div><div><span style="color: #C9A85B">需</span>　设置 › 节点布局「选中时显示浮动工具条」默认开，AppPreferences 新字段</div>
+  </div>
+  </div>
+    </div>
+    <div style="display: grid; grid-template-columns: 448px 376px minmax(0, 1fr); gap: 28px; margin-top: 18px">
+      
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px"><div style="font-weight: 500; color: #E8E8E8">多选检查器</div><div style="font-size: 11px; color: #8A8A8A">数量 + 总价 + 共有参数</div></div>
+    <div style="display: flex; gap: 14px; align-items: flex-start">
+      
+  <div style="position: relative; width: 236px; flex: none; height: 338px; background: #232323; border: 1px solid #0F0F0F; border-radius: 4px; overflow: hidden">
+    <div style="padding: 10px 12px; border-bottom: 1px solid #1F1F1F">
+      <div style="display: flex; align-items: center; gap: 8px"><div style="font-weight: 500; color: #E8E8E8">已选 3 个节点</div><div style="flex: 1"></div><div style="height: 18px; padding: 0 6px; border-radius: 9px; border: 1px solid #2C2C2C; color: #9E9E9E; font-size: 10px; display: flex; align-items: center">视频配置 ×3</div></div>
+      <div style="font-size: 11px; color: #9E9E9E; margin-top: 4px">总预估 <span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; color: #D6D6D6">约 $2.10</span></div>
+    </div>
+    <div style="font-size: 10px; color: #8A8A8A; padding: 8px 12px 0">共有参数 · 改一处写全部</div>
+    
+  <div style="display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-top: 6px">
+    <div style="width: 34px; font-size: 11px; color: #9E9E9E">模型</div>
+    <div style="flex: 1; height: 24px; border-radius: 3px; background: #1D1D1D; border: 1px solid #2C2C2C; display: flex; align-items: center; padding: 0 8px; gap: 6px; color: #D6D6D6; font-size: 11px"><div style="flex: 1">万相 2.2 · 图生视频</div><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="display: block; flex: none"><path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="#8A8A8A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+  </div>
+    
+  <div style="display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-top: 6px">
+    <div style="width: 34px; font-size: 11px; color: #9E9E9E">时长</div>
+    <div style="flex: 1; height: 24px; border-radius: 3px; background: #1D1D1D; border: 1px solid #3F3F3F; display: flex; align-items: center; padding: 0 8px; gap: 6px; color: #6B6B6B; font-size: 11px"><div style="flex: 1">多个值</div><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="display: block; flex: none"><path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="#8A8A8A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+  </div>
+    
+  <div style="display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-top: 6px">
+    <div style="width: 34px; font-size: 11px; color: #9E9E9E">画幅</div>
+    <div style="flex: 1; height: 24px; border-radius: 3px; background: #1D1D1D; border: 1px solid #2C2C2C; display: flex; align-items: center; padding: 0 8px; gap: 6px; color: #D6D6D6; font-size: 11px"><div style="flex: 1">16:9</div><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="display: block; flex: none"><path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="#8A8A8A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+  </div>
+    
+  <div style="display: flex; align-items: center; gap: 8px; padding: 0 12px; margin-top: 6px">
+    <div style="width: 34px; font-size: 11px; color: #9E9E9E">种子</div>
+    <div style="flex: 1; height: 24px; border-radius: 3px; background: #1D1D1D; border: 1px solid #3F3F3F; display: flex; align-items: center; padding: 0 8px; gap: 6px; color: #6B6B6B; font-size: 11px"><div style="flex: 1">多个值</div><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" style="display: block; flex: none"><path d="M2.5 4l2.5 2.5L7.5 4" fill="none" stroke="#8A8A8A" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+  </div>
+    <div style="font-size: 10px; color: #6B6B6B; padding: 8px 12px 0; line-height: 1.5">提示词、首尾帧、参考图、角色各自单独改</div>
+    <div style="height: 1px; background: #1F1F1F; margin: 8px 0 4px"></div>
+    
+  <div style="height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11px">
+    <div style="width: 28px; height: 16px; border-radius: 2px; background: #202020; display: flex; align-items: center; justify-content: center; color: #6B6B6B"><svg width="11" height="11" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M9.75 3.75H4.75a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.75 8.75v5l4.25-2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.75 2c0.487 1.95 1.3 2.762 3.25 3.25c-1.95 0.487 -2.762 1.3 -3.25 3.25c-0.487 -1.95 -1.3 -2.762 -3.25 -3.25c1.95 -0.487 2.762 -1.3 3.25 -3.25z" fill="currentColor" stroke="none"></path></svg></div>
+    <div style="flex: 1; color: #C8C8C8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 02 · 江上孤舟</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">$0.70</div>
+  </div>
+    
+  <div style="height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11px">
+    <div style="width: 28px; height: 16px; border-radius: 2px; background: #202020; display: flex; align-items: center; justify-content: center; color: #6B6B6B"><svg width="11" height="11" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M9.75 3.75H4.75a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.75 8.75v5l4.25-2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.75 2c0.487 1.95 1.3 2.762 3.25 3.25c-1.95 0.487 -2.762 1.3 -3.25 3.25c-0.487 -1.95 -1.3 -2.762 -3.25 -3.25c1.95 -0.487 2.762 -1.3 3.25 -3.25z" fill="currentColor" stroke="none"></path></svg></div>
+    <div style="flex: 1; color: #C8C8C8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 03 · 回望</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">$0.70</div>
+  </div>
+    
+  <div style="height: 24px; display: flex; align-items: center; gap: 8px; padding: 0 12px; font-size: 11px">
+    <div style="width: 28px; height: 16px; border-radius: 2px; background: #202020; display: flex; align-items: center; justify-content: center; color: #6B6B6B"><svg width="11" height="11" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M9.75 3.75H4.75a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.75 8.75v5l4.25-2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.75 2c0.487 1.95 1.3 2.762 3.25 3.25c-1.95 0.487 -2.762 1.3 -3.25 3.25c-0.487 -1.95 -1.3 -2.762 -3.25 -3.25c1.95 -0.487 2.762 -1.3 3.25 -3.25z" fill="currentColor" stroke="none"></path></svg></div>
+    <div style="flex: 1; color: #C8C8C8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 04 · 远山</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">$0.70</div>
+  </div>
+    <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 12px; border-top: 1px solid #1F1F1F; background: #232323">
+      <div style="height: 26px; border-radius: 3px; background: #C9A85B; color: #1D1D1D; font-weight: 500; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 11px"><svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M6.25 4.25v11.5L15.5 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>生成 3 个 · 约 $2.10</span></div>
+    </div>
+  </div>
+      
+  <div style="font-size: 11px; color: #9E9E9E; line-height: 1.6; ">
+    <div>· 同类型配置节点（图像 / 视频 / 镜头）才列共有参数；混选只列数量、总价、清单</div><div>· 值不一样写「多个值」；不碰不写，改一次写全部</div><div>· 换成同一模型后按它的能力位重算其余字段，不支持的清掉并提示</div><div>· 总价 = 各节点 estimateCostUsd 相加（USD，formatCostUsd）；算不出写「另 N 个价格未知」</div><div>· 生成按钮同浮动条，走 TakesCost 运行对话框</div><div>· 文本、便签、产物只计数</div><div><span style="color: #C9A85B">需</span>　typeConfig 批量 patch 一个事务</div><div><span style="color: #C9A85B">需</span>　generationTarget 改成收一组节点</div>
+  </div>
+    </div>
+  </div>
+      
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px"><div style="font-weight: 500; color: #E8E8E8">对齐 · 分布 · 排布 · 吸附</div><div style="font-size: 11px; color: #8A8A8A">多选右键「对齐 ›」与浮动条同一块</div></div>
+    <div style="display: flex; gap: 12px; align-items: flex-start"><div style="width: 196px; box-sizing: border-box; padding: 4px; background: #262626; border: 1px solid #4A4A4A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.6)">
+  <div style="padding: 2px 6px 6px">
+    <div style="display: flex; align-items: center; margin: 6px 0 4px"><div style="flex: 1; font-size: 10px; color: #8A8A8A">对齐</div><span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">Alt A D W S H V</span></div>
+    <div style="display: flex; gap: 4px; flex-wrap: wrap"><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">左</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">水平居中</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">右</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">顶</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">垂直居中</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">底</div></div>
+    <div style="display: flex; align-items: center; margin: 6px 0 4px"><div style="flex: 1; font-size: 10px; color: #8A8A8A">分布 · 至少 3 个</div><span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">Alt Shift H V</span></div>
+    <div style="display: flex; gap: 4px"><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">水平等距</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">垂直等距</div></div>
+    <div style="display: flex; align-items: center; margin: 6px 0 4px"><div style="flex: 1; font-size: 10px; color: #8A8A8A">排布</div></div>
+    <div style="display: flex; gap: 4px"><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">一行</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">一列</div><div style="height: 24px; padding: 0 8px; border-radius: 3px; background: #232323; border: 1px solid #2C2C2C; color: #D6D6D6; font-size: 11px; display: flex; align-items: center">网格</div></div>
+  </div>
+  <div style="height: 1px; background: #0F0F0F; margin: 2px 0 4px"></div>
+  
+  <div style="height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 3px; color: #D6D6D6; ">
+    <div style="color: #9E9E9E; display: flex"><svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M4 5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1 -1.5 1.5h-12a1.5 1.5 0 0 1 -1.5 -1.5v-7a1.5 1.5 0 0 1 1.5 -1.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.5 5v10M12.5 5v10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    <div style="flex: 1">整理叙事链</div>
+  </div>
+</div><div style="position: relative; width: 168px; height: 196px; border-radius: 4px; overflow: hidden; background-color: #1A1A1A; background-image: linear-gradient(#222222 1px, transparent 1px), linear-gradient(90deg, #222222 1px, transparent 1px); background-size: 19.2px 19.2px; outline: 1px solid #1F1F1F; flex: none">
+  
+  <div style="position: absolute; left: 12px; top: 18px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #C8C8C8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 01</div><div style="flex: 1"></div><div style="color: #6B6B6B">图像</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1px solid #2C2C2C; overflow: hidden"><img src="/_blob/0f59ca087c899ad45ec20cf62645907b" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+  </div>
+  
+  <div style="position: absolute; left: 52px; top: 112px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 02</div><div style="flex: 1"></div><div style="color: #6B6B6B">视频配置</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><div style="padding: 5px 6px; font-size: 8px; line-height: 1.5; color: #C8C8C8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">孤舟驶出画面。</div></div>
+  </div>
+  <div style="position: absolute; left: 12px; top: 0; bottom: 0; width: 0; border-left: 1px solid #C9A85B"></div>
+  <div style="position: absolute; left: 116px; top: 0; bottom: 0; width: 0; border-left: 1px dashed #C9A85B; opacity: .5"></div>
+  <div style="position: absolute; left: 12px; top: 92px; width: 40px; height: 0; border-top: 1px solid #C9A85B"></div>
+  <div style="position: absolute; left: 20px; top: 94px; font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 9px; color: #C9A85B">左缘</div>
+  <div style="position: absolute; left: 8px; bottom: 6px; font-size: 9px; color: #8A8A8A">按住 Ctrl：不吸不插</div>
+</div></div>
+    
+  <div style="font-size: 11px; color: #9E9E9E; line-height: 1.6; margin-top: 10px">
+    <div>· 对齐按选区包围盒，分布按卡片中心；一次操作 = 一次 moveNodes</div><div>· 网格列数 ⌈√n⌉、间距 48，先叙事序再位置；整理叙事链 = 沿链一行，产物按 result_placement</div><div>· 跨轴对齐不把卡挤出原道：夹在各自的带里</div><div>· 网格吸附 24（同网格底、复制偏移）；对象吸附 6 屏幕像素内出参考线</div><div>· 拖动中按住 Ctrl（⌘）= 原样放下：不吸、不插线。空格已是临时平移，Alt 已给切线</div><div>· Alt 字母对齐键保留：Windows 菜单栏只认单独按下再松开的 Alt，不做 Alt+字母助记键，不冲突</div><div><span style="color: #C9A85B">需</span>　吸附两个开关（空白处右键打勾 + 设置 › 节点布局），存 AppPreferences</div>
+  </div>
+  </div>
+      
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px"><div style="font-weight: 500; color: #E8E8E8">包成泳道</div><div style="font-size: 11px; color: #8A8A8A">Ctrl G · 折叠已有</div></div>
+    <div style="position: relative; width: 336px; height: 112px; border-radius: 4px; overflow: hidden; background-color: #1A1A1A; background-image: linear-gradient(#222222 1px, transparent 1px), linear-gradient(90deg, #222222 1px, transparent 1px); background-size: 19.2px 19.2px; outline: 1px solid #1F1F1F; ">
+  <div style="position: absolute; left: 0; right: 0; top: 6px; height: 100px; border-top: 1px solid #2A2A2A; border-bottom: 1px solid #2A2A2A; background: rgba(124,184,232,0.035)"></div>
+  <div style="position: absolute; left: 8px; top: 12px; height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 4px 0 8px; border-radius: 3px; background: rgba(38,38,38,0.82); border: 1px solid #2C2C2C">
+    <div style="width: 8px; height: 8px; border-radius: 2px; background: #7CB8E8"></div>
+    <div style="width: 96px; height: 18px; border-radius: 2px; background: #1D1D1D; border: 1px solid #C9A85B; display: flex; align-items: center; padding: 0 5px; font-size: 11px; color: #E8E8E8">新泳道<span style="display: inline-block; width: 1px; height: 12px; background: #C9A85B; margin-left: 1px"></span></div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #6B6B6B">3</div>
+  </div>
+  
+  <div style="position: absolute; left: 120px; top: 30px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 02</div><div style="flex: 1"></div><div style="color: #6B6B6B">视频配置</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><div style="padding: 5px 6px; font-size: 8px; line-height: 1.5; color: #C8C8C8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">孤舟驶出画面。</div></div>
+  </div>
+  
+  <div style="position: absolute; left: 228px; top: 34px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">成片</div><div style="flex: 1"></div><div style="color: #6B6B6B">视频</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><img src="/_blob/7bc119e45191cbc8a4a4e49a9e40097f" alt="" style="width: 100%; height: 100%; object-fit: cover; display: block"></div>
+  </div>
+  
+  <div style="position: absolute; left: 12px; top: 42px; width: 104px">
+    <div style="height: 14px; display: flex; align-items: center; gap: 4px; font-size: 9px">
+      <div style="font-weight: 500; color: #E8E8E8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 03</div><div style="flex: 1"></div><div style="color: #6B6B6B">视频配置</div>
+    </div>
+    <div style="position: relative; width: 104px; height: 58px; border-radius: 3px; background: #202020; outline: 1.5px solid #C9A85B; overflow: hidden"><div style="padding: 5px 6px; font-size: 8px; line-height: 1.5; color: #C8C8C8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden">回望远山。</div></div>
+  </div>
+</div>
+  <div style="position: relative; width: 336px; height: 36px; margin-top: 8px; border-radius: 4px; background: rgba(232,168,124,0.035); outline: 1px solid #2A2A2A; overflow: hidden">
+    <div style="position: absolute; left: 8px; top: 6px; height: 24px; display: flex; align-items: center; gap: 6px; padding: 0 8px; border-radius: 3px; background: rgba(38,38,38,0.82); border: 1px solid #2C2C2C; font-size: 11px">
+      <div style="width: 8px; height: 8px; border-radius: 2px; background: #E8A87C"></div>
+      <div style="color: #9E9E9E">水墨风格</div><div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #6B6B6B">2</div><div style="font-size: 10px; color: #6B6B6B">已折叠</div>
+    </div>
+    <div style="position: absolute; right: 8px; top: 9px; font-size: 10px; color: #8A8A8A">双击标题栏展开</div>
+  </div>
+  <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; padding: 6px 8px; width: 336px; box-sizing: border-box; border-radius: 4px; background: #262626; border: 1px solid #4A4A4A; font-size: 11px">
+    <div style="color: #C8C8C8; display: flex"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M7.5 4.75L4.25 8l3.25 3.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M4.25 8h7.5a4.25 4.25 0 0 1 0 8.5H9.25" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div><div style="flex: 1; color: #D6D6D6">1 张从「水墨风格」换到新泳道，风格变了</div><div style="color: #C9A85B">撤销</div>
+  </div>
+    
+  <div style="font-size: 11px; color: #9E9E9E; line-height: 1.6; margin-top: 10px">
+    <div>· Ctrl G：建道、整批移入、标题进改名；相对位置不变，道厚 = 选区跨轴 + 48（≥400）</div><div>· F 照旧只开新建泳道对话框、不看选中；包住选中只走 Ctrl G。新道插在哪见 Q5</div><div>· 有卡原在别的道 → 风格变了，弹撤销卡（8 秒）；建道 + 移入算一步撤销；Ctrl Shift G = 移出泳道</div><div>· 折叠已实现（36px 轨、双击标题栏），记不记住见 Q6</div><div>· 重排泳道时卡恒跟着走（卡锚在道起始边），不加「带不带内容」开关</div><div><span style="color: #C9A85B">需</span>　建道 + 定厚 + 排位 + 移节点一个事务；createLane 现在只追加、不收 size</div>
+  </div>
+  </div>
+    </div>
+    
+  <div style="margin-top: 18px; padding: 12px 16px 14px; border-radius: 6px; background: #2A2318; border: 1px solid #6B5A38">
+    <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px"><div style="font-weight: 500; color: #E8E8E8">需要你定</div><div style="font-size: 11px; color: #9E9E9E">已定：Q2 → B（整组看抓住的那张，沿用 resolveCardDrop）· Q4 → 并入 TakesCost 运行对话框（≥2 个就确认，单次上限 50）</div></div>
+    <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px 20px; font-size: 11px; line-height: 1.55">
+      
+  <div>
+    <div style="color: #E8E8E8; font-weight: 500">Q1 框选怎么算选中</div>
+    <div style="color: #C8C8C8; margin-top: 2px">A 碰到就算 · B 整张框进去才算 · C 看拖的方向（左→右整张，右→左碰到）</div>
+    <div style="color: #C9A85B; margin-top: 2px">建议 A，与 tldraw / Figma 一致；卡片大，整张框住太费劲</div>
+  </div>
+      
+  <div>
+    <div style="color: #E8E8E8; font-weight: 500">Q3 单选配置节点时出不出浮动条</div>
+    <div style="color: #C8C8C8; margin-top: 2px">A 出完整条（含生成）· B 出精简条（不含生成）· C 不出，只靠提示词条</div>
+    <div style="color: #C9A85B; margin-top: 2px">建议 B，提示词条与检查器已共用同一道生成闸（S1 已修），浮动条再放一个生成只是重复</div>
+  </div>
+      
+  <div>
+    <div style="color: #E8E8E8; font-weight: 500">Q5 Ctrl G 的新泳道插在哪</div>
+    <div style="color: #C8C8C8; margin-top: 2px">A 泳道栈末尾 · B 选区所在那条道之后（不在道里就放末尾）</div>
+    <div style="color: #C9A85B; margin-top: 2px">建议 B，卡片挪得最少，相机不用跟着跳</div>
+  </div>
+      
+  <div>
+    <div style="color: #E8E8E8; font-weight: 500">Q6 泳道折叠要不要记住</div>
+    <div style="color: #C8C8C8; margin-top: 2px">A 不记（现状，重开全展开）· B 记在本机偏好 · C 落库 style_lanes 新列，随项目包走</div>
+    <div style="color: #C9A85B; margin-top: 2px">建议 C，折叠是排版的一部分；新增一条前向迁移</div>
+  </div>
+      
+  <div>
+    <div style="color: #E8E8E8; font-weight: 500">Q7 点卡的修饰键要不要改</div>
+    <div style="color: #C8C8C8; margin-top: 2px">A 保持现状：Shift / Ctrl / ⌘ 点卡都是切换 · B Shift 点卡只加选、Ctrl（mac ⌘）切换，与拖框对齐</div>
+    <div style="color: #C9A85B; margin-top: 2px">建议 A，与 Figma / tldraw 一致、零改动；拖框的加选 / 反选另算</div>
+  </div>
+    </div>
+  </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1400}}'>
+
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+## Selection.dc.html
+file: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/Selection.dc.html
+generator: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2_selection.js
+final H: 1400. The 1400 is a hand estimate: about 1336 of content counted line by line, so roughly 64px spare. The board was not rendered.
+check: bad [] unclosed [] errs 0 script ok props ok (47830 bytes)
+
+Changes:
+- Contradiction 1 (group drag): dropped the 4px rule for judging lanes. Lane change now uses the shipped resolveCardDrop: drag over 18 screen px, the centre crosses a band boundary on this drag, and it goes at least 12px into the new band. The group is judged by the card you grabbed (Q2 → B), and the whole group goes into one lane. While dragging, cardDropTargetLane highlights the target lane. The mock lane now has an accent outline and a wash background. The drag start threshold now only tells a click from a drag. A lane change shows the undo card 「已移入泳道「X」」, and undo puts the whole group back in its original place and lane. The two "需" lines are merged and point to UndoClipboard.
+- Contradiction 2: clicking a card with Shift, Ctrl or ⌘ is now described as toggling selection (canvas_view). For the marquee, mac uses ⌘ for invert, because Ctrl+click on mac is a right-click. Whether to change the click modifiers is the new Q7.
+- Contradictions 3 and 4: Shift while dragging only locks the axis. Ctrl (⌘) while dragging drops the cards as they are, with no snapping and no insertion into an edge. The board says why Ctrl was chosen: Space is already temporary pan and Alt is taken by wire cutting. The snap mock label now reads 「按住 Ctrl：不吸不插」.
+- Contradictions 5 and 6: batch confirm and order now point to TakesCost. Both 「生成 N 个」 and multi-select Ctrl ↵ open the TakesCost run dialog: confirm, list with total, cap of 50 per run, queued in data-edge dependency order, disabled nodes shown as 「跳过 · 已停用」. The rule lives only on that board. Disabled nodes are not counted in 生成 N 个. The 叙事序 queueing line is removed.
+- Contradiction 7: unknown-price text is now 「另 N 个价格未知」.
+- Contradiction 21: the Alt+letter alignment keys stay. The board says why: the Windows menu bar only reacts to a lone Alt press and release, and there are no Alt+letter mnemonics.
+- Other unified rules:
+  - Added the Esc priority to the marquee rules.
+  - 便签 and text cards can be marquee-selected like other cards.
+  - Multi-select inspector: text, 便签 and result nodes are only counted.
+  - F still only opens the new-lane dialog. Wrapping the selection is only Ctrl G.
+  - Ctrl G (new lane plus moving the cards in) is one undo step.
+  - Q6 now says 「新增一条前向迁移」 instead of a version number.
+  - The result toolbar button is renamed 「当下一镜的首帧」 to match TakesCost.
+  - Middle-drag added to the pan list.
+- The 需要你定 box now has 5 columns. Its header line reads 「已定：Q2 → B · Q4 → 并入 TakesCost」.
+
+需要你定:
+- Q1 框选怎么算选中 (A 碰到就算 / B 整张框进 / C 看拖的方向). 建议 A, matching tldraw / Figma; the cards are large, so framing a whole card is tiring.
+- Q3 单选配置节点时出不出浮动条 (A 完整条含生成 / B 精简条不含生成 / C 不出). 建议 B: since the S1 fix the prompt bar and inspector share one generate gate, so another generate button on the toolbar would only repeat it.
+- Q5 Ctrl G 新泳道插在哪 (A 栈末尾 / B 选区所在道之后，不在道里放末尾). 建议 B: cards move least and the camera doesn't jump.
+- Q6 泳道折叠要不要记住 (A 不记 / B 本机偏好 / C style_lanes 新列随项目包走). 建议 C, 新增一条前向迁移.
+- Q7 (new) 点卡的修饰键要不要改 (A 保持现状：Shift/Ctrl/⌘ 都切换 / B Shift 只加选、Ctrl(⌘) 切换，与拖框对齐). 建议 A: matches Figma / tldraw and needs no change; the marquee's add / invert is a separate rule.
+
+## UndoClipboard.dc.html
+file: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/UndoClipboard.dc.html (generator: .../design/b2_history.js)
+final H: 1400 (was 1100; my estimate is about 1340 of content, so about 60px spare). check: bad [] unclosed [] errs 0 script ok props ok. Not rendered.
+
+Changes:
+- C8: pasted and clipboard media now land in `canvases/<id>/imports/`. Fixed in two places: the paste-placement rule, where a cross-canvas paste copies into the target canvas's `imports/`, and the system-clipboard image rule. No `images/` left.
+- C9: dropped super_clipboard. The infra line now points to ImportSearch's 需要你定 1, and the same set is shared with drag-in.
+- C12: the header now reads "Windows Ctrl Z · Ctrl Y；macOS ⌘Z · ⇧⌘Z". New rule: one primary redo key per platform (Ctrl Y / ⇧⌘Z), shown the same in the right-click menu, the menu bar 「编辑」, ⌘K and the shortcuts page. Removed Shift Ctrl Z.
+- C14: the stack table splits lane rows into three: 泳道新建/改名/改风格/排序 (「修改泳道「水墨」风格」), 「解散（节点留下）」 (「解散泳道「水墨」」) and 「删除泳道和内容」 (「删除泳道「水墨」和 4 个节点」).
+  - Undo-card rules: 解散 has no confirm; it clears the lane_id of the lane's nodes, keeps their positions, and shows a card.
+  - 删除泳道和内容 soft-deletes the lane and its nodes in one transaction. It asks for confirmation only when a job is generating in the lane, otherwise it deletes and shows a card.
+  - They are two separate actions and two separate steps. Removed 「删除泳道去掉确认」.
+  - The infra reverse-token list now says 泳道改 / 解散 / 删除.
+- C17: new stack-table row 「设为当前（含批量 slot），连同它改写的线」 → 「设为当前 · take 3」.
+  - New rule: 设为当前 and the data edges it rewrites are one step. Edges the system rewrites on its own do not enter the stack, so undo always finds an edge by its endpoints (downstream node + port + upstream node's config node), never by edge id.
+  - The infra reverse tokens add 设为当前 (old current take + moved edges).
+- Q3: no 转正 left. Whether it enters the stack is decided, so the question now asks how far undoing a slot's 设为当前 rolls back.
+- Unified rules and shipped behaviour:
+  - The undo card also covers 拖动换道 (the card resolveCardDrop already shows).
+  - The 「改参数」 row now includes 改文本正文 (the text-node inspector).
+  - New infra line on paste remapping: `pinned_result_id` and the source ids in `gen_inputs` are replaced with new ids inside the selection and stripped outside it. On a cross-project paste, `@{角色 id}` in the prompt becomes the character's name as plain text.
+  - The cross-project cell in the character-reference row now reads 「挂载和 @ 记号都去掉，胶囊提示」.
+- Everything else is unchanged.
+
+Final 需要你定:
+1. User did something else after a delete, then clicks the card's 「撤销」. Options: A undo only that step and remove it from the stack / B undo everything back to it / C disable the button. 建议 A: the card undoes the step it names.
+2. Undoing 「新建」 while that node is generating. Options: A delete it, the job finishes and its result lands unchained / B refuse / C cancel the job too. 建议 A, with the capsule adding 「任务仍在运行」: Ctrl Z should not cancel a paid job.
+3. Undoing a batch slot's 「设为当前」: what comes back. Options: A everything (old main image, old promoted slot, old current take, the rewritten edges) / B only the 当前 flag. 建议 A: promote and 设为当前 run in one transaction, so undo reverses both. The reverse token keeps the old image_url, the old promoted slot and the old pinned_result_id.
+4. Pasting a result without its source config. Options: A break the source link / B on the same canvas, keep it as another take of the original config. 建议 A: one rule for all pastes, and the original config's take numbers stay as they are.
+5. Pasting long multi-paragraph text. Options: A one text node, with 「按剧本拆镜…」 on the capsule / B open script import prefilled / C one node per paragraph. 建议 A: Ctrl V should not open a dialog.
+
+## ContextMenus.dc.html
+file: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/ContextMenus.dc.html (generator: .../design/b2_wires.js)
+final H: 1280. I estimated the content height from rule-line counts at about 1110, so there is roughly 170px to spare.
+check: bad=[] unclosed=[] errs 0 script ok props ok
+
+Changes:
+- #3: the blank-canvas rule no longer says hold Alt to skip snapping. It now says hold Ctrl(⌘) while dragging to drop the card as-is, with no snapping.
+- #4: the insert-onto-narrative-edge rule no longer uses Shift for "don't insert". Ctrl(⌘) now means drop as-is, with no insert and no snap, and Shift only locks the axis, so a Shift-drag can still insert.
+- #5: I removed the multi-select rule "多于 1 个先确认，单次 ≤ 50". It now says when to confirm, the per-run cap and the queue order (by data-edge dependency) all follow the TakesCost run dialog. I renamed the menu row from 批量生成 3 个 to 生成 3 个 · 约 $0.42 so it matches the TakesCost entry list. The unknown-price text is now 「另 N 个价格未知」.
+- #8: imported and pasted media now go to `canvases/<id>/imports/`, replacing "复制进项目目录".
+- #9: the "needs a new dependency" line for reading clipboard images now points to ImportSearch 需定 1.
+- #14 (lane):
+  - 解散（节点留下） and 删除泳道和内容 are now separate undo steps with separate names (「解散泳道」 / 「删除泳道和内容」), and they never merge.
+  - Neither one asks for confirmation; the undo toast covers them. The one exception is a lane with a job still generating, because cancelling a job can't be undone.
+  - 删除泳道和内容 now also soft-deletes the edges of the nodes inside the lane.
+  - The 包成泳道 (Ctrl G) rule no longer decides where the new lane goes; it refers to Selection Q5.
+- #19: the P2 stage now shows the TakesCost run-dialog row 「夜色渔火 · 跳过 · 已停用」. A new rule says that row isn't priced and doesn't count toward the per-run cap. The card's status line now reads just 「已停用」.
+- Alt+drag knife-cut stays. Two rules added:
+  - Esc cancels a cut at the same level as a marquee in progress, and the full Esc order is written out.
+  - The menu bar only takes focus on a lone Alt press and release; any pointer action during Alt cancels it, and there are no Alt+letter mnemonics.
+- Other alignment:
+  - The insert rule lists which node types can't be inserted (文本、便签、产物).
+  - Lane membership on drop now uses the shipped `resolveCardDrop` (drag over 18px, cross a band boundary, go at least 12px into the new band) instead of `resolveLaneDrop`.
+  - Insert + make room + lane change count as one undo step.
+  - Cross-project paste remaps `@{角色 id}` and the `gen_inputs` source ids, and strips any that don't match.
+  - Pasted images create image result nodes.
+  - W5 option A now points to TakesCost for the confirm rule.
+
+需要你定 (final):
+- W1 删链中间的镜，默认接上前后两镜吗？ A 默认接上，菜单另给「删除（不接上）」 / B Ctrl Del 才接 / C 每次问 — 建议 A（撤销卡一键回退）
+- W2 「停用」管到哪儿？ A 只在批量运行时跳过 / B 序列和导出也跳过 — 建议 A（停用 = 先别花钱，不是删镜）
+- W3 切线用什么手势？ A Alt + 左键拖空白 / B Ctrl Alt + 左键拖 / C 「更多 → 剪线」模式，单键 K — 建议 A，并列进快捷键页
+- W4 已在链上的节点拖到另一条叙事线上？ A 当作移动（原位置接上再插入）/ B 不触发 — 建议先做 B
+- W5 多选时 Ctrl ↵ 做什么？ A 生成全部能生成的（确认规则见 TakesCost）/ B 只在恰好一张时生效 — 建议 A（与菜单行、TakesCost 入口表一致）
+
+## TakesCost.dc.html
+I revised and rebuilt the TakesCost board. check.js passes on it: bad=[] unclosed=[] errs 0, script ok, props ok. I didn't render it, so the new height of 1380 is an estimate: I count the content ending around y≈1290, which leaves about 90px spare.
+
+file: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/TakesCost.dc.html (generator: .../design/b2_takes.js)
+final H: 1380 (was 1100)
+
+Changes:
+- **#5, confirm rule:** this board is now the only place the rule is set, and Selection and ContextMenus refer to it. The dialog opens when 2 or more nodes would run; a single node still runs without one. It lists each node and the total. One run can hold at most 50 nodes. If more are selected, the first 50 in batch order run, the footer says 「另 N 个不在本次」 and the button says 「运行 50 个」. Every entry point goes through this one dialog. The dialog's footer now also shows 「单次最多 50」.
+- **#6, run order:** this board is also the only place the order is set. Nodes run in data-edge dependency order, a downstream node waits for its upstream to succeed and then uses the new current take, and nodes with no dependency run in narrative-chain order.
+- **#7, unknown price:** the total line uses 「另 N 个价格未知」.
+- **#17, undo:** 「设为当前」 and the data edges it rewrites are one undo step (when Q1 is A). Undo finds those edges by their two end nodes, not by edge id.
+- **#18, remapping:** added a new pair of rule lines under 过期标记:
+  - Project import (`import_remapper`) rewrites the source node ids in `gen_inputs` and `pinned_result_id`.
+  - Template insert strips both, since templates carry no results.
+  - Cross-project paste rewrites the ids it can map and strips the rest. A take whose source ids were stripped counts as having no snapshot, so it is never marked 过期.
+  - `@{角色 id}` in prompts follows the rule on the ImportSearch board.
+- **#19, disabled nodes:** the dialog has a new dimmed row, 06 旧版开场 「跳过 · 已停用」. Disabled nodes (`type_config.disabled`) are not counted or priced and cannot be ticked back in; the way to run one is to 启用 it first. Pinned nodes stay as 「跳过 · 已固定」 and can be ticked back in (Q4).
+- **#22, currency:** amounts are USD only ($, `formatCostUsd`). A rule line and a note in the 需要你定 header say the first-batch Main board's 「¥0.70」 is the old form and will be changed to $. Q6 is removed because this is settled.
+- **Other unified rules:**
+  - The time estimate uses the shared format (under 60 s 「N 秒」, 60 s or more m:ss), so 「预计 4 分钟」 became 「预计 4:10」.
+  - `run_group` is marked as needing no migration.
+  - The result inspector, which already has 定位来源节点 / 在序列中定位 / 播放, gets a 「设为当前」 action, shown ticked and greyed when the take is already current.
+
+需要你定:
+- Q1 How downstream edges follow the current take: A rewrite the data edges / B resolve at generation time. 建议 A (what you see is what is used; this one undo step covers the edges it rewrites).
+- Q2 When nothing is pinned, does a new take become current automatically? 建议 A (yes; pinning only stops replacement).
+- Q3 How far 过期 propagates: A only the take whose inputs changed / B down the chain / C A plus one line about the upstream in the reason popover. 建议 C.
+- Q4 Do batch runs skip pinned nodes? 建议 A (skip by default, can be ticked back in).
+- Q5 What 运行叙事链 runs by default. 建议 C (toggle in the dialog that remembers the last choice; first time = only stale and never-generated).
+- Q7 When the next shot is an image config: A grey out with a reason / B insert a video config / C connect as a reference. 建议 A.
+- Q8 (new) More than 50 selected: A run the first 50 in batch order, rest shown as 「另 N 个不在本次」 / B block the run and ask for a smaller selection. 建议 A.
+
+## ImportSearch.dc.html
+file: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/ImportSearch.dc.html (generator: .../design/b2_import.js)
+final H: 1300. I estimated the content at about 1208 from rule line counts; it was not rendered. check.js gives bad=[] unclosed=[] errs 0 script ok props ok.
+
+Changed / added:
+- Contradiction 8: imports, OS-file drags, pasted images and assets from another canvas all land in `canvases/<id>/imports/`, because file_resolver won't let a path leave the canvas root. Option A of Q2 is now worded with that path. type_config stores the relative path.
+- Contradiction 9: this board now owns the decision. Q1's title says UndoClipboard and ContextMenus paste and drag-and-drop both point to it. Q1 also notes that copying nodes on the canvas uses the in-app canvasClipboardProvider and puts only plain text on the system clipboard, so neither option needs another dependency for that. The `need` line in column A says every board's paste and drag-and-drop follows Q1.
+- Contradiction 10: dragging an asset to empty space on the same canvas is now 「同画布粘贴（新节点指向同一文件，不复制）」. The 「同 Ctrl D」 wording is gone. Q4 option B now says Ctrl D 「只复制配置节点」.
+- Contradiction 18: two rule lines added to column C. Project archive import, template insert and cross-project paste all rewrite `@{角色 id}`:
+  - Where the character can be mapped, the token gets the new id from the same character table as character_ids; for archive import that is import_remapper's characterMap.
+  - Where the character didn't come along, the token becomes plain text 「@名字」 and the id is removed from character_ids. If no name is available, the token is deleted. This matches UndoClipboard's cross-project paste rule.
+- Text / 便签 editing:
+  - The body lives in a single key, `type_config.text`. The inspector body field is the path that always works; double-click on the card is only a shortcut.
+  - Both write through the same InspectorSubmitController debounced chain: retry on failure, flush before exit, one extra write on focus loss, then a canvas reload.
+  - While editing in place, the inspector field is read-only and follows along.
+  - The old claim that double-click fixes F1 is removed; F1 is fixed by the inspector.
+  - The mock card shows the in-place editing state.
+- Node-type naming: the tool-lock toolbar mock now has a 镜头 (shot) button between 文本 and 便签, and its cards were moved so nothing overlaps. The tool-lock rule lists 图像 I / 视频 G / 文本 T / 镜头 / 便签 N. The find rule lists 图像 / 视频配置、镜头、文本、便签、产物 and searches 文本 / 便签正文.
+- Esc order line added: 菜单 > @ 弹层 > 查找条 > 框选进行中 > 工具锁 > 清空选中.
+- Q5 option B now reads 「新增一条前向迁移」, with no version number.
+- Everything else is unchanged. A scan found no 分镜, Alt, ¥ or migration numbers; the only hit was inside an SVG path.
+
+需要你定 (final):
+1. Which dependencies for drag-in and image paste, for every board (UndoClipboard and ContextMenus point here): A desktop_drop + pasteboard / B super_drag_and_drop + super_clipboard (ships a Rust native library, heavier build). 建议 A.
+2. An asset dragged in from another canvas: A copy it into this canvas's `canvases/<id>/imports/` / B a project-wide shared path, which changes file_resolver and how result paths are stored. 建议 A.
+3. How the @ chip relates to mounting: A inserting mounts, deleting the chip doesn't unmount / B two-way sync / C plain-text @名字, no id stored. 建议 A: character_ids stays the only source.
+4. Build the tool lock or not: A yes, Q plus double-click on the tool button / B no, use Ctrl D (config nodes only) and the Tab menu. 建议 A, scheduled as P2.
+5. How to store 便签: A keep it as text with `type_config.variant = note`, no migration / B a new note type plus a new forward migration. 建议 A; prompt assembly and the outline must skip notes, and the inspector reuses the text body field.
+6. Can an imported video be a shot on its own: A no, it can only be a first frame or reference / B yes, open the narrative chain to imported nodes. 建议 A first, B once there is a clear editing need.
+
+## RailScript.dc.html
+file: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/RailScript.dc.html (generator: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2_rail.js)
+final H: 1340. Panels went from 360 to 396 tall. I estimated the content bottom at about y 1240 by counting lines; it has not been rendered.
+check.js: bad [] unclosed [] errs 0 script ok props ok
+
+Changes:
+- #11: In the node library, clicking the lane item with nothing selected opens the 「新建泳道」 dialog, same as F (F ignores the selection). With a selection, the click wraps it into a lane, same as Ctrl G (see Selection). Dragging it out opens the dialog at the drop point. The old 「包住选中（同 F）」 text is gone.
+- #13: All migration numbers are removed.
+  - script_documents / script_paragraphs: 「新增一条前向迁移」, plus a note that the project archive whitelist must include them and that node_id is rewritten through import_remapper on import.
+  - canvas_templates: also marked 「新增一条前向迁移」.
+- #15: The help popover is now the one shared action set: 新手引导 · 打开示例项目 | 版本说明 · 反馈问题 · 用户手册 (greyed, no URL) | 导出诊断包… · 打开日志目录 | 检查更新… (shown as 「有新版本 0.9.4 · 下载」 when there is an update, with a note under it saying so) | 关于 InkFrame 0.9.3 (now a real menu item). New rule line: the menu bar 「帮助」 = 快捷键 + these items, same order and names; ShellExport should follow it, and labels reuse existing ARB strings (settingsOpenLogDir). The update rule line also says 检查更新 shares its result with the 关于 page, and 关于 opens 设置 · 关于.
+- #16: The node library now has 6 items: 图像配置 I · 视频配置 G · 文本 T · 镜头 · 便签 N · 泳道 F. The group count reads 6 and the rule names all six and says the type is always called 「镜头」, never 分镜.
+- #23: The navigation strip follows R7 B. The dashed 节点库 key is gone; 模板 is tagged 「顶部含节点库（R7）」. The rule line now reads: `LeftRailPage` gains script / templates; the node library goes into the top of the 模板 page with no key, and nodeLibrary is added only if R7 changes to A. The 节点库 heading notes 「R7 B 时在模板页顶部」.
+- Other unified rules:
+  - Durations in the 剧本 panel now use one format: 4 秒 / ~5 秒 / ~2 秒 / ~3 秒, and the footer reads ~14 秒. A rule line was added: under 60 s 「N 秒」, 60 s and over m:ss.
+  - Template insert gained a remap line: prompt `@{角色 id}` is stripped to the plain name (templates carry no characters), and `gen_inputs` source ids are remapped, or dropped if they point outside the template.
+
+需要你定 (final):
+- R1 How to recognise characters in the script (A existing names only / B A + select text and mark it 设为角色 / C LLM extraction). 建议 B: no LLM, same approach as the splitter, testable.
+- R2 What happens to old shots on re-import (A append only / B compare paragraph by paragraph / C replace the whole document). 建议 B: no shots deleted, no links lost.
+- R3 Write the estimated duration back (A display only / B write duration_ms into new shots / C no estimate). 建议 B: only new shots get it.
+- R4 Can the script text be edited in the panel (A read-only / B edits sync to shot_notes). 建议 A.
+- R5 Where 我的模板 is stored (A app-wide / B per project / C config/templates/*.json). 建议 A; add .json export later if sharing is needed.
+- R6 Do templates carry images (A no / B reference images and first frames). 建议 A.
+- R7 Does the node library get its own page (A its own key after 模板 / B top of the 模板 page, 5 keys / C Tab only). 建议 B: there are only 6 node types, too few for a page.
+- R8 Help as a menu or a panel page (A popover menu / B panel page). 建议 A.
+
+## ShellExport.dc.html
+File: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/ShellExport.dc.html (generator b2_shell.js)
+Final H: 1400 (W 1280). Check result: bad=[] unclosed=[] errs 0 script ok props ok. Not rendered. Estimated column bottoms: right ≈ y1363 (the tightest), left ≈ y1308.
+
+Changes:
+- Layout: the board is now two columns. Left (604 wide) holds the menus, the menu rules, and 需要你定 laid out 2×2. Right (580 wide) holds 系统通知, F6, 任务耗时 and 导出第二批. The export tab is now 580 wide, and the 片段/历史 panels sit with their rules to the right. I moved the export section into the right column because the menus column grew taller.
+- #12: 编辑 › 重做 now shows Ctrl Y (it was Ctrl Shift Z) and uses the mirrored-undo icon from UndoClipboard. New rule: the action table has one primary key; Windows shows Ctrl Y and macOS shows ⇧⌘Z, the same in the menu, the shortcuts page and the undo card.
+- #13: export_records now reads 「新增一条前向迁移，落地时按合入顺序编号」. No version numbers remain on the board.
+- #15: 帮助 menu = the rail help popover's actions plus 快捷键: 快捷键 | 新手引导 · 打开示例项目 | 版本说明↗ · 反馈问题↗ · 用户手册↗ (greyed, 缺 URL) | 导出诊断包… · 打开日志目录 (renamed from 打开日志文件夹 to match the rail) | 检查更新… · 关于 InkFrame. New rule: when an update exists, 检查更新… becomes 「有新版本 x.y.z · 下载」 and the rail help key gets the amber dot.
+- #16: added drawn submenus. 画布 › 新建节点 › is 图像配置 I · 视频配置 G · 文本 T · 镜头 · 便签 N (新, greyed) | 泳道… F. 画布 › 缩放 › is 放大 Ctrl + · 缩小 Ctrl − · 复位 100% Ctrl 0. New rule: one name set everywhere, and the toolbar ARB key `canvasToolShotNode` changes from 「分镜节点」 to 「镜头节点」.
+- Unified lane rule: added 节点 › 包成泳道 Ctrl G (新, greyed), plus a rule that 泳道… F always opens the new-lane dialog and ignores the selection.
+- #20: the system notification now reads 「用时 1:12」 (was 1 分 12 秒). The queued task row now reads 「8 秒」 (was 0:08). New rule: one pure function, `formatElapsed`, where under 60 s is 「N 秒」 and 60 s or more is m:ss. The task popover, toast cards and system notification all use it. I dropped the old h:mm:ss case.
+- #21: Windows focuses the menu bar only on a lone Alt press and release, with no other key or pointer action in between. There are no Alt+letter mnemonics, so Alt A/D/W/S/H/V, Alt Shift H/V and Alt+drag stay with the canvas. Alt F4 stays.
+- Other unified rules added to the menu rules: the global Esc order (菜单 > @ 弹层 > 查找条 > 框选进行中 > 工具锁 > 清空选中), and that 生成 with several nodes selected is batch generation whose confirm and cap follow TakesCost only.
+
+需要你定 (unchanged):
+- Q1 系统通知要不要出声 (A 系统静音、照常响 InkFrame 提示音 / B 只响系统 / C 都响). 建议 A：声音只看「提示音」设置，不会一次响两声.
+- Q2 导出 / 交付进不进任务弹层 (A 进，只放内存、不写 jobs 表 / B 不进，只看进度卡). 建议 A：长任务在一处看、一处取消.
+- Q3 导出历史留多久 (A 一直留、手动移除 / B 只留最近 50 条 / C 和 jobs 一样按天数清). 建议 A：一行数据很小，清掉之后就没法「重新导出」.
+- Q4 分镜 PDF 用什么中文字体 (A 打包 Noto Sans SC，安装包约 +10 MB / B 运行时嵌入系统字体，授权要查 / C 首版只出图和英文字段). 建议 A：两个平台排版一致，授权也清楚.
+
+## KeyMap.dc.html
+File: `C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/KeyMap.dc.html` (generator `.../design/b2_keys.js`)
+
+Final H: 1400, width 1280. I estimated the content height by counting rows at about 1370. Column 2 (组合键 + 单独 Alt + 文字让位) and the 需要你定 box are the tallest parts. check.js gives bad=[] unclosed=[] errs 0, script ok, props ok. Not rendered.
+
+**What's on the board**
+- **Header.** Status legend (已上线 / 第二批 / 待定 Qn) and scope legend (画布 / 应用 / 弹层 / 序列). One source line:
+  - Shipped rows come from kCanvasShortcuts, CanvasToolKeys, kCommandPaletteActivators, shortcut_catalog and each popup's own key table.
+  - Batch-2 rows name their board: ImportSearch, UndoClipboard, Selection, ContextMenus, ShellExport.
+- **Row format.** Every row has five columns: Windows keycaps · macOS keycaps (同左 when they match) · action · scope · status.
+- **单键 (22 rows).**
+  - Shipped: V H Space I G T F L Tab Del/⌫ Esc Shift 1 Shift 2.
+  - Batch 2: deleting a selected edge with Del, N M Q, F6 (应用级).
+  - Pending: P, Shift D, C, 镜头 (no key).
+  - F keeps its shipped meaning: it opens the new-lane dialog and ignores the selection.
+- **组合键 (21 rows).** Changes against the critic's list:
+  - Redo is Ctrl Y on Windows and ⇧⌘Z on macOS, one registered key per platform.
+  - Batch Ctrl Enter points to TakesCost for its rules.
+  - Ctrl G / Ctrl Shift G wrap into / remove from a lane.
+  - Alt aligns with A D W S H V and distributes with Alt Shift H/V.
+  - Ctrl → is pending (Q1).
+  - Exit is Alt F4 / ⌘Q; a lone Alt focuses the menu bar.
+  - The zoom row says Ctrl 0 = 缩放复位, as in the code (`resetTransform` to the starting camera).
+- **指针 (23 rows).**
+  - Shift / Ctrl / ⌘ click is written as 切换选中, matching canvas_view.dart.
+  - Left-drag on blank canvas is marked as changing from pan to box-select.
+  - Card drag follows `resolveCardDrop` (shipped).
+  - While dragging a card, Shift only locks the axis. Ctrl(⌘) only means plain drop: no snapping and no insert into an edge. Alt(⌥) + drag on blank canvas only cuts edges.
+  - Also listed: wheel zooms around the pointer (InteractiveViewer default), trackpad, Ctrl + wheel zooms the sequence timeline.
+- **Esc ladder (drawn as steps).** 菜单 > @ 弹层 > 查找条 > 文字输入框失焦 > 进行中的手势（拖线 · 框选） > 工具回到选择（工具锁 · 平移 · 连线） > 清空选中.
+  - The shipped wire-drag / menu / pan / link checks are folded into these steps.
+  - Dialogs, ⌘K, settings, the task popover and the bell sit above the ladder. They take Esc themselves while open.
+  - A rule under the ladder flags a code fact: `CanvasEscapeIntent` is a plain CallbackAction and does not yield to text fields. Today, pressing Esc while typing in the prompt bar clears the selection. Step 4 changes that.
+- **单独按 Alt (Windows only).**
+  - A mock menu bar plus three sequences: Alt↓Alt↑ focuses 文件; Alt↓A↓ aligns; Alt + drag cuts edges.
+  - The decision is made when Alt is released, and only if no other key, pointer press or wheel happened since Alt went down.
+  - Losing window focus clears the pending Alt; AltGr (which carries Ctrl) doesn't count.
+  - No Alt+letter mnemonics. macOS uses the system menu bar instead.
+- **文字让位.** When focus is in a text field:
+  - These go to the field: single keys, Space, Tab, Del, Ctrl A/C/X/V/Z/Y, Ctrl D, Ctrl →, Alt + letter.
+  - These still work: Ctrl K, Ctrl F, F6, lone Alt.
+  - Ctrl Enter in a prompt field generates that node. Esc first takes focus out of the field.
+  - Ctrl Z is the field's own undo; once the field loses focus, the whole edit counts as one canvas step.
+- **弹层内部 (8 entries).**
+  - Shipped: new/right-click menus, ⌘K, batch compare (Enter = 设为当前, formerly 转正), gallery grid.
+  - Batch 2: find bar, @ autocomplete, F6 notification area, Windows menu bar.
+- **Strip line.**
+  - Deliberately unbound: Ctrl S; Alt mnemonics; K for cutting edges, if W3 goes with A; Ctrl Del, if W1 goes with A.
+  - No board yet: Ctrl 1–5 to switch tabs; Ctrl Shift \ to collapse every panel; double-click an outline row to rename.
+- **Engineering rules under each table.**
+  - Single keys: every key goes through `_EditingAwareAction`; Tab and Space only act when the canvas itself has focus; each new key must be claimed in CanvasToolKeys, shortcutActionOf and _keyLabels; `includeRepeats: false`.
+  - Combinations: the key list shows one platform's set; ⌘H ⌘M ⌘Tab ⌃←→ are left unbound on mac (which is why next-shot is ⌘→ there); ⌥ + letter keys are matched by logicalKey.
+
+**需要你定**
+- **Q1 新建下一镜.**
+  - Options: A Ctrl → / ⌘→, inheriting model, aspect ratio, resolution, duration, batch size, characters, negative prompt and the lane-style flag / B same key, inherit nothing / C inherit everything.
+  - 建议 A. Not inherited: prompt, seed, camera language, notes, results, first/last frames.
+  - The new node lands to the right in the same lane. If the anchor already has a next shot, the new one is inserted between them. Focus stays on the canvas so the key can be pressed repeatedly.
+  - ⌘→ on mac because ⌃→ switches desktops.
+- **Q2 C 评论.** A reserve C, register it only when comments ship / B don't reserve / C use it as an alias for linking. 建议 A.
+- **Q3 P 设为当前.** A on a take card = set as current; on a config card = pin / unpin its current take / B take cards only / C no single key. 建议 A: both write only pinned_result_id, and the rewritten edges are part of the same undo step. P does nothing when several cards are selected.
+- **Q4 停用.** A D / B Shift D / C Ctrl M (⌘M minimises the window on mac). 建议 B: D sits right next to Ctrl D, so releasing Ctrl a moment early would disable a whole selection. With several selected: if any is enabled, disable all, otherwise enable all; one undo step.
+- **Q5 Shift 0 vs Ctrl 0.** A keep Ctrl 0 as reset and add Shift 0 = 100% around the viewport centre / B change Ctrl 0 to 100% around the viewport centre, no Shift 0 / C both keys do 100%. 建议 B: resetting to the origin often lands on empty space, and Shift 1 and 「回到内容」 already bring the content back.
+- **Q6 镜头 single key.** A none / B S. 建议 A: there are already 12 single-letter keys, so one fewer to hit by mistake.
+
+## GapsCanvas.dc.html
+file: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/GapsCanvas.dc.html
+generator: C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2_gaps_canvas.js
+H: 1400 (1280 wide, static, renderVals {}). check.js: bad=[] unclosed=[] errs 0 script ok props ok. Not rendered. I estimated the height by measuring the rule text line by line and padding it by 15%; content should end around y≈1370. The 需要你定 box at the bottom is the least certain part.
+
+What the board covers. Every section has a mockup, rules under or beside it, and the 需要你定 box at the end.
+- **新建下一镜** (full width). Two mockups:
+  - Ctrl →: the anchor 镜头 02, its take column, a ghost 镜头 03 drawn with a narrative edge, and the inherited settings shown under it.
+  - Dragging from the out port: when the source is a config node, 「下一镜」 is listed first and highlighted, then the 首帧/尾帧/参考 group.
+  - Two chip rows say what is inherited and what isn't:
+    - 继承: 泳道, 模型, 画幅, 分辨率, 时长, 运镜, 景别, 机位角度, 运镜幅度, 焦段, 不跟泳道风格. 角色 and 负面提示词 are left to N1.
+    - 不继承: 提示词, 种子, 张数 (back to 1), 生成模式, data edges, 当前 take, 生成快照, 停用, 镜头备注, 名称.
+  - Rules:
+    - The anchor is resolved by `narrativeAnchorOf`. Text nodes and notes don't respond.
+    - The new node and its narrative edge are written in one transaction, with sortOrder from `nextNarrativeSortOrder`. Undo is one step.
+    - Placement follows the lane's main axis, past the anchor's result column plus 64. If that spot is taken it moves further along the main axis and never leaves the lane.
+    - Ctrl ←/↑/↓ are not assigned. In a text field, Ctrl → moves the cursor.
+    - Focus stays on the canvas, so Ctrl → can be pressed repeatedly. A new key, ↵, puts the cursor in the prompt bar.
+    - The three entry points share one `createNextShot`. Today the menu's 「下一镜」 creates an empty node; it should inherit too.
+- **新建菜单补项**:
+  - Node group: 便签 N is added, and the type is called 镜头.
+  - 最近用过: the last 3 provider + parameter combinations from this project's jobs (no prompt or seed). A preset without a key is still clickable and tagged 无 Key.
+  - 模型 group appears only while typing.
+  - 角色 group lists the 3 most recently edited characters.
+  - Data is shared with the node library through recentPresetsProvider. `CreateMenuAction` becomes a CreateMenuPick that carries a payload.
+- **节点右键补项**: the full menu order is:
+  - 生成 · 新建下一镜 Ctrl → · 复制一份
+  - 设为当前 · 当下一镜的首帧 › (both from TakesCost)
+  - 存为角色 · 加入泳道 › · **加入叙事链末尾**
+  - 在序列中定位 · **在画廊中定位**
+  - 停用 (from ContextMenus) · 删除
+  - 加入叙事链末尾:
+    - The chain end is the last node of `orderByNarrativeChain` once it is limited to chain members.
+    - With several nodes selected, they are linked in position order.
+    - With no chain on the canvas, a single node greys the item out; several nodes start a new chain.
+  - 在画廊中定位:
+    - A config node uses its current take (`currentResultFor`).
+    - It clears the gallery filter if the filter would hide the item.
+- **「更多」下拉**:
+  - Order: 导入剧本… · 导入媒体… Ctrl U | 整理叙事链 · 运行叙事链… | 从模板插入… | 切线 (Alt 拖) | 查找 Ctrl F · 小地图 M ✓.
+  - The dropdown moves to CanvasMenuPanel instead of Material showMenu.
+  - 「导入脚本」 is renamed 「导入剧本」 in the ARB files.
+  - 切线 from this menu is a one-shot mode.
+- **便签字号 · 标题**:
+  - Two styles: body 12/1.55 and heading 20/500. Stored as `type_config.note_style`, no migration.
+  - A heading note has no background and wraps at 480.
+  - Below zoom 0.6, a body note collapses to an icon. A heading note stays readable at no less than 12px.
+  - Font sizes become InkTypography tokens, and the inspector gets a 正文 | 标题 switch.
+- **画布轻提示胶囊**, specified as a component:
+  - Built from InkCanvasCapsule, CanvasCapsuleHost and canvasCapsuleProvider(canvasId).
+  - Position: 8 above the prompt bar (from canvasPromptBarHeight), or 16 from the stage bottom when the bar is hidden. It stays clear of the zoom bar plus 16 on each side. The find bar is at the top and the two never move for each other.
+  - Only one at a time; a new one replaces the old. A capsule with the same dedupeKey updates in place.
+  - Durations: 2 s plain, 4 s with an action, 1.2 s for zoom. Hovering pauses it.
+  - Zoom shows only for keyboard zoom and 适应.
+  - Not used for errors or delete-undo, not added to the bell history, and not part of the Esc chain or Tab order.
+  - Four sample variants are drawn.
+- The research Q11 question (泳道 vs 纯分组) and the comments P2 deferral are in the 需要你定 box. The comments note says what the feature would need: a node_comments table and 新增一条前向迁移, the archive whitelist and import_remapper, a card badge, an inspector page. The C key stays unassigned.
+
+需要你定:
+- N1 Does the next shot inherit characters and negative prompt? A both / B neither / C characters only. 建议 A.
+- N2 Gesture for 「从卡片边缘拖出」: A reuse the out-port drag, with 「下一镜」 first and highlighted / B a new 「+」 handle on the card edge. 建议 A.
+- N3 Ctrl → when the anchor already has a next shot: A open a fork, placed after the existing forks, plus a capsule / B insert between this shot and the next / C just select the existing next shot. 建议 A.
+- N4 What the 新建菜单 「角色」 group creates: A an image config with the character attached / B a video config / C attach it to the current selection only. 建议 A.
+- N5 Does 加入叙事链末尾 move the node? A no, only add the edge / B move it after the chain end. 建议 A, because position decides lane and style.
+- N6 Note font sizes: A two (12 / 20) / B three / C free size. 建议 A.
+- N7 Q11, lane vs plain group: A one kind, an empty style makes it a group / B add a free-form frame / C headings on notes only. 建议 A.
+
+## GapsPanels.dc.html
+GapsPanels.dc.html 已建好，H = 1400。check.js 结果：bad=[]，unclosed=[]，errs 0，script ok，props ok。没有渲染。高度是生成脚本按字数估的，四列估计分别到 1313 / 1348 / 1281 / 1269，最紧的是第 2 列，离底还有约 50px。
+
+- 生成脚本：`C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2_gaps_panels.js`
+- 画板：`C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/b2/project/GapsPanels.dc.html`
+
+**合并前要先处理**：fix/demo-inspectors 的提交 cc52965 用了三个文案键 `l.inspectorResultPlay`、`inspectorResultLocateSource`、`inspectorResultDimensionsLabel`，但对应的 ARB 和 gen-l10n 生成件都没进提交，还在工作树 `D:/Projects/InkFrame/.claude/worktrees/agent-af939c6787a146158` 里没提交。只合这个提交，编译不过。
+
+**新画板「面板与通知补漏」**：四列，每节都是样稿加规则，最后一个需要你定框。
+1. **通知（设置 › 常规 › 通知）**
+   - 按类型开关五项：生成完成 / 导出完成 / 失败 / 撤销 / 一般。新增 `ToastCategory`，在调用处标类型，不从 ToastKind 推，因为同是 success 的「已生成」和「已复制」要分开管。
+   - 关掉 = 不出卡、不响提示音、不发系统通知。进度卡带「取消」，不受开关管。
+   - 位置五选一：跟随系统 / 四个角。存进 preferences.json 的 `toastMuted` / `toastCorner`，不动库。放在上面两个角时，最新的贴角、往下长，让开 40px 标题栏和 43px 导航条。
+2. **面板**
+   - 左面板拖右沿调宽：200–420，默认 240，双击回默认，全局记一个值（preferences.json 的 leftPanelWidth），舞台至少留 480。
+   - Ctrl Shift \ / ⌘⇧\ 收起左面板和检查器，43px 导航条留着；再按一次恢复成收起前各自的开合。检查器现在不能收，要新增 `inspectorExpanded`。
+3. **大纲行**
+   - 双击就地改名，写 nodes.label。
+   - 右键 = 节点右键菜单原样（同一份 node_menu_model）。
+   - 拖动改叙事顺序：改的是叙事边（摘出、前后接上、插进新位置），一个事务；只有同一分叉点下兄弟之间换序才改 sortOrder。只能在本组内拖。
+4. **角色**
+   - 按 角色 / 物品 / 场景 分组：characters 加 `kind` 列，新增一条前向迁移。
+   - 编辑框和面板行上的「被引用」都能点，跨画布的先 openCanvas 再定位。
+5. **素材**
+   - 悬停 400ms 出大预览，视频静音循环播前 6 秒。
+   - 导入的格子带「导入」小标，标签用原文件名；新增「导入」chip，画廊也加来源筛选。判据只看 `origin == import`。
+6. **序列**：叙事链行和 V1 轨片段的右键菜单加「在画布中定位」和「在画布中定位并重生成 约 $0.75」。
+   - 重生成的对象是这一镜当前 take 的来源配置节点，走 `submitWithPending`，和 Ctrl ↵ 同一道闸。
+   - 单个节点不弹确认，引用 TakesCost 的「≥2 个才确认」。
+7. **剧本导入对话框**（画出来了）
+   - 识别角色：已有角色名显示为实心 chip；在文本里选中一段可「设为角色」，进虚线候选，导入时新建。
+   - 每镜估时长，「把估算时长写进镜头」默认勾上，引用 RailScript 的 R1 / R3。
+   - 按钮改成「创建 N 个镜头」。
+8. **导出视频**：分体按钮。主体 = 按上次设置直接导出，设置取 export_records 里的规则快照；▾ = 现有对话框。一键导出不覆盖同名文件，自动加「(2)」。
+9. **产物检查器**：照 fix/demo-inspectors 的代码画，标「已实现」。图像产物画了全貌，视频产物只画和图像不同的部分。标出三处要改的地方：
+   - ① 节点头直接显示枚举名「image / result」，要走 ARB；
+   - ② 片长用 galleryFormatDuration 显示成「00:00:05」，和统一时长格式（「5 秒」）不一致；
+   - ③ 占位和播放浮标用的是 Material 图标，浮标尺寸写死 40，要换成图标集 v1 和 token。
+
+统一规则都照做了：「镜头」叫法、USD、迁移不写版本号、时长格式、批量确认引用 TakesCost、「设为当前」。
+
+**需要你定**
+- **N1 关掉的类别，铃铛里还记吗**：A 照记，不加未读 / B 照记也加未读 / C 不记。建议 A：想查还能查到，又不被红点打扰。
+- **N2 通知卡默认放哪（调研 Q2）**：A 跟随系统，Windows 右下、macOS 右上 / B 都放右下 / C 都放右上。建议 A。
+- **N3「失败」开关管多宽**：A 只管后台任务，当场操作出错照样提示 / B 管所有失败。建议 A：否则操作失败会没有任何反馈。
+- **P1 检查器也能拖宽吗**：A 能，260–480，和左面板同一套 / B 固定 301。建议 A。
+- **O1 大纲拖动能跨泳道组吗**：A 不能，换道走画布拖卡 / B 能，同时改 lane_id 和位置。建议 A：一次拖动只改一件事。
+- **C1 角色类型进不进提示词**：A 不进，只管分组 / B 注入时加英文类型前缀。建议 A：先不动模型行为。
+- **E1 一键导出遇到没有视频的镜**：A 照导，完成卡写「跳过 N 镜」/ B 停下打开对话框 / C 用静帧补（P2）。建议 A：和对话框只列有视频的镜一致。

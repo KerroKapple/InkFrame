@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>版本固定与花费</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#141414}
+a{color:#C9A85B}a:hover{color:#D8B96C}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;margin:0;cursor:pointer;text-align:left}
+button:focus-visible{outline:2px solid #C9A85B;outline-offset:1px}
+.hov:hover{background:#2E2E2E}
+.hovfg:hover{color:#E8E8E8}
+.amber:hover{background:#D8B96C}
+.toast{transition:transform 200ms cubic-bezier(.215,.61,.355,1)}
+.toast-in{animation:toastIn 200ms cubic-bezier(.215,.61,.355,1) both}
+.toast-out{animation:toastOut 150ms ease-in both}
+@keyframes toastIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@keyframes toastOut{from{opacity:1;transform:none}to{opacity:0;transform:translateY(8px)}}
+.toast .x{opacity:0;transition:opacity 120ms}
+.toast:hover .x,.toast:focus-within .x{opacity:1}
+.spin{animation:spin 900ms linear infinite;transform-origin:50% 50%}
+@keyframes spin{to{transform:rotate(360deg)}}
+.pop{animation:popIn 150ms cubic-bezier(.215,.61,.355,1) both}
+@keyframes popIn{from{opacity:0;transform:translateY(4px) scale(.98)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.toast-in,.toast-out,.pop{animation-duration:120ms}.toast-in{animation-name:fadeIn}.spin{animation:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+</style>
+</helmet>
+
+<div style="width: 1280px; height: 1380px; position: relative; overflow: hidden; background: #1D1D1D; color: #D6D6D6; font-family: 'Noto Sans SC', 'Microsoft YaHei UI', 'PingFang SC', sans-serif; font-size: 12px; line-height: 1.45">
+  <div style="position: absolute; left: 32px; top: 28px; display: flex; align-items: baseline; gap: 14px">
+    <div style="font-size: 17px; font-weight: 500; color: #E8E8E8">版本固定、过期标记与花费</div>
+    <div style="color: #9E9E9E">满意的锁住不再付费重跑；上游改了下游看得见；运行前知道要花多少</div>
+  </div>
+  <div style="position: absolute; left: 32px; right: 32px; top: 70px; display: flex; flex-direction: column; gap: 20px">
+    <div style="display: grid; grid-template-columns: 610px minmax(0, 1fr); gap: 32px">
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px"><div style="font-weight: 500; color: #E8E8E8">当前 take · 固定</div><div style="font-size: 11px; color: #8A8A8A">「转正」并进来：一镜只有一个「当前」，固定 = 新 take 不顶替它</div></div>
+    <div style="display: flex; gap: 20px">
+  <div style="position: relative; width: 290px; height: 210px; flex: none">
+    <svg width="290" height="210" viewBox="0 0 290 210" aria-hidden="true" style="position: absolute; left: 0; top: 0">
+      <path d="M120 50C140 50 140 50 160 50" fill="none" stroke="#6B6B6B" stroke-width="1.25" stroke-dasharray="1.5 3.5" stroke-linecap="round"></path><path d="M120 50C140 50 140 156 160 156" fill="none" stroke="#6B6B6B" stroke-width="1.25" stroke-dasharray="1.5 3.5" stroke-linecap="round"></path>
+      <path d="M280 156C296 156 274 156 290 156" fill="none" stroke="#8FD694" stroke-width="1.75"></path>
+    </svg>
+    
+  <div style="position: absolute; left: 0px; top: 0px; width: 120px; ">
+    <div style="height: 16px; display: flex; align-items: center; gap: 4px; font-size: 10px">
+      <div style="font-weight: 500; color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">镜头 01</div><div style="flex: 1"></div><div style="color: #8A8A8A">图像配置</div>
+    </div>
+    <div style="position: relative; width: 120px; height: 68px; border-radius: 4px; background: #202020; outline: 1px solid #2C2C2C; overflow: hidden"><div style="padding: 6px 7px; font-size: 9px; line-height: 1.5; color: #D6D6D6; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden">拂晓，雾江上一叶孤舟，渔夫站在船头收网；远山一层层浮出来。</div></div>
+    <div style="height: 18px; display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8A8A8A; white-space: nowrap"><span style="color: #7FB069">3 个 take</span><span>·</span><span style="color: #C8C8C8">当前 take 2</span></div>
+  </div>
+    
+  <div style="position: absolute; left: 160px; top: 0px; width: 120px; opacity: .55">
+    <div style="height: 16px; display: flex; align-items: center; gap: 4px; font-size: 10px">
+      <div style="font-weight: 500; color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">成片</div><div style="flex: 1"></div><div style="color: #8A8A8A">图像</div>
+    </div>
+    <div style="position: relative; width: 120px; height: 68px; border-radius: 4px; background: #202020; outline: 1px solid #2C2C2C; overflow: hidden"><img src="/_blob/c244dcfc60aa58a6c4ed3629b34b2d75" alt="" style="width: 100%; height: 100%; object-fit: cover"></div>
+    <div style="height: 18px; display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8A8A8A; white-space: nowrap"><span>take 3 / 3 · 未采用</span></div>
+  </div>
+    
+  <div style="position: absolute; left: 160px; top: 106px; width: 120px; ">
+    <div style="height: 16px; display: flex; align-items: center; gap: 4px; font-size: 10px">
+      <div style="font-weight: 500; color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">成片</div><div style="flex: 1"></div><div style="color: #8A8A8A">图像</div>
+    </div>
+    <div style="position: relative; width: 120px; height: 68px; border-radius: 4px; background: #202020; outline: 1px solid #C9A85B; overflow: hidden"><img src="/_blob/46f7f8c86d8097a6645b77161c9a789b" alt="" style="width: 100%; height: 100%; object-fit: cover"><div style="position: absolute; right: 4px; top: 4px"><div title="当前 · 已固定" style="width: 22px; height: 22px; flex: none; border-radius: 4px; background: #2A2318; border: 1px solid #6B5A38; color: #C9A85B; display: flex; align-items: center; justify-content: center; box-sizing: border-box"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M7.25 3.25h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 3.25v4.5l-2.75 3v1.5h8.5v-1.5l-2.75-3v-4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 12.25V17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></div></div>
+    <div style="height: 18px; display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8A8A8A; white-space: nowrap"><span style="color: #C9A85B">take 2 / 3 · 当前</span></div>
+  </div>
+    <div style="position: absolute; left: 0; top: 112px; width: 124px; font-size: 10px; color: #8A8A8A; line-height: 1.6">当前 take：琥珀描边 + 图钉<br>其余 take：图区半透明<br>「未采用」= 比当前新，<br>但当前是固定的<br>首帧线只从当前 take 出 →</div>
+  </div>
+  <div style="width: 300px; flex: none; background: #232323; border: 1px solid #0F0F0F; border-radius: 4px; overflow: hidden">
+    <div style="height: 26px; display: flex; background: #262626; border-bottom: 1px solid #0F0F0F; font-size: 11px">
+      <div style="padding: 0 12px; display: flex; align-items: center; color: #9E9E9E">属性</div>
+      <div style="padding: 0 12px; display: flex; align-items: center; color: #E8E8E8; box-shadow: inset 0 -2px 0 #C9A85B">历史</div>
+    </div>
+    <div style="padding: 6px 10px 2px; font-size: 10px; color: #8A8A8A">镜头 01 的全部 take · 当前那张往下游流</div>
+    
+  <div style="padding: 6px 10px; ">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <img src="/_blob/c244dcfc60aa58a6c4ed3629b34b2d75" alt="" style="width: 56px; height: 32px; object-fit: cover; border-radius: 3px; outline: 1px solid #2C2C2C">
+      <div style="flex: 1; min-width: 0"><div style="color: #D6D6D6; display: flex; align-items: center; gap: 6px">take 3 <span style="height: 16px; padding: 0 5px; border-radius: 3px; border: 1px solid #2C2C2C; color: #9E9E9E; font-size: 10px; display: inline-flex; align-items: center; white-space: nowrap">批量 4 张</span></div><div style="font-size: 10px; color: #8A8A8A">18 分钟前</div></div>
+      <div title="设为当前" style="width: 22px; height: 22px; flex: none; border-radius: 4px; color: #6B6B6B; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M7.25 3.25h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 3.25v4.5l-2.75 3v1.5h8.5v-1.5l-2.75-3v-4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 12.25V17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    </div><div style="display: flex; gap: 4px; margin: 5px 0 0 64px"><div style="position: relative; width: 38px; height: 22px; border-radius: 2px; overflow: hidden; outline: 1px solid #2C2C2C"><img src="/_blob/c244dcfc60aa58a6c4ed3629b34b2d75" alt="" style="width: 100%; height: 100%; object-fit: cover; opacity: .7"></div><div style="position: relative; width: 38px; height: 22px; border-radius: 2px; overflow: hidden; outline: 1px solid #C9A85B"><img src="/_blob/46f7f8c86d8097a6645b77161c9a789b" alt="" style="width: 100%; height: 100%; object-fit: cover; "><div style="position: absolute; right: 1px; top: 1px; width: 10px; height: 10px; border-radius: 5px; background: #C9A85B; color: #1D1D1D; display: flex; align-items: center; justify-content: center"><svg width="8" height="8" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M4.75 10.5l3.25 3.25 7.25-7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></div><div style="position: relative; width: 38px; height: 22px; border-radius: 2px; overflow: hidden; outline: 1px solid #2C2C2C"><img src="/_blob/c244dcfc60aa58a6c4ed3629b34b2d75" alt="" style="width: 100%; height: 100%; object-fit: cover; opacity: .7"></div><div style="position: relative; width: 38px; height: 22px; border-radius: 2px; overflow: hidden; outline: 1px solid #2C2C2C"><img src="/_blob/46f7f8c86d8097a6645b77161c9a789b" alt="" style="width: 100%; height: 100%; object-fit: cover; opacity: .7"></div></div>
+  </div>
+    
+  <div style="padding: 6px 10px; background: #2E2E2E">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <img src="/_blob/46f7f8c86d8097a6645b77161c9a789b" alt="" style="width: 56px; height: 32px; object-fit: cover; border-radius: 3px; outline: 1px solid #C9A85B">
+      <div style="flex: 1; min-width: 0"><div style="color: #D6D6D6; display: flex; align-items: center; gap: 6px">take 2 <span style="height: 16px; padding: 0 5px; border-radius: 3px; border: 1px solid #8FD694; color: #8FD694; font-size: 10px; display: inline-flex; align-items: center; white-space: nowrap">在用</span></div><div style="font-size: 10px; color: #8A8A8A">今天 18:02 · 种子 4127</div></div>
+      <div title="当前 · 已固定" style="width: 22px; height: 22px; flex: none; border-radius: 4px; background: #2A2318; border: 1px solid #6B5A38; color: #C9A85B; display: flex; align-items: center; justify-content: center; box-sizing: border-box"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M7.25 3.25h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 3.25v4.5l-2.75 3v1.5h8.5v-1.5l-2.75-3v-4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 12.25V17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    </div>
+  </div>
+    
+  <div style="padding: 6px 10px; ">
+    <div style="display: flex; align-items: center; gap: 8px">
+      <img src="/_blob/c244dcfc60aa58a6c4ed3629b34b2d75" alt="" style="width: 56px; height: 32px; object-fit: cover; border-radius: 3px; outline: 1px solid #2C2C2C">
+      <div style="flex: 1; min-width: 0"><div style="color: #D6D6D6; display: flex; align-items: center; gap: 6px">take 1</div><div style="font-size: 10px; color: #8A8A8A">今天 17:55 · 种子 902</div></div>
+      <div style="display: flex; align-items: center; gap: 2px; color: #C8C8C8; font-size: 10px">设为当前<div title="设为当前" style="width: 22px; height: 22px; flex: none; border-radius: 4px; color: #6B6B6B; display: flex; align-items: center; justify-content: center"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M7.25 3.25h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 3.25v4.5l-2.75 3v1.5h8.5v-1.5l-2.75-3v-4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 12.25V17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div></div>
+    </div>
+  </div>
+  </div></div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; margin-top: 10px"><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· <span style="color: #D6D6D6">当前 = 固定的 ?? 最新的</span>；判据收成 <span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">currentResultFor</span>，序列 / 导出 / 画廊 / ⌘K 产物组共用<br>· 存配置节点 type_config.<span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">pinned_result_id</span>，JSONB 键，不用迁移；导入 / 模板 / 跨项目粘贴的改写见右侧「过期标记」<br>· 固定的被删 → 回落最新；撤销删除时一起回来<br>· <span style="color: #D6D6D6">撤销</span>：「设为当前」连同它改写的 data 边算一步（Q1 选 A 时）；反向按边两端的节点找边，不按边 id</div><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· <span style="color: #D6D6D6">批量 take</span> 展开成 slot；点 slot = 现有 promote + 设为当前，同一事务。「转正」「设为产物」退场<br>· 固定时出了新 take：通知写「当前仍是 take 2」+「设为当前」<br>· 导出默认勾当前 take，行尾标「固定」；收 BOARD 第 200 行<br>· 成片检查器（已有 定位来源节点 / 在序列中定位 / 播放）加一个「设为当前」，是当前就显示打勾置灰</div></div>
+  </div>
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px"><div style="font-weight: 500; color: #E8E8E8">过期标记</div><div style="font-size: 11px; color: #8A8A8A">比对快照得出；改回原值，标记自己消失</div></div>
+    <div style="display: flex; gap: 12px; align-items: flex-start">
+  <div style="position: relative; width: 120px; height: 102px; flex: none">
+    
+  <div style="position: absolute; left: 0px; top: 0px; width: 120px; ">
+    <div style="height: 16px; display: flex; align-items: center; gap: 4px; font-size: 10px">
+      <div style="font-weight: 500; color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">成片</div><div style="flex: 1"></div><div style="color: #8A8A8A">视频</div>
+    </div>
+    <div style="position: relative; width: 120px; height: 68px; border-radius: 4px; background: #202020; outline: 1px solid #6B5A38; overflow: hidden"><img src="/_blob/c244dcfc60aa58a6c4ed3629b34b2d75" alt="" style="width: 100%; height: 100%; object-fit: cover"></div>
+    <div style="height: 18px; display: flex; align-items: center; gap: 4px; font-size: 10px; color: #8A8A8A; white-space: nowrap"><span style="color: #C9A85B; display: flex; align-items: center; gap: 3px"><svg width="12" height="12" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M10 3.25L17.25 16H2.75z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 8v3.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M9.1 13.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0 -1.8 0z" fill="currentColor" stroke="none"></path></svg>已过期</span><span>· take 2</span></div>
+  </div>
+  </div>
+  <div style="width: 256px; flex: none; box-sizing: border-box; padding: 10px 12px; background: #262626; border: 1px solid #4A4A4A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); font-size: 11px">
+    <div style="display: flex; align-items: center; gap: 6px; color: #E8E8E8; font-weight: 500; margin-bottom: 4px"><div style="color: #C9A85B; display: flex"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M10 3.25L17.25 16H2.75z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 8v3.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M9.1 13.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0 -1.8 0z" fill="currentColor" stroke="none"></path></svg></div>生成这张之后，输入变了</div>
+    <div style="display: flex; gap: 8px; padding: 2px 0"><div style="width: 50px; flex: none; color: #8A8A8A">提示词</div><div style="flex: 1; min-width: 0; color: #D6D6D6">「…雾气渐散」→「…晨光破雾」</div></div>
+    <div style="display: flex; gap: 8px; padding: 2px 0"><div style="width: 50px; flex: none; color: #8A8A8A">种子</div><div style="flex: 1; min-width: 0; color: #D6D6D6"><span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">4127</span> → <span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">88</span></div></div>
+    <div style="display: flex; gap: 8px; padding: 2px 0"><div style="width: 50px; flex: none; color: #8A8A8A">泳道风格</div><div style="flex: 1; min-width: 0; color: #D6D6D6">「水墨风格」改过</div></div>
+    <div style="display: flex; gap: 8px; padding: 2px 0"><div style="width: 50px; flex: none; color: #8A8A8A">首帧</div><div style="flex: 1; min-width: 0; color: #D6D6D6">镜头 01 换成 take 3</div></div>
+    <div style="font-size: 10px; color: #6B6B6B; margin-top: 2px">上游 镜头 01 也已过期</div>
+    <div style="display: flex; justify-content: flex-end; margin-top: 6px">
+      <div style="height: 24px; padding: 0 10px; border-radius: 3px; background: #C9A85B; color: #1D1D1D; font-weight: 500; display: flex; align-items: center; gap: 6px"><svg width="12" height="12" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M6.25 4.25v11.5L15.5 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>重新生成 <span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; opacity: .75">约 $0.75</span></div>
+    </div>
+  </div>
+  <div style="width: 150px; flex: none">
+    <div style="font-size: 10px; color: #8A8A8A; margin-bottom: 4px">左栏大纲</div>
+    <div style="background: #232323; border: 1px solid #0F0F0F; border-radius: 4px; padding: 2px 0">
+      
+    <div style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px">
+      <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A; width: 14px">02</div>
+      <div style="flex: 1; min-width: 0; color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">江上孤舟</div><div style="display: flex; align-items: center; gap: 2px; color: #C9A85B; font-size: 10px"><svg width="12" height="12" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M10 3.25L17.25 16H2.75z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 8v3.75" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M9.1 13.6a0.9 0.9 0 1 0 1.8 0a0.9 0.9 0 1 0 -1.8 0z" fill="currentColor" stroke="none"></path></svg>过期</div>
+    </div>
+      
+    <div style="height: 28px; display: flex; align-items: center; gap: 6px; padding: 0 8px">
+      <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A; width: 14px">03</div>
+      <div style="flex: 1; min-width: 0; color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">远山隐没</div><div style="color: #7FB069; display: flex"><svg width="13" height="13" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M4.75 10.5l3.25 3.25 7.25-7.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    </div>
+    </div>
+    <div style="font-size: 10px; color: #6B6B6B; line-height: 1.55; margin-top: 6px">配置卡状态行：<br>「当前 take 已过期」</div>
+  </div></div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; margin-top: 10px"><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· <span style="color: #D6D6D6">快照</span>：建 job 的同一事务写 result 的 type_config.<span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">gen_inputs</span>——提示词 / 负向 / 种子 / 模型参数 / 运镜、泳道与画布底稿风格、挂载角色、每条 data 入边的源与 image_url<br>· 不拿 jobs 行当快照：它 30 天 / 按画布上限会被清</div><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· <span style="color: #D6D6D6">只标当前 take</span>；旧 take 是历史不标；没快照的老产物不标<br>· 不算变化：改名、位置、层级、批量张数、原本就随机的种子<br>· 清除：重新生成，或换一张不过期的设为当前</div></div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; margin-top: 10px"><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· <span style="color: #D6D6D6">重映射</span>：<span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">gen_inputs</span> 里的源节点 id 和 <span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">pinned_result_id</span> 一起处理。导入项目包（<span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">import_remapper</span>）按 UUID 映射改写<br>· 插入模板：模板不带产物，两样都不该出现，出现就剥掉</div><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· 跨项目粘贴：映射得到的改写，映射不到的剥掉；剥掉源 id 的 take 记作「没快照」，不标过期<br>· 提示词里的 <span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">@{角色 id}</span> 同样要改写或剥掉，规则在 ImportSearch</div></div>
+  </div></div>
+    <div style="height: 1px; background: #3A3A3A; margin: -6px 0"></div>
+    <div style="display: grid; grid-template-columns: 780px minmax(0, 1fr); gap: 32px">
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px"><div style="font-weight: 500; color: #E8E8E8">花费预告 · 批量运行</div><div style="font-size: 11px; color: #8A8A8A">运行前就知道要花多少；一次跑多个，先确认</div></div>
+    <div style="display: flex; gap: 20px; align-items: flex-start">
+      
+  <div style="width: 452px; flex: none; background: #232323; border: 1px solid #4A4A4A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.6); overflow: hidden">
+    <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid #0F0F0F; background: #262626">
+      <div style="color: #9E9E9E; display: flex"><svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M4 5h12a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1 -1.5 1.5h-12a1.5 1.5 0 0 1 -1.5 -1.5v-7a1.5 1.5 0 0 1 1.5 -1.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.5 5v10M12.5 5v10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+      <div style="font-weight: 500; color: #E8E8E8">运行叙事链 · 画布 1</div>
+      <div style="flex: 1"></div><div style="height: 22px; border-radius: 4px; background: #1D1D1D; border: 1px solid #2C2C2C; display: flex; padding: 2px; gap: 2px; box-sizing: border-box; font-size: 10px"><div style="padding: 0 8px; border-radius: 3px; background: #2E2E2E; color: #E8E8E8; display: flex; align-items: center">只跑过期和没生成的</div><div style="padding: 0 8px; border-radius: 3px; color: #9E9E9E; display: flex; align-items: center">全部</div></div>
+    </div>
+    
+  <div style="display: grid; grid-template-columns: 18px minmax(0, 1fr) 132px 40px 86px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #1F1F1F; ">
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">01</div>
+    <div style="color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">第一个镜头</div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">万相 图像 × 4 张</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8; text-align: right">$0.13</div>
+    <div style="font-size: 10px; color: #9E9E9E; white-space: nowrap">没生成过</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 18px minmax(0, 1fr) 132px 40px 86px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #1F1F1F; ">
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">02</div>
+    <div style="color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">江上孤舟</div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">万相 图生视频 5 秒 720p</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8; text-align: right">$0.75</div>
+    <div style="font-size: 10px; color: #7CB8E8; white-space: nowrap">等 01 · 首帧</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 18px minmax(0, 1fr) 132px 40px 86px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #1F1F1F; ">
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">03</div>
+    <div style="color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">远山隐没</div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">可灵 V3 5 秒 1080p</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8; text-align: right">$1.75</div>
+    <div style="font-size: 10px; color: #C9A85B; white-space: nowrap">已过期</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 18px minmax(0, 1fr) 132px 40px 86px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #1F1F1F; ">
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">04</div>
+    <div style="color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">收网</div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">自定义接口</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8; text-align: right">—</div>
+    <div style="font-size: 10px; color: #9E9E9E; white-space: nowrap">价格未知</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 18px minmax(0, 1fr) 132px 40px 86px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #1F1F1F; opacity: .5">
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">05</div>
+    <div style="color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">回望</div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">万相 图像</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8; text-align: right"></div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap">跳过 · 已固定</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 18px minmax(0, 1fr) 132px 40px 86px; align-items: center; gap: 8px; height: 30px; padding: 0 12px; border-bottom: 1px solid #1F1F1F; opacity: .5">
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">06</div>
+    <div style="color: #D6D6D6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">旧版开场</div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">万相 图生视频</div>
+    <div style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8; text-align: right"></div>
+    <div style="font-size: 10px; color: #8A8A8A; white-space: nowrap">跳过 · 已停用</div>
+  </div>
+    <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px 0"><div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: #C8C8C8"><div style="width: 13px; height: 13px; border-radius: 3px; box-sizing: border-box; border: 1px solid #3A3A3A; display: flex; align-items: center; justify-content: center"></div>包括已固定的</div><div style="flex: 1"></div><div style="font-size: 10px; color: #8A8A8A">预计 4:10 · 并发 2 · 单次最多 50</div></div>
+    <div style="display: flex; align-items: center; gap: 8px; padding: 10px 12px 12px">
+      <div style="flex: 1; font-size: 11px; color: #C8C8C8">4 个 · 约 <span style="color: #D6D6D6">$2.63</span> · 另 1 个价格未知</div>
+      <button type="button" class="hov" style="height: 28px; padding: 0 12px; border-radius: 3px; border: 1px solid #3F3F3F; color: #D6D6D6">取消</button>
+      <button type="button" class="amber" style="height: 28px; padding: 0 12px; border-radius: 3px; background: #C9A85B; color: #1D1D1D; font-weight: 500; display: flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M6.25 4.25v11.5L15.5 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>运行 4 个</button>
+    </div>
+  </div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+        
+  <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 6px">
+    <div style="width: 268px; box-sizing: border-box; padding: 8px 10px; background: #262626; border: 1px solid #4A4A4A; border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); font-size: 11px">
+      <div style="display: flex; align-items: baseline; gap: 6px"><span style="color: #8A8A8A">预计</span><span style="color: #E8E8E8; font-size: 13px; font-weight: 500">约 $0.75</span></div>
+      <div style="color: #9E9E9E; margin-top: 2px">万相 图生视频 · 5 秒 · 720p</div>
+      <div style="font-size: 10px; color: #6B6B6B; margin-top: 2px">$0.30 / 秒（1080p）× 0.5 · 以服务商账单为准</div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 8px">
+      <div style="font-size: 11px; color: #8A8A8A">约 $0.75</div>
+      <div style="height: 28px; padding: 0 12px; border-radius: 3px; background: #D8B96C; color: #1D1D1D; font-weight: 500; display: flex; align-items: center; gap: 6px"><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M6.25 4.25v11.5L15.5 10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg><span>生成</span><span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; opacity: .7">Ctrl ↵</span></div>
+    </div>
+    <div style="display: flex; gap: 6px"><span style="height: 16px; padding: 0 5px; border-radius: 3px; border: 1px solid #2C2C2C; color: #9E9E9E; font-size: 10px; display: inline-flex; align-items: center; white-space: nowrap">批量 $0.032 × 4 = $0.13</span><span style="height: 16px; padding: 0 5px; border-radius: 3px; border: 1px solid #2C2C2C; color: #9E9E9E; font-size: 10px; display: inline-flex; align-items: center; white-space: nowrap">自定义接口 —</span><span style="height: 16px; padding: 0 5px; border-radius: 3px; border: 1px solid #2C2C2C; color: #9E9E9E; font-size: 10px; display: inline-flex; align-items: center; white-space: nowrap">&lt;$0.01</span></div>
+  </div>
+        <div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· 估算来自 <span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">estimateCostUsd</span>，单位 USD，不读账单<br>· <span style="color: #D6D6D6">价格未知</span>写「—」：自定义接口的 costModel 是 perCall 0，检查器现在会写成 $0.00，要改。合计行统一写「另 N 个价格未知」<br>· <span style="color: #D6D6D6">币种</span>只用 USD（$，<span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">formatCostUsd</span>）。第一批 Main 稿上的「¥0.70」是旧写法，会改成 $<br>· 悬停任何「生成」出明细；提示词条在按钮左侧常驻金额<br>· <span style="color: #D6D6D6">耗时</span> = jobs 表同 provider 最近 10 次 completed_at − submitted_at 的中位数；没历史写「—」。格式全应用共用：不到 60 秒写「N 秒」，满 60 秒写 m:ss</div>
+      </div>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 20px; margin-top: 10px"><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· <span style="color: #D6D6D6">确认规则（只在这里定，Selection / ContextMenus 引用）</span>：要跑的节点 ≥ 2 个才弹，单个照旧不弹；对话框逐行列出节点 + 合计；单次最多 50 个<br>· <span style="color: #D6D6D6">入口</span>：多选 Ctrl ↵、右键「生成 N 个」、大纲组头「运行这组」、更多「运行叙事链」、⌘K，全走这一个对话框<br>· <span style="color: #D6D6D6">顺序</span>（同样只在这里定）按 data 边的依赖：批内有上游 → 下游等它成功，用新的当前 take 再提交；没有依赖的按叙事链序；受全局并发与 provider 上限<br>· 超过 50 个：按上面的顺序取前 50 个，底部写「另 N 个不在本次」，按钮「运行 50 个」（Q8）</div><div style="font-size: 11px; color: #9E9E9E; line-height: 1.65">· <span style="color: #D6D6D6">不跑批外上游</span>：用它现在的当前 take；没有 take → 「缺首帧 · 跳过」；草稿（没提示词）不列<br>· 上游失败 → 下游不提交；任务胶囊可取消这一批（parameters.<span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">run_group</span>，不用迁移）<br>· <span style="color: #D6D6D6">已停用</span>的节点（type_config.<span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #C8C8C8">disabled</span>）列一行「跳过 · 已停用」：不计数、不计价，也不能勾回；要跑先右键「启用」<br>· 已固定的列「跳过 · 已固定」，可用「包括已固定的」勾回（Q4）</div></div>
+  </div>
+  <div>
+    <div style="display: flex; align-items: baseline; gap: 8px; margin-bottom: 12px"><div style="font-weight: 500; color: #E8E8E8">当下一镜的首帧</div><div style="font-size: 11px; color: #8A8A8A">节点右键，把这张图接到叙事链下一镜的首帧</div></div>
+    <div style="display: flex; gap: 4px; align-items: flex-start; margin-bottom: 8px">
+      <div style="width: 184px; box-sizing: border-box; padding: 4px; background: #262626; border: 1px solid #4A4A4A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.6)">
+        
+  <div style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 3px; color: #D6D6D6; background: #2E2E2E">
+    <div style="color: #9E9E9E; display: flex"><svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M9.75 3.75H4.75a1.5 1.5 0 0 0-1.5 1.5v10a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M7.75 8.75v5l4.25-2.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M14.75 2c0.487 1.95 1.3 2.762 3.25 3.25c-1.95 0.487 -2.762 1.3 -3.25 3.25c-0.487 -1.95 -1.3 -2.762 -3.25 -3.25c1.95 -0.487 2.762 -1.3 3.25 -3.25z" fill="currentColor" stroke="none"></path></svg></div>
+    <div style="flex: 1">当下一镜的首帧</div><span style="font-family: 'JetBrains Mono', Consolas, Menlo, monospace; font-size: 10px; color: #8A8A8A">›</span>
+  </div>
+        
+  <div style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 3px; color: #D6D6D6; ">
+    <div style="color: #9E9E9E; display: flex"><svg width="16" height="16" viewBox="0 0 20 20" aria-hidden="true" focusable="false" style="display: block; flex: none"><path d="M7.25 3.25h5.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M8.5 3.25v4.5l-2.75 3v1.5h8.5v-1.5l-2.75-3v-4.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path><path d="M10 12.25V17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    <div style="flex: 1">设为当前</div>
+  </div>
+      </div>
+      <div style="margin-top: 2px"><div style="width: 150px; box-sizing: border-box; padding: 4px; background: #262626; border: 1px solid #4A4A4A; border-radius: 6px; box-shadow: 0 24px 64px rgba(0,0,0,0.6)">
+  <div style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 3px; color: #D6D6D6; ">
+    <div style="width: 16px"></div>
+    <div style="flex: 1">02 · 江上孤舟</div>
+  </div>
+  <div style="height: 28px; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 3px; color: #D6D6D6; ">
+    <div style="width: 16px"></div>
+    <div style="flex: 1">02b · 远景分支</div>
+  </div></div></div>
+    </div>
+    <div style="font-size: 10px; color: #6B6B6B; line-height: 1.55; margin-bottom: 2px">下一镜 = 来源配置节点的 narrative 后继。take 卡上右键用这张；配置卡上右键用它的当前 take</div>
+    
+  <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid #1F1F1F; font-size: 11px; line-height: 1.55">
+    <div style="color: #D6D6D6">链尾，没有下一镜</div><div style="color: #9E9E9E">右侧同泳道建视频配置，连好叙事 + 首帧</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid #1F1F1F; font-size: 11px; line-height: 1.55">
+    <div style="color: #D6D6D6">视频配置，没首帧</div><div style="color: #9E9E9E">连一条首帧边</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid #1F1F1F; font-size: 11px; line-height: 1.55">
+    <div style="color: #D6D6D6">视频配置，已有首帧</div><div style="color: #9E9E9E">确认后替换；已是这张 → 打勾置灰</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid #1F1F1F; font-size: 11px; line-height: 1.55">
+    <div style="color: #D6D6D6">镜头节点（剧本）</div><div style="color: #9E9E9E">走「用本镜备注生成」建视频配置再连</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid #1F1F1F; font-size: 11px; line-height: 1.55">
+    <div style="color: #D6D6D6">图像配置</div><div style="color: #9E9E9E">置灰并说明（Q7）</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; padding: 4px 0; border-bottom: 1px solid #1F1F1F; font-size: 11px; line-height: 1.55">
+    <div style="color: #D6D6D6">多个后继</div><div style="color: #9E9E9E">子菜单列出各分支，按 sortOrder</div>
+  </div>
+    
+  <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 10px; padding: 4px 0; ; font-size: 11px; line-height: 1.55">
+    <div style="color: #D6D6D6">模型不支持首帧</div><div style="color: #9E9E9E">照连不换模型；检查器模型行出黄字</div>
+  </div>
+    <div style="font-size: 11px; color: #9E9E9E; line-height: 1.65; margin-top: 4px">· 一次 Ctrl Z 撤掉整组（节点 + 边）<br>· 视频 take 不出这项；「尾帧当首帧」要先抽帧，放 P2</div>
+  </div></div>
+    
+  <div style="background: #2A2318; border: 1px solid #6B5A38; border-radius: 6px; padding: 12px 16px 14px">
+    <div style="display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px"><div style="font-weight: 500; color: #C9A85B">需要你定</div><div style="font-size: 11px; color: #9E9E9E">原 Q6 币种已定：只用 USD，第一批 Main 稿的 ¥ 会改成 $</div></div>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px 24px">
+      
+  <div style="font-size: 11px; line-height: 1.55; grid-column: span 2">
+    <div style="color: #E8E8E8; font-weight: 500">Q1 下游连线怎么跟着当前 take</div>
+    <div style="color: #C8C8C8">A. 改写连线：设为当前、或没固定时出了新 take，就把接在旧当前上的 data 边挪过去，线永远画在当前 take 上<br>B. 连线不动，生成时解析到同一配置的当前 take</div>
+    <div style="color: #C9A85B">建议 A：所见即所用，生成侧读边的代码不用改</div>
+  </div>
+      
+  <div style="font-size: 11px; line-height: 1.55; ">
+    <div style="color: #E8E8E8; font-weight: 500">Q2 没固定时，新 take 自动成为当前吗</div>
+    <div style="color: #C8C8C8">A. 是，就是现在的「取最新」<br>B. 否，一律手动设为当前</div>
+    <div style="color: #C9A85B">建议 A；固定只管不被顶替</div>
+  </div>
+      
+  <div style="font-size: 11px; line-height: 1.55; ">
+    <div style="color: #E8E8E8; font-weight: 500">Q3 过期往下游传多深</div>
+    <div style="color: #C8C8C8">A. 只标输入真变了的那张<br>B. 沿链传递　C. A + 原因卡提一句上游</div>
+    <div style="color: #C9A85B">建议 C</div>
+  </div>
+      
+  <div style="font-size: 11px; line-height: 1.55; ">
+    <div style="color: #E8E8E8; font-weight: 500">Q4 批量运行跳不跳过已固定的</div>
+    <div style="color: #C8C8C8">A. 默认跳过，可勾回<br>B. 照跑</div>
+    <div style="color: #C9A85B">建议 A：固定 = 这张定了，别再花钱</div>
+  </div>
+      
+  <div style="font-size: 11px; line-height: 1.55; ">
+    <div style="color: #E8E8E8; font-weight: 500">Q5 运行叙事链默认跑哪些</div>
+    <div style="color: #C8C8C8">A. 只跑过期和没生成过的<br>B. 全部　C. 对话框里切，记住上次</div>
+    <div style="color: #C9A85B">建议 C，首次默认 A</div>
+  </div>
+      
+  <div style="font-size: 11px; line-height: 1.55; ">
+    <div style="color: #E8E8E8; font-weight: 500">Q7 下一镜是图像配置时</div>
+    <div style="color: #C8C8C8">A. 置灰说明　B. 先插一个视频配置<br>C. 改成当参考连上</div>
+    <div style="color: #C9A85B">建议 A：不偷换语义</div>
+  </div>
+      
+  <div style="font-size: 11px; line-height: 1.55; ">
+    <div style="color: #E8E8E8; font-weight: 500">Q8 一次选了超过 50 个</div>
+    <div style="color: #C8C8C8">A. 按批量顺序跑前 50 个，其余写「另 N 个不在本次」<br>B. 不让运行，提示缩小选择</div>
+    <div style="color: #C9A85B">建议 A：上游先跑，剩下的下次接着跑</div>
+  </div>
+    </div>
+  </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":1380}}'>
+
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+
+</script>
+</body>
+</html>

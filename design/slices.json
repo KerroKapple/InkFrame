@@ -1,0 +1,3133 @@
+[
+ {
+  "id": "multi-select-core",
+  "board": "Selection",
+  "title": "选中控制器补 replace / addAll / toggleAll / removeAll，加选区几何纯函数（框选命中、选区包围盒）",
+  "files": [
+   "lib/features/canvas/providers/canvas_selection_controller.dart",
+   "lib/features/canvas/util/selection_geometry.dart (new: marqueeHits(rect, nodes, laneShift, collapsedLaneIds, mode replace/add/invert) 碰到即算 Q1-A；selectionBounds(nodes) 复用 viewport_focus.dart 的 nodeStageRect)",
+   "test/features/canvas/canvas_selection_controller_test.dart",
+   "test/features/canvas/util/selection_geometry_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "纯底座，无 UI、无 ARB。框选、浮动条、对齐、粘贴落点、Ctrl G 都要用 selectionBounds。折叠泳道里的卡不参与命中；便签和文本照常可选。Q1 按建议 A（碰到就算）写进判据；改成 B/C 只换一个谓词，所以不阻塞。"
+ },
+ {
+  "id": "nodes-batch-ops",
+  "board": "Selection",
+  "title": "节点批量写：moveNodes / removeNodes / restoreAll / patchTypeConfigMany 各自一个事务，失败整批回滚",
+  "files": [
+   "lib/features/canvas/providers/canvas_nodes_controller.dart (moveNodes(Map<id,(delta,laneId)>), removeNodes(Set<id>) → List<NodeDeletion>, restoreAll, patchTypeConfigMany, replaceTypeConfig 用于删键回滚)",
+   "lib/features/canvas/util/canvas_node_delete.dart (多选删除改用一个 removeNodes 事务 + 一张卡)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (moveNodesToLane 改走 moveNodes)",
+   "test/features/canvas/canvas_nodes_controller_test.dart",
+   "test/storage/transaction_integration_test.dart",
+   "test/_harness/fake_repositories.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "董事会写的 removeTypeConfigKeys 别加成 NodeRepository 的新抽象方法：仓库里有 26 个 fake 实现了 NodeRepository，加方法要动 26 个测试文件。改成在 UoW 里 findById 读 type_config，删掉键后用现有的 update(type_config) 整列覆盖。共享文件是 canvas_nodes_controller.dart：clipboard-paste 的 pasteSnapshot 也要改它，所以排在本片之后。"
+ },
+ {
+  "id": "undo-stack-core",
+  "board": "UndoClipboard",
+  "title": "画布撤销栈底座：CanvasHistoryController(canvasId) + CanvasCommand（名字、受影响节点、apply / revert）",
+  "files": [
+   "lib/features/canvas/providers/canvas_history_controller.dart (new: keepAlive family，undo/redo 列表深度 100，新操作清空重做栈；revert 失败整步回滚、留在栈顶；要撤的对象已不在就丢掉这一步，提示「这一步已无法撤销」；undoSpecific(stepId) 供撤销卡按 Q1-A 抽掉单步；撤销前先冲 pendingWriteRegistryProvider；listen shellControllerProvider，画布 / 项目关掉就丢栈，并 dismiss 这一画布名下的 ToastHandle)",
+   "lib/features/canvas/models/canvas_command.dart (new: sealed CanvasCommand + label 枚举，菜单、⌘K、提示共用一份)",
+   "test/features/canvas/providers/canvas_history_controller_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "本片只做状态和契约，不出 UI，不接任何具体命令。命令 = 只持快照的反向令牌，按两端找边、不按边 id，因为系统改写的边不进栈。卡片与栈的关系按 UndoClipboard Q1-A：卡上点哪步撤哪步，从栈里抽掉，其余各步互不影响；改成 B/C 只动 undoSpecific，所以不阻塞。其余 undo-* 都依赖本片。"
+ },
+ {
+  "id": "canvas-hint-capsule",
+  "board": "UndoClipboard",
+  "title": "画布底部轻提示胶囊（「已撤销 · 移动 3 个节点」+ 重做按钮）",
+  "files": [
+   "lib/features/canvas/widgets/canvas_hint_capsule.dart (new)",
+   "lib/features/canvas/providers/canvas_hint_controller.dart (new: 一次一条，新的顶掉旧的，带可选动作)",
+   "lib/features/canvas/widgets/canvas_screen.dart (舞台浮层挂载；避让 canvas_prompt_bar_height 和左下缩放条)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/widgets/canvas_hint_capsule_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "critic 指出这个胶囊没有组件规格（位置、与提示词条 / 查找条怎么避让、停多久、同时几条）。GapsCanvas 和 ImportSearch（已复制）可能也排了它，与那边去重，保留一个 id。撤销 / 重做的反馈只走这里，不进铃铛历史。"
+ },
+ {
+  "id": "undo-shortcuts-ui",
+  "board": "UndoClipboard",
+  "title": "撤销 / 重做入口：Ctrl Z · Ctrl Y / ⌘Z · ⇧⌘Z、空白处右键两项（带步名、栈空置灰）、⌘K 同名动作",
+  "files": [
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (CanvasUndoIntent / CanvasRedoIntent 进 kCanvasShortcuts，走 _EditingAwareAction：文本框有焦点时让给文本框)",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart (空白处右键菜单加「撤销 X」「重做 Y」)",
+   "lib/features/command_palette/command_actions.dart",
+   "lib/features/canvas/util/canvas_history_actions.dart (new: undo / redo 之后选中受影响的节点，不在视口就平移过去、缩放不变，走 viewport_focus.dart；胶囊反馈)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/widgets/canvas_undo_shortcuts_test.dart (new)",
+   "test/features/command_palette/command_actions_test.dart"
+  ],
+  "infra": [
+   "undo-stack-core",
+   "canvas-hint-capsule"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "每个平台只有一个重做主键：Windows Ctrl Y，macOS ⇧⌘Z，右键菜单、⌘K、快捷键页都只显示这一个。外壳菜单栏「编辑」属 ShellExport，那边引用同一组 activator 常量。create_node_menu.dart 和 canvas_shortcuts.dart 是热点文件，与 clipboard-paste、align-distribute-arrange、wrap-in-lane 串行。"
+ },
+ {
+  "id": "undo-adopt-existing",
+  "board": "UndoClipboard",
+  "title": "已有撤销卡并进栈：删节点、删连线、拖动换道；卡片只是提醒，收起后 Ctrl Z 仍可撤",
+  "files": [
+   "lib/features/canvas/util/canvas_node_delete.dart",
+   "lib/features/canvas/util/canvas_snackbars.dart (showCanvasUndoSnack 改成登记栈步 id，卡上「撤销」= undoSpecific)",
+   "lib/features/canvas/widgets/canvas_view.dart (_CanvasStage 删边撤销、_NodeCardSlot._commitDrag 换道卡)",
+   "lib/features/canvas/widgets/node_inputs_section.dart (removeEdge)",
+   "test/features/canvas/util/canvas_snackbars_test.dart",
+   "test/features/canvas/widgets/canvas_lane_drag_test.dart",
+   "test/features/canvas/widgets/canvas_node_delete_undo_test.dart (new)"
+  ],
+  "infra": [
+   "undo-stack-core",
+   "undo-shortcuts-ui",
+   "nodes-batch-ops"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "顺带修一个现存缺陷：画布关掉后卡还能点，restore 却什么都不做。现在关掉画布会丢栈并收卡。fix/demo-lane-drag 的 _commitDrag 闭包式撤销改成进栈的 MoveNodesCommand（命令类型定义在本片或 undo-node-create-move，先合的那个定义，后合的复用）。"
+ },
+ {
+  "id": "undo-node-create-move",
+  "board": "UndoClipboard",
+  "title": "新建 / 复制一份 / 移动 / 加入·移出泳道进栈（含新建菜单建好并连线算一步）",
+  "files": [
+   "lib/features/canvas/util/canvas_tool_actions.dart (addNodeFromMenu、addNodeAtViewportCenter、duplicateNodes、moveNodesToLane 推命令)",
+   "lib/features/canvas/widgets/shot_config_inspector.dart (「下一镜」建节点 + 叙事边)",
+   "lib/features/canvas/widgets/canvas_view.dart (拖动松手推 MoveNodesCommand)",
+   "lib/features/canvas/models/canvas_command.dart",
+   "lib/features/canvas/providers/node_active_job.dart (只读：撤销新建时查有没有在途任务)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/canvas_tool_actions_undo_test.dart (new)"
+  ],
+  "infra": [
+   "undo-stack-core",
+   "undo-adopt-existing",
+   "nodes-batch-ops"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "撤销新建 = 软删，重做 = restore，不用硬删也不用换 id。UndoClipboard Q2 按建议 A：节点在生成也照删，任务跑完产物落成未入链结果，胶囊补一句「任务仍在运行」。canvas_tool_actions.dart 是热点，与 undo-edges 串行。"
+ },
+ {
+  "id": "undo-edges",
+  "board": "UndoClipboard",
+  "title": "连线 / 删线 / 改语义进栈；改首帧·尾帧连带降级的那条一起回",
+  "files": [
+   "lib/features/canvas/providers/canvas_edges_controller.dart (updateRole / _demoteThenSet 返回反向令牌：被降级的边按两端记)",
+   "lib/features/canvas/providers/link_action_controller.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart (linkByPortDrop)",
+   "lib/features/canvas/widgets/node_inputs_section.dart (updateRole)",
+   "lib/features/canvas/models/canvas_command.dart",
+   "test/features/canvas/canvas_edges_controller_test.dart",
+   "test/features/canvas/link_action_controller_test.dart"
+  ],
+  "infra": [
+   "undo-stack-core",
+   "undo-node-create-move"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "反向找边一律按两端（下游节点 + 端口 + 上游所属配置节点）在 CanvasEdgesController 的内存态里找，不加仓库方法。与 undo-node-create-move 共用 canvas_tool_actions.dart，排在它后面。"
+ },
+ {
+  "id": "undo-params",
+  "board": "UndoClipboard",
+  "title": "改参数 / 改文本正文 / 挂·摘角色进栈：一次聚焦编辑算一步，记旧值，原来没有的键撤销时删掉",
+  "files": [
+   "lib/features/canvas/providers/inspector_submit_controller.dart (编辑会话：首个挂起键记旧值快照，失焦冲写后推一条 PatchTypeConfigCommand)",
+   "lib/features/canvas/widgets/characters_section.dart (character_ids)",
+   "lib/features/canvas/widgets/image_config_inspector.dart",
+   "lib/features/canvas/widgets/video_config_inspector.dart",
+   "lib/features/canvas/widgets/shot_config_inspector.dart",
+   "lib/features/canvas/widgets/text_node_inspector.dart",
+   "lib/features/canvas/models/canvas_command.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/providers/inspector_submit_controller_test.dart",
+   "test/features/canvas/providers/inspector_undo_session_test.dart (new)"
+  ],
+  "infra": [
+   "undo-stack-core",
+   "nodes-batch-ops"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "text_node_inspector.dart 来自在途的 fix/demo-inspectors，按已合入处理。文本框有焦点时 Ctrl Z 归文本框，失焦后整段修改在画布栈里算一步。代码里还没有节点改名功能，「重命名」的步名等改名入口落地再接。撤销前必须冲掉 500ms 防抖 patch，否则会撤到旧值上。与 multi-select-inspector 共用 shot_config_inspector.dart 附近的读路径，但不改同一段代码。"
+ },
+ {
+  "id": "undo-lanes",
+  "board": "UndoClipboard",
+  "title": "泳道操作进栈：新建 / 改名 / 改风格 / 排序 / 改厚；新增「解散（节点留下）」与「删除泳道和内容」两个独立动作",
+  "files": [
+   "lib/features/canvas/providers/canvas_lanes_controller.dart (dissolveLane：一个 UoW 清道内节点 lane_id、位置不动、软删道；deleteLaneWithContents：一个 UoW 软删道和道内节点；各自返回反向令牌)",
+   "lib/features/canvas/widgets/canvas_view.dart (泳道标题栏回调：reorder / resize / update / delete，约在 1060–1220 行)",
+   "lib/features/canvas/widgets/lane_title_bar.dart",
+   "lib/features/canvas/widgets/lane_edit_dialog.dart",
+   "lib/features/canvas/widgets/lane_toolbar.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart (addLaneViaDialog)",
+   "lib/features/canvas/models/canvas_command.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/canvas_lanes_controller_test.dart",
+   "test/features/canvas/widgets/canvas_lane_integration_test.dart"
+  ],
+  "infra": [
+   "undo-stack-core",
+   "undo-adopt-existing"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "现状：删除泳道先弹确认，再 deleteLane 只软删道本身。改成：解散不确认，直接做 + 撤销卡。删除泳道和内容只在道里有生成中任务时确认（取消任务撤不回），否则直接删 + 卡。这两个菜单项的入口在 ContextMenus 板的泳道菜单，与那边的泳道菜单片去重：本片给控制器操作和命令，那边接菜单行。泳道折叠不进栈。"
+ },
+ {
+  "id": "undo-set-current",
+  "board": "UndoClipboard",
+  "title": "「设为当前」（含批量 slot）连同它改写的 data 边算一步撤销：全回原主图、原 promoted slot、原 pinned_result_id",
+  "files": [
+   "lib/features/generation/providers/batch_results_controller.dart (promote 返回反向令牌：旧 image_url、旧 promoted slot、旧 pinned_result_id、被挪的边)",
+   "lib/features/canvas/widgets/batch_results_grid.dart",
+   "lib/features/canvas/widgets/batch_compare_overlay.dart",
+   "lib/features/canvas/widgets/inspector_history_panel.dart",
+   "lib/features/canvas/models/canvas_command.dart",
+   "test/features/generation/batch_results_controller_test.dart"
+  ],
+  "infra": [
+   "undo-stack-core",
+   "takes-set-current (TakesCost: pinned_result_id + 改写下游 data 边)"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "仓库里还没有 pinned_result_id 和 gen_inputs，它们由 TakesCost 板的「设为当前」片引入，本片必须排在那片后面。UndoClipboard Q3 按建议 A 全回，不阻塞：promote 和设为当前本来就在同一事务里。"
+ },
+ {
+  "id": "canvas-clipboard-core",
+  "board": "UndoClipboard",
+  "title": "应用内剪贴板与快照改写（纯函数）：选区 → 快照，粘贴时换新 id、剥掉选区外引用、跨项目改写 @角色",
+  "files": [
+   "lib/features/canvas/providers/canvas_clipboard.dart (new: app 级 canvasClipboardProvider，keepAlive，记源项目 / 画布)",
+   "lib/features/canvas/util/clipboard_snapshot.dart (new: 只带两端都在选区里的边；产出线由 source_node_id 推导、跟着换新 id；pinned_result_id / gen_inputs 选区内换新、选区外剥掉；按 Q4-A 选区外的源配置断开溯源；不带批量 slot 和任务；产物只带当前主图)",
+   "lib/features/canvas/util/paste_placement.dart (new: 指针在画布 → 包围盒中心对指针；右键 → 按下点；同画布指针不在画布 → 原位右下偏 lg、连按递增；别的画布 → 视口中心；泳道按落点 resolveLaneDrop 重判)",
+   "test/features/canvas/util/clipboard_snapshot_test.dart (new)",
+   "test/features/canvas/util/paste_placement_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "multi-select-core"
+  ],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "跨项目时提示词里的 @{角色 id} 换成「@名字」纯文字，并从 character_ids 删掉；没名字就删记号，与 ImportSearch / 模板插入同一规则，可以和 import_remapper 抽一个共享函数。UndoClipboard Q4 按建议 A，不阻塞。"
+ },
+ {
+  "id": "clipboard-paste",
+  "board": "UndoClipboard",
+  "title": "Ctrl C / X / V 复制·剪切·粘贴节点：同画布、同项目别的画布、别的项目；右键「粘贴」「剪切」「复制」；粘贴算一步撤销",
+  "files": [
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Copy / Cut / Paste intents，对文本编辑让位)",
+   "lib/features/canvas/widgets/create_node_menu.dart (空白处右键「粘贴」；节点右键「剪切」「复制」)",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/util/canvas_paste_actions.dart (new: 跨画布时先把媒体复制进目标画布 canvases/<id>/imports/，再一个 UoW 写节点和边；失败删掉复制件，零残留；同画布共用同一文件；粘出的节点成为选中)",
+   "lib/features/canvas/providers/canvas_nodes_controller.dart (pasteSnapshot：节点 + 边一个事务)",
+   "lib/core/interfaces/canvas_media_copier.dart (new)",
+   "lib/services/canvas_media_copier_service.dart (new: 经 FileResolverService 复制，守画布根边界)",
+   "lib/core/di/services.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/canvas_paste_actions_test.dart (new)",
+   "test/services/canvas_media_copier_service_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "canvas-clipboard-core",
+   "nodes-batch-ops",
+   "undo-stack-core",
+   "undo-shortcuts-ui",
+   "canvas-hint-capsule"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "复制时往系统剪贴板写一份纯文字（标签 + 提示词），用 Flutter 自带的 Clipboard.setData，不加依赖。Ctrl X = 复制 + 删除，复制和删除各算一步撤销。Ctrl D 不变。媒体复制如果 ImportSearch 的导入媒体片先落地、已有 imports/ 的落盘服务，就复用它，不另写 copier。改动量约 1400 行，放不下就把跨项目（角色剥离 + 媒体复制）拆成第二个 PR。"
+ },
+ {
+  "id": "system-clipboard-text-paste",
+  "board": "UndoClipboard",
+  "title": "从别的软件粘贴文字 → 文本节点；本应用复制出去的（文字指纹对得上）→ 按节点粘贴；长段落给「按剧本拆镜…」",
+  "files": [
+   "lib/features/canvas/util/canvas_paste_actions.dart",
+   "lib/features/canvas/util/clipboard_snapshot.dart (指纹)",
+   "lib/features/canvas/widgets/canvas_hint_capsule.dart (胶囊上的「按剧本拆镜…」动作 → script_import_dialog 预填)",
+   "lib/features/storyboard/widgets/script_import_dialog.dart (支持预填)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/canvas_paste_actions_test.dart"
+  ],
+  "infra": [
+   "clipboard-paste",
+   "canvas-hint-capsule"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "文字走 Flutter 自带的 Clipboard.getData，不加依赖。UndoClipboard Q5 按建议 A：Ctrl V 只建一个文本节点（typeConfig.text），不弹对话框。"
+ },
+ {
+  "id": "system-clipboard-image-paste",
+  "board": "UndoClipboard",
+  "title": "从别的软件粘贴图片 → 无源配置的图像产物节点，文件写进本画布 imports/（与导入媒体同一条路）",
+  "files": [
+   "pubspec.yaml",
+   "pubspec.lock",
+   "lib/core/interfaces/clipboard_image_reader.dart (new)",
+   "lib/services/pasteboard_clipboard_image_reader.dart (new)",
+   "lib/core/di/services.dart",
+   "lib/features/canvas/util/canvas_paste_actions.dart",
+   "lib/core/licenses.dart (如需)",
+   "test/features/canvas/util/canvas_paste_image_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "clipboard-paste",
+   "import-media (ImportSearch: canvases/<id>/imports/ 落盘 + 图像产物节点写入路径)"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "newDependency": "pasteboard（按 ImportSearch Q1 建议 A，与拖入用的 desktop_drop 同一套）",
+  "blockedOnDecision": [
+   "ImportSearch.Q1"
+  ],
+  "notes": "依赖选型由 ImportSearch Q1 决定。B 方案 super_clipboard 自带 Rust 原生库，构建更重；新原生依赖装上就很难退，所以算阻塞项。"
+ },
+ {
+  "id": "marquee-select",
+  "board": "Selection",
+  "title": "左键拖空白 = 框选（Shift 加选、Ctrl/⌘ 反选），平移改走 H / 空格 / 右键拖 / 中键拖；Esc 取消并恢复原选中",
+  "files": [
+   "lib/features/canvas/widgets/canvas_view.dart (InteractiveViewer 的左键平移改由 _PanGate 按工具态 / 按键 / 指针键位放行；_BlankPointerDetector 起框；移动不到 4px 算点空白 = 清空；贴边自动平移；泳道底色算空白；标题栏起拖仍是拖泳道；连线模式不起框)",
+   "lib/features/canvas/widgets/marquee_layer.dart (new: 框 + 「已选 N」，复用 _SelectionCountChip 的样式)",
+   "lib/features/canvas/providers/canvas_marquee.dart (new: 进行中的框 + 起框前的选中快照)",
+   "lib/features/canvas/providers/canvas_tool_mode.dart (中键 / 右键拖临时平移的来源)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Esc 档位：菜单 > @ 弹层 > 查找条 > 框选中 > 工具锁 > 清空选中)",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/widgets/canvas_marquee_test.dart (new)",
+   "test/features/canvas/providers/canvas_tool_mode_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "multi-select-core"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "这是有意的行为变化：左键拖空白现在是平移。InteractiveViewer 的平移识别器不分鼠标键，要关掉它自带的左键平移，再自己接中键 / 右键拖，并且不能打断 _SecondaryClickDetector 的右键抬起开菜单。Selection Q1 按建议 A。Q7 建议 A（点卡修饰键保持「切换」）= 不用改代码，没有对应切片。Esc 整套档位归 KeyMap 板，本片只插入「框选中」这一档，CanvasEscapeIntent 让位文本框的事交给 KeyMap 那片。"
+ },
+ {
+  "id": "group-drag",
+  "board": "Selection",
+  "title": "整组拖动：拖选中的任一张整组走，按抓住的那张用 resolveCardDrop 判换道、全组进同一道；拖动中高亮目标道并挂提示；Shift 锁轴",
+  "files": [
+   "lib/features/canvas/widgets/node_card.dart (拖没选中的卡 = 先单选再拖；Shift 锁轴)",
+   "lib/features/canvas/providers/node_drag_delta.dart (改成带一组 id + 抓住的 id)",
+   "lib/features/canvas/widgets/canvas_view.dart (_NodeCardSlot 里组内其他卡跟手位移；连线层跟随整组；_commitDrag 走 moveNodes；dropTargetLaneOf 用抓住的那张；卡组上方提示「移入「X」· N 张改继承风格」)",
+   "lib/features/canvas/util/drop_placement.dart (resolveGroupDrop：抓住的那张判，组内统一换算横截位移)",
+   "lib/features/canvas/widgets/edge_painter.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/drop_placement_test.dart",
+   "test/features/canvas/widgets/canvas_group_drag_test.dart (new)",
+   "test/features/canvas/node_card_test.dart"
+  ],
+  "infra": [
+   "multi-select-core",
+   "nodes-batch-ops",
+   "undo-node-create-move"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "Q2 已定 B。现状：拖动位移只在卡片本地累积，广播只带一个 nodeId，所以组内其余卡要按广播的那组 id 加位移重绘，注意别逐帧重建全部卡片（HI-13 / HI-15）。换道撤销卡是一组一张：撤销 = 整组回原位、回原道。Ctrl/⌘「原样放下」等 snapping 落地后由那片接。与 marquee-select 都改 canvas_view.dart，但改的区域不同，建议串行合入。"
+ },
+ {
+  "id": "selection-toolbar",
+  "board": "Selection",
+  "title": "选中后浮出的工具条：按选区类型变（单选配置 / 单选产物 / 多选），按钮取自右键同源的动作表；⋯ = 这一选区的右键菜单",
+  "files": [
+   "lib/features/canvas/widgets/selection_toolbar.dart (new: 不在拖动 / 平移 / 缩放 / 连线中才出，手停 150ms 后淡入；选区上方居中隔 8，顶到舞台顶部工具条就翻到下方；不进 Tab 序)",
+   "lib/features/canvas/util/selection_toolbar_model.dart (new: 按选区算按钮集；「生成 N 个」只数没停用的配置节点；多选「4 个 · 约 $2.10」)",
+   "lib/features/canvas/util/node_menu_model.dart (动作可用性判据与右键共享)",
+   "lib/features/canvas/widgets/canvas_view.dart (舞台浮层挂载)",
+   "lib/features/canvas/widgets/create_node_menu.dart (⋯ 打开节点右键菜单的入口)",
+   "lib/core/models/app_preferences.dart (selectionToolbarEnabled 默认开)",
+   "lib/services/file_preferences_service.dart",
+   "lib/features/settings/widgets/canvas_appearance_section.dart (节点布局页加开关)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/selection_toolbar_model_test.dart (new)",
+   "test/features/canvas/widgets/selection_toolbar_test.dart (new)",
+   "test/core/models/app_preferences_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "multi-select-core",
+   "takes-run-dialog (TakesCost: ≥2 个确认、清单 + 总价、单次上限 50、按 data 边依赖排队)"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "Selection Q3 按建议 B：单选配置节点出精简条，不放生成，生成留在提示词条上（共用 generate_gate.dart）。「生成 N 个」和多选 Ctrl ↵ 都打开 TakesCost 的运行对话框，多选 Ctrl ↵ 的接线归 TakesCost 那片。「对齐 ▾」「包成泳道」两个按钮要等 align-distribute-arrange 和 wrap-in-lane 落地；先落地本片的话这两个按钮置灰，或者本片排在那两片之后。成本用 cost_estimator 的 estimateCostUsd / formatCostUsd。"
+ },
+ {
+  "id": "multi-select-inspector",
+  "board": "Selection",
+  "title": "多选检查器：数量 + 总预估 + 清单；同类型配置节点列共有参数（「多个值」），改一处写全部、一个事务、一步撤销",
+  "files": [
+   "lib/features/canvas/widgets/canvas_inspector_panel.dart (selected.length > 1 时走多选面板)",
+   "lib/features/canvas/widgets/multi_select_inspector.dart (new)",
+   "lib/features/canvas/util/multi_select_params.dart (new: 共有参数求交、「多个值」、换成同一模型后按能力位重算并清掉不支持的字段、总价求和与「另 N 个价格未知」)",
+   "lib/features/canvas/providers/multi_select_patch_controller.dart (new: patchTypeConfigMany + 推一条撤销命令)",
+   "lib/features/generation/services/cost_estimator.dart (只读复用)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/multi_select_params_test.dart (new)",
+   "test/features/canvas/widgets/multi_select_inspector_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "multi-select-core",
+   "nodes-batch-ops",
+   "undo-stack-core",
+   "takes-run-dialog (TakesCost)"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "只有同类型（图像 / 视频 / 镜头）配置节点才列共有参数：模型、时长、画幅、种子。提示词、首尾帧、参考图、角色各自单独改。文本、便签、产物只计数。底部生成按钮与浮动条同一入口，走 TakesCost 对话框，对话框没落地时先隐藏。能力位重算复用 image_config_inspector / video_config_inspector 里的 provider 能力判据，最好抽成共享函数，别复制一份。"
+ },
+ {
+  "id": "align-distribute-arrange",
+  "board": "Selection",
+  "title": "对齐（左 / 水平居中 / 右 / 顶 / 垂直居中 / 底）· 分布（≥3）· 排布（一行 / 一列 / 网格）· 整理叙事链；Alt 字母快捷键；多选右键「对齐 ›」",
+  "files": [
+   "lib/features/canvas/util/node_arrange.dart (new 纯函数: 对齐按包围盒、分布按卡中心；网格列数 ⌈√n⌉、间距 48、先叙事序再位置；整理叙事链 = 沿链一行，产物按 result_placement；跨轴对齐夹在各自道的带里)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (arrangeSelection：一次 = 一次 moveNodes + 一步撤销)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Alt A/D/W/S/H/V、Alt Shift H/V)",
+   "lib/features/canvas/widgets/create_node_menu.dart (多选节点右键菜单的「对齐 ›」子菜单)",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/node_arrange_test.dart (new)",
+   "test/features/canvas/widgets/canvas_arrange_shortcuts_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "multi-select-core",
+   "nodes-batch-ops",
+   "undo-node-create-move"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "Alt+字母保留：Windows 菜单栏只认单独按下再松开的 Alt，应用也不做 Alt+字母助记键，所以不冲突（critic #21 已解释）。多选右键菜单的其余项归 ContextMenus 板，本片只加「对齐 ›」子菜单。create_node_menu.dart / canvas_shortcuts.dart 是热点，与 wrap-in-lane、clipboard-paste 串行。"
+ },
+ {
+  "id": "snapping",
+  "board": "Selection",
+  "title": "拖动吸附：网格 24、对象 6 屏幕像素内出参考线；按住 Ctrl/⌘ = 原样放下（不吸、不插进叙事线）；两个开关",
+  "files": [
+   "lib/features/canvas/util/drag_snap.dart (new 纯函数: 网格吸附 + 对象边 / 中心吸附 + 参考线)",
+   "lib/features/canvas/widgets/snap_guides_layer.dart (new)",
+   "lib/features/canvas/widgets/node_card.dart (拖动位移过吸附；Ctrl/⌘ 旁路)",
+   "lib/features/canvas/widgets/canvas_view.dart (参考线层)",
+   "lib/features/canvas/widgets/create_node_menu.dart (空白处右键加两项打勾：吸附网格 / 吸附对象)",
+   "lib/core/models/app_preferences.dart (snapToGrid / snapToObjects)",
+   "lib/services/file_preferences_service.dart",
+   "lib/features/settings/widgets/canvas_appearance_section.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/drag_snap_test.dart (new)",
+   "test/features/canvas/widgets/canvas_snap_test.dart (new)",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "group-drag"
+  ],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "「不插进叙事线」只有 ContextMenus 的「拖到线上插入」落地后才有意义；本片把 Ctrl/⌘ 旁路做成一个标志，插入那片读它。网格 24 与画布网格底和复制偏移同源，用现有 token，不新写死数。app_preferences.dart 和 canvas_appearance_section.dart 与 selection-toolbar 共用，串行合入。"
+ },
+ {
+  "id": "wrap-in-lane",
+  "board": "Selection",
+  "title": "Ctrl G 包成泳道：建道 + 定厚 + 排位 + 移入一个事务、标题进改名、算一步撤销；Ctrl Shift G 移出泳道；风格变了弹撤销卡",
+  "files": [
+   "lib/features/canvas/providers/canvas_lanes_controller.dart (wrapNodesInLane：一个 UoW 里插道〔sort_order 后移〕、size = 选区跨轴 + 48 且 ≥400、scope.nodes 改 lane_id 和位置，相对位置不变；完了让节点控制器失效)",
+   "lib/features/canvas/util/lane_wrap.dart (new 纯函数: 插入位与厚度、换算节点位置)",
+   "lib/features/canvas/providers/lane_rename_request.dart (new: 新道标题进入改名态)",
+   "lib/features/canvas/widgets/lane_title_bar.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Ctrl G / ⌘G、Ctrl Shift G)",
+   "lib/features/canvas/widgets/create_node_menu.dart (节点右键「包成泳道」)",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "test/features/canvas/util/lane_wrap_test.dart (new)",
+   "test/features/canvas/canvas_lanes_controller_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "multi-select-core",
+   "nodes-batch-ops",
+   "undo-stack-core",
+   "undo-lanes"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "Selection Q5 按建议 B：新道插在选区所在那条道之后，不在道里就放末尾，不阻塞。现在的 createLane 只追加、不收 size：仓库的 create 已经收 size，要改的是控制器，要支持插位和 size。F 不变：只开新建泳道对话框，不看选中。RailScript 节点库里的泳道项「有选中时 = Ctrl G」调本片的动作。撤销卡停 8 秒，写「N 张从「X」换到新泳道，风格变了」。"
+ },
+ {
+  "id": "lane-collapse-persist",
+  "board": "Selection",
+  "title": "泳道折叠落库：style_lanes 加 collapsed 列，随项目包走（新增一条前向迁移）",
+  "files": [
+   "lib/storage/schema/schema_v9.dart (new；编号按合入顺序定，与 export_records / script_documents / canvas_templates 抢号)",
+   "lib/storage/migrations/app_migrations.dart",
+   "lib/core/db/columns.dart (StyleLaneCol.collapsed)",
+   "lib/features/canvas/models/style_lane.dart",
+   "lib/storage/repositories/postgres_style_lane_repository.dart",
+   "lib/features/canvas/providers/lane_collapse_controller.dart (改成从 canvasLanesController 派生，toggle 走 updateLane 落库)",
+   "lib/features/canvas/providers/canvas_lanes_controller.dart (updateLane 收 collapsed)",
+   "lib/services/import/import_remapper.dart (_laneCols 白名单)",
+   "test/quality/import_schema_sync_test.dart",
+   "test/features/canvas/lane_collapse_controller_test.dart",
+   "test/storage/migrations_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": true,
+  "blockedOnDecision": [
+   "Selection.Q6"
+  ],
+  "notes": "Q6 选 A（不记）就没有这一片，选 B 是一个偏好字段、没有迁移。只有 C 才要一条不可变的前向迁移（ADR-0012：发出去的迁移不能改），装上就撤不回，所以先等拍板。按 UndoClipboard，折叠不进撤销栈。critic #13 提过迁移号撞车，落地时按合入顺序编号。"
+ },
+ {
+  "id": "cm-menu-host-split",
+  "board": "ContextMenus",
+  "title": "拆分 create_node_menu.dart：宿主 / 面板 / 各类菜单条目分文件（纯重构，不改行为），给后面的连线、泳道、多选菜单各留一个独立文件",
+  "files": [
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "lib/features/canvas/widgets/canvas_menu/canvas_menu_panel.dart",
+   "lib/features/canvas/widgets/canvas_menu/create_menu_entries.dart",
+   "lib/features/canvas/widgets/canvas_menu/blank_menu_entries.dart",
+   "lib/features/canvas/widgets/canvas_menu/node_menu_entries.dart",
+   "test/features/canvas/widgets/create_node_menu_test.dart",
+   "test/features/canvas/widgets/canvas_node_menu_test.dart",
+   "test/features/canvas/widgets/canvas_create_menu_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "create_node_menu.dart 有 1561 行，CanvasMenuKind（create/blank/node）、请求、宿主、_CanvasMenuLayer（_createGroups / blank / node 三组条目）和 CanvasMenuPanel 全在这一个文件里。后面的 cm-edge-menu、cm-lane-menu、cm-multi-select-menu、cm-blank-menu-additions、tc-next-shot-first-frame、tc-set-current 都要往里加内容。先拆开：CanvasMenuRequest / Controller / Host 留在原文件，Panel / Row / Frame 挪到 canvas_menu_panel.dart，每种菜单的条目构造各占一个 *_entries.dart，加一种新菜单就是加一个新文件。这一片只搬代码，搬的那部分 diff 要能被 git 识别为 move。必须最先合入。"
+ },
+ {
+  "id": "narrative-splice-core",
+  "board": "ContextMenus",
+  "title": "叙事链拼接底座：插入一镜 / 删除接上 / 换连线类型 / 批量删线的纯函数和事务操作（无界面）",
+  "files": [
+   "lib/features/canvas/util/narrative_splice.dart",
+   "lib/features/canvas/providers/canvas_edges_controller.dart",
+   "lib/features/canvas/models/canvas_edge.dart",
+   "test/features/canvas/util/narrative_splice_test.dart",
+   "test/features/canvas/providers/canvas_edges_controller_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "纯函数，放在 narrative_splice.dart：\n- insertPlan(A→B, new)：软删 A→B，新建 A→新（沿用原 sortOrder）和 新→B。\n- makeRoomShifts：主轴上放不下一张卡时，B 和链上它后面的节点整体后移一格。\n- bridgePlan(deletedIds)：多选删除时把连续被删的一段找出来，段前一镜接段后一镜；遇到分叉或汇合返回「不接」。\n- 判据 canInsertType：文本、便签、产物不能插。\n\nCanvasEdgesController 新增四个操作，都走 UnitOfWork 单事务，并沿用 serialize 和失败回滚：\n- changeEdgeType：data 和 narrative 互换 = 软删旧边 + 建新边；改成首 / 尾帧时复用 _conflictingFrameRoles 降级。\n- spliceInsert。\n- removeEdges(ids)：切线一次删多条，供 cm-knife-cut 用。\n- 撤销令牌按两端节点找边、不按边 id（与 UndoClipboard C17 一致）。\n\n和 Selection 的 move-nodes-batch 没有重叠：让位的位移由调用方交给 moveNodes。"
+ },
+ {
+  "id": "lane-ops-core",
+  "board": "ContextMenus",
+  "title": "泳道操作底座：解散（节点留下，清掉 lane_id、屏幕位置不动）和删除泳道和内容（道 + 道内节点 + 节点的边，一个事务），附撤销令牌；修掉现在「删泳道后节点还指着已删的道」",
+  "files": [
+   "lib/features/canvas/providers/canvas_lanes_controller.dart",
+   "lib/features/canvas/util/lane_dissolve.dart",
+   "lib/features/canvas/widgets/canvas_view.dart",
+   "test/features/canvas/util/lane_dissolve_test.dart",
+   "test/features/canvas/widgets/canvas_lane_integration_test.dart",
+   "test/features/canvas/widgets/lane_interactions_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "现在 deleteLane 只调 repo.softDelete。canvas_view.dart 第 1214 行附近是现有的「删除泳道」入口，那之后节点的 lane_id 仍然指着已删的道，这是现有 bug。\n\n两个新操作：\n- dissolveLane：先用 node_menu_model.laneMoveDelta(toLaneId: null) 把节点换算成「道外」的世界坐标，保证屏幕上不动；再在一个事务里清掉节点 lane_id、改位置、软删泳道。撤销令牌记下旧位置和旧 lane_id。\n- deleteLaneWithContents：一个事务软删泳道、道内节点、这些节点的入边和出边。撤销令牌记下节点 id 和边 id。\n\n现有入口改成调用 dissolve，弹撤销卡。两项各进撤销栈、各自命名，栈本身归 UndoClipboard 的 undo-stack；这一片先用 showCanvasUndoSnack。"
+ },
+ {
+  "id": "node-disabled-flag",
+  "board": "ContextMenus",
+  "title": "节点停用 / 启用：写 type_config.disabled，卡片加条纹并降低内容透明度，状态行写「已停用」，节点右键菜单加「停用 / 启用」",
+  "files": [
+   "lib/features/canvas/models/canvas_node.dart",
+   "lib/features/canvas/widgets/node_card.dart",
+   "lib/features/canvas/widgets/left_rail/outline_panel.dart",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/widgets/canvas_menu/node_menu_entries.dart",
+   "lib/features/canvas/providers/canvas_nodes_controller.dart",
+   "lib/theme/tokens.dart",
+   "test/features/canvas/util/node_menu_model_test.dart",
+   "test/features/canvas/widgets/canvas_node_menu_test.dart",
+   "test/features/canvas/widgets/node_card_config_text_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart"
+  ],
+  "infra": [
+   "cm-menu-host-split"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "- disabled 是 JSONB 键，不用迁移。CanvasNode 加一个 isDisabled getter，和 ignoreLaneStyle 同一种写法。\n- NodeStatusKind 加 disabled，nodeStatusOf 一份判据同时管卡片和左栏大纲。\n- 条纹的颜色和不透明度做成 token。\n- W2 按建议 A：只有批量运行跳过停用节点，单独生成、序列、导出照常，所以 isGenerableNode 不改，批量里的跳过由 tc-batch-run-planner 读这个标记。\n- 连线保留。\n- 和 cm-delete-bridge、cm-multi-select-menu、tc-set-current、tc-next-shot-first-frame 都要改 node_menu_model.dart 和 node_menu_entries.dart，几片要串行合入。"
+ },
+ {
+  "id": "cm-edge-menu",
+  "board": "ContextMenus",
+  "title": "连线右键菜单和中点工具条（替换红色 ✕）：改语义表（叙事 / 首帧 / 尾帧 / 参考，不可用的置灰并写原因）、插入节点…（只对叙事线）、删除；选中连线时 Del 删线",
+  "files": [
+   "lib/features/canvas/widgets/canvas_view.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "lib/features/canvas/widgets/canvas_menu/edge_menu_entries.dart",
+   "lib/features/canvas/widgets/edge_toolbar.dart",
+   "lib/features/canvas/util/edge_menu_model.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/providers/selected_edge_controller.dart",
+   "test/features/canvas/util/edge_menu_model_test.dart",
+   "test/features/canvas/widgets/canvas_edge_menu_test.dart",
+   "test/features/canvas/widgets/canvas_shortcuts_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "cm-menu-host-split",
+   "narrative-splice-core"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "- 现在 canvas_view 的 onBlankSecondaryClick 碰到连线就直接 return。改成：先选中这条线，再开 CanvasMenuKind.edge（请求里加 edgeId）。\n- _EdgeDeleteButton（canvas_view.dart:167）换成中点工具条，和右键菜单打开同一张改语义表。\n- edge_menu_model 是纯判据，规则：\n  - 叙事：两端都是非文本的配置节点，且不成环。\n  - 首 / 尾帧：源带图，目标是视频配置，且模型支持（读 provider capabilities）。\n  - 参考：源带图。\n- 「插入节点…」开新建菜单，锚点在线的中点；建好节点后调用 spliceInsert，失败时回滚删掉节点（与 addNodeFromMenu 的回滚同一手法）。\n- 产出线点不中，所以没有菜单。\n- Del 的优先级：选中连线时删线，否则删节点。"
+ },
+ {
+  "id": "cm-lane-menu",
+  "board": "ContextMenus",
+  "title": "泳道标题栏右键菜单：改名（标题栏原地变输入框）、改风格…、选中内容、折叠、解散（节点留下）、删除泳道和内容（道内有任务在生成时先确认）",
+  "files": [
+   "lib/features/canvas/widgets/lane_title_bar.dart",
+   "lib/features/canvas/widgets/canvas_view.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "lib/features/canvas/widgets/canvas_menu/lane_menu_entries.dart",
+   "lib/features/canvas/util/lane_menu_model.dart",
+   "lib/features/canvas/providers/canvas_selection_controller.dart",
+   "lib/features/canvas/providers/lane_collapse_controller.dart",
+   "test/features/canvas/util/lane_menu_model_test.dart",
+   "test/features/canvas/widgets/lane_title_bar_test.dart",
+   "test/features/canvas/widgets/canvas_lane_menu_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "cm-menu-host-split",
+   "lane-ops-core"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "- 只认标题栏上的右键；带内空白处右键仍出空白处菜单。\n- 改名在 LaneTitleBar 里原地编辑：↵ 调 updateLane 保存，Esc 退出；双击仍是折叠。\n- 改风格… 复用 showLaneEditDialog（canvas_view.dart:1164）。\n- 选中内容：selectAll，范围是 lane_id 等于这条道的全部节点。\n- 「道内有生成中的任务」判据放在 lane_menu_model，数据读 jobsRegistry / node_active_job。\n- 菜单里的「包成泳道」不归这片，放在 Selection 的 Ctrl G。"
+ },
+ {
+  "id": "grid-snap",
+  "board": "ContextMenus",
+  "title": "网格吸附：偏好存 preferences.json，松手时取整；按住 Ctrl（⌘）拖 = 原样放下、不吸附",
+  "files": [
+   "lib/core/models/app_preferences.dart",
+   "lib/services/file_preferences_service.dart",
+   "lib/features/canvas/providers/grid_snap_provider.dart",
+   "lib/features/canvas/util/grid_snap.dart",
+   "lib/features/canvas/widgets/canvas_view.dart",
+   "lib/features/canvas/widgets/canvas_grid_painter.dart",
+   "test/features/canvas/util/grid_snap_test.dart",
+   "test/services/file_preferences_service_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "- AppPreferences 是手写的不可变类，不用 freezed 代码生成。\n- 吸附只在 _commitDrag 里取整（这个函数在 fix/demo-lane-drag 已改过，会和那条分支和 Selection 的整组拖动撞同一处），要串行。\n- 按住 Ctrl 的「原样放下」判据和 cm-drag-insert-narrative 共用：同一个 modifier 读法，放在 grid_snap.dart。\n- 空白处菜单里的开关由 cm-blank-menu-additions 接。"
+ },
+ {
+  "id": "cm-blank-menu-additions",
+  "board": "ContextMenus",
+  "title": "空白处右键菜单补三项：粘贴（Ctrl V）、导入媒体…（Ctrl U）、网格吸附开关",
+  "files": [
+   "lib/features/canvas/widgets/canvas_menu/blank_menu_entries.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "test/features/canvas/widgets/canvas_create_menu_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart"
+  ],
+  "infra": [
+   "cm-menu-host-split",
+   "grid-snap",
+   "canvas-clipboard",
+   "import-media"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "这一片只把菜单项接到已有的动作上：BlankMenuAction 加 paste / importMedia / toggleGridSnap。\n- 粘贴的落点（右键点）、系统剪贴板里的图建图像产物节点、跨项目的 @{角色 id} 和 gen_inputs 重映射，都归 UndoClipboard 的 canvas-clipboard。\n- 导入媒体复制进 canvases/<id>/imports/，归 ImportSearch 的 import-media。\n- 依赖用哪套（desktop_drop + pasteboard）看 ImportSearch 需定 1，这片不引新依赖。"
+ },
+ {
+  "id": "cm-drag-insert-narrative",
+  "board": "ContextMenus",
+  "title": "拖到叙事线上插一镜：卡片中心离线 ≤12px 命中，线变粗变琥珀色并出提示；松手插入，放不下时后面的镜整体让位；按住 Ctrl = 原样放下",
+  "files": [
+   "lib/features/canvas/widgets/canvas_view.dart",
+   "lib/features/canvas/util/narrative_drop_insert.dart",
+   "lib/features/canvas/providers/node_drag_delta.dart",
+   "lib/features/canvas/widgets/edge_painter.dart",
+   "lib/features/canvas/widgets/narrative_insert_hint.dart",
+   "test/features/canvas/util/narrative_drop_insert_test.dart",
+   "test/features/canvas/widgets/canvas_drag_insert_test.dart",
+   "test/features/canvas/widgets/edge_painter_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "narrative-splice-core",
+   "move-nodes-batch",
+   "grid-snap",
+   "undo-stack"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "- 只拖单张、且不在链上的镜头 / 图像配置 / 视频配置。W4 按建议 B：已在链上的不触发。\n- 命中用的距离在 narrative_drop_insert.dart 里算，复用 edge_hit_test / edge_geometry。\n- 拖动中的命中状态放进 node_drag_delta（或者新开一个 provider），给 EdgePainter 画高亮用。\n- 换道沿用 fix/demo-lane-drag 的 resolveCardDrop。\n- 让位走 Selection 的 moveNodes 整批。\n- 插入、让位、换道在撤销栈里算一步。撤销栈没上线之前，先用一张撤销卡兜着。\n- 这片和 grid-snap、Selection 的整组拖动都要改 _commitDrag，要串行。"
+ },
+ {
+  "id": "cm-delete-bridge",
+  "board": "ContextMenus",
+  "title": "删链中间的镜时前后两镜自动接上（W1 A）：只接一条入边一条出边的情况；多选按连续一段算；有分叉不接，撤销卡写明；菜单另给「删除（不接上）」",
+  "files": [
+   "lib/features/canvas/providers/canvas_nodes_controller.dart",
+   "lib/features/canvas/util/canvas_node_delete.dart",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/widgets/canvas_menu/node_menu_entries.dart",
+   "test/features/canvas/providers/canvas_nodes_controller_test.dart",
+   "test/features/canvas/util/node_menu_model_test.dart",
+   "test/features/canvas/widgets/canvas_node_menu_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart"
+  ],
+  "infra": [
+   "narrative-splice-core",
+   "remove-nodes-batch"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "- 现在 removeNode 只软删单个节点和它的边，NodeDeletion 是 (node, edgeIds)。\n- 改成在 removeNodes 的同一事务里按 bridgePlan 建接上的那条边（沿用入边的 sortOrder），NodeDeletion 加一个 bridgedEdgeIds 字段。撤销 = 复原节点和边，再软删接上的那条。\n- removeNodes（把多选删除并成一个事务）归 UndoClipboard，所以这片排在它之后。\n- 撤销卡两种文案：「镜头 01 与 03 已接上」和「前后有分叉，未接上」。\n- W1 默认 A，因为撤销卡一键就能回退。"
+ },
+ {
+  "id": "cm-knife-cut",
+  "board": "ContextMenus",
+  "title": "Alt + 左键拖切线（W3 A）：空白处拖出红色虚线，划过的叙事 / data 线变红，松手全部断开并出一张撤销卡；Esc 取消；产出线不受影响，平移工具下不生效",
+  "files": [
+   "lib/features/canvas/widgets/canvas_view.dart",
+   "lib/features/canvas/providers/edge_cut_controller.dart",
+   "lib/features/canvas/util/edge_cut_hit.dart",
+   "lib/features/canvas/widgets/edge_painter.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "test/features/canvas/util/edge_cut_hit_test.dart",
+   "test/features/canvas/widgets/canvas_knife_cut_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "narrative-splice-core",
+   "esc-priority"
+  ],
+  "size": "L",
+  "userValue": "low",
+  "migration": false,
+  "notes": "- _BlankPointerDetector 里认 Alt + 主键拖动。\n- edge_cut_hit 判断「折线和连线路径相交」，复用 edge_geometry 的路径采样。\n- 松手时调 removeEdges 一个事务删掉，出一张撤销卡。\n- Esc 和「框选进行中」同一级，全局 Esc 顺序归 KeyMap / Selection 的 esc-priority。\n- 「只有单独按下再松开 Alt 才聚焦菜单栏」这条要求在 ShellExport 的菜单栏那一片实现，这片只要保证 Alt 期间有指针动作时不冒泡出去。\n- 快捷键页要列出 Alt + 拖。"
+ },
+ {
+  "id": "cm-multi-select-menu",
+  "board": "ContextMenus",
+  "title": "多选右键菜单（选中 ≥2）：生成 N 个 · 约 $x（Ctrl ↵）、复制一份、对齐 ›、分布 ›、包成泳道（Ctrl G）、加入泳道 ›、删除",
+  "files": [
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/widgets/canvas_menu/multi_menu_entries.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "test/features/canvas/util/node_menu_model_test.dart",
+   "test/features/canvas/widgets/canvas_multi_menu_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart"
+  ],
+  "infra": [
+   "cm-menu-host-split",
+   "node-disabled-flag",
+   "tc-node-cost-estimate",
+   "tc-batch-run-dialog",
+   "align-distribute",
+   "wrap-in-lane"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "- 右键选中集里任一张、且选中 ≥2 时出多选菜单，取代节点菜单；nodeMenuTargets 已经给出选中集。\n- 「生成 N 个」只数 isGenerableNode 且没停用的；花费是各节点估价之和，算不出价的写「另 N 个价格未知」。点了打开 TakesCost 的运行对话框，这里不另定确认规则。\n- 「横截轴对齐只在同一条道里可点」这条判据放进 node_menu_model。\n- 对齐、分布、Ctrl G 的实现都归 Selection（moveNodes），这片只接菜单。"
+ },
+ {
+  "id": "tc-current-take-core",
+  "board": "TakesCost",
+  "title": "当前 take 判据收成 currentResultFor：取 pinned_result_id，没有或指向已删除的产物时回落最新；序列 / 导出 / 画廊 / ⌘K / 大纲一起改用它",
+  "files": [
+   "lib/features/canvas/util/node_artifacts.dart",
+   "lib/features/canvas/models/canvas_node.dart",
+   "lib/features/storyboard/util/sequence_builder.dart",
+   "lib/features/storyboard/models/sequence_shot.dart",
+   "lib/features/sequence/models/sequence_lens.dart",
+   "lib/features/export/util/export_take_selection.dart",
+   "lib/features/export/util/export_order.dart",
+   "lib/features/gallery/util/gallery_meta.dart",
+   "lib/features/command_palette/palette_search.dart",
+   "lib/features/canvas/util/outline_model.dart",
+   "lib/features/canvas/util/create_menu_model.dart",
+   "test/features/canvas/util/node_artifacts_test.dart",
+   "test/features/export/util/export_take_selection_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "- pinned_result_id 存在配置节点的 type_config 里，是 JSONB 键，不用迁移。CanvasNode 加一个 pinnedResultId getter。\n- currentResultFor = 固定的那个（还活着时）?? latestResultFor。固定的被删就回落最新；撤销删除后那个 id 又能找到，自然就回来了，不用另写。\n- 现在调用 latestResultFor 的地方都换成 currentResultFor：12 个文件里有 resultsFor 或 latestResultFor。\n- 「导出默认勾当前 take」顺带落进 export_take_selection，对应 BOARD 第 200 行。"
+ },
+ {
+  "id": "tc-set-current",
+  "board": "TakesCost",
+  "title": "设为当前（固定）：历史页、成片检查器、节点右键菜单都给入口；卡片上当前 take 琥珀描边加图钉，其余 take 半透明，标「未采用」；固定后出了新 take 通知写「当前仍是 take N」；导出行尾标「固定」",
+  "files": [
+   "lib/features/canvas/providers/current_take_controller.dart",
+   "lib/features/canvas/widgets/inspector_history_panel.dart",
+   "lib/features/canvas/widgets/image_result_inspector.dart",
+   "lib/features/canvas/widgets/video_result_inspector.dart",
+   "lib/features/canvas/widgets/result_inspector_parts.dart",
+   "lib/features/canvas/widgets/node_card.dart",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/widgets/canvas_menu/node_menu_entries.dart",
+   "lib/features/notifications/widgets/job_notification_listener.dart",
+   "lib/features/export/widgets/export_video_dialog.dart",
+   "test/features/canvas/widgets/inspector_history_panel_test.dart",
+   "test/features/canvas/providers/current_take_controller_test.dart",
+   "test/features/canvas/widgets/canvas_node_menu_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "tc-current-take-core",
+   "cm-menu-host-split"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "- current_take_controller 用 patchTypeConfig 写 pinned_result_id，失败回滚并出错误卡。\n- 已经是当前的，入口显示打勾并置灰。\n- 成片检查器那几个文件（result_inspector_parts、image / video result inspector）以 fix/demo-inspectors 合入后的版本为准。\n- 「当前 take N」的号复用 take_numbers.takeNumbersOn。\n- 改写下游连线不在这片，在 tc-take-edge-follow（Q1）。这片只写固定，下游的线暂时不动。\n- 撤销接 UndoClipboard 的 undo-stack；栈上线前，先用一张撤销卡。\n- 这片已经接近 1500 行。超了就把通知和导出「固定」标签拆成一个 S 片。"
+ },
+ {
+  "id": "tc-batch-slot-set-current",
+  "board": "TakesCost",
+  "title": "批量 take 展开成 slot：点 slot = 现有 promote 加设为当前，同一事务；「转正」「设为产物」两个叫法退场",
+  "files": [
+   "lib/features/generation/providers/batch_results_controller.dart",
+   "lib/features/canvas/widgets/batch_results_grid.dart",
+   "lib/features/canvas/widgets/batch_slot_parts.dart",
+   "lib/features/canvas/widgets/batch_compare_overlay.dart",
+   "lib/features/canvas/util/batch_slot_view.dart",
+   "test/features/generation/providers/batch_results_controller_test.dart",
+   "test/features/canvas/util/batch_slot_view_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart"
+  ],
+  "infra": [
+   "tc-current-take-core"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "- promote 现在的事务做三件事：改节点产物、清同节点旧的 promoted、标本行。这片在同一事务里再把配置节点的 pinned_result_id 写成这个 result 节点。\n- 撤销令牌记下旧 image_url、旧 promoted slot、旧 pinned_result_id，对应 UndoClipboard Q3 的建议 A。\n- 「转正」相关的 ARB 键删掉，不保留兼容。"
+ },
+ {
+  "id": "tc-take-edge-follow",
+  "board": "TakesCost",
+  "title": "下游连线跟着当前 take 走（Q1 A）：设为当前时，或没固定时出了新 take，把接在旧当前 take 上的 data 边挪到新当前，一个事务",
+  "files": [
+   "lib/features/canvas/util/current_take_edges.dart",
+   "lib/features/canvas/providers/current_take_controller.dart",
+   "lib/features/generation/generation_controller.dart",
+   "lib/features/canvas/widgets/canvas_job_listener.dart",
+   "test/features/canvas/util/current_take_edges_test.dart",
+   "test/features/generation/generation_controller_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "tc-set-current",
+   "tc-gen-inputs-snapshot"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "blockedOnDecision": [
+   "TakesCost.Q1"
+  ],
+  "migration": false,
+  "notes": "- 纯函数 plan：找出源是同一配置节点下旧当前 result 的 data 出边，生成「改 source_node_id」的列表。edges.update 已经存在。\n- 新 take 到达时不能指望画布开着：在 generation_controller 的 _track 成功分支里写库，再由 CanvasJobListener 让对应画布的边控制器失效。\n- 设为当前和它改写的边在撤销栈里算一步，反向按边两端找边。\n- Q1 一旦选 B（生成时再解析），这片整片作废，改成改 generation_controller._resolveRefImages，undo-stack 的设计也跟着变，所以挂在 Q1 上。\n- generation_controller.dart 和 tc-gen-inputs-snapshot 共用，排在它之后。"
+ },
+ {
+  "id": "tc-gen-inputs-snapshot",
+  "board": "TakesCost",
+  "title": "生成快照 gen_inputs：建 job 的同一事务里把输入写进 result 的 type_config；项目包导入按 UUID 映射改写 gen_inputs 的源 id 和 pinned_result_id",
+  "files": [
+   "lib/features/generation/services/gen_inputs_snapshot.dart",
+   "lib/features/generation/generation_controller.dart",
+   "lib/services/import/import_remapper.dart",
+   "test/features/generation/services/gen_inputs_snapshot_test.dart",
+   "test/features/generation/generation_controller_test.dart",
+   "test/services/import/import_remapper_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "- 快照内容：提示词、负向、种子、模型参数、运镜、泳道风格和画布底稿风格、挂载角色，以及每条 data 入边的源节点和 image_url。\n- 在 submitFromConfigNode 的 uow.run 里，scope.nodes.create 加上 typeConfig: {gen_inputs: ...}。incoming 和 laneId 在那里都已经有了。\n- 不拿 jobs 行当快照，因为 jobs 会被 30 天 / 按画布上限清掉。\n- import_remapper 在 nodes 那段（拍板 8 改写 character_ids 的同一处）补上这两个键的改写，映射不到的剥掉。\n- 模板插入和跨项目粘贴各自的剥除，分别归 RailScript 和 UndoClipboard 的对应片，它们共用这里导出的 stripUnmappedGenInputs。"
+ },
+ {
+  "id": "tc-stale-marks",
+  "board": "TakesCost",
+  "title": "过期标记：只比对当前 take 的快照；成片卡标「已过期」，点开原因卡（变了哪几项，加一句上游也已过期）+ 重新生成 约 $x；配置卡写「当前 take 已过期」；左栏大纲出过期角标",
+  "files": [
+   "lib/features/canvas/util/take_staleness.dart",
+   "lib/features/canvas/providers/stale_takes_provider.dart",
+   "lib/features/canvas/widgets/node_card.dart",
+   "lib/features/canvas/widgets/stale_reason_popover.dart",
+   "lib/features/canvas/widgets/left_rail/outline_panel.dart",
+   "lib/features/canvas/util/outline_model.dart",
+   "test/features/canvas/util/take_staleness_test.dart",
+   "test/features/canvas/widgets/stale_reason_popover_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "tc-current-take-core",
+   "tc-gen-inputs-snapshot",
+   "tc-node-cost-estimate"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "- take_staleness 是纯函数：快照对比现在的输入，得出原因列表。\n- 不算变化：改名、位置、层级、批量张数、原本就随机的种子。\n- 改回原值，标记自己消失。\n- 没有快照的老产物，或源 id 被剥掉的，都不标过期。\n- Q3 按建议 C：只标输入真变了的那张，原因卡里提一句上游。\n- stale_takes_provider 按画布 watch 节点、边、泳道、canvas_base_style。\n- node_card.dart 也被 tc-set-current 和 node-disabled-flag 改，要串行。"
+ },
+ {
+  "id": "tc-node-cost-estimate",
+  "board": "TakesCost",
+  "title": "节点花费预估：按节点算 USD，算不出写「—」（修掉自定义接口显示 $0.00）；提示词条在生成按钮左侧常驻金额，悬停任何「生成」都出明细",
+  "files": [
+   "lib/features/generation/services/node_cost.dart",
+   "lib/features/generation/services/cost_estimator.dart",
+   "lib/features/canvas/widgets/image_config_inspector.dart",
+   "lib/features/canvas/widgets/video_config_inspector.dart",
+   "lib/features/canvas/widgets/canvas_prompt_bar.dart",
+   "lib/features/canvas/widgets/cost_breakdown_tooltip.dart",
+   "test/features/generation/services/node_cost_test.dart",
+   "test/features/generation/services/cost_estimator_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "- estimateNodeCost(node, registry) 返回 {usd?，明细行}。它从 typeConfig 读 provider、分辨率、时长、批量和提示词长度，再调用 estimateCostUsd。\n- 价格未知的判据：costModel 是 PerCall 且金额为 0，比如自定义接口。\n- 现在 image_config_inspector.dart:324 和 video_config_inspector.dart:201 各自内联估算，改成都调 node_cost。\n- canvas_prompt_bar.dart 在 fix/demo-promptbar-sample 里已经接了 generate_gate，以合入后的版本为准。\n- 币种只用 USD。"
+ },
+ {
+  "id": "tc-job-eta",
+  "board": "TakesCost",
+  "title": "耗时预估：取同 provider 最近 10 次 completed_at − submitted_at 的中位数，没历史写「—」；全应用共用一个时长格式（不到 60 秒写「N 秒」，满 60 秒写 m:ss）",
+  "files": [
+   "lib/core/interfaces/job_repository.dart",
+   "lib/storage/repositories/postgres_job_repository.dart",
+   "lib/features/generation/providers/provider_eta_provider.dart",
+   "lib/core/format/duration_format.dart",
+   "test/storage/postgres_job_repository_test.dart",
+   "test/core/format/duration_format_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "- JobRepository 加 recentDurationsMs(providerId, limit: 10)，只算 status 是 completed 的行。\n- 索引用现有的 idx_jobs_completed 就够，不加新的。\n- duration_format 由 ShellExport 的系统通知和任务弹层共用（critic #20）。另一片先建了这个文件的话，这片改为依赖它。\n- 时长文案里的「秒」要走 ARB，所以格式函数接收 l10n。"
+ },
+ {
+  "id": "tc-batch-run-planner",
+  "board": "TakesCost",
+  "title": "批量运行计划（纯函数）：按 data 边依赖排序，没有依赖的按叙事链序；单次最多 50，超出写「另 N 个不在本次」；每行标跳过原因（已固定 / 已停用 / 缺首帧，没提示词的不列）；合计金额加「另 N 个价格未知」",
+  "files": [
+   "lib/features/generation/services/batch_run_planner.dart",
+   "test/features/generation/services/batch_run_planner_test.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "tc-current-take-core",
+   "tc-node-cost-estimate",
+   "node-disabled-flag"
+  ],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "- 输入：候选节点、边、叙事链、includePinned、mode（只跑过期和没生成过的 / 全部）、每个节点是否过期。\n- 输出：每行带状态，以及顺序、待跑数、合计和「另 N 个不在本次」。\n- 已停用的不计数、不计价，不能勾回。\n- 已固定的按 Q4 A 默认跳过，可勾回。\n- 批外的上游用它现在的当前 take；没有 take 就记「缺首帧 · 跳过」。\n- 叙事链序复用 narrative_order.orderByNarrativeChain。\n- Q8 按 A。\n- 「过期」状态从 tc-stale-marks 的 provider 读进来，作为输入传给 planner，所以 planner 本身不依赖它的代码。"
+ },
+ {
+  "id": "tc-batch-run-executor",
+  "board": "TakesCost",
+  "title": "批量运行执行器：按计划依次提交，下游等上游成功后用新的当前 take 提交；上游失败下游不提交；parameters.run_group 标记同一批；任务胶囊里可以取消整批",
+  "files": [
+   "lib/features/generation/providers/batch_run_controller.dart",
+   "lib/features/generation/generation_controller.dart",
+   "lib/features/shell/widgets/shell_task_popover.dart",
+   "lib/features/shell/widgets/shell_task_capsule.dart",
+   "test/features/generation/providers/batch_run_controller_test.dart",
+   "test/features/shell/widgets/shell_task_popover_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "tc-batch-run-planner",
+   "tc-take-edge-follow"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "blockedOnDecision": [
+   "TakesCost.Q1"
+  ],
+  "migration": false,
+  "notes": "- submitFromConfigNode 加一个可选参数 runGroup，写进 jobs.parameters.run_group。这是 JSONB，不用迁移。\n- 批次的成员和状态保存在 batch_run_controller（keepAlive），不往 freezed 的 JobState 里加字段。job_state.freezed.dart 是签入的生成文件，而 build_runner 现在跑不了。\n- 等上游：监听 jobsRegistry 里上游 job 的终态。\n- 并发仍由 JobQueue 全局和 provider 上限控制。\n- 下游读到的是不是新 take 取决于 Q1：A 由 tc-take-edge-follow 挪边保证；选 B 的话要改生成侧解析。"
+ },
+ {
+  "id": "tc-batch-run-dialog",
+  "board": "TakesCost",
+  "title": "运行对话框和全部入口：要跑的 ≥2 个才弹（单个照旧直接跑），逐行列出节点 + 合计 + 预计耗时 + 并发；入口有多选 Ctrl ↵、右键「生成 N 个」、大纲组头「运行这组」、更多「运行叙事链」、⌘K",
+  "files": [
+   "lib/features/canvas/widgets/batch_run_dialog.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/features/canvas/widgets/canvas_toolbar.dart",
+   "lib/features/canvas/widgets/left_rail/outline_panel.dart",
+   "lib/features/command_palette/command_actions.dart",
+   "lib/core/models/app_preferences.dart",
+   "lib/services/file_preferences_service.dart",
+   "test/features/canvas/widgets/batch_run_dialog_test.dart",
+   "test/features/canvas/widgets/canvas_node_shortcuts_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "tc-batch-run-planner",
+   "tc-batch-run-executor",
+   "tc-job-eta"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "- 对话框的壳用 InkOverlayDialog。\n- W5 按 A：多选时 Ctrl ↵ 生成全部能生成的。现在 canvas_shortcuts 的 Ctrl ↵ 只认「恰好一张」（generationTarget），要改成交给 generateSelection 分流：1 张直接提交，≥2 张开对话框。\n- Q5 按 C：对话框里切跑哪些，记住上次的选择（AppPreferences 加一个字段），首次默认「只跑过期和没生成过的」。\n- 右键「生成 N 个」那一行由 cm-multi-select-menu 接到这里的 openBatchRunDialog。\n- canvas_toolbar 的「更多」菜单也被 GapsCanvas 的统一下拉改，要串行。\n- AppPreferences 也被 grid-snap 改，要串行。"
+ },
+ {
+  "id": "tc-next-shot-first-frame",
+  "board": "TakesCost",
+  "title": "节点右键「当下一镜的首帧 ›」：把这张图接到叙事链下一镜的首帧，按下一镜的情况分别处理",
+  "files": [
+   "lib/features/canvas/util/next_shot_frame.dart",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/widgets/canvas_menu/node_menu_entries.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/widgets/video_config_inspector.dart",
+   "test/features/canvas/util/next_shot_frame_test.dart",
+   "test/features/canvas/widgets/canvas_node_menu_test.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/app_localizations.dart",
+   "lib/l10n/generated/app_localizations_en.dart",
+   "lib/l10n/generated/app_localizations_zh.dart",
+   "docs/CLAUDE.md"
+  ],
+  "infra": [
+   "cm-menu-host-split",
+   "tc-current-take-core",
+   "undo-stack"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "next_shot_frame 是纯计划函数。下一镜 = 来源配置节点在叙事链上的后继。在 take 卡上右键用这张 take；在配置卡上右键用它的当前 take。各情况的处理：\n- 链尾，没有下一镜：在右侧同泳道建一个视频配置，连好叙事边和首帧边。落点复用 result_placement / addNodeFromMenu。\n- 下一镜是视频配置、还没有首帧：连一条首帧边。\n- 下一镜是视频配置、已有首帧：确认后替换，替换走 updateRole 的降级路径；已经是这张时打勾置灰。\n- 下一镜是镜头节点：先走「用本镜备注生成」建视频配置，再连。\n- 下一镜是图像配置：按 Q7 A 置灰并写原因。\n- 有多个后继：子菜单按 sortOrder 列出各分支。\n- 模型不支持首帧：照连，不换模型，检查器的模型行出黄字。\n\n视频 take 不出这一项。整组操作（节点 + 边）一个事务，一次 Ctrl Z 撤掉。浮动工具条上的同名按钮归 Selection。"
+ },
+ {
+  "id": "dep-desktop-drop-pasteboard",
+  "board": "ImportSearch",
+  "title": "引入 desktop_drop + pasteboard 依赖，并封装系统剪贴板读图接口（所有画板的拖放 / 粘贴都以这一条为准）",
+  "files": [
+   "pubspec.yaml",
+   "pubspec.lock",
+   "windows/flutter/generated_plugin_registrant.cc",
+   "windows/flutter/generated_plugins.cmake",
+   "macos/Flutter/GeneratedPluginRegistrant.swift",
+   "macos/Podfile.lock",
+   "lib/core/interfaces/system_clipboard_image_service.dart (new)",
+   "lib/services/pasteboard_clipboard_image_service.dart (new)",
+   "lib/core/di/clipboard_image.dart (new)",
+   "docs/CLAUDE.md (Tech Stack + services snapshot)",
+   "test/services/pasteboard_clipboard_image_service_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "newDependency": "desktop_drop, pasteboard (ImportSearch Q1 option A)",
+  "blockedOnDecision": [
+   "ImportSearch-1"
+  ],
+  "notes": "跨画板的基础件：UndoClipboard / ContextMenus 的粘贴和拖放都引用 Q1。引入的是原生插件（Windows + macOS 注册文件都要重新生成），所以要等 Q1 定了再做。画布内复制节点走应用内的 canvasClipboardProvider（UndoClipboard），往系统剪贴板只写纯文字，用 Flutter 自带的 Clipboard 就够，这里不管。"
+ },
+ {
+  "id": "media-import-service",
+  "board": "ImportSearch",
+  "title": "媒体导入服务：复制进 canvases/<id>/imports/，建无来源配置的导入式产物节点（uploading→success，视频抽首帧、探时长）",
+  "files": [
+   "lib/core/interfaces/media_import_service.dart (new)",
+   "lib/services/file_media_import_service.dart (new: extension whitelist png/jpg/webp/mp4/mov/webm, .partial then rename, unique names)",
+   "lib/core/di/media_import.dart (new)",
+   "lib/services/orphan_file_reaper.dart (kOrphanMediaSubdirs += 'imports')",
+   "lib/features/canvas/models/canvas_node.dart (isImported / originalFileName getters for origin: import)",
+   "lib/features/canvas/providers/canvas_nodes_controller.dart (relax 'result requires sourceNodeId' assert for origin import)",
+   "lib/features/canvas/providers/media_import_controller.dart (new: create uploading nodes → copy → patch type_config; video via thumbnail_service + duration_ms)",
+   "lib/storage/repositories/postgres_node_repository.dart (listOrphanResults / softDeleteEmptyOrphanResults must not treat origin=import as orphan)",
+   "lib/features/canvas/widgets/node_card.dart (uploading progress overlay + 导入 status line)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "docs/CLAUDE.md (services snapshot)",
+   "test/services/file_media_import_service_test.dart (new)",
+   "test/features/canvas/providers/media_import_controller_test.dart (new)",
+   "test/services/orphan_file_reaper_test.dart"
+  ],
+  "infra": [],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "状态 'uploading' 在 v1 的 CHECK 里已经有了，不需要迁移。type_config 里记 image_url|video_url（相对路径）、origin: import、original_name。Q2 A：跨画布素材也走这里复制一份。Q6 A：导入节点是产物，不进叙事链，序列 / 导出都不用改。Ctrl U、OS 拖入、粘贴、跨画布素材拖放这四个入口共用这一个服务。撤销用现有的 toast 动作 + removeNode/restore 就够，不依赖 undo-stack。"
+ },
+ {
+  "id": "import-media-command",
+  "board": "ImportSearch",
+  "title": "Ctrl/⌘ U 与右键「导入媒体…」：多选文件，视口中心散布落点，一张通知带撤销并点名跳过的文件",
+  "files": [
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Ctrl U / ⌘U activator, single-key gate)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (importMediaViaPicker: file_selector multi + viewport-center scatter)",
+   "lib/features/canvas/widgets/create_node_menu.dart (BlankMenuAction.importMedia)",
+   "lib/features/canvas/widgets/canvas_toolbar.dart (更多 → 导入媒体…)",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/features/command_palette/command_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/widgets/canvas_import_media_test.dart (new)"
+  ],
+  "infra": [
+   "media-import-service"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "file_selector 已经在依赖里，这一片不用新依赖。ShellExport（「更多」改用 CanvasMenuPanel 并重新排序）和 ContextMenus（空白处菜单）也会改 canvas_toolbar.dart / create_node_menu.dart，要串行合入。"
+ },
+ {
+  "id": "os-drop-and-paste-image",
+  "board": "ImportSearch",
+  "title": "从系统拖入文件（松手处落点 + 「松手导入 N 个文件」浮层）与 Ctrl V 粘贴剪贴板图片",
+  "files": [
+   "lib/features/canvas/widgets/canvas_view.dart (desktop_drop DropTarget around _CanvasBody; drop point → world via drop_placement)",
+   "lib/features/canvas/widgets/os_file_drop_overlay.dart (new)",
+   "lib/features/canvas/util/import_drop_summary.dart (new, pure: 图片 N · 视频 M · skipped reasons)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Ctrl V image branch)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (importFilesAt / pasteImageFromClipboard)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/import_drop_summary_test.dart (new)",
+   "test/features/canvas/widgets/canvas_os_drop_test.dart (new)"
+  ],
+  "infra": [
+   "dep-desktop-drop-pasteboard",
+   "media-import-service"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "Ctrl V 分派归 UndoClipboard 的 canvas-clipboard 那一片：应用内剪贴板里有节点就粘节点，没有就读系统剪贴板里的图片。哪片后合入，就由哪片把两个分支接到同一个 Intent 上。fix/demo-lane-drag 动过 canvas_view.dart，要在它之上做。"
+ },
+ {
+  "id": "stage-drop-target",
+  "board": "ImportSearch",
+  "title": "舞台应用内拖放底座：sealed 拖放载荷 + 舞台 DragTarget + 悬停目标卡高亮 + 落点 / 泳道 / 卡片命中换算",
+  "files": [
+   "lib/features/canvas/models/canvas_drag_payload.dart (new, sealed: asset / character / nodeLibraryItem / recentParams / promptPreset)",
+   "lib/features/canvas/widgets/canvas_view.dart (DragTarget over stage, dispatch by payload)",
+   "lib/features/canvas/providers/canvas_drop_hover.dart (new: hovered card id)",
+   "lib/features/canvas/util/drop_placement.dart (viewport point → world + nodeAt + resolveLaneDrop / resolveCardDrop reuse)",
+   "lib/features/canvas/widgets/node_card.dart (dashed amber drop outline)",
+   "test/features/canvas/util/drop_placement_test.dart",
+   "test/features/canvas/widgets/canvas_stage_drop_target_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "共享基础件：素材 / 角色拖放（ImportSearch）和节点库拖出（RailScript）都依赖它。只用 Flutter 自带的 Draggable / DragTarget，不加依赖。叠在 fix/demo-lane-drag 的 resolveCardDrop 之上做。"
+ },
+ {
+  "id": "rail-drag-assets",
+  "board": "ImportSearch",
+  "title": "左栏素材格拖进画布：落空白建导入式产物节点（同画布指向同一文件、跨画布先复制），落配置节点弹「当参考 / 替换首帧 / 当尾帧」菜单",
+  "files": [
+   "lib/features/canvas/widgets/left_rail/assets_panel.dart (Draggable tiles)",
+   "lib/features/canvas/widgets/left_rail/assets_model.dart",
+   "lib/features/canvas/util/asset_drop_model.dart (new, pure: legal items by supportsFirstFrame/LastFrame, video asset → none → blank, 替换首帧 label, disabled reason)",
+   "lib/features/canvas/widgets/create_node_menu.dart (CanvasMenuKind.assetDrop panel with disabled reasons)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (dropAssetOnBlank / dropAssetOnConfig; replace first frame = old edge delete + new edge in one UoW + undo toast)",
+   "lib/features/canvas/providers/canvas_edges_controller.dart (replaceRoleEdge)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/asset_drop_model_test.dart (new)",
+   "test/features/canvas/widgets/assets_drag_to_canvas_test.dart (new)"
+  ],
+  "infra": [
+   "stage-drop-target",
+   "media-import-service"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "按 Q2 A 做：跨画布的素材复制进本画布的 imports/。「替换首帧」可以一次撤销，用现有 toast 动作来做（恢复旧边）；undo-stack 落地之后再接进去，不阻塞。canvas_tool_actions.dart 是多片都要改的热点文件，要串行合入。"
+ },
+ {
+  "id": "rail-drag-characters",
+  "board": "ImportSearch",
+  "title": "角色行拖到图像 / 视频配置：直接追加进 character_ids，超配额按 ref_image_budget 点名",
+  "files": [
+   "lib/features/canvas/widgets/character_library_panel.dart (Draggable rows)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (attachCharacterToConfig)",
+   "lib/features/canvas/util/ref_image_budget.dart (reuse; maybe expose over-budget naming helper)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/widgets/character_drag_to_config_test.dart (new)"
+  ],
+  "infra": [
+   "stage-drop-target"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "写入走检查器角色区同一条 type_config 写入链。挂上之后照 CharactersSection 的做法定点 invalidate characterUsage。"
+ },
+ {
+  "id": "mention-token-core",
+  "board": "ImportSearch",
+  "title": "@{角色 id} 记号纯函数层：解析 / 发出时换成角色名 / 剥成纯文字 / 按角色表改写；生成与项目包导入接上",
+  "files": [
+   "lib/core/text/character_mention.dart (new: parse, expandToNames, stripToNames, rewriteIds, dropUnmapped)",
+   "lib/features/generation/generation_controller.dart (expand tokens to names in user prompt; deleted characters removed)",
+   "lib/services/import/import_remapper.dart (rewrite prompt tokens via characterMap; unmapped → '@名字' or delete, and drop from character_ids)",
+   "docs/CLAUDE.md (new lib/core/text/ dir)",
+   "test/core/text/character_mention_test.dart (new)",
+   "test/services/import/import_remapper_test.dart",
+   "test/features/generation/generation_controller_mention_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "blockedOnDecision": [
+   "ImportSearch-3"
+  ],
+  "notes": "这里定下的是提示词里持久化的文字格式，所以等 Q3 定了再做。选 C（纯文字）的话这一片几乎不用做。放在 core 里，是因为 services/import 不能反向 import features。模板插入（template-core）和 UndoClipboard 的跨项目粘贴都会复用这里的 strip / rewrite。"
+ },
+ {
+  "id": "prompt-bar-mention-ui",
+  "board": "ImportSearch",
+  "title": "提示词条里 @角色：输入 @ 弹出候选（已挂载的排前、打字筛选），插入成胶囊标签同时挂载，退格整块删，角色被删时标签变灰",
+  "files": [
+   "lib/features/canvas/widgets/canvas_prompt_bar.dart",
+   "lib/features/canvas/widgets/mention_text_controller.dart (new: TextEditingController.buildTextSpan chips, atomic backspace)",
+   "lib/features/canvas/widgets/mention_popover.dart (new: OverlayPortal, ↑↓ / ↵ / Tab / Esc, 从图片新建角色…)",
+   "lib/features/canvas/util/mention_candidates.dart (new, pure filter + mounted-first sort)",
+   "lib/features/canvas/providers/inspector_submit_controller.dart (insert = prompt + character_ids appended in one write)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/mention_candidates_test.dart (new)",
+   "test/features/canvas/widgets/prompt_bar_mention_test.dart (new)"
+  ],
+  "infra": [
+   "mention-token-core"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "画板写的是「提示词条和检查器的提示词框都有」，但 main 上检查器只读 promptText，提示词条是唯一能编辑提示词的地方，所以只做提示词条。按 Q3 A：删掉标签不卸载角色。Esc 优先级：菜单 > @ 弹层 > 查找条。"
+ },
+ {
+  "id": "canvas-find-bar",
+  "board": "ImportSearch",
+  "title": "画布内查找 Ctrl/⌘ F：浮在工具条下方，搜本画布已加载节点，↵ / Shift ↵ 循环跳转，命中描边、其余降到 35%",
+  "files": [
+   "lib/features/canvas/util/canvas_find_model.dart (new, pure: match label / prompt / text / shot_notes / original_name, ordered by position)",
+   "lib/features/canvas/providers/canvas_find_controller.dart (new, autoDispose per canvas: query, hits, current index)",
+   "lib/features/canvas/widgets/canvas_find_bar.dart (new)",
+   "lib/features/canvas/widgets/canvas_screen.dart (Positioned under toolbar)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Ctrl/⌘ F, takes over even while editing text; Esc layer)",
+   "lib/features/canvas/widgets/canvas_view.dart (_NodeCardSlot dim / highlight)",
+   "lib/features/canvas/widgets/node_card.dart (match outline: faint amber vs solid current)",
+   "lib/features/canvas/util/viewport_focus.dart (reuse for centering)",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/canvas_find_model_test.dart (new)",
+   "test/features/canvas/widgets/canvas_find_bar_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "不读库，只搜 canvasNodesController 里已经加载的节点。导入文件名要等 media-import-service 落地后才有，没有时就是空，不算依赖。KeyMap 板的 Esc 次序要遵守：@ 弹层 > 查找条 > 框选进行中 > 工具锁 > 清空选中。关闭后选中停在当前项。"
+ },
+ {
+  "id": "canvas-minimap",
+  "board": "ImportSearch",
+  "title": "小地图：M 或缩放条末格开合（全局记在 preferences.json），画泳道色带、节点小块和视口框，点击跳转、拖框平移",
+  "files": [
+   "lib/features/canvas/widgets/canvas_minimap.dart (new)",
+   "lib/features/canvas/util/minimap_geometry.dart (new, pure: world bounds → minimap rect, click → viewport translate)",
+   "lib/features/canvas/providers/minimap_visible.dart (new)",
+   "lib/features/canvas/widgets/canvas_zoom_bar.dart (末格 toggle)",
+   "lib/features/canvas/widgets/canvas_screen.dart (Positioned above zoom bar, same width)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (M)",
+   "lib/core/models/app_preferences.dart (minimap_visible)",
+   "lib/services/file_preferences_service.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/minimap_geometry_test.dart (new)",
+   "test/features/canvas/widgets/canvas_minimap_test.dart (new)",
+   "test/services/file_preferences_service_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "默认收起。滚轮不缩放。空画布不显示。「查找条开着时让位」要读 canvas_find_controller；查找条后合入的话，由那一片补上这个判断。现有的提示词条避让不用改。"
+ },
+ {
+  "id": "back-to-content-chip",
+  "board": "ImportSearch",
+  "title": "「回到内容」胶囊：有节点但视口里一个都看不到、平移停下 300ms 后出现，点击 = 适应全部（同 Shift 1）",
+  "files": [
+   "lib/features/canvas/widgets/back_to_content_chip.dart (new)",
+   "lib/features/canvas/util/viewport_fit.dart (anyNodeVisible using nodeStageRect)",
+   "lib/features/canvas/widgets/canvas_screen.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/viewport_fit_test.dart",
+   "test/features/canvas/widgets/back_to_content_chip_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "直接复用 fitAllNodes（canvas_tool_actions）。空画布不出（那里是空画布引导）。和 canvas-minimap、canvas-find-bar 都改 canvas_screen.dart，要串行合入。"
+ },
+ {
+  "id": "note-variant",
+  "board": "ImportSearch",
+  "title": "便签 N：text 节点 type_config.variant = note，三种底色、没有端口、不进提示词和大纲、查找能搜到",
+  "files": [
+   "lib/features/canvas/models/canvas_node.dart (isNote / noteTint getters)",
+   "lib/features/canvas/util/create_menu_model.dart (CreateMenuAction.note in kPlainCreateActions)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (CanvasToolKeys.note = N)",
+   "lib/features/canvas/widgets/canvas_toolbar.dart (便签 button)",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/widgets/node_card.dart (note body + tint, no ports)",
+   "lib/features/canvas/widgets/canvas_view.dart (reject port drag / link to notes)",
+   "lib/features/canvas/widgets/text_node_inspector.dart (tint picker; reuse body field)",
+   "lib/theme/tokens.dart (three note tint tokens)",
+   "lib/features/canvas/util/outline_model.dart (exclude notes)",
+   "lib/features/generation/generation_controller.dart (_resolveAssociatedTexts skips notes)",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/create_menu_model_test.dart",
+   "test/features/canvas/widgets/note_node_test.dart (new)",
+   "test/features/canvas/util/outline_model_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "按 Q5 A 做，不迁移。依赖 fix/demo-inspectors 的 text_node_inspector.dart（视为已合入）。GapsCanvas 板的便签字号 / 标题样式（note_style）和 ShellExport 的「新建节点 › 便签」都建立在这一片之上。"
+ },
+ {
+  "id": "text-inline-edit",
+  "board": "ImportSearch",
+  "title": "双击文本 / 便签卡就地编辑：与检查器正文框走同一条防抖写入链，编辑时检查器只读跟随",
+  "files": [
+   "lib/features/canvas/widgets/node_inline_text_editor.dart (new)",
+   "lib/features/canvas/providers/inline_edit_node.dart (new: which node is in-place editing)",
+   "lib/features/canvas/widgets/node_card.dart",
+   "lib/features/canvas/widgets/canvas_view.dart (double-click on text / note card → edit)",
+   "lib/features/canvas/widgets/text_node_inspector.dart (read-only follow while inline editing)",
+   "lib/features/canvas/providers/inspector_submit_controller.dart (focus-loss flush + canvas reload)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (single keys / Esc yield while editing)",
+   "test/features/canvas/widgets/text_inline_edit_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "正文只有 type_config.text 一个键。F1 已经由检查器正文框修好，这里只是快捷入口。便签不落地也能单独做（只管文本节点）；note-variant 合入后便签自动适用。"
+ },
+ {
+  "id": "tool-lock",
+  "board": "ImportSearch",
+  "title": "工具锁：Q 或双击工具按钮锁定建节点工具，进入点放模式（每点一次空白建一个），V / Esc / 换工具解锁",
+  "files": [
+   "lib/features/canvas/providers/canvas_tool_mode.dart (lockedCreateType)",
+   "lib/features/canvas/widgets/canvas_toolbar.dart (double-click to lock, pin badge, 「已锁定 · Q 解锁」 chip)",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart (Q; V / Esc unlock)",
+   "lib/features/canvas/widgets/canvas_view.dart (_BlankPointerDetector: click places node at point)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (addNodeFromMenu with anchor)",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/widgets/canvas_tool_lock_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "blockedOnDecision": [
+   "ImportSearch-4"
+  ],
+  "notes": "排在 P2，Q4 问的是做不做，所以要等定。连线 L 本来就是模式，不参与。便签在锁定列表里，只有 note-variant 合入后才出现。"
+ },
+ {
+  "id": "duration-label-util",
+  "board": "RailScript",
+  "title": "统一时长格式（不满 60 秒「N 秒」、满 60 秒 m:ss、估算加 ~）+ 按字数估时长（中文 4 字/秒、英文 2.5 词/秒、最少 2 秒）",
+  "files": [
+   "lib/l10n/duration_format.dart (new: formatDurationLabel(l10n, ms, {estimated}))",
+   "lib/features/storyboard/util/duration_estimate.dart (new, pure)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/l10n/duration_format_test.dart (new)",
+   "test/features/storyboard/util/duration_estimate_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "共享基础件：剧本面板、导入对话框（GapsPanels #7）和产物检查器修正 ②（galleryFormatDuration → 统一格式）都会用。"
+ },
+ {
+  "id": "script-tables",
+  "board": "RailScript",
+  "title": "新表 script_documents + script_paragraphs（含 node_id）：前向迁移、仓储、UoW scope，项目包导出 / 导入白名单与 import_remapper 同步",
+  "files": [
+   "lib/storage/schema/schema_v9.dart (new; number assigned at merge time)",
+   "lib/storage/migrations/app_migrations.dart",
+   "lib/core/db/columns.dart (ScriptDocumentCol / ScriptParagraphCol)",
+   "lib/core/interfaces/script_repository.dart (new)",
+   "lib/storage/repositories/postgres_script_repository.dart (new)",
+   "lib/core/di/repositories.dart",
+   "lib/core/interfaces/unit_of_work.dart (scope.scripts)",
+   "lib/storage/postgres_unit_of_work.dart",
+   "lib/core/interfaces/project_archive_reader.dart",
+   "lib/storage/repositories/postgres_project_archive_reader.dart",
+   "lib/services/project_archive_service.dart",
+   "lib/core/models/import_plan_data.dart",
+   "lib/services/import/import_remapper.dart (document canvas_id + paragraph node_id remap)",
+   "lib/storage/repositories/postgres_project_import_writer.dart",
+   "test/storage/postgres_script_repository_test.dart (new)",
+   "test/storage/schema_migration_test.dart",
+   "test/services/import/import_remapper_test.dart",
+   "test/quality/import_schema_sync_test.dart",
+   "test/services/project_roundtrip_integration_test.dart"
+  ],
+  "infra": [],
+  "size": "L",
+  "userValue": "high",
+  "migration": true,
+  "notes": "按画布建：script_documents.canvas_id 外键 ON DELETE CASCADE；script_paragraphs 存 document_id、sort_order、source_text、node_id（可空，外键 ON DELETE SET NULL；节点是软删，「已删」看 nodes.deleted_at），另加 deleted_at。建议在 script_documents 上顺手放一个 character_candidates JSONB（R1 B 的候选 / 忽略状态），免得以后再加一条迁移。迁移号要连续：ShellExport 的 export_records、GapsPanels 的 characters.kind、my-templates-table 都要占号，合入时按顺序分配。"
+ },
+ {
+  "id": "script-import-writes-paragraphs",
+  "board": "RailScript",
+  "title": "剧本导入 / 追加时同一事务写段落并关联新镜头，新镜接到链尾，估算时长写进新建镜头的 duration_ms",
+  "files": [
+   "lib/features/storyboard/providers/script_import_controller.dart (same UoW: document + paragraphs with node_id; append after chain tail; duration_ms for new shots)",
+   "lib/features/storyboard/util/script_splitter.dart (ShotDraft keeps source paragraph text)",
+   "lib/features/storyboard/widgets/script_import_dialog.dart (append mode; 「把估算时长写进镜头」 default on)",
+   "lib/features/canvas/util/narrative_order.dart (reuse chain tail lookup)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/storyboard/providers/script_import_controller_test.dart",
+   "test/features/storyboard/widgets/script_import_dialog_test.dart"
+  ],
+  "infra": [
+   "script-tables",
+   "duration-label-util"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "按 R3 B：只写新建的镜。GapsPanels #7 也在重画 script_import_dialog.dart（角色 chip、「创建 N 个镜头」），要串行合入，或者干脆并成一个 PR。现在新链是从 origin 往 x 方向排开的，要改成接在现有链尾后面。"
+ },
+ {
+  "id": "rail-script-panel",
+  "board": "RailScript",
+  "title": "左栏剧本页（P1）：原文逐段对到镜头，显示镜号 / 已生成 / 生成中 / 已删 / 备注已改 / 时长，点段定位，画布选中时段跟着高亮，右键菜单",
+  "files": [
+   "lib/features/canvas/providers/left_rail_state.dart (LeftRailPage.script)",
+   "lib/features/canvas/widgets/left_rail/canvas_left_rail.dart (剧本 key)",
+   "lib/features/canvas/widgets/left_rail/left_rail_panel.dart",
+   "lib/features/canvas/widgets/left_rail/script_panel.dart (new)",
+   "lib/features/canvas/widgets/left_rail/script_model.dart (new, pure: rows, shot numbers via outline_model.sequenceShotNumbers, status, notes-edited, real / estimated duration, footer totals)",
+   "lib/features/canvas/providers/script_document_provider.dart (new)",
+   "lib/features/canvas/widgets/left_rail/left_rail_actions.dart (reuse focusNodeOnCanvas)",
+   "lib/features/canvas/widgets/shot_config_inspector.dart (extract 用本镜备注生成 into a shared action)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (generateImageFromShotNotes)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/widgets/left_rail/script_model_test.dart (new)",
+   "test/features/canvas/widgets/left_rail/script_panel_test.dart (new)",
+   "test/features/canvas/providers/left_rail_state_test.dart"
+  ],
+  "infra": [
+   "script-tables",
+   "script-import-writes-paragraphs",
+   "duration-label-util"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "按 R4 A，原文只读。右键菜单「定位 · 用本镜备注生成 · 复制原文」走 CanvasMenuPanel；复制原文用 Flutter 自带的 Clipboard，不用新依赖。空态的「导入剧本…」打开现有对话框。rail-templates-page 也要改 left_rail_state / canvas_left_rail / left_rail_panel，要排在这一片之后。"
+ },
+ {
+  "id": "script-panel-repair-actions",
+  "board": "RailScript",
+  "title": "剧本面板补全动作：「重建这一镜」、「用镜头备注拼出剧本」、头部「追加…」",
+  "files": [
+   "lib/features/storyboard/providers/script_document_controller.dart (new: rebuild shot at chain position + relink paragraph node_id; build document from chain shot_notes)",
+   "lib/core/interfaces/script_repository.dart",
+   "lib/storage/repositories/postgres_script_repository.dart",
+   "lib/features/canvas/widgets/left_rail/script_panel.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/storyboard/providers/script_document_controller_test.dart (new)"
+  ],
+  "infra": [
+   "rail-script-panel"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "重建出来的镜要插回原来那一段在叙事链里的位置（前后都接上），在一个事务里完成。"
+ },
+ {
+  "id": "script-characters-row",
+  "board": "RailScript",
+  "title": "剧本面板「剧中角色」：匹配已有角色名显示实心 chip，虚线候选可新建 / 关联 / 忽略，原文划选「设为角色」",
+  "files": [
+   "lib/features/storyboard/util/script_character_match.dart (new, pure: name matching over paragraphs, counts)",
+   "lib/features/canvas/widgets/left_rail/script_panel.dart (chips row + selectable text context action)",
+   "lib/features/storyboard/providers/script_document_controller.dart (candidate / ignore persistence in character_candidates)",
+   "lib/features/canvas/providers/characters_controller.dart (create from candidate)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/storyboard/util/script_character_match_test.dart (new)"
+  ],
+  "infra": [
+   "rail-script-panel",
+   "script-tables"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "按 R1 B，零 LLM。GapsPanels #7 的导入对话框也要识别角色，应该共用 script_character_match.dart，别写第二套。"
+ },
+ {
+  "id": "script-reimport-diff",
+  "board": "RailScript",
+  "title": "重新导入剧本时逐段比对：同段沿用原镜，新段建镜，删掉的段标出来，不删镜头也不丢对应",
+  "files": [
+   "lib/features/storyboard/util/script_diff.dart (new, pure paragraph alignment)",
+   "lib/features/storyboard/providers/script_import_controller.dart",
+   "lib/features/storyboard/widgets/script_import_dialog.dart (re-import preview)",
+   "lib/core/interfaces/script_repository.dart",
+   "lib/storage/repositories/postgres_script_repository.dart",
+   "lib/features/canvas/widgets/left_rail/script_panel.dart (removed-paragraph marks)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/storyboard/util/script_diff_test.dart (new)",
+   "test/features/storyboard/providers/script_import_controller_test.dart"
+  ],
+  "infra": [
+   "script-import-writes-paragraphs",
+   "rail-script-panel"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "blockedOnDecision": [
+   "RailScript-R2"
+  ],
+  "notes": "如果 R2 选 A（只许追加），这一片就整片取消。"
+ },
+ {
+  "id": "help-actions-menu",
+  "board": "RailScript",
+  "title": "帮助弹出菜单与共享动作表：新手引导 · 示例项目 | 版本说明 · 反馈 · 手册 | 诊断包 · 日志目录 | 检查更新 · 关于，同时进 ⌘K",
+  "files": [
+   "lib/features/help/help_actions.dart (new: ordered HelpAction list with enabled / reason; shared with ShellExport menu bar)",
+   "lib/features/canvas/widgets/left_rail/help_menu_popover.dart (new: anchored right of key, Esc / outside → focus back to key)",
+   "lib/features/canvas/widgets/left_rail/canvas_left_rail.dart (帮助 action key + amber update dot)",
+   "lib/features/command_palette/command_actions.dart",
+   "lib/features/settings/widgets/diagnostics_section.dart (extract export-bundle / open-log-dir into shared functions)",
+   "lib/features/startup/widgets/startup_error_view.dart (use shared open-log-dir)",
+   "lib/services/github_update_check_service.dart (expose repo slug for releases / issues URLs)",
+   "lib/features/settings/providers/update_check_controller.dart (hasUpdate selector)",
+   "lib/features/settings/providers/settings_page.dart (open at about)",
+   "docs/CLAUDE.md (new lib/features/help/)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/help/help_actions_test.dart (new)",
+   "test/features/canvas/widgets/left_rail/help_menu_popover_test.dart (new)"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "按 R8 A。用户手册没有 URL，就灰着或者不画。新手引导调 showOnboardingDialog，不改 onboardingCompleted；示例项目调 createStudioSampleProject。ShellExport 的菜单栏「帮助」= 快捷键 + help_actions，排在这一片之后。不动 LeftRailState。"
+ },
+ {
+  "id": "template-core",
+  "board": "RailScript",
+  "title": "模板核心：画布 / 选中 → 模板骨架（不含产物、媒体、角色），插入时换新 UUID、移到视口中心、单事务；内置模板与短剧示例共用一套建法",
+  "files": [
+   "lib/features/templates/models/canvas_template.dart (new, hand-written payload + counts)",
+   "lib/features/templates/util/template_capture.dart (new, pure: nodes / narrative + data edges / lanes / base style; strip results, media, character_ids; @{id} → names; gen_inputs remap / drop)",
+   "lib/features/templates/util/template_remap.dart (new, pure: new UUIDs + offset to viewport center)",
+   "lib/features/templates/providers/template_insert_controller.dart (new: single UoW insert, select all inserted, undo toast via soft delete)",
+   "lib/features/templates/builtin_templates.dart (new: 三幕短片 / 单镜试拍 / 短剧示例)",
+   "lib/features/canvas/providers/canvas_bootstrap_controller.dart (extract shared chain builder)",
+   "docs/CLAUDE.md (new lib/features/templates/)",
+   "test/features/templates/util/template_capture_test.dart (new)",
+   "test/features/templates/util/template_remap_test.dart (new)",
+   "test/features/templates/providers/template_insert_controller_test.dart (new)"
+  ],
+  "infra": [
+   "mention-token-core"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "排在 P2。按 R6 A，不带图。gen_inputs 来自 TakesCost 板，main 上可能还没有；没有就跳过那一步改写。mention-token-core 没落地的话，提示词里也不会有记号，这一项退化成空操作，算软依赖。"
+ },
+ {
+  "id": "rail-templates-page",
+  "board": "RailScript",
+  "title": "左栏模板页（内置）：缩略示意卡，悬停展开「插入当前画布 / 用它新建画布」；Tab 新建菜单和「更多」加「从模板插入…」",
+  "files": [
+   "lib/features/canvas/providers/left_rail_state.dart (LeftRailPage.templates)",
+   "lib/features/canvas/widgets/left_rail/canvas_left_rail.dart",
+   "lib/features/canvas/widgets/left_rail/left_rail_panel.dart",
+   "lib/features/canvas/widgets/left_rail/templates_panel.dart (new)",
+   "lib/features/templates/widgets/template_thumbnail_painter.dart (new: draws from node positions, no screenshots)",
+   "lib/features/canvas/util/create_menu_model.dart (从模板插入…)",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "lib/features/canvas/widgets/canvas_toolbar.dart (更多 item)",
+   "lib/features/studio/open_canvas.dart (用它新建画布 = create canvas + insert + open)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/widgets/left_rail/templates_panel_test.dart (new)"
+  ],
+  "infra": [
+   "template-core"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "只做「内置」一栏；「我的」等 my-templates-table。改的左栏文件和 rail-script-panel 相同，要排在它之后。「更多」菜单的重排归 ShellExport 那一片。"
+ },
+ {
+  "id": "my-templates-table",
+  "board": "RailScript",
+  "title": "「我的模板」：新表 canvas_templates（应用级）+ 存为模板… + 右键改名 / 软删带撤销 + 空态",
+  "files": [
+   "lib/storage/schema/schema_v10.dart (new; number assigned at merge time)",
+   "lib/storage/migrations/app_migrations.dart",
+   "lib/core/db/columns.dart (CanvasTemplateCol)",
+   "lib/core/interfaces/canvas_template_repository.dart (new)",
+   "lib/storage/repositories/postgres_canvas_template_repository.dart (new)",
+   "lib/core/di/repositories.dart",
+   "lib/features/templates/providers/my_templates_controller.dart (new)",
+   "lib/features/canvas/widgets/left_rail/templates_panel.dart (我的 tab, 存为模板… via InkNameDialog, context menu)",
+   "test/quality/import_schema_sync_test.dart (explicitly exclude app-level table)",
+   "test/storage/postgres_canvas_template_repository_test.dart (new)",
+   "test/features/templates/providers/my_templates_controller_test.dart (new)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*"
+  ],
+  "infra": [
+   "rail-templates-page",
+   "template-core"
+  ],
+  "size": "L",
+  "userValue": "low",
+  "migration": true,
+  "blockedOnDecision": [
+   "RailScript-R5"
+  ],
+  "notes": "表的形状由 R5 决定：选 A 就是应用级，不带 project_id，也不进项目包；选 B 要加 project_id、改项目包白名单和 remapper；选 C 根本不用迁移。所以要等 R5 定了再做。payload JSONB，另存计数列。"
+ },
+ {
+  "id": "node-library-section",
+  "board": "RailScript",
+  "title": "节点库（模板页顶部）：六项「图像配置 · 视频配置 · 文本 · 镜头 · 便签 · 泳道」，搜索过滤，点击走 addNodeFromMenu",
+  "files": [
+   "lib/features/canvas/widgets/left_rail/node_library_section.dart (new)",
+   "lib/features/canvas/util/node_library_model.dart (new, pure: items from kPlainCreateActions + lane, key labels from CanvasToolKeys, filter)",
+   "lib/features/canvas/widgets/left_rail/templates_panel.dart (host at top)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (lane: no selection → addLaneViaDialog; with selection → wrap like Ctrl G)",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/features/canvas/util/node_library_model_test.dart (new)"
+  ],
+  "infra": [
+   "rail-templates-page",
+   "note-variant"
+  ],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "按 R7 B，不加导航键；R7 改选 A 才加 LeftRailPage.nodeLibrary。「有选中时包成泳道」用的是 Selection 板的 Ctrl G 实现；它还没落地时，这一项只开对话框。类型统一叫「镜头」。"
+ },
+ {
+  "id": "node-library-drag-recents",
+  "board": "RailScript",
+  "title": "节点库拖进画布（落在松手点、泳道归属照 resolveLaneDrop）+「最近用过 · 本项目」（拖出 = 建预填的配置节点）+ 提示词预设组（拖到配置节点 = 套用）",
+  "files": [
+   "lib/features/canvas/widgets/left_rail/node_library_section.dart (Draggable items + recents + presets groups)",
+   "lib/core/interfaces/job_repository.dart (listRecentGenerationParams)",
+   "lib/storage/repositories/postgres_job_repository.dart (dedupe provider_id + aspect / duration / resolution, latest 5 per project)",
+   "lib/features/canvas/providers/recent_generation_params.dart (new)",
+   "lib/features/canvas/models/canvas_drag_payload.dart (nodeLibraryItem / recentParams / promptPreset kinds)",
+   "lib/features/canvas/util/canvas_tool_actions.dart (create prefilled config at drop point; lane drag-out → dialog at drop point)",
+   "lib/features/canvas/widgets/image_config_inspector.dart (extract apply-preset write for reuse)",
+   "lib/features/canvas/providers/prompt_presets_controller.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/*",
+   "test/storage/postgres_job_repository_recent_params_test.dart (new)",
+   "test/features/canvas/widgets/left_rail/node_library_drag_test.dart (new)"
+  ],
+  "infra": [
+   "stage-drop-target",
+   "node-library-section"
+  ],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "没有 Key 的预设照样列出来并标出，提交时由现有的生成闸（generate_gate）拦。查询走现有的 jobs_canvas_created_idx，不用新索引。"
+ },
+ {
+  "id": "app-action-table",
+  "board": "ShellExport",
+  "title": "共用动作表：id · 文案 · 键位 · 可用判据 · 执行，菜单栏 / ⌘K / 快捷键页都从这里取",
+  "files": [
+   "lib/features/app_actions/app_action.dart",
+   "lib/features/app_actions/app_action_catalog.dart",
+   "lib/features/app_actions/app_action_ids.dart",
+   "lib/features/command_palette/command_actions.dart",
+   "lib/features/command_palette/palette_search.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/app_actions/app_action_catalog_test.dart",
+   "test/features/command_palette/command_actions_test.dart"
+  ],
+  "infra": [],
+  "size": "L",
+  "userValue": "low",
+  "migration": false,
+  "notes": "基础设施。AppAction = id + ARB 文案 + 每个平台一个主键（取自 kCanvasShortcuts / CanvasToolKeys / kCommandPaletteActivators，再用 formatShortcutActivator 显示，不另抄一份）+ isEnabled(ref) 与 disabledReason（菜单项「灰着、悬停写原因」靠它）+ run(context, ref)。动作执行体复用 canvas_tool_actions.dart 里已有的函数和 node_menu_model 的判据，只改调用方，不搬函数体。command_actions.dart 现在写死了 ≤6 个动作，改成从这张表里按上下文过滤。还没落地的第二批动作（撤销、复制粘贴、查找、导入媒体、便签、包成泳道）在表里登记成禁用，原因写「即将推出」，各自的切片上线时只改 isEnabled。这一片不碰任何右键菜单的界面；ContextMenus 那几片要接这张表时再各自接。"
+ },
+ {
+  "id": "ink-menu-panel",
+  "board": "ShellExport",
+  "title": "把 CanvasMenuPanel（行 / 分隔线 / 子菜单 / 键盘导航）搬到 theme 层，作为通用 InkMenuPanel",
+  "files": [
+   "lib/theme/components/ink_menu_panel.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "test/theme/components/ink_menu_panel_test.dart",
+   "test/quality/no_reverse_layer_import_test.dart",
+   "test/quality/no_dead_theme_component_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "基础设施，以搬移为主：create_node_menu.dart 第 864–1560 行的 CanvasMenuEntry、_CanvasMenuTapGroup、CanvasMenuPanel、_MenuFrame、_MenuRow、_MenuSeparator、_MenuEmptyRow 都要搬。搬过去以后 theme 层不能再引用画布的类型（有 no_reverse_layer_import 测试守着）。create_node_menu.dart 是热点文件，ContextMenus 的几片也会改它，所以这一片要最先合，或者先跟它们约好合入顺序。菜单栏下拉要复用 ↑↓ / ↵ / Esc、置灰时上下键跳过、打勾、子菜单这一整套。"
+ },
+ {
+  "id": "help-actions",
+  "board": "ShellExport",
+  "title": "帮助动作组（与左栏帮助弹层共用）：快捷键 · 新手引导 · 示例 · 诊断包 · 日志目录 · 检查更新 · 关于",
+  "files": [
+   "lib/features/app_actions/help_actions.dart",
+   "lib/features/settings/providers/update_check_controller.dart",
+   "lib/features/settings/providers/settings_page.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/app_actions/help_actions_test.dart"
+  ],
+  "infra": [
+   "app-action-table"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "RailScript 的帮助弹层可能也会自己定义这组动作，派工前先去重，只留一份。「快捷键」和「关于」两项用 settingsPageProvider 加 openOverlay(settings) 直接跳到对应的设置页。「检查更新」与关于页共用 UpdateCheckController 的结果：有新版本时这一项的文案换成「有新版本 x.y.z · 下载」，同时给左栏的帮助键挂琥珀点。版本说明、反馈、手册三项还没有 URL，先灰着。「打开日志目录」复用 ARB 的 settingsOpenLogDir，原来叫「打开日志文件夹」的地方一并改名。"
+ },
+ {
+  "id": "win-menubar",
+  "board": "ShellExport",
+  "title": "Windows 自绘菜单栏：文件 / 编辑 / 画布 / 节点 / 窗口 / 帮助真能点，含子菜单和键盘导航",
+  "files": [
+   "lib/theme/components/ink_window_chrome.dart",
+   "lib/theme/components/ink_menu_bar.dart",
+   "lib/features/shell/widgets/shell_chrome.dart",
+   "lib/features/shell/widgets/shell_menu_bar.dart",
+   "lib/features/shell/widgets/shell_task_capsule.dart",
+   "lib/features/shell/providers/task_popover_open.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/shell/shell_menu_bar_test.dart",
+   "test/features/shell/shell_window_chrome_test.dart",
+   "test/quality/no_dead_interactive_test.dart"
+  ],
+  "infra": [
+   "app-action-table",
+   "ink-menu-panel",
+   "help-actions"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "现在 shell_chrome.dart 里的 _MenuLabels 只是几段文字，而且放在 DragToMoveArea 里面，单击会被双击判定拖住 300ms。所以 InkWindowChrome 要加一个在拖拽区之外的 menus 槽位。交互：点标签打开，开着时把指针划到相邻标签直接换开，←→ / ↑↓ / ↵ / Esc 可用。菜单按全局 Esc 顺序最先关。子菜单两个：画布 › 新建节点（图像配置 I · 视频配置 G · 文本 T · 镜头 · 便签 N 灰着 · 泳道… F）和画布 › 缩放。画布、节点两组只在画布标签下可用；节点菜单作用于当前选中集，判据走 node_menu_model。窗口 › 任务 要从外面打开状态栏的任务弹层，所以 shell_task_capsule 原来的局部 OverlayPortalController 要提成 provider。这一片的帮助菜单 = help-actions 加「快捷键」。macOS 不画这一栏（见 mac-platform-menubar）。"
+ },
+ {
+  "id": "lone-alt-menubar",
+  "board": "ShellExport",
+  "title": "Windows 单独按下再松开 Alt 聚焦菜单栏（不做 Alt+字母助记键，不和画布的 Alt 组合键冲突）",
+  "files": [
+   "lib/features/shell/util/lone_alt_detector.dart",
+   "lib/features/shell/widgets/shell_menu_bar.dart",
+   "lib/theme/components/ink_menu_bar.dart",
+   "windows/runner/flutter_window.cpp",
+   "test/features/shell/util/lone_alt_detector_test.dart",
+   "test/features/shell/shell_menu_bar_alt_test.dart"
+  ],
+  "infra": [
+   "win-menubar"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "状态机写成纯函数：Alt 按下记一个标记，之后有任何别的键、指针按下或滚轮就作废，窗口失焦清标记，带 Ctrl 的 AltGr 不算。松开 Alt 时标记还在才聚焦「文件」，只聚焦、不展开。经 HardwareKeyboard.addHandler 加 GestureBinding 的指针路由接进来。Alt A/D/W/S/H/V（对齐）、Alt+拖（切线）都归画布，Alt F4 不动。要实测一件事：单独按 Alt 时 Windows 会不会给无边框窗口发 SC_KEYMENU（会响一声或弹出系统菜单）。如果会，就在 flutter_window.cpp 里吞掉这条消息。"
+ },
+ {
+  "id": "mac-platform-menubar",
+  "board": "ShellExport",
+  "title": "macOS 系统菜单栏 PlatformMenuBar：同一张动作表，InkFrame 应用菜单放关于 / 设置 / 退出 ⌘Q",
+  "files": [
+   "lib/features/shell/widgets/shell_platform_menu_bar.dart",
+   "lib/features/shell/widgets/ink_shell.dart",
+   "lib/app.dart",
+   "lib/main.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/shell/shell_platform_menu_bar_test.dart"
+  ],
+  "infra": [
+   "app-action-table",
+   "help-actions"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "键位显示用 ⌘ ⌥ ⇧，重做只登记一个 ⇧⌘Z。⌘Q 要走 windowManager.close()，进 main.dart 里的 _TeardownWindowListener 和 app_teardown 的有序退出：先冲掉挂起写入，再停 JobQueue、关连接池、停 PG。不能用默认的 NSApp terminate，那会绕过退出序列。PlatformMenuBar 的项是声明式的，可用状态要在 watch 的时候重建菜单。"
+ },
+ {
+  "id": "shot-node-naming",
+  "board": "ShellExport",
+  "title": "统一叫法：工具条 canvasToolShotNode 从「分镜节点」改成「镜头节点」",
+  "files": [
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/generated/"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "只改 ARB 再重跑 gen-l10n。把所有写着「分镜」的节点类型文案都 grep 一遍（工具条 tooltip、新建菜单、⌘K），统一成图像配置 · 视频配置 · 文本 · 镜头 · 便签 · 泳道这套叫法。RailScript 的节点库也用同一份文案键。"
+ },
+ {
+  "id": "format-elapsed-job-timing",
+  "board": "ShellExport",
+  "title": "耗时：formatElapsed 纯函数加 JobTiming 旁表，任务弹层显示「已用 / 排队 / 用时」",
+  "files": [
+   "lib/features/notifications/util/format_elapsed.dart",
+   "lib/services/job_queue/job_timing.dart",
+   "lib/services/job_queue_service.dart",
+   "lib/core/interfaces/job_queue_service.dart",
+   "lib/core/di/job_queue.dart",
+   "lib/features/shell/widgets/shell_task_popover.dart",
+   "lib/features/notifications/widgets/job_notification_listener.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/notifications/util/format_elapsed_test.dart",
+   "test/services/job_queue/job_timing_test.dart",
+   "test/features/shell/shell_task_popover_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "JobState 是 freezed 生成件，build_runner 用不了，所以不改它。JobQueueService 在入队、写 submitted_at（job_queue_service.dart:257）、写 completed_at（:446）这三处记下时刻，存进 jobId → JobTiming 的旁表；时钟走 core/di/clock.dart，测试里可以注入。formatElapsed 规则：不到 60 秒写「N 秒」，满 60 秒写 m:ss（ARB 带占位符）。进行中 = 现在 − 提交，排队 = 现在 − 入队，终态 = 完成 − 提交（不算排队）。弹层开着时才每秒刷新。完成卡的 meta 加「用时 1:12」。shell_task_popover.dart 头注里「不显示耗时：JobState 没有起止时间」这句一并删掉。system-notifications 判「用时 ≥ 10 秒」读的也是这张表。"
+ },
+ {
+  "id": "system-notifications",
+  "board": "ShellExport",
+  "title": "系统通知：窗口不在前台时，跑了 ≥10 秒的生成 / 导出做完发一条，点了还原窗口并执行主按钮",
+  "files": [
+   "pubspec.yaml",
+   "pubspec.lock",
+   "lib/core/interfaces/system_notification_service.dart",
+   "lib/services/local_notifier_system_notification_service.dart",
+   "lib/services/noop_system_notification_service.dart",
+   "lib/core/di/system_notification.dart",
+   "lib/main.dart",
+   "lib/features/notifications/providers/toast_center.dart",
+   "lib/features/notifications/models/toast_entry.dart",
+   "lib/features/notifications/models/notification_prefs.dart",
+   "lib/core/models/app_preferences.dart",
+   "lib/services/file_preferences_service.dart",
+   "lib/features/settings/widgets/notifications_section.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/notifications/providers/toast_center_system_notify_test.dart",
+   "test/features/settings/notifications_section_test.dart"
+  ],
+  "infra": [
+   "format-elapsed-job-timing"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "newDependency": "local_notifier",
+  "notes": "三个条件同时满足才发：卡片带 chime、窗口不在前台（复用 ToastCenter.setWindowActive）、任务用时 ≥ 10 秒（读 JobTiming）。失败也发。2 秒内接连完成的合成一条。点通知：window_manager 还原窗口并聚焦，再执行卡片的 primary（查看 → 定位节点，导出 → 打开文件夹）。Q1 按建议 A：系统通知静音，提示音只看「提示音」设置。Windows 下 local_notifier 自己会建带 AppUserModelID 的开始菜单快捷方式，要在 zip 版上实测；macOS 首次开启时请求权限，被拒就在开关下写「系统里已关闭」。GapsPanels 的 ToastCategory / 按类型开关那片也改 toast_center.dart 和 notifications_section.dart，两片要串行。"
+ },
+ {
+  "id": "f6-notification-region",
+  "board": "ShellExport",
+  "title": "F6 跳到通知区：键盘处理通知卡，进来时全部停表，Esc / F6 回到进来前的位置",
+  "files": [
+   "lib/features/notifications/widgets/notification_region.dart",
+   "lib/features/notifications/widgets/toast_layer.dart",
+   "lib/theme/components/ink_toast_card.dart",
+   "lib/features/notifications/providers/toast_center.dart",
+   "lib/features/notifications/widgets/notification_bell.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/notifications/notification_region_test.dart"
+  ],
+  "infra": [
+   "system-notifications"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "F6 是应用级快捷键，挂在 ToastLayer 那一层（MaterialApp.builder，在 Navigator 之上），输入框里也有效。进来聚焦最新一张卡，全部停表，和悬停一样（ToastCenter 加 pauseAll / resumeAll）。键位：↑↓ 换卡、↵ 主按钮、Tab 卡内按钮、Del 关掉；「还有 N 条」也算一站，↵ 打开铃铛。没有卡时 F6 直接打开铃铛并聚焦第一条，这需要 notification_bell 暴露一个 openAndFocusFirst。读屏：进来播报「通知，N 条」。它和 system-notifications 都改 toast_center.dart，所以排在它后面；shortcut_catalog 要登记 F6。"
+ },
+ {
+  "id": "export-records-table",
+  "board": "ShellExport",
+  "title": "export_records 表：新增一条前向迁移，加仓储、列常量和手写的不可变模型",
+  "files": [
+   "lib/storage/schema/schema_v9.dart",
+   "lib/storage/migrations/app_migrations.dart",
+   "lib/core/db/columns.dart",
+   "lib/core/interfaces/export_record_repository.dart",
+   "lib/storage/repositories/postgres_export_record_repository.dart",
+   "lib/core/di/repositories.dart",
+   "lib/features/export/models/export_record.dart",
+   "test/core/db/columns_schema_test.dart",
+   "test/quality/import_schema_sync_test.dart",
+   "test/quality/migration_registry_test.dart",
+   "test/storage/repositories/postgres_export_record_repository_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "low",
+  "migration": true,
+  "notes": "基础设施。迁移号按合入顺序取，RailScript 的 script_documents、canvas_templates 等也要新开迁移，schema_v9 只是占位名。列：id、project_id（FK，ON DELETE CASCADE）、canvas_id（可空，ON DELETE SET NULL）、kind（mp4 / delivery / pdf / zip，英文协议字面量）、file_path、shot_count、duration_ms、size_bytes、status、error_code、settings（JSONB 快照，供「重新导出」和一键导出用）、created_at；加 (project_id, created_at) 索引。Q3 按建议 A：一直保留，只有手动「从历史移除」，不清理。CLAUDE.md 要求模型用 freezed，但 build_runner 用不了，这里照 gallery_selection 的做法写手写不可变类。项目包要不要带这张表：建议不带，因为路径只在本机有效，在 import_schema_sync_test 里写明豁免理由。columns_schema_test 的期望表加上这一张。"
+ },
+ {
+  "id": "export-records-recording",
+  "board": "ShellExport",
+  "title": "拼接导出和交付完成或失败时各写一条导出历史（取消不写）",
+  "files": [
+   "lib/features/export/providers/export_history_recorder.dart",
+   "lib/features/export/providers/export_controller.dart",
+   "lib/features/export/providers/delivery_controller.dart",
+   "test/features/export/providers/export_history_recorder_test.dart",
+   "test/features/export/providers/export_controller_test.dart",
+   "test/features/export/providers/delivery_controller_test.dart"
+  ],
+  "infra": [
+   "export-records-table"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "recorder 只是一个薄层：controller 在成功或失败的终态调用它，取消不记。设置快照里放：mp4 的镜头顺序、take 选择和输出名；交付的 DeliverySettings 加目标软件。写库失败只记日志，不能让导出本身也报失败。PDF 和 ZIP 两条路径在各自的切片里调用同一个 recorder。export-in-task-popover 也要改这两个 controller，排在这一片之后。"
+ },
+ {
+  "id": "export-tab-history",
+  "board": "ShellExport",
+  "title": "导出标签重做：「新导出」格子加「导出历史」列表（全部 / 本画布，可打开、复制路径、移除、重新导出、重试）",
+  "files": [
+   "lib/features/shell/widgets/tabs/export_tab.dart",
+   "lib/features/export/widgets/export_new_cards.dart",
+   "lib/features/export/widgets/export_history_list.dart",
+   "lib/features/export/widgets/export_history_row.dart",
+   "lib/features/export/providers/export_history_provider.dart",
+   "lib/features/export/models/delivery_writer_registry.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/shell/tabs/export_tab_test.dart",
+   "test/features/export/widgets/export_history_list_test.dart"
+  ],
+  "infra": [
+   "export-records-table",
+   "export-records-recording"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "「新导出」五格：拼接视频（走 openExportVideoDialogForCanvas 的现有对话框）、交付包（跳到序列标签的交付面板）、分镜 PDF、图片 ZIP、剪映草稿 / FCPXML。剪映和 FCPXML 能不能选只问 DeliveryWriterRegistry，接上写出器当场可选；PDF 和 ZIP 两格在各自切片合入前置灰，原因写清楚。历史行：文件已不在的划掉，只给「重新导出」；失败的给「重试」；右键菜单是打开文件 · 复制路径 · 从历史移除（不删文件），这个菜单用 ink-menu-panel。「重新导出」用行里的设置快照重新走对应的路径。保留现在的禁用 tooltip 判据（hasVideoResult / hasProject）和必须订阅边控制器的那段注释。GapsPanels 的一键导出分体按钮也读 export_records，那片排在这片后面。"
+ },
+ {
+  "id": "delivery-clips-tab",
+  "board": "ShellExport",
+  "title": "交付面板「片段」页签：只读的镜头表（与主按钮同源），点一行播放头跳到那一镜",
+  "files": [
+   "lib/features/export/widgets/delivery_panel.dart",
+   "lib/features/export/widgets/delivery_clips_tab.dart",
+   "lib/features/sequence/providers/sequence_playhead.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/export/widgets/delivery_clips_tab_test.dart"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "delivery_panel.dart 的页签条现在「只画标签不挂内容」，这一片让它真能切换。表的数据取自 deliveryPlanProvider 的镜头表；占位、尺寸不一致取自 deliveryPreflightProvider。点一行调用 sequence_playhead 的 selectShot。不依赖新表，可以先做。delivery-history-tab 也改 delivery_panel.dart，两片串行。"
+ },
+ {
+  "id": "delivery-history-tab",
+  "board": "ShellExport",
+  "title": "交付面板「历史」页签：列出本画布的交付记录，可打开文件夹，并有入口跳到导出标签看全部历史",
+  "files": [
+   "lib/features/export/widgets/delivery_panel.dart",
+   "lib/features/export/widgets/delivery_history_tab.dart",
+   "lib/features/export/providers/export_history_provider.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/export/widgets/delivery_history_tab_test.dart"
+  ],
+  "infra": [
+   "export-records-table",
+   "export-records-recording",
+   "delivery-clips-tab"
+  ],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "数据是 export_records 里 kind = delivery 且 canvas_id 为当前画布的行。结果条仍然只显示最近一次交付的回执。「全部导出历史 →」用 shellController.goTab(ShellTab.export)。export_history_provider 是和 export-tab-history 共用的；如果那片先合，这一片只是引用它。"
+ },
+ {
+  "id": "image-zip-export",
+  "board": "ShellExport",
+  "title": "图片 ZIP 导出：每镜选定的产物加 metadata.json（用现成的 archive 包）",
+  "files": [
+   "lib/core/interfaces/image_zip_export_service.dart",
+   "lib/services/archive_image_zip_export_service.dart",
+   "lib/core/di/video_export.dart",
+   "lib/features/export/util/image_zip_manifest.dart",
+   "lib/features/export/widgets/image_zip_export_dialog.dart",
+   "lib/features/export/widgets/export_new_cards.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/export/util/image_zip_manifest_test.dart",
+   "test/services/archive_image_zip_export_service_test.dart"
+  ],
+  "infra": [
+   "export-tab-history",
+   "export-records-recording"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "镜序用 export_order.dart（叙事链），每镜选哪个 take 用 export_take_selection.dart。metadata.json 的键是英文协议字面量：镜号、文件名、prompt、provider、seed、尺寸。写出时先写 .partial 再改名，不留半个文件。完成后通过 export_history_recorder 记一条 kind = zip，然后点亮「新导出」里的图片 ZIP 那一格。"
+ },
+ {
+  "id": "storyboard-pdf-export",
+  "board": "ShellExport",
+  "title": "分镜 PDF 导出：每页 6 镜（缩略图 · 镜号 · 景别运镜 · 时长 · 提示词摘要），打包中文字体",
+  "files": [
+   "pubspec.yaml",
+   "pubspec.lock",
+   "assets/fonts/NotoSansSC-Regular.otf",
+   "assets/fonts/OFL-NotoSansSC.txt",
+   "lib/core/licenses.dart",
+   "lib/core/interfaces/storyboard_pdf_service.dart",
+   "lib/services/pdf_storyboard_service.dart",
+   "lib/core/di/video_export.dart",
+   "lib/features/export/util/storyboard_pages.dart",
+   "lib/features/export/widgets/storyboard_pdf_dialog.dart",
+   "lib/features/export/widgets/export_new_cards.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/export/util/storyboard_pages_test.dart",
+   "test/services/pdf_storyboard_service_test.dart"
+  ],
+  "infra": [
+   "export-tab-history",
+   "export-records-recording"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "newDependency": "pdf",
+  "blockedOnDecision": [
+   "ShellExport-Q4"
+  ],
+  "notes": "Q4 会让安装包大约多 10 MB，还涉及字体授权，这是发布层面的取舍，所以先等拍板。按建议 A 就打包 Noto Sans SC（OFL），并在 core/licenses.dart 登记。storyboard_pages.dart 是纯函数，只管每页 6 镜的分组和字段。PDF 里的字段名是用户看得到的内容，走 ARB，由对话框按当前语言传进来；景别运镜复用 camera_labels.dart。缩略图复用产物文件，视频取 thumbnail_url。完成后记一条 kind = pdf。"
+ },
+ {
+  "id": "export-in-task-popover",
+  "board": "ShellExport",
+  "title": "导出和交付进任务弹层：作为另一类行，只放内存、不写 jobs 表，可以在弹层里取消",
+  "files": [
+   "lib/features/export/providers/export_task_registry.dart",
+   "lib/features/export/providers/export_controller.dart",
+   "lib/features/export/providers/delivery_controller.dart",
+   "lib/features/shell/widgets/shell_task_popover.dart",
+   "lib/features/shell/widgets/shell_task_capsule.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/export/providers/export_task_registry_test.dart",
+   "test/features/shell/shell_task_popover_test.dart"
+  ],
+  "infra": [
+   "format-elapsed-job-timing",
+   "export-records-recording"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "Q2 按建议 A 做。行里有 kind、进度、已用时间（用 formatElapsed）、取消（mp4 走 ExportCancelToken，交付走 delivery_controller 现有的取消）。胶囊的「生成中 N · 排队 M」要把导出也算进去。shell_task_popover.dart 与 format-elapsed-job-timing、win-menubar（capsule 那部分）冲突，三片串行。"
+ },
+ {
+  "id": "esc-ladder",
+  "board": "KeyMap",
+  "title": "Esc 阶梯：菜单 > @ 弹层 > 查找条 > 输入框失焦 > 进行中的手势 > 工具回到选择 > 清空选中；输入框里按 Esc 不再清空选中",
+  "files": [
+   "lib/features/canvas/util/escape_ladder.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "test/features/canvas/util/escape_ladder_test.dart",
+   "test/features/canvas/widgets/canvas_shortcuts_escape_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "基础设施，这是 KeyMap 自己的。现状 bug：canvas_shortcuts.dart 第 469 行把 CanvasEscapeIntent 绑成普通的 CallbackAction，不对文字让位，在提示词条里按 Esc 会清空选中。改法：第 4 层在 isEditingText 时让主焦点失焦、把焦点还给画布，并消费掉这次按键。escape_ladder.dart 写一个有序的层表，每层是 active() 和 dismiss()；现有的拖线、菜单、平移、连线四个判断并进对应层。@ 弹层、查找条、框选、工具锁四层留出登记口，由 ImportSearch / Selection 各自的切片登记，框选中按 Esc 恢复按下前的选中。对话框、⌘K、设置、任务弹层、铃铛不在阶梯上，它们开着时 Esc 归它们自己。"
+ },
+ {
+  "id": "zoom-reset-100",
+  "board": "KeyMap",
+  "title": "Ctrl 0 / ⌘0 改成「缩放到 100%、保持视口中心」，不再复位到初始相机",
+  "files": [
+   "lib/features/canvas/util/canvas_zoom.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/canvas_zoom_test.dart"
+  ],
+  "infra": [
+   "esc-ladder"
+  ],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "Q5 按建议 B：一件事一个键，不加 Shift 0。新增纯函数 actualSizeTransform(current, viewportSize)，把 scale 设成 1、视口中心对应的世界点不动。_zoomReset 改调它。resetTransform 和 initialCanvasTransform 还有首帧、新画布在用，保留。快捷键页和菜单栏 › 缩放 › 的文案改成「复位 100%」。这片也改 canvas_shortcuts.dart，排在 esc-ladder 之后。"
+ },
+ {
+  "id": "shortcuts-page-v2",
+  "board": "KeyMap",
+  "title": "快捷键页按单键 / 组合键 / 指针 / 弹层内部 / Esc 阶梯分组，每行带范围（画布 / 应用 / 弹层 / 序列）",
+  "files": [
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/features/settings/util/pointer_gesture_catalog.dart",
+   "lib/features/settings/widgets/shortcuts_section.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "lib/features/command_palette/widgets/command_palette_dialog.dart",
+   "lib/features/canvas/widgets/batch_compare_overlay.dart",
+   "lib/features/gallery/widgets/gallery_grid.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/settings/util/shortcut_catalog_test.dart",
+   "test/features/settings/shortcuts_section_test.dart"
+  ],
+  "infra": [
+   "esc-ladder"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "仍然只列真正登记过的键，所以板上的「第二批 / 待定」状态不上屏：各切片登记了键，这一页自动出现。指针手势没法从 Shortcuts 表反推，单独写一张常量表 pointer_gesture_catalog，每行是手势、ARB 文案和范围。弹层内部的键位，四个弹层各导出自己的键表常量，diff 尽量小，因为 create_node_menu.dart 是热点文件。Esc 阶梯这一段从 escape_ladder 的层序生成。工程规则写进测试：新键必须在 CanvasToolKeys、shortcutActionOf、_keyLabels 三处都登记，并且 includeRepeats: false。P / Shift D / C / 镜头这几个待定键在这里什么都不做，由 TakesCost / ContextMenus 的切片在拍板后各自登记。"
+ },
+ {
+  "id": "next-shot-key",
+  "board": "KeyMap",
+  "title": "Ctrl → / ⌘→ 新建下一镜：同类型配置节点加叙事边，继承模型和画幅等配置，焦点留在画布可连按",
+  "files": [
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/util/create_menu_model.dart",
+   "lib/features/canvas/util/next_shot_config.dart",
+   "lib/features/settings/util/shortcut_catalog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/next_shot_config_test.dart",
+   "test/features/canvas/widgets/canvas_shortcuts_next_shot_test.dart"
+  ],
+  "infra": [
+   "esc-ladder"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "blockedOnDecision": [
+   "KeyMap-Q1",
+   "GapsCanvas-N3"
+  ],
+  "notes": "两张板在锚点已有下一镜时说法相反：KeyMap Q1 建议 A 写的是「插进中间」，GapsCanvas N3 建议 A 写的是「开分叉，排在已有分叉之后」，必须先定一个。继承范围按 Q1 A，写成纯函数 next_shot_config：继承模型、画幅、分辨率、时长、批量数、角色、负面词；不继承提示词、种子、镜头语言、备注、产物、首尾帧。新节点落在锚点右侧、同一泳道，走 addNodeFromMenu 那一条建节点的路，叙事边的 sortOrder 用 nextNarrativeSortOrder。macOS 用 ⌘→，因为 ⌃→ 是系统切桌面。文字里让位，走 _EditingAwareAction。GapsCanvas 很可能也有一片「下一镜」，两片要合并成一片，不能各做一份。"
+ },
+ {
+  "id": "canvas-pointer-pan-axis",
+  "board": "KeyMap",
+  "title": "指针修饰：中键拖动平移；拖卡时按住 Shift 锁轴（拖到一半按下也即时生效）",
+  "files": [
+   "lib/features/canvas/widgets/canvas_view.dart",
+   "lib/features/canvas/util/drag_axis_lock.dart",
+   "test/features/canvas/util/drag_axis_lock_test.dart",
+   "test/features/canvas/widgets/canvas_view_pointer_test.dart"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "只做不依赖别的板的两件事。Ctrl(⌘) 拖卡 = 原样放下（不吸附、不插进叙事线），要等 Selection 的吸附和 ContextMenus 的「拖到线上插入」落地后，由那两片各自在 _commitDrag 里加旁路。左键拖空白改成框选也归 Selection；中键拖平移就是为它补的平移入口，所以最好先于或同批于 Selection 合入。canvas_view.dart 有 1796 行，是热点文件，而且 fix/demo-lane-drag 改过 _commitDrag。锁轴放在 resolveCardDrop 之前，是对位移做的纯函数（drag_axis_lock）。"
+ },
+ {
+  "id": "canvas-menu-split",
+  "board": "GapsCanvas",
+  "title": "基础：拆分 create_node_menu.dart——通用菜单面板、节点菜单项构造/派发、新建菜单项各自成文件（只搬不改行为）",
+  "files": [
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "lib/features/canvas/widgets/canvas_menu_panel.dart",
+   "lib/features/canvas/widgets/node_context_menu.dart",
+   "lib/features/canvas/widgets/create_menu_entries.dart",
+   "test/features/canvas/widgets/create_node_menu_test.dart",
+   "test/features/canvas/widgets/node_context_menu_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "create_node_menu.dart 有 1561 行，同时装着拖线状态、CanvasMenuHost、CanvasMenuPanel/Entry/Row、新建菜单分组和节点菜单分组 + 派发（_onPickNode）。下一镜、新建菜单补项、节点右键补项、「更多」下拉、大纲右键、序列右键都要碰它，所以先拆：(1) canvas_menu_panel.dart 放 CanvasMenuPanel / CanvasMenuEntry / _MenuRow / _MenuFrame，再加一个按全局坐标定位的 CanvasMenuPopover（OverlayPortal），舞台外的大纲、工具条、序列都能用；(2) node_context_menu.dart 放 buildNodeMenuGroups(ref, l, targets) 和 runNodeMenuPick(context, ref, canvasId, targets, pick)，不绑舞台锚点；(3) create_menu_entries.dart 放 _createEntry 和分组构造。只搬代码，diff 大约 1600 行但都是搬动，审查时按 move 看。CanvasMenuKeys 等测试锚点保持原名。"
+ },
+ {
+  "id": "canvas-capsule",
+  "board": "GapsCanvas",
+  "title": "基础：画布轻提示胶囊（InkCanvasCapsule + CanvasCapsuleHost + canvasCapsuleProvider），接上键盘缩放和「适应」的比例提示",
+  "files": [
+   "lib/theme/components/ink_canvas_capsule.dart",
+   "lib/theme/tokens.dart",
+   "lib/features/canvas/providers/canvas_capsule.dart",
+   "lib/features/canvas/widgets/canvas_capsule_host.dart",
+   "lib/features/canvas/widgets/canvas_screen.dart",
+   "lib/features/canvas/widgets/canvas_zoom_bar.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/theme/components/ink_canvas_capsule_test.dart",
+   "test/features/canvas/providers/canvas_capsule_test.dart",
+   "test/features/canvas/widgets/canvas_capsule_host_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "provider 按 canvasId 分 family、autoDispose；同一时间最多一条，dedupeKey 相同就原地改字；停留时间：纯文字 2 s、带动作 4 s、缩放 1.2 s，悬停停表。位置读 canvasPromptBarHeightProvider（提示词条在时贴条子上方 8，不在时离舞台底 16），左右各让出缩放条宽度 + 16，所以缩放条要导出宽度常量。不进铃铛历史、不进 Esc 链、不进 Tab 序，读屏用 polite。缩放比例只在键盘缩放（canvas_shortcuts 的缩放 intent）和 fitAll/fitSelected 时出，滚轮不出。UndoClipboard 的撤销反馈、下一镜的「已新开分叉」、加入叙事链末尾的「已接到第 N 镜之后」都用这个组件。"
+ },
+ {
+  "id": "naming-shot-unify",
+  "board": "GapsCanvas",
+  "title": "统一叫法：ARB 里「分镜」→「镜头」、「导入脚本」→「导入剧本」、「创建分镜」→「创建 N 个镜头」",
+  "files": [
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "lib/features/storyboard/widgets/script_import_dialog.dart",
+   "test/features/storyboard/script_import_dialog_test.dart"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "基本只改 ARB：app_zh.arb 里约 14 处「分镜」，涉及 canvasNodeShotType、inspectorShotTitle、canvasToolShotNode、canvasAddShotNode、canvasEmptyAddShot、inspectorGroupShot、scriptImportConfirm 等；canvasAddImportScript / canvasEmptyImportScript 改成「导入剧本」。scriptImportConfirm 改成带计数的占位符，script_import_dialog.dart 要跟着传 N。en 文案同步改。凡是断言了中文文案的测试都跟着改。critic 的第 16 条点名要统一这个叫法。"
+ },
+ {
+  "id": "next-shot-core",
+  "board": "GapsCanvas",
+  "title": "新建下一镜：createNextShot 一个函数给三个入口（Ctrl→ / ⌘→、拖线菜单「下一镜」置顶、继承配置）",
+  "files": [
+   "lib/features/canvas/util/next_shot.dart",
+   "lib/features/canvas/providers/next_shot_controller.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/util/create_menu_model.dart",
+   "lib/features/canvas/widgets/create_menu_entries.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/features/canvas/widgets/canvas_prompt_bar.dart",
+   "lib/features/canvas/util/result_placement.dart",
+   "lib/features/canvas/util/lane_geometry.dart",
+   "lib/features/canvas/util/viewport_focus.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/next_shot_test.dart",
+   "test/features/canvas/providers/next_shot_controller_test.dart",
+   "test/features/canvas/widgets/canvas_next_shot_shortcut_test.dart",
+   "test/features/canvas/util/create_menu_model_test.dart"
+  ],
+  "infra": [
+   "canvas-menu-split",
+   "canvas-capsule",
+   "undo-stack"
+  ],
+  "size": "L",
+  "userValue": "high",
+  "migration": false,
+  "notes": "next_shot.dart 是纯函数：锚点用已有的 narrativeAnchorOf；inheritedTypeConfig 从锚点 type_config 拷这些键：provider_id aspect_ratio resolution duration_ms camera shot_size camera_angle camera_motion_strength focal_length_mm ignore_lane_style，按 N1 的建议 A 再加 character_ids 和 negative_prompt；nextShotPlacement 沿泳道主轴越过锚点和它名下产物那一列再空 kResultColumnGap，位置被占就沿主轴继续往后，不换横截位置、不出锚点的泳道，竖向泳道走同一套。现在 addNodeFromMenu 是先建节点再连线、失败时手工回滚；next_shot_controller 改走 unitOfWorkProvider，节点和叙事边放进一个事务，写法同 script_import_controller；sortOrder 用 nextNarrativeSortOrder，所以按 N3 的建议 A，锚点已有下一镜时新镜排在已有分叉之后，并弹胶囊「已新开分叉」。快捷键：Ctrl→ / ⌘→ 只在画布本身持焦点时接管，焦点在文本框里就让给光标；新增 ↵ = 焦点进提示词条，canvas_prompt_bar 要暴露一个聚焦请求。新节点单选，跑出视口才平移、缩放不变。拖线菜单里的「下一镜」排第一、默认高亮，也改走 createNextShot（落点仍是松手处），这就是 N2 的建议 A，不加新把手。undo-stack 来自 UndoClipboard，是软依赖：没合进来之前不登记撤销步。"
+ },
+ {
+  "id": "node-menu-next-shot-append-chain",
+  "board": "GapsCanvas",
+  "title": "节点右键补「新建下一镜 Ctrl→」和「加入叙事链末尾」（多选按位置依次接上，一个事务）",
+  "files": [
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/util/append_to_chain.dart",
+   "lib/features/canvas/providers/canvas_edges_controller.dart",
+   "lib/features/canvas/widgets/node_context_menu.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/append_to_chain_test.dart",
+   "test/features/canvas/util/node_menu_model_test.dart",
+   "test/features/canvas/widgets/node_context_menu_test.dart"
+  ],
+  "infra": [
+   "canvas-menu-split",
+   "next-shot-core",
+   "canvas-capsule",
+   "undo-stack"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "append_to_chain.dart 是纯函数：链尾 = orderByNarrativeChain 只留 narrativeChainMembers 之后的最后一个；目标里的产物换成它的来源配置；多选先按主轴再按横截轴排，接成「链尾 → a → b」。画布上还没有链时，单选置灰（原因「还没有叙事链」），多选就连成一条新链。按 N5 的建议 A 只连线不挪位置。canvas_edges_controller 新增 addEdgesInTx（走 UnitOfWork），完成后弹胶囊「已接到第 N 镜之后」。菜单分组改成：做 | take | 归类 | 定位 | 停用 · 删除；take 组里的「设为当前」「当下一镜的首帧」由 TakesCost 的切片往里加，「停用」由 ContextMenus 的切片加，这个切片只留分组位置。"
+ },
+ {
+  "id": "locate-in-gallery",
+  "board": "GapsCanvas",
+  "title": "节点右键「在画廊中定位」：切到画廊标签、单选并滚到那一格，被筛选挡住就清筛选",
+  "files": [
+   "lib/features/gallery/util/locate_in_gallery.dart",
+   "lib/features/gallery/providers/gallery_selection.dart",
+   "lib/features/gallery/providers/gallery_filter.dart",
+   "lib/features/gallery/widgets/gallery_grid.dart",
+   "lib/features/gallery/widgets/gallery_filter_panel.dart",
+   "lib/features/canvas/util/node_menu_model.dart",
+   "lib/features/canvas/widgets/node_context_menu.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/gallery/util/locate_in_gallery_test.dart",
+   "test/features/gallery/widgets/gallery_locate_test.dart"
+  ],
+  "infra": [
+   "canvas-menu-split",
+   "node-menu-next-shot-append-chain",
+   "current-take"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "目标：产物节点就是它自己，配置节点取当前 take。currentResultFor 要等 TakesCost 的 current-take 合进来；在那之前先退回 node_artifacts.latestResultFor，等它到了替换一行即可。没有产物就置灰。切标签走 shellControllerProvider；gallery_selection 和 gallery_filter 都是按项目 keepAlive 的。目标被筛选挡住就清掉筛选，筛选条上显示「已清除筛选」。gallery_grid 要新增「滚到指定条目」，靠挂起请求加 ScrollController 实现。这个切片和上一个改的是同一组节点菜单文件，必须叠在它后面串行做。"
+ },
+ {
+  "id": "create-menu-pick-recent",
+  "board": "GapsCanvas",
+  "title": "新建菜单：CreateMenuAction 改成带载荷的 CreateMenuPick，加「最近用过」组和「模型」组（打字时才出），recentPresetsProvider 与左栏节点库共用",
+  "files": [
+   "lib/features/canvas/util/create_menu_model.dart",
+   "lib/features/canvas/widgets/create_menu_entries.dart",
+   "lib/features/canvas/widgets/create_node_menu.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/providers/canvas_nodes_controller.dart",
+   "lib/features/canvas/providers/recent_presets_provider.dart",
+   "lib/core/interfaces/job_repository.dart",
+   "lib/storage/repositories/postgres_job_repository.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/create_menu_model_test.dart",
+   "test/features/canvas/providers/recent_presets_provider_test.dart",
+   "test/storage/repositories/postgres_job_repository_test.dart",
+   "test/features/canvas/widgets/create_node_menu_test.dart"
+  ],
+  "infra": [
+   "canvas-menu-split",
+   "next-shot-core"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "jobs 表已有 provider_id 和 parameters JSONB，但没有 project_id，要经 canvases 联表；job_repository 新增 recentProviderPresets(projectId, limit: 3)，按 created_at 倒序、按 provider_id + 参数去重，不含提示词和种子。查询用现有的 jobs_canvas_created 索引（v5），不用迁移。addNode 和 addNodeFromMenu 要能收 typeConfig（现在只收 label/type/position/laneId）。没有 Key 的预设照样可点，标「无 Key」，有没有 Key 读现有的 API Key 状态 provider。模型组只在搜索框非空时出现，按 Provider 名和 id 匹配，候选来自 provider_registry。RailScript 的节点库切片应依赖这里输出的 recentPresetsProvider。"
+ },
+ {
+  "id": "create-menu-notes-characters",
+  "board": "GapsCanvas",
+  "title": "新建菜单补「便签 N」项和「角色」组（列最近改过的 3 个角色，点了建图像配置并挂上该角色）",
+  "files": [
+   "lib/features/canvas/util/create_menu_model.dart",
+   "lib/features/canvas/widgets/create_menu_entries.dart",
+   "lib/features/canvas/util/canvas_tool_actions.dart",
+   "lib/features/canvas/providers/characters_controller.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/create_menu_model_test.dart",
+   "test/features/canvas/widgets/create_node_menu_test.dart"
+  ],
+  "infra": [
+   "create-menu-pick-recent",
+   "note-variant"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "blockedOnDecision": [
+   "ImportSearch-Q5"
+  ],
+  "notes": "按 N4 的建议 A：点角色就建图像配置，type_config.character_ids = [id]，走 CreateMenuPick 的载荷。角色按 updated_at 取最近 3 个，读 charactersControllerProvider。便签项要等 ImportSearch 的 note-variant：本画板写的是「文本节点 variant=note」，但 critic 说 ImportSearch Q5 选的是 B（新类型，要迁移），这两种做法建节点的方式不同，所以挂在 ImportSearch-Q5 上。带连线上下文的菜单不加这两组。"
+ },
+ {
+  "id": "more-dropdown-panel",
+  "board": "GapsCanvas",
+  "title": "工具条「更多」改用 CanvasMenuPanel，固定分组的可扩展项表，加一次性「切线」模式和 ⌘K 动作",
+  "files": [
+   "lib/features/canvas/widgets/canvas_toolbar.dart",
+   "lib/features/canvas/widgets/canvas_more_menu.dart",
+   "lib/features/canvas/util/more_menu_model.dart",
+   "lib/features/command_palette/command_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/more_menu_model_test.dart",
+   "test/features/canvas/widgets/canvas_toolbar_test.dart"
+  ],
+  "infra": [
+   "canvas-menu-split",
+   "naming-shot-unify",
+   "edge-cut-gesture"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "canvas_toolbar.dart 里的 _MoreAction 和 Material showMenu 删掉，换成 CanvasMenuPopover + CanvasMenuPanel，键位提示、置灰说原因、↑↓ / ↵ / Esc 都和右键菜单一致。more_menu_model 把分组顺序定死：导入 | 叙事链 | 模板 | 切线 | 视图。这个切片只落「导入剧本…」和「切线（Alt 拖）」两项；导入媒体 Ctrl U、查找 Ctrl F、小地图 M 由 ImportSearch 的切片加，整理叙事链由 Selection 加，运行叙事链由 TakesCost 加，从模板插入由 RailScript 加，各自往 more_menu_model 里加一行，画布没有链时叙事链两项置灰。切线的一次性模式（剪刀光标、拖过的线高亮、松手剪掉、Esc 退出）依赖 W3 的 edge-cut-gesture；仓库里现在没有剪线模式，如果 W3 不单独出切片，这里就要并入 canvas_view.dart 的手势，体量升到 L。"
+ },
+ {
+  "id": "note-heading-style",
+  "board": "GapsCanvas",
+  "title": "便签两档字号：正文 12/1.55、标题 20/500（无底色、最宽 480、缩远不收），检查器加「正文 | 标题」切换",
+  "files": [
+   "lib/theme/typography.dart",
+   "lib/features/canvas/widgets/node_card.dart",
+   "lib/features/canvas/providers/canvas_compact_cards.dart",
+   "lib/features/canvas/util/node_position.dart",
+   "lib/features/canvas/util/edge_geometry.dart",
+   "lib/features/canvas/util/viewport_fit.dart",
+   "lib/features/canvas/widgets/text_node_inspector.dart",
+   "lib/features/canvas/util/outline_model.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/widgets/node_card_note_style_test.dart",
+   "test/features/canvas/widgets/text_node_inspector_test.dart"
+  ],
+  "infra": [
+   "note-variant"
+  ],
+  "size": "L",
+  "userValue": "low",
+  "migration": false,
+  "blockedOnDecision": [
+   "ImportSearch-Q5"
+  ],
+  "notes": "存 type_config.note_style = body | heading，JSONB，不用迁移；N6 按建议 A，只有两档。字号进 InkTypography（noteBody / noteHeading）。最难的是标题便签「宽度跟字走、最宽 480」：现在所有卡片都是 kNodeCardSize 224×191 定尺寸，命中检测、连线锚点、适应视口、落点都按这个尺寸算（nodeStageRect、edge_geometry、viewport_fit、drop_placement），要引入一个按节点算矩形的函数，所以定 L。如果接受标题便签也用固定宽度换行，能降到 M。缩放 < 0.6 时标题不收成图标，屏幕字号不小于 12。标题便签不进大纲、不进提示词，查找能搜到（查找是 ImportSearch 的）。text_node_inspector.dart 来自 fix/demo-inspectors。"
+ },
+ {
+  "id": "toast-category-mute",
+  "board": "GapsPanels",
+  "title": "通知按类型开关（生成完成 / 导出完成 / 失败 / 撤销 / 一般）：新增 ToastCategory，在调用处标类型",
+  "files": [
+   "lib/core/interfaces/toast_service.dart",
+   "lib/features/notifications/models/toast_entry.dart",
+   "lib/features/notifications/models/notification_prefs.dart",
+   "lib/features/notifications/providers/toast_center.dart",
+   "lib/features/notifications/widgets/notification_bell.dart",
+   "lib/features/notifications/widgets/job_notification_listener.dart",
+   "lib/features/export/widgets/export_video_dialog.dart",
+   "lib/features/canvas/util/canvas_snackbars.dart",
+   "lib/features/settings/providers/notification_prefs_controller.dart",
+   "lib/features/settings/widgets/notifications_section.dart",
+   "lib/core/models/app_preferences.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/notifications/providers/toast_center_test.dart",
+   "test/features/settings/notifications_section_test.dart",
+   "test/core/models/app_preferences_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "ToastService.show 加 category 参数，默认 general，不从 ToastKind 推。只有几处调用要改标：job_notification_listener（生成完成 / 失败）、export_video_dialog（导出完成 / 失败）、canvas_snackbars.showCanvasUndoSnack（撤销），其余约 25 处保持 general。关掉的类别：不出卡、不响提示音、不发系统通知（系统通知来自 ShellExport，还没合就不管）；带「取消」的进度卡不受开关管。N1 按建议 A，铃铛照记但不加未读；N3 按建议 A，「失败」只管后台任务，当场操作出错不受影响。设置存 preferences.json 的 toastMuted（字符串集合 → 枚举，同 toastDwell），不动库。"
+ },
+ {
+  "id": "toast-corner",
+  "board": "GapsPanels",
+  "title": "通知卡位置五选一（跟随系统 / 四个角），放上面两个角时让开标题栏和导航条、最新的贴角往下长",
+  "files": [
+   "lib/features/notifications/widgets/toast_layer.dart",
+   "lib/features/notifications/models/notification_prefs.dart",
+   "lib/features/settings/providers/notification_prefs_controller.dart",
+   "lib/features/settings/widgets/notifications_section.dart",
+   "lib/core/models/app_preferences.dart",
+   "lib/theme/tokens.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/notifications/widgets/toast_layer_test.dart"
+  ],
+  "infra": [
+   "toast-category-mute"
+  ],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "toast_layer 现在把右下写死了（right: InkSpacing.md, bottom: ShellStatusBar.height），要改成按 toastCorner 定位。上面两个角让开 40px 标题栏和 43px 导航条，最新的卡贴角、往下长；改了设置，在场的卡当场平移过去，不重新计时。N2 按建议 A，「跟随系统」= Windows 右下、macOS 右上。和上一个切片改的是同一组设置与偏好文件，必须叠在后面串行做。"
+ },
+ {
+  "id": "panel-resize",
+  "board": "GapsPanels",
+  "title": "左面板和检查器拖边调宽（左 200–420 默认 240、检查器 260–480），双击回默认，舞台至少留 480",
+  "files": [
+   "lib/features/canvas/widgets/panel_resize_handle.dart",
+   "lib/features/canvas/providers/panel_widths.dart",
+   "lib/features/canvas/widgets/left_rail/left_rail_panel.dart",
+   "lib/features/canvas/widgets/canvas_inspector_panel.dart",
+   "lib/features/canvas/widgets/canvas_screen.dart",
+   "lib/core/models/app_preferences.dart",
+   "lib/theme/tokens.dart",
+   "test/features/canvas/widgets/panel_resize_test.dart",
+   "test/features/canvas/widgets/left_rail/canvas_left_rail_test.dart",
+   "test/core/models/app_preferences_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "CanvasLeftRailPanel.width = 241 和 CanvasInspectorPanel.width = 301 现在都是 static const，有 3 个测试引用，要改成 provider 给的现值。热区 6px，看上去仍是 1px 线，悬停变 2px accent；松手才落盘，写 preferences.json 的 leftPanelWidth / inspectorWidth，全局各记一个值。canvas_screen 改用 LayoutBuilder：窗口变窄时先压检查器、再压左面板，仍不够就自动收起左面板，记住的宽度不动。P1 按建议 A，检查器也能拖，和左面板同一套热区和记法；如果选 B，删掉检查器那一半。"
+ },
+ {
+  "id": "collapse-all-panels",
+  "board": "GapsPanels",
+  "title": "Ctrl Shift \\ / ⌘⇧\\ 一起收起左面板和检查器（43 导航条留着），再按恢复成收起前各自的开合",
+  "files": [
+   "lib/features/canvas/providers/left_rail_state.dart",
+   "lib/features/canvas/widgets/canvas_inspector_panel.dart",
+   "lib/features/canvas/widgets/canvas_screen.dart",
+   "lib/features/canvas/widgets/canvas_shortcuts.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/providers/left_rail_state_test.dart",
+   "test/features/canvas/widgets/canvas_collapse_panels_test.dart"
+  ],
+  "infra": [
+   "panel-resize"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "新增 inspectorExpandedProvider，和 leftRailProvider 一样不 autoDispose；再加一个 collapseAll / restore，记住收起前两边各自的开合。Ctrl \\ 仍只管左面板。设置的快捷键页从 Shortcuts 表反推，会自动多出这一行。和 panel-resize 改的是同一组画布外壳文件（canvas_screen、canvas_inspector_panel），必须叠在后面。"
+ },
+ {
+  "id": "outline-rename-menu",
+  "board": "GapsPanels",
+  "title": "大纲行：双击就地改名（写 nodes.label）；右键弹节点右键菜单原样（同一份 node_menu_model）",
+  "files": [
+   "lib/features/canvas/widgets/left_rail/outline_panel.dart",
+   "lib/features/canvas/providers/canvas_nodes_controller.dart",
+   "lib/features/canvas/widgets/node_context_menu.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/widgets/left_rail/outline_panel_test.dart",
+   "test/features/canvas/providers/canvas_nodes_controller_test.dart"
+  ],
+  "infra": [
+   "canvas-menu-split",
+   "undo-stack"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "仓库里现在没有任何改节点名的入口。canvas_nodes_controller 新增 renameNode，走 nodeRepository.update({'label': …})，清空就回类型名。改名框：↵ 或失焦存，Esc 放弃。右键用 canvas-menu-split 拆出来的 CanvasMenuPopover + buildNodeMenuGroups / runNodeMenuPick，开菜单前先单选这一行，与画布上右键没选中的卡同口径。撤销一步依赖 undo-stack，是软依赖。"
+ },
+ {
+  "id": "narrative-splice-ops",
+  "board": "GapsPanels",
+  "title": "基础：叙事边拼接操作（摘出、前后接上、插进新位置；只有同一分叉下兄弟换序才改 sortOrder），一个事务",
+  "files": [
+   "lib/features/canvas/util/narrative_splice.dart",
+   "lib/features/canvas/providers/canvas_edges_controller.dart",
+   "test/features/canvas/util/narrative_splice_test.dart",
+   "test/features/canvas/providers/canvas_edges_controller_splice_test.dart"
+  ],
+  "infra": [
+   "undo-stack"
+  ],
+  "size": "M",
+  "userValue": "low",
+  "migration": false,
+  "notes": "narrative_splice.dart 是纯函数：输入当前边和「把 X 挪到 A 之后 / 插到边 e 上」，输出要删、要加、要改 sortOrder 的边集合；canvas_edges_controller.applySplice 用 UnitOfWork 一次写完。大纲拖动排序、ContextMenus 的「拖到线上插入」、Selection 的「整理叙事链」都可以共用这一套，其他画板的切片应当依赖它，不要各写一套。"
+ },
+ {
+  "id": "outline-drag-reorder",
+  "board": "GapsPanels",
+  "title": "大纲拖行改叙事顺序：只能在本组内放，越组回弹；未入链、产物、生成中的行不能拖",
+  "files": [
+   "lib/features/canvas/widgets/left_rail/outline_panel.dart",
+   "lib/features/canvas/util/outline_model.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/util/outline_model_test.dart",
+   "test/features/canvas/widgets/left_rail/outline_drag_test.dart"
+  ],
+  "infra": [
+   "narrative-splice-ops",
+   "outline-rename-menu"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "O1 按建议 A，不跨泳道组，换道走画布拖卡。outline_model 新增 canDropWithinGroup 和落点 → 拼接请求的换算；落下之后调用 applySplice。和 outline-rename-menu 改的是同一个 outline_panel.dart，必须叠在后面。"
+ },
+ {
+  "id": "character-kind",
+  "board": "GapsPanels",
+  "title": "角色分 角色 / 物品 / 场景：characters 加 kind 列（新增一条前向迁移），面板分组、编辑框加「类型」三段",
+  "files": [
+   "lib/storage/schema/schema_vN.dart",
+   "lib/storage/migrations/app_migrations.dart",
+   "lib/features/canvas/models/character.dart",
+   "lib/core/interfaces/character_repository.dart",
+   "lib/storage/repositories/postgres_character_repository.dart",
+   "lib/features/canvas/providers/characters_controller.dart",
+   "lib/features/canvas/widgets/character_library_panel.dart",
+   "lib/features/canvas/widgets/character_edit_dialog.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/storage/migrations/migration_runner_test.dart",
+   "test/storage/repositories/postgres_character_repository_test.dart",
+   "test/features/canvas/widgets/character_library_panel_test.dart",
+   "test/features/canvas/widgets/character_edit_dialog_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": true,
+  "notes": "迁移：ALTER TABLE characters ADD COLUMN kind TEXT NOT NULL DEFAULT 'character' CHECK (kind IN ('character','prop','scene'))。现在最新是 v8；critic 第 13 条已经指出 RailScript 和 ShellExport 都占了 v9，版本号要由主 Agent 统一排，这里写 vN。项目包导出是 SELECT *，import_writer 按行插入，老包没有 kind 列也能落默认值；但要核对 archive_import_guard / import_remapper 有没有列白名单。分组顺序：角色 → 物品 → 场景，空组不画。@ 补全仓库里还没有，谁做补全谁跟着分组。C1 按建议 A，类型不进提示词。"
+ },
+ {
+  "id": "character-usage-links",
+  "board": "GapsPanels",
+  "title": "角色「被引用」可点：编辑框的 chip 和面板行上的「M 处引用」都能点，跨画布的先 openCanvas 再定位",
+  "files": [
+   "lib/features/canvas/widgets/character_edit_dialog.dart",
+   "lib/features/canvas/widgets/character_library_panel.dart",
+   "lib/features/canvas/providers/character_usage.dart",
+   "lib/features/canvas/widgets/left_rail/left_rail_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/widgets/character_edit_dialog_test.dart",
+   "test/features/canvas/providers/character_usage_test.dart"
+  ],
+  "infra": [
+   "character-kind"
+  ],
+  "size": "S",
+  "userValue": "med",
+  "migration": false,
+  "notes": "character_usage 返回的引用要带 canvasId 和画布名；left_rail_actions 新增 focusNodeAcrossCanvas：跨画布先 openCanvas，再挂 canvasFocusRequestProvider（center: true）。编辑框有未存改动时先问，再关框去定位。和 character-kind 改的是同一对 widget 文件，必须叠在后面。"
+ },
+ {
+  "id": "assets-hover-preview",
+  "board": "GapsPanels",
+  "title": "素材格悬停 400ms 出大预览，贴面板右沿外；视频静音循环播前 6 秒",
+  "files": [
+   "lib/features/canvas/widgets/left_rail/assets_panel.dart",
+   "lib/features/canvas/widgets/left_rail/asset_hover_preview.dart",
+   "lib/theme/tokens.dart",
+   "test/features/canvas/widgets/left_rail/asset_hover_preview_test.dart"
+  ],
+  "infra": [],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "用 OverlayPortal 浮在面板右沿外；鼠标移开、滚动、按键都立即收起。视频经 VideoPlayerService 接口（media_kit）播，静音、只循环前 6 秒；测试用假播放器替换。"
+ },
+ {
+  "id": "assets-gallery-import-origin",
+  "board": "GapsPanels",
+  "title": "导入的素材：格子左上带「导入」小标、标签用原文件名；素材页和画廊都加来源筛选 chip「导入」",
+  "files": [
+   "lib/features/canvas/widgets/left_rail/assets_model.dart",
+   "lib/features/canvas/widgets/left_rail/assets_panel.dart",
+   "lib/features/gallery/providers/gallery_filter.dart",
+   "lib/features/gallery/widgets/gallery_filter_panel.dart",
+   "lib/features/gallery/util/gallery_meta.dart",
+   "lib/features/gallery/widgets/gallery_tile.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/widgets/left_rail/assets_model_test.dart",
+   "test/features/gallery/providers/gallery_filter_test.dart"
+  ],
+  "infra": [
+   "media-import",
+   "assets-hover-preview"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "判据只看 origin == import。这个字段现在仓库里没有，由 ImportSearch 的「导入媒体 Ctrl U」切片（media-import）引入，必须等它合进来。「导入」chip 与图片 / 视频互斥；导入的格子没有 take 号。和 assets-hover-preview 都改 assets_panel.dart，叠在它后面做。"
+ },
+ {
+  "id": "sequence-locate-regenerate",
+  "board": "GapsPanels",
+  "title": "序列叙事链行和 V1 轨片段的右键：「在画布中定位」和「在画布中定位并重生成 约 $X」",
+  "files": [
+   "lib/features/sequence/widgets/sequence_screen.dart",
+   "lib/features/sequence/util/sequence_shot_actions.dart",
+   "lib/features/canvas/widgets/left_rail/left_rail_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/sequence/util/sequence_shot_actions_test.dart",
+   "test/features/sequence/widgets/sequence_context_menu_test.dart"
+  ],
+  "infra": [
+   "canvas-menu-split",
+   "current-take"
+  ],
+  "size": "M",
+  "userValue": "high",
+  "migration": false,
+  "notes": "要生成的节点：这一镜当前 take 的来源配置，本身是配置就用它；只有镜头节点时「并重生成」置灰，原因「还没有配置节点」。定位 = 切到画布标签、单选、居中，是 view_in_sequence 的反向。重生成调用 canvas_tool_actions.generateNode（submitWithPending），和 Ctrl ↵ 走同一道闸；闸不过就只定位。价格读 features/generation/services/cost_estimator。单个节点不弹确认（引用 TakesCost「≥2 个才确认」）。新 take 成为当前要等 TakesCost 的 current-take；在那之前用 latestResultFor 的来源节点。_ChainRow 和 _Clip 加 onSecondaryTapUp，接 CanvasMenuPopover。"
+ },
+ {
+  "id": "duration-format-unified",
+  "board": "GapsPanels",
+  "title": "基础：统一时长格式函数（不到 60 秒「N 秒」，否则 m:ss），走 ARB 复数",
+  "files": [
+   "lib/l10n/duration_format.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/l10n/duration_format_test.dart"
+  ],
+  "infra": [],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "这是几块画板共用的「统一时长格式」规则。产物检查器的片长、剧本导入的估时长要用；gallery_time.galleryFormatDuration（00:00:05）这个切片不动。其他画板如果也定义了同一个函数，应合并成这一份。"
+ },
+ {
+  "id": "result-inspector-align",
+  "board": "GapsPanels",
+  "title": "产物检查器对齐三处：节点头的枚举名改走 ARB、片长改统一格式、Material 图标和写死的 40 换成图标集 v1 和 token",
+  "files": [
+   "lib/features/canvas/widgets/canvas_inspector_panel.dart",
+   "lib/features/canvas/widgets/result_inspector_parts.dart",
+   "lib/features/canvas/widgets/video_result_inspector.dart",
+   "lib/features/canvas/widgets/image_result_inspector.dart",
+   "lib/theme/icons/ink_glyph.dart",
+   "lib/theme/tokens.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/canvas/widgets/video_result_inspector_test.dart",
+   "test/features/canvas/widgets/canvas_inspector_panel_test.dart"
+  ],
+  "infra": [
+   "duration-format-unified"
+  ],
+  "size": "S",
+  "userValue": "low",
+  "migration": false,
+  "notes": "① canvas_inspector_panel.dart 第 184 行现在直接显示 '${node.type.name} / ${node.role.name}'，要走 ARB。② result_inspector_parts 第 198 行用的是 galleryFormatDuration，换成统一时长格式。③ 有三个 Material 图标：broken_image_outlined、hourglass_empty_outlined、play_circle_outline，播放浮标写死 size 40，图标集里缺的字形要补进 ink_glyph。前置：fix/demo-inspectors 的提交 cc52965 用了三个 ARB 键（inspectorResultPlay 等），但 ARB 和生成件还留在 agent-af939c6787a146158 工作树里没提交，那个分支合进来时要先补上。canvas_inspector_panel.dart 也被 collapse-all-panels 和 panel-resize 改，这里只改一行，冲突小。"
+ },
+ {
+  "id": "script-import-duration",
+  "board": "GapsPanels",
+  "title": "剧本导入估时长：每镜估算、预览显示总时长，「把估算时长写进镜头」默认勾上，写 duration_ms",
+  "files": [
+   "lib/features/storyboard/util/shot_duration_estimate.dart",
+   "lib/features/storyboard/util/script_splitter.dart",
+   "lib/features/storyboard/widgets/script_import_dialog.dart",
+   "lib/features/storyboard/providers/script_import_controller.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/storyboard/util/shot_duration_estimate_test.dart",
+   "test/features/storyboard/script_import_controller_test.dart",
+   "test/features/storyboard/script_import_dialog_test.dart"
+  ],
+  "infra": [
+   "duration-format-unified",
+   "naming-shot-unify"
+  ],
+  "size": "M",
+  "userValue": "med",
+  "migration": false,
+  "notes": "估时长规则：中文 4 字 / 秒、英文 2.5 词 / 秒，最少 2 秒。这个函数要和 RailScript 的剧本面板共用一份，RailScript 的切片应依赖这里，或者反过来。sequence_builder 已经读镜头 type_config.duration_ms，序列那边不用改。整次导入撤销一步依赖 undo-stack，是软依赖。"
+ },
+ {
+  "id": "script-import-characters",
+  "board": "GapsPanels",
+  "title": "剧本导入识别角色：已有角色名显示为实心 chip 并挂到这一镜，选中一段文本可「设为角色」进候选、导入时新建",
+  "files": [
+   "lib/features/storyboard/util/script_character_detect.dart",
+   "lib/features/storyboard/widgets/script_import_dialog.dart",
+   "lib/features/storyboard/providers/script_import_controller.dart",
+   "lib/features/canvas/widgets/shot_config_inspector.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/storyboard/util/script_character_detect_test.dart",
+   "test/features/storyboard/script_import_controller_test.dart",
+   "test/features/canvas/widgets/shot_config_inspector_test.dart"
+  ],
+  "infra": [
+   "script-import-duration"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "识别是纯函数，不调 LLM：按已有角色名做子串匹配。新建候选角色在同一个 UnitOfWork 里用 scope.characters.create 建，没有参考图，镜头节点写 character_ids。shot_config_inspector 里的「用本镜备注生成」要把 character_ids 带到新建的配置节点上，这一步现在缺。和 script-import-duration 改的是同一组对话框和控制器文件，必须叠在后面。"
+ },
+ {
+  "id": "export-one-click",
+  "board": "GapsPanels",
+  "title": "导出视频改分体按钮：主体 = 按上次设置一键导出（不覆盖同名，自动加「(2)」），▾ = 现有对话框",
+  "files": [
+   "lib/theme/components/ink_split_button.dart",
+   "lib/features/export/util/last_export_settings.dart",
+   "lib/features/export/providers/one_click_export_controller.dart",
+   "lib/features/export/util/export_file_name.dart",
+   "lib/features/export/open_export_dialog.dart",
+   "lib/features/shell/widgets/shell_tab_bar.dart",
+   "lib/features/shell/widgets/tabs/export_tab.dart",
+   "lib/features/command_palette/command_actions.dart",
+   "lib/l10n/app_en.arb",
+   "lib/l10n/app_zh.arb",
+   "lib/l10n/generated/",
+   "test/features/export/util/export_file_name_test.dart",
+   "test/features/export/providers/one_click_export_controller_test.dart",
+   "test/features/shell/widgets/shell_tab_bar_test.dart"
+  ],
+  "infra": [
+   "export-records-table",
+   "toast-category-mute"
+  ],
+  "size": "L",
+  "userValue": "med",
+  "migration": false,
+  "notes": "「上次设置」= 本画布最近一次成功导出的规则快照：每镜当前 take、顺序、文件名规则、目录，不记勾选和手动排序。这些数据来自 ShellExport 的 export_records 表，迁移归那个切片，这里不建表。没导出过、或预检不过，主体也开对话框，原因放在对话框顶上。E1 按建议 A：没有视频的镜照样导出，完成卡写「跳过 N 镜」。export_file_name 新增 uniqueOutputName，遇到同名就加 (2)、(3)。完成卡归「导出完成」类别，依赖 toast-category-mute，是软依赖。ink_split_button 放 theme 层，只负责展示。"
+ }
+]

@@ -1,0 +1,189 @@
+**第二批设计完整性审查：调研对照、互相矛盾的规则、全量键位表**
+
+对照了 research.txt 全文、第一批 5 张稿、第二批 7 张稿和 `lib/` 代码。代码以当前 HEAD 410ba0c 为准（在 origin/main 之上多两个 S2–S6 的提交），另外核对了本地还没合入的修复分支。
+
+## 一、调研条目覆盖情况
+标记：B1 = 第一批（已实现）；B2:板名 = 第二批；MISSING = 没设计。
+
+**通知**
+- 卡片、堆叠、时长、暂停、合并、进度卡、铃铛、动效、提示音、Q1：B1。
+- Q3 系统通知、F6 跳到通知区：B2:ShellExport。
+- 画布底部轻提示胶囊（缩放比例、已复制）：部分。UndoClipboard 只拿它当撤销反馈，没有组件规格（位置、与提示词条和查找条怎么避让、停多久、同时几条）。
+- 按类型分别开关通知（生成完成 / 导出完成 / 失败 / 撤销 / 一般）：MISSING。`notification_prefs` 里只有停留时长和提示音。
+- 通知位置选四个角，以及 Q2「macOS 默认右上」：MISSING。
+
+**页签**
+- 方案 A、Q4、Q5、检查器「历史」和「状态」去向：B1。导出历史：B2:ShellExport。
+- 方案 B（序列抽屉 / 序列节点，调研定为第二阶段）：MISSING。
+- 「导出视频」轻入口按预设一键执行：MISSING。
+
+**左栏**
+- 导航条加面板、大纲、素材、角色的基本形，以及 Q6：B1。
+- 剧本、节点库、模板、帮助、Q7：B2:RailScript。
+- 往配置节点上拖素材 / 角色、@ 补全、拖入外部文件：B2:ImportSearch。
+- 大纲上的过期角标：B2:TakesCost。
+- MISSING：
+  - 面板拖右边缘调宽。
+  - 一键收起全部面板（含检查器，⌘⇧\）。现在只有 Ctrl \ 收左栏。
+  - 大纲行：双击改名、右键菜单与节点右键同源、拖动调整叙事顺序。
+  - 角色按类型分组（角色 / 物品 / 场景）。
+  - 角色「被引用」点了跳到节点。`character_edit_dialog` 现在没有定位。
+  - 素材悬停预览。
+  - 导入的节点在素材 / 画廊里怎么显示和筛选。
+
+**工具条**
+- 已实现（B1）：V / H / 空格 / I / G / T / F / L、缩放条，Q8。
+- B2 已设计：
+  - 框选：Selection。
+  - 便签 N、Ctrl U、Ctrl F、M、工具锁：ImportSearch。
+  - 运行选中 / 运行叙事链：TakesCost。
+- 部分：
+  - 便签的颜色有了（三种底色），字号 / 放大当章节标题没有。
+  - 「更多」下拉的项散在四张板上（运行叙事链、从模板插入、整理叙事链、剪线），没有一张统一的样稿和排序。
+- 没定：Shift+0 回到 100%。代码是 Ctrl 0，没冲突。
+- MISSING：评论（P2，原定 C 键）。
+
+**交互**
+- 已实现（B1）：拖线到空白处、统一新建入口、节点和空白处右键、连线着色。
+- B2 已设计：
+  - 连线 / 泳道 / 多选三套菜单、停用、切线、拖到线上插入、删除并接上：ContextMenus。
+  - 撤销重做、复制粘贴：UndoClipboard。
+  - 浮动工具条、多选检查器、对齐分布、Ctrl G 包成泳道：Selection。
+  - 过期标记、固定、花费、当下一镜的首帧：TakesCost。
+  - 回到内容：ImportSearch。
+- 节点内 take 条加箭头键切换：已由 Q9 现状（两种节点 + 历史页）取代，不算缺口。
+- MISSING：
+  - 快速新建下一镜（Ctrl+方向键 / 从节点边缘拖出）。B1 只有一句话，代码里没有，键位和「继承配置」的含义都没定义。
+  - 新建菜单里列 Provider 预设、最近用过、角色。RailScript 只把「最近用过」放进了节点库。
+  - 节点右键「加入叙事链末尾」和「在画廊中定位」。
+  - 序列里选中一镜「在画布中定位并重生成」。序列侧现在没有回画布的入口。
+- 部分：剧本导入对话框加角色抽取和估时长。RailScript 只写了规则，对话框本身没画。
+
+**待定问题 Q1–Q13**
+- B1：Q1、Q4、Q5、Q6、Q8、Q9。
+- B2：Q3、F6（ShellExport）；Q7（RailScript R1 / R3）；Q10（TakesCost）；Q13（ShellExport：EDL 已有，FCPXML / 剪映写「待支持」）。
+- Q12 部分：H = 平移、F6、Ctrl↵ = 生成已定；C 键（评论）和「下一镜」的键位还空着。
+- MISSING：Q2，以及 Q11（泳道和不注入风格的纯分组是否合并，没有一张板回答）。
+
+**演示发现**
+- F1 文本节点不能输入：本地分支 fix/demo-inspectors（未合并）在检查器里补了正文编辑，ImportSearch 又设计了双击就地编辑。两处编辑入口要对齐。
+- F2 成片检查器为空：fix/demo-inspectors 已经改了，但没有设计稿。MISSING（设计）。
+- F3 没有右键菜单：B1（#292）已做，ContextMenus 补齐其余几套。
+- F4 示例没有连线：没修，也没设计。`canvas_bootstrap_controller` 只种 1 个配置节点和 2 个产物，没有叙事边。MISSING。
+- D1 页签是装饰：B1（PR-6）已修。D2 菜单栏：ShellExport。D3 工具条：B1 已修。
+- S1 两个生成按钮不一致：没修。`canvas_prompt_bar.dart:316` 的 enabled 只看 busy 和提示词是否为空，不看 Key；fix/demo-promptbar-sample 分支没有提交。
+- S2–S6：PR #298 还开着。
+- S7 示例泳道风格词是中文：MISSING。`canvasSampleLaneStylePrompt` 走 ARB，中文界面下会把中文发给模型；196③ 还没拍板。
+- O1 画布列表不刷新：画布树已被 `canvas_switcher` 取代，要重新复核。
+- O2 误拖换道：fix/demo-lane-drag（未合并）已修，但和 Selection 的规则冲突，见下一节第 1 条。
+- E1 数据库口令只有一个全局键：MISSING。
+
+## 二、矛盾（板名 + 改法）
+1. **整组拖动的换道判据**。Selection 写「起拖 4px 内不判泳道」，但 fix/demo-lane-drag 已经实现了 `resolveCardDrop`：屏幕上拖动超过 18px、这一趟跨过带的边界、进新带至少 12px，三条都满足才换道，换了还弹撤销卡。
+   - 改法：Selection 沿用 `resolveCardDrop` / `cardDropTargetLane`，整组时用抓住的那张卡来判（Q2 的 B）。4px 只用来区分「点」和「拖」。
+2. **点卡的修饰键**。Selection 写「Shift 点卡加选、Ctrl 点卡反选（已实现）」，但 `canvas_view.dart:335-340` 里 Shift / Ctrl / ⌘ 都是切换。
+   - 改法：照实写成「切换」；要改成加选，就列为改动项。macOS 上框选反选用 ⌘，因为 Ctrl+点在 mac 上是右键。
+3. **临时不吸附用哪个键**。Selection 写按住 Ctrl(⌘)，ContextMenus 写按住 Alt。
+   - 改法：统一成 Ctrl(⌘)。Alt 已经被切线和 Windows 菜单栏占了。
+4. **拖卡时 Shift 有两个意思**。Selection 是锁轴，ContextMenus 是不插入叙事线。
+   - 改法：Shift 只管锁轴；「不插入」并进 Ctrl，按住 Ctrl 就是原样放下、不吸附也不插入。
+5. **批量生成什么时候确认，三种说法**。Selection Q4 是 ≥5 个或 ≥$5；ContextMenus 是多于 1 个就确认、单次最多 50；TakesCost 是「两个以上才弹」。
+   - 改法：只留一条规则，归 TakesCost 的运行对话框，上限 50 也写在那里。
+6. **批量顺序**。Selection 写按叙事序依次入队，TakesCost 写按 data 边依赖、下游等上游成功。
+   - 改法：Selection 引用 TakesCost 的规则。
+7. **价格未知的文案三种**：「另 1 个未知」「另有 N 个未知」「另 1 个价格未知」。
+   - 改法：统一成「另 N 个价格未知」。
+8. **导入 / 粘贴的媒体放哪**。UndoClipboard 写本画布 `images/`，ImportSearch 写本画布 `imports/`，ContextMenus 写「复制进项目目录」。
+   - 改法：统一成 `canvases/<id>/imports/`，因为 `resolve` 不许越出画布根。
+9. **剪贴板和拖放用哪个依赖**。UndoClipboard 写 super_clipboard，ImportSearch Q1 建议 desktop_drop + pasteboard。
+   - 改法：UndoClipboard 和 ContextMenus 都改成引用 ImportSearch Q1。
+10. **Ctrl D 的范围**。ImportSearch 写素材拖到空白处「同画布共用文件（同 Ctrl D）」，但代码里 `duplicateSources` 只复制配置节点。
+    - 改法：改成「同画布粘贴」。
+11. **F 键在有选中时**。RailScript 写「有选中时点泳道 = 包住选中（同 F）」，但代码里 F 是 `addLaneViaDialog`、不看选中，Selection 又把「包住」给了 Ctrl G。
+    - 改法：RailScript 改成「有选中时 = Ctrl G」。
+12. **重做的键位显示**。UndoClipboard 菜单写 Ctrl Y，ShellExport 编辑菜单写 Ctrl Shift Z。
+    - 改法：动作表的主键 Windows 用 Ctrl Y、mac 用 ⇧⌘Z，两处显示同一个。
+13. **迁移号撞车**。当前最新是 v8，而 RailScript 的 script_documents 和 ShellExport 的 export_records 都写了 v9。另外 canvas_templates、Selection Q6 选 C（style_lanes 加列）、ImportSearch Q5 选 B（便签做成新类型）也要迁移。
+    - 改法：板上不写版本号，只写「新增一条前向迁移」，落地时按合入顺序编号。
+14. **删除泳道的含义**。UndoClipboard 写「去掉确认，直接删 + 撤销卡」，没区分 ContextMenus 的「解散（节点留下）」和「删除泳道和内容（有生成中任务先确认）」。
+    - 改法：两项分别进栈、分别命名。另外 ContextMenus 已经写死「新道插在最后一条目标道之后」，而这是 Selection Q5 还没定的事，改成引用 Q5。
+15. **帮助有两套**。ShellExport 的帮助菜单（快捷键 / 检查更新 / 诊断包 / 日志 / 关于）和 RailScript 的帮助弹层（新手引导 / 示例 / 版本说明 / 反馈 / 手册 / 诊断包 / 日志 / 更新 / 关于）内容不同。
+    - 改法：用同一组动作，菜单栏帮助 = 弹层的项 + 快捷键。
+16. **新建节点的列表和叫法**。ShellExport「新建节点 ›」和 RailScript 节点库都没有便签 N；同一个类型，ShellExport 和工具条叫「分镜」，节点库和新建菜单叫「镜头」，属于 S5 那类问题。
+    - 改法：统一一个叫法，并把便签加进两处。
+17. **当前 take 和撤销栈**。
+    - TakesCost Q1 选 A 时，系统会自动改写 data 边，这不进撤销栈；之后再撤一次「连线 / 改语义」就找不到原来那条边。
+    - UndoClipboard 的进栈表里没有「设为当前 / 固定」，Q3 还用着旧名「转正」。
+    - 改法：进栈表加「设为当前」（连同改写的边算一步）；反向操作按边两端的节点去找，不按边 id。
+18. **重映射漏项**。ImportSearch 提示词里的 `@{角色 id}`、TakesCost `gen_inputs` 里的源节点 id，在项目包导入（`import_remapper`）、模板插入、跨项目粘贴时都要改写或剥掉。现在只点名了 `pinned_result_id`。
+    - 改法：在 ImportSearch 和 TakesCost 的规则里各补一行。
+19. **停用在批量对话框里没有状态**。TakesCost 的运行对话框没有「已停用」这一行状态，而 ContextMenus 说批量会跳过停用节点。
+    - 改法：加一行「跳过 · 已停用」。
+20. **耗时格式不一致**。ShellExport 系统通知写「1 分 12 秒」，同一张板的任务弹层规则是满 60 秒写 m:ss。
+    - 改法：共用一个格式函数。
+21. **Windows 按 Alt 聚焦菜单栏，和 Alt 组合键冲突**（ShellExport vs Selection 的 Alt A/D/W/S/H/V、Alt Shift H/V，以及 ContextMenus 的 Alt+拖）。
+    - 改法：只有单独按下再松开 Alt、期间没有别的键或指针动作，才聚焦菜单栏；不做 Alt+字母的菜单助记键。
+22. **币种**。B1 的 Main 稿写 ¥0.70，B2 全部用 $，代码是 `formatCostUsd`（USD）。
+    - 改法：照 TakesCost Q6 选 A，改 B1 稿。
+23. **RailScript 自相矛盾**。规则行写「`LeftRailPage` 加 nodeLibrary」，而它自己的 R7 建议选 B（并进模板页，不加键）。
+    - 改法：规则行跟着 R7 走。
+24. **Esc 归属太多**。菜单、@ 弹层、查找条、框选、工具锁、F6、清空选中都要用 Esc，没有一张板给出优先级。
+    - 改法：定一个顺序，例如 菜单 > @ 弹层 > 查找 > 框选中 > 工具锁 > 清空选中。
+
+## 三、全量键位表
+来源标记：现 = 已在代码；B1 = 第一批设计；后面跟板名的是第二批；冲突标在条目末尾。
+
+**单键**（画布持焦、不在文字里）
+- V 选择（现）；H 平移（现）；按住空格临时平移（现）
+- I 图像配置、G 视频配置、T 文本（现）
+- F 新建泳道，开对话框（现）。冲突：RailScript 想让 F 在有选中时包住选中，见第 11 条。
+- L 连线（现）；Tab 新建菜单（现）；Del / Backspace 删除节点（现），选中连线时删线（ContextMenus）
+- N 便签（B1、ImportSearch）；M 小地图（B1、ImportSearch）；Q 工具锁（ImportSearch）
+- K 剪线模式：只出现在 ContextMenus W3 的选项 C
+- Esc：多处共用，见第 24 条
+- F6 跳到通知区：应用级，输入框里也有效（B1、ShellExport）
+- 还没分配：分镜 / 镜头、C（评论）、P（固定）、D（停用）、Shift 0（回 100%）
+
+**组合键**
+- Ctrl/⌘ A 全选；Ctrl ± 和 Ctrl 0 缩放（现）
+- Ctrl \ 收起左栏（现）
+- Ctrl ↵ 生成选中（现，提示词条里同义）。⌘K 面板里 Ctrl ↵ = 在画布中定位，作用域不同，不算冲突。多选时 = 批量生成（ContextMenus W5、Selection）
+- Ctrl D 复制一份（现）；Ctrl K 命令面板（现）；Shift 1 / Shift 2 适应全部 / 适应选中（现）
+- Ctrl Z 撤销；Ctrl Y / Ctrl Shift Z 重做（UndoClipboard、ShellExport）。显示不一致，见第 12 条
+- Ctrl C / X / V（UndoClipboard、ShellExport）
+- Ctrl U 导入媒体（B1、ImportSearch、ContextMenus、ShellExport）
+- Ctrl F 画布内查找（B1、ImportSearch、ShellExport）
+- Ctrl G 包成泳道（Selection、ContextMenus）；Ctrl Shift G 移出泳道（Selection）
+- Alt A / D / W / S / H / V 对齐；Alt Shift H / V 分布（Selection）。和单独按 Alt 聚焦菜单栏冲突，见第 21 条
+- Alt F4 退出；单独按 Alt 聚焦菜单栏（ShellExport，仅 Windows）
+- Ctrl Del 删除并接上：只出现在 ContextMenus W1 的选项 B
+- Ctrl → 新建下一镜：B1 只有一句话，没实现，第二批也没设计
+
+**指针**
+- 左键拖空白：现在是平移，Selection 改成框选（有意的行为变化；H、空格、右键拖、中键拖仍是平移）
+- Shift 拖框 = 加选，Ctrl 拖框 = 反选（Selection）；Alt + 左键拖空白 = 切线（ContextMenus）
+- 右键拖 = 平移；右键松开 = 开菜单（现）
+- 双击空白 = 新建菜单（现）；双击泳道标题 = 折叠 / 展开（现）
+- 双击文本 / 便签卡 = 就地编辑；双击工具按钮 = 工具锁（ImportSearch）
+- 拖卡时：
+  - Shift = 锁轴（Selection），撞 Shift = 不插入叙事线（ContextMenus），见第 4 条
+  - Ctrl = 不吸附（Selection），撞 Alt = 不吸附（ContextMenus），见第 3 条
+- Shift / Ctrl / ⌘ 点卡：现在是切换，和 Selection 写的「加选 / 反选」不一致，见第 2 条
+
+**弹层内部**（作用域隔开，没有冲突）
+- 菜单、⌘K、查找、@、F6 区内的 ↑↓ ↵ Esc
+- 查找里 Shift ↵ = 上一个
+- @ 补全里 Tab = 插入；F6 区里 Tab = 卡内按钮
+- 菜单栏 ←→ 切换菜单
+
+## 四、需要你定（调研里留下、第二批没覆盖的）
+1. **Q2：通知卡在 macOS 上放哪？** 建议跟随系统：Windows 右下、macOS 右上。
+2. **Q11：泳道和不注入风格的纯分组，是合成一种还是分开？**
+3. **S7：示例泳道风格词怎么办（196③）？** 建议改成英文常量，不再走 ARB。
+4. **E1：数据库口令要不要按数据根分开存？** 这是安全取舍。
+5. **Q12 剩下的两项：「下一镜」用什么键、C 键给不给评论。**
+
+审过的文件都在 `C:/Users/Kerro/AppData/Local/Temp/claude/D--Projects-InkFrame/7ff9c693-c47a-4f4e-a316-bbb933f6fce9/scratchpad/design/` 下：
+- research.txt
+- 第一批稿件：project/*.dc.html
+- 第二批稿件：b2/project/*.dc.html
