@@ -2919,7 +2919,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsShortcutCanvasDelete => 'Delete selected nodes';
 
   @override
-  String get settingsShortcutCanvasEscape => 'Cancel linking / clear selection';
+  String get settingsShortcutCanvasEscape =>
+      'Back out one step (menu · text field · tool · selection)';
 
   @override
   String get settingsShortcutCanvasSelectAll => 'Select all nodes';
@@ -2931,7 +2932,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsShortcutCanvasZoomOut => 'Zoom out';
 
   @override
-  String get settingsShortcutCanvasZoomReset => 'Reset zoom';
+  String get settingsShortcutCanvasZoomReset => 'Reset to 100%';
 
   @override
   String get settingsShortcutCanvasSelectTool => 'Select tool';

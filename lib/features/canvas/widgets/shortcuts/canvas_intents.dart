@@ -10,8 +10,7 @@ class DeleteSelectionIntent extends Intent {
   const DeleteSelectionIntent();
 }
 
-/// Esc：按 Esc 阶梯一次剥一层（层序见 util/escape_ladder.dart 的 EscapeRungId）——菜单 > 输入框失焦回画布
-/// > 拖线 > 连线 > 平移 > 清空节点 + 边选择。无事可剥时不消费。
+/// Esc：按 Esc 阶梯一次剥一层（层序只在 util/escape_ladder.dart 的 EscapeRungId 里定）。无事可剥时不消费。
 class CanvasEscapeIntent extends Intent {
   const CanvasEscapeIntent();
 }

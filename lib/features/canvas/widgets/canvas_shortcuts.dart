@@ -21,7 +21,7 @@
 // 焦点落在本层子树里的任何控件上（工具条键、检查器按钮、缩放条格子、左栏行、菜单里的行），Tab 都原样
 // 放行给 WidgetsApp 的焦点遍历；本层之外的控件按 Tab 根本到不了这里。Shift+Tab 不绑。
 // Esc 按 Esc 阶梯一次剥一层（层序表 util/escape_ladder.dart，核心层登记在 providers/canvas_escape_ladder.dart）：
-// 菜单 > 输入框失焦、焦点回画布（选中不动）> 拖线 > 连线 > 平移 > 清选中。输入框那一层要本层的 FocusNode，
+// 层序以 EscapeRungId 为准（输入框那一层 = 失焦、焦点回画布、选中不动）。输入框那一层要本层的 FocusNode，
 // 由本层以 local 传入（_CanvasShortcutsState._keyContext）。无事可剥时不消费，Esc 冒泡给祖先。
 //
 // PR-8b 四个键（画布重设计稿 › 画布交互「快捷键」），全走 CanvasKeyGate.notEditingText——打字时让位：

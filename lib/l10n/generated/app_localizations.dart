@@ -5111,7 +5111,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsShortcutCanvasEscape.
   ///
   /// In en, this message translates to:
-  /// **'Cancel linking / clear selection'**
+  /// **'Back out one step (menu · text field · tool · selection)'**
   String get settingsShortcutCanvasEscape;
 
   /// No description provided for @settingsShortcutCanvasSelectAll.
@@ -5135,7 +5135,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsShortcutCanvasZoomReset.
   ///
   /// In en, this message translates to:
-  /// **'Reset zoom'**
+  /// **'Reset to 100%'**
   String get settingsShortcutCanvasZoomReset;
 
   /// No description provided for @settingsShortcutCanvasSelectTool.
