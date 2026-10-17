@@ -2,47 +2,45 @@
 //
 // 职责切分（HI-18）：
 //   - _CanvasBody：状态装配 + 节点 tap 语义 + 连线事件 → snackbar 副作用（ref.listen）
-//   - _CanvasStage：InteractiveViewer 舞台（连线层 / 节点卡片 / 边删除按钮）
-//   - 平移工具（H / 按住空格，canvas_tool_mode.dart）：_PanGate 让舞台内容与泳道标题栏层
-//     不收指针、拖哪儿都是拖画布；_StagePanCursor 换手形光标
+//   - _CanvasStage：舞台骨架——watch 选中边 / 边 / 泳道 / 方向 / 折叠 / 相机，整层算一次切片、可见集、产出线、
+//     端口占用，组装下面各层；卡片的 Positioned 与测试锚点 Key（node-card-<id> / lane-group-<id>）在这里
+//   - 舞台各层在 stage/ 下各占一个文件（只搬家，行为不变）：
+//       stage_pointer_layer.dart：平移闸 StagePanGate（平移工具 H / 按住空格，canvas_tool_mode.dart——舞台内容与
+//         泳道标题栏层不收指针、拖哪儿都是拖画布）+ 手形光标 StagePanCursor + 舞台坐标锚 StageSpace +
+//         空白处双击 / 右键 BlankPointerDetector + 右键单击 SecondaryClickDetector（空白处与卡片上都是抬起时开、
+//         按下到抬起没挪出点击容差才开，锚点用按下点：按住右键拖动是拖画布，不开菜单）
+//       node_card_slot.dart：NodeCardSlot（各卡自己 watch 选中 / 链接 / 拖线态；拖卡松手换道 + 撤销卡；
+//         出端口拖线；卡片上的右键单击）
+//       stage_edge_layer.dart：连线绘制 StageEdgeLayer、选中边删除钮 StageEdgeDeleteOverlay、
+//         拖线实时虚线 PendingWireLayer、边 / 泳道加载失败横幅 EdgeLaneErrorSlot
+//       stage_lane_layer.dart：泳道皮层平移 StageLaneShift、底色带 StageLaneBackgroundLayer、
+//         标题栏 + 分界线 StageLaneLayer
+//       stage_overlays.dart：挂起定位落地 PendingFocusApplier、计数 chip、连线提示条、加载失败整屏
 //   - 可播放性 IO 判定在 playableVideoPathProvider；连线编排在 LinkActionController
-//   - 新建菜单（create_node_menu.dart）：从卡片出端口拖线（_NodeCardSlot 报拖线、_PendingWireLayer 画
+//   - 新建菜单（create_node_menu.dart）：从卡片出端口拖线（NodeCardSlot 报拖线、PendingWireLayer 画
 //     实时虚线、舞台层判落点——落在卡上 = linkTo，落在空白 = 带上下文开菜单）、空白处双击 / 右键
-//     （_BlankPointerDetector）都开它；菜单宿主 CanvasMenuHost 包在 _CanvasBody 最外层。拖线途中源卡没了
+//     （BlankPointerDetector）都开它；菜单宿主 CanvasMenuHost 包在 _CanvasBody 最外层。拖线途中源卡没了
 //     （被删）由 _CanvasBody 看着节点集取消拖线——卡片插槽已经卸载，它自己收不了
 //   - 节点右键菜单（PR-8b，同一个宿主）：卡片插槽收右键单击，舞台层先处理选中（没选中的先单选它，已在
 //     多选里的保持多选）再在按下点开菜单
-//   - 右键（空白处与卡片上）都是抬起时开、按下到抬起没挪出点击容差才开，锚点用按下点（_SecondaryClickDetector）：
-//     按住右键拖动是拖画布，不开菜单
 
-import 'dart:async';
-
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/di/canvas_style.dart';
-import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/toast_service.dart';
-import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
-import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/tokens.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
-import '../providers/canvas_focus_request.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
-import '../providers/canvas_tool_mode.dart';
 import '../providers/canvas_transform_controller.dart';
 import '../providers/current_canvas_id.dart';
 import '../providers/link_action_controller.dart';
 import '../providers/link_mode_controller.dart';
-import '../providers/node_drag_delta.dart';
 import '../providers/playable_video_path.dart';
 import '../providers/selected_edge_controller.dart';
 import '../util/canvas_extent.dart';
@@ -52,26 +50,23 @@ import '../util/canvas_tool_actions.dart';
 import '../util/canvas_zoom.dart';
 import '../util/drop_placement.dart';
 import '../util/edge_hit_test.dart';
-import '../util/edge_style.dart';
 import '../util/lineage_edges.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_lanes_controller.dart';
 import '../providers/lane_collapse_controller.dart';
 import '../util/lane_geometry.dart';
 import '../util/lane_pin_geometry.dart';
-import '../../notifications/providers/toast_service_provider.dart';
 import '../../shell/widgets/shell_empty_state.dart';
 import 'canvas_empty_state.dart';
 import 'canvas_grid_painter.dart';
 import 'create_node_menu.dart';
-import 'edge_painter.dart';
-import 'left_rail/left_rail_actions.dart';
-import 'lane_background.dart';
-import 'canvas_shortcuts.dart';
-import 'lane_edit_dialog.dart';
 import 'lane_title_bar.dart';
 import 'lane_toolbar.dart';
-import 'node_card.dart';
+import 'stage/node_card_slot.dart';
+import 'stage/stage_edge_layer.dart';
+import 'stage/stage_lane_layer.dart';
+import 'stage/stage_overlays.dart';
+import 'stage/stage_pointer_layer.dart';
 import 'video_lightbox.dart';
 
 // InteractiveViewer 平移越界余量（画布外延展空间，非视觉 token）
@@ -106,182 +101,11 @@ class CanvasView extends ConsumerWidget {
       ),
       // raw toString 上屏收敛（GAP-3 审计;设置页安全存储探测行的诊断详情
       // 为有意例外）——走 l10n 映射。
-      error: (err, _) => _LoadError(message: l10nAsyncError(context, err)),
-      data: (nodes) => _PendingFocusApplier(
+      error: (err, _) => CanvasLoadError(message: l10nAsyncError(context, err)),
+      data: (nodes) => PendingFocusApplier(
         canvasId: canvasId,
         nodes: nodes,
         child: _CanvasBody(canvasId: canvasId, nodes: nodes),
-      ),
-    );
-  }
-}
-
-/// 挂起的定位请求（canvas_focus_request.dart）在本画布落地：节点已载入（本层只在 data 分支里）、
-/// 视口已上报尺寸之后，帧后单选 + 移到视口中心，并消费掉请求。
-///
-/// 跨画布定位时本画布是切过去才挂上来的；直接在切换那一刻写选中会被 autoDispose 回收。
-/// 请求的节点不在本画布（已删）时只消费、不定位。
-class _PendingFocusApplier extends ConsumerStatefulWidget {
-  const _PendingFocusApplier({
-    required this.canvasId,
-    required this.nodes,
-    required this.child,
-  });
-
-  final String canvasId;
-  final List<CanvasNode> nodes;
-  final Widget child;
-
-  @override
-  ConsumerState<_PendingFocusApplier> createState() => _PendingFocusApplierState();
-}
-
-class _PendingFocusApplierState extends ConsumerState<_PendingFocusApplier> {
-  @override
-  Widget build(BuildContext context) {
-    final CanvasFocusRequest? request = ref.watch(canvasFocusRequestProvider);
-    // 视口尺寸恒 watch：本层自己给这个 autoDispose provider 保活，不指望外层碰巧有人订阅
-    // （生产里 CanvasShortcuts 也 watch 着，但落地不该依赖它）。重建只到本层——返回的是
-    // 同一个 child 实例，舞台不跟着重建。
-    final Size viewport = ref.watch(canvasViewportSizeProvider(widget.canvasId));
-    if (request != null && request.canvasId == widget.canvasId && !viewport.isEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _land(request));
-    }
-    return widget.child;
-  }
-
-  void _land(CanvasFocusRequest request) {
-    if (!mounted || ref.read(canvasFocusRequestProvider) != request) return;
-    ref.read(canvasFocusRequestProvider.notifier).consume(request);
-    for (final CanvasNode node in widget.nodes) {
-      if (node.id == request.nodeId) {
-        if (request.center) {
-          focusNodeOnCanvas(ref, canvasId: widget.canvasId, node: node);
-        } else {
-          ref.read(canvasSelectionControllerProvider(widget.canvasId).notifier).select(node.id);
-        }
-        return;
-      }
-    }
-  }
-}
-
-class _EdgeDeleteButton extends StatelessWidget {
-  const _EdgeDeleteButton({required this.onPressed});
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    return Material(
-      color: colors.surface1,
-      shape: CircleBorder(side: BorderSide(color: colors.danger, width: 1.5)),
-      elevation: 2,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onPressed,
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: Icon(Icons.close, size: 16, color: colors.danger),
-        ),
-      ),
-    );
-  }
-}
-
-class _SelectionCountChip extends StatelessWidget {
-  const _SelectionCountChip({required this.count});
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-    return Material(
-      color: colors.surface3,
-      borderRadius: BorderRadius.circular(InkRadius.pill),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: InkSpacing.md,
-          vertical: InkSpacing.xs,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(Icons.check_circle_outline, size: 14, color: colors.accent),
-            const SizedBox(width: InkSpacing.xs),
-            Text(
-              context.l10n.canvasSelectionCount(count),
-              style: typo.meta.copyWith(color: colors.fg1),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LinkHintBanner extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-    return Material(
-      color: colors.surface3,
-      borderRadius: BorderRadius.circular(InkRadius.md),
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: InkSpacing.md,
-          vertical: InkSpacing.sm,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.link, size: 16, color: colors.accent),
-            const SizedBox(width: InkSpacing.sm),
-            Flexible(
-              child: Text(
-                context.l10n.linkModeHint,
-                style: typo.body.copyWith(color: colors.fg1),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoadError extends StatelessWidget {
-  const _LoadError({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.inkColors;
-    final typo = context.inkTypography;
-    return Container(
-      color: colors.surface1,
-      padding: const EdgeInsets.all(InkSpacing.lg),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              context.l10n.canvasLoadFailed,
-              style: typo.body.copyWith(color: colors.fg1),
-            ),
-            const SizedBox(height: InkSpacing.sm),
-            Text(
-              message,
-              style: typo.meta.copyWith(color: colors.fg3),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -403,20 +227,20 @@ class _CanvasBody extends ConsumerWidget {
           top: InkToolbarSize.stageTopInset,
           left: InkSpacing.md,
           right: InkSpacing.md,
-          child: _EdgeLaneErrorSlot(canvasId: canvasId),
+          child: EdgeLaneErrorSlot(canvasId: canvasId),
         ),
         // 链接提示条：仅随 linkMode 重建。
         Positioned(
           top: InkToolbarSize.stageTopInset,
           left: InkSpacing.md,
           right: InkSpacing.md,
-          child: _LinkHintSlot(canvasId: canvasId),
+          child: LinkHintSlot(canvasId: canvasId),
         ),
         // 多选计数 chip：仅随选中数量重建。
         Positioned(
           top: InkToolbarSize.stageTopInset,
           right: InkSpacing.md,
-          child: _SelectionCountSlot(canvasId: canvasId),
+          child: SelectionCountSlot(canvasId: canvasId),
         ),
         // 泳道工具栏：左下角，叠在缩放条（canvas_screen，left 12 / bottom 12）之上，
         // 左沿与它对齐。
@@ -449,51 +273,14 @@ class _CanvasStage extends ConsumerWidget {
   final void Function(CanvasNode node) onNodeTap;
   final VoidCallback onEmptyTap;
 
-  Future<void> _handleEdgeDelete(
-    BuildContext context,
-    WidgetRef ref,
-    CanvasEdge edge,
-  ) async {
-    ref.read(selectedEdgeControllerProvider(canvasId).notifier).clear();
-    final edgesCtrl = ref.read(
-      canvasEdgesControllerProvider(canvasId).notifier,
-    );
-    try {
-      final removed = await edgesCtrl.removeEdge(edge.id);
-      if (removed == null || !context.mounted) return;
-      showCanvasUndoSnack(
-        context,
-        message: context.l10n.edgeDeleted,
-        onUndo: () => _restoreEdge(context, edgesCtrl, removed),
-      );
-    } on InkError catch (_) {
-      // 删失败：EdgesController 已回滚内存，SelectedEdge 已清。回滚让连线**冒回来**，
-      // 可那只是现象——不说一声，用户只看到「删掉的线又回来了」，不知道是没删成。
-      // 删节点 / 删泳道失败都有提示，删连线原来是唯一不说的那个。
-      if (context.mounted) showCanvasSnack(context, context.l10n.edgeDeleteFailed);
-    }
-  }
-
-  Future<void> _restoreEdge(
-    BuildContext context,
-    CanvasEdgesController ctrl,
-    CanvasEdge edge,
-  ) async {
-    try {
-      await ctrl.restore(edge);
-    } on InkError catch (_) {
-      if (context.mounted) showCanvasSnack(context, context.l10n.undoFailed);
-    }
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final colors = context.inkColors;
-    // 选中/链接态不在本层 watch——下沉到 _NodeCardSlot 各自 watch，改选中
+    // 选中/链接态不在本层 watch——下沉到 NodeCardSlot 各自 watch，改选中
     // 只重建涉及的卡片，不再整层重建（丝滑核心）。
     final selectedEdgeId = ref.watch(selectedEdgeControllerProvider(canvasId));
     final edges =
-        // 良性降级（GAP-3 审计 B 类）：错误横幅在 _EdgeLaneErrorSlot
+        // 良性降级（GAP-3 审计 B 类）：错误横幅在 EdgeLaneErrorSlot
         ref.watch(canvasEdgesControllerProvider(canvasId)).valueOrNull ??
         const <CanvasEdge>[];
     // 泳道数据。
@@ -582,7 +369,7 @@ class _CanvasStage extends ConsumerWidget {
           );
     }
 
-    final selectedGeometry = _selectedEdgeGeometry(
+    final selectedGeometry = selectedEdgeGeometry(
       selectedEdgeId: selectedEdgeId,
       edges: edges,
       nodes: visibleNodes,
@@ -647,23 +434,6 @@ class _CanvasStage extends ConsumerWidget {
           );
     }
 
-    // 拖卡片途中松手会换进哪条道（泳道背景层据此高亮）：与松手时 _NodeCardSlot 的 resolveCardDrop
-    // 同一个判定。拖的不是本画布的卡（广播是全局的）= null。
-    String? dropTargetLaneOf(NodeDragDelta? drag) {
-      if (drag == null) return null;
-      for (final CanvasNode n in nodes) {
-        if (n.id != drag.nodeId) continue;
-        return cardDropTargetLane(
-          node: n,
-          dragDelta: drag.delta,
-          laneSlices: laneSlices,
-          direction: direction,
-          scale: scaleOf(transformController.value),
-        );
-      }
-      return null;
-    }
-
     return Container(
       color: colors.surface1,
       // 视口尺寸上报给缩放层（围绕视口中心缩放需要）。
@@ -677,32 +447,16 @@ class _CanvasStage extends ConsumerWidget {
           });
           // 泳道模型（终版）：泳道栈锚在世界原点——拖画布时整体跟着世界走，
           // 缩放时道厚不变、只有道内内容以本道起始边为锚缩放。
-          // 皮分两组同偏移平移：底色带在世界内容之下，标题栏/拖拽条之上。
-          //
-          // 偏移必须用 Positioned（每帧重建）而非 Transform.translate：
-          // RenderBox.hitTest 先按未变换的盒子边界筛，Transform 只移画面
-          // 不移命中区——平移后泳道边界"看得见摸不着"（宽度拖拽锁死）。
-          final horizontal = direction == LaneDirection.horizontal;
+          // 皮分两组同偏移平移（StageLaneShift）：底色带在世界内容之下，标题栏/拖拽条之上。
           final lanesTotal = laneSlices.fold(0.0, (sum, l) => sum + l.size);
           // 皮层盒子比泳道栈多留一个标题栏的余量（BOARD P2-3）：竖向窄道的标题栏按下限宽
           // 溢出到栈外时仍在盒内——RenderBox.hitTest 先按盒界筛，盒外的按钮看得见点不到。
           final skinExtent = lanesTotal + LaneTitleBar.minWidth;
-          Widget laneShifted(Widget child) => ValueListenableBuilder<Matrix4>(
-                valueListenable: transformController,
-                builder: (context, m, c) {
-                  final off = laneStackOffset(m, direction);
-                  return Stack(
-                    children: [
-                      Positioned(
-                        left: horizontal ? 0 : off,
-                        top: horizontal ? off : 0,
-                        width: horizontal ? size.width : skinExtent,
-                        height: horizontal ? skinExtent : size.height,
-                        child: c!,
-                      ),
-                    ],
-                  );
-                },
+          Widget laneShifted(Widget child) => StageLaneShift(
+                transform: transformController,
+                direction: direction,
+                viewport: size,
+                skinExtent: skinExtent,
                 child: child,
               );
           return Stack(
@@ -716,28 +470,19 @@ class _CanvasStage extends ConsumerWidget {
               if (lanes.isNotEmpty)
                 Positioned.fill(
                   child: laneShifted(
-                    IgnorePointer(
-                      // 拖卡片途中高亮松手会换进的那条道：.select 掉每帧的位移，只在目标道翻转时重建这一层。
-                      child: Consumer(
-                        builder: (context, ref, _) => LaneBackground(
-                          lanes: lanes,
-                          direction: direction,
-                          canvasExtent:
-                              horizontal ? size.width : size.height,
-                          dividerColor: colors.borderSubtle,
-                          railFallbackColor: colors.control,
-                          collapsedIds: collapsedIds,
-                          dropTargetLaneId: ref.watch(
-                            nodeDragDeltaProvider.select(dropTargetLaneOf),
-                          ),
-                          dropTargetColor: colors.accent,
-                        ),
-                      ),
+                    StageLaneBackgroundLayer(
+                      lanes: lanes,
+                      nodes: nodes,
+                      laneSlices: laneSlices,
+                      direction: direction,
+                      collapsedIds: collapsedIds,
+                      transform: transformController,
+                      viewport: size,
                     ),
                   ),
                 ),
               Positioned.fill(
-                child: _StagePanCursor(
+                child: StagePanCursor(
                   canvasId: canvasId,
                   child: InteractiveViewer(
             transformationController: transformController,
@@ -747,10 +492,10 @@ class _CanvasStage extends ConsumerWidget {
             maxScale: kCanvasMaxScale,
             // 平移生效：舞台内容（连线命中层 / 卡片 / 边删除钮）整层不收指针，命中落到
             // InteractiveViewer 自己的 opaque 手势层上——拖到卡片上也是拖画布。
-            child: _PanGate(
+            child: StagePanGate(
               canvasId: canvasId,
               // 舞台坐标系的锚：拖线时卡片插槽往上找它，把指针的全局坐标换成舞台坐标。
-              child: _StageSpace(
+              child: StageSpace(
               child: SizedBox(
               width: stage.width,
               height: stage.height,
@@ -759,9 +504,9 @@ class _CanvasStage extends ConsumerWidget {
                 clipBehavior: Clip.none,
                 children: [
                   // 连线层（含点击命中）。translucent 让空白处也冒泡。卡片盖着的地方点不到这一层，
-                  // 所以这里收到的双击 / 右键就是「空白处」的（_BlankPointerDetector）。
+                  // 所以这里收到的双击 / 右键就是「空白处」的（BlankPointerDetector）。
                   Positioned.fill(
-                    child: _BlankPointerDetector(
+                    child: BlankPointerDetector(
                       onDoubleDown: onBlankDoubleDown,
                       onSecondaryClick: onBlankSecondaryClick,
                       child: GestureDetector(
@@ -769,72 +514,29 @@ class _CanvasStage extends ConsumerWidget {
                       onTapDown: onEdgeLayerTap,
                       // HI-15：连线层独立 layer，节点局部动画不连带边层重绘。
                       // 拖拽位移/自定义连线色在此窄域 watch——每帧只重绘本层。
-                      child: RepaintBoundary(
-                        child: Consumer(
-                          builder: (context, ref, _) {
-                            final drag = ref.watch(nodeDragDeltaProvider);
-                            final style =
-                                ref.watch(canvasStyleControllerProvider);
-                            final typo = context.inkTypography;
-                            final l = context.l10n;
-                            final selectedNodeIds = ref.watch(
-                              canvasSelectionControllerProvider(canvasId),
-                            );
-                            // 连线语义色（画布重设计稿）：叙事 fg4、产出 fg6、首帧 /
-                            // 尾帧 / 参考各一色；当前链路仍是用户自定义连线色，没设
-                            // 就是 accent。标签胶囊底 = 画布底色。
-                            final palette = EdgePalette(
-                              narrative: colors.fg4,
-                              lineage: colors.fg6,
-                              firstFrame: colors.edgeFirstFrame,
-                              lastFrame: colors.edgeLastFrame,
-                              reference: colors.edgeReference,
-                              accent: style.edgeColor ?? colors.accent,
-                              chipFill: colors.surface1,
-                            );
-                            // 锚点吃分道位移（与卡片渲染位置同源），缩放/平移
-                            // 实时跟随。
-                            return ValueListenableBuilder<Matrix4>(
-                              valueListenable: transformController,
-                              builder: (context, m, _) => CustomPaint(
-                                painter: EdgePainter(
-                                  edges: edges,
-                                  lineage: lineage,
-                                  nodes: displacedNodes(
-                                    nodes: visibleNodes,
-                                    lanes: laneSlices,
-                                    direction: direction,
-                                    transform: m,
-                                  ),
-                                  palette: palette,
-                                  labelStyle: typo.micro,
-                                  firstFrameLabel: l.inspectorRoleFirstFrame,
-                                  lastFrameLabel: l.inspectorRoleLastFrame,
-                                  referenceLabel: l.canvasEdgeLabelReference,
-                                  direction: direction,
-                                  selectedNodeIds: selectedNodeIds,
-                                  selectedEdgeId: selectedEdgeId,
-                                  dragNodeId: drag?.nodeId,
-                                  dragDelta: drag?.delta ?? Offset.zero,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                      child: StageEdgeLayer(
+                        canvasId: canvasId,
+                        edges: edges,
+                        lineage: lineage,
+                        visibleNodes: visibleNodes,
+                        laneSlices: laneSlices,
+                        direction: direction,
+                        transform: transformController,
+                        selectedEdgeId: selectedEdgeId,
                       ),
                     ),
                     ),
                   ),
                   // 无道节点：全局变换直出。
                   // HI-13/HI-15：拖拽位移在 NodeCard 内部局部累积，落点一次性
-                  // 提交 moveNode；选中/链接态下沉到 _NodeCardSlot 各自 watch，
+                  // 提交 moveNode；选中/链接态下沉到 NodeCardSlot 各自 watch，
                   // RepaintBoundary 把拖拽/重绘隔离在本卡片 layer。
                   for (final node in freeNodes)
                     Positioned(
                       key: ValueKey('node-card-${node.id}'),
                       left: node.position.dx + kStageOrigin.dx,
                       top: node.position.dy + kStageOrigin.dy,
-                      child: _NodeCardSlot(
+                      child: NodeCardSlot(
                         node: node,
                         canvasId: canvasId,
                         lanes: lanes,
@@ -888,7 +590,7 @@ class _CanvasStage extends ConsumerWidget {
                                   key: ValueKey('node-card-${node.id}'),
                                   left: node.position.dx + kStageOrigin.dx,
                                   top: node.position.dy + kStageOrigin.dy,
-                                  child: _NodeCardSlot(
+                                  child: NodeCardSlot(
                                     node: node,
                                     lane: lane,
                                     canvasId: canvasId,
@@ -919,46 +621,18 @@ class _CanvasStage extends ConsumerWidget {
                     // 删除按钮锚在连线中点：中点取渲染位置（含分道位移），
                     // 缩放/平移实时跟随。
                     Positioned.fill(
-                      child: ValueListenableBuilder<Matrix4>(
-                        valueListenable: transformController,
-                        builder: (context, m, _) {
-                          final drawn = displacedNodes(
-                            nodes: [
-                              selectedGeometry.source,
-                              selectedGeometry.target,
-                            ],
-                            lanes: laneSlices,
-                            direction: direction,
-                            transform: m,
-                          );
-                          final mid = edgeMidpoint(
-                            source: drawn[0],
-                            target: drawn[1],
-                            direction: direction,
-                          );
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Positioned(
-                                left: mid.dx - 14,
-                                top: mid.dy - 14,
-                                child: _EdgeDeleteButton(
-                                  onPressed: () => _handleEdgeDelete(
-                                    context,
-                                    ref,
-                                    selectedGeometry.edge,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          );
-                        },
+                      child: StageEdgeDeleteOverlay(
+                        canvasId: canvasId,
+                        geometry: selectedGeometry,
+                        laneSlices: laneSlices,
+                        direction: direction,
+                        transform: transformController,
                       ),
                     ),
                   // 拖线中的实时虚线：画在卡片之上（拖过别的卡片时线不被压住），不收指针。
                   Positioned.fill(
                     child: IgnorePointer(
-                      child: _PendingWireLayer(
+                      child: PendingWireLayer(
                         canvasId: canvasId,
                         nodes: visibleNodes,
                         laneSlices: laneSlices,
@@ -981,27 +655,17 @@ class _CanvasStage extends ConsumerWidget {
               // 平移生效时这一层同样不收指针：拖到标题栏 / 感应条上也是拖画布。
               if (lanes.isNotEmpty)
                 Positioned.fill(
-                  child: _PanGate(
+                  child: StagePanGate(
                     canvasId: canvasId,
                     child: laneShifted(
-                    Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        ..._buildLaneTitleBars(
-                          context,
-                          ref,
-                          lanes,
-                          laneSlices,
-                          nodes,
-                          direction,
-                          collapsedIds,
-                          size,
-                        ),
-                        if (lanes.length >= 2)
-                          ..._buildResizeDividers(
-                            context, ref, lanes, laneSlices, direction, collapsedIds, size,
-                          ),
-                      ],
+                    StageLaneLayer(
+                      canvasId: canvasId,
+                      lanes: lanes,
+                      laneSlices: laneSlices,
+                      nodes: nodes,
+                      direction: direction,
+                      collapsedIds: collapsedIds,
+                      viewport: size,
                     ),
                   ),
                   ),
@@ -1009,866 +673,6 @@ class _CanvasStage extends ConsumerWidget {
             ],
           );
         },
-      ),
-    );
-  }
-
-  /// 为每条泳道生成标题栏 Positioned widget 列表（含拖拽重排 + 折叠）。
-  ///
-  /// lane-stack 空间（外层已随泳道栈偏移平移）：坐标/尺寸为屏幕像素，
-  /// 道 i 起始边恒为 laneStart_i，不随缩放变化。
-  List<Widget> _buildLaneTitleBars(
-    BuildContext context,
-    WidgetRef ref,
-    List<StyleLane> lanes,
-    List<({String id, double size})> laneSlices,
-    List<CanvasNode> nodes,
-    LaneDirection direction,
-    Set<String> collapsedIds,
-    Size viewport,
-  ) {
-    // 稿：标题栏 26px；横向固定 268 宽、左 14 / 道顶 +14；竖向 left = 道左 + 12、top 14、
-    // 宽 min(道宽 − 24, 240)（下限 LaneTitleBar.minWidth，窄道时溢出但可命中——BOARD P2-3）。
-    // 折叠道（36 轨）里标题栏垂直居中。
-    const double kTitleBarHeight = LaneTitleBar.height;
-    const double kTitleBarInsetH = 14.0;
-    const double kTitleBarInsetV = 12.0;
-    const double kTitleBarTop = 14.0;
-    final rects = laneRects(
-      lanes: laneSlices,
-      direction: direction,
-      canvasExtent: direction == LaneDirection.horizontal
-          ? viewport.width
-          : viewport.height,
-    );
-    final counts = <String, int>{};
-    for (final n in nodes) {
-      if (n.laneId != null) counts[n.laneId!] = (counts[n.laneId!] ?? 0) + 1;
-    }
-    final result = <Widget>[];
-    for (var i = 0; i < lanes.length; i++) {
-      final lane = lanes[i];
-      final rect = rects[i];
-      final bool collapsed = collapsedIds.contains(lane.id);
-      final double crossInset = collapsed ? (kCollapsedLaneSize - kTitleBarHeight) / 2 : kTitleBarTop;
-      final double left;
-      final double top;
-      final double? width;
-      if (direction == LaneDirection.horizontal) {
-        left = kTitleBarInsetH;
-        top = rect.top + crossInset;
-        width = LaneTitleBar.horizontalWidth;
-      } else {
-        left = rect.left + kTitleBarInsetV;
-        // 竖向道的标题栏钉在视口顶：同样让出浮动工具条那一条，否则居中的工具条一直盖着
-        // 中间几条道的标题栏（横向道随泳道栈走，默认相机已让出）。
-        top = InkToolbarSize.stageTopInset + crossInset;
-        width = (rect.width - kTitleBarInsetV * 2)
-            .clamp(LaneTitleBar.minWidth, LaneTitleBar.verticalMaxWidth);
-      }
-      // 拖拽重排：记录拖拽偏移，pan end 时计算目标 lane 并 reorderLanes。
-      var dragOffset = Offset.zero;
-      result.add(
-        Positioned(
-          left: left,
-          top: top,
-          width: width,
-          height: kTitleBarHeight,
-          child: GestureDetector(
-            onPanUpdate: (d) => dragOffset += d.delta,
-            onPanEnd: (_) {
-              final moved = dragOffset;
-              dragOffset = Offset.zero;
-              if (moved.distance < 12) return; // 阈值：避免误触重排
-              final dropPoint = direction == LaneDirection.horizontal
-                  ? Offset(0, rect.top + kTitleBarHeight / 2 + moved.dy)
-                  : Offset(rect.left + rect.width / 2 + moved.dx, 0);
-              final targetId = laneIdAtPoint(
-                point: dropPoint,
-                lanes: laneSlices,
-                direction: direction,
-              );
-              final ids = reorderedLaneIds(
-                [for (final l in lanes) l.id],
-                lane.id,
-                targetId,
-              );
-              ref
-                  .read(canvasLanesControllerProvider(canvasId).notifier)
-                  .reorderLanes(ids);
-            },
-            child: LaneTitleBar(
-              lane: lane,
-              nodeCount: counts[lane.id] ?? 0,
-              collapsed: collapsed,
-              onToggleCollapse: () => ref
-                  .read(laneCollapseProvider(canvasId).notifier)
-                  .toggle(lane.id),
-              onEdit: () => _onEditLane(context, ref, lane),
-              onDelete: () => _onDeleteLane(context, ref, lane),
-            ),
-          ),
-        ),
-      );
-    }
-    return result;
-  }
-
-  // 拖拽分界线调整相邻泳道大小（~10px 透明感应条，仅命中不绘制）。
-  // 视口层：厚度恒为屏幕像素；位置随泳道栈平移（laneStackOffset），缩放不改道厚。
-  List<Widget> _buildResizeDividers(
-    BuildContext context,
-    WidgetRef ref,
-    List<StyleLane> lanes,
-    List<({String id, double size})> laneSlices,
-    LaneDirection direction,
-    Set<String> collapsedIds,
-    Size viewport,
-  ) {
-    const double kStripThick = 10.0;
-    final rects = laneRects(
-      lanes: laneSlices,
-      direction: direction,
-      canvasExtent: direction == LaneDirection.horizontal
-          ? viewport.width
-          : viewport.height,
-    );
-    final horizontal = direction == LaneDirection.horizontal;
-    final result = <Widget>[];
-    // 相邻泳道之间各一条感应条，以 upper lane id 为键。
-    for (var i = 1; i < lanes.length; i++) {
-      final upperLane = lanes[i - 1];
-      // 折叠的道厚度是定值，不给拖。
-      if (collapsedIds.contains(upperLane.id)) continue;
-      final dividerPos = horizontal ? rects[i].top : rects[i].left;
-      final upperLaneId = upperLane.id;
-      final double currentSize = upperLane.size;
-      double delta = 0;
-
-      // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，这里补用户提示。
-      Future<void> commit() async {
-        final newSize = clampLaneSize(currentSize, delta);
-        delta = 0;
-        try {
-          await ref
-              .read(canvasLanesControllerProvider(canvasId).notifier)
-              .updateLane(upperLaneId, size: newSize);
-        } on InkError catch (_) {
-          if (context.mounted) {
-            showCanvasSnack(context, context.l10n.laneUpdateFailed);
-          }
-        }
-      }
-
-      result.add(
-        Positioned(
-          left: horizontal ? 0 : dividerPos - kStripThick / 2,
-          top: horizontal ? dividerPos - kStripThick / 2 : 0,
-          width: horizontal ? viewport.width : kStripThick,
-          height: horizontal ? kStripThick : viewport.height,
-          child: MouseRegion(
-            cursor: horizontal
-                ? SystemMouseCursors.resizeRow
-                : SystemMouseCursors.resizeColumn,
-            // translucent：感应条自身收 pan（层序在标题栏之上，#184），
-            // 同时不吞掉带下内容的命中——10px 带内连线/卡片仍可点选。
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onPanUpdate: (d) => delta += horizontal ? d.delta.dy : d.delta.dx,
-              onPanEnd: (_) => commit(),
-            ),
-          ),
-        ),
-      );
-    }
-    return result;
-  }
-
-  Future<void> _onEditLane(
-    BuildContext context,
-    WidgetRef ref,
-    StyleLane lane,
-  ) async {
-    final r = await showLaneEditDialog(context, existing: lane);
-    if (r == null) return;
-    if (!context.mounted) return;
-    try {
-      await ref
-          .read(canvasLanesControllerProvider(canvasId).notifier)
-          .updateLane(
-            lane.id,
-            label: r.label,
-            stylePrompt: r.stylePrompt,
-            tintColor: r.tintColor,
-            clearTint: r.tintColor == null,
-          );
-    } on InkError catch (_) {
-      if (context.mounted) {
-        showCanvasSnack(context, context.l10n.laneUpdateFailed);
-      }
-    }
-  }
-
-  Future<void> _onDeleteLane(
-    BuildContext context,
-    WidgetRef ref,
-    StyleLane lane,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final l10n = ctx.l10n;
-        return AlertDialog(
-          title: Text(l10n.laneDeleteConfirmTitle),
-          content: Text(l10n.laneDeleteConfirmBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(l10n.laneDialogCancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(l10n.laneDelete),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmed != true) return;
-    if (!context.mounted) return;
-    try {
-      await ref
-          .read(canvasLanesControllerProvider(canvasId).notifier)
-          .deleteLane(lane.id);
-    } on InkError catch (_) {
-      if (context.mounted) {
-        showCanvasSnack(context, context.l10n.laneDeleteFailed);
-      }
-    }
-  }
-}
-
-/// 在 [edges]/[nodes] 中定位选中边及其端点节点；任一缺失返回 null。
-({CanvasEdge edge, CanvasNode source, CanvasNode target})?
-_selectedEdgeGeometry({
-  required String? selectedEdgeId,
-  required List<CanvasEdge> edges,
-  required List<CanvasNode> nodes,
-}) {
-  if (selectedEdgeId == null) return null;
-  CanvasEdge? edge;
-  for (final e in edges) {
-    if (e.id == selectedEdgeId) {
-      edge = e;
-      break;
-    }
-  }
-  if (edge == null) return null;
-  CanvasNode? source;
-  CanvasNode? target;
-  for (final n in nodes) {
-    if (n.id == edge.sourceNodeId) source = n;
-    if (n.id == edge.targetNodeId) target = n;
-  }
-  if (source == null || target == null) return null;
-  return (edge: edge, source: source, target: target);
-}
-
-/// 单个节点卡片插槽：各自 watch 自己的选中/链接态——改选中只重建涉及的卡片，
-/// 不连带整个舞台层（丝滑核心）。端口占用（[hasInEdge] / [hasOutEdge]）由舞台层
-/// 按存量边 + 产出线整层算一次传进来。
-///
-/// 出端口拖线也从这里报：指针的全局坐标换成舞台坐标写进 canvasWireDragProvider，松手时把这条拖线
-/// 交给舞台层（[onWireDrop]）判落点。卡片上的右键单击同样把按下点换成舞台坐标交给舞台层（[onSecondaryClick]）。
-class _NodeCardSlot extends ConsumerWidget {
-  const _NodeCardSlot({
-    required this.node,
-    this.lane,
-    required this.canvasId,
-    required this.lanes,
-    required this.laneSlices,
-    required this.direction,
-    required this.transform,
-    required this.hasInEdge,
-    required this.hasOutEdge,
-    required this.onTap,
-    required this.onSecondaryClick,
-    required this.onDelete,
-    required this.onWireDrop,
-  });
-
-  final CanvasNode node;
-  /// 所在泳道（稿：卡片底部「继承 X」行）；无道节点为 null。
-  final StyleLane? lane;
-  final String canvasId;
-
-  /// 本画布的全部泳道：拖动换道后的提示卡要写出进了 / 出了哪条道的名字。
-  final List<StyleLane> lanes;
-  final List<({String id, double size})> laneSlices;
-  final LaneDirection direction;
-
-  /// 画布世界→屏幕变换：泳道钉在视口层（屏幕坐标），落点归属须换算后判定。
-  final TransformationController transform;
-
-  /// 入口 / 出口这一侧真挂着画出来的线——端口常驻（见 NodeCard 头注）。
-  final bool hasInEdge;
-  final bool hasOutEdge;
-  final VoidCallback onTap;
-
-  /// 在本卡上右键单击（抬起时报，见 [_SecondaryClickDetector]）：给的是**按下点**的舞台坐标（舞台层换成视口坐标
-  /// 开节点右键菜单）。
-  final ValueChanged<Offset> onSecondaryClick;
-  final VoidCallback onDelete;
-
-  /// 从本卡出端口拖线后松手：舞台层判落点（连线 / 开新建菜单 / 什么都不做）。
-  final void Function(WireDrag drag) onWireDrop;
-
-  /// 指针全局坐标 → 舞台坐标：沿渲染树往上找舞台坐标系的锚（[_StageSpace]）。卡片可能在分道位移组
-  /// 里，位移组在锚之下，所以换出来的是舞台坐标（与 displacedNodes 同一个坐标系），不是道内坐标。
-  static Offset? _toStage(BuildContext context, Offset global) => context
-      .findAncestorRenderObjectOfType<_RenderStageSpace>()
-      ?.globalToLocal(global);
-
-  /// 泳道 [laneId] 在提示卡上的名字（没起名 = 「未命名泳道」，道已不在也按没起名写）。
-  String _laneName(AppLocalizations l, String? laneId) {
-    for (final StyleLane candidate in lanes) {
-      if (candidate.id == laneId) {
-        return candidate.label.isEmpty ? l.laneUntitled : candidate.label;
-      }
-    }
-    return l.laneUntitled;
-  }
-
-  /// 拖卡片松手：落位置；归属泳道只在真拖过去了时才改（判定在 util/drop_placement.dart 的 resolveCardDrop，
-  /// 误拖一两个像素不换道——演示 O2）。改了归属就弹一张撤销卡「已移入 / 移出泳道 X」，「撤销」把卡片挪回
-  /// 原位置、原泳道。
-  ///
-  /// 提示要用的东西（文案、通知服务、容器）在 await 之前取齐：换了道，卡片会被挪进另一个分道位移组重新挂载，
-  /// 这个插槽的 context / ref 当场失效，等写库回来再取就晚了。
-  void _commitDrag(BuildContext context, WidgetRef ref, Offset totalDelta) {
-    final CardDrop drop = resolveCardDrop(
-      node: node,
-      dragDelta: totalDelta,
-      laneSlices: laneSlices,
-      direction: direction,
-      scale: scaleOf(transform.value),
-    );
-    final AppLocalizations l = context.l10n;
-    final ToastService toasts = ref.read(toastServiceProvider);
-    final ProviderContainer container =
-        ProviderScope.containerOf(context, listen: false);
-    final CanvasNodesController nodesCtrl =
-        ref.read(canvasNodesControllerProvider(canvasId).notifier);
-    final String nodeId = node.id;
-    final Offset origin = node.position;
-    final String? fromLaneId = node.laneId;
-    final String moveFailed = l.nodeMoveFailed;
-    final String undoFailed = l.undoFailed;
-    final String undoLabel = l.commonUndo;
-    // 没换道 = null（不弹卡）。从 A 道拖进 B 道写「已移入 B」。
-    final String? laneMessage = !drop.changed
-        ? null
-        : drop.laneId == null
-            ? l.canvasNodeLeftLane(_laneName(l, fromLaneId))
-            : l.canvasNodeJoinedLane(_laneName(l, drop.laneId));
-
-    // 撤销：挪回拖动前的位置（按此刻的位置算位移，期间被别处挪过也回得去）+ 原泳道。节点已不在（被删了）就不动。
-    Future<void> undo() async {
-      CanvasNode? current;
-      for (final CanvasNode n
-          in container.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
-              const <CanvasNode>[]) {
-        if (n.id == nodeId) current = n;
-      }
-      if (current == null) return;
-      try {
-        await nodesCtrl.moveNode(
-          nodeId,
-          origin - current.position,
-          laneId: fromLaneId,
-        );
-      } on InkError catch (_) {
-        toasts.show(undoFailed, kind: ToastKind.error);
-      }
-    }
-
-    // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，补用户提示。
-    Future<void> move() async {
-      try {
-        await nodesCtrl.moveNode(nodeId, drop.delta, laneId: drop.laneId);
-      } on InkError catch (_) {
-        toasts.show(moveFailed, kind: ToastKind.error);
-        return;
-      }
-      if (laneMessage == null) return;
-      toasts.show(
-        laneMessage,
-        kind: ToastKind.undo,
-        primary: ToastAction(undoLabel, () => unawaited(undo())),
-      );
-    }
-
-    unawaited(move());
-  }
-
-  PortDragCallbacks _portDrag(BuildContext context, WidgetRef ref) {
-    WireDragController wire() =>
-        ref.read(canvasWireDragProvider(canvasId).notifier);
-    return PortDragCallbacks(
-      onStart: (Offset global) {
-        // 平移生效时舞台内容整层不收指针（_PanGate），端口本来就按不到；这里再拦一道，
-        // 「平移时端口不可拖」不只靠那一层闸。
-        if (ref.read(canvasPanActiveProvider(canvasId))) return;
-        final Offset? stage = _toStage(context, global);
-        if (stage != null) wire().start(node.id, stage);
-      },
-      onUpdate: (Offset global) {
-        final Offset? stage = _toStage(context, global);
-        if (stage != null) wire().moveTo(node.id, stage);
-      },
-      onEnd: () {
-        // 已被 Esc 取消（或根本没开始）的拖线，finish 交回 null：松手什么都不做。
-        final WireDrag? drag = wire().finish(node.id);
-        if (drag != null) onWireDrop(drag);
-      },
-      onCancel: () {
-        wire().finish(node.id);
-      },
-    );
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // .select：仅当本节点的"是否被选中"翻转时才重建本卡片。
-    final selected = ref.watch(
-      canvasSelectionControllerProvider(canvasId).select((s) => s.contains(node.id)),
-    );
-    final linkSourceId = ref.watch(linkModeControllerProvider(canvasId));
-    // 拖线的源：.select 掉指针位置——只在拖线开始 / 结束那一下翻转，指针每动一下不重建卡片。
-    final String? wireSourceId = ref.watch(
-      canvasWireDragProvider(canvasId).select((WireDrag? d) => d?.sourceNodeId),
-    );
-    // 拖线期间的高亮与连线模式同一套样式：源卡片 = 起点，其余卡片 = 可连的目标。
-    final String? activeSourceId = linkSourceId ?? wireSourceId;
-    // 右键单击（与空白处的右键同一做法）：只听原始指针事件、不进手势竞技场——卡片的单击 / 拖动不受影响；
-    // 按住右键拖动不算。平移生效时舞台内容整层不收指针（_PanGate），这里也就收不到，平移时不开菜单。
-    return _SecondaryClickDetector(
-      onSecondaryClick: (PointerDownEvent down) {
-        final Offset? stage = _toStage(context, down.position);
-        if (stage != null) onSecondaryClick(stage);
-      },
-      child: RepaintBoundary(
-      child: NodeCard(
-        node: node,
-        lane: lane,
-        selected: selected,
-        onTap: onTap,
-        // 泳道钉死模型：落点中心先经"原道锚定"映射到屏幕坐标判归属，再按"新道锚定"逆映射回世界坐标——
-        // 保证换道落点视觉位置不变（resolveCardDrop 里调的 resolveLaneDrop，新建菜单的落点调的是同一个函数）。
-        onDragEnd: (Offset totalDelta) => _commitDrag(context, ref, totalDelta),
-        onStartLink: () =>
-            ref.read(linkModeControllerProvider(canvasId).notifier).start(node.id),
-        onDelete: onDelete,
-        isLinkSource: activeSourceId == node.id,
-        isLinkCandidate: activeSourceId != null && activeSourceId != node.id,
-        hasInEdge: hasInEdge,
-        hasOutEdge: hasOutEdge,
-        portDrag: _portDrag(context, ref),
-      ),
-      ),
-    );
-  }
-}
-
-/// 画布元数据（边/泳道/泳道方向）加载失败横幅插槽：非阻塞——节点已在
-/// _CanvasStage 用 valueOrNull 降级照常渲染，这里仅补一条可忽略的错误横幅
-/// 解释失败原因（此前静默吞错）。GAP-3 余量：方向读失败此前完全无提示；
-/// lane_toolbar 会基于错误基线 horizontal 翻转写库（二元域下写入值仍在
-/// 存量/意图之内,无损毁,但错误期 toggle 永远到不了 horizontal——置灰记债）。
-class _EdgeLaneErrorSlot extends ConsumerStatefulWidget {
-  const _EdgeLaneErrorSlot({required this.canvasId});
-
-  final String canvasId;
-
-  @override
-  ConsumerState<_EdgeLaneErrorSlot> createState() => _EdgeLaneErrorSlotState();
-}
-
-class _EdgeLaneErrorSlotState extends ConsumerState<_EdgeLaneErrorSlot> {
-  /// 每个错误源各记一条「已被用户忽略的那个错误对象」，顺序同 [_errorsOf]。
-  ///
-  /// 【为什么不能是一个字段】三个源会同时有错。原来是单个 `_dismissed` 配上
-  /// `edgesError ?? lanesError ?? directionError`：关掉 edges 的错之后，只要它
-  /// 还没恢复，`??` 链就一直短路在它身上，而它恰好 `identical` 于 `_dismissed`
-  /// ⇒ 这期间并发出现的 lanes / direction 错**永远上不了屏**。按源分别记账、
-  /// 取第一个「有错且未被忽略」的，才是三个源各自独立的语义。
-  ///
-  /// 定长三格而不是不断增长的集合：忽略只对「当下这个错误对象」生效，源一恢复
-  /// 旧对象就再也不会出现，留着只是攒垃圾。
-  final List<Object?> _dismissed = <Object?>[null, null, null];
-
-  List<Object?> _errorsOf(WidgetRef ref) => <Object?>[
-        ref.watch(canvasEdgesControllerProvider(widget.canvasId)).error,
-        ref.watch(canvasLanesControllerProvider(widget.canvasId)).error,
-        ref.watch(canvasLaneDirectionProvider(widget.canvasId)).error,
-      ];
-
-  @override
-  Widget build(BuildContext context) {
-    final List<Object?> errors = _errorsOf(ref);
-    int? at;
-    for (var i = 0; i < errors.length; i++) {
-      final Object? e = errors[i];
-      if (e != null && !identical(e, _dismissed[i])) {
-        at = i;
-        break;
-      }
-    }
-    if (at == null) return const SizedBox.shrink();
-    final int source = at;
-    final Object error = errors[source]!;
-    final colors = context.inkColors;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: InkErrorBanner(message: l10nAsyncError(context, error)),
-        ),
-        const SizedBox(width: InkSpacing.xs),
-        IconButton(
-          tooltip: context.l10n.commonClose,
-          icon: Icon(Icons.close, size: InkSpacing.md, color: colors.danger),
-          onPressed: () => setState(() => _dismissed[source] = error),
-        ),
-      ],
-    );
-  }
-}
-
-/// 链接提示条插槽：仅随 linkMode 变化重建。
-class _LinkHintSlot extends ConsumerWidget {
-  const _LinkHintSlot({required this.canvasId});
-
-  final String canvasId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final active = ref.watch(linkModeControllerProvider(canvasId)) != null;
-    return active ? _LinkHintBanner() : const SizedBox.shrink();
-  }
-}
-
-/// 多选计数 chip 插槽：仅随选中数量变化重建。
-class _SelectionCountSlot extends ConsumerWidget {
-  const _SelectionCountSlot({required this.canvasId});
-
-  final String canvasId;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final count = ref.watch(
-      canvasSelectionControllerProvider(canvasId).select((s) => s.length),
-    );
-    if (count < 2) return const SizedBox.shrink();
-    return _SelectionCountChip(count: count);
-  }
-}
-
-/// 平移闸：平移生效（工具 = 平移，或按住空格）时 [child] 整层不收指针。
-///
-/// IgnorePointer 恒在树上、只拨 ignoring——平移开关一拨就增删包装层的话，舞台整棵子树
-/// 会被卸载重挂。watch 收在这一小层：开关只重建它自己，[child] 是上游传进来的同一个
-/// 实例，舞台不跟着重建。
-class _PanGate extends ConsumerWidget {
-  const _PanGate({required this.canvasId, required this.child});
-
-  final String canvasId;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) => IgnorePointer(
-        ignoring: ref.watch(canvasPanActiveProvider(canvasId)),
-        child: child,
-      );
-}
-
-/// 平移时的手形光标：平移生效 = grab，按住拖动中 = grabbing；不在平移时 defer
-/// （交给卡片 / 分界线自己的光标）。理由同 [_PanGate]：MouseRegion / Listener 恒在树上，
-/// 只换参数。平移时卡片与标题栏都被 [_PanGate] 挡掉命中，它们的光标不会盖过这里。
-class _StagePanCursor extends ConsumerStatefulWidget {
-  const _StagePanCursor({required this.canvasId, required this.child});
-
-  final String canvasId;
-  final Widget child;
-
-  @override
-  ConsumerState<_StagePanCursor> createState() => _StagePanCursorState();
-}
-
-class _StagePanCursorState extends ConsumerState<_StagePanCursor> {
-  bool _pressed = false;
-
-  void _setPressed(bool value) {
-    if (value != _pressed) setState(() => _pressed = value);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bool panning = ref.watch(canvasPanActiveProvider(widget.canvasId));
-    final MouseCursor cursor = !panning
-        ? MouseCursor.defer
-        : (_pressed ? SystemMouseCursors.grabbing : SystemMouseCursors.grab);
-    return Listener(
-      onPointerDown: (_) {
-        _setPressed(true);
-        CanvasShortcuts.reclaimFocus(context);
-      },
-      onPointerUp: (_) => _setPressed(false),
-      onPointerCancel: (_) => _setPressed(false),
-      child: MouseRegion(cursor: cursor, child: widget.child),
-    );
-  }
-}
-
-/// 舞台坐标系的锚：拖线时卡片插槽沿渲染树往上找它，把指针的全局坐标换成舞台坐标
-/// （globalToLocal 把 InteractiveViewer 的相机一并逆掉）。本身只透传：不画、不改布局、不改命中。
-class _StageSpace extends SingleChildRenderObjectWidget {
-  const _StageSpace({required super.child});
-
-  @override
-  RenderObject createRenderObject(BuildContext context) => _RenderStageSpace();
-}
-
-class _RenderStageSpace extends RenderProxyBox {}
-
-/// 空白处的双击与右键：包在连线层上——卡片盖着的地方到不了这一层，收到的就是空白处的指针。
-///
-/// 不用 GestureDetector 的 onDoubleTap：双击识别器一进手势竞技场，连线层原来的单击（选连线 / 点空白
-/// 清选中）就得等它放弃，每一次单击都慢 300ms。这里只听原始指针事件、自己数两下，不进竞技场，单击照旧即时生效：
-///   - 第一下得真是一次点击：按下到抬起没挪出点击容差（[_withinClickSlop]）——拖画布那一下不算第一下；按下时这一层上
-///     没有别的指针按着——双指捏合不算；
-///   - 第二下在 [kDoubleTapTimeout] 之内（从第一下按下起算）、离第一下 [kDoubleTapSlop] 之内、同一个设备落下才算，
-///     落下当场报。
-/// 右键单击交给 [_SecondaryClickDetector]（抬起时报按下点）。回调给的是本层的局部坐标 = 舞台坐标。
-class _BlankPointerDetector extends StatefulWidget {
-  const _BlankPointerDetector({
-    required this.onDoubleDown,
-    required this.onSecondaryClick,
-    required this.child,
-  });
-
-  final ValueChanged<Offset> onDoubleDown;
-
-  /// 右键单击：给的是按下点（本层局部坐标 = 舞台坐标）。
-  final ValueChanged<Offset> onSecondaryClick;
-  final Widget child;
-
-  @override
-  State<_BlankPointerDetector> createState() => _BlankPointerDetectorState();
-}
-
-class _BlankPointerDetectorState extends State<_BlankPointerDetector> {
-  /// 这一层上此刻按着的指针（双指捏合的第二根手指落下时，第一根还在这里面）。
-  final Set<int> _pressed = <int>{};
-
-  /// 候选的第一下（主键按下那一下的事件）；双击窗口一过、挪出点击容差、被别的指针打断就清掉。
-  PointerDownEvent? _first;
-
-  /// 第一下已经在点击容差内抬起——它是一次单击。没抬起之前落下的第二下不算。
-  bool _firstReleased = false;
-
-  Timer? _window;
-
-  @override
-  void dispose() {
-    _window?.cancel();
-    super.dispose();
-  }
-
-  void _reset() {
-    _window?.cancel();
-    _window = null;
-    _first = null;
-    _firstReleased = false;
-  }
-
-  bool _withinTapSlop(PointerDownEvent down, Offset position) => _withinClickSlop(context, down, position);
-
-  void _onPointerDown(PointerDownEvent event) {
-    final bool othersPressed = _pressed.isNotEmpty;
-    _pressed.add(event.pointer);
-    // 另有指针按着（双指捏合）、或不是主键（右键菜单归外面那层 _SecondaryClickDetector）：都不是双击的一下，
-    // 还打断候选。
-    if (othersPressed || event.buttons != kPrimaryButton) {
-      _reset();
-      return;
-    }
-    final PointerDownEvent? first = _first;
-    if (first != null &&
-        first.device == event.device &&
-        (event.position - first.position).distance <= kDoubleTapSlop) {
-      _reset();
-      widget.onDoubleDown(event.localPosition);
-      return;
-    }
-    _window?.cancel();
-    _first = event;
-    _firstReleased = false;
-    _window = Timer(kDoubleTapTimeout, _reset);
-  }
-
-  void _onPointerMove(PointerMoveEvent event) {
-    final PointerDownEvent? first = _first;
-    if (first == null || _firstReleased || event.pointer != first.pointer) return;
-    if (!mounted) return;
-    // 第一下按着挪出了点击容差：这是在拖画布，不是单击。
-    if (!_withinTapSlop(first, event.position)) _reset();
-  }
-
-  void _onPointerUp(PointerUpEvent event) {
-    _pressed.remove(event.pointer);
-    final PointerDownEvent? first = _first;
-    if (first == null || _firstReleased || event.pointer != first.pointer) return;
-    if (!mounted) return;
-    if (_withinTapSlop(first, event.position)) {
-      _firstReleased = true;
-    } else {
-      _reset();
-    }
-  }
-
-  void _onPointerCancel(PointerCancelEvent event) {
-    _pressed.remove(event.pointer);
-    if (event.pointer == _first?.pointer) _reset();
-  }
-
-  @override
-  Widget build(BuildContext context) => _SecondaryClickDetector(
-        onSecondaryClick: (PointerDownEvent down) =>
-            widget.onSecondaryClick(down.localPosition),
-        child: Listener(
-          onPointerDown: _onPointerDown,
-          onPointerMove: _onPointerMove,
-          onPointerUp: _onPointerUp,
-          onPointerCancel: _onPointerCancel,
-          child: widget.child,
-        ),
-      );
-}
-
-/// 一次按下到 [position] 还算不算「点」：挪过的距离没超过平移阈值（computePanSlop：鼠标 2px、触摸 kPanSlop，带上
-/// 设备的手势设置）——主键在画布上真被拖起来的就是这个距离。不用单击识别器的 1px（computeHitSlop）：鼠标点一下
-/// 手抖 1.5px 是常事，画布没动、用户也没在拖，双击 / 右键菜单不该因此失灵。
-bool _withinClickSlop(BuildContext context, PointerDownEvent down, Offset position) =>
-    (position - down.position).distance <=
-        computePanSlop(down.kind, MediaQuery.maybeGestureSettingsOf(context));
-
-/// 右键单击：次键按下 → 抬起，中间没挪出点击容差才算，**抬起时**报，交回的是按下那一下的事件（菜单锚在按下点）。
-///
-/// 原来按下就开菜单：按住右键拖会把画布拖走（InteractiveViewer 的缩放 / 平移识别器不挑键），菜单还钉在原处（B4）。
-/// 容差见 [_withinClickSlop]——挪出去就是在拖，不是单击。
-/// 只听原始指针事件、不进手势竞技场：卡片的单击 / 拖动、连线层的单击都不受影响。
-class _SecondaryClickDetector extends StatefulWidget {
-  const _SecondaryClickDetector({
-    required this.onSecondaryClick,
-    required this.child,
-  });
-
-  /// 右键单击成立。给的是按下那一下的事件：要局部坐标取 localPosition，要全局坐标取 position。
-  final ValueChanged<PointerDownEvent> onSecondaryClick;
-  final Widget child;
-
-  @override
-  State<_SecondaryClickDetector> createState() => _SecondaryClickDetectorState();
-}
-
-class _SecondaryClickDetectorState extends State<_SecondaryClickDetector> {
-  /// 还没抬起的那一下右键按下；挪出容差、换了键、被取消就清掉。
-  PointerDownEvent? _down;
-
-  bool _withinSlop(PointerDownEvent down, Offset position) => _withinClickSlop(context, down, position);
-
-  void _onPointerDown(PointerDownEvent event) {
-    if (event.buttons == kSecondaryButton) _down = event;
-  }
-
-  void _onPointerMove(PointerMoveEvent event) {
-    final PointerDownEvent? down = _down;
-    if (down == null || event.pointer != down.pointer) return;
-    // 拆了之后命中路径照样把这根指针的事件送来：不再判（判容差要读 context）。
-    if (!mounted) return;
-    if (event.buttons != kSecondaryButton || !_withinSlop(down, event.position)) {
-      _down = null;
-    }
-  }
-
-  void _onPointerUp(PointerUpEvent event) {
-    final PointerDownEvent? down = _down;
-    if (down == null || event.pointer != down.pointer) return;
-    _down = null;
-    // 按着右键时这一层被拆了（卡片被删）：命中路径按指针缓存着，抬起照样送到这里，但卡片已经不在了——不开菜单。
-    if (!mounted) return;
-    if (_withinSlop(down, event.position)) widget.onSecondaryClick(down);
-  }
-
-  void _onPointerCancel(PointerCancelEvent event) {
-    if (event.pointer == _down?.pointer) _down = null;
-  }
-
-  @override
-  Widget build(BuildContext context) => Listener(
-        onPointerDown: _onPointerDown,
-        onPointerMove: _onPointerMove,
-        onPointerUp: _onPointerUp,
-        onPointerCancel: _onPointerCancel,
-        child: widget.child,
-      );
-}
-
-/// 拖线中的实时虚线（从源卡片的出点到指针）：只随拖线状态与相机重建，不连带舞台；不在拖线时什么都不画。
-class _PendingWireLayer extends ConsumerWidget {
-  const _PendingWireLayer({
-    required this.canvasId,
-    required this.nodes,
-    required this.laneSlices,
-    required this.direction,
-    required this.transform,
-  });
-
-  final String canvasId;
-
-  /// 可见节点（折叠道里的不在内）：源卡片画在哪，线就从哪出。
-  final List<CanvasNode> nodes;
-  final List<({String id, double size})> laneSlices;
-  final LaneDirection direction;
-  final TransformationController transform;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final WireDrag? drag = ref.watch(canvasWireDragProvider(canvasId));
-    if (drag == null) return const SizedBox.shrink();
-    CanvasNode? source;
-    for (final CanvasNode n in nodes) {
-      if (n.id == drag.sourceNodeId) source = n;
-    }
-    final CanvasNode? from = source;
-    if (from == null) return const SizedBox.shrink();
-    final Color color = context.inkColors.accent;
-    // 出点吃分道位移（与卡片渲染位置同源），缩放时跟着走。
-    return ValueListenableBuilder<Matrix4>(
-      valueListenable: transform,
-      builder: (BuildContext context, Matrix4 m, Widget? _) => CustomPaint(
-        painter: PendingWirePainter(
-          source: displacedNodes(
-            nodes: <CanvasNode>[from],
-            lanes: laneSlices,
-            direction: direction,
-            transform: m,
-          ).single,
-          to: drag.pointer,
-          color: color,
-          direction: direction,
-        ),
       ),
     );
   }

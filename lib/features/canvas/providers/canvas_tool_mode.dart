@@ -6,7 +6,7 @@
 // 才回得到「按下之前的那个工具」，而不是一律打回选择。
 //
 // 平移生效时舞台上的节点卡片 / 泳道标题栏 / 连线命中层都不收指针，拖哪儿都是拖画布
-// （见 canvas_view.dart 的 _PanGate）。
+// （见 widgets/stage/stage_pointer_layer.dart 的 StagePanGate）。
 //
 // autoDispose + 按画布分族：画布关掉（没人 watch 了）即回收，下次打开从「选择」开始。
 import 'package:flutter_riverpod/flutter_riverpod.dart';
