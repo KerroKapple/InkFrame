@@ -7,8 +7,9 @@
 // 这里的假边控制器把 removeEdge 卡在一个 Completer 上：先出一帧确认删除钮所在层确实被拆了，再放行。
 // 立即返回的假控制器（canvas_view_test 里那条）在下一帧之前就回来了，守不住这件事。
 //
-// 变异对照：把 _handleEdgeDelete 改回 `if (removed == null || !context.mounted) return;` 再
-// showCanvasUndoSnack(context, …) ⇒「撤销卡」红；失败分支改回 `if (context.mounted) showCanvasSnack(…)` ⇒「失败卡」红。
+// 变异对照：去掉 _handleEdgeDelete 里对 showUndoToast 的调用 ⇒「撤销卡」红；把它改回
+// `if (removed == null || !context.mounted) return;` 再 showCanvasUndoSnack(context, …) ⇒「撤销卡」红；
+// 失败分支改回 `if (context.mounted) showCanvasSnack(…)` ⇒「失败卡」红。
 import 'dart:async';
 
 import 'package:flutter/material.dart';

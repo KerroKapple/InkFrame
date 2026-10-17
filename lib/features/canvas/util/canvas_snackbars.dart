@@ -26,15 +26,35 @@ void showCanvasSnack(
 ///
 /// 撤销卡停 8 秒（ToastKind.undo 的契约）；这段时间里不点，卡片自行收起，软删生效。
 /// 画布没有撤销快捷键——卡片收起之后就撤不回了。
+///
+/// 这里按 context 现取通知服务与「撤销」文案；调用点在 await 之后、context 可能已失效的，改用 [showUndoToast]。
 void showCanvasUndoSnack(
   BuildContext context, {
   required String message,
   required VoidCallback onUndo,
 }) {
-  _toastsOf(context).show(
+  showUndoToast(
+    _toastsOf(context),
+    message: message,
+    undoLabel: context.l10n.commonUndo,
+    onUndo: onUndo,
+  );
+}
+
+/// 撤销卡的唯一拼法（[showCanvasUndoSnack] 也转调这里）：undo 卡 + 主按钮 [undoLabel] 触发 [onUndo]。
+///
+/// 不碰 context：舞台上那几层（删边钮、拖卡片换道）在 await 写库期间就可能被拆掉，
+/// 调用方在 await 之前取好 [toasts] 与文案，写库回来再调本函数。
+void showUndoToast(
+  ToastService toasts, {
+  required String message,
+  required String undoLabel,
+  required VoidCallback onUndo,
+}) {
+  toasts.show(
     message,
     kind: ToastKind.undo,
-    primary: ToastAction(context.l10n.commonUndo, onUndo),
+    primary: ToastAction(undoLabel, onUndo),
   );
 }
 

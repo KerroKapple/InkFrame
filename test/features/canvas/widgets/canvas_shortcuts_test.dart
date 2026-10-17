@@ -239,7 +239,7 @@ void main() {
   });
 
   // KeyMap Q5-B：⌘0 是「缩放到 100%、保持视口中心」，不再跳回初始相机（初始相机常落在空处）。
-  // 变异对照：resetCanvasZoom 改回 resetTransform() ⇒ 中心点断言与 isNot(初始相机) 红。
+  // 变异对照：resetCanvasZoom 改回 initialCanvasTransform() ⇒ 中心点断言与 isNot(初始相机) 红。
   testWidgets('⌘0（Ctrl+0）缩放到 100%、保持视口中心', (tester) async {
     final container = await _pump(
       tester,
@@ -416,7 +416,7 @@ void main() {
     );
 
     // 不点击任何东西，直接按 Delete：c2 上没有真实选中，理应 no-op。
-    // 若 CanvasShortcuts._deleteSelection 某处把 canvasId 接错线（例如误读了
+    // 若 deleteCanvasSelection（shortcuts/core_canvas_keys.dart）某处把 canvasId 接错线（例如误读了
     // c1 的选中集，同时仍对当前渲染的 c2 节点表执行删除），'Node A' 会从
     // 屏幕上消失——这是本用例唯一要咬住的静默串味模式。
     await tester.sendKeyEvent(LogicalKeyboardKey.delete);

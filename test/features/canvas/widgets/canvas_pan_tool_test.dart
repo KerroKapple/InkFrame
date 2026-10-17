@@ -1,7 +1,7 @@
 // 平移工具（H / 工具条平移键 / 按住空格）：平移生效时，从节点卡片上起拖也是拖画布——
 // 卡片不收指针、节点不动；回到选择工具，同样的拖动挪的是节点。
 //
-// 钉的是 canvas_view.dart 的 _PanGate：拿掉它（或让 ignoring 恒为 false），平移时从卡片
+// 钉的是 stage/stage_pointer_layer.dart 的 StagePanGate：拿掉它（或让 ignoring 恒为 false），平移时从卡片
 // 上起拖会被卡片自己的拖拽手势抢走 ⇒「moved 为空」那条断言当场红。空格那条走真按键
 // （CanvasShortcuts 的 onKeyEvent），按下与松开两头都钉住。
 import 'package:flutter/material.dart';
@@ -52,7 +52,7 @@ Matrix4 _ivTransform(WidgetTester tester) => tester
     .transformationController!
     .value;
 
-/// 舞台光标那层：InteractiveViewer 最近的 MouseRegion 祖先（_StagePanCursor 里的那一层）。
+/// 舞台光标那层：InteractiveViewer 最近的 MouseRegion 祖先（stage/stage_pointer_layer.dart 的 StagePanCursor 里的那一层）。
 MouseCursor _stageCursor(WidgetTester tester) => tester
     .widget<MouseRegion>(
       find
