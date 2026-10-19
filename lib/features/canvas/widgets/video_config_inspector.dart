@@ -19,7 +19,7 @@ import '../../../core/models/provider_capabilities.dart';
 import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/tokens.dart';
-import '../../generation/services/cost_estimator.dart';
+import '../../generation/services/node_cost.dart';
 import '../models/canvas_node.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
@@ -122,6 +122,18 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
     final busy =
         submitState is InspectorSubmitSubmitting ||
         submitState is InspectorSubmitRunning;
+    // 预估费用：与提示词条同一个函数；本地还没落库的供应商 / 时长盖在 typeConfig 上，改了即变。
+    // 本面板没有分辨率控件：720p 只在 type_config 里本来就存了时才出现，否则按 1080p。
+    final NodeCostEstimate? cost = estimateNodeCost(
+      node: widget.node,
+      capabilities: ref.read(providerCapabilitiesListProvider),
+      lastUsedProviderId:
+          ref.read(preferencesServiceProvider).current.lastVideoProviderId,
+      pending: <String, Object?>{
+        'provider_id': _providerId,
+        if (_durationSec != null) 'duration_ms': _durationSec! * 1000,
+      },
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -188,16 +200,11 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
                       },
               ),
             ),
-            if (selected != null)
+            if (cost != null)
               InspectorRow(
                 label: l.inspectorEstimatedCostLabel,
                 child: InspectorValue(
-                  formatCostUsd(
-                    estimateCostUsd(
-                      selected.costModel,
-                      durationSeconds: _durationSec ?? 0,
-                    ),
-                  ),
+                  formatNodeCost(cost),
                   mono: true,
                   accent: true,
                 ),
@@ -326,6 +333,7 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
             disabledEmptyPromptText: l.inspectorVideoGenerateDisabledEmptyPrompt,
             disabledNoKeyText: l.inspectorVideoGenerateDisabledNoKey,
             onSubmit: _submit,
+            costEstimate: cost,
           ),
         ),
       ],

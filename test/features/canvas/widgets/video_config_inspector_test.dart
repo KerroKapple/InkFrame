@@ -9,6 +9,7 @@ import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/core/models/shot_language.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/widgets/inspector_rows.dart';
 import 'package:inkframe/features/canvas/widgets/node_inputs_section.dart';
 import 'package:inkframe/features/canvas/widgets/video_config_inspector.dart';
 
@@ -338,6 +339,57 @@ void main() {
 
     expect(find.byType(NodeInputsSection), findsOneWidget);
     expect(find.text('FrameSrc'), findsOneWidget);
+  });
+
+  testWidgets(r'预估费用：5 秒 → $0.xx；换时长即时变', (tester) async {
+    // 另搭一份按秒计价（上面两份 fake 都是 perCall 0.1，不动它们）：每秒 0.30，1080p 倍率 1。
+    final perSecondCaps = _fakeVideoCaps.copyWith(
+      costModel: const CostModel.perSecondVideo(
+        usdPerSecondAt1080p: 0.30,
+        resolutionMultiplier: {caps.Resolution.p720: 0.5, caps.Resolution.p1080: 1.0},
+      ),
+    );
+    final nodeRepo = InMemoryNodeRepository();
+    final String id = await nodeRepo.create(
+      canvasId: 'cv1',
+      type: 'video',
+      nodeRole: 'config',
+      label: '',
+      typeConfig: const <String, Object?>{'provider_id': 'wanx-t2v', 'duration_ms': 5000},
+    );
+    final node = CanvasNode(
+      id: id,
+      label: '',
+      type: CanvasNodeType.video,
+      role: NodeRole.config,
+      typeConfig: const <String, Object?>{'provider_id': 'wanx-t2v', 'duration_ms': 5000},
+    );
+    await pumpInkApp(
+      tester,
+      Scaffold(body: SingleChildScrollView(child: VideoConfigInspector(node: node))),
+      locale: const Locale('zh'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [perSecondCaps]),
+        nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    Finder costValue(String text) => find.descendant(
+          of: find.widgetWithText(InspectorRow, '预估费用'),
+          matching: find.text(text),
+        );
+    // 5 秒 × 0.30 × 1.0（没存分辨率 ⇒ 1080p）= 1.50。
+    expect(costValue(r'$1.50'), findsOneWidget);
+
+    await tester.tap(find.byType(DropdownButton<int>).first); // 第一个是时长，第二个是焦段
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('10 秒').last);
+    await tester.pumpAndSettle();
+
+    // 传进来的 node 没变（typeConfig 还是 5 秒）：金额跟着变只能是走了检查器的本地态。
+    expect(costValue(r'$3.00'), findsOneWidget);
+    expect(costValue(r'$1.50'), findsNothing);
   });
 
   testWidgets('Generate 按钮初始 disabled（prompt 空）', (tester) async {

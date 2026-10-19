@@ -7,6 +7,9 @@
 //
 // InspectorStatusBinding：再包一层 hasApiKey（FutureProvider 缓存）+
 // disabled 原因分层（就近原则：prompt 空 / 无 API Key），两个 Inspector 复用。
+//
+// idle 按钮可点且给了 costEstimate 时，悬停出花费明细（CostBreakdownTooltip，与提示词条同一张卡）；
+// 置灰时只出原有的原因 tooltip，不叠明细。
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,8 +19,10 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
+import '../../generation/services/node_cost.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/generate_gate.dart';
+import 'cost_breakdown_tooltip.dart';
 
 /// 该 config 节点当前活跃（非终态）的 job——从注册表镜像取最近一条。
 JobState? _activeJobFor(List<JobState> jobs, String nodeId) {
@@ -59,6 +64,7 @@ class InspectorStatusBinding extends ConsumerWidget {
     required this.disabledEmptyPromptText,
     required this.disabledNoKeyText,
     required this.onSubmit,
+    this.costEstimate,
   });
 
   final String nodeId;
@@ -68,6 +74,9 @@ class InspectorStatusBinding extends ConsumerWidget {
   final String disabledEmptyPromptText;
   final String disabledNoKeyText;
   final VoidCallback onSubmit;
+
+  /// 这一次生成的花费估算（estimateNodeCost）；null = 不出明细。
+  final NodeCostEstimate? costEstimate;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -94,6 +103,7 @@ class InspectorStatusBinding extends ConsumerWidget {
         null => null,
       },
       onSubmit: onSubmit,
+      costEstimate: costEstimate,
     );
   }
 }
@@ -106,6 +116,7 @@ class InspectorStatusPanel extends StatelessWidget {
     required this.canSubmit,
     required this.onSubmit,
     this.disabledReason,
+    this.costEstimate,
   });
 
   final InspectorSubmitState view;
@@ -116,6 +127,9 @@ class InspectorStatusPanel extends StatelessWidget {
   /// idle 态按钮 disabled 时的 tooltip；canSubmit=true 则忽略。
   final String? disabledReason;
 
+  /// idle 态按钮可点时悬停出的花费明细；null = 不出。按钮置灰时忽略。
+  final NodeCostEstimate? costEstimate;
+
   @override
   Widget build(BuildContext context) {
     return switch (view) {
@@ -123,6 +137,7 @@ class InspectorStatusPanel extends StatelessWidget {
           label: generateLabel,
           canSubmit: canSubmit,
           disabledReason: disabledReason,
+          costEstimate: costEstimate,
           onPressed: onSubmit,
         ),
       InspectorSubmitSubmitting() => _ProgressRow(
@@ -142,12 +157,14 @@ class _IdleButton extends StatelessWidget {
     required this.label,
     required this.canSubmit,
     required this.disabledReason,
+    required this.costEstimate,
     required this.onPressed,
   });
 
   final String label;
   final bool canSubmit;
   final String? disabledReason;
+  final NodeCostEstimate? costEstimate;
   final VoidCallback onPressed;
 
   @override
@@ -156,10 +173,11 @@ class _IdleButton extends StatelessWidget {
       onPressed: canSubmit ? onPressed : null,
       child: Text(label),
     );
-    if (!canSubmit && disabledReason != null) {
-      return Tooltip(message: disabledReason!, child: button);
+    if (!canSubmit) {
+      // 置灰：只出原因，不叠明细（点不动时报价没有意义）。
+      return disabledReason == null ? button : Tooltip(message: disabledReason!, child: button);
     }
-    return button;
+    return CostBreakdownTooltip(estimate: costEstimate, child: button);
   }
 }
 

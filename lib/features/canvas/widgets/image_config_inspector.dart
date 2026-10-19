@@ -25,7 +25,7 @@ import '../../../theme/components/ink_error_banner.dart';
 import '../../../theme/components/ink_input.dart';
 import '../../../theme/components/ink_name_dialog.dart';
 import '../../../theme/tokens.dart';
-import '../../generation/services/cost_estimator.dart';
+import '../../generation/services/node_cost.dart';
 import '../../generation/services/prompt_assembler.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../models/canvas_edge.dart';
@@ -200,6 +200,18 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
     final busy =
         submitState is InspectorSubmitSubmitting ||
         submitState is InspectorSubmitRunning;
+    // 预估费用：与提示词条同一个函数；本地还没落库的供应商 / 画质 / 批量盖在 typeConfig 上，改了即变。
+    final NodeCostEstimate? cost = estimateNodeCost(
+      node: widget.node,
+      capabilities: caps,
+      lastUsedProviderId:
+          ref.read(preferencesServiceProvider).current.lastImageProviderId,
+      pending: <String, Object?>{
+        'provider_id': _providerId,
+        if (_resolution != null) 'resolution': _resolution!.name,
+        'batch_size': _batch ?? 1,
+      },
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -316,18 +328,12 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
                         },
                 ),
               ),
-            if (selected != null)
+            // 已存的供应商被删（providerMissing）也照画，写「—」——不让整行消失。
+            if (cost != null)
               InspectorRow(
                 label: l.inspectorEstimatedCostLabel,
                 child: InspectorValue(
-                  formatCostUsd(
-                    estimateCostUsd(
-                      selected.costModel,
-                      resolution: _resolution,
-                      batchSize: _batch ?? 1,
-                      promptChars: _prompt.length,
-                    ),
-                  ),
+                  formatNodeCost(cost),
                   mono: true,
                   accent: true,
                 ),
@@ -439,6 +445,7 @@ class _ImageConfigInspectorState extends ConsumerState<ImageConfigInspector> {
             disabledEmptyPromptText: l.inspectorGenerateDisabledEmptyPrompt,
             disabledNoKeyText: l.inspectorGenerateDisabledNoKey,
             onSubmit: _submit,
+            costEstimate: cost,
           ),
         ),
       ],

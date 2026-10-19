@@ -3,17 +3,44 @@
 // error 态：断言展示本地化文案（generation* / error* ARB 键映射），
 // 不再直出 toString / 裸错误码。
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
+import 'package:inkframe/features/canvas/widgets/cost_breakdown_tooltip.dart';
 import 'package:inkframe/features/canvas/widgets/inspector_status_panel.dart';
 import 'package:inkframe/features/generation/models/job_state.dart';
 import 'package:inkframe/features/generation/providers/jobs_registry.dart';
+import 'package:inkframe/features/generation/services/node_cost.dart';
+import 'package:inkframe/l10n/generated/app_localizations.dart';
+import 'package:inkframe/providers/wanx_image_provider.dart';
 
 import '../../../_harness/test_app.dart';
 
 void _noop() {}
+
+/// 万相图像 batch 4：0.032 × 4 = 0.128。
+final NodeCostEstimate _wanxBatch4 = NodeCostEstimate(
+  providerId: kWanxImageCapabilities.providerId,
+  usd: 0.128,
+  costModel: kWanxImageCapabilities.costModel,
+  batch: 4,
+);
+
+/// 鼠标停到「生成」按钮上并等 tooltip 淡入完；测试末尾移开、等收完，不留计时器。
+Future<void> _hoverButton(WidgetTester tester, Future<void> Function() body) async {
+  final TestGesture mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+  await mouse.addPointer(location: Offset.zero);
+  addTearDown(mouse.removePointer);
+  await mouse.moveTo(tester.getCenter(find.byType(FilledButton)));
+  await tester.pump();
+  await tester.pump(const Duration(seconds: 1));
+  await body();
+  await mouse.moveTo(Offset.zero);
+  await tester.pump(const Duration(seconds: 1));
+  await tester.pumpAndSettle();
+}
 
 /// build() 直接吐预置列表的 JobsRegistry——用于 Binding 进度回读测试。
 class _SeededRegistry extends JobsRegistry {
@@ -57,6 +84,62 @@ void main() {
     );
     await tester.tap(find.byType(FilledButton));
     expect(pressed, 1);
+  });
+
+  testWidgets('idle 可点 + costEstimate → 悬停出明细', (tester) async {
+    final AppLocalizations zh = lookupAppLocalizations(const Locale('zh'));
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: Center(
+          child: InspectorStatusPanel(
+            view: const InspectorSubmitIdle(),
+            generateLabel: '生成',
+            canSubmit: true,
+            onSubmit: _noop,
+            costEstimate: _wanxBatch4,
+          ),
+        ),
+      ),
+      locale: const Locale('zh'),
+    );
+    expect(find.byKey(CostBreakdownTooltip.contentKey), findsNothing, reason: '没悬停时不出');
+
+    await _hoverButton(tester, () async {
+      final Finder card = find.byKey(CostBreakdownTooltip.contentKey);
+      expect(card, findsOneWidget);
+      expect(find.descendant(of: card, matching: find.text(zh.costApprox(r'$0.13'))), findsOneWidget);
+      expect(
+        find.descendant(of: card, matching: find.text(zh.costFormulaBatch(r'$0.032', 4, r'$0.13'))),
+        findsOneWidget,
+      );
+      expect(find.descendant(of: card, matching: find.text(zh.costBreakdownDisclaimer)), findsOneWidget);
+    });
+  });
+
+  testWidgets('idle 不可点 → 只出置灰原因', (tester) async {
+    await pumpInkApp(
+      tester,
+      Scaffold(
+        body: Center(
+          child: InspectorStatusPanel(
+            view: const InspectorSubmitIdle(),
+            generateLabel: '生成',
+            canSubmit: false,
+            disabledReason: '请先填写提示词',
+            onSubmit: _noop,
+            costEstimate: _wanxBatch4,
+          ),
+        ),
+      ),
+      locale: const Locale('zh'),
+    );
+    expect(find.byType(CostBreakdownTooltip), findsNothing, reason: '置灰时按钮外面不包明细');
+
+    await _hoverButton(tester, () async {
+      expect(find.text('请先填写提示词'), findsOneWidget);
+      expect(find.byKey(CostBreakdownTooltip.contentKey), findsNothing);
+    });
   });
 
   testWidgets('submitting: 展示 spinner + "提交中…"', (tester) async {

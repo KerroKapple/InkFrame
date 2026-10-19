@@ -20,7 +20,10 @@
 // 供应商按检查器同一条链取（节点已存 > 上次使用 > 第一个）；点不动时 tooltip 给检查器同一句原因。
 // ⌘↵ 也过这道闸——没配 Key 时按下去什么都不发，而不是发出去再报「生成失败」。节点还没存过供应商时，
 // 终稿把判 Key 的那个供应商一并写进去：不然生成路径会落回默认供应商，判的和用的不是同一个。
-// 稿上的「≈ 0.42」预估费用：只有 image 供应商有 costModel，且稿未定义视频费用——本条先不画。
+// 预估费用（TakesCost 稿「花费预告」）：「生成」左侧常驻金额（「约 $0.75」，算不出写「—」并挂「价格未知」），
+// 与检查器「预估费用」同一个函数（generation/services/node_cost.dart 的 estimateNodeCost）；提示词按输入框
+// 当前内容即时算，不等防抖落库。「生成」可点时悬停出明细卡（CostBreakdownTooltip），包在按钮外面；
+// 置灰时只出原因。
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -38,6 +41,7 @@ import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_primitives.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
+import '../../generation/services/node_cost.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_base_style.dart';
 import '../providers/canvas_nodes_controller.dart';
@@ -48,6 +52,7 @@ import '../util/camera_labels.dart';
 import '../util/generate_gate.dart';
 import '../util/prompt_bar_width.dart';
 import 'base_style_action.dart';
+import 'cost_breakdown_tooltip.dart';
 import 'inspector_status_panel.dart';
 import 'node_card.dart';
 
@@ -66,6 +71,9 @@ class CanvasPromptBar extends ConsumerWidget {
   /// 「生成」按钮的测试锚点。挂在公开类上（而不是私有 `_GenerateButton` 的静态
   /// 常量上）才让可达性用例拿得到它——测试代码引用不到私有类的成员。
   static const Key generateKey = Key('canvas.promptBar.generate');
+
+  /// 「生成」左侧常驻金额（那一个 Text）的测试锚点。
+  static const Key costKey = Key('canvas.promptBar.cost');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) =>
@@ -198,14 +206,19 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
   /// 判 Key / 写进终稿的供应商：与检查器同一条链（util/generate_gate.dart）。
   String? _resolveProviderId(List<ProviderCapabilities> all) {
     final CanvasNode node = widget.node;
-    final AppPreferences prefs = ref.read(preferencesServiceProvider).current;
     return resolveConfigProviderId(
       savedProviderId: node.typeConfig['provider_id'] as String?,
-      lastUsedProviderId: node.type == CanvasNodeType.video
-          ? prefs.lastVideoProviderId
-          : prefs.lastImageProviderId,
+      lastUsedProviderId: _lastUsedProviderId(),
       candidates: configProviderCandidates(node.type, all),
     );
+  }
+
+  /// 上次使用的供应商：按节点类型取（视频 / 图像各记各的）。
+  String? _lastUsedProviderId() {
+    final AppPreferences prefs = ref.read(preferencesServiceProvider).current;
+    return widget.node.type == CanvasNodeType.video
+        ? prefs.lastVideoProviderId
+        : prefs.lastImageProviderId;
   }
 
   /// [providerId] 配没配 Key（检查器同一个缓存 provider）。供应商解析不出来 ⇒ 当作没配。
@@ -258,7 +271,15 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
         ref.watch(canvasBaseStyleProvider(widget.canvasId)).valueOrNull?.prefix.trim() ?? '';
     final InspectorSubmitState submitState = ref.watch(inspectorSubmitControllerProvider(node.id));
     final bool busy = submitState is InspectorSubmitSubmitting || submitState is InspectorSubmitRunning;
-    final String? gateProviderId = _resolveProviderId(ref.watch(providerCapabilitiesListProvider));
+    final List<ProviderCapabilities> capabilities = ref.watch(providerCapabilitiesListProvider);
+    final String? gateProviderId = _resolveProviderId(capabilities);
+    // 预估费用：提示词取输入框当前内容（onChanged 已 setState），金额随打字重算，不等防抖落库。
+    final NodeCostEstimate? cost = estimateNodeCost(
+      node: node,
+      capabilities: capabilities,
+      lastUsedProviderId: _lastUsedProviderId(),
+      pending: <String, Object?>{'prompt': _prompt.text},
+    );
     final GenerateBlockReason? block = generateBlockReason(
       promptEmpty: _prompt.text.trim().isEmpty,
       hasApiKey: _hasApiKey(gateProviderId, watch: true),
@@ -272,6 +293,7 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
         isVideo ? l.inspectorVideoGenerateDisabledNoKey : l.inspectorGenerateDisabledNoKey,
       null => null,
     };
+    final bool generateEnabled = !busy && block == null;
 
     return Container(
       key: CanvasPromptBar.surfaceKey,
@@ -364,13 +386,21 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
               const SizedBox(width: InkSpacing.sm),
               Text(l.promptBarChars(_prompt.text.characters.length),
                   style: t.monoSmall.copyWith(color: c.fg6)),
+              if (cost != null) ...<Widget>[
+                const SizedBox(width: InkSpacing.sm),
+                _CostAmount(estimate: cost),
+              ],
               const SizedBox(width: InkSpacing.sm),
-              _GenerateButton(
-                enabled: !busy && block == null,
-                label: busy ? l.inspectorStatusSubmitting : l.inspectorGenerate,
-                // 在途时按钮写着「提交中」，不再挂原因。
-                tooltip: busy ? null : blockedText,
-                onTap: _submit,
+              _generateWithBreakdown(
+                enabled: generateEnabled,
+                cost: cost,
+                button: _GenerateButton(
+                  enabled: generateEnabled,
+                  label: busy ? l.inspectorStatusSubmitting : l.inspectorGenerate,
+                  // 在途时按钮写着「提交中」，不再挂原因。
+                  tooltip: busy ? null : blockedText,
+                  onTap: _submit,
+                ),
               ),
             ],
           ),
@@ -379,6 +409,37 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
     );
   }
 
+  /// 可点时在按钮**外面**包明细卡：不进 _GenerateButton / InkActivatable——那里的 tooltip 只放置灰原因。
+  /// 置灰（空提示词 / 没 Key / 在途）时原样返回，只出原因。
+  Widget _generateWithBreakdown({
+    required bool enabled,
+    required NodeCostEstimate? cost,
+    required Widget button,
+  }) {
+    if (!enabled) return button;
+    return CostBreakdownTooltip(estimate: cost, child: button);
+  }
+}
+
+/// 「生成」左侧常驻的金额：「约 $0.75」；算不出写「—」，悬停说「价格未知」。
+class _CostAmount extends StatelessWidget {
+  const _CostAmount({required this.estimate});
+  final NodeCostEstimate estimate;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = context.inkColors;
+    final t = context.inkTypography;
+    final l = context.l10n;
+    final String amount = formatNodeCost(estimate);
+    final bool known = estimate.usd != null;
+    final Widget text = Text(
+      known ? l.costApprox(amount) : amount,
+      key: CanvasPromptBar.costKey,
+      style: t.monoSmall.copyWith(color: c.fg5),
+    );
+    return known ? text : Tooltip(message: l.costUnknown, child: text);
+  }
 }
 
 /// 「基底风格：{prefix} 已附加」——点击打开基底风格编辑器；无前缀时只显示标签。
