@@ -161,11 +161,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get inspectorBatchLabel => 'Batch size';
 
   @override
-  String inspectorEstimatedCost(String amount) {
-    return 'Est. cost $amount';
-  }
-
-  @override
   String get inspectorGenerate => 'Generate';
 
   @override
@@ -3253,4 +3248,63 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appActionReasonNoConfigSelected =>
       'Results can\'t be duplicated — select a config node';
+
+  @override
+  String costApprox(String amount) {
+    return '≈ $amount';
+  }
+
+  @override
+  String get costUnknown => 'Price unknown';
+
+  @override
+  String costUnknownMore(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count more with unknown price',
+      one: '1 more with unknown price',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get costBreakdownTitle => 'Estimate';
+
+  @override
+  String get costBreakdownDisclaimer => 'Your provider\'s bill is final';
+
+  @override
+  String costFormulaPerCall(String unit) {
+    return '$unit per run';
+  }
+
+  @override
+  String costFormulaBatch(String unit, int count, String total) {
+    return 'Batch $unit × $count = $total';
+  }
+
+  @override
+  String costFormulaPerSecond(String rate) {
+    return '$rate / s (1080p)';
+  }
+
+  @override
+  String costFormulaPerSecondScaled(String rate, String multiplier) {
+    return '$rate / s (1080p) × $multiplier';
+  }
+
+  @override
+  String costFormulaPerChar(String perK, String perImage, int count) {
+    return '$perK / 1K chars + $perImage × $count images';
+  }
+
+  @override
+  String get costUnknownCustom => 'Custom endpoints have no price list';
+
+  @override
+  String get costUnknownProvider => 'This provider is no longer available';
+
+  @override
+  String get costUnknownDuration => 'Duration not set';
 }

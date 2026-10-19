@@ -147,11 +147,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get inspectorBatchLabel => '数量';
 
   @override
-  String inspectorEstimatedCost(String amount) {
-    return '预估成本 $amount';
-  }
-
-  @override
   String get inspectorGenerate => '生成';
 
   @override
@@ -3120,4 +3115,57 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appActionReasonNoConfigSelected => '产物不能复制，请选中配置节点';
+
+  @override
+  String costApprox(String amount) {
+    return '约 $amount';
+  }
+
+  @override
+  String get costUnknown => '价格未知';
+
+  @override
+  String costUnknownMore(int count) {
+    return '另 $count 个价格未知';
+  }
+
+  @override
+  String get costBreakdownTitle => '预计';
+
+  @override
+  String get costBreakdownDisclaimer => '以服务商账单为准';
+
+  @override
+  String costFormulaPerCall(String unit) {
+    return '每次 $unit';
+  }
+
+  @override
+  String costFormulaBatch(String unit, int count, String total) {
+    return '批量 $unit × $count = $total';
+  }
+
+  @override
+  String costFormulaPerSecond(String rate) {
+    return '$rate / 秒（1080p）';
+  }
+
+  @override
+  String costFormulaPerSecondScaled(String rate, String multiplier) {
+    return '$rate / 秒（1080p）× $multiplier';
+  }
+
+  @override
+  String costFormulaPerChar(String perK, String perImage, int count) {
+    return '每千字 $perK + 每张 $perImage × $count';
+  }
+
+  @override
+  String get costUnknownCustom => '自定义接口没有价目';
+
+  @override
+  String get costUnknownProvider => '找不到这个服务商';
+
+  @override
+  String get costUnknownDuration => '未设时长';
 }
