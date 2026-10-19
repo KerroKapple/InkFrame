@@ -251,4 +251,111 @@ void main() {
     final newC1 = plan.canvasIdMap['c1'];
     expect(paths[1], 'canvases/$newC1/images/r.png');
   });
+
+  // 生成快照 gen_inputs（result 节点）与固定的当前 take pinned_result_id（配置节点）里存的是
+  // 节点 / 角色 id，导入要跟着 UUID 映射改写；映射不到的剥掉（= 没快照 / 没固定）并计数。
+  // 夹具自建：_fullData() 被全链路用例拿去断言 nulledRefCount 与整包旧 id 零残留，别往里加。
+  group('gen_inputs / pinned_result_id 重映射', () {
+    Map<String, dynamic> snapData({
+      String sourceId = 'src',
+      String characterId = 'ch1',
+      Object? pinned = 'res',
+    }) =>
+        <String, dynamic>{
+          'project': <String, Object?>{'id': 'P', 'name': 'demo'},
+          'canvases': <Object?>[
+            <String, Object?>{'id': 'c1', 'project_id': 'P', 'name': 'A'},
+          ],
+          'nodes': <Object?>[
+            <String, Object?>{
+              'id': 'cfg', 'canvas_id': 'c1', 'type': 'image', 'node_role': 'config',
+              'type_config': <String, Object?>{
+                'prompt': 'x',
+                if (pinned != null) 'pinned_result_id': pinned,
+              },
+            },
+            <String, Object?>{
+              'id': 'src', 'canvas_id': 'c1', 'type': 'image', 'node_role': 'result',
+              'type_config': <String, Object?>{'image_url': 'images/s.png'},
+            },
+            <String, Object?>{
+              'id': 'res', 'canvas_id': 'c1', 'type': 'image', 'node_role': 'result',
+              'source_node_id': 'cfg',
+              'type_config': <String, Object?>{
+                'image_url': 'images/r.png',
+                'gen_inputs': <String, Object?>{
+                  'prompt': 'x',
+                  'character_ids': <Object?>[characterId],
+                  'sources': <Object?>[
+                    <String, Object?>{'node_id': sourceId, 'role': 'reference', 'image_url': 'images/s.png'},
+                  ],
+                },
+              },
+            },
+          ],
+          'characters': <Object?>[
+            <String, Object?>{'id': 'ch1', 'project_id': 'P', 'name': 'hero'},
+          ],
+        };
+
+    // 节点行按包里的顺序保留：0 = cfg、1 = src、2 = res。
+    Map<String, Object?> typeConfigAt(ImportPlanData plan, int i) =>
+        (plan.nodes[i]['type_config']! as Map).cast<String, Object?>();
+
+    test('gen_inputs 源 id / 角色 id 随 UUID 改写', () {
+      final plan = remapArchiveData(snapData(), newId: _seq());
+
+      final Map<String, Object?> gi =
+          (typeConfigAt(plan, 2)['gen_inputs']! as Map).cast<String, Object?>();
+      final List<Object?> sources = gi['sources']! as List<Object?>;
+      expect((sources.single! as Map)['node_id'], plan.nodes[1]['id']);
+      expect(gi['character_ids'], <Object?>[plan.characters.single['id']]);
+      expect(gi['prompt'], 'x');
+      expect(plan.nulledRefCount, 0);
+      final String blob = jsonEncode(plan.nodes);
+      for (final String old in <String>['"src"', '"res"', '"cfg"', '"ch1"']) {
+        expect(blob.contains(old), isFalse, reason: '旧 id 残留 $old');
+      }
+    });
+
+    test('gen_inputs 引用了包外节点 → 整份剥掉并计数', () {
+      final plan = remapArchiveData(snapData(sourceId: 'hard-deleted'), newId: _seq());
+
+      final Map<String, Object?> tc = typeConfigAt(plan, 2);
+      expect(tc.containsKey('gen_inputs'), isFalse, reason: '剥掉源 id 的 take 记作「没快照」，不标过期');
+      expect(tc['image_url'], 'images/r.png', reason: '其余键原样');
+      expect(plan.nulledRefCount, 1);
+    });
+
+    test('gen_inputs 引用了包外角色 → 整份剥掉并计数', () {
+      final plan = remapArchiveData(snapData(characterId: 'ghost'), newId: _seq());
+
+      expect(typeConfigAt(plan, 2).containsKey('gen_inputs'), isFalse);
+      expect(plan.nulledRefCount, 1);
+    });
+
+    test('配置节点 pinned_result_id 改写；悬空删键并计数', () {
+      final hit = remapArchiveData(snapData(), newId: _seq());
+      expect(typeConfigAt(hit, 0)['pinned_result_id'], hit.nodes[2]['id']);
+      expect(hit.nulledRefCount, 0);
+
+      final miss = remapArchiveData(snapData(pinned: 'gone'), newId: _seq());
+      final Map<String, Object?> cfg = typeConfigAt(miss, 0);
+      expect(cfg.containsKey('pinned_result_id'), isFalse, reason: '判据回落最新');
+      expect(cfg['prompt'], 'x');
+      expect(miss.nulledRefCount, 1);
+    });
+
+    test('老包没有这两个键 → 原样', () {
+      final Map<String, dynamic> data = snapData(pinned: null);
+      ((data['nodes']! as List<Object?>)[2]! as Map<String, Object?>)['type_config'] =
+          <String, Object?>{'image_url': 'images/r.png'};
+
+      final plan = remapArchiveData(data, newId: _seq());
+
+      expect(typeConfigAt(plan, 0), <String, Object?>{'prompt': 'x'});
+      expect(typeConfigAt(plan, 2), <String, Object?>{'image_url': 'images/r.png'});
+      expect(plan.nulledRefCount, 0);
+    });
+  });
 }

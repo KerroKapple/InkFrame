@@ -76,6 +76,9 @@ class _FakeNodeRepo implements NodeRepository {
       'lane_id': laneId,
       'position_x': positionX,
       'position_y': positionY,
+      // 快照（gen_inputs）必须随 create 一起写——patchTypeConfig 在这个 fake 里是空操作，
+      // 断言读这里就钉住了「同一事务、随建行带上」。
+      'type_config': typeConfig,
     });
     rows[id] = {
       'id': id,
@@ -303,8 +306,17 @@ class _FakeCanvasRepo implements CanvasRepository {
   Future<List<Map<String, Object?>>> listTrashedByProject(String projectId) async =>
       const <Map<String, Object?>>[];
 
+  /// 画布底稿风格前 / 后缀；两者都 null 时 findById 照旧返回 null。
+  String? prefix;
+  String? suffix;
   @override
-  Future<Map<String, Object?>?> findById(String id) async => null;
+  Future<Map<String, Object?>?> findById(String id) async {
+    if (prefix == null && suffix == null) return null;
+    return <String, Object?>{
+      'base_style_prefix': prefix ?? '',
+      'base_style_suffix': suffix ?? '',
+    };
+  }
   @override
   Future<String> create({
     required String projectId,
@@ -330,8 +342,14 @@ class _FakeCanvasRepo implements CanvasRepository {
 }
 
 class _FakeLaneRepo implements StyleLaneRepository {
+  /// 泳道 id → 风格提示词；命中才返回行。
+  final Map<String, String> stylePrompts = {};
   @override
-  Future<Map<String, Object?>?> findById(String id) async => null;
+  Future<Map<String, Object?>?> findById(String id) async {
+    final sp = stylePrompts[id];
+    if (sp == null) return null;
+    return <String, Object?>{'style_prompt': sp};
+  }
   @override
   Future<String> create({
     required String canvasId,
@@ -1480,6 +1498,160 @@ void main() {
       await buildCtrl().submitFromConfigNode(cfg);
       expect(queue.lastTask!.refImagePaths, isEmpty);
       expect(queue.lastTask!.mode, GenerationMode.textToImage);
+    });
+  });
+
+  // 每次生成把这次用到的输入写进 result 节点 type_config.gen_inputs——过期标记 / 下游连线跟随的
+  // 数据底座。断言一律读 nodes.creates.first['type_config']：快照必须在建 result 行那一刻
+  // 就带上（与 job 行同一个事务）；fake 的 patchTypeConfig 是空操作，事后补写测得出来。
+  group('gen_inputs 快照', () {
+    Map<String, Object?> snapshotOfFirstResult() {
+      final Map<String, Object?> tc = nodes.creates.first['type_config']! as Map<String, Object?>;
+      return tc['gen_inputs']! as Map<String, Object?>;
+    }
+
+    test('result 节点 type_config 带 gen_inputs：提示词 / provider / 分辨率 / 画幅 / 底稿风格 / 泳道风格', () async {
+      final cfg = await seedConfigNode();
+      nodes.rows[cfg]!['lane_id'] = 'lane-1';
+      canvasRepo.prefix = 'cinematic';
+      canvasRepo.suffix = '8k';
+      laneRepo.stylePrompts['lane-1'] = 'warm light';
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final Map<String, Object?> tc = nodes.creates.first['type_config']! as Map<String, Object?>;
+      expect(tc.keys, <String>['gen_inputs'], reason: '新建的 result 只带快照一个键，产物 url 由 persister 之后合并写');
+      final Map<String, Object?> gi = snapshotOfFirstResult();
+      expect(gi['prompt'], 'a cat');
+      expect(gi['provider_id'], providerId);
+      expect(gi['resolution'], 'p1080');
+      expect(gi['aspect_ratio'], 'r1x1');
+      expect(gi['base_style_prefix'], 'cinematic');
+      expect(gi['base_style_suffix'], '8k');
+      expect(gi['lane_style'], 'warm light');
+      expect(gi.containsKey('seed'), isFalse, reason: '节点没设种子 = 随机，不写');
+      expect(gi.containsKey('ignore_lane_style'), isFalse);
+      expect(gi['character_ids'], isEmpty);
+      expect(gi['sources'], isEmpty);
+      // 风格读一次、两处同源：发出去的提示词用的就是快照里记的这几段。
+      final String full = jobs.creates.first['full_prompt']! as String;
+      expect(full, startsWith('cinematic'));
+      expect(full, contains('warm light'));
+      expect(full, endsWith('8k'));
+    });
+
+    test('ignore_lane_style：快照 lane_style 为空串并带标记', () async {
+      final cfg = await seedConfigNode();
+      nodes.rows[cfg]!['lane_id'] = 'lane-1';
+      (nodes.rows[cfg]!['type_config']! as Map<String, Object?>)['ignore_lane_style'] = true;
+      laneRepo.stylePrompts['lane-1'] = 'warm light';
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final Map<String, Object?> gi = snapshotOfFirstResult();
+      expect(gi['lane_style'], '');
+      expect(gi['ignore_lane_style'], isTrue);
+      expect(jobs.creates.first['full_prompt'], isNot(contains('warm light')));
+    });
+
+    test('seedOverride 记进快照并带 seed_override: true，节点 seed 不变；没有 override 时不写 seed_override', () async {
+      useCapableProvider();
+      final cfg = await seedConfigNodeWithCharacters(characterIds: const <String>[]);
+      (nodes.rows[cfg]!['type_config']! as Map<String, Object?>)['seed'] = 111;
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg, seedOverride: 42);
+
+      final Map<String, Object?> overridden = snapshotOfFirstResult();
+      expect(overridden['seed'], 42, reason: '记的是这次实际用的种子，不是节点上的');
+      expect(overridden['seed_override'], isTrue);
+      expect((nodes.rows[cfg]!['type_config']! as Map<String, Object?>)['seed'], 111);
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      final Map<String, Object?> plain = (nodes.creates[1]['type_config']! as Map<String, Object?>)['gen_inputs']!
+          as Map<String, Object?>;
+      expect(plain['seed'], 111);
+      expect(plain.containsKey('seed_override'), isFalse, reason: '种子来自节点设置时不写标记');
+    });
+
+    test('data 入边：图像源记 image_url，文本源记 text，查不到的源只记 id', () async {
+      useCapableProvider();
+      final cfg = await seedConfigNodeWithCharacters(characterIds: const <String>[]);
+      seedRefImageNode(id: 'img1', imageUrl: 'images/a.png');
+      // 正文为空 → 取 label，与并进提示词的口径一致。
+      nodes.rows['txt1'] = <String, Object?>{
+        'id': 'txt1',
+        'canvas_id': 'cvx',
+        'project_id': 'proj-1',
+        'type': 'text',
+        'node_role': 'content',
+        'label': 'with fog',
+        'type_config': <String, Object?>{'text': '  '},
+      };
+      seedDataEdge(sourceId: 'img1', targetId: cfg);
+      seedDataEdge(sourceId: 'txt1', targetId: cfg);
+      seedDataEdge(sourceId: 'ghost', targetId: cfg, role: 'last_frame');
+      // narrative 边不是输入，不进 sources。
+      edges.rows.add(<String, Object?>{
+        'id': 'e_narr',
+        'canvas_id': 'cvx',
+        'source_node_id': 'img1',
+        'target_node_id': cfg,
+        'edge_type': 'narrative',
+        'role': 'reference',
+      });
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(snapshotOfFirstResult()['sources'], <Map<String, Object?>>[
+        <String, Object?>{'node_id': 'img1', 'role': 'reference', 'image_url': 'images/a.png'},
+        <String, Object?>{'node_id': 'txt1', 'role': 'reference', 'text': 'with fog'},
+        <String, Object?>{'node_id': 'ghost', 'role': 'last_frame'},
+      ]);
+      expect(
+        logger.byLevel(InkLogLevel.warn).where((r) => r.extra?['source_node_id'] == 'ghost'),
+        isNotEmpty,
+        reason: '查不到的源留一条 warn，不阻断生成',
+      );
+    });
+
+    test('挂载角色 character_ids 原序进快照', () async {
+      useCapableProvider();
+      characters = FakeCharacterRepo(<String, Map<String, Object?>>{
+        'char-1': <String, Object?>{
+          'id': 'char-1',
+          'project_id': 'proj-1',
+          'name': 'Hero',
+          'reference_image_paths': <String>['characters/a-0.png'],
+        },
+        'char-2': <String, Object?>{
+          'id': 'char-2',
+          'project_id': 'proj-1',
+          'name': 'Boy',
+          'reference_image_paths': <String>['characters/b-0.png'],
+        },
+      });
+      final cfg = await seedConfigNodeWithCharacters(characterIds: <String>['char-2', 'char-1']);
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(snapshotOfFirstResult()['character_ids'], <String>['char-2', 'char-1']);
+    });
+
+    test('批量：result 容器带一份快照，不记 batch_size', () async {
+      final cfg = await seedConfigNode();
+      (nodes.rows[cfg]!['type_config']! as Map<String, Object?>)['batch_size'] = 3;
+      await secure.store(SecureStorageKeys.providerApiKey(providerId), 'sk');
+
+      await buildCtrl().submitFromConfigNode(cfg);
+
+      expect(nodes.creates, hasLength(1), reason: 'slot 是 batch_results 行，不是节点');
+      expect(snapshotOfFirstResult().containsKey('batch_size'), isFalse);
     });
   });
 }

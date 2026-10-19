@@ -6,6 +6,7 @@
 // NOT NULL 引用悬空→整行丢弃+计数（防御第三方手工包；LB-11 全保真闭包下不触发）。
 import '../../core/constants/job_statuses.dart';
 import '../../core/db/columns.dart';
+import '../../core/models/gen_inputs.dart';
 import '../../core/models/import_plan_data.dart';
 
 export '../../core/models/import_plan_data.dart' show ImportPlanData;
@@ -234,7 +235,15 @@ ImportPlanData remapArchiveData(
         }
         cfgMap['character_ids'] = remapped;
       }
-      row[NodeCol.typeConfig] = cfgMap;
+      // 生成快照 gen_inputs（源节点 / 角色 id）与固定 take pinned_result_id：映射得到改写，
+      // 映射不到剥掉（快照整份删 = 没快照，不标过期；固定删键 = 回落最新）并计数。
+      final GenInputsRemap snap = stripUnmappedGenInputs(
+        cfgMap,
+        mapNode: (String o) => nodeMap[o],
+        mapCharacter: (String o) => characterMap[o],
+      );
+      c.nulledRefs += snap.dropped;
+      row[NodeCol.typeConfig] = snap.typeConfig;
     }
     nodes.add(row);
   }
