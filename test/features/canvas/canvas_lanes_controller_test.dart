@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -209,8 +208,8 @@ class _World {
 
   /// 种完数据后再调：挂住节点控制器、载好两个控制器，uow 计数清零。
   Future<void> load() async {
-    c.listen(canvasNodesControllerProvider(_cv), (_, __) {});
-    c.listen(canvasLanesControllerProvider(_cv), (_, __) {});
+    c.listen(canvasNodesControllerProvider(_cv), (_, _) {});
+    c.listen(canvasLanesControllerProvider(_cv), (_, _) {});
     await c.read(canvasNodesControllerProvider(_cv).future);
     await c.read(canvasLanesControllerProvider(_cv).future);
     uowRuns = 0;
