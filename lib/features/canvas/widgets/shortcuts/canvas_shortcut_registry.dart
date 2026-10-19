@@ -5,8 +5,10 @@
 // 同一 Intent 类型的绑定共用同一个门槛。
 import 'canvas_key_binding.dart';
 import 'core_canvas_keys.dart';
+import 'undo_keys.dart';
 
 /// 画布的全部快捷键绑定。
 final List<CanvasKeyBinding> kCanvasKeyRegistry = <CanvasKeyBinding>[
   ...coreCanvasKeys,
+  ...undoKeys,
 ];

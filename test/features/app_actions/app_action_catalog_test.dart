@@ -6,7 +6,7 @@
 //    同一个 _Blocker，这条对它们是同义反复——只防将来不经 _Blocker 手写的行走岔；各行判据对不对靠第 6 条。
 // 3. ★ 行恒灰、原因「即将推出」、不进 ⌘K。
 // 4. 键位取自快捷键注册表 / kCommandPaletteActivators，不另抄（identical）。
-// 5. 重做：Windows Ctrl+Y、macOS ⌘⇧Z；每平台的键位串不带另一平台的修饰键。
+// 5. 重做：Windows Ctrl+Y、macOS ⇧⌘Z；每平台的键位串不带另一平台的修饰键。
 // 6. 选中集上的判据逐行钉启用与原因：生成、存为角色、复制一份（没选中 / 只选中产物两条原因分开）、删除、移出泳道、
 //    在序列中定位、连线开关；不在画布上时画布 / 节点组灰着，原因「先打开一个画布」。
 //
@@ -46,8 +46,6 @@ const ProjectRef _project = ProjectRef(id: 'p1', name: 'Alpha');
 
 /// 第二批的占位行（comingSoon）。
 const Set<String> _comingSoonIds = <String>{
-  AppActionIds.undo,
-  AppActionIds.redo,
   AppActionIds.cut,
   AppActionIds.copy,
   AppActionIds.paste,
@@ -261,12 +259,12 @@ void main() {
     expect(identical(palette.otherKey, kCommandPaletteActivators[1]), isTrue);
   });
 
-  test('重做：Windows Ctrl+Y、macOS ⌘⇧Z；撤销 ⌘Z / Ctrl+Z；两者都不吃自动重复', () {
+  test('重做：Windows Ctrl+Y、macOS ⇧⌘Z；撤销 ⌘Z / Ctrl+Z；两者都不吃自动重复', () {
     final AppAction undo = _row(AppActionIds.undo);
     final AppAction redo = _row(AppActionIds.redo);
     expect(undo.keyLabel(isMac: true), '⌘Z');
     expect(undo.keyLabel(isMac: false), 'Ctrl+Z');
-    expect(redo.keyLabel(isMac: true), '⌘⇧Z');
+    expect(redo.keyLabel(isMac: true), '⇧⌘Z');
     expect(redo.keyLabel(isMac: false), 'Ctrl+Y');
     expect(identical(redo.macKey, PlannedKeys.redoMac), isTrue);
     expect(identical(redo.otherKey, PlannedKeys.redoOther), isTrue);

@@ -25,7 +25,8 @@ void showCanvasSnack(
 /// 删除防误伤（PL-4a）：弹一张可撤销卡，主按钮「撤销」触发 [onUndo] 复原。
 ///
 /// 撤销卡停 8 秒（ToastKind.undo 的契约）；这段时间里不点，卡片自行收起，软删生效。
-/// 画布没有撤销快捷键——卡片收起之后就撤不回了。
+/// 画布的撤销快捷键（Ctrl Z / ⌘Z，util/canvas_history_actions.dart）只撤画布撤销栈里的步：这张卡背后的操作
+/// 没登记进栈的话，卡片收起之后就撤不回了。
 ///
 /// 这里按 context 现取通知服务与「撤销」文案；调用点在 await 之后、context 可能已失效的，改用 [showUndoToast]。
 void showCanvasUndoSnack(
