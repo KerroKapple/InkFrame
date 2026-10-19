@@ -1,13 +1,17 @@
-// 泳道标题栏的删 / 改接线（stage/stage_lane_layer.dart 的 StageLaneLayer）：标题栏删除键 → 确认框 → deleteLane，
-// 编辑键 → 编辑框 → updateLane，失败出 laneDeleteFailed 卡。这几条接线原来挂在 canvas_view.dart 的舞台层里，
-// 一条测试都没有；拆文件时补上。
+// 泳道标题栏的解散 / 改接线（stage/stage_lane_layer.dart 的 StageLaneLayer）：标题栏解散键 → 不确认、直接
+// dissolveLane → 撤销卡；编辑键 → 编辑框 → updateLane；解散失败出 laneDissolveFailed 卡。这几条接线原来挂在
+// canvas_view.dart 的舞台层里，一条测试都没有；拆文件时补上。
 //
-// 「删最后一条道失败」那条专钉搬家后的 context：真控制器先乐观移除、写库失败再回滚。删的是最后一条道时，
-// 乐观移除那一帧舞台骨架把整个泳道层拆掉（它只在有泳道时挂着），等写库失败回来，泳道层的 context 早已失效——
-// 失败提示要是还按「context.mounted 才提示」写，这张卡就悄悄没了（原来挂在舞台层上时舞台一直在，没有这个问题）。
+// 「解散最后一条道成功」那条专钉搬家后的 context：道一从泳道 state 里拿掉，舞台骨架就把整个泳道层拆掉（它只在
+// 有泳道时挂着），等解散的 future 回来，标题栏的 context / WidgetRef 早已失效——撤销卡要是在 await 之后才按
+// context 取通知服务（showCanvasUndoSnack(context, …)），就会在失效的 context 上查祖先而抛错，卡也丢了。
+// 假控制器在拿掉道之后停在 [_Lanes.gate] 上，测试先推一帧让泳道层真的卸掉，再放行。
 //
-// 变异对照：拿掉 `if (confirmed != true) return;` ⇒「点取消」红；失败卡改回 await 之后再取 context ⇒
-// 「删最后一条道失败」红；onDelete / onEdit 接线断开 ⇒ 删 / 改两条红。
+// 变异对照：stage_lane_layer 仍走旧确认框 ⇒「点解散键 ⇒ 不弹框」「不弹任何对话框」红；dissolveLaneWithUndo 改成
+// await 之后按 context 取通知服务 ⇒「解散最后一条道成功 ⇒ 仍出撤销卡」红；失败不出卡 ⇒「抛 InkError」红；
+// onDissolve / onEdit 接线断开 ⇒ 解散 / 改两条红。
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +24,7 @@ import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart'
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
+import 'package:inkframe/features/canvas/util/lane_dissolve.dart';
 import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
@@ -38,36 +43,47 @@ const StyleLane _dusk = StyleLane(id: 'lane-2', canvasId: 'c1', label: 'Dusk', s
 /// 舞台要有节点才画（没节点是空态画布）：一张无道的文本卡，放在标题栏右边，不压着标题栏的键。
 final CanvasNode _free = textNode('t', 'Text', 600);
 
+const String _dissolveTooltip = 'Dissolve lane (keep nodes)';
+
 // ===== 假控制器 =====
 
 typedef _Updated = ({String id, String? label, String? stylePrompt});
 
-/// 泳道：记下 deleteLane / updateLane 收到了什么。删除与真控制器同一个形状——先乐观移除；
-/// [deleteError] 非空时「写库」慢于下一帧（等 50ms），然后回滚、上抛。
+/// 泳道：记下 dissolveLane / updateLane 收到了什么。解散与真控制器同一个形状——不是乐观移除：
+/// [dissolveError] 非空时 state 不动、抛错；成功时从 state 里拿掉该道，（[gate] 非空时）停在 gate 上，再返回令牌。
 class _Lanes extends CanvasLanesController {
-  _Lanes(this._seed, {this.deleteError});
+  _Lanes(this._seed, {this.dissolveError, this.gate});
 
   final List<StyleLane> _seed;
-  final InkError? deleteError;
-  final List<String> deleted = <String>[];
+  final InkError? dissolveError;
+  final Completer<void>? gate;
+  final List<String> dissolved = <String>[];
   final List<_Updated> updated = <_Updated>[];
 
   @override
   Future<List<StyleLane>> build(String canvasId) async => _seed;
 
   @override
-  Future<void> deleteLane(String id) async {
-    deleted.add(id);
+  Future<LaneDissolution?> dissolveLane(
+    String laneId, {
+    required Map<String, Offset> positions,
+  }) async {
+    dissolved.add(laneId);
+    final InkError? error = dissolveError;
+    if (error != null) throw error;
     final List<StyleLane> previous = state.valueOrNull ?? const <StyleLane>[];
+    StyleLane? lane;
+    for (final StyleLane l in previous) {
+      if (l.id == laneId) lane = l;
+    }
+    if (lane == null) return null;
     state = AsyncData<List<StyleLane>>(<StyleLane>[
       for (final StyleLane l in previous)
-        if (l.id != id) l,
+        if (l.id != laneId) l,
     ]);
-    final InkError? error = deleteError;
-    if (error == null) return;
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    state = AsyncData<List<StyleLane>>(previous);
-    throw error;
+    final Completer<void>? g = gate;
+    if (g != null) await g.future;
+    return LaneDissolution(lane: lane, nodes: const <LaneNodeSnapshot>[]);
   }
 
   @override
@@ -120,82 +136,76 @@ Future<void> _tapTitleBarKey(WidgetTester tester, String tooltip) async {
   await tester.pumpAndSettle();
 }
 
-Finder _dialogButton(String label) => find.widgetWithText(TextButton, label);
-
 void main() {
-  testWidgets('标题栏删除键 → 确认框；点删除 ⇒ deleteLane 收到这条道的 id', (WidgetTester tester) async {
+  testWidgets('点解散键 ⇒ 不弹框、dissolveLane 收到 lane-1、出撤销卡', (WidgetTester tester) async {
     final _Lanes lanes = _Lanes(const <StyleLane>[_rain, _dusk]);
     final ProviderContainer c = await _pump(tester, lanes);
 
-    await _tapTitleBarKey(tester, 'Delete lane');
-    expect(find.text('Delete this lane?'), findsOneWidget);
-    expect(lanes.deleted, isEmpty, reason: '确认之前不删');
+    await _tapTitleBarKey(tester, _dissolveTooltip);
 
-    await tester.tap(_dialogButton('Delete lane'));
-    await tester.pumpAndSettle();
-
-    expect(lanes.deleted, <String>['lane-1']);
-    expect(find.text('Delete this lane?'), findsNothing);
-    expect(find.byType(LaneTitleBar), findsOneWidget, reason: '删掉的那条道的标题栏不再画');
-    expect(_toastOf(c).shown, isEmpty);
+    expect(find.byType(AlertDialog), findsNothing, reason: '解散不确认');
+    expect(lanes.dissolved, <String>['lane-1']);
+    expect(find.byType(LaneTitleBar), findsOneWidget, reason: '解散掉的那条道的标题栏不再画');
+    final RecordingToastService toast = _toastOf(c);
+    expect(toast.titles, <String>['Lane “Rain” dissolved']);
+    expect(toast.kinds, <ToastKind>[ToastKind.undo]);
+    expect(toast.shown.single.primary?.label, 'Undo');
   });
 
-  testWidgets('确认框点取消 ⇒ 不调 deleteLane', (WidgetTester tester) async {
+  testWidgets('点解散键不弹任何对话框（键落地那一刻就已调 dissolveLane）', (WidgetTester tester) async {
     final _Lanes lanes = _Lanes(const <StyleLane>[_rain, _dusk]);
-    final ProviderContainer c = await _pump(tester, lanes);
+    await _pump(tester, lanes);
 
-    await _tapTitleBarKey(tester, 'Delete lane');
-    expect(find.text('Delete this lane?'), findsOneWidget);
+    final Finder key = find.descendant(
+      of: find.byType(LaneTitleBar).first,
+      matching: find.byTooltip(_dissolveTooltip),
+    );
+    await tester.tap(key);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pump();
 
-    await tester.tap(_dialogButton('Cancel'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Delete this lane?'), findsNothing);
-    expect(lanes.deleted, isEmpty);
-    expect(find.byType(LaneTitleBar), findsNWidgets(2));
-    expect(_toastOf(c).shown, isEmpty);
+    expect(find.byType(Dialog), findsNothing);
+    expect(find.byType(AlertDialog), findsNothing);
+    expect(lanes.dissolved, <String>['lane-1'], reason: '不经任何确认直接解散');
   });
 
-  testWidgets('deleteLane 抛 InkError ⇒ 出 laneDeleteFailed 卡', (WidgetTester tester) async {
+  testWidgets('dissolveLane 抛 InkError ⇒ 出 laneDissolveFailed（error）卡、两条道都在', (WidgetTester tester) async {
     final _Lanes lanes = _Lanes(
       const <StyleLane>[_rain, _dusk],
-      deleteError: const LocalIOError(extra: <String, Object?>{'op': 'softDelete'}),
+      dissolveError: const LocalIOError(extra: <String, Object?>{'op': 'softDelete'}),
     );
     final ProviderContainer c = await _pump(tester, lanes);
 
-    await _tapTitleBarKey(tester, 'Delete lane');
-    await tester.tap(_dialogButton('Delete lane'));
-    await tester.pumpAndSettle();
+    await _tapTitleBarKey(tester, _dissolveTooltip);
 
-    expect(lanes.deleted, <String>['lane-1']);
+    expect(lanes.dissolved, <String>['lane-1']);
     final RecordingToastService toast = _toastOf(c);
-    expect(toast.titles, <String>['Failed to delete lane']);
+    expect(toast.titles, <String>['Failed to dissolve lane']);
     expect(toast.kinds, <ToastKind>[ToastKind.error]);
-    expect(find.byType(LaneTitleBar), findsNWidgets(2), reason: '回滚后两条道都还在');
+    expect(find.byType(LaneTitleBar), findsNWidgets(2), reason: '解散不是乐观移除，失败时两条道都在');
   });
 
-  testWidgets('删最后一条道失败（乐观移除那一帧泳道层被拆掉）⇒ 仍出 laneDeleteFailed 卡', (WidgetTester tester) async {
-    final _Lanes lanes = _Lanes(
-      const <StyleLane>[_rain],
-      deleteError: const LocalIOError(extra: <String, Object?>{'op': 'softDelete'}),
-    );
+  testWidgets('解散最后一条道成功（泳道层随之卸掉）⇒ 仍出撤销卡', (WidgetTester tester) async {
+    final Completer<void> gate = Completer<void>();
+    final _Lanes lanes = _Lanes(const <StyleLane>[_rain], gate: gate);
     final ProviderContainer c = await _pump(tester, lanes);
 
-    await _tapTitleBarKey(tester, 'Delete lane');
-    await tester.tap(_dialogButton('Delete lane'));
-    // 乐观移除后先出一帧：没有泳道了，泳道层整个卸掉。
-    await tester.pump();
-    expect(find.byType(LaneTitleBar), findsNothing, reason: '前置：乐观移除那一帧泳道层确实被拆了');
+    final Finder key = find.descendant(
+      of: find.byType(LaneTitleBar).first,
+      matching: find.byTooltip(_dissolveTooltip),
+    );
+    await tester.tap(key);
+    await tester.pump(const Duration(milliseconds: 400)); // 单击落地：道已拿掉，解散停在 gate 上
+    await tester.pump(); // 出一帧：没有泳道了，泳道层整个卸掉
+    expect(lanes.dissolved, <String>['lane-1']);
+    expect(find.byType(LaneTitleBar), findsNothing, reason: '前置：await 回来之前泳道层确实被拆了');
 
-    // 写库失败回来：回滚、上抛。
-    await tester.pump(const Duration(milliseconds: 100));
+    gate.complete();
     await tester.pumpAndSettle();
 
-    expect(lanes.deleted, <String>['lane-1']);
     final RecordingToastService toast = _toastOf(c);
-    expect(toast.titles, <String>['Failed to delete lane'], reason: '泳道层被拆过，失败卡也不能丢');
-    expect(toast.kinds, <ToastKind>[ToastKind.error]);
-    expect(find.byType(LaneTitleBar), findsOneWidget, reason: '回滚后道回来了');
+    expect(toast.titles, <String>['Lane “Rain” dissolved'], reason: '泳道层被拆过，撤销卡也不能丢');
+    expect(toast.kinds, <ToastKind>[ToastKind.undo]);
   });
 
   testWidgets('标题栏编辑键 → 编辑框；确认 ⇒ updateLane 收到 label / stylePrompt', (WidgetTester tester) async {

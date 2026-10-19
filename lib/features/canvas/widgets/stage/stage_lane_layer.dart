@@ -1,7 +1,7 @@
 // 舞台的泳道层（从 canvas_view.dart 原样搬出）。泳道钉在视口层、不进 InteractiveViewer：
 //   - StageLaneShift：泳道栈锚在世界原点——拖画布时整体跟着世界走，缩放时道厚不变（laneStackOffset）
 //   - StageLaneBackgroundLayer：泳道底色带（世界内容之下），拖卡片途中高亮松手会换进的那条道
-//   - StageLaneLayer：泳道标题栏（拖拽重排 + 折叠 + 编辑 / 删除）+ 分界线拖拽条（世界内容之上）
+//   - StageLaneLayer：泳道标题栏（拖拽重排 + 折叠 + 编辑 / 解散）+ 分界线拖拽条（世界内容之上）
 // 三层的 watch 位置与原来一致：泳道 / 方向 / 折叠 / 相机由舞台骨架 watch 后传进来，这里只在
 // 底色层的 Consumer 里 .select 拖拽位移。
 
@@ -9,16 +9,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/errors/ink_error.dart';
-import '../../../../core/interfaces/toast_service.dart';
 import '../../../../l10n/l10n_x.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../theme/tokens.dart';
-import '../../../notifications/providers/toast_service_provider.dart';
 import '../../models/canvas_node.dart';
 import '../../models/style_lane.dart';
 import '../../providers/canvas_lanes_controller.dart';
 import '../../providers/lane_collapse_controller.dart';
 import '../../providers/node_drag_delta.dart';
+import '../../util/canvas_lane_actions.dart';
 import '../../util/canvas_snackbars.dart';
 import '../../util/canvas_zoom.dart';
 import '../../util/drop_placement.dart';
@@ -285,7 +284,12 @@ class StageLaneLayer extends ConsumerWidget {
                   .read(laneCollapseProvider(canvasId).notifier)
                   .toggle(lane.id),
               onEdit: () => _onEditLane(context, ref, lane),
-              onDelete: () => _onDeleteLane(context, ref, lane),
+              onDissolve: () => dissolveLaneWithUndo(
+                context,
+                ref,
+                canvasId: canvasId,
+                lane: lane,
+              ),
             ),
           ),
         ),
@@ -386,47 +390,6 @@ class StageLaneLayer extends ConsumerWidget {
       if (context.mounted) {
         showCanvasSnack(context, context.l10n.laneUpdateFailed);
       }
-    }
-  }
-
-  Future<void> _onDeleteLane(
-    BuildContext context,
-    WidgetRef ref,
-    StyleLane lane,
-  ) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) {
-        final l10n = ctx.l10n;
-        return AlertDialog(
-          title: Text(l10n.laneDeleteConfirmTitle),
-          content: Text(l10n.laneDeleteConfirmBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: Text(l10n.laneDialogCancel),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: Text(l10n.laneDelete),
-            ),
-          ],
-        );
-      },
-    );
-    if (confirmed != true) return;
-    if (!context.mounted) return;
-    // 失败提示要用的东西（通知服务、文案）在 await 之前取齐：删的是最后一条道时，乐观移除让舞台骨架把
-    // 本层整个拆掉（它只在有泳道时挂着），写库失败回滚时本层的 context 早已失效——原来挂在舞台层上时
-    // 没有这个问题，搬出来之后得自己兜住，同 NodeCardSlot._commitDrag。
-    final ToastService toasts = ref.read(toastServiceProvider);
-    final String deleteFailed = context.l10n.laneDeleteFailed;
-    try {
-      await ref
-          .read(canvasLanesControllerProvider(canvasId).notifier)
-          .deleteLane(lane.id);
-    } on InkError catch (_) {
-      toasts.show(deleteFailed, kind: ToastKind.error);
     }
   }
 }

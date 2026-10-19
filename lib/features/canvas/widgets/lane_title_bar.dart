@@ -1,6 +1,6 @@
 // 泳道标题栏（Lanes 稿 §1）：26px、圆角 3、rgba(38,38,38,0.82) 底；左 8×8 色点（tint），
 // 名称 12/500 fg1 + 风格提示词摘要 10px fg5 单行省略；节点数（等宽 10px fg6）；
-// 右侧折叠 / 编辑 / 删除三个 18×18 图标键。
+// 右侧折叠 / 编辑 / 解散三个 18×18 图标键（解散 = 道没了、节点留在原地，见 util/canvas_lane_actions.dart）。
 // 两行 line-height 1.15（用户 2026-09-29：稿的 1.2 在 26 高里溢出 1.4px，是稿的问题，收进来）。
 // 宽度由调用方给定（横向固定 268，竖向 min(道宽 − 24, 240)，下限 minWidth），不再跨满整条泳道。
 // 折叠态：只留名称（fg4）+ 节点数 + 「已折叠」+ 展开键；双击标题栏折叠 / 展开。
@@ -18,7 +18,7 @@ class LaneTitleBar extends StatelessWidget {
     super.key,
     required this.lane,
     required this.onEdit,
-    required this.onDelete,
+    required this.onDissolve,
     this.nodeCount = 0,
     this.collapsed = false,
     this.onToggleCollapse,
@@ -26,7 +26,8 @@ class LaneTitleBar extends StatelessWidget {
 
   final StyleLane lane;
   final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  /// 解散这条道（节点留下）。折叠态不画这个键。
+  final VoidCallback onDissolve;
   /// 道内节点数（稿：等宽 10px）。
   final int nodeCount;
   /// 当前是否处于折叠态。
@@ -109,7 +110,7 @@ class LaneTitleBar extends StatelessWidget {
             ),
           if (!collapsed) ...<Widget>[
             _IconKey(icon: Icons.edit, tooltip: l10n.laneEditTitle, onTap: onEdit),
-            _IconKey(icon: Icons.delete_outline, tooltip: l10n.laneDelete, onTap: onDelete),
+            _IconKey(icon: Icons.delete_outline, tooltip: l10n.laneDissolve, onTap: onDissolve),
           ],
         ],
       ),

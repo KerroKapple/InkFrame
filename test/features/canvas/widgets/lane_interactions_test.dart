@@ -13,6 +13,7 @@ import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_selection_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_transform_controller.dart';
 import 'package:inkframe/features/canvas/providers/current_canvas_id.dart';
@@ -24,10 +25,13 @@ import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/lane_background.dart';
 import 'package:inkframe/features/canvas/widgets/lane_title_bar.dart';
 import 'package:inkframe/features/canvas/widgets/node_card.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/theme/app_theme.dart';
 import 'package:inkframe/theme/tokens.dart';
 
+import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/fake_unit_of_work.dart';
 
 // ── fakes ──────────────────────────────────────────────────────────────────
@@ -670,5 +674,81 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     await tester.pumpAndSettle();
     expect(find.text('Edit lane'), findsOneWidget, reason: '溢出到栈外的按钮也得能点——皮层盒子留了余量');
+  });
+
+  // ── 解散泳道（节点留下）：不确认、卡片原地不动、库里 lane_id 清空 ─────────────
+  //
+  // setUp 的共享容器用的是静态假仓储（update 不写、softDelete 不删），撑不起这条：自建 InMemory 三件套容器。
+  // 缩放取 0.8（不是 1）：缩放 1 时道内锚定与全局变换恰好重合，「不换算位置」的变异抓不到。
+  // 变异对照：stage_lane_layer 仍走旧确认框 ⇒「无确认框」红；dissolvedPositions 返回原坐标 ⇒ getRect 前后不等红；
+  // dissolveLane 不写 lane_id: null ⇒「repo 里 lane_id 为 null」红。
+
+  testWidgets('点标题栏解散键：无确认框，卡片 getRect 前后相等，repo 里 lane_id 为 null，tooltip 为 Dissolve lane (keep nodes)',
+      (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final nodes = InMemoryNodeRepository();
+    final edges = InMemoryEdgeRepository();
+    final lanes = InMemoryStyleLaneRepository();
+    await lanes.create(canvasId: 'cv1', label: 'Ink', sortOrder: 0, size: 400);
+    final cyber = await lanes.create(canvasId: 'cv1', label: 'Cyber', sortOrder: 1, size: 400);
+    final laned = await nodes.create(
+      canvasId: 'cv1',
+      type: 'image',
+      nodeRole: 'config',
+      label: 'laned',
+      laneId: cyber,
+      positionX: 0,
+      positionY: 500,
+    );
+    final tmp = Directory.systemTemp.createTempSync('ink_dissolve_test_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final toasts = RecordingToastService();
+    final own = ProviderContainer(overrides: [
+      appPathsProvider.overrideWithValue(DefaultAppPaths.forRoot(tmp)),
+      currentCanvasIdProvider.overrideWith((ref) => 'cv1'),
+      nodeRepositoryProvider.overrideWith((ref) async => nodes),
+      edgeRepositoryProvider.overrideWith((ref) async => edges),
+      styleLaneRepositoryProvider.overrideWith((ref) async => lanes),
+      canvasRepositoryProvider.overrideWith((ref) async => _FakeCanvasRepository()),
+      unitOfWorkProvider.overrideWith(
+        (ref) async => FakeUnitOfWork(FakeRepositoryScope(nodes: nodes, edges: edges, styleLanes: lanes)),
+      ),
+      toastServiceProvider.overrideWithValue(toasts),
+    ]);
+    addTearDown(own.dispose);
+
+    await tester.pumpWidget(_buildTestApp(own));
+    await tester.pumpAndSettle();
+    // 围绕世界原点缩放到 0.8：Cyber 起始边 400，卡片屏幕 y = 400 + 0.8 × (500 − 400) = 480。
+    own.read(canvasTransformControllerProvider('cv1')).value = Matrix4.identity()
+      ..translateByDouble(-0.8 * kStageHalf, -0.8 * kStageHalf, 0.0, 1.0)
+      ..scaleByDouble(0.8, 0.8, 1.0, 1.0);
+    await tester.pump();
+
+    final card = find.byKey(ValueKey('node-card-$laned'));
+    final Rect before = tester.getRect(card);
+    expect(before.top, closeTo(480, 0.5), reason: '前置：卡片按 Cyber 的起始边锚定');
+
+    final Finder dissolveKey = find.descendant(
+      of: find.byType(LaneTitleBar).at(1),
+      matching: find.byTooltip('Dissolve lane (keep nodes)'),
+    );
+    expect(dissolveKey, findsOneWidget);
+    await tester.tap(dissolveKey);
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(AlertDialog), findsNothing, reason: '解散不确认');
+    expect(find.byType(LaneTitleBar), findsOneWidget, reason: 'Cyber 道没了');
+    expect(nodes.rows[laned]!['lane_id'], isNull, reason: '库里清掉 lane_id');
+    expect(own.read(canvasNodesControllerProvider('cv1')).valueOrNull!.single.laneId, isNull,
+        reason: '内存同样是道外节点');
+    final Rect after = tester.getRect(card);
+    expect(after.left, closeTo(before.left, 0.5));
+    expect(after.top, closeTo(before.top, 0.5), reason: '屏幕上原地不动');
+    expect(after.width, closeTo(before.width, 0.5));
+    expect(after.height, closeTo(before.height, 0.5));
+    expect(toasts.titles, <String>['Lane “Cyber” dissolved']);
   });
 }
