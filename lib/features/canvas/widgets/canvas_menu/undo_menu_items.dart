@@ -21,7 +21,7 @@ const String _redoId = 'blank.redo';
 
 /// 空白处右键菜单的撤销 / 重做两行。
 final List<CanvasMenuItemDef> undoBlankMenuItems = <CanvasMenuItemDef>[
-  CanvasMenuItemDef(
+  const CanvasMenuItemDef(
     id: _undoId,
     scope: CanvasMenuScope.blank,
     group: 0,
@@ -29,7 +29,7 @@ final List<CanvasMenuItemDef> undoBlankMenuItems = <CanvasMenuItemDef>[
     build: _buildUndo,
     run: _runUndo,
   ),
-  CanvasMenuItemDef(
+  const CanvasMenuItemDef(
     id: _redoId,
     scope: CanvasMenuScope.blank,
     group: 0,
