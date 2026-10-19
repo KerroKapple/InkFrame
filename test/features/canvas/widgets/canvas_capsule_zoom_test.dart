@@ -12,6 +12,10 @@
 //   - _fitNodes 在 next == null（视口未量出）时也出 ⇒「视口未量出时 Shift 1：不出」红；
 //   - 删掉 _fitNodes resetWhenEmpty 分支里的 showZoomCapsule ⇒「空画布 Shift 1：相机回初始、出 Zoom 100%」红。
 //   「Shift 2 无选中：不出」守不到 _fitNodes——fitSelectedNodes 在选中为空时先返回了，它只守入口那一道。
+//   - showZoomCapsule（或 zoomCanvasBy / resetCanvasZoom / _fitNodes 任一处）加一次 ref.read(toastServiceProvider).show(...)
+//     ⇒「真入口出胶囊，都不调 ToastService」红（每一步先收掉胶囊再按键，断言胶囊重新出来了，证明入口确实走到）；
+//   - canvas_screen.dart 去掉 CanvasCapsuleHost 的 key: ValueKey(canvasId) ⇒「换画布：旧画布的胶囊不在新画布上淡出」红
+//     （宿主 State 与 AnimatedSwitcher 被复用，新画布 state 为 null，旧卡在新画布上淡出 120ms）。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -29,15 +33,21 @@ import 'package:inkframe/features/canvas/providers/lane_collapse_controller.dart
 import 'package:inkframe/features/canvas/util/canvas_zoom.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_zoom_bar.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
+import 'package:inkframe/features/shell/providers/shell_controller.dart';
 import 'package:inkframe/theme/components/ink_canvas_capsule.dart';
 import 'package:inkframe/theme/components/ink_icon.dart';
 import 'package:inkframe/theme/icons/ink_glyph.dart';
 
 import '../../../_harness/fake_canvas.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/shell_app.dart';
 
 const String _canvasId = 'cv-capsule';
+
+/// 换画布用例切过去的另一张画布（同项目）。
+const String _otherCanvasId = 'cv-capsule-other';
 
 /// 一张在初始视口里，两张远在外面：适应全部一定要缩小。
 final List<CanvasNode> _nodes = <CanvasNode>[
@@ -68,6 +78,7 @@ Future<ProviderContainer> _pumpOnCanvas(
   WidgetTester tester,
   String prefix, {
   List<CanvasNode>? nodes,
+  RecordingToastService? toasts,
 }) async {
   final paths = await setupTempPaths(tester, prefix);
   await pumpInkShell(
@@ -83,6 +94,7 @@ Future<ProviderContainer> _pumpOnCanvas(
       canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
       canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
+      if (toasts != null) toastServiceProvider.overrideWithValue(toasts),
     ],
   );
   await _frames(tester);
@@ -307,5 +319,54 @@ void main() {
     await _frames(tester, 2);
     expect(_scale(c), lessThan(1.0), reason: '前提：又缩小了两档');
     _expectNoCapsule(tester, c);
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('真入口出胶囊，都不调 ToastService（不进铃铛）：Ctrl = / Ctrl 0 / Shift 1 / Shift 2 / 缩放条 Fit',
+      (tester) async {
+    final RecordingToastService toasts = RecordingToastService();
+    final ProviderContainer c =
+        await _pumpOnCanvas(tester, 'ink_capsule_no_toast_', toasts: toasts);
+    // 只看按键之后新增的：外壳启动时若有别的通知，与胶囊无关。
+    final int before = toasts.shown.length;
+
+    // 每一步先把胶囊收掉，按完再断言胶囊重新出来了——证明这一步的入口确实走到了，不是上一步留下的。
+    Future<void> step(String name, Future<void> Function() action) async {
+      c.read(canvasCapsuleProvider(_canvasId).notifier).dismiss();
+      await _frames(tester, 2);
+      _expectNoCapsule(tester, c);
+
+      await action();
+      await _frames(tester, 2);
+
+      expect(c.read(canvasCapsuleProvider(_canvasId)), isNotNull, reason: '$name：入口走到了，出了胶囊');
+      expect(find.text(_zoomText(c)), findsOneWidget, reason: name);
+      expect(toasts.titles.skip(before), isEmpty, reason: '$name：不调 ToastService');
+    }
+
+    await step('Ctrl =', () => sendCtrl(tester, LogicalKeyboardKey.equal));
+    await step('Ctrl 0', () => sendCtrl(tester, LogicalKeyboardKey.digit0));
+    await step('Shift 1', () => _shift(tester, LogicalKeyboardKey.digit1));
+    c.read(canvasSelectionControllerProvider(_canvasId).notifier).select('near');
+    await step('Shift 2', () => _shift(tester, LogicalKeyboardKey.digit2));
+    await step(
+      '缩放条 Fit',
+      () => tester.tap(find.descendant(of: find.byType(CanvasZoomBar), matching: find.text('Fit'))),
+    );
+  }, timeout: const Timeout(Duration(seconds: 30)));
+
+  testWidgets('换画布：旧画布的胶囊不在新画布上淡出', (tester) async {
+    final ProviderContainer c = await _pumpOnCanvas(tester, 'ink_capsule_switch_');
+
+    await sendCtrl(tester, LogicalKeyboardKey.equal);
+    await _frames(tester, 2);
+    expect(find.text('Zoom 120%'), findsOneWidget, reason: '前提：旧画布上有胶囊');
+
+    c.read(shellControllerProvider.notifier).openCanvas(_otherCanvasId);
+    await tester.pump();
+
+    expect(c.read(shellControllerProvider).canvasId, _otherCanvasId, reason: '前提：已切到新画布');
+    expect(c.read(canvasCapsuleProvider(_otherCanvasId)), isNull);
+    expect(find.byType(InkCanvasCapsule), findsNothing, reason: '当帧就没有，不在新画布上淡出旧卡');
+    expect(find.text('Zoom 120%'), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 30)));
 }

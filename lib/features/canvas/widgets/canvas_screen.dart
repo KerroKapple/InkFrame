@@ -72,8 +72,13 @@ class CanvasScreen extends ConsumerWidget {
                       child: CanvasPromptBar(canvasId: canvasId),
                     ),
                     // 轻提示胶囊：底部居中，贴在提示词条上方 8（条子收起时离舞台底 16），两侧让出缩放条。
-                    // 本身就是 Positioned；换标签即收（visible）。
-                    CanvasCapsuleHost(canvasId: canvasId, visible: isVisible),
+                    // 本身就是 Positioned；换标签即收（visible）。按 canvasId 加 key：换画布时宿主整个换新，
+                    // 旧画布那张卡不在新画布上淡出（CanvasScreen 本身换画布时不重建 State）。
+                    CanvasCapsuleHost(
+                      key: ValueKey<String>(canvasId),
+                      canvasId: canvasId,
+                      visible: isVisible,
+                    ),
                     // 最后画：压在舞台浮层（连线提示等）之上，那些浮层的 top 已让出
                     // 工具条的高度（InkToolbarSize.stageTopInset）。
                     Positioned(
