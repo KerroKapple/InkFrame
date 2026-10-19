@@ -1,4 +1,5 @@
-// 从外壳打开导出对话框的唯一路径：导出标签、序列标签的「导出 mp4」都走这里。
+// 从外壳打开导出对话框的唯一路径：导出标签、序列标签的「导出 mp4」、⌘K / 菜单栏的「导出视频」
+// （app_actions 的 exportVideo）都走这里。
 //
 // EX-1′：默认序是 narrative 链序，需要全量节点 + 边（result 节点自己不在链上，挂在 config 节点下）。
 // projectId 走外壳的项目上下文，不从 videoNodes.first.projectId 摸（spec §8.2 / BOARD 210）：

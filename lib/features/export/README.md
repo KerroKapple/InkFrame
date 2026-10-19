@@ -61,8 +61,9 @@ video result 节点（`videoUrl` 非空）时可用，否则禁用 + 说明 tool
 ## 排序（EX-1′）
 默认序 = narrative 链序，算在 `util/export_order.dart`（`orderVideoNodesForExport`），
 **不在对话框内**——链序需要全量节点与边，对话框只拿得到 video result 子集。
-两个入口（导出标签 + ⌘K 命令面板）走同一条路径，对话框照单全收传入顺序。
-**两处的 `projectId` 都取自 `ShellState.project`**，不从 `videoNodes.first.projectId`
+三个入口（导出标签、序列标签的「导出 mp4」、⌘K / 动作表的 `exportVideo`）都走
+`open_export_dialog.dart` 的 `openExportVideoDialogForCanvas`，对话框照单全收传入顺序。
+**`projectId` 取自 `ShellState.project`**，不从 `videoNodes.first.projectId`
 摸：启用判据看的是**原序**首个（`exportableVideoNodes(...).first`），排序看的是
 **链序**首个，两者不同源时就会出现「看着能点、点了没反应」（R86）。
 
@@ -82,18 +83,20 @@ EX-1′ 只定了序，默认全选于是会把同一镜的多个 take 一起导
 一键就能勾回来——**改的是默认勾选，不是候选集**，所以「我就是想导出上一版」不是死路。
 
 默认勾选算在**对话框内**（而不是像排序那样算在调用方）：它只需要 video result
-子集，而对话框是两个入口（导出标签走 `open_export_dialog.dart`、⌘K 走
-`command_actions._openExport`）唯一的汇合点，放这里两条入口自动一致。
+子集。三个入口（导出标签 / 序列标签「导出 mp4」/ ⌘K）在调用方
+`open_export_dialog.dart` 的 `openExportVideoDialogForCanvas` 就已汇合，默认勾选
+放在对话框里，三条入口自动一致。
 例外是固定表：video result 子集里没有配置节点，`pinnedBySource` 得由调用方从全量
-节点算（`open_export_dialog.dart` 用 `pinnedResultIdsBySource`）；不传 = 没有固定、
-默认勾最新。
+节点算——`openExportVideoDialogForCanvas` 用 `pinnedResultIdsBySource(allNodes)` 算好
+传入（集成用例 `test/features/export/open_export_dialog_test.dart` 两条入口各钉一次）；
+不传 = 没有固定、默认勾最新。
 
-**为什么是「最新」而不是「promoted」**：promoted 住在 `batch_results` 行上、键是
+**为什么是「当前（固定的 ?? 最新的）」而不是「promoted」**：promoted 住在 `batch_results` 行上、键是
 容器 result 节点，`promote()` 只清同一容器内的旧标记、只写 `image_url`；而批量在
 `generation_controller` 被收口成「仅图片节点」。⇒ video take 在数据上不可能有 slot，
 promoted 在导出路径上无定义。全仓「一镜取哪个产物」的既有判官是
-`canvas/util/node_artifacts.dart`（序列播放 / P6 交付计划 / 画廊选定产物 / ⌘K 产物组
-都走它），导出默认勾选是唯一漏网的一处，这里是补齐口径而非新规则。
+`canvas/util/node_artifacts.dart`（序列播放 / P6 交付计划 / 画廊选定产物 / ⌘K 镜头组 /
+左栏大纲都走它），导出默认勾选是唯一漏网的一处，这里是补齐口径而非新规则。
 
 ## 本切片不做（后续切片）
 转码与分辨率归一（EX-2，依赖 D-M4-6 拍板）/ 导出历史列表 /
