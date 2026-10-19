@@ -1198,5 +1198,7 @@
   "laneDeletedWithContents": "{count, plural, =0{已删除泳道「{name}」} other{已删除泳道「{name}」和 {count} 个节点}}",
   "laneDeleteRunningTitle": "删除泳道「{name}」和其中的节点？",
   "laneDeleteRunningBody": "{count} 个任务正在生成，删除会一并取消，取消的任务撤销不回来。",
-  "laneDeleteRunningConfirm": "删除并取消任务"
+  "laneDeleteRunningConfirm": "删除并取消任务",
+  "nodeStatusImported": "导入",
+  "nodeStatusImporting": "复制中 {percent}%"
 }

@@ -136,7 +136,7 @@ class CanvasNodesController
       size: defaultNodeSize(type),
       typeConfig: <String, Object?>{
         ImportKeys.origin: ImportKeys.originImport,
-        if (originalName != null) ImportKeys.originalName: originalName,
+        ImportKeys.originalName: ?originalName,
       },
       projectId: projectId,
     );
