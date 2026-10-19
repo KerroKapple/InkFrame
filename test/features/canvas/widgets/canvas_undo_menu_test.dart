@@ -26,7 +26,6 @@ import 'package:inkframe/features/canvas/widgets/create_node_menu.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
-import 'package:inkframe/theme/components/ink_menu_panel.dart';
 import 'package:inkframe/theme/icons/ink_glyph.dart';
 
 import '../../../_harness/fake_canvas.dart';
