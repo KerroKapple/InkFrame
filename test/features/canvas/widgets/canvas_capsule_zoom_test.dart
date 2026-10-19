@@ -15,13 +15,18 @@
 //   - showZoomCapsule（或 zoomCanvasBy / resetCanvasZoom / _fitNodes 任一处）加一次 ref.read(toastServiceProvider).show(...)
 //     ⇒「真入口出胶囊，都不调 ToastService」红（每一步先收掉胶囊再按键，断言胶囊重新出来了，证明入口确实走到）；
 //   - canvas_screen.dart 去掉 CanvasCapsuleHost 的 key: ValueKey(canvasId) ⇒「换画布：旧画布的胶囊不在新画布上淡出」红
-//     （宿主 State 与 AnimatedSwitcher 被复用，新画布 state 为 null，旧卡在新画布上淡出 120ms）。
+//     （宿主 State 与 AnimatedSwitcher 被复用，新画布 state 为 null，旧卡在新画布上淡出 120ms）；
+//   - 应用动作表（app_action_catalog.dart）的 zoomIn / zoomReset / fitAll 行，run 改成直接写 canvasTransformController、
+//     不经 zoomCanvasBy / resetCanvasZoom / fitAllNodes ⇒「应用动作表的缩放 / 适应行也出胶囊」组红。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
+import 'package:inkframe/features/app_actions/app_action.dart';
+import 'package:inkframe/features/app_actions/app_action_catalog.dart';
+import 'package:inkframe/features/app_actions/app_action_ids.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_capsule.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
@@ -122,6 +127,16 @@ Future<void> _shift(WidgetTester tester, LogicalKeyboardKey key) async {
 void _expectNoCapsule(WidgetTester tester, ProviderContainer c) {
   expect(find.byType(InkCanvasCapsule), findsNothing);
   expect(c.read(canvasCapsuleProvider(_canvasId)), isNull);
+}
+
+/// 执行应用动作表里的一行，与菜单 / ⌘K 同一个入口 AppActionContext.read。
+/// context / ref 取舞台 CanvasView 的元素：ConsumerWidget 的元素（ConsumerStatefulElement）本身就是 WidgetRef。
+Future<void> _runAppAction(WidgetTester tester, String id) async {
+  final AppAction? action = appActionById(id);
+  expect(action, isNotNull, reason: '动作表里没有 $id');
+  final Element stage = tester.element(find.byType(CanvasView));
+  await action!.run(AppActionContext.read(stage, stage as WidgetRef));
+  await tester.pump();
 }
 
 void main() {
@@ -369,4 +384,50 @@ void main() {
     expect(find.byType(InkCanvasCapsule), findsNothing, reason: '当帧就没有，不在新画布上淡出旧卡');
     expect(find.text('Zoom 120%'), findsNothing);
   }, timeout: const Timeout(Duration(seconds: 30)));
+
+  group('应用动作表的缩放 / 适应行也出胶囊（W1 验收 #21）', () {
+    testWidgets('zoomIn：出「Zoom 120%」', (tester) async {
+      final ProviderContainer c = await _pumpOnCanvas(tester, 'ink_capsule_action_in_');
+      _expectNoCapsule(tester, c);
+
+      await _runAppAction(tester, AppActionIds.zoomIn);
+      await _frames(tester, 2);
+
+      expect(_scale(c), closeTo(1.2, 1e-9));
+      expect(c.read(canvasCapsuleProvider(_canvasId)), isNotNull);
+      expect(find.text('Zoom 120%'), findsOneWidget);
+      expect(find.byType(InkCanvasCapsule), findsOneWidget);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    testWidgets('zoomReset：先直接写相机缩小（不出胶囊），再复位 ⇒ 出「Zoom 100%」', (tester) async {
+      final ProviderContainer c = await _pumpOnCanvas(tester, 'ink_capsule_action_reset_');
+      // 直接写相机：不走快捷键 / 动作，免得先出一枚胶囊。
+      c.read(canvasTransformControllerProvider(_canvasId)).value = Matrix4.identity()
+        ..scaleByDouble(0.5, 0.5, 1.0, 1.0);
+      await _frames(tester, 2);
+      expect(_scale(c), closeTo(0.5, 1e-9), reason: '前提：相机缩小过');
+      _expectNoCapsule(tester, c);
+
+      await _runAppAction(tester, AppActionIds.zoomReset);
+      await _frames(tester, 2);
+
+      expect(_scale(c), closeTo(1.0, 1e-9));
+      expect(c.read(canvasCapsuleProvider(_canvasId)), isNotNull);
+      expect(find.text('Zoom 100%'), findsOneWidget);
+      expect(find.byType(InkCanvasCapsule), findsOneWidget);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+
+    testWidgets('fitAll（有节点）：出相机此刻的比例', (tester) async {
+      final ProviderContainer c = await _pumpOnCanvas(tester, 'ink_capsule_action_fit_all_');
+      _expectNoCapsule(tester, c);
+
+      await _runAppAction(tester, AppActionIds.fitAll);
+      await _frames(tester, 2);
+
+      expect(_scale(c), lessThan(1.0), reason: '前提：真的缩小了');
+      expect(c.read(canvasCapsuleProvider(_canvasId)), isNotNull);
+      expect(find.text(_zoomText(c)), findsOneWidget);
+      expect(find.byType(InkCanvasCapsule), findsOneWidget);
+    }, timeout: const Timeout(Duration(seconds: 30)));
+  });
 }
