@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:postgres/postgres.dart';
 
+import '../../core/constants/import_keys.dart';
 import '../../core/constants/job_statuses.dart';
 import '../../core/interfaces/node_repository.dart';
 import '../base_repository.dart';
@@ -95,6 +96,8 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
     });
   }
 
+  // 导入的媒体（type_config.origin = import）本来就没有来源配置节点，不是「丢了来源」
+  // 的孤儿结果，这里排除掉。
   @override
   Future<List<Map<String, Object?>>> listOrphanResults(String canvasId) {
     return guard('listOrphanResults', 'nodes', () async {
@@ -102,7 +105,9 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
         Sql.named(
           '$_selectWithProject '
           'WHERE n.canvas_id = @cid AND n.deleted_at IS NULL '
-          "AND n.node_role = 'result' AND n.source_node_id IS NULL",
+          "AND n.node_role = 'result' AND n.source_node_id IS NULL "
+          "AND COALESCE(n.type_config->>'${ImportKeys.origin}','') "
+          "<> '${ImportKeys.originImport}'",
         ),
         parameters: <String, Object?>{'cid': canvasId},
       );

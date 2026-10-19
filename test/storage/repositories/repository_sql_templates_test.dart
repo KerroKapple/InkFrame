@@ -126,6 +126,16 @@ void main() {
       expect(spy.lastSql, contains('source_node_id IS NULL'));
     });
 
+    // 导入的媒体没有来源配置节点，不是孤儿结果。
+    test('listOrphanResults 排除 origin=import 的导入节点', () async {
+      final spy = _SpySession();
+      await PostgresNodeRepository(spy).listOrphanResults('c');
+      expect(
+        spy.lastSql,
+        contains("COALESCE(n.type_config->>'origin','') <> 'import'"),
+      );
+    });
+
     // CR-01：nodes 行必须带 project_id（来自 canvases JOIN），
     // 否则生成链路读到 null → 产物静默丢弃。
     test('findById JOIN canvases 带出 project_id', () async {

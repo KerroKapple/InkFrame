@@ -274,6 +274,43 @@ void main() {
     }
   });
 
+  // 导入的媒体（type_config.origin = import）本来就没有来源配置节点，不算孤儿结果；
+  // 没有 origin 键的无来源产物（COALESCE 成 ''）照旧算。
+  test('listOrphanResults 排除 origin=import 的导入节点，无 origin 键的孤儿照列',
+      () async {
+    try {
+      final h = req();
+      final pid = await PostgresProjectRepository(h.conn).create(name: 'P');
+      final cid = await PostgresCanvasRepository(h.conn)
+          .create(projectId: pid, name: 'C');
+      final repo = PostgresNodeRepository(h.conn);
+      final imported = await repo.create(
+        canvasId: cid,
+        type: 'image',
+        nodeRole: 'result',
+        typeConfig: <String, Object?>{
+          'origin': 'import',
+          'original_name': 'a.png',
+          'image_url': 'imports/x.png',
+        },
+      );
+      final orphan = await repo.create(
+        canvasId: cid,
+        type: 'image',
+        nodeRole: 'result',
+        typeConfig: <String, Object?>{'image_url': 'images/y.png'},
+      );
+
+      final ids = <String>[
+        for (final r in await repo.listOrphanResults(cid)) r['id'].toString(),
+      ];
+      expect(ids, <String>[orphan]);
+      expect(ids, isNot(contains(imported)));
+    } on _Skip {
+      return;
+    }
+  });
+
   // BOARD「删掉正在打开的画布 / 项目后外壳上下文悬空」第 3 件：画布软删
   // 【不级联】到 nodes / edges / style_lanes，所以只过滤自身 deleted_at 的读
   // 路径会把已删画布的内容照常读出来——界面上完全看不出它已被删。
