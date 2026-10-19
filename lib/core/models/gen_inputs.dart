@@ -121,7 +121,7 @@ GenInputsRemap stripUnmappedGenInputs(
 }
 
 /// 一份快照整体改写；任何一处映射不到或形状不对 ⇒ null（调用方整份删掉）。
-/// JSON 解码出来的是 Map<String, dynamic> / List<dynamic>，一律按 `is Map` / `is List` 再逐项判。
+/// JSON 解码出来的是 `Map<String, dynamic>` / `List<dynamic>`，一律按 `is Map` / `is List` 再逐项判。
 Map<String, Object?>? _remapSnapshot(
   Object? raw, {
   required String? Function(String oldNodeId) mapNode,
