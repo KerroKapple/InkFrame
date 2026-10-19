@@ -319,7 +319,8 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
     );
   }
 
-  /// 「旧 take」标记（BOARD 194）：同镜有更新 take 的行上挂一个弱化徽标。
+  /// 「旧 take」标记（BOARD 194）：不在当前集的行（同镜当前用的是另一条：更新的，或被固定的
+  /// 那条）上挂一个弱化徽标。
   /// 形制与画廊瓦片的角标同源（micro + InkRadius.xs），但用 surface2/fg3 而非
   /// accent——它是「这行被顶下去了」的说明，不是高亮。
   Widget _olderTakeBadge(BuildContext context) {
