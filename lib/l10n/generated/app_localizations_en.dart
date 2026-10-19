@@ -3249,4 +3249,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String canvasCapsuleZoom(int percent) {
     return 'Zoom $percent%';
   }
+
+  @override
+  String get appActionReasonNoConfigSelected =>
+      'Results can\'t be duplicated — select a config node';
 }
