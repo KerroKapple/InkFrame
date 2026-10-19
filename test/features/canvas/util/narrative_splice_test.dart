@@ -450,6 +450,36 @@ void main() {
       expect(partial.sortOrders, <String, int>{'pc': 1, 'pb': 2},
           reason: '顺序不变的 a 不写');
     });
+
+    test('siblingReorderPlan：只传部分子节点 ⇒ 没列出的按原序接在后面、不撞号', () {
+      final List<CanvasEdge> edges = <CanvasEdge>[
+        _e('pa', 'P', 'a'),
+        _e('pb', 'P', 'b', sortOrder: 1),
+        _e('pc', 'P', 'c', sortOrder: 2),
+      ];
+      final SplicePlan plan = siblingReorderPlan(
+        parentId: 'P',
+        orderedChildIds: <String>['c', 'b'],
+        edges: edges,
+      );
+      expect(plan.sortOrders, <String, int>{'pc': 0, 'pa': 2},
+          reason: 'c=0、b=1（不变不写）、没列出的 a 接在后面 = 2；a 留在 0 就和 c 撞号');
+
+      // 没列出的不止一条：彼此保持原相对顺序（原 sortOrder 升序），同号按边 id。
+      final List<CanvasEdge> wide = <CanvasEdge>[
+        _e('pa', 'P', 'a', sortOrder: 3),
+        _e('pb', 'P', 'b', sortOrder: 1),
+        _e('pc', 'P', 'c', sortOrder: 1),
+        _e('pd', 'P', 'd', sortOrder: 0),
+      ];
+      final SplicePlan rest = siblingReorderPlan(
+        parentId: 'P',
+        orderedChildIds: <String>['a'],
+        edges: wide,
+      );
+      expect(rest.sortOrders,
+          <String, int>{'pa': 0, 'pd': 1, 'pb': 2, 'pc': 3});
+    });
   });
 
   group('wouldCreateNarrativeCycle', () {
@@ -566,6 +596,34 @@ void main() {
       expect(plan!.sortOrders, <String, int>{'pa-new-id': 0});
       expect(plan.removeEdgeIds, isEmpty);
       expect(plan.addEdges, isEmpty);
+    });
+
+    test('invertSplice：removed 的端点节点已删 ⇒ 不重建，全部对不上时返回 null', () {
+      // 先插 X 到 A→B，再删节点 B（B 的边随之软删：X→B 已不在世），乱序撤销插入。
+      final SplicePlan? plan = invertSplice(
+        insertToken(),
+        <CanvasEdge>[_e('ax', 'A', 'X', sortOrder: 5)],
+        aliveNodeIds: <String>{'A', 'X'},
+      );
+      expect(plan, isNotNull);
+      expect(plan!.removeEdgeIds, <String>{'ax'});
+      expect(plan.addEdges, isEmpty, reason: 'B 已删，A→B 不能建到软删节点上');
+
+      // 两端都在世 ⇒ 照常重建（过滤只看节点在不在，不是一律不建）。
+      final SplicePlan? alive = invertSplice(
+        insertToken(),
+        <CanvasEdge>[_e('ax', 'A', 'X', sortOrder: 5)],
+        aliveNodeIds: <String>{'A', 'X', 'B'},
+      );
+      expect(alive!.addEdges, <SpliceEdgeSpec>[_narr('A', 'B', 5)]);
+
+      // 新边都已不在、被删边的源端也已删 ⇒ 无事可做 ⇒ null（调用方判 gone）。
+      expect(
+          invertSplice(insertToken(), const <CanvasEdge>[],
+              aliveNodeIds: <String>{'B', 'X'}),
+          isNull);
+      // 对照：不传节点集合时同样的输入会重建 A→B。
+      expect(invertSplice(insertToken(), const <CanvasEdge>[]), isNotNull);
     });
   });
 }

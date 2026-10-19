@@ -13,6 +13,7 @@ import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
+import 'package:inkframe/core/interfaces/unit_of_work.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
@@ -220,21 +221,40 @@ class _FakeEdgeRepo implements EdgeRepository {
   Future<int> hardDelete(String id) async => 0;
 }
 
+/// 数 `run` 次数的 UnitOfWork：包一层 FakeUnitOfWork，每次 run 先计数再原样转交。
+/// 照 canvas_edges_controller_test.dart 的 _CountingUnitOfWork。
+class _CountingUnitOfWork implements UnitOfWork {
+  _CountingUnitOfWork(this.inner, {required this.onRun});
+  final UnitOfWork inner;
+  final void Function() onRun;
+
+  @override
+  Future<T> run<T>(Future<T> Function(RepositoryScope scope) action) {
+    onRun();
+    return inner.run(action);
+  }
+}
+
 void main() {
   late _FakeNodeRepository repo;
   late _FakeEdgeRepo edgeRepo;
   late ProviderContainer container;
 
+  /// 主容器里 `uow.run` 被调了几次——批量写「一个事务」靠它钉（见「批量写」组头）。
+  late int uowRuns;
+
   setUp(() {
     repo = _FakeNodeRepository();
     edgeRepo = _FakeEdgeRepo();
+    uowRuns = 0;
     container = ProviderContainer(
       overrides: [
         nodeRepositoryProvider.overrideWith((ref) async => repo),
         edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
         unitOfWorkProvider.overrideWith(
-          (ref) async => FakeUnitOfWork(
-            FakeRepositoryScope(nodes: repo, edges: edgeRepo),
+          (ref) async => _CountingUnitOfWork(
+            FakeUnitOfWork(FakeRepositoryScope(nodes: repo, edges: edgeRepo)),
+            onRun: () => uowRuns++,
           ),
         ),
       ],
@@ -744,8 +764,13 @@ void main() {
 
   // 批量写：各一个事务、失败整批回滚内存。FakeUnitOfWork 不模拟库回滚——库里真回滚由
   // test/storage/transaction_integration_test.dart 的「节点批量删除」两条真 PG 用例钉。
+  // 「一个事务」本身由 _CountingUnitOfWork 钉：成功用例断言 uowRuns == 1（调用前先清零，
+  // 准备步骤里的 addNode / removeNodes 不算），不碰库的用例断言 uowRuns == 0。
   //
   // 变异对照：
+  //   - moveNodes / patchTypeConfigMany / restoreAll / removeNodes 改成每行各开一个 uow.run，
+  //     或绕过事务直接走 _repo ⇒ 各自的成功用例「uowRuns == 1」红
+  //   - moveNodes 去掉 `if (targets.isEmpty) return;` ⇒「不在内存的 id 跳过、空 map 不碰库」红（uowRuns ≠ 0）
   //   - removeNodes catch 里删掉 `state = AsyncData(previous)` ⇒「第 3 张 softDelete 失败 ⇒ 内存三张都回来」红
   //   - 去掉 removeNodes 的边去重集合 ⇒「两张互连：共享边只软删一次」红
   //   - 删掉 restoreAll「已在内存不重复插入」⇒「restoreAll 一次复原全部…每张只出现一次」红
@@ -782,11 +807,13 @@ void main() {
         position: const Offset(100, 100),
       );
 
+      uowRuns = 0;
       await ctrl.moveNodes(<String, NodeMove>{
         a.id: (delta: const Offset(10, 20), laneId: 'lane-1'),
         b.id: (delta: const Offset(-5, 5), laneId: null),
       });
 
+      expect(uowRuns, 1, reason: '整组一个事务：不是每行一个 uow.run，也不绕过事务');
       expect(repo.updateCalls, hasLength(2));
       final byId = <Object?, Map<String, Object?>>{
         for (final c in repo.updateCalls) c['id']: c,
@@ -850,11 +877,13 @@ void main() {
       final a = await ctrl.addNode(
           label: 'A', type: CanvasNodeType.image, position: const Offset(0, 0));
 
+      uowRuns = 0;
       await ctrl.moveNodes(const <String, NodeMove>{});
       await ctrl.moveNodes(<String, NodeMove>{
         'ghost': (delta: const Offset(1, 1), laneId: null),
       });
       expect(repo.updateCalls, isEmpty, reason: '空 map / 一个都不在 ⇒ 不碰库');
+      expect(uowRuns, 0, reason: '空 map / 一个都不在 ⇒ 连事务都不开');
 
       await ctrl.moveNodes(<String, NodeMove>{
         'ghost': (delta: const Offset(1, 1), laneId: null),
@@ -875,8 +904,10 @@ void main() {
       final e2 = await edge(d.id, b.id);
       final e3 = await edge(c.id, d.id);
 
+      uowRuns = 0;
       final deletions = await ctrl.removeNodes(<String>{c.id, a.id, b.id});
 
+      expect(uowRuns, 1, reason: '三张连同级联边一个事务');
       expect(deletions.map((t) => t.node.id), <String>[c.id, a.id, b.id],
           reason: '令牌顺序 = 入参迭代顺序');
       expect(deletions[0].edgeIds, <String>[e3]);
@@ -943,8 +974,10 @@ void main() {
 
       // 再塞一张「节点此刻就在内存里」的令牌（c），边 id 与 b 的令牌重复。
       final stale = (node: c, edgeIds: <String>[e2]);
+      uowRuns = 0; // 上面 removeNodes 那一次不算
       final affected = await ctrl.restoreAll(<NodeDeletion>[...deletions, stale]);
 
+      expect(uowRuns, 1, reason: '全部节点和边一个事务复原');
       final ids = nodesNow().map((n) => n.id).toList();
       expect(ids, hasLength(3), reason: '已在内存的 c 不重复插入');
       expect(ids.toSet(), <String>{a.id, b.id, c.id});
@@ -1017,12 +1050,14 @@ void main() {
         typeConfig: <String, Object?>{'prompt': 'y'},
       );
 
+      uowRuns = 0;
       await ctrl.patchTypeConfigMany(<String, Map<String, Object?>>{
         a.id: <String, Object?>{'seed': 2, 'negative': null},
         'ghost': <String, Object?>{'prompt': 'nobody'},
         b.id: <String, Object?>{'prompt': 'z'},
       });
 
+      expect(uowRuns, 1, reason: '多张卡的 patch 一个事务');
       expect(repo.patchCalls.map((c) => c['id']), <Object?>[a.id, b.id],
           reason: '不在内存的 id 跳过');
       expect(repo.patchCalls.first['patch'],

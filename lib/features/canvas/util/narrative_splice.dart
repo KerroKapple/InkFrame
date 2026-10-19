@@ -89,7 +89,8 @@ typedef BridgePlan = ({SplicePlan plan, int skippedSegments});
 
 /// 一次拼接的撤销令牌：按两端记，不记边 id。
 ///
-/// - [removed]：被软删的边（两端 + 角色）与它原来的 sortOrder——撤销时同两端此刻没有在世边就重建；
+/// - [removed]：被软删的边（两端 + 角色）与它原来的 sortOrder——撤销时同两端此刻没有在世边、
+///   且两端节点仍在世（见 [invertSplice] 的 aliveNodeIds）就重建；
 /// - [added]：新建边的两端——撤销时按两端找在世边删掉；
 /// - [previousSortOrders]：被改序的边的两端 → 原 sortOrder。只遍历 entries，不拿 key 查 Map。
 @immutable
@@ -322,8 +323,12 @@ SplicePlan? movePlan({
   return b.build();
 }
 
-/// 同一分叉下兄弟换序：把 [parentId] 的叙事出边 sortOrder 按 [orderedChildIds] 的顺序改成
-/// 0..n-1。不删不加；列表里不是 P 直接后继的 id 忽略；顺序不变的边不写进 sortOrders。
+/// 同一分叉下兄弟换序：把 [parentId] 的**全部**叙事出边 sortOrder 改成 0..n-1。
+///
+/// 先按 [orderedChildIds] 的顺序编号；列表里不是 P 直接后继的 id、重复的 id 忽略。
+/// 列表可以不完整：没列出的后继保持彼此原来的相对顺序（原 sortOrder 升序，同号按边 id），
+/// 接在列出的后面继续编号——结果总是 P 全部叙事出边的一个 0..n-1 排列，不会撞号。
+/// 不删不加；值不变的边不写进 sortOrders。
 SplicePlan siblingReorderPlan({
   required String parentId,
   required List<String> orderedChildIds,
@@ -339,6 +344,19 @@ SplicePlan siblingReorderPlan({
   for (final String child in orderedChildIds) {
     final CanvasEdge? e = byChild[child];
     if (e == null || !seen.add(child)) continue;
+    final int order = next++;
+    if (e.sortOrder != order) sortOrders[e.id] = order;
+  }
+  // 没列出的后继：按原相对顺序接在后面，否则会与上面的新编号撞号。
+  final List<CanvasEdge> unlisted = <CanvasEdge>[
+    for (final MapEntry<String, CanvasEdge> entry in byChild.entries)
+      if (!seen.contains(entry.key)) entry.value,
+  ];
+  unlisted.sort((CanvasEdge x, CanvasEdge y) {
+    final int bySort = x.sortOrder.compareTo(y.sortOrder);
+    return bySort != 0 ? bySort : x.id.compareTo(y.id);
+  });
+  for (final CanvasEdge e in unlisted) {
     final int order = next++;
     if (e.sortOrder != order) sortOrders[e.id] = order;
   }
@@ -374,7 +392,17 @@ bool wouldCreateNarrativeCycle({
 /// - [SpliceUndoToken.removed]：同两端此刻（扣掉上一步要删的）没有在世边 → 按原 role / sortOrder 重建；
 /// - [SpliceUndoToken.previousSortOrders]：找到边就改回原值。
 /// 三样都空 ⇒ null（对象都已不在，调用方判 gone）。
-SplicePlan? invertSplice(SpliceUndoToken token, List<CanvasEdge> current) {
+///
+/// 【端点节点在不在】本函数只看边、看不到节点：节点删除会把它的边一起软删，于是
+/// 「端点已删的边」在 [current] 里同样不在世，单看边会被当成可重建、建到软删节点上。
+/// 调用方须传 [aliveNodeIds] = 画布此刻在世的节点 id 集合（节点控制器当前的 id 集）：
+/// removed 里任一端不在其中的边跳过、不重建；因此三样都空时同样返回 null。
+/// 传 null = 不按节点过滤（只给已确知端点都在世的场合用）。
+SplicePlan? invertSplice(
+  SpliceUndoToken token,
+  List<CanvasEdge> current, {
+  Set<String>? aliveNodeIds,
+}) {
   final _PlanBuilder b = _PlanBuilder(current);
   for (final EdgeEndpoints k in token.added) {
     final CanvasEdge? e = findEdgeByEndpoints(b.alive(), k);
@@ -383,6 +411,11 @@ SplicePlan? invertSplice(SpliceUndoToken token, List<CanvasEdge> current) {
   // 「删 A→B 又建 A→B」的令牌：上一步已把新建那条删掉，这里要能把原来那条建回来，
   // 所以「此刻在世」看的是扣掉本 plan 要删的之后。
   for (final ({EdgeEndpoints key, int sortOrder}) r in token.removed) {
+    if (aliveNodeIds != null &&
+        (!aliveNodeIds.contains(r.key.sourceNodeId) ||
+            !aliveNodeIds.contains(r.key.targetNodeId))) {
+      continue; // 端点节点已删：不把边建到软删节点上
+    }
     b.add(r.key.sourceNodeId, r.key.targetNodeId,
         edgeType: r.key.edgeType, role: r.key.role, sortOrder: r.sortOrder);
   }
