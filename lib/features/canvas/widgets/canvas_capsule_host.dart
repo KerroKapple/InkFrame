@@ -11,10 +11,15 @@
 //   让位后剩下的宽度不到 minWidth 就不画（计时照走）。查找条在顶部，互不避让。
 // - 换卡：AnimatedSwitcher 120ms 交叉淡入；卡的 key 是控制器的 serial——同 dedupeKey 原地改字时 serial 不变，
 //   不重放淡入，读屏也不新增节点。
-// - 悬停停表：MouseRegion 只包胶囊本身（空白处照样点得到画布），进出报给控制器。
+// - 悬停停表：MouseRegion 只包胶囊本身（空白处照样点得到画布），进出报给控制器。鼠标区域在悬停中被卸下
+//   （舞台变窄画不下、换标签）时收不到移出：宿主记着自己报过悬停，帧后补报 setHovered(false)——
+//   否则控制器的悬停卡在 true，本画布之后的胶囊都不计时。
+// - 换画布：canvas_screen.dart 按 canvasId 给宿主 key，State 与 AnimatedSwitcher 整个换新，
+//   旧画布那张卡不会在新画布上淡出。
 // - visible = false（换到别的标签）：当帧画空，帧后 dismiss——不在 build / didUpdateWidget 里同步改 provider
 //   （Riverpod 不许在 widget 树构建中改 provider）。回来时状态已经清了，不重放。
-// - 动作按钮只给鼠标（InkCanvasCapsule 里包了 ExcludeFocus）；点了先调 onAction 再收起。
+// - 动作按钮只给鼠标（InkCanvasCapsule 里包了 ExcludeFocus）；点了先调 onAction 再收起。只认在场的那条：
+//   收起后旧卡还要淡出 120ms，这段时间再点（连点 / 双击）不再执行第二次。
 import 'dart:math' as math;
 
 import 'package:flutter/widgets.dart';
@@ -63,11 +68,31 @@ class CanvasCapsuleHost extends ConsumerStatefulWidget {
 }
 
 class _CanvasCapsuleHostState extends ConsumerState<CanvasCapsuleHost> {
+  /// 本宿主最近一次报给控制器的悬停（MouseRegion 的进 / 出）。鼠标区域被卸下时收不到移出，靠它补报。
+  bool _reportedHover = false;
+
+  void _reportHover(bool hovered) {
+    _reportedHover = hovered;
+    _controller.setHovered(hovered);
+  }
+
+  /// 鼠标区域这一帧不画了（舞台太窄）：之前报过悬停的话，帧后补报移出——不在构建中改 provider。
+  void _clearHoverAfterFrame() {
+    if (!_reportedHover) return;
+    _reportedHover = false;
+    final String canvasId = widget.canvasId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(canvasCapsuleProvider(canvasId).notifier).setHovered(false);
+    });
+  }
+
   @override
   void didUpdateWidget(CanvasCapsuleHost oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.visible && !widget.visible) {
       // 当帧已按 visible 画空；改 provider 排到帧后。鼠标区域随之卸下、收不到移出，悬停一并清掉。
+      _reportedHover = false;
       final String canvasId = widget.canvasId;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -98,7 +123,11 @@ class _CanvasCapsuleHostState extends ConsumerState<CanvasCapsuleHost> {
               builder: (BuildContext context, BoxConstraints constraints) {
                 final ({double center, double half})? span =
                     _capsuleSpan(constraints.maxWidth, barShown: barHeight > 0);
-                if (span == null) return const SizedBox.shrink();
+                if (span == null) {
+                  // 画不下：鼠标区域连同胶囊一起卸下，悬停中的话收不到移出，补报。
+                  _clearHoverAfterFrame();
+                  return const SizedBox.shrink();
+                }
                 return Align(
                   alignment: Alignment.bottomLeft,
                   child: Padding(
@@ -108,8 +137,8 @@ class _CanvasCapsuleHostState extends ConsumerState<CanvasCapsuleHost> {
                       child: Align(
                         alignment: Alignment.bottomCenter,
                         child: MouseRegion(
-                          onEnter: (_) => _controller.setHovered(true),
-                          onExit: (_) => _controller.setHovered(false),
+                          onEnter: (_) => _reportHover(true),
+                          onExit: (_) => _reportHover(false),
                           child: AnimatedSwitcher(
                             duration: InkMotion.fast,
                             child: message == null ? null : _capsule(context, message),
@@ -128,14 +157,22 @@ class _CanvasCapsuleHostState extends ConsumerState<CanvasCapsuleHost> {
   Widget _capsule(BuildContext context, CanvasCapsuleMessage m) {
     final int? percent = m.zoomPercent;
     final VoidCallback? onAction = m.onAction;
+    final int serial = _controller.serial;
     return InkCanvasCapsule(
-      key: ValueKey<int>(_controller.serial),
+      key: ValueKey<int>(serial),
       text: percent != null ? context.l10n.canvasCapsuleZoom(percent) : m.text,
       actionLabel: m.actionLabel,
       actionHint: m.actionHint,
       onAction: onAction == null
           ? null
           : () {
+              // 淡出中的旧卡：在场的已不是这一条（收起后为 null，或已换成别的卡），不再执行。
+              // 只比 serial 不够——dismiss 不改 serial，收起后再点比不出来；只比消息也不够——同一个
+              // const 消息收起后再 show 一次是新卡，旧卡淡出时消息仍 identical。两样都比。
+              if (!identical(ref.read(canvasCapsuleProvider(widget.canvasId)), m) ||
+                  _controller.serial != serial) {
+                return;
+              }
               onAction();
               _controller.dismiss();
             },

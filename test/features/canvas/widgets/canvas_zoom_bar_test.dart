@@ -5,8 +5,11 @@
 //
 // 变异对照：把「适应」格改回 initialCanvasTransform ⇒「适应 = 适应全部」红；
 // 百分比格改回按文字宽（Padding s10 撑开）⇒「缩放条固定宽」红（放大 / 适应两格随比例左右挪）；
+// InkToolbarSize.zoomBarPercentCell 改小（如 46 → 20）或百分比字号加大 ⇒ 同一条用例「300% 装得进百分比格」红
+// （量的是 RenderParagraph 的自然宽度——Text 默认 clip，溢出不抛异常，takeException 测不出）；
 // 条上 + / − 改调 zoomCanvasBy ⇒「缩放条 + / − 不出轻提示胶囊」红。
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
@@ -148,7 +151,14 @@ void main() {
     transform.value = Matrix4.diagonal3Values(kCanvasMaxScale, kCanvasMaxScale, 1);
     await tester.pump();
     expect(find.text('300%'), findsOneWidget);
-    expect(tester.takeException(), isNull, reason: '「300%」装得进百分比格');
+    // 百分比格里的 Text 是 softWrap: false + 默认 clip：字宽超出只会被悄悄裁掉、不抛异常，takeException 看不出来。
+    // 直接量字的自然宽度（不受格宽约束），与格宽比。
+    final RenderParagraph percent300 = tester.renderObject<RenderParagraph>(find.text('300%'));
+    expect(
+      percent300.getMaxIntrinsicWidth(double.infinity),
+      lessThanOrEqualTo(InkToolbarSize.zoomBarPercentCell),
+      reason: '「300%」装得进百分比格',
+    );
     final Rect barAt300 = tester.getRect(find.byType(CanvasZoomBar));
 
     expect(barAt10.width, kCanvasZoomBarWidth);
