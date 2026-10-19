@@ -271,7 +271,7 @@ void main() {
               'id': 'cfg', 'canvas_id': 'c1', 'type': 'image', 'node_role': 'config',
               'type_config': <String, Object?>{
                 'prompt': 'x',
-                if (pinned != null) 'pinned_result_id': pinned,
+                'pinned_result_id': ?pinned,
               },
             },
             <String, Object?>{
