@@ -347,7 +347,8 @@ void main() {
     // 每一步先把胶囊收掉，按完再断言胶囊重新出来了——证明这一步的入口确实走到了，不是上一步留下的。
     Future<void> step(String name, Future<void> Function() action) async {
       c.read(canvasCapsuleProvider(_canvasId).notifier).dismiss();
-      await _frames(tester, 2);
+      // 等淡出走完：上一张若刚在原地改过字（同 dedupeKey），淡入淡出叠着，收起要 ~300ms 才从树上摘掉。
+      await _frames(tester, 4);
       _expectNoCapsule(tester, c);
 
       await action();
