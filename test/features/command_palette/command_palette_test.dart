@@ -55,6 +55,52 @@ class _ExportableNodesController extends CanvasNodesController {
       ];
 }
 
+/// 「⌘K 导出默认勾固定的 take」夹具：一个视频配置 cfg-p 固定了**较旧**的 r-old，名下还有一个**较新**的 r-new。
+/// 不看固定的话「当前 take」= 最新 = r-new；看了才是 r-old——两种口径默认勾的行正好相反。
+class _PinnedTakeNodesController extends CanvasNodesController {
+  @override
+  Future<List<CanvasNode>> build(String canvasId) async => <CanvasNode>[
+        CanvasNode(
+          id: 'cfg-p',
+          label: 'cfg-p',
+          type: CanvasNodeType.video,
+          projectId: 'p1',
+          canvasId: canvasId,
+          typeConfig: const <String, Object?>{'pinned_result_id': 'r-old'},
+        ),
+        CanvasNode(
+          id: 'r-old',
+          label: 'clip-old',
+          type: CanvasNodeType.video,
+          role: NodeRole.result,
+          projectId: 'p1',
+          canvasId: canvasId,
+          sourceNodeId: 'cfg-p',
+          position: const Offset(100, 0),
+          createdAt: DateTime.utc(2026, 1, 1),
+          typeConfig: const <String, Object?>{'video_url': 'videos/old.mp4'},
+        ),
+        CanvasNode(
+          id: 'r-new',
+          label: 'clip-new',
+          type: CanvasNodeType.video,
+          role: NodeRole.result,
+          projectId: 'p1',
+          canvasId: canvasId,
+          sourceNodeId: 'cfg-p',
+          position: const Offset(200, 0),
+          createdAt: DateTime.utc(2026, 8, 7),
+          typeConfig: const <String, Object?>{'video_url': 'videos/new.mp4'},
+        ),
+      ];
+}
+
+/// 没有边（导出时 ref.read 边控制器要拿到 AsyncData，别去起真仓储）。
+class _NoEdgesController extends CanvasEdgesController {
+  @override
+  Future<List<CanvasEdge>> build(String canvasId) async => const <CanvasEdge>[];
+}
+
 /// R86 夹具：**链序第一个**可导出产物的 projectId 为空，**原序第一个**非空。
 ///
 /// 这正是 `canExport`（看 `exportableVideoNodes(...).first`，即原序）与
@@ -307,6 +353,24 @@ Future<void> _warmEdges(ProviderContainer container, String canvasId) async {
   await container.read(canvasEdgesControllerProvider(canvasId).future);
 }
 
+/// 导出对话框里与 [label] 同一行（纵向中心最近）的那个复选框的勾选态——不依赖列表行序。
+bool? _checkedOnRowOf(WidgetTester tester, String label) {
+  final double y = tester.getCenter(find.text(label)).dy;
+  final Finder boxes = find.byType(Checkbox);
+  final int count = boxes.evaluate().length;
+  expect(count, greaterThan(0), reason: '对话框里没有复选框');
+  int best = 0;
+  double bestDistance = double.infinity;
+  for (int i = 0; i < count; i++) {
+    final double d = (tester.getCenter(boxes.at(i)).dy - y).abs();
+    if (d < bestDistance) {
+      bestDistance = d;
+      best = i;
+    }
+  }
+  return tester.widget<Checkbox>(boxes.at(best)).value;
+}
+
 Future<void> _pressCtrlK(WidgetTester tester) async {
   await tester.sendKeyDownEvent(LogicalKeyboardKey.controlLeft);
   await tester.sendKeyEvent(LogicalKeyboardKey.keyK);
@@ -451,6 +515,45 @@ void main() {
       tester.getTopLeft(find.text('clip-b')).dy,
       lessThan(tester.getTopLeft(find.text('clip-a')).dy),
       reason: '链序 cfg-b→cfg-a 必须赢过 position.x 序（a 在左）',
+    );
+  });
+
+  // W1 验收：⌘K 的 Export video 走 openExportVideoDialogForCanvas，与旧 _openExport 的区别只在固定的 take
+  // （pinnedBySource 从全量节点算好传进对话框）。对话框只拿得到 video result 子集、看不到配置节点上的
+  // pinned_result_id，所以这条只能从入口这一层钉。
+  // 变异：删掉 open_export_dialog.dart 里传给 showExportVideoDialog 的 pinnedBySource ⇒ 默认勾回最新的 clip-new，
+  // 本条红在 clip-old 那行的勾选态。
+  testWidgets('⌘K 导出：默认勾选配置节点固定的那条 take，不是最新那条', (tester) async {
+    final container = await _pumpShell(tester, overrides: <Override>[
+      canvasNodesControllerProvider.overrideWith(_PinnedTakeNodesController.new),
+      canvasEdgesControllerProvider.overrideWith(_NoEdgesController.new),
+    ]);
+    container.read(shellControllerProvider.notifier).openCanvas(
+          'c1',
+          withProject: const ProjectRef(id: 'p1', name: 'Alpha'),
+        );
+    await _warmNodes(container, 'c1');
+    await _warmEdges(container, 'c1');
+    await _pressCtrlK(tester);
+
+    await tester.tap(find.text('Export video'));
+    await tester.pumpAndSettle();
+
+    // 候选集不收窄：两条都列着。
+    expect(find.text('clip-old'), findsOneWidget);
+    expect(find.text('clip-new'), findsOneWidget);
+    expect(_checkedOnRowOf(tester, 'clip-old'), isTrue, reason: '固定的那条默认勾上');
+    expect(_checkedOnRowOf(tester, 'clip-new'), isFalse, reason: '更新但没固定的那条默认不勾');
+    // 「旧 take」标记跟着当前集走：挂在没固定的 clip-new 那一行。
+    expect(find.text('Earlier take'), findsOneWidget);
+    expect(
+      (tester.getCenter(find.text('Earlier take')).dy -
+              tester.getCenter(find.text('clip-new')).dy)
+          .abs(),
+      lessThan((tester.getCenter(find.text('Earlier take')).dy -
+              tester.getCenter(find.text('clip-old')).dy)
+          .abs()),
+      reason: '「旧 take」标在 clip-new 那行',
     );
   });
 

@@ -5707,6 +5707,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Zoom {percent}%'**
   String canvasCapsuleZoom(int percent);
+
+  /// No description provided for @appActionReasonNoConfigSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'Results can\'t be duplicated — select a config node'**
+  String get appActionReasonNoConfigSelected;
 }
 
 class _AppLocalizationsDelegate

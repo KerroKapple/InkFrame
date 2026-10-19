@@ -3117,4 +3117,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String canvasCapsuleZoom(int percent) {
     return '缩放 $percent%';
   }
+
+  @override
+  String get appActionReasonNoConfigSelected => '产物不能复制，请选中配置节点';
 }

@@ -1,7 +1,7 @@
 // CanvasCapsuleHost：画布轻提示胶囊在舞台上的宿主——定位、两侧让位、太窄不画、同一张卡不重放淡入、
-// 换标签即收、悬停停表、不走通知、不进 Esc 链。
+// 换标签即收、悬停停表（含悬停中鼠标区域被卸下）、淡出中的旧卡不再执行动作、不进 Esc 链。
 //
-// 装置：pumpInkApp 里一块定宽的「舞台」（Stack），宿主挂在里面，与 canvas_screen.dart 一样是 Stack 的直接孩子。
+// 装置：pumpInkApp 里一块定宽的「舞台」（Stack；宽度可由 ValueNotifier 改），宿主挂在里面，与 canvas_screen.dart 一样是 Stack 的直接孩子。
 // 「同轴」两条用例另挂真提示词条（与 canvas_screen.dart 同样的 Positioned(left 0, right 0, bottom 16)），
 // 条子自己量高度报给 provider，胶囊的中心与条子本体（surfaceKey）的中心直接比，不拿 promptBarPlacement 自证。
 // 胶囊有 120ms 交叉淡入：全文件只 pump 固定时长，不 pumpAndSettle。
@@ -14,7 +14,13 @@
 //   - center 不论条子显示与否都取条子中心 ⇒ 同一条用例后半段「条子收起回到舞台中心」红；
 //   - 控制器 show 去掉同 dedupeKey 的原地分支（总是换卡）⇒「同 dedupeKey 不重放淡入」红；
 //   - visible 变 false 不 dismiss ⇒「visible 变 false 立即收」红；
-//   - MouseRegion 不接 setHovered ⇒「悬停停表」红。
+//   - MouseRegion 不接 setHovered ⇒「悬停停表」红；
+//   - 宿主 span == null 分支去掉 _clearHoverAfterFrame()（只 return SizedBox.shrink）⇒
+//     「悬停中舞台变窄画不下：悬停复位，胶囊照常收」红；
+//   - 动作闭包去掉「在场的还是不是这一条」的判断 ⇒「淡出中的旧卡再点：onAction 只执行一次」红。
+// 「不走通知（不调 ToastService）」守在真入口上：canvas_capsule_zoom_test.dart——这里直接调 show() 绕过了入口，
+// 而控制器与宿主根本不碰 ToastService，放在这里的断言不可能红。
+// 换画布不淡出旧卡守在 canvas_capsule_zoom_test.dart（真外壳里切画布，key 加在 canvas_screen.dart）。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -64,36 +70,41 @@ class _NoSave extends InspectorSubmitController {
   void savePromptDebounced(String prompt) {}
 }
 
-/// 舞台宽 [stageWidth]、高 400；[visible] 驱动宿主的可见性；[shortcuts] 时外包 CanvasShortcuts（Esc 用例）；
+/// 舞台宽 [stageWidth]（给了 [width] 就跟着它变）、高 400；[visible] 驱动宿主的可见性；
+/// [shortcuts] 时外包 CanvasShortcuts（Esc 用例）；
 /// [promptBar] 时照 canvas_screen.dart 在宿主前挂真提示词条，节点表换成 [_imageNode]。
 Future<ProviderContainer> _pump(
   WidgetTester tester, {
   double stageWidth = 900,
+  ValueNotifier<double>? width,
   ValueNotifier<bool>? visible,
   bool shortcuts = false,
   bool promptBar = false,
-  RecordingToastService? toasts,
 }) async {
   final ValueNotifier<bool> vis = visible ?? ValueNotifier<bool>(true);
+  final ValueNotifier<double> w = width ?? ValueNotifier<double>(stageWidth);
   Widget body = Center(
-    child: SizedBox(
-      key: _stageKey,
-      width: stageWidth,
-      height: 400,
-      child: ValueListenableBuilder<bool>(
-        valueListenable: vis,
-        builder: (BuildContext context, bool v, _) => Stack(
-          children: <Widget>[
-            const Positioned.fill(child: SizedBox.expand()),
-            if (promptBar)
-              const Positioned(
-                left: 0,
-                right: 0,
-                bottom: InkToolbarSize.promptBarBottom,
-                child: CanvasPromptBar(canvasId: _cv),
-              ),
-            CanvasCapsuleHost(canvasId: _cv, visible: v),
-          ],
+    child: ValueListenableBuilder<double>(
+      valueListenable: w,
+      builder: (BuildContext context, double sw, _) => SizedBox(
+        key: _stageKey,
+        width: sw,
+        height: 400,
+        child: ValueListenableBuilder<bool>(
+          valueListenable: vis,
+          builder: (BuildContext context, bool v, _) => Stack(
+            children: <Widget>[
+              const Positioned.fill(child: SizedBox.expand()),
+              if (promptBar)
+                const Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: InkToolbarSize.promptBarBottom,
+                  child: CanvasPromptBar(canvasId: _cv),
+                ),
+              CanvasCapsuleHost(canvasId: _cv, visible: v),
+            ],
+          ),
         ),
       ),
     ),
@@ -113,7 +124,7 @@ Future<ProviderContainer> _pump(
       canvasEdgesControllerProvider.overrideWith(() => FakeEdgesController()),
       canvasLanesControllerProvider.overrideWith(() => EmptyLanesController()),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
-      toastServiceProvider.overrideWithValue(toasts ?? RecordingToastService()),
+      toastServiceProvider.overrideWithValue(RecordingToastService()),
       if (promptBar) ...<Override>[
         canvasRepositoryProvider.overrideWith((_) async => InMemoryCanvasRepository()),
         inspectorSubmitControllerProvider.overrideWith(_NoSave.new),
@@ -298,6 +309,37 @@ void main() {
     expect(c.read(canvasCapsuleProvider(_cv)), isNull);
   });
 
+  testWidgets('淡出中的旧卡再点：onAction 只执行一次', (tester) async {
+    int taps = 0;
+    final ProviderContainer c = await _pump(tester);
+    await _showAndSettle(
+      tester,
+      c,
+      CanvasCapsuleMessage(
+        text: 'Undone · Move 3 nodes',
+        kind: CanvasCapsuleKind.action,
+        actionLabel: 'Redo',
+        actionHint: 'Ctrl Y',
+        onAction: () => taps++,
+      ),
+    );
+
+    await tester.tap(find.text('Redo'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 30));
+    expect(taps, 1);
+    expect(c.read(canvasCapsuleProvider(_cv)), isNull);
+    // 前提：收起后旧卡还在淡出（120ms），还点得到——否则第二下根本落不到卡上，本条守不住任何东西。
+    expect(find.text('Redo'), findsOneWidget, reason: '前提：旧卡还在淡出');
+
+    await tester.tap(find.text('Redo'));
+    await tester.pump();
+    expect(taps, 1, reason: '淡出中的旧卡不再执行动作');
+
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.byType(InkCanvasCapsule), findsNothing);
+  });
+
   testWidgets('visible 变 false 立即收；回来不重放', (tester) async {
     final ValueNotifier<bool> visible = ValueNotifier<bool>(true);
     addTearDown(visible.dispose);
@@ -336,14 +378,41 @@ void main() {
     expect(c.read(canvasCapsuleProvider(_cv)), isNull);
   });
 
-  testWidgets('显示胶囊不调 ToastService（不进铃铛）', (tester) async {
-    final RecordingToastService toasts = RecordingToastService();
-    final ProviderContainer c = await _pump(tester, toasts: toasts);
-    await _showAndSettle(tester, c, const CanvasCapsuleMessage.zoom(120));
+  testWidgets('悬停中舞台变窄画不下：悬停复位，胶囊照常收，之后的胶囊也照常收', (tester) async {
+    final ValueNotifier<double> width = ValueNotifier<double>(900);
+    addTearDown(width.dispose);
+    final ProviderContainer c = await _pump(tester, width: width);
     await _showAndSettle(tester, c, const CanvasCapsuleMessage(text: 'Done'));
 
-    expect(find.byType(InkCanvasCapsule), findsOneWidget);
-    expect(toasts.shown, isEmpty);
+    final TestGesture mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(_capsule(tester).center);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 3));
+    expect(c.read(canvasCapsuleProvider(_cv)), isNotNull, reason: '前提：悬停停住了表');
+
+    // 悬停中舞台变窄到画不下：鼠标区域连同胶囊一起卸下，收不到移出。
+    width.value = 300;
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(InkCanvasCapsule), findsNothing, reason: '前提：画不下');
+
+    // 鼠标挪开时没有鼠标区域、不会有进出事件；舞台再变宽，胶囊不在鼠标下面——之后再没有任何事件能清悬停。
+    await mouse.moveTo(Offset.zero);
+    await tester.pump();
+    width.value = 900;
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(InkCanvasCapsule), findsOneWidget, reason: '前提：变宽后又画出来了');
+
+    await tester.pump(kCanvasCapsuleTextDwell);
+    expect(c.read(canvasCapsuleProvider(_cv)), isNull, reason: '悬停已复位，按剩余时间收');
+
+    await _showAndSettle(tester, c, const CanvasCapsuleMessage(text: 'Again'));
+    expect(find.text('Again'), findsOneWidget);
+    await tester.pump(kCanvasCapsuleTextDwell);
+    expect(c.read(canvasCapsuleProvider(_cv)), isNull, reason: '本画布之后的胶囊照常计时');
   });
 
   testWidgets('Esc 不收胶囊：Esc 照原阶梯清选中，胶囊仍在', (tester) async {

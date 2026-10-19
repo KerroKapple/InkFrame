@@ -33,7 +33,7 @@ List<CanvasNode> exportableVideoNodes(List<CanvasNode> nodes) => <CanvasNode>[
 /// - 画布没有任何 narrative 边时，结果等价于旧的 position.x 升序
 ///
 /// **只排序，不收窄候选集**：同一镜重跑多次产生的旧 take 照样列出。它们默认
-/// 不勾选（BOARD 194 起默认勾选 = 每镜最新一个 take，见
+/// 不勾选（BOARD 194 起默认勾选 = 每镜当前 take〔固定的 ?? 最新〕，见
 /// `export_take_selection.dart`），但仍留在列表里可手动勾回——「哪些行可选」
 /// 和「哪些行默认勾上」是两件事，这里只管前者加排序。
 List<CanvasNode> orderVideoNodesForExport({
