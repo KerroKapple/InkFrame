@@ -1,6 +1,10 @@
 // 应用级动作的类型：一行动作 = id + 文案 + 每平台一个主键 + 可用 / 启用判据 + 禁用原因 + 执行。
 //
-// 菜单栏、右键菜单、⌘K、快捷键页共用一张动作表（app_action_catalog.dart 的 kAppActions），改一处处处变。
+// 设计上菜单栏、右键菜单、⌘K、快捷键页共用一张动作表（app_action_catalog.dart 的 kAppActions）。
+// 现状：接上这张表的只有 ⌘K 动作组（command_palette/command_actions.dart）与画布工具条「更多」
+// （canvas/util/more_menu_model.dart）。节点右键菜单（canvas/widgets/canvas_menu/node_menu_entries.dart）仍自建
+// 文案与判据、键位提示走 canvasShortcutLabel；快捷键页仍读 kCanvasKeyRegistry；菜单栏尚未实现。它们由后续切片
+// 迁过来，迁之前改这张表不会同步到它们。
 // 不可用的灰着不藏：[AppAction.isAvailable] 为假才不画；[AppAction.isEnabled] 为假画灰行，悬停出
 // [AppAction.disabledReason]。⌘K 只列 inPalette 命中、可用且启用的行（PaletteEntry 没有禁用态）。
 //
@@ -39,10 +43,10 @@ class AppActionContext {
   final WidgetRef ref;
   final ShellState shell;
 
-  /// 此刻看得见的画布：画布标签在前台、没有浮层盖着时才是外壳的 canvasId，否则 null。
-  /// 等价于 shell.isTabVisible(ShellTab.canvas)——标签保活时切走的画布还在，但动作不能对着看不见的画布动刀。
+  /// 此刻看得见的画布：画布标签可见（ShellState.isTabVisible——在前台、没有浮层盖着）时才是外壳的 canvasId，
+  /// 否则 null。标签保活时切走的画布还在，但动作不能对着看不见的画布动刀。
   String? get canvasId =>
-      shell.overlay == null && shell.tab == ShellTab.canvas ? shell.canvasId : null;
+      shell.isTabVisible(ShellTab.canvas) ? shell.canvasId : null;
 }
 
 /// 动作表里的一行。

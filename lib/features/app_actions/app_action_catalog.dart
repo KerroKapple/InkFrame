@@ -1,11 +1,14 @@
-// 应用级动作表：菜单栏 / 右键菜单 / ⌘K / 快捷键页共用的一张表（id · 文案 · 键位 · 可用判据 · 执行），改一处处处变。
+// 应用级动作表（id · 文案 · 键位 · 可用判据 · 执行）。设计上菜单栏 / 右键菜单 / ⌘K / 快捷键页共用这一张表；
+// 目前接上的只有 ⌘K 动作组与画布工具条「更多」，节点右键菜单、快捷键页仍各自取文案 / 判据 / 键位，菜单栏尚未实现，
+// 由后续切片迁过来（现状细节见 app_action.dart 头注）。
 //
 // - 键位不另抄：画布动作从快捷键注册表按绑定 id 取（settings/util/shortcut_catalog.dart 的 canvasBindingActivator），
 //   命令面板取 kCommandPaletteActivators，第二批还没接上的动作取 planned_keys.dart 的 PlannedKeys。
 // - 执行体只调现有函数：画布动作在 canvas/util/canvas_tool_actions.dart（与工具条 / 快捷键 / 右键菜单同一条路），
 //   删除走 canvas_node_delete.dart 的 deleteNodesWithUndo，导出走 export/open_export_dialog.dart。
 // - 画布 / 节点两组只在看得见的画布上可用（AppActionContext.canvasId）；不在画布上灰着不藏，原因「先打开一个画布」。
-//   节点组的对象 = 当前选中集，判据与节点右键菜单同一组函数（canvas/util/node_menu_model.dart）。
+//   节点组的对象 = 当前选中集，判据与节点右键菜单调同一组函数（canvas/util/node_menu_model.dart）；但右键菜单本身
+//   还没接这张表，函数之外的取舍（如「生成」在忙时置灰）两边各写各的。
 // - 第二批还没落地的动作登记成 [comingSoon] 占位行：恒灰、原因「即将推出」、不进 ⌘K；接上的切片替换自己那一行。
 // - 每行的禁用原因与启用判据出自同一个函数（_Blocker）：启用 ⇔ 原因为 null，两者不会走岔。
 //
@@ -147,19 +150,19 @@ final List<AppAction> kAppActions = <AppAction>[
     macKey: PlannedKeys.pasteMac,
     otherKey: PlannedKeys.pasteOther,
   ),
-  // 复制一份：选中的配置卡各一份（产物不复制，判据 duplicateSources）。
+  // 复制一份：选中的配置卡各一份（产物不复制，判据 duplicateSources）。没选中 ⇒「先选中节点」；选中了但全是产物
+  // ⇒ 单独一条原因（用户明明选中了节点，再说「先选中节点」是错的）。
   _action(
     id: AppActionIds.duplicate,
     group: AppActionGroup.edit,
     label: (AppLocalizations l) => l.canvasNodeMenuDuplicate,
     macKey: _mac('canvasDuplicate'),
     otherKey: _other('canvasDuplicate'),
-    blocker: _onCanvas(
-      (AppActionContext c, String canvasId) =>
-          duplicateSources(_selectedNodes(c, canvasId)).isEmpty
-              ? _selectNodes
-              : null,
-    ),
+    blocker: _onCanvas((AppActionContext c, String canvasId) {
+      final List<CanvasNode> targets = _selectedNodes(c, canvasId);
+      if (targets.isEmpty) return _selectNodes;
+      return duplicateSources(targets).isEmpty ? _noConfigSelected : null;
+    }),
     run: _withCanvas(
       (AppActionContext c, String canvasId) => duplicateNodes(
         c.context,
@@ -695,6 +698,7 @@ List<CanvasNode> _selectedNodes(AppActionContext c, String canvasId) {
 
 String _openCanvas(AppLocalizations l) => l.appActionReasonOpenCanvas;
 String _selectNodes(AppLocalizations l) => l.appActionReasonSelectNodes;
+String _noConfigSelected(AppLocalizations l) => l.appActionReasonNoConfigSelected;
 String _noProject(AppLocalizations l) => l.appActionReasonNoProject;
 String _noVideo(AppLocalizations l) => l.appActionReasonNoVideo;
 String _selectOneNode(AppLocalizations l) => l.appActionReasonSelectOneNode;
@@ -712,10 +716,9 @@ void _noop(AppActionContext c) {}
 /// 画布标签在前台（且没有浮层）：三种新建节点、导出视频。
 bool _paletteOnCanvas(AppActionContext c) => c.canvasId != null;
 
+/// 画廊标签可见（与 AppActionContext.canvasId 同走 ShellState.isTabVisible）且有项目。
 bool _galleryWithProject(AppActionContext c) =>
-    c.shell.overlay == null &&
-    c.shell.tab == ShellTab.gallery &&
-    c.shell.project != null;
+    c.shell.isTabVisible(ShellTab.gallery) && c.shell.project != null;
 
 /// 其余（工作室首页、还没打开画布的画布标签、序列 / 导出标签……）：导入项目、短剧示例。
 bool _paletteStudio(AppActionContext c) =>
