@@ -29,24 +29,24 @@ InkFrame 是一个面向 AI 影视创作的桌面工作站。节点画布让你�
 </p>
 
 
-## ✨ 为什么是 InkFrame
+## 为什么是 InkFrame
 
-- **🔒 本地优先** —— 工程数据存在本机的嵌入式 PostgreSQL；Key 落到系统 Keychain / 凭据管理器，绝不是明文 `.env`。
-- **🕸️ 节点画布** —— 可视化编排镜头：拖入文本 / 图片 / 视频节点，连线，看着生成沿着图流动并实时显示任务进度。
-- **🔌 多 Provider** —— 在同一个工程里混搭不同厂商的图像/视频模型。新增一个 provider 只需写一个文件（见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md)）。
-- **🖥️ 一份代码，两个桌面** —— 单份 Dart/Flutter 源码同时跑 macOS + Windows，无边框中性灰桌面 UI，单一琥珀强调色。
-- **🧪 不烧配额的开发体验** —— 内置 fake provider，可在不消耗任何 API 配额的情况下跑完整应用、调试画布。
+- **本地优先** —— 工程数据存在本机的嵌入式 PostgreSQL；Key 落到系统 Keychain / 凭据管理器，不以明文 `.env` 存储。
+- **节点画布** —— 可视化编排镜头：拖入文本 / 图片 / 视频节点，连线后，生成任务沿图依次执行并实时显示进度。
+- **多 Provider** —— 在同一个工程里混搭不同厂商的图像/视频模型。新增一个 provider 只需写一个文件（见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md)）。
+- **一份代码，两个桌面** —— 单份 Dart/Flutter 源码同时支持 macOS 与 Windows，无边框中性灰桌面 UI，单一琥珀强调色。
+- **离线开发模式** —— 内置 fake provider，无需消耗 API 配额即可运行完整应用并调试画布。
 
-## 🔄 工作原理
+## 工作原理
 
 ```mermaid
 flowchart LR
-    A["📝 文本 / Prompt 节点"] --> B["🖼️ 图片节点<br/>(Wanx · Gemini)"]
-    B --> C["🎞️ 视频节点<br/>(Kling · Wanx i2v)"]
-    C --> D["📦 分镜 / 导出"]
-    subgraph Local["🔒 你的机器"]
+    A["文本 / Prompt 节点"] --> B["图片节点<br/>(Wanx · Gemini)"]
+    B --> C["视频节点<br/>(Kling · Wanx i2v)"]
+    C --> D["分镜 / 导出"]
+    subgraph Local["你的机器"]
       DB[("嵌入式<br/>PostgreSQL")]
-      KEY["🔑 系统 Keychain"]
+      KEY["系统 Keychain"]
     end
     B -.持久化.-> DB
     C -.持久化.-> DB
@@ -54,27 +54,27 @@ flowchart LR
     C -.鉴权.-> KEY
 ```
 
-在画布上搭好镜头图，点击生成，InkFrame 会把任务跑到你配置好的 provider 上 ——
-过程中把结果与工程状态都缓存在本地。
+在画布上构建镜头图并触发生成后，InkFrame 会将任务提交至已配置的 provider，
+并将结果与工程状态持久化在本地。
 
-## 🎨 Provider
+## Provider
 
 | Provider | 类型 | 状态 |
 |----------|------|------|
-| Wanx (DashScope) | image · i2v · r2v · t2v | ✅ 已实现 |
-| Kling V3 / V3 Omni | video | ✅ 已实现 |
-| Gemini Image | image | ✅ 已实现 |
-| OpenAI GPT-Image（`gpt-image-2`） | image | ✅ 已实现 |
-| Stability Stable Image Core | image | ✅ 已实现 |
-| OpenAI 兼容自定义端点（`custom_providers.json`） | image | ✅ 已实现 |
-| Stable Diffusion (本地 ComfyUI) | image | 🟢 Help wanted |
-| OpenAI DALL·E 3（专用接入） | image | 🟢 Help wanted |
-| Runway Gen-3 / Gen-4 | video | 🟢 Help wanted |
-| Midjourney · Pika · Luma | image/video | 🟢 Help wanted |
+| Wanx (DashScope) | image · i2v · r2v · t2v | 已实现 |
+| Kling V3 / V3 Omni | video | 已实现 |
+| Gemini Image | image | 已实现 |
+| OpenAI GPT-Image（`gpt-image-2`） | image | 已实现 |
+| Stability Stable Image Core | image | 已实现 |
+| OpenAI 兼容自定义端点（`custom_providers.json`） | image | 已实现 |
+| Stable Diffusion (本地 ComfyUI) | image | Help wanted |
+| OpenAI DALL·E 3（专用接入） | image | Help wanted |
+| Runway Gen-3 / Gen-4 | video | Help wanted |
+| Midjourney · Pika · Luma | image/video | Help wanted |
 
-想加一个？这是门槛最低的贡献方式 —— 见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) 和 [Help Wanted](./ROADMAP.md#-help-wanted) 列表。
+接入新的 provider 是门槛最低的贡献方式，详见 [`docs/PROVIDER-API.md`](docs/PROVIDER-API.md) 和 [Help Wanted](./ROADMAP.md#-help-wanted) 列表。
 
-## 🚀 上手
+## 快速开始
 
 依赖：Flutter ≥ 3.41、Dart ≥ 3.11、本地 PostgreSQL 17 二进制。macOS 还需要 Xcode 16 + CocoaPods。
 
@@ -83,34 +83,34 @@ git clone https://github.com/KerroKapple/InkFrame.git
 cd InkFrame
 flutter pub get
 
-# 用 fake provider 跑，不烧 API 配额
+# 使用 fake provider 运行，无需 API Key
 INKFRAME_PG_BIN=/opt/homebrew/opt/postgresql@17/bin \
 INKFRAME_FAKE_PROVIDERS=1 \
 flutter run -d macos
 ```
 
-接真实 API 时去掉 `INKFRAME_FAKE_PROVIDERS`，进 **Settings → Providers** 填 Key。Key 落到 Keychain / 凭据管理器。
+接入真实服务时，移除 `INKFRAME_FAKE_PROVIDERS`，并在 **Settings → Providers** 中配置 Key。Key 存储于 Keychain / 凭据管理器。
 
 ```bash
-flutter analyze              # 0 warning（CI 用 --fatal-infos）
-flutter test                 # 全量
+flutter analyze              # 0 warning（CI 使用 --fatal-infos）
+flutter test                 # 全量测试
 flutter test --tags pg       # 真 PG 集成测试（需 TEST_PG_URL，未设自动跳过）
 ```
 
 环境变量、密钥后端、数据目录布局见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 
-## 🧱 技术栈
+## 技术栈
 
 Flutter（桌面）· Riverpod（状态 + DI）· Freezed（不可变模型）· 嵌入式 PostgreSQL（`postgres`）· `dio`（provider HTTP）· `flutter_secure_storage`（密钥）· `media_kit`（视频播放 + 首帧抽帧）· `window_manager`（无边框窗口）。
 
-## 📍 状态
+## 状态
 
-**Alpha**（`v0.1.0-alpha.9`）。单份 Dart 代码同时发布 macOS + Windows。M1「能用起来」与
-M2「创作者要的」（角色一致性 / 批量变体 / 预设库 / 成本估算）已完成、CI 全绿；M3 四方向
+**Alpha**（`v0.1.0-alpha.11`）。单份 Dart 代码同时发布 macOS 与 Windows。M1（可用）与
+M2（创作者核心需求：角色一致性、批量变体、预设库、成本估算）已完成、CI 全绿；M3 四方向
 首切片进行中（分镜 / 自定义 Provider / 画廊 / 视频导出）。剩余 beta 缺口见
 [docs/BOARD.md](docs/BOARD.md)；已发布与待办见 [ROADMAP.md](ROADMAP.md)。
 
-## 🗂 目录速览
+## 目录速览
 
 ```
 InkFrame/
@@ -135,7 +135,7 @@ InkFrame/
 └── .github/            # CI、发布、烟测、密钥扫描工作流
 ```
 
-## 📚 文档
+## 文档
 
 - [ROADMAP.md](ROADMAP.md) — 已发布与待办
 - [CONTRIBUTING.md](CONTRIBUTING.md) — 流程、hook、commit 规范
@@ -145,17 +145,17 @@ InkFrame/
 - [docs/TESTING.md](docs/TESTING.md) — TDD 分层与 mock
 - [SECURITY.md](SECURITY.md) — 漏洞报告与密钥处理
 
-## 🤝 参与贡献
+## 参与贡献
 
 维护者欢迎的方向见 [ROADMAP.md](ROADMAP.md#-help-wanted) —— provider、画布 UX、i18n、测试基建。
-动手写大 PR **之前**，请先开 issue 或在 [Discussions](https://github.com/KerroKapple/InkFrame/discussions)
-对齐 scope。第一次贡献？找
-[`good first issue`](https://github.com/KerroKapple/InkFrame/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 标签。
+提交较大的 PR **之前**，请先开 issue 或在 [Discussions](https://github.com/KerroKapple/InkFrame/discussions)
+对齐范围。首次贡献可从带有
+[`good first issue`](https://github.com/KerroKapple/InkFrame/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22) 标签的 issue 入手。
 
-## 🐞 Bug 反馈
+## Bug 反馈
 
-提 [GitHub issue](https://github.com/KerroKapple/InkFrame/issues) 或开 [Discussion](https://github.com/KerroKapple/InkFrame/discussions)。
+请提交 [GitHub issue](https://github.com/KerroKapple/InkFrame/issues) 或发起 [Discussion](https://github.com/KerroKapple/InkFrame/discussions)。
 
-## 📄 License
+## License
 
 [MIT](./LICENSE)
