@@ -22,6 +22,7 @@ import 'package:inkframe/features/canvas/providers/inspector_submit_controller.d
 import 'package:inkframe/features/canvas/widgets/canvas_prompt_bar.dart';
 import 'package:inkframe/features/canvas/widgets/cost_breakdown_tooltip.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
+import 'package:inkframe/providers/wanx_i2v_provider.dart';
 import 'package:inkframe/providers/wanx_image_provider.dart';
 import 'package:inkframe/services/file_preferences_service.dart';
 
@@ -82,6 +83,7 @@ Future<void> _pump(
   WidgetTester tester,
   CanvasNode node, {
   Set<String> keyed = const <String>{'wanx-image', 'custom:acme', 'per-char'},
+  List<ProviderCapabilities>? capabilities,
 }) async {
   await pumpInkApp(
     tester,
@@ -97,7 +99,7 @@ Future<void> _pump(
         (ref, String providerId) async => keyed.contains(providerId),
       ),
       preferencesServiceProvider.overrideWithValue(InMemoryPreferencesService()),
-      providerCapabilitiesListProvider.overrideWithValue(_caps),
+      providerCapabilitiesListProvider.overrideWithValue(capabilities ?? _caps),
     ],
   );
   await tester.pumpAndSettle();
@@ -223,5 +225,58 @@ void main() {
     await tester.pump();
 
     expect(_amount(tester), zh.costApprox(r'$1.01'));
+  });
+
+  testWidgets('视频 1080p、5 秒：明细第②行含时长和分辨率，倍率 1 不写「× 1」', (tester) async {
+    await _pump(
+      tester,
+      _node(<String, Object?>{
+        'prompt': 'a cat',
+        'provider_id': 'wanx-i2v',
+        'duration_ms': 5000,
+        'resolution': 'p1080',
+      }).copyWith(type: CanvasNodeType.video),
+      keyed: const <String>{'wanx-i2v'},
+      capabilities: const <ProviderCapabilities>[kWanxI2VCapabilities],
+    );
+
+    final TestGesture mouse = await _hoverGenerate(tester);
+    final Finder card = find.byKey(CostBreakdownTooltip.contentKey);
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(of: card, matching: find.text('Wanx Image-to-Video · 5 秒 · 1080p')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: card, matching: find.text(zh.costFormulaPerSecond(r'$0.30'))),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: card, matching: find.textContaining('× 1')), findsNothing);
+
+    await _leave(tester, mouse);
+  });
+
+  testWidgets('PerCharInput 计价式：每千字在前，每张在后', (tester) async {
+    await _pump(tester, _node(<String, Object?>{'prompt': 'a cat', 'provider_id': 'per-char'}));
+
+    final TestGesture mouse = await _hoverGenerate(tester);
+    final Finder card = find.byKey(CostBreakdownTooltip.contentKey);
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.text(zh.costFormulaPerChar(r'$10.00', r'$0.01', 1)),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.text(zh.costFormulaPerChar(r'$0.01', r'$10.00', 1)),
+      ),
+      findsNothing,
+      reason: '两个单价对调必须失败',
+    );
+
+    await _leave(tester, mouse);
   });
 }

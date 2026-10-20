@@ -224,4 +224,15 @@ void main() {
     expect(costValue(r'$0.13'), findsOneWidget);
     expect(costValue(r'$0.03'), findsNothing);
   });
+
+  testWidgets('已存服务商被删：费用行仍画，金额「—」', (tester) async {
+    // 能力表是空的：已存 id 解析得到，但选不中任何服务商（selected == null）。
+    // 费用行不能跟着 selected 一起消失（决定 2）。
+    final node = await seedConfigNode(<String, Object?>{'provider_id': 'deleted-vendor'});
+    await pump(tester, node, <caps.ProviderCapabilities>[]);
+
+    await tester.ensureVisible(find.text('Est. cost'));
+    expect(costValue('—'), findsOneWidget);
+    expect(find.text(r'$0.00'), findsNothing);
+  });
 }
