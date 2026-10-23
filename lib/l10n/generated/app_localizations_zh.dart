@@ -3168,4 +3168,39 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get costUnknownDuration => '未设时长';
+
+  @override
+  String get laneDissolve => '解散泳道（节点留下）';
+
+  @override
+  String laneDissolved(String name) {
+    return '已解散泳道「$name」';
+  }
+
+  @override
+  String get laneDissolveFailed => '解散泳道失败';
+
+  @override
+  String laneDeletedWithContents(int count, String name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '已删除泳道「$name」和 $count 个节点',
+      zero: '已删除泳道「$name」',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String laneDeleteRunningTitle(String name) {
+    return '删除泳道「$name」和其中的节点？';
+  }
+
+  @override
+  String laneDeleteRunningBody(int count) {
+    return '$count 个任务正在生成，删除会一并取消，取消的任务撤销不回来。';
+  }
+
+  @override
+  String get laneDeleteRunningConfirm => '删除并取消任务';
 }

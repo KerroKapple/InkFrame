@@ -3307,4 +3307,48 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get costUnknownDuration => 'Duration not set';
+
+  @override
+  String get laneDissolve => 'Dissolve lane (keep nodes)';
+
+  @override
+  String laneDissolved(String name) {
+    return 'Lane “$name” dissolved';
+  }
+
+  @override
+  String get laneDissolveFailed => 'Failed to dissolve lane';
+
+  @override
+  String laneDeletedWithContents(int count, String name) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Lane “$name” and $count nodes deleted',
+      one: 'Lane “$name” and 1 node deleted',
+      zero: 'Lane “$name” deleted',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String laneDeleteRunningTitle(String name) {
+    return 'Delete lane “$name” and its nodes?';
+  }
+
+  @override
+  String laneDeleteRunningBody(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other:
+          '$count jobs in this lane are still generating. Deleting cancels them, and cancelled jobs can\'t be undone.',
+      one:
+          '1 job in this lane is still generating. Deleting cancels it, and a cancelled job can\'t be undone.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get laneDeleteRunningConfirm => 'Delete and cancel jobs';
 }

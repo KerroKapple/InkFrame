@@ -5785,6 +5785,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Duration not set'**
   String get costUnknownDuration;
+
+  /// No description provided for @laneDissolve.
+  ///
+  /// In en, this message translates to:
+  /// **'Dissolve lane (keep nodes)'**
+  String get laneDissolve;
+
+  /// No description provided for @laneDissolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Lane “{name}” dissolved'**
+  String laneDissolved(String name);
+
+  /// No description provided for @laneDissolveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to dissolve lane'**
+  String get laneDissolveFailed;
+
+  /// No description provided for @laneDeletedWithContents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =0{Lane “{name}” deleted} =1{Lane “{name}” and 1 node deleted} other{Lane “{name}” and {count} nodes deleted}}'**
+  String laneDeletedWithContents(int count, String name);
+
+  /// No description provided for @laneDeleteRunningTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete lane “{name}” and its nodes?'**
+  String laneDeleteRunningTitle(String name);
+
+  /// No description provided for @laneDeleteRunningBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 job in this lane is still generating. Deleting cancels it, and a cancelled job can\'t be undone.} other{{count} jobs in this lane are still generating. Deleting cancels them, and cancelled jobs can\'t be undone.}}'**
+  String laneDeleteRunningBody(int count);
+
+  /// No description provided for @laneDeleteRunningConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete and cancel jobs'**
+  String get laneDeleteRunningConfirm;
 }
 
 class _AppLocalizationsDelegate
