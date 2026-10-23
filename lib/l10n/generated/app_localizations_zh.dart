@@ -3203,4 +3203,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get laneDeleteRunningConfirm => '删除并取消任务';
+
+  @override
+  String get nodeStatusImported => '导入';
+
+  @override
+  String nodeStatusImporting(int percent) {
+    return '复制中 $percent%';
+  }
 }
