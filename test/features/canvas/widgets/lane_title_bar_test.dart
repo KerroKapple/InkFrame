@@ -16,7 +16,7 @@ void main() {
         body: LaneTitleBar(
           lane: const StyleLane(id: 'a', canvasId: 'c', label: 'Day'),
           onEdit: () => edited = true,
-          onDelete: () {},
+          onDissolve: () {},
         ),
       ),
     ));
@@ -34,7 +34,7 @@ void main() {
         body: LaneTitleBar(
           lane: const StyleLane(id: 'b', canvasId: 'c', label: ''),
           onEdit: () {},
-          onDelete: () {},
+          onDissolve: () {},
         ),
       ),
     ));
@@ -42,8 +42,8 @@ void main() {
     expect(find.text('Untitled lane'), findsOneWidget);
   });
 
-  testWidgets('delete button fires onDelete', (tester) async {
-    var deleted = false;
+  testWidgets('dissolve button fires onDissolve', (tester) async {
+    var dissolved = false;
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -52,12 +52,13 @@ void main() {
         body: LaneTitleBar(
           lane: const StyleLane(id: 'c', canvasId: 'c', label: 'Night'),
           onEdit: () {},
-          onDelete: () => deleted = true,
+          onDissolve: () => dissolved = true,
         ),
       ),
     ));
+    expect(find.byTooltip('Dissolve lane (keep nodes)'), findsOneWidget);
     await tester.tap(find.byIcon(Icons.delete_outline).first);
-    expect(deleted, isTrue);
+    expect(dissolved, isTrue);
   });
 
   // ---- Lanes 稿接线补测（P1）----
@@ -79,7 +80,7 @@ void main() {
       lane: const StyleLane(id: 'a', canvasId: 'c', label: 'Dusk', stylePrompt: 'warm dusk, golden hour'),
       nodeCount: 6,
       onEdit: () {},
-      onDelete: () {},
+      onDissolve: () {},
     )));
     expect(find.text('Dusk'), findsOneWidget);
     expect(find.text('warm dusk, golden hour'), findsOneWidget);
@@ -94,7 +95,7 @@ void main() {
       collapsed: true,
       onToggleCollapse: () {},
       onEdit: () {},
-      onDelete: () {},
+      onDissolve: () {},
     )));
     expect(find.text('Ruins'), findsOneWidget);
     expect(find.text('Collapsed'), findsOneWidget);
@@ -114,7 +115,7 @@ void main() {
           nodeCount: 12,
           onToggleCollapse: () {},
           onEdit: () {},
-          onDelete: () {},
+          onDissolve: () {},
         ),
         width: w,
       ));

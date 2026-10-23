@@ -1574,5 +1574,43 @@
   },
   "costUnknownCustom": "Custom endpoints have no price list",
   "costUnknownProvider": "This provider is no longer available",
-  "costUnknownDuration": "Duration not set"
+  "costUnknownDuration": "Duration not set",
+  "laneDissolve": "Dissolve lane (keep nodes)",
+  "laneDissolved": "Lane “{name}” dissolved",
+  "@laneDissolved": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "laneDissolveFailed": "Failed to dissolve lane",
+  "laneDeletedWithContents": "{count, plural, =0{Lane “{name}” deleted} =1{Lane “{name}” and 1 node deleted} other{Lane “{name}” and {count} nodes deleted}}",
+  "@laneDeletedWithContents": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "laneDeleteRunningTitle": "Delete lane “{name}” and its nodes?",
+  "@laneDeleteRunningTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "laneDeleteRunningBody": "{count, plural, =1{1 job in this lane is still generating. Deleting cancels it, and a cancelled job can't be undone.} other{{count} jobs in this lane are still generating. Deleting cancels them, and cancelled jobs can't be undone.}}",
+  "@laneDeleteRunningBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "laneDeleteRunningConfirm": "Delete and cancel jobs"
 }
