@@ -63,7 +63,7 @@ void main() {
     expect(ids.where((String id) => id.contains(':')), isEmpty);
   });
 
-  test('kCanvasMenuItems 的初始内容：空白处四项、节点六项，组号 / 序号按约定', () {
+  test('kCanvasMenuItems 的初始内容：空白处六项、节点六项，组号 / 序号按约定', () {
     expect(
       <String, (CanvasMenuScope, int, int)>{
         for (final CanvasMenuItemDef d in kCanvasMenuItems)
@@ -80,6 +80,8 @@ void main() {
         'node.laneSubmenu': (CanvasMenuScope.node, 30, 20),
         'node.locateInSequence': (CanvasMenuScope.node, 30, 30),
         'node.delete': (CanvasMenuScope.node, 90, 10),
+        'blank.undo': (CanvasMenuScope.blank, 0, 10),
+        'blank.redo': (CanvasMenuScope.blank, 0, 20),
       },
     );
   });

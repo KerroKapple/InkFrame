@@ -3359,4 +3359,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String nodeStatusImporting(int percent) {
     return 'Copying $percent%';
   }
+
+  @override
+  String canvasHistoryUndoStep(String step) {
+    return 'Undo $step';
+  }
+
+  @override
+  String canvasHistoryRedoStep(String step) {
+    return 'Redo $step';
+  }
+
+  @override
+  String canvasHistoryUndone(String step) {
+    return 'Undone · $step';
+  }
+
+  @override
+  String canvasHistoryRedone(String step) {
+    return 'Redone · $step';
+  }
+
+  @override
+  String get canvasUndoStepGone => 'This step can no longer be undone';
+
+  @override
+  String get canvasHistoryNothingToUndo => 'Nothing to undo';
+
+  @override
+  String get canvasHistoryNothingToRedo => 'Nothing to redo';
+
+  @override
+  String get settingsShortcutCanvasUndo => 'Undo';
+
+  @override
+  String get settingsShortcutCanvasRedo => 'Redo';
 }

@@ -35,8 +35,6 @@ const List<String> kLegacyPaletteIds = <String>[
 
 /// 第二批的占位行（comingSoon）：一条都不该进 ⌘K。
 const Set<String> _comingSoonIds = <String>{
-  AppActionIds.undo,
-  AppActionIds.redo,
   AppActionIds.cut,
   AppActionIds.copy,
   AppActionIds.paste,

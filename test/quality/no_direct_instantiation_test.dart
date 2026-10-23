@@ -72,7 +72,9 @@ void main() {
     r'[A-Z][a-zA-Z]*(Service|Repository|Provider|Client|Manager|Handler)\s*\(',
   );
   final r1AssignContext = RegExp(r'(return|=|final|var)\s+[A-Z].*\(');
-  final r1RefAccess = RegExp(r'ref\.(watch|read|listen)');
+  // 经注入读取：ref.watch / read / listen，或调用方传进来的 ProviderReader（read(xxxProvider(...))，
+  // 见 canvas/util/canvas_history_actions.dart——胶囊上的按钮晚几秒才点，不能攥着可能已卸载的 WidgetRef）。
+  final r1RefAccess = RegExp(r'ref\.(watch|read|listen)|\bread\(');
   final r1ClassName = RegExp(
     r'[A-Z][a-zA-Z]*(Service|Repository|Provider|Client|Manager|Handler)',
   );

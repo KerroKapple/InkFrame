@@ -3211,4 +3211,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String nodeStatusImporting(int percent) {
     return '复制中 $percent%';
   }
+
+  @override
+  String canvasHistoryUndoStep(String step) {
+    return '撤销 $step';
+  }
+
+  @override
+  String canvasHistoryRedoStep(String step) {
+    return '重做 $step';
+  }
+
+  @override
+  String canvasHistoryUndone(String step) {
+    return '已撤销 · $step';
+  }
+
+  @override
+  String canvasHistoryRedone(String step) {
+    return '已重做 · $step';
+  }
+
+  @override
+  String get canvasUndoStepGone => '这一步已无法撤销';
+
+  @override
+  String get canvasHistoryNothingToUndo => '没有可撤销的操作';
+
+  @override
+  String get canvasHistoryNothingToRedo => '没有可重做的操作';
+
+  @override
+  String get settingsShortcutCanvasUndo => '撤销';
+
+  @override
+  String get settingsShortcutCanvasRedo => '重做';
 }

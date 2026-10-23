@@ -185,10 +185,16 @@ String? formatShortcutActivator(
       : (isMac ? platformLabel.mac : platformLabel.other);
   if (label == null) return null;
   final StringBuffer out = StringBuffer();
-  if (activator.meta) out.write('⌘');
-  if (activator.control) out.write('Ctrl+');
-  if (activator.shift) out.write(isMac ? '⇧' : 'Shift+');
-  if (activator.alt) out.write(isMac ? '⌥' : 'Alt+');
+  if (isMac) {
+    // Apple 的修饰键顺序 ⌃⌥⇧⌘（重做写 ⇧⌘Z，不是 ⌘⇧Z）；macOS 上 control 变体上面已经不出字了。
+    if (activator.alt) out.write('⌥');
+    if (activator.shift) out.write('⇧');
+    if (activator.meta) out.write('⌘');
+  } else {
+    if (activator.control) out.write('Ctrl+');
+    if (activator.shift) out.write('Shift+');
+    if (activator.alt) out.write('Alt+');
+  }
   out.write(label);
   return out.toString();
 }
@@ -234,8 +240,8 @@ final Map<int, String> _keyLabels = <int, String>{
   LogicalKeyboardKey.digit1.keyId: '1',
   LogicalKeyboardKey.digit2.keyId: '2',
   // 第二批动作的键位（app_actions/planned_keys.dart 的 PlannedKeys）：撤销 / 重做 Z、Y，剪切 / 复制 X、C，
-  // 导入媒体 U，便签 N，通知 F6（粘贴 V、包成泳道 G、查找 F 上面已有）。注册表里还没有这些键，快捷键页行集不变；
-  // 认领它们是为了动作表的 keyLabel 在菜单栏 / 撤销卡上出得了字。
+  // 导入媒体 U，便签 N，通知 F6（粘贴 V、包成泳道 G、查找 F 上面已有）。撤销 / 重做已注册进画布快捷键
+  // （shortcuts/undo_keys.dart），其余还没有；认领它们是为了动作表的 keyLabel 在菜单栏 / 撤销卡上出得了字。
   LogicalKeyboardKey.keyZ.keyId: 'Z',
   LogicalKeyboardKey.keyY.keyId: 'Y',
   LogicalKeyboardKey.keyX.keyId: 'X',

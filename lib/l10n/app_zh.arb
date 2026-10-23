@@ -1200,5 +1200,14 @@
   "laneDeleteRunningBody": "{count} 个任务正在生成，删除会一并取消，取消的任务撤销不回来。",
   "laneDeleteRunningConfirm": "删除并取消任务",
   "nodeStatusImported": "导入",
-  "nodeStatusImporting": "复制中 {percent}%"
+  "nodeStatusImporting": "复制中 {percent}%",
+  "canvasHistoryUndoStep": "撤销 {step}",
+  "canvasHistoryRedoStep": "重做 {step}",
+  "canvasHistoryUndone": "已撤销 · {step}",
+  "canvasHistoryRedone": "已重做 · {step}",
+  "canvasUndoStepGone": "这一步已无法撤销",
+  "canvasHistoryNothingToUndo": "没有可撤销的操作",
+  "canvasHistoryNothingToRedo": "没有可重做的操作",
+  "settingsShortcutCanvasUndo": "撤销",
+  "settingsShortcutCanvasRedo": "重做"
 }

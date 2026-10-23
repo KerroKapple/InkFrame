@@ -1622,5 +1622,42 @@
         "type": "int"
       }
     }
-  }
+  },
+  "canvasHistoryUndoStep": "Undo {step}",
+  "@canvasHistoryUndoStep": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasHistoryRedoStep": "Redo {step}",
+  "@canvasHistoryRedoStep": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasHistoryUndone": "Undone · {step}",
+  "@canvasHistoryUndone": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasHistoryRedone": "Redone · {step}",
+  "@canvasHistoryRedone": {
+    "placeholders": {
+      "step": {
+        "type": "String"
+      }
+    }
+  },
+  "canvasUndoStepGone": "This step can no longer be undone",
+  "canvasHistoryNothingToUndo": "Nothing to undo",
+  "canvasHistoryNothingToRedo": "Nothing to redo",
+  "settingsShortcutCanvasUndo": "Undo",
+  "settingsShortcutCanvasRedo": "Redo"
 }

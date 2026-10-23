@@ -33,6 +33,7 @@ import '../canvas/providers/canvas_tool_mode.dart';
 import '../canvas/providers/canvas_transform_controller.dart';
 import '../canvas/providers/left_rail_state.dart';
 import '../canvas/providers/link_mode_controller.dart';
+import '../canvas/util/canvas_history_actions.dart';
 import '../canvas/util/canvas_node_delete.dart';
 import '../canvas/util/canvas_tool_actions.dart';
 import '../canvas/util/canvas_zoom.dart';
@@ -115,20 +116,7 @@ final List<AppAction> kAppActions = <AppAction>[
   ),
 
   // ===== 编辑 =====
-  comingSoon(
-    AppActionIds.undo,
-    AppActionGroup.edit,
-    (AppLocalizations l) => l.commonUndo,
-    macKey: PlannedKeys.undoMac,
-    otherKey: PlannedKeys.undoOther,
-  ),
-  comingSoon(
-    AppActionIds.redo,
-    AppActionGroup.edit,
-    (AppLocalizations l) => l.appActionRedo,
-    macKey: PlannedKeys.redoMac,
-    otherKey: PlannedKeys.redoOther,
-  ),
+  ...canvasHistoryAppActions,
   comingSoon(
     AppActionIds.cut,
     AppActionGroup.edit,

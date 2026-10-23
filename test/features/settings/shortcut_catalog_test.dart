@@ -41,6 +41,8 @@ const List<String> _expectedOrder = <String>[
   'canvasOpenCreateMenu',
   'canvasToggleLink',
   'canvasToggleLeftRail',
+  'canvasUndo',
+  'canvasRedo',
 ];
 
 void main() {
@@ -262,6 +264,37 @@ void main() {
     }
   });
 
+  // 撤销 / 重做（shortcuts/undo_keys.dart）：⌘ / Ctrl 双注册，快捷键页每平台各列一个主键。
+  ShortcutRow row(String id, {required bool isMac}) =>
+      buildShortcutRows(isMac: isMac).firstWhere((ShortcutRow r) => r.id == id);
+
+  test('撤销 / 重做在编辑组：Windows 列 Ctrl+Z / Ctrl+Y', () {
+    final ShortcutRow undo = row('canvasUndo', isMac: false);
+    final ShortcutRow redo = row('canvasRedo', isMac: false);
+    expect(undo.group, ShortcutGroup.edit);
+    expect(redo.group, ShortcutGroup.edit);
+    expect(undo.keys, <String>['Ctrl+Z']);
+    expect(redo.keys, <String>['Ctrl+Y']);
+  });
+
+  test('撤销 / 重做：macOS 列 ⌘Z / ⇧⌘Z', () {
+    expect(row('canvasUndo', isMac: true).keys, <String>['⌘Z']);
+    expect(row('canvasRedo', isMac: true).keys, <String>['⇧⌘Z']);
+  });
+
+  test('重做每平台只列一个主键：不列 Ctrl+Shift+Z，也不列 ⌘Y', () {
+    for (final bool isMac in <bool>[true, false]) {
+      final List<String> all = <String>[
+        for (final ShortcutRow r in buildShortcutRows(isMac: isMac)) ...r.keys,
+      ];
+      expect(all, isNot(contains('Ctrl+Shift+Z')), reason: 'isMac=$isMac');
+      expect(all, isNot(contains('⌘Y')), reason: 'isMac=$isMac');
+      expect(row('canvasRedo', isMac: isMac).keys, hasLength(1), reason: 'isMac=$isMac');
+    }
+    expect(canvasBindingLabel('canvasRedo', isMac: true), '⇧⌘Z');
+    expect(canvasBindingLabel('canvasRedo', isMac: false), 'Ctrl+Y');
+  });
+
   group('formatShortcutActivator', () {
     test('小键盘 / 同义重复键不上屏（清单只留主键盘那一个）', () {
       for (final LogicalKeyboardKey k in <LogicalKeyboardKey>[
@@ -284,10 +317,28 @@ void main() {
     test('组合修饰键按平台符号拼', () {
       const SingleActivator shiftA =
           SingleActivator(LogicalKeyboardKey.keyA, meta: true, shift: true);
-      expect(formatShortcutActivator(shiftA, isMac: true), '⌘⇧A');
+      expect(formatShortcutActivator(shiftA, isMac: true), '⇧⌘A');
       const SingleActivator ctrlShiftA =
           SingleActivator(LogicalKeyboardKey.keyA, control: true, shift: true);
       expect(formatShortcutActivator(ctrlShiftA, isMac: false), 'Ctrl+Shift+A');
+    });
+
+    // macOS 按 Apple 的修饰键顺序 ⌃⌥⇧⌘ 写（⇧ 在 ⌘ 前）；Windows 仍是 Ctrl+ Shift+ Alt+。
+    test('修饰键顺序：macOS ⌥⇧⌘，Windows Ctrl+Shift+Alt+', () {
+      const SingleActivator all = SingleActivator(
+        LogicalKeyboardKey.keyA,
+        meta: true,
+        shift: true,
+        alt: true,
+      );
+      expect(formatShortcutActivator(all, isMac: true), '⌥⇧⌘A');
+      const SingleActivator allOther = SingleActivator(
+        LogicalKeyboardKey.keyA,
+        control: true,
+        shift: true,
+        alt: true,
+      );
+      expect(formatShortcutActivator(allOther, isMac: false), 'Ctrl+Shift+Alt+A');
     });
 
     test('未认领的按键返回 null（不猜 keyLabel，宁可被上面的覆盖测试打红）', () {
@@ -301,7 +352,7 @@ void main() {
     });
 
     // 第二批动作的键位（PlannedKeys）要在菜单栏 / 撤销卡上出字：Z / Y / X / C / U / N / F6 必须被认领。
-    test('第二批键位：Z / Y / X / C / U / N / F6 出得了字（重做 Windows Ctrl+Y、macOS ⌘⇧Z）', () {
+    test('第二批键位：Z / Y / X / C / U / N / F6 出得了字（重做 Windows Ctrl+Y、macOS ⇧⌘Z）', () {
       final Map<LogicalKeyboardKey, String> letters = <LogicalKeyboardKey, String>{
         LogicalKeyboardKey.keyZ: 'Z',
         LogicalKeyboardKey.keyY: 'Y',
@@ -324,7 +375,7 @@ void main() {
           const SingleActivator(LogicalKeyboardKey.keyZ, meta: true, shift: true),
           isMac: true,
         ),
-        '⌘⇧Z',
+        '⇧⌘Z',
       );
       for (final bool isMac in <bool>[true, false]) {
         expect(
