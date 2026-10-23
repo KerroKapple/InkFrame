@@ -231,7 +231,7 @@ lib/
 │   ├── licenses.dart                  # LicenseRegistry entries for bundled non-pub artifacts (libmpv+FFmpeg, PostgreSQL, OFL fonts)
 │   ├── logging/                       # InkLogger interface
 │   ├── media/                         # png_dimensions.dart (XM-2: PNG header → pixel size, pure; no image decoder dependency)
-│   ├── models/                        # Domain models (freezed, immutable) + shot_language.dart (P3 hand-written: ShotSize / CameraAngle / focal table / ShotLanguage ↔ type_config)
+│   ├── models/                        # Domain models (freezed, immutable) + gen_inputs.dart（生成快照契约：GenInputSource〔手写不可变值对象〕+ stripUnmappedGenInputs，导入 / 模板 / 粘贴共用） + shot_language.dart (P3 hand-written: ShotSize / CameraAngle / focal table / ShotLanguage ↔ type_config)
 │   ├── net/                           # proxy_env.dart (LB-24: HTTPS_PROXY/HTTP_PROXY/NO_PROXY 纯函数 + applyEnvProxy dio 接线)
 │   └── paths/                         # app_paths.dart (well-known dirs, platform-conventional root) + legacy_root_migrator.dart (DIR-1 one-shot move)
 ├── features/                          # Feature modules (vertical slices)
@@ -260,7 +260,7 @@ lib/
 │   │   ├── generation_controller.dart # P3: 镜头语言英文前缀注入 fullPrompt；camera 参数只在 provider 声明 supportedCameras 时下发。P4: submitFromConfigNode 收 seedOverride（只对这一次生效、不写回节点）+ 挂载角色的 description 按 character_ids 顺序注入提示词（与参考图共用同一道能力位门）
 │   │   ├── models/
 │   │   ├── providers/                 # P4: batch_results_controller.dart（某 result 节点下的 slot 列表 + 转正/重跑/取消三个动作的唯一入口；转正在一个事务里改节点产物 + 清同节点旧 promoted + 标本行，然后定点重建画布节点集合）+ batch_job_progress.dart（jobId → 进度，family 化避免注册表任何一条 job 变动都重建整屏）
-│   │   └── services/                  # prompt_assembler + shot_language_prompt.dart (P3: 镜头语言 → 英文提示词前缀，不 i18n) + cost_estimator
+│   │   └── services/                  # prompt_assembler + shot_language_prompt.dart (P3: 镜头语言 → 英文提示词前缀，不 i18n) + cost_estimator + gen_inputs_snapshot.dart（buildGenInputs：生成时把提示词 / 参考 / 首尾帧 / 角色 / 镜头语言的来源写成快照，随 result 节点 create 同一事务落库）
 │   ├── notifications/                 # 右下角通知卡 + 铃铛历史 + 生成完成 / 失败通知（ToastService 的实现；卡片层挂在 MaterialApp.builder，画在所有路由之上）
 │   │   ├── models/                    # toast_entry.dart（一张卡的不可变快照，也是历史里的一行）+ notification_prefs.dart（提示音 / 停留时长偏好字符串 → 枚举）
 │   │   ├── providers/                 # toast_center.dart（ToastCenter：按类型计时、悬停 / 窗口失焦停表、dedupeKey 原地替换、最多 3 张在场其余折叠、本次会话历史 100 条 + 未读、chime 时按设置响一声）+ toast_service_provider.dart（以 core 契约类型暴露 ToastCenter）

@@ -26,6 +26,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/default_providers.dart';
 import '../../core/constants/job_statuses.dart';
 import '../../core/constants/secure_storage_keys.dart';
+import '../../core/constants/take_keys.dart';
 import '../../core/db/columns.dart';
 import '../../core/db/row_reader.dart';
 import '../../core/di/character_assets.dart';
@@ -58,6 +59,7 @@ import '../canvas/models/character.dart';
 import '../canvas/util/result_placement.dart';
 import 'models/job_state.dart';
 import 'providers/jobs_registry.dart';
+import 'services/gen_inputs_snapshot.dart';
 import 'services/prompt_assembler.dart';
 import 'services/shot_language_prompt.dart';
 
@@ -231,11 +233,16 @@ class GenerationController {
       providerId: providerId,
       projectId: projectId,
     );
+    // 底稿 / 泳道风格只读一次：拼提示词与生成快照同源。
+    final styles = await _readStyles(
+      canvasId: canvasId,
+      laneId: laneId,
+      ignoreLaneStyle: ignoreLane,
+    );
     final fullPrompt = await _assembleFullPrompt(
       userPrompt: shotPrefix.isEmpty ? prompt : '$shotPrefix, $prompt',
-      canvasId: canvasId,
+      styles: styles,
       incoming: incoming,
-      laneId: laneId,
       ignoreLaneStyle: ignoreLane,
       characterDescriptions: characterDescriptions,
     );
@@ -300,6 +307,24 @@ class GenerationController {
       configNodeId: configNodeId,
     );
 
+    // 生成快照 gen_inputs：读库在事务外先算好，随 result 节点的 create 一起写进事务——
+    // 建行失败它一并回滚；产物 url 之后由 persister 用 patchTypeConfig 合并写，不冲掉它。
+    final durMsRaw = typeConfig['duration_ms'];
+    final Map<String, Object?> genInputs = buildGenInputs(
+      configTypeConfig: typeConfig,
+      prompt: prompt,
+      seed: seed,
+      seedOverridden: seedOverride != null,
+      providerId: providerId,
+      resolution: resolution,
+      aspectRatio: aspect,
+      durationMs: nodeType == 'video' && durMsRaw is int ? durMsRaw : null,
+      negativePrompt: negativePrompt,
+      styles: styles,
+      ignoreLaneStyle: ignoreLane,
+      sources: await _snapshotSources(incoming),
+    );
+
     // 预创建 result 节点 + 建 job 行——单事务原子（任一失败整体回滚，不留半行）。
     final String resultNodeId;
     final String jobId;
@@ -314,6 +339,7 @@ class GenerationController {
           laneId: laneId,
           positionX: resultPosition.dx,
           positionY: resultPosition.dy,
+          typeConfig: <String, Object?>{TakeKeys.genInputs: genInputs},
         );
         final jId = await scope.jobs.create(
           canvasId: canvasId,
@@ -908,13 +934,12 @@ class GenerationController {
     return null;
   }
 
-  Future<String> _assembleFullPrompt({
-    required String userPrompt,
+  /// 画布底稿风格前 / 后缀 + 泳道风格（ignore 或无泳道时为空串）。任一查询失败降级为空串
+  /// 并 warn，不阻断生成。拼提示词与生成快照共用这一次读库的结果。
+  Future<({String basePrefix, String baseSuffix, String laneStyle})> _readStyles({
     required String canvasId,
-    required List<Map<String, Object?>> incoming,
     required String? laneId,
     required bool ignoreLaneStyle,
-    List<String> characterDescriptions = const <String>[],
   }) async {
     var basePrefix = '';
     var baseSuffix = '';
@@ -942,6 +967,16 @@ class GenerationController {
         );
       }
     }
+    return (basePrefix: basePrefix, baseSuffix: baseSuffix, laneStyle: laneStyle);
+  }
+
+  Future<String> _assembleFullPrompt({
+    required String userPrompt,
+    required ({String basePrefix, String baseSuffix, String laneStyle}) styles,
+    required List<Map<String, Object?>> incoming,
+    required bool ignoreLaneStyle,
+    List<String> characterDescriptions = const <String>[],
+  }) async {
     // 角色描述排在连线文本之后、用户提示词之前：它是「这个人一直长这样」的补充，
     // 属于随上下文带进来的文本，不是用户这一次写的话。
     final texts = <String>[
@@ -949,13 +984,60 @@ class GenerationController {
       ...characterDescriptions,
     ];
     return assemblePrompt(
-      baseStylePrefix: basePrefix,
-      laneStylePrompt: laneStyle,
+      baseStylePrefix: styles.basePrefix,
+      laneStylePrompt: styles.laneStyle,
       associatedTexts: texts,
       userPrompt: userPrompt,
-      baseStyleSuffix: baseSuffix,
+      baseStyleSuffix: styles.baseSuffix,
       ignoreLaneStyle: ignoreLaneStyle,
     );
+  }
+
+  /// 生成快照里的输入源：按 [incoming] 顺序（listIncoming 的确定序）遍历 data 边，每条记源节点 id
+  /// 与边的角色；图像源再记 image_url（画布相对路径，原样），文本节点再记正文（与并进提示词同口径）。
+  /// 单条源查不到 / 读失败 ⇒ 仍记 id 与角色、不记内容，warn 一条，不阻断生成。narrative 边不是输入。
+  Future<List<GenInputSource>> _snapshotSources(
+    List<Map<String, Object?>> incoming,
+  ) async {
+    final out = <GenInputSource>[];
+    for (final row in incoming) {
+      if (row[EdgeCol.edgeType] != 'data') continue;
+      final srcId = row.optId(EdgeCol.sourceNodeId);
+      if (srcId == null) continue;
+      final role = row.optString(EdgeCol.role) ?? 'reference';
+      Map<String, Object?>? src;
+      try {
+        src = await nodes.findById(srcId);
+        if (src == null) {
+          logger?.warn(
+            _logModule,
+            'snapshot source missing; recorded id only',
+            extra: {'source_node_id': srcId},
+          );
+        }
+      } on InkError catch (e) {
+        logger?.warn(
+          _logModule,
+          'snapshot source lookup failed; recorded id only (swallowed)',
+          extra: {'source_node_id': srcId, 'reason': e.toString()},
+        );
+      }
+      if (src == null) {
+        out.add(GenInputSource(nodeId: srcId, role: role));
+        continue;
+      }
+      final imageUrl = _readTypeConfig(src[NodeCol.typeConfig])['image_url'];
+      final String? text = src[NodeCol.type] == 'text' ? _textNodeContent(src) : null;
+      out.add(
+        GenInputSource(
+          nodeId: srcId,
+          role: role,
+          imageUrl: imageUrl is String && imageUrl.isNotEmpty ? imageUrl : null,
+          text: text == null || text.isEmpty ? null : text,
+        ),
+      );
+    }
+    return out;
   }
 
   /// 给定 data 入连线里的文本节点内容，按 edge.created_at 升序。
@@ -979,13 +1061,19 @@ class GenerationController {
         continue;
       }
       if (src == null || src[NodeCol.type] != 'text') continue;
-      final tc = _readTypeConfig(src[NodeCol.typeConfig]);
-      final text = (tc['text'] as String?)?.trim();
-      final label = src.optString(NodeCol.label)?.trim();
-      final content = (text != null && text.isNotEmpty) ? text : (label ?? '');
+      final content = _textNodeContent(src);
       if (content.isNotEmpty) out.add(content);
     }
     return out;
+  }
+
+  /// 文本节点并进提示词的内容：正文 trim 后非空用正文，否则取 label（trim）。
+  /// 关联文本与生成快照共用这一个口径。
+  String _textNodeContent(Map<String, Object?> src) {
+    final tc = _readTypeConfig(src[NodeCol.typeConfig]);
+    final text = (tc['text'] as String?)?.trim();
+    final label = src.optString(NodeCol.label)?.trim();
+    return (text != null && text.isNotEmpty) ? text : (label ?? '');
   }
 
   Map<String, Object?> _readTypeConfig(Object? raw) {
