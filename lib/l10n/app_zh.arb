@@ -51,7 +51,6 @@
   "inspectorNegativePromptLabel": "负向提示词",
   "inspectorNegativePromptHint": "要避免的内容",
   "inspectorBatchLabel": "数量",
-  "inspectorEstimatedCost": "预估成本 {amount}",
   "inspectorGenerate": "生成",
   "inspectorGenerateDisabledEmptyPrompt": "请先填写提示词",
   "inspectorGenerateDisabledNoKey": "请在设置中配置 API Key",
@@ -1179,5 +1178,18 @@
   "appActionReasonNoProject": "先打开一个项目",
   "appActionReasonSelectOneNode": "只选中一个节点",
   "canvasCapsuleZoom": "缩放 {percent}%",
-  "appActionReasonNoConfigSelected": "产物不能复制，请选中配置节点"
+  "appActionReasonNoConfigSelected": "产物不能复制，请选中配置节点",
+  "costApprox": "约 {amount}",
+  "costUnknown": "价格未知",
+  "costUnknownMore": "另 {count} 个价格未知",
+  "costBreakdownTitle": "预计",
+  "costBreakdownDisclaimer": "以服务商账单为准",
+  "costFormulaPerCall": "每次 {unit}",
+  "costFormulaBatch": "批量 {unit} × {count} = {total}",
+  "costFormulaPerSecond": "{rate} / 秒（1080p）",
+  "costFormulaPerSecondScaled": "{rate} / 秒（1080p）× {multiplier}",
+  "costFormulaPerChar": "每千字 {perK} + 每张 {perImage} × {count}",
+  "costUnknownCustom": "自定义接口没有价目",
+  "costUnknownProvider": "找不到这个服务商",
+  "costUnknownDuration": "未设时长"
 }

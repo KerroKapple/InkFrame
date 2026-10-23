@@ -54,12 +54,6 @@
   "inspectorNegativePromptLabel": "Negative prompt",
   "inspectorNegativePromptHint": "What to avoid",
   "inspectorBatchLabel": "Batch size",
-  "inspectorEstimatedCost": "Est. cost {amount}",
-  "@inspectorEstimatedCost": {
-    "placeholders": {
-      "amount": { "type": "String" }
-    }
-  },
   "inspectorGenerate": "Generate",
   "inspectorGenerateDisabledEmptyPrompt": "Write a prompt first",
   "inspectorGenerateDisabledNoKey": "Configure API key in Settings",
@@ -1503,5 +1497,82 @@
       "percent": { "type": "int" }
     }
   },
-  "appActionReasonNoConfigSelected": "Results can't be duplicated — select a config node"
+  "appActionReasonNoConfigSelected": "Results can't be duplicated — select a config node",
+  "costApprox": "≈ {amount}",
+  "@costApprox": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "costUnknown": "Price unknown",
+  "costUnknownMore": "{count, plural, =1{1 more with unknown price} other{{count} more with unknown price}}",
+  "@costUnknownMore": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "costBreakdownTitle": "Estimate",
+  "costBreakdownDisclaimer": "Your provider's bill is final",
+  "costFormulaPerCall": "{unit} per run",
+  "@costFormulaPerCall": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      }
+    }
+  },
+  "costFormulaBatch": "Batch {unit} × {count} = {total}",
+  "@costFormulaBatch": {
+    "placeholders": {
+      "unit": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "costFormulaPerSecond": "{rate} / s (1080p)",
+  "@costFormulaPerSecond": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      }
+    }
+  },
+  "costFormulaPerSecondScaled": "{rate} / s (1080p) × {multiplier}",
+  "@costFormulaPerSecondScaled": {
+    "placeholders": {
+      "rate": {
+        "type": "String"
+      },
+      "multiplier": {
+        "type": "String"
+      }
+    }
+  },
+  "costFormulaPerChar": "{perK} / 1K chars + {perImage} × {count} images",
+  "@costFormulaPerChar": {
+    "placeholders": {
+      "perK": {
+        "type": "String"
+      },
+      "perImage": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "costUnknownCustom": "Custom endpoints have no price list",
+  "costUnknownProvider": "This provider is no longer available",
+  "costUnknownDuration": "Duration not set"
 }

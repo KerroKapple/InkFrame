@@ -374,12 +374,6 @@ abstract class AppLocalizations {
   /// **'Batch size'**
   String get inspectorBatchLabel;
 
-  /// No description provided for @inspectorEstimatedCost.
-  ///
-  /// In en, this message translates to:
-  /// **'Est. cost {amount}'**
-  String inspectorEstimatedCost(String amount);
-
   /// No description provided for @inspectorGenerate.
   ///
   /// In en, this message translates to:
@@ -5713,6 +5707,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Results can\'t be duplicated — select a config node'**
   String get appActionReasonNoConfigSelected;
+
+  /// No description provided for @costApprox.
+  ///
+  /// In en, this message translates to:
+  /// **'≈ {amount}'**
+  String costApprox(String amount);
+
+  /// No description provided for @costUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Price unknown'**
+  String get costUnknown;
+
+  /// No description provided for @costUnknownMore.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 more with unknown price} other{{count} more with unknown price}}'**
+  String costUnknownMore(int count);
+
+  /// No description provided for @costBreakdownTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Estimate'**
+  String get costBreakdownTitle;
+
+  /// No description provided for @costBreakdownDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'Your provider\'s bill is final'**
+  String get costBreakdownDisclaimer;
+
+  /// No description provided for @costFormulaPerCall.
+  ///
+  /// In en, this message translates to:
+  /// **'{unit} per run'**
+  String costFormulaPerCall(String unit);
+
+  /// No description provided for @costFormulaBatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Batch {unit} × {count} = {total}'**
+  String costFormulaBatch(String unit, int count, String total);
+
+  /// No description provided for @costFormulaPerSecond.
+  ///
+  /// In en, this message translates to:
+  /// **'{rate} / s (1080p)'**
+  String costFormulaPerSecond(String rate);
+
+  /// No description provided for @costFormulaPerSecondScaled.
+  ///
+  /// In en, this message translates to:
+  /// **'{rate} / s (1080p) × {multiplier}'**
+  String costFormulaPerSecondScaled(String rate, String multiplier);
+
+  /// No description provided for @costFormulaPerChar.
+  ///
+  /// In en, this message translates to:
+  /// **'{perK} / 1K chars + {perImage} × {count} images'**
+  String costFormulaPerChar(String perK, String perImage, int count);
+
+  /// No description provided for @costUnknownCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom endpoints have no price list'**
+  String get costUnknownCustom;
+
+  /// No description provided for @costUnknownProvider.
+  ///
+  /// In en, this message translates to:
+  /// **'This provider is no longer available'**
+  String get costUnknownProvider;
+
+  /// No description provided for @costUnknownDuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Duration not set'**
+  String get costUnknownDuration;
 }
 
 class _AppLocalizationsDelegate
