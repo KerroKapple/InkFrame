@@ -3351,4 +3351,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get laneDeleteRunningConfirm => 'Delete and cancel jobs';
+
+  @override
+  String get nodeStatusImported => 'Imported';
+
+  @override
+  String nodeStatusImporting(int percent) {
+    return 'Copying $percent%';
+  }
 }

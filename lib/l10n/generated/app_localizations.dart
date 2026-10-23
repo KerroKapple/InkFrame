@@ -5827,6 +5827,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Delete and cancel jobs'**
   String get laneDeleteRunningConfirm;
+
+  /// No description provided for @nodeStatusImported.
+  ///
+  /// In en, this message translates to:
+  /// **'Imported'**
+  String get nodeStatusImported;
+
+  /// Status line of an imported media node while its file is being copied into the canvas
+  ///
+  /// In en, this message translates to:
+  /// **'Copying {percent}%'**
+  String nodeStatusImporting(int percent);
 }
 
 class _AppLocalizationsDelegate

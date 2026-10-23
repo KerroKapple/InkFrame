@@ -9,18 +9,23 @@
 // 失败策略：add/remove/move 采用"先改内存再持久化"。若 DB 失败则回滚内存并把错误
 // 冒泡到调用方；UI 层负责 toast（S4）。
 //
+// 导入媒体：addImportShell 建无来源的导入壳（role = result、origin = import），
+// discardImportShell 硬删复制失败的空壳；二者与 addNode 共用 _insert / 同一条串行队列。
+//
 // 批量写（文件末尾）：moveNodes / removeNodes / restoreAll / patchTypeConfigMany 各一个
 // 事务，失败整批回滚内存；replaceTypeConfig 单语句整列覆盖。都与单个写走同一条串行队列。
 
 import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/constants/import_keys.dart';
 import '../../../core/db/columns.dart';
 import '../../../core/db/row_reader.dart';
 import '../../../core/di/repositories.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/node_repository.dart';
 import '../models/canvas_node.dart';
+import '../models/canvas_node_import.dart';
 import '../util/canvas_extent.dart';
 import 'canvas_edges_controller.dart';
 import 'serial_mutation_queue.dart';
@@ -90,6 +95,102 @@ class CanvasNodesController
       role != NodeRole.result || sourceNodeId != null,
       'result node requires sourceNodeId (PRD 4.5.1)',
     );
+    return _insert(
+      label: label,
+      type: type,
+      role: role,
+      sourceNodeId: sourceNodeId,
+      laneId: laneId,
+      position: position,
+      size: nodeSize,
+      typeConfig: typeConfig,
+      projectId: null,
+    );
+  }
+
+  /// 导入媒体的壳节点：role = result、sourceNodeId = null（没有来源配置节点），
+  /// type_config 只有 origin = import 与原文件名——url 等复制完由导入控制器回写。
+  ///
+  /// origin 由本方法写死，调用方传不进别的值。[label] 由调用方截到 ≤ 200 个字符
+  /// （库约束 chk_node_label_len）。[projectId] 写进内存节点：卡片拿它解析产物路径，
+  /// 为 null 时只画占位。乐观插入，DB 失败回滚并上抛。
+  Future<CanvasNode> addImportShell({
+    required String label,
+    required CanvasNodeType type,
+    required String projectId,
+    String? laneId,
+    Offset position = Offset.zero,
+    String? originalName,
+  }) async {
+    assert(
+      type == CanvasNodeType.image || type == CanvasNodeType.video,
+      'import shell must be an image or video node',
+    );
+    return _insert(
+      label: label,
+      type: type,
+      role: NodeRole.result,
+      sourceNodeId: null,
+      laneId: laneId,
+      position: position,
+      size: defaultNodeSize(type),
+      typeConfig: <String, Object?>{
+        ImportKeys.origin: ImportKeys.originImport,
+        ImportKeys.originalName: ?originalName,
+      },
+      projectId: projectId,
+    );
+  }
+
+  /// 删掉复制失败的导入壳：**硬删**（失败的壳不进回收站）。
+  ///
+  /// 内存里有这张卡：必须是导入节点且 image_url / video_url / thumbnail_url 都为空，否则什么也
+  /// 不做（防误删已完成的导入或别的节点）；乐观移出内存再硬删。内存里没有（复制途中用户删了它 /
+  /// 画布已重载）：照样硬删——调用方只有导入控制器，只会传它自己刚建的壳。
+  /// 成功后让 CanvasEdgesController 失效：复制期间用户若从壳上拉过线，库里 ON DELETE CASCADE
+  /// 已经删了边。DB 失败 ⇒ 内存回滚，InkError 上抛。
+  Future<void> discardImportShell(String id) {
+    final repo = _repo; // 入口一次性解析，串行 op 内不再触 ref
+    final canvasId = arg;
+    return serialize<void>(() async {
+      final previous =
+          _alive ? (state.valueOrNull ?? const <CanvasNode>[]) : const <CanvasNode>[];
+      CanvasNode? target;
+      for (final n in previous) {
+        if (n.id == id) target = n;
+      }
+      if (target != null) {
+        final bool emptyShell = target.isImported &&
+            target.imageUrl == null &&
+            target.videoUrl == null &&
+            target.thumbnailUrl == null;
+        if (!emptyShell) return;
+        if (_alive) {
+          state = AsyncData(previous.where((n) => n.id != id).toList(growable: false));
+        }
+      }
+      try {
+        await repo.hardDelete(id);
+        if (_alive) ref.invalidate(canvasEdgesControllerProvider(canvasId));
+      } on InkError catch (_) {
+        if (_alive) state = AsyncData(previous);
+        rethrow;
+      }
+    });
+  }
+
+  /// addNode / addImportShell 共用的串行插入体：先写库、成功后插进内存，失败 state 停在原样。
+  Future<CanvasNode> _insert({
+    required String label,
+    required CanvasNodeType type,
+    required NodeRole role,
+    required String? sourceNodeId,
+    required String? laneId,
+    required Offset position,
+    required Size size,
+    required Map<String, Object?> typeConfig,
+    required String? projectId,
+  }) {
     final repo = _repo; // 入口一次性解析，串行 op 内不再触 ref
     final canvasId = arg;
     return serialize<CanvasNode>(() async {
@@ -106,8 +207,8 @@ class CanvasNodesController
           laneId: laneId,
           positionX: position.dx,
           positionY: position.dy,
-          width: nodeSize.width,
-          height: nodeSize.height,
+          width: size.width,
+          height: size.height,
           typeConfig: typeConfig,
         );
         final inserted = CanvasNode(
@@ -115,12 +216,13 @@ class CanvasNodesController
           label: label,
           type: type,
           role: role,
+          projectId: projectId,
           canvasId: canvasId,
           sourceNodeId: sourceNodeId,
           laneId: laneId,
           typeConfig: typeConfig,
           position: position,
-          size: nodeSize,
+          size: size,
         );
         if (_alive) state = AsyncData([...previous, inserted]);
         return inserted;

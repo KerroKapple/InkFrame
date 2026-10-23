@@ -101,7 +101,7 @@ void main() {
       expect(relPaths(orphans), <String>{'images/old.png'});
     });
 
-    test('目录白名单：images/videos 之外的文件从不被扫描/标记（安全#3）', () {
+    test('目录白名单：只扫 images / videos / imports，其余从不被扫描/标记（安全#3）', () {
       // 画布根直挂、以及非白名单子目录，皆早于阈值且无引用——但都不该被碰。
       final atRoot = File(
         '${tempRoot.path}/projects/p1/canvases/c1/loose.png',
@@ -111,15 +111,35 @@ void main() {
 
       seed('exports', 'movie.mp4', age: const Duration(days: 30));
       seed('characters', 'ref.png', age: const Duration(days: 30));
-      // 一个真正的孤儿作对照，证明扫描本身在工作。
+      // 白名单里的三个目录各放一个真正的孤儿作对照，证明三处都在扫。
       seed('images', 'orphan.png', age: const Duration(days: 30));
+      seed('videos', 'orphan.mp4', age: const Duration(days: 30));
+      seed('imports', 'orphan.jpg', age: const Duration(days: 30));
 
       final orphans = buildReaper().identifyOrphans(
         referenceSet: const <String>{},
         now: clock.nowUtc(),
       );
 
-      expect(relPaths(orphans), <String>{'images/orphan.png'});
+      expect(relPaths(orphans), <String>{
+        'images/orphan.png',
+        'videos/orphan.mp4',
+        'imports/orphan.jpg',
+      });
+      expect(kOrphanMediaSubdirs, containsAll(<String>['images', 'videos', 'imports']));
+    });
+
+    test('imports/：被引用的导入文件不算孤儿；未引用且 >7d 的算，≤7d 的不算', () {
+      seed('imports', 'used.png', age: const Duration(days: 30)); // 被导入节点引用
+      seed('imports', 'stale.mp4', age: const Duration(days: 8)); // 孤儿
+      seed('imports', 'fresh.jpg', age: const Duration(days: 2)); // 新文件
+
+      final orphans = buildReaper().identifyOrphans(
+        referenceSet: <String>{'imports/used.png'},
+        now: clock.nowUtc(),
+      );
+
+      expect(relPaths(orphans), <String>{'imports/stale.mp4'});
     });
   });
 
@@ -170,6 +190,36 @@ void main() {
       expect(summary, hasLength(1));
       expect(summary.single.extra?['orphan_count'], 1);
       expect(summary.single.extra?['dry_run'], true);
+    });
+
+    test('imports/：软删的导入节点引用的文件也不算孤儿（安全#2），未引用的旧文件记候选',
+        () async {
+      final id = await nodes.create(
+        canvasId: 'c1',
+        type: 'video',
+        nodeRole: 'result',
+        typeConfig: const <String, Object?>{
+          'origin': 'import',
+          'video_url': 'imports/a.mp4',
+          'thumbnail_url': 'imports/a.jpg',
+        },
+      );
+      await nodes.softDelete(id);
+
+      final video = seed('imports', 'a.mp4', age: const Duration(days: 30));
+      final thumb = seed('imports', 'a.jpg', age: const Duration(days: 30));
+      seed('imports', 'lost.png', age: const Duration(days: 30));
+
+      final report = await buildReaper().reap();
+
+      expect(report.orphanCount, 1);
+      final dryRuns = logger.records
+          .where((r) => r.msg == kOrphanDryRunMsg)
+          .map((r) => r.extra?['path'])
+          .toList();
+      expect(dryRuns, <Object?>['imports/lost.png']);
+      expect(video.existsSync(), isTrue);
+      expect(thumb.existsSync(), isTrue);
     });
 
     test('节流：7 天内二次 reap 为 no-op', () async {

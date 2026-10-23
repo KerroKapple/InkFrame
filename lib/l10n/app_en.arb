@@ -1612,5 +1612,15 @@
       }
     }
   },
-  "laneDeleteRunningConfirm": "Delete and cancel jobs"
+  "laneDeleteRunningConfirm": "Delete and cancel jobs",
+  "nodeStatusImported": "Imported",
+  "nodeStatusImporting": "Copying {percent}%",
+  "@nodeStatusImporting": {
+    "description": "Status line of an imported media node while its file is being copied into the canvas",
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  }
 }

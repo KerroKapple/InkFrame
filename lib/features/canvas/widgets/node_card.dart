@@ -14,7 +14,9 @@
 // 本卡片不再渲染它们。
 //
 // 图区内容：result 节点 = 缩略图（image / video）；还没出图 / 文件丢了的 result 占位 =
-// 左下角一行 11px 小字（[_ThumbLabel]）。
+// 左下角一行 11px 小字（[_ThumbLabel]）。导入的媒体（type_config.origin = import）复制中时图区底部
+// 叠一条进度条、状态行写「复制中 48%」，复制完状态行写「导入」、右侧写宽高；进度只订
+// mediaImportControllerProvider 里自己那一格。
 // config 节点（提示词条与节点文字稿）：正文（提示词 / 文本 / 镜头备注）贴图区顶部、最多三行，
 // 12/1.55 fg2；图区底部另起一行 10px fg5 摘要——video config 是「起始帧 ← X · 结束帧 ← Y ·
 // 运镜」，image config 是镜头语言摘要（设了才画）。以前 video 有入边时摘要会顶掉提示词，
@@ -43,15 +45,18 @@ import '../../../core/models/shot_language.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_icon.dart';
+import '../../../theme/components/ink_progress_bar.dart';
 import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/models/job_state.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
+import '../models/canvas_node_import.dart';
 import '../models/style_lane.dart';
 import '../providers/canvas_compact_cards.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/media_import_controller.dart';
 import '../providers/node_active_job.dart';
 import '../providers/node_drag_delta.dart';
 import '../util/camera_labels.dart';
@@ -149,6 +154,9 @@ class NodeCard extends ConsumerStatefulWidget {
 
   /// 缩小态居中类型图标的测试锚点。
   static const Key compactGlyphKey = ValueKey<String>('node-card-compact-glyph');
+
+  /// 导入节点复制中叠在图区底部的进度条的测试锚点。
+  static const Key importProgressKey = ValueKey<String>('node-card-import-progress');
 
   @override
   ConsumerState<NodeCard> createState() => _NodeCardState();
@@ -535,22 +543,39 @@ class _StatusRow extends ConsumerWidget {
       node,
       job: ref.watch(nodeActiveJobProvider(node.id)),
     );
-    final String status = switch (s.kind) {
-      NodeStatusKind.running => l.inspectorStatusRunningWithProgress(s.percent ?? 0),
-      NodeStatusKind.queued => l.canvasRenderQueueStatusQueued,
-      NodeStatusKind.done => l.nodeStatusDone,
-      NodeStatusKind.pending => l.nodeStatusPending,
-      NodeStatusKind.ready => l.nodeStatusReady,
-      NodeStatusKind.draft => l.nodeStatusDraft,
-    };
-    final Color statusColor =
-        s.kind == NodeStatusKind.running ? colors.accent : colors.fg4;
+    // 导入的媒体：复制中「复制中 48%」（accent），复制完「导入」+ 右侧宽高（有才写）。
+    // 进度只订自己那一格（select），一张卡的进度跳动不会把整张画布的卡拖进重建。
+    final bool imported = node.isImported;
+    final double? importProgress = imported ? _watchImportProgress(ref, node) : null;
+    final bool importDone = imported && (node.imageUrl ?? node.videoUrl) != null;
 
-    final String meta = switch (node.type) {
-      CanvasNodeType.text => 'txt',
-      CanvasNodeType.shot => 'txt',
-      _ => (node.typeConfig['provider_id'] as String?) ?? '',
-    };
+    final String status;
+    final Color statusColor;
+    if (importProgress != null) {
+      status = l.nodeStatusImporting((importProgress * 100).round());
+      statusColor = colors.accent;
+    } else if (importDone) {
+      status = l.nodeStatusImported;
+      statusColor = colors.fg4;
+    } else {
+      status = switch (s.kind) {
+        NodeStatusKind.running => l.inspectorStatusRunningWithProgress(s.percent ?? 0),
+        NodeStatusKind.queued => l.canvasRenderQueueStatusQueued,
+        NodeStatusKind.done => l.nodeStatusDone,
+        NodeStatusKind.pending => l.nodeStatusPending,
+        NodeStatusKind.ready => l.nodeStatusReady,
+        NodeStatusKind.draft => l.nodeStatusDraft,
+      };
+      statusColor = s.kind == NodeStatusKind.running ? colors.accent : colors.fg4;
+    }
+
+    final String meta = imported
+        ? _importedSizeMeta(node)
+        : switch (node.type) {
+            CanvasNodeType.text => 'txt',
+            CanvasNodeType.shot => 'txt',
+            _ => (node.typeConfig['provider_id'] as String?) ?? '',
+          };
 
     return Row(
       children: <Widget>[
@@ -569,19 +594,51 @@ class _StatusRow extends ConsumerWidget {
   }
 }
 
-class _NodeBody extends StatelessWidget {
+/// 导入节点此刻的复制进度（0..1）；不在复制中 / 节点没有 canvasId（单测节点）⇒ null。
+double? _watchImportProgress(WidgetRef ref, CanvasNode node) {
+  final String canvasId = node.canvasId ?? '';
+  if (canvasId.isEmpty) return null;
+  return ref.watch(
+    mediaImportControllerProvider(canvasId).select((Map<String, double> m) => m[node.id]),
+  );
+}
+
+/// 导入节点状态行右侧的宽高「1920×1080」；没有宽高 ⇒ 空串。视频不写时长（交给统一的时长格式）。
+String _importedSizeMeta(CanvasNode node) {
+  final Object? w = node.typeConfig['width'];
+  final Object? h = node.typeConfig['height'];
+  if (w is int && h is int && w > 0 && h > 0) return '$w×$h';
+  return '';
+}
+
+/// 图区内容。result 节点里的导入节点在复制中时，底部再叠一条进度条——叠在这里而不是
+/// [_ResultBody] 里：视频产物走 [VideoNodeBody]（另一个文件），只叠一处两种卡都看得到。
+class _NodeBody extends ConsumerWidget {
   const _NodeBody({required this.node, required this.resolver});
 
   final CanvasNode node;
   final FileResolverService resolver;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     if (node.role == NodeRole.result) {
-      if (node.type == CanvasNodeType.video) {
-        return VideoNodeBody(node: node);
-      }
-      return _ResultBody(node: node, resolver: resolver);
+      final Widget body = node.type == CanvasNodeType.video
+          ? VideoNodeBody(node: node)
+          : _ResultBody(node: node, resolver: resolver);
+      final double? progress =
+          node.isImported ? _watchImportProgress(ref, node) : null;
+      if (progress == null) return body;
+      return Stack(
+        children: <Widget>[
+          Positioned.fill(child: body),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: InkProgressBar(key: NodeCard.importProgressKey, value: progress),
+          ),
+        ],
+      );
     }
     return _ConfigBody(node: node);
   }

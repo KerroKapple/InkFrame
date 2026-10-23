@@ -163,8 +163,21 @@ class _FakeNodeRepository implements NodeRepository {
     return restoreAffected;
   }
 
+  /// hardDelete 收到的 id（按调用顺序）。
+  final List<String> hardDeleted = <String>[];
+  String? hardDeleteError;
+
   @override
-  Future<int> hardDelete(String id) async => 0;
+  Future<int> hardDelete(String id) async {
+    hardDeleted.add(id);
+    if (hardDeleteError != null) {
+      throw LocalIOError(
+          extra: {'op': 'hardDelete', 'table': 'nodes', 'msg': hardDeleteError});
+    }
+    final int before = rows.length;
+    rows.removeWhere((r) => r['id'] == id);
+    return before - rows.length;
+  }
 }
 
 class _FakeEdgeRepo implements EdgeRepository {
@@ -462,6 +475,156 @@ void main() {
           role: NodeRole.result,
         ),
         throwsA(isA<AssertionError>()),
+      );
+    });
+
+    test('addImportShell 建出 role=result、sourceNodeId=null、type_config 含 origin / original_name、'
+        '内存节点带 projectId', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+
+      final shell = await ctrl.addImportShell(
+        label: '雾江.jpg',
+        type: CanvasNodeType.image,
+        projectId: 'p1',
+        laneId: 'lane1',
+        position: const Offset(40, 60),
+        originalName: '雾江.jpg',
+      );
+
+      expect(shell.role, NodeRole.result);
+      expect(shell.sourceNodeId, isNull);
+      expect(shell.projectId, 'p1');
+      expect(shell.canvasId, canvasId);
+      expect(shell.laneId, 'lane1');
+      expect(shell.position, const Offset(40, 60));
+      expect(shell.size, kNodeCardSize);
+      expect(shell.typeConfig, <String, Object?>{
+        'origin': 'import',
+        'original_name': '雾江.jpg',
+      });
+
+      final call = repo.createCalls.single;
+      expect(call['node_role'], 'result');
+      expect(call['source_node_id'], isNull);
+      expect(call['type'], 'image');
+      expect(call['label'], '雾江.jpg');
+      expect(call['type_config'], <String, Object?>{
+        'origin': 'import',
+        'original_name': '雾江.jpg',
+      });
+
+      final inMemory =
+          container.read(canvasNodesControllerProvider(canvasId)).requireValue;
+      expect(inMemory.single.id, shell.id);
+      expect(inMemory.single.projectId, 'p1');
+    });
+
+    test('addImportShell 视频壳 type=video', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+
+      final shell = await ctrl.addImportShell(
+        label: '船桨.mp4',
+        type: CanvasNodeType.video,
+        projectId: 'p1',
+        originalName: '船桨.mp4',
+      );
+
+      expect(shell.type, CanvasNodeType.video);
+      expect(repo.createCalls.single['type'], 'video');
+      expect(shell.role, NodeRole.result);
+    });
+
+    test('discardImportShell 硬删无 url 的导入壳：移出内存、不软删、边控制器失效', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+      final shell = await ctrl.addImportShell(
+        label: 'a.png',
+        type: CanvasNodeType.image,
+        projectId: 'p1',
+        originalName: 'a.png',
+      );
+
+      await ctrl.discardImportShell(shell.id);
+
+      expect(repo.hardDeleted, <String>[shell.id]);
+      expect(repo.softDeleted, isEmpty, reason: '失败的壳不进回收站');
+      expect(repo.rows, isEmpty);
+      expect(
+        container.read(canvasNodesControllerProvider(canvasId)).requireValue,
+        isEmpty,
+      );
+    });
+
+    test('discardImportShell 只限无 url 的导入节点：带 url 的导入节点 / 非导入节点调了不动',
+        () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+      final done = await ctrl.addImportShell(
+        label: 'a.png',
+        type: CanvasNodeType.image,
+        projectId: 'p1',
+        originalName: 'a.png',
+      );
+      await ctrl.patchTypeConfigMany(<String, Map<String, Object?>>{
+        done.id: <String, Object?>{'image_url': 'imports/x.png'},
+      });
+      final plain = await ctrl.addNode(label: 'cfg', type: CanvasNodeType.image);
+
+      await ctrl.discardImportShell(done.id);
+      await ctrl.discardImportShell(plain.id);
+
+      expect(repo.hardDeleted, isEmpty);
+      final ids = container
+          .read(canvasNodesControllerProvider(canvasId))
+          .requireValue
+          .map((n) => n.id)
+          .toList();
+      expect(ids, <String>[done.id, plain.id]);
+    });
+
+    test('discardImportShell 对不在内存的 id 仍 hardDelete', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+
+      await ctrl.discardImportShell('gone');
+
+      expect(repo.hardDeleted, <String>['gone']);
+    });
+
+    test('discardImportShell DB 失败 ⇒ 内存回滚、抛 LocalIOError', () async {
+      await container
+          .read(canvasNodesControllerProvider(canvasId).future);
+      final ctrl = container
+          .read(canvasNodesControllerProvider(canvasId).notifier);
+      final shell = await ctrl.addImportShell(
+        label: 'a.png',
+        type: CanvasNodeType.image,
+        projectId: 'p1',
+      );
+      repo.hardDeleteError = 'boom';
+
+      await expectLater(
+        ctrl.discardImportShell(shell.id),
+        throwsA(isA<LocalIOError>()),
+      );
+      expect(
+        container
+            .read(canvasNodesControllerProvider(canvasId))
+            .requireValue
+            .map((n) => n.id),
+        <String>[shell.id],
       );
     });
 

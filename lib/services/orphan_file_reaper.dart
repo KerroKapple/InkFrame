@@ -1,12 +1,13 @@
 // DiskOrphanFileReaper：OrphanFileReaper 的磁盘实现（LB-13 slice B）。
 //
-// 只扫 projects/<p>/canvases/<c>/{images,videos}——绝不碰其它任何目录（安全#3）。
+// 只扫 projects/<p>/canvases/<c>/{images,videos,imports}——绝不碰其它任何目录（安全#3）。
 // 三重安全：
 //   #1 mtime 守卫：只有 mtime 早于 kOrphanMinAge（7d）的文件才可能是孤儿——
 //      保护刚写盘、DB 行还在提交中的新文件。
 //   #2 引用集含软删节点：NodeRepository.listAllMediaUrls 连 deleted_at IS NOT NULL
 //      的节点也算引用——软删可 LB-15 恢复，其产物必须留。
-//   #3 目录白名单：只列 images/ 与 videos/，其余一律不扫描、不识别。
+//   #3 目录白名单：只列 images/、videos/ 与 imports/（导入媒体的落点），其余一律
+//      不扫描、不识别。
 //
 // 只读：识别到的孤儿只 logger.info('orphan.reap.dryrun', ...)，**这个类里没有任何
 // 删除代码**——2026-08-31 审计 P0：曾经的 reap(dryRun:false) 分支是一条真实可达、
@@ -17,6 +18,7 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 
 import '../core/interfaces/batch_result_repository.dart';
+import '../core/interfaces/media_import_service.dart' show kImportsSubdir;
 import '../core/interfaces/node_repository.dart';
 import '../core/interfaces/orphan_file_reaper.dart';
 import '../core/logging/logger_service.dart';
@@ -32,7 +34,11 @@ const Duration kOrphanMinAge = Duration(days: 7);
 const Duration kOrphanReapThrottle = Duration(days: 7);
 
 /// 唯一允许扫描的画布子目录（安全#3）。
-const List<String> kOrphanMediaSubdirs = <String>['images', 'videos'];
+///
+/// imports/ 是导入媒体的落点（导入、拖入、粘贴、跨画布素材都复制进这里）。导入节点的
+/// image_url / video_url / thumbnail_url 同样进 listAllMediaUrls 的引用集：被引用的
+/// 导入文件不算孤儿，7 天以上无人引用的才记候选。
+const List<String> kOrphanMediaSubdirs = <String>['images', 'videos', kImportsSubdir];
 
 /// dry-run 单条命中日志的 msg（测试按此断言）。
 const String kOrphanDryRunMsg = 'orphan.reap.dryrun';
@@ -115,7 +121,7 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
 
   /// 纯识别逻辑（测试直连）：给定引用集 + [now]，扫盘返回孤儿候选。不删、不记日志。
   ///
-  /// [referenceSet] 元素须为画布相对路径（`images/<f>` 或 `videos/<f>`），与仓储
+  /// [referenceSet] 元素须为画布相对路径（`images/<f>`、`videos/<f>` 或 `imports/<f>`），与仓储
   /// 存储形态一致——文件按同样形态归一后比对。
   List<OrphanCandidate> identifyOrphans({
     required Set<String> referenceSet,
@@ -129,7 +135,7 @@ class DiskOrphanFileReaper implements OrphanFileReaper {
       final canvasesDir = Directory(p.join(projectDir.path, 'canvases'));
       if (!canvasesDir.existsSync()) continue;
       for (final canvasDir in _dirsIn(canvasesDir)) {
-        // 安全#3：只进 images/ 与 videos/，其余子目录（characters/、exports/ 等）不碰。
+        // 安全#3：只进 images/、videos/ 与 imports/，其余子目录（characters/、exports/ 等）不碰。
         for (final subdir in kOrphanMediaSubdirs) {
           final mediaDir = Directory(p.join(canvasDir.path, subdir));
           if (!mediaDir.existsSync()) continue;
@@ -221,7 +227,7 @@ class OrphanCandidate {
     required this.ageDays,
   });
 
-  /// 画布相对路径（`images/<f>` 或 `videos/<f>`）。
+  /// 画布相对路径（`images/<f>`、`videos/<f>` 或 `imports/<f>`）。
   final String relativePath;
   final int sizeBytes;
   final int ageDays;
