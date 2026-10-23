@@ -5839,6 +5839,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copying {percent}%'**
   String nodeStatusImporting(int percent);
+
+  /// No description provided for @canvasHistoryUndoStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo {step}'**
+  String canvasHistoryUndoStep(String step);
+
+  /// No description provided for @canvasHistoryRedoStep.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo {step}'**
+  String canvasHistoryRedoStep(String step);
+
+  /// No description provided for @canvasHistoryUndone.
+  ///
+  /// In en, this message translates to:
+  /// **'Undone · {step}'**
+  String canvasHistoryUndone(String step);
+
+  /// No description provided for @canvasHistoryRedone.
+  ///
+  /// In en, this message translates to:
+  /// **'Redone · {step}'**
+  String canvasHistoryRedone(String step);
+
+  /// No description provided for @canvasUndoStepGone.
+  ///
+  /// In en, this message translates to:
+  /// **'This step can no longer be undone'**
+  String get canvasUndoStepGone;
+
+  /// No description provided for @canvasHistoryNothingToUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to undo'**
+  String get canvasHistoryNothingToUndo;
+
+  /// No description provided for @canvasHistoryNothingToRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to redo'**
+  String get canvasHistoryNothingToRedo;
+
+  /// No description provided for @settingsShortcutCanvasUndo.
+  ///
+  /// In en, this message translates to:
+  /// **'Undo'**
+  String get settingsShortcutCanvasUndo;
+
+  /// No description provided for @settingsShortcutCanvasRedo.
+  ///
+  /// In en, this message translates to:
+  /// **'Redo'**
+  String get settingsShortcutCanvasRedo;
 }
 
 class _AppLocalizationsDelegate
