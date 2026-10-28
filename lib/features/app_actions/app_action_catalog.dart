@@ -3,7 +3,7 @@
 // 由后续切片迁过来（现状细节见 app_action.dart 头注）。
 //
 // - 键位不另抄：画布动作从快捷键注册表按绑定 id 取（settings/util/shortcut_catalog.dart 的 canvasBindingActivator），
-//   命令面板取 kCommandPaletteActivators，第二批还没接上的动作取 planned_keys.dart 的 PlannedKeys。
+//   命令面板取 kCommandPaletteActivators，第二批动作（含已接上的撤销 / 重做）的键位取 planned_keys.dart 的 PlannedKeys。
 // - 执行体只调现有函数：画布动作在 canvas/util/canvas_tool_actions.dart（与工具条 / 快捷键 / 右键菜单同一条路），
 //   删除走 canvas_node_delete.dart 的 deleteNodesWithUndo，导出走 export/open_export_dialog.dart。
 // - 画布 / 节点两组只在看得见的画布上可用（AppActionContext.canvasId）；不在画布上灰着不藏，原因「先打开一个画布」。
@@ -15,7 +15,7 @@
 // 表的顺序 = ⌘K 动作组的顺序（buildCommandActions 按表过滤）；菜单栏的排列由菜单栏切片自己的 id 表决定，
 // 所以这里各组是交错的：openSettings 排在 backToStudio 之后、exportVideo 排在画布组之后，都是为了 ⌘K 的顺序。
 // ⌘K 的上下文规则（原 command_actions.dart 的四个分支）原样编码进各行的 inPalette：
-//   设置浮层开着 → 只「返回工作室」；画布标签 → 图像 / 视频 / 镜头节点、导出视频（能导出时）、返回工作室、设置；
+//   设置浮层开着 → 只「返回工作室」；画布标签 → 撤销 / 重做（栈顶非空且不在途时）、图像 / 视频 / 镜头节点、导出视频（能导出时）、返回工作室、设置；
 //   画廊标签且有项目 → 返回工作室、设置；其余 → 导入项目、短剧示例、设置。
 import 'dart:async';
 
