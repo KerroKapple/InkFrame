@@ -27,6 +27,7 @@ import '../../../core/interfaces/node_repository.dart';
 import '../models/canvas_node.dart';
 import '../models/canvas_node_import.dart';
 import '../util/canvas_extent.dart';
+import '../util/node_soft_delete.dart';
 import 'canvas_edges_controller.dart';
 import 'serial_mutation_queue.dart';
 
@@ -436,31 +437,9 @@ class CanvasNodesController
       }
       try {
         final uow = await uowFuture;
-        final edgeIdsOf = await uow.run((scope) async {
-          // 第一段：只读——列边、去重、归属。
-          final seen = <String>{};
-          final planned = <String, List<String>>{};
-          for (final id in order) {
-            final outgoing = await scope.edges.listOutgoing(id);
-            final incoming = await scope.edges.listIncoming(id);
-            final mine = <String>[];
-            for (final r in <Map<String, Object?>>[...outgoing, ...incoming]) {
-              final eid = r.reqId(EdgeCol.id);
-              if (seen.add(eid)) mine.add(eid);
-            }
-            planned[id] = mine;
-          }
-          // 第二段：写——先边后节点。
-          for (final id in order) {
-            for (final eid in planned[id]!) {
-              await scope.edges.softDelete(eid);
-            }
-          }
-          for (final id in order) {
-            await scope.nodes.softDelete(id);
-          }
-          return planned;
-        });
+        final edgeIdsOf = await uow.run(
+          (scope) => softDeleteNodesWithEdges(scope, order),
+        );
         if (_alive) ref.invalidate(canvasEdgesControllerProvider(canvasId));
         return <NodeDeletion>[
           for (final id in order)

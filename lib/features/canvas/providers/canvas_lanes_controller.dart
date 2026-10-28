@@ -18,6 +18,7 @@ import '../../../core/interfaces/unit_of_work.dart';
 import '../models/style_lane.dart';
 import '../util/lane_dissolve.dart';
 import '../util/lane_geometry.dart';
+import '../util/node_soft_delete.dart';
 import 'canvas_edges_controller.dart';
 import 'canvas_nodes_controller.dart';
 import 'serial_mutation_queue.dart';
@@ -245,7 +246,8 @@ class CanvasLanesController
   /// 删除泳道和内容：一个事务里软删道内全部节点（按库查 lane_id，含产物节点）、这些节点的全部入 / 出边
   /// （去重）、再软删道。道外节点之间的边不动。
   ///
-  /// 事务内分两段（同 CanvasNodesController.removeNodes）：先列完全部边并去重，再统一软删边 → 节点 → 道。
+  /// 事务内节点与边走 util/node_soft_delete.dart 的 softDeleteNodesWithEdges（先列边去重、再软删边 → 节点），
+  /// 最后软删道。
   /// 提交后边控制器失效、等节点重载完，最后把道从 state 里拿掉。道不在 state 里 ⇒ null、不碰库。
   /// 事务失败 ⇒ state 原样、InkError 上抛。生成中任务的确认与取消在动作层，这里不管。
   Future<LaneContentsDeletion?> deleteLaneWithContents(String laneId) {
@@ -263,24 +265,10 @@ class CanvasLanesController
           for (final row in rows)
             if (row.optId(NodeCol.laneId) == laneId) row.reqId(NodeCol.id),
         ];
-        // 第一段：只读——列边、去重。
-        final seen = <String>{};
-        final edgeIds = <String>[];
-        for (final id in nodeIds) {
-          final outgoing = await scope.edges.listOutgoing(id);
-          final incoming = await scope.edges.listIncoming(id);
-          for (final r in <Map<String, Object?>>[...outgoing, ...incoming]) {
-            final eid = r.reqId(EdgeCol.id);
-            if (seen.add(eid)) edgeIds.add(eid);
-          }
-        }
-        // 第二段：写——边、节点、道。
-        for (final eid in edgeIds) {
-          await scope.edges.softDelete(eid);
-        }
-        for (final id in nodeIds) {
-          await scope.nodes.softDelete(id);
-        }
+        final edgeIdsOf = await softDeleteNodesWithEdges(scope, nodeIds);
+        final edgeIds = <String>[
+          for (final ids in edgeIdsOf.values) ...ids,
+        ];
         await scope.styleLanes.softDelete(laneId);
         return LaneContentsDeletion(lane: lane, nodeIds: nodeIds, edgeIds: edgeIds);
       });

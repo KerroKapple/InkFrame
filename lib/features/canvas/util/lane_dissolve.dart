@@ -44,8 +44,8 @@ class LaneContentsDeletion {
 ///
 /// [laneNodes] 里只有 lane_id == [laneId] 的卡参与（别的道 / 道外的卡不在结果里）。
 /// [lanes] 按 sort_order 排好；[collapsed] 是此刻折叠着的道。
-/// 被解散的道按**展开厚度**算（它折叠时卡片不画，「屏幕位置」以展开时为准——等于先展开再解散），
-/// 其余道按 collapseLaneSlices 的有效厚度。缩放 [scale] 是此刻的相机缩放。
+/// 解散后的位置只取决于本道的起始边，也就是前面各道按 collapseLaneSlices 的有效厚度之和；
+/// 本道自己的厚度不进公式，折叠与否不影响结果。缩放 [scale] 是此刻的相机缩放。
 Map<String, Offset> dissolvedPositions({
   required List<CanvasNode> laneNodes,
   required String laneId,
@@ -58,10 +58,7 @@ Map<String, Offset> dissolvedPositions({
     <({String id, double size})>[
       for (final StyleLane l in lanes) (id: l.id, size: l.size),
     ],
-    <String>{
-      for (final String id in collapsed)
-        if (id != laneId) id,
-    },
+    collapsed,
   );
   return <String, Offset>{
     for (final CanvasNode n in laneNodes)
