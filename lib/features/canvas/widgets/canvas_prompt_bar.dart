@@ -253,9 +253,13 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
     final t = context.inkTypography;
     final l = context.l10n;
     final CanvasNode node = widget.node;
-    final String? providerId = node.typeConfig['provider_id'] as String?;
-    final String providerName =
-        providerId == null ? '' : (ref.watch(providerDisplayNamesProvider)[providerId] ?? providerId);
+    final List<ProviderCapabilities> capabilities = ref.watch(providerCapabilitiesListProvider);
+    final String? gateProviderId = _resolveProviderId(capabilities);
+    // 摘要里的服务商与金额 / 判 Key 同一个口径（节点已存 > 上次使用 > 第一个）：节点还没存供应商时，
+    // 写的是金额按它算的那一家，而不是空着。
+    final String providerName = gateProviderId == null
+        ? ''
+        : (ref.watch(providerDisplayNamesProvider)[gateProviderId] ?? gateProviderId);
     final int? durationMs = node.durationMs;
     final CameraMovement? camera = parseCameraMovement(node.cameraName);
     final ShotLanguage lang = node.shotLanguage;
@@ -271,8 +275,6 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
         ref.watch(canvasBaseStyleProvider(widget.canvasId)).valueOrNull?.prefix.trim() ?? '';
     final InspectorSubmitState submitState = ref.watch(inspectorSubmitControllerProvider(node.id));
     final bool busy = submitState is InspectorSubmitSubmitting || submitState is InspectorSubmitRunning;
-    final List<ProviderCapabilities> capabilities = ref.watch(providerCapabilitiesListProvider);
-    final String? gateProviderId = _resolveProviderId(capabilities);
     // 预估费用：提示词取输入框当前内容（onChanged 已 setState），金额随打字重算，不等防抖落库。
     final NodeCostEstimate? cost = estimateNodeCost(
       node: node,
@@ -316,26 +318,38 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
               // 名字 + 摘要整组吃掉剩余宽度，基底风格贴右。原来名字是 Flexible、后面跟 Spacer：
               // 两个 flex 1 平分剩余空间，基底风格就被推到条子中间。
               Expanded(
-                child: Row(
-                  children: <Widget>[
-                    Flexible(
-                      child: Text(nodeDisplayName(context, node),
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg2)),
-                    ),
-                    if (summary.isNotEmpty) ...<Widget>[
-                      const SizedBox(width: InkSpacing.sm),
-                      Text('·', style: t.meta.copyWith(color: c.fg5)),
-                      const SizedBox(width: InkSpacing.sm),
-                      Flexible(
-                        child: Text(summary.join(' · '),
-                            maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg5)),
-                      ),
-                    ],
-                  ],
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints inner) {
+                    final Widget name = Text(nodeDisplayName(context, node),
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg2));
+                    // 没有摘要：名字独占这一段。
+                    if (summary.isEmpty) return Row(children: <Widget>[Flexible(child: name)]);
+                    // 名字封顶 40%、按自己多宽占多宽，摘要吃掉剩下的全部：两个 flex 1 平分时，名字再短也占着一半的上限，
+                    // 摘要（服务商名是用户判断金额的唯一上下文）在 480 宽的条子上被截成「Wanx Image-t…」。
+                    return Row(
+                      children: <Widget>[
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: inner.maxWidth * 0.4),
+                          child: name,
+                        ),
+                        const SizedBox(width: InkSpacing.sm),
+                        Text('·', style: t.meta.copyWith(color: c.fg5)),
+                        const SizedBox(width: InkSpacing.sm),
+                        Expanded(
+                          child: Text(summary.join(' · '),
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg5)),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: InkSpacing.sm),
-              _BaseStyleChip(canvasId: widget.canvasId, prefix: prefix),
+              // 基底风格封顶 160：前缀再长也只在 chip 里省略，不把名字 / 摘要挤没、不撑爆这一行。
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: _BaseStyleChip(canvasId: widget.canvasId, prefix: prefix),
+              ),
             ],
           ),
           const SizedBox(height: InkSpacing.sm),
@@ -467,11 +481,14 @@ class _BaseStyleChip extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  prefix.isEmpty ? l.promptBarBaseStyle : '${l.promptBarBaseStyle}：$prefix',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.meta.copyWith(color: c.fg5),
+                // Flexible：外层封顶 160 时前缀在这里省略（非 flex 子件拿到的是无界宽度，ellipsis 不生效）。
+                Flexible(
+                  child: Text(
+                    prefix.isEmpty ? l.promptBarBaseStyle : '${l.promptBarBaseStyle}：$prefix',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.meta.copyWith(color: c.fg5),
+                  ),
                 ),
                 if (prefix.isNotEmpty) ...<Widget>[
                   const SizedBox(width: InkSpacing.sm),
