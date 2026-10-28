@@ -9,9 +9,10 @@
 //   ③ 逐个 copyIntoCanvas，进度每变化 ≥ 1% 才写 state；
 //   ④ 成功 ⇒ 组 patch：图片 {image_url, width?, height?}；视频再抽首帧到 imports/<同 uuid>.jpg，
 //      {video_url, thumbnail_url?, duration_ms?, width?, height?}，抽帧失败吞掉只记 warn；
-//   ⑤ 回写：节点控制器还在、且这张卡还在它的内存里 ⇒ patchTypeConfigMany；否则直写仓储；
-//      直写返回 0（壳在复制途中被用户删了，PG 的 patchTypeConfig 写不进软删行）⇒ 一个事务里
-//      restore → patch → softDelete，删了的卡照常带上 url（撤销删除时库里是完整的）；
+//   ⑤ 回写：一律先直写仓储拿行数；返回 0（壳在复制途中被删了，PG 的 patchTypeConfig 写不进
+//      软删行）⇒ 一个事务里 restore → patch → softDelete，删了的卡照常带上 url（撤销删除时库里
+//      是完整的）；行已硬删 ⇒ 按失败走。库落定后，这张卡还在节点控制器内存里 ⇒ 再
+//      patchTypeConfigMany 同步内存（失败只记 warn，不回滚导入）；
 //   ⑥ 失败（复制失败，或 ④⑤ 写库失败）⇒ discard 已复制的文件与已抽出的首帧 + 硬删壳，
 //      按原因记 skip；
 //   ⑦ 不论成败，从 state 去掉这张卡的进度。
@@ -279,36 +280,46 @@ class MediaImportController extends FamilyNotifier<Map<String, double>, String> 
     String nodeId,
     Map<String, Object?> patch,
   ) async {
-    final nodesProvider = canvasNodesControllerProvider(canvasId);
-    if (ref.exists(nodesProvider)) {
-      final List<CanvasNode>? live = ref.read(nodesProvider).valueOrNull;
-      if (live != null && live.any((CanvasNode n) => n.id == nodeId)) {
-        await ref
-            .read(nodesProvider.notifier)
-            .patchTypeConfigMany(<String, Map<String, Object?>>{nodeId: patch});
-        return;
+    // 库是准绳：一律先直写仓储拿行数。不先走 patchTypeConfigMany——它不看行数，壳行已软删
+    // （removeNode 排在回写前面、或被清扫收走）时写 0 行也照样「成功」，内存显示成图、
+    // 库里却没有 url，重开画布卡片就没了。
+    final repo = await ref.read(nodeRepositoryProvider.future);
+    if (await repo.patchTypeConfig(nodeId, patch) == 0) {
+      // 软删的行写不进去：在一个事务里先复原、写、再删回去。
+      final uow = await ref.read(unitOfWorkProvider.future);
+      final bool written = await uow.run((scope) async {
+        if (await scope.nodes.restore(nodeId) == 0) return false;
+        if (await scope.nodes.patchTypeConfig(nodeId, patch) == 0) return false;
+        await scope.nodes.softDelete(nodeId);
+        return true;
+      });
+      if (!written) {
+        // 行已被硬删：没有可写的地方，按失败走（清掉文件）。
+        throw const LocalIOError(
+          extra: <String, Object?>{
+            'reason': kImportReasonCopyFailed,
+            'op': 'write_back',
+            'node_gone': true,
+          },
+        );
       }
     }
-    final repo = await ref.read(nodeRepositoryProvider.future);
-    if (await repo.patchTypeConfig(nodeId, patch) > 0) return;
 
-    // 软删的行写不进去：在一个事务里先复原、写、再删回去。
-    final uow = await ref.read(unitOfWorkProvider.future);
-    final bool written = await uow.run((scope) async {
-      if (await scope.nodes.restore(nodeId) == 0) return false;
-      await scope.nodes.patchTypeConfig(nodeId, patch);
-      await scope.nodes.softDelete(nodeId);
-      return true;
-    });
-    if (!written) {
-      // 行已被硬删：没有可写的地方，按失败走（清掉文件）。
-      throw const LocalIOError(
-        extra: <String, Object?>{
-          'reason': kImportReasonCopyFailed,
-          'op': 'write_back',
-          'node_gone': true,
-        },
-      );
+    // 库已落定；这张卡还在节点控制器内存里 ⇒ 再 patch 一次同步内存（同一个 patch 写两次幂等）。
+    // 这一步失败只是内存没跟上（重开画布即恢复），库里的 url 已在，不能当导入失败去删文件和壳。
+    final nodesProvider = canvasNodesControllerProvider(canvasId);
+    if (!ref.exists(nodesProvider)) return;
+    final List<CanvasNode>? live = ref.read(nodesProvider).valueOrNull;
+    if (live == null || !live.any((CanvasNode n) => n.id == nodeId)) return;
+    try {
+      await ref
+          .read(nodesProvider.notifier)
+          .patchTypeConfigMany(<String, Map<String, Object?>>{nodeId: patch});
+    } on InkError catch (e) {
+      _warn('media_import.memory_sync_failed', <String, Object?>{
+        'node_id': nodeId,
+        'code': e.code.name,
+      });
     }
   }
 

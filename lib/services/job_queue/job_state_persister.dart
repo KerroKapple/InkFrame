@@ -86,6 +86,9 @@ class JobStatePersister {
     }
     // LB-14：孤儿回收之后再收敛崩溃遗留的空 result 壳（软删进回收站，
     // LB-15 可恢复）。同为 housekeeping——失败只 warn，绝不阻断启动。
+    // 注意 init 挂在 jobQueueServiceProvider 的首次解析上（懒：会话里第一次点「生成」、
+    // DB 恢复后重建队列），不只在启动时跑——此刻可能有导入壳正在复制，判据在仓储 SQL
+    // 里排除了本次 PG 实例启动后建的导入壳（postgres_node_repository.dart）。
     final nodeRepo = _nodeRepo;
     if (nodeRepo != null) {
       try {
