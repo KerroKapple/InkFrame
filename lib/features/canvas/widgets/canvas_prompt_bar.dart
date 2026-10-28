@@ -24,6 +24,8 @@
 // 与检查器「预估费用」同一个函数（generation/services/node_cost.dart 的 estimateNodeCost）；提示词按输入框
 // 当前内容即时算，不等防抖落库。「生成」可点时悬停出明细卡（CostBreakdownTooltip），包在按钮外面；
 // 置灰时只出原因。
+// 检查器改服务商 / 画质 / 批量 / 时长只写库、不刷新画布节点内存：条子 watch inspectorPendingConfigProvider
+// （检查器本地已改的补丁，只读），摘要、判 Key 的供应商与金额都按「已存 + 补丁」算，与检查器同一个数（W2 验收 #5）。
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
@@ -47,6 +49,7 @@ import '../providers/canvas_base_style.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_prompt_bar_height.dart';
 import '../providers/canvas_selection_controller.dart';
+import '../providers/inspector_pending_config.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
 import '../util/generate_gate.dart';
@@ -203,13 +206,19 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
     super.dispose();
   }
 
-  /// 判 Key / 写进终稿的供应商：与检查器同一条链（util/generate_gate.dart）。
-  String? _resolveProviderId(List<ProviderCapabilities> all) {
-    final CanvasNode node = widget.node;
+  /// 节点已存的 type_config 盖上检查器本地已改、内存里还没反映的补丁（inspectorPendingConfigProvider）——
+  /// 与检查器看到的是同一份配置（W2 验收 #5）。补丁只读，提示词条不写它。
+  Map<String, Object?> _effectiveConfig(Map<String, Object?> pendingConfig) => pendingConfig.isEmpty
+      ? widget.node.typeConfig
+      : <String, Object?>{...widget.node.typeConfig, ...pendingConfig};
+
+  /// 判 Key / 写进终稿的供应商：与检查器同一条链（util/generate_gate.dart）。「节点已存」读的是 [config]
+  /// （已存 + 检查器补丁）：检查器刚换的供应商还没进内存，也按它判。
+  String? _resolveProviderId(List<ProviderCapabilities> all, Map<String, Object?> config) {
     return resolveConfigProviderId(
-      savedProviderId: node.typeConfig['provider_id'] as String?,
+      savedProviderId: config['provider_id'] as String?,
       lastUsedProviderId: _lastUsedProviderId(),
-      candidates: configProviderCandidates(node.type, all),
+      candidates: configProviderCandidates(widget.node.type, all),
     );
   }
 
@@ -232,7 +241,9 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
 
   void _submit() {
     final String text = _prompt.text.trim();
-    final String? providerId = _resolveProviderId(ref.read(providerCapabilitiesListProvider));
+    final Map<String, Object?> config =
+        _effectiveConfig(ref.read(inspectorPendingConfigProvider(widget.node.id)));
+    final String? providerId = _resolveProviderId(ref.read(providerCapabilitiesListProvider), config);
     final GenerateBlockReason? block = generateBlockReason(
       promptEmpty: text.isEmpty,
       hasApiKey: _hasApiKey(providerId, watch: false),
@@ -243,7 +254,7 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
         .submit(<String, Object?>{
       'prompt': text,
       // 节点还没存过供应商：把判 Key 的那个写进终稿（见头注）；存过的不动，库里那一份才是检查器最后选的。
-      if (widget.node.typeConfig['provider_id'] == null) 'provider_id': providerId,
+      if (config['provider_id'] == null) 'provider_id': providerId,
     });
   }
 
@@ -252,10 +263,20 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
     final c = context.inkColors;
     final t = context.inkTypography;
     final l = context.l10n;
-    final CanvasNode node = widget.node;
-    final String? providerId = node.typeConfig['provider_id'] as String?;
-    final String providerName =
-        providerId == null ? '' : (ref.watch(providerDisplayNamesProvider)[providerId] ?? providerId);
+    // 检查器本地已改、画布节点内存里还没反映的补丁（W2 验收 #5）：摘要、判 Key 的供应商与金额都按
+    // 「已存 + 补丁」算，与检查器同一份配置。
+    final Map<String, Object?> pendingConfig =
+        ref.watch(inspectorPendingConfigProvider(widget.node.id));
+    final Map<String, Object?> config = _effectiveConfig(pendingConfig);
+    final CanvasNode node =
+        pendingConfig.isEmpty ? widget.node : widget.node.copyWith(typeConfig: config);
+    final List<ProviderCapabilities> capabilities = ref.watch(providerCapabilitiesListProvider);
+    final String? gateProviderId = _resolveProviderId(capabilities, config);
+    // 摘要里的服务商与金额 / 判 Key 同一个口径（节点已存 > 上次使用 > 第一个）：节点还没存供应商时，
+    // 写的是金额按它算的那一家，而不是空着。
+    final String providerName = gateProviderId == null
+        ? ''
+        : (ref.watch(providerDisplayNamesProvider)[gateProviderId] ?? gateProviderId);
     final int? durationMs = node.durationMs;
     final CameraMovement? camera = parseCameraMovement(node.cameraName);
     final ShotLanguage lang = node.shotLanguage;
@@ -271,14 +292,13 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
         ref.watch(canvasBaseStyleProvider(widget.canvasId)).valueOrNull?.prefix.trim() ?? '';
     final InspectorSubmitState submitState = ref.watch(inspectorSubmitControllerProvider(node.id));
     final bool busy = submitState is InspectorSubmitSubmitting || submitState is InspectorSubmitRunning;
-    final List<ProviderCapabilities> capabilities = ref.watch(providerCapabilitiesListProvider);
-    final String? gateProviderId = _resolveProviderId(capabilities);
-    // 预估费用：提示词取输入框当前内容（onChanged 已 setState），金额随打字重算，不等防抖落库。
+    // 预估费用：检查器补丁（服务商 / 画质 / 批量 / 时长……）与输入框当前内容一并作 pending——检查器那边
+    // 同样是「已存 typeConfig + 本地值」，两处同一个数；提示词随打字重算，不等防抖落库。
     final NodeCostEstimate? cost = estimateNodeCost(
-      node: node,
+      node: widget.node,
       capabilities: capabilities,
       lastUsedProviderId: _lastUsedProviderId(),
-      pending: <String, Object?>{'prompt': _prompt.text},
+      pending: <String, Object?>{...pendingConfig, 'prompt': _prompt.text},
     );
     final GenerateBlockReason? block = generateBlockReason(
       promptEmpty: _prompt.text.trim().isEmpty,
@@ -316,26 +336,38 @@ class _PromptBarBodyState extends ConsumerState<_PromptBarBody> {
               // 名字 + 摘要整组吃掉剩余宽度，基底风格贴右。原来名字是 Flexible、后面跟 Spacer：
               // 两个 flex 1 平分剩余空间，基底风格就被推到条子中间。
               Expanded(
-                child: Row(
-                  children: <Widget>[
-                    Flexible(
-                      child: Text(nodeDisplayName(context, node),
-                          maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg2)),
-                    ),
-                    if (summary.isNotEmpty) ...<Widget>[
-                      const SizedBox(width: InkSpacing.sm),
-                      Text('·', style: t.meta.copyWith(color: c.fg5)),
-                      const SizedBox(width: InkSpacing.sm),
-                      Flexible(
-                        child: Text(summary.join(' · '),
-                            maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg5)),
-                      ),
-                    ],
-                  ],
+                child: LayoutBuilder(
+                  builder: (BuildContext context, BoxConstraints inner) {
+                    final Widget name = Text(nodeDisplayName(context, node),
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg2));
+                    // 没有摘要：名字独占这一段。
+                    if (summary.isEmpty) return Row(children: <Widget>[Flexible(child: name)]);
+                    // 名字封顶 40%、按自己多宽占多宽，摘要吃掉剩下的全部：两个 flex 1 平分时，名字再短也占着一半的上限，
+                    // 摘要（服务商名是用户判断金额的唯一上下文）在 480 宽的条子上被截成「Wanx Image-t…」。
+                    return Row(
+                      children: <Widget>[
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: inner.maxWidth * 0.4),
+                          child: name,
+                        ),
+                        const SizedBox(width: InkSpacing.sm),
+                        Text('·', style: t.meta.copyWith(color: c.fg5)),
+                        const SizedBox(width: InkSpacing.sm),
+                        Expanded(
+                          child: Text(summary.join(' · '),
+                              maxLines: 1, overflow: TextOverflow.ellipsis, style: t.meta.copyWith(color: c.fg5)),
+                        ),
+                      ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: InkSpacing.sm),
-              _BaseStyleChip(canvasId: widget.canvasId, prefix: prefix),
+              // 基底风格封顶 160：前缀再长也只在 chip 里省略，不把名字 / 摘要挤没、不撑爆这一行。
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 160),
+                child: _BaseStyleChip(canvasId: widget.canvasId, prefix: prefix),
+              ),
             ],
           ),
           const SizedBox(height: InkSpacing.sm),
@@ -467,11 +499,14 @@ class _BaseStyleChip extends ConsumerWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                Text(
-                  prefix.isEmpty ? l.promptBarBaseStyle : '${l.promptBarBaseStyle}：$prefix',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: t.meta.copyWith(color: c.fg5),
+                // Flexible：外层封顶 160 时前缀在这里省略（非 flex 子件拿到的是无界宽度，ellipsis 不生效）。
+                Flexible(
+                  child: Text(
+                    prefix.isEmpty ? l.promptBarBaseStyle : '${l.promptBarBaseStyle}：$prefix',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.meta.copyWith(color: c.fg5),
+                  ),
                 ),
                 if (prefix.isNotEmpty) ...<Widget>[
                   const SizedBox(width: InkSpacing.sm),

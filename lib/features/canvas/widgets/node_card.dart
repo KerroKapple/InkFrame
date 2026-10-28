@@ -622,15 +622,18 @@ class _NodeBody extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     if (node.role == NodeRole.result) {
-      final Widget body = node.type == CanvasNodeType.video
-          ? VideoNodeBody(node: node)
-          : _ResultBody(node: node, resolver: resolver);
       final double? progress =
           node.isImported ? _watchImportProgress(ref, node) : null;
-      if (progress == null) return body;
+      if (progress == null) {
+        return node.type == CanvasNodeType.video
+            ? VideoNodeBody(node: node)
+            : _ResultBody(node: node, resolver: resolver);
+      }
+      // 复制中：壳还没有 url，_ResultBody / VideoNodeBody 会画「等待生成」——导入的媒体不是
+      // 生成出来的，且与状态行「复制中 N%」矛盾。图区只留卡片底色，叠进度条。
       return Stack(
         children: <Widget>[
-          Positioned.fill(child: body),
+          const Positioned.fill(child: SizedBox.expand()),
           Positioned(
             left: 0,
             right: 0,

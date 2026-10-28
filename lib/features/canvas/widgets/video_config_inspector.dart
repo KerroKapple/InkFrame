@@ -21,6 +21,7 @@ import '../../../l10n/l10n_x.dart';
 import '../../../theme/tokens.dart';
 import '../../generation/services/node_cost.dart';
 import '../models/canvas_node.dart';
+import '../providers/inspector_pending_config.dart';
 import '../providers/inspector_submit_controller.dart';
 import '../util/camera_labels.dart';
 import '../util/generate_gate.dart';
@@ -54,7 +55,12 @@ class _VideoConfigInspectorState extends ConsumerState<VideoConfigInspector> {
   void initState() {
     super.initState();
     final caps = _videoCaps();
-    final tc = widget.node.typeConfig;
+    // 已存 + 本控制器还挂着的本地补丁（写失败等重试时控制器保活、补丁还在）：切走再切回来，初值与提示词条
+    // 估价用的是同一份配置（W2 验收 #5）。
+    final Map<String, Object?> tc = <String, Object?>{
+      ...widget.node.typeConfig,
+      ...ref.read(inspectorPendingConfigProvider(widget.node.id)),
+    };
 
     // 默认值链：节点已存 > 上次使用（须仍在能力列表）> first——与提示词条判「生成」可不可点
     // 同一条链（util/generate_gate.dart）。

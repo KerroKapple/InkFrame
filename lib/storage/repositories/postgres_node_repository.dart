@@ -191,6 +191,12 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
       // LB-14：空 result 壳判据不能只看 3 个 url——批量部分成功后崩溃时主图
       // 可能尚未回写节点，故必须再排除「有 success slot」与「有在途 job」的节点，
       // 否则会误删仍有 slot 产物的节点。status 字面量一律引 LB-01 常量。
+      //
+      // 导入壳（origin=import）在复制完成前也是「三个 url 皆空」。本清扫挂在任务队列懒启动
+      // 的 init 上（会话里第一次点「生成」、DB 恢复后重建队列都会跑），不只在启动时跑，
+      // 故排除本次 PG 实例启动之后建的导入壳——它们可能正在复制；之前建的是上次进程崩溃
+      // 遗留的空壳，照常收进回收站。created_at 由库端 DEFAULT now() 写，与
+      // pg_postmaster_start_time() 同一时钟。
       final r = await session.execute(
         Sql.named(
           'UPDATE nodes SET deleted_at = now(), updated_at = now() '
@@ -199,6 +205,9 @@ class PostgresNodeRepository with BaseRepository implements NodeRepository {
           "AND COALESCE(type_config->>'image_url','') = '' "
           "AND COALESCE(type_config->>'video_url','') = '' "
           "AND COALESCE(type_config->>'thumbnail_url','') = '' "
+          "AND NOT (COALESCE(type_config->>'${ImportKeys.origin}','') "
+          "= '${ImportKeys.originImport}' "
+          'AND created_at >= pg_postmaster_start_time()) '
           'AND NOT EXISTS (SELECT 1 FROM batch_results br '
           "WHERE br.node_id = nodes.id AND br.status = '${SlotStatuses.success}') "
           'AND NOT EXISTS (SELECT 1 FROM jobs j '

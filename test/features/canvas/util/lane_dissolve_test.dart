@@ -7,8 +7,9 @@
 // activeJobsInLane 不排除终态 ⇒「succeeded 不算」红；不比 canvasId ⇒「别的画布不算」红；
 // 只看 sourceNodeId ⇒「resultNodeId 命中也算」红。
 //
-// 「被解散的道折叠中按展开厚度」：解散后的位置只取决于本道的**起始边**（前面各道的有效厚度之和），
-// 本道自己的厚度不进公式——这条钉的是「结果 == 未折叠时」，本道折叠与否不该改结果。
+// 「被解散的道折叠与否不改结果（回归钉）」：解散后的位置只取决于本道的**起始边**（前面各道的有效厚度之和），
+// 本道自己的厚度不进公式——这条只是回归钉，钉「结果 == 未折叠时」；没有对应的变异点
+// （把本道从折叠集合里剔除与否是等价变异，lane_dissolve.dart 已不做这一步）。
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
@@ -155,7 +156,7 @@ void main() {
       }
     });
 
-    test('被解散的道折叠中：按展开厚度换算（结果 == 未折叠时的结果）', () {
+    test('被解散的道折叠与否不改结果（回归钉：结果 == 未折叠时的结果）', () {
       final CanvasNode n = _node('n1', const Offset(120, 520), laneId: 'b');
       for (final double scale in <double>[0.5, 1.0, 2.0]) {
         final Map<String, Offset> collapsed = dissolvedPositions(
