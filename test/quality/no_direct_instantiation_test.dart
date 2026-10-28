@@ -66,18 +66,100 @@ const _frameworkSingletonOwners = <String>{
   'RawKeyboard',
 };
 
+// R1：直接实例化注入物。命中"赋值/返回 + 大写类名 + (" 且不含经注入读取。
+final _r1Call = RegExp(
+  r'[A-Z][a-zA-Z]*(Service|Repository|Provider|Client|Manager|Handler)\s*\(',
+);
+final _r1AssignContext = RegExp(r'(return|=|final|var)\s+[A-Z].*\(');
+// 经注入读取：ref.watch / read / listen，或调用方传进来的 ProviderReader——不带接收者的
+// read(xxxProvider…)（见 canvas/util/canvas_history_actions.dart：胶囊上的按钮晚几秒才点，不能攥着
+// 可能已卸载的 WidgetRef）。后一支只认「read 前面既不是标识符字符也不是 .」且实参以 xxxProvider 开头：
+// store.read( / container.read( / file.read( 都不是注入，不能让同一行的直接实例化逃过去。
+final _r1RefAccess = RegExp(
+  r'ref\.(watch|read|listen)|(?<![\w.])read\(\s*[a-z]\w*Provider\b',
+);
+final _r1ClassName = RegExp(
+  r'[A-Z][a-zA-Z]*(Service|Repository|Provider|Client|Manager|Handler)',
+);
+
+/// R1 判定（纯函数）：[line] 是直接实例化注入物 ⇒ 返回类名；不像实例化、经注入读取、
+/// 或是值对象白名单里的类 ⇒ null。
+String? r1DirectInstantiation(String line) {
+  if (!_r1Call.hasMatch(line)) return null;
+  if (!_r1AssignContext.hasMatch(line)) return null;
+  if (_r1RefAccess.hasMatch(line)) return null;
+  final cls = _r1ClassName.firstMatch(line)?.group(0);
+  if (cls == null || _allowedDirectClasses.contains(cls)) return null;
+  return cls;
+}
+
 void main() {
-  // R1：直接实例化注入物。命中"赋值/返回 + 大写类名 + (" 且不含 ref.watch/read/listen。
-  final r1Call = RegExp(
-    r'[A-Z][a-zA-Z]*(Service|Repository|Provider|Client|Manager|Handler)\s*\(',
-  );
-  final r1AssignContext = RegExp(r'(return|=|final|var)\s+[A-Z].*\(');
-  // 经注入读取：ref.watch / read / listen，或调用方传进来的 ProviderReader（read(xxxProvider(...))，
-  // 见 canvas/util/canvas_history_actions.dart——胶囊上的按钮晚几秒才点，不能攥着可能已卸载的 WidgetRef）。
-  final r1RefAccess = RegExp(r'ref\.(watch|read|listen)|\bread\(');
-  final r1ClassName = RegExp(
-    r'[A-Z][a-zA-Z]*(Service|Repository|Provider|Client|Manager|Handler)',
-  );
+  // R1 判定自证：豁免只放过真正的注入读取，别的 .read( 不算。
+  group('R1 判定', () {
+    test('带接收者的 read( 不豁免：FooService(store.read()) 判违规', () {
+      expect(
+        r1DirectInstantiation('final x = FooService(store.read());'),
+        'FooService',
+      );
+    });
+
+    test('带接收者的 read( 不豁免：FooService(container.read(a)) 判违规', () {
+      expect(
+        r1DirectInstantiation('final x = FooService(container.read(a));'),
+        'FooService',
+      );
+    });
+
+    test('带接收者的 read( 即使实参是 provider 也不豁免', () {
+      expect(
+        r1DirectInstantiation(
+          'final x = FooService(storage.read(fooProvider));',
+        ),
+        'FooService',
+      );
+    });
+
+    test('不带接收者的 read( 实参不是 provider ⇒ 不豁免', () {
+      expect(
+        r1DirectInstantiation('final x = FooService(read(config));'),
+        'FooService',
+      );
+    });
+
+    test('不带接收者的 read(xxxProvider…) 放行（ProviderReader）', () {
+      expect(
+        r1DirectInstantiation(
+          'final Set<String> collapsed = read(laneCollapseProvider(canvasId));',
+        ),
+        isNull,
+      );
+    });
+
+    test('ref.watch / ref.read / ref.listen 放行', () {
+      expect(
+        r1DirectInstantiation('final s = FooService(ref.watch(aProvider));'),
+        isNull,
+      );
+      expect(
+        r1DirectInstantiation('final s = FooService(ref.read(aProvider));'),
+        isNull,
+      );
+      expect(
+        r1DirectInstantiation('final s = FooService(ref.listen(aProvider, cb));'),
+        isNull,
+      );
+    });
+
+    test('裸实例化判违规；值对象白名单与非赋值 / 返回上下文放行', () {
+      expect(r1DirectInstantiation('final s = FooService();'), 'FooService');
+      expect(
+        r1DirectInstantiation('return BarRepository(db);'),
+        'BarRepository',
+      );
+      expect(r1DirectInstantiation('final d = DateTime(2026);'), isNull);
+      expect(r1DirectInstantiation('foo(FooService());'), isNull);
+    });
+  });
 
   // R2：静态单例访问。捕获 Owner 以便对框架 binding 豁免。
   final r2Singleton =
@@ -114,16 +196,12 @@ void main() {
         final at = '$path:${i + 1}';
 
         // R1：直接实例化注入物（赋值/返回上下文，且非 ref. 注入）。
-        if (r1Call.hasMatch(raw) &&
-            r1AssignContext.hasMatch(raw) &&
-            !r1RefAccess.hasMatch(raw)) {
-          final cls = r1ClassName.firstMatch(raw)?.group(0);
-          if (cls != null && !_allowedDirectClasses.contains(cls)) {
-            violations.add(
-              '$at  [R1 DIRECT_INSTANTIATION] new $cls(...) 违反 DIP，'
-              '改经 ref.watch(provider) 注入 / 移到 lib/core/di/：${raw.trim()}',
-            );
-          }
+        final cls = r1DirectInstantiation(raw);
+        if (cls != null) {
+          violations.add(
+            '$at  [R1 DIRECT_INSTANTIATION] new $cls(...) 违反 DIP，'
+            '改经 ref.watch(provider) 注入 / 移到 lib/core/di/：${raw.trim()}',
+          );
         }
 
         // R2：静态单例访问（框架 binding 单例豁免）。

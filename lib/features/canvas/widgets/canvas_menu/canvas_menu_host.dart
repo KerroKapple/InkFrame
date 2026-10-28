@@ -243,7 +243,8 @@ class _CanvasMenuLayer extends ConsumerWidget {
         ),
       CanvasMenuKind.blank => InkMenuPanel<String>(
           key: CanvasMenuKeys.blankMenu,
-          width: InkMenuPanel.blankWidth,
+          // 与新建菜单同宽：撤销 / 重做行带步名 + 键位，196 放不下。
+          width: InkMenuPanel.blankMenuWidth,
           groups: buildMenuGroups(
             CanvasMenuScope.blank,
             CanvasMenuContext(
@@ -259,7 +260,7 @@ class _CanvasMenuLayer extends ConsumerWidget {
           emptyText: l.canvasCreateMenuNoMatch,
           onFocusChange: _onFocusChange,
         ),
-      // 节点右键菜单与空白处右键菜单同款：宽 196、不带搜索框。
+      // 节点右键菜单：宽 196（比空白处菜单窄）、不带搜索框。
       CanvasMenuKind.node => InkMenuPanel<String>(
           key: CanvasMenuKeys.nodeMenu,
           width: InkMenuPanel.blankWidth,

@@ -121,8 +121,12 @@ class InkMenuPanel<T> extends StatefulWidget {
   /// 新建菜单宽（稿 box-sizing: border-box，含边与内边距）。
   static const double createWidth = 236;
 
-  /// 空白处右键菜单 / 节点右键菜单（及其子菜单）宽。
+  /// 节点右键菜单（及各菜单的子菜单）宽。
   static const double blankWidth = 196;
+
+  /// 空白处右键菜单宽：与新建菜单同宽。最上面一组是「撤销 / 重做〈步名〉」+ 行尾键位，196 宽时
+  /// 标签只剩约 98px，「Undo Delete 3 nodes」「撤销 删除 3 个节点」都会被省略号截断。
+  static const double blankMenuWidth = createWidth;
 
   /// 行高。
   static const double rowHeight = 28;
