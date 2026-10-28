@@ -7,6 +7,8 @@
 //   - submit：先落最终 config，再经 GenerationController.submitFromConfigNode
 //   - 失败携带结构化 InspectorSubmitError，文案由 view 层映射 ARB
 //   - 自动保存失败独立发布到 inspectorAutoSaveStatusProvider（见下方注释）
+//   - 本地已改的 type_config 键值在发起写入时合进 inspectorPendingConfigProvider（inspector_pending_config.dart）：
+//     画布节点内存不随 saveConfig 刷新，提示词条估价靠它与检查器对上（W2 验收 #5）
 //
 // 同一节点的 type_config 写入（自动保存 + submit 的终稿）全部走一条串行链
 // _serialized：落库顺序 = 发起顺序，在途的旧 patch 盖不到终稿头上。
@@ -32,6 +34,7 @@ import '../../../core/di/secure_storage.dart';
 import '../../../core/errors/ink_error.dart';
 import '../../../core/interfaces/pending_write_flush.dart';
 import '../../generation/generation_controller.dart';
+import 'inspector_pending_config.dart';
 
 /// 日志 module 名（英文内部常量，不 i18n）。
 const String _logModule = 'inspector.autosave';
@@ -244,6 +247,12 @@ class InspectorSubmitController
       inspectorAutoSaveStatusProvider(configNodeId),
       (_, _) {},
     );
+    // 本地补丁的发布端同理挂在本控制器的生命周期上（见 inspector_pending_config.dart 头注）：控制器回收时
+    // 补丁随之清掉，有挂起写入时随控制器一起留下。
+    ref.listen<Map<String, Object?>>(
+      inspectorPendingConfigProvider(configNodeId),
+      (_, _) {},
+    );
     return const InspectorSubmitIdle();
   }
 
@@ -278,7 +287,20 @@ class InspectorSubmitController
   /// 不抛——调用方多半是 onChanged 回调（fire-and-forget）。失败不再静默：翻成
   /// [InspectorAutoSaveState] 发布给 UI，并按退避自动重试；重试用尽后把
   /// 「未保存 + 重试」留给用户（[retryUnsaved]）。
-  Future<void> saveConfig(Map<String, Object?> patch) => _attemptWrite(patch);
+  ///
+  /// 发起时先把 [patch] 合进 [inspectorPendingConfigProvider]：提示词条估价立刻看得到，不等落库。
+  Future<void> saveConfig(Map<String, Object?> patch) {
+    _publishPendingConfig(patch);
+    return _attemptWrite(patch);
+  }
+
+  /// 把本地已改的键值合进 [inspectorPendingConfigProvider]（只有本控制器写）。
+  ///
+  /// 退避重试 / 退出冲刷 / 撤销前冲写不经这里：它们写的键值在 saveConfig / saveDebounced 发起时已经合进来过。
+  void _publishPendingConfig(Map<String, Object?> patch) {
+    if (!_alive || patch.isEmpty) return;
+    ref.read(inspectorPendingConfigProvider(arg).notifier).merge(patch);
+  }
 
   /// 挂起写入 = 未发射的防抖 patch + 失败等重试的 `_unsaved`。
   ///
@@ -485,6 +507,7 @@ class InspectorSubmitController
   /// 而不是 widget 的 State 上。
   void saveDebounced(Map<String, Object?> patch) {
     _pendingDebounced.addAll(patch);
+    _publishPendingConfig(patch);
     _debounce?.cancel();
     // 一串输入只取一次保活凭据，而不是每次按键换一个。
     _debounceKeepAlive ??= ref.keepAlive();
@@ -521,6 +544,8 @@ class InspectorSubmitController
     // 还没发射的防抖 patch 直接丢掉：终稿是检查器按当前 provider 能力裁剪过的
     // 完整快照，补落一笔旧的局部 patch 只会把刚被刻意省掉的键又写回去。
     _cancelPendingDebounce();
+    // 终稿是这一刻的完整意图：与 saveConfig 一样先合进本地补丁，提示词条估价跟着它走。
+    _publishPendingConfig(finalConfig);
     // 提交期间挂起 autoDispose：widget 中途关闭也要把状态机走完。
     final link = ref.keepAlive();
     state = const InspectorSubmitSubmitting();
