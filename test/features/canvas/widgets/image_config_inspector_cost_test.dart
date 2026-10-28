@@ -5,7 +5,9 @@
 
 import 'dart:io';
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/character_assets.dart';
 import 'package:inkframe/core/di/file_resolver.dart';
@@ -19,8 +21,11 @@ import 'package:inkframe/core/interfaces/style_lane_repository.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/core/models/provider_protocol_template.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
+import 'package:inkframe/features/canvas/widgets/cost_breakdown_tooltip.dart';
 import 'package:inkframe/features/canvas/widgets/image_config_inspector.dart';
 import 'package:inkframe/features/canvas/widgets/inspector_rows.dart';
+import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/providers/wanx_image_provider.dart';
 
@@ -158,8 +163,9 @@ void main() {
   Future<void> pump(
     WidgetTester tester,
     CanvasNode node,
-    List<caps.ProviderCapabilities> capabilities,
-  ) async {
+    List<caps.ProviderCapabilities> capabilities, {
+    List<Override> extraOverrides = const <Override>[],
+  }) async {
     await pumpInkApp(
       tester,
       Scaffold(
@@ -185,6 +191,7 @@ void main() {
         promptPresetRepositoryProvider.overrideWith((ref) async => FakePromptPresetRepo()),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
         toastServiceProvider.overrideWithValue(RecordingToastService()),
+        ...extraOverrides,
       ],
     );
     await tester.pumpAndSettle();
@@ -234,5 +241,51 @@ void main() {
     await tester.ensureVisible(find.text('Est. cost'));
     expect(costValue('—'), findsOneWidget);
     expect(find.text(r'$0.00'), findsNothing);
+  });
+
+  // 锁定既有行为：悬停检查器「生成」能看到明细卡，证明 costEstimate 经
+  // InspectorStatusBinding 传到了按钮。拿掉 image_config_inspector 里传给
+  // InspectorStatusBinding 的 `costEstimate: cost`（改成 null）这条会变红。
+  testWidgets('悬停「生成」出明细卡：costEstimate 经 Binding 传到按钮', (tester) async {
+    final AppLocalizations en = lookupAppLocalizations(const Locale('en'));
+    final node = await seedConfigNode(<String, Object?>{
+      'provider_id': 'wanx-image',
+      'prompt': 'a cat',
+      'batch_size': 4,
+    });
+    await pump(
+      tester,
+      node,
+      <caps.ProviderCapabilities>[kWanxImageCapabilities],
+      extraOverrides: <Override>[
+        inspectorHasApiKeyProvider.overrideWith((ref, String providerId) async => true),
+      ],
+    );
+
+    final Finder button = find.widgetWithText(FilledButton, 'Generate');
+    expect(button, findsOneWidget);
+    expect(find.byKey(CostBreakdownTooltip.contentKey), findsNothing);
+
+    await tester.ensureVisible(button);
+    final TestGesture mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(button));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final Finder card = find.byKey(CostBreakdownTooltip.contentKey);
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.text(en.costFormulaBatch(r'$0.032', 4, r'$0.13')),
+      ),
+      findsOneWidget,
+    );
+
+    await mouse.moveTo(Offset.zero);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
   });
 }
