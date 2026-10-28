@@ -1315,16 +1315,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get laneTintAuto => 'Auto';
 
   @override
-  String get laneDelete => 'Delete lane';
-
-  @override
-  String get laneDeleteConfirmTitle => 'Delete this lane?';
-
-  @override
-  String get laneDeleteConfirmBody =>
-      'Nodes in this lane keep their position but lose the lane style.';
-
-  @override
   String get laneDialogSave => 'Save';
 
   @override
