@@ -14,7 +14,9 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/unit_of_work.dart';
+import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/canvas/util/canvas_extent.dart';
 
@@ -185,6 +187,9 @@ class _FakeEdgeRepo implements EdgeRepository {
   final List<String> softDeleted = [];
   final List<String> restored = [];
 
+  /// listByCanvas 被调用的次数。discardImportShell 让边控制器失效后应再加 1。
+  int listByCanvasCalls = 0;
+
   @override
   Future<String> create({
     required String canvasId,
@@ -221,7 +226,10 @@ class _FakeEdgeRepo implements EdgeRepository {
   @override
   Future<Map<String, Object?>?> findById(String id) async => null;
   @override
-  Future<List<Map<String, Object?>>> listByCanvas(String c) async => [];
+  Future<List<Map<String, Object?>>> listByCanvas(String c) async {
+    listByCanvasCalls++;
+    return rows.where((r) => r['canvas_id'] == c).toList(growable: false);
+  }
   @override
   Future<int> update(String id, Map<String, Object?> patch) async => 0;
   @override
@@ -552,7 +560,36 @@ void main() {
         originalName: 'a.png',
       );
 
+      // 锁定既有行为：复制期间从壳上拉过的线，硬删后 CASCADE 已不在库里，边控制器必须重读。
+      // 拿掉 discardImportShell 里的 ref.invalidate(canvasEdgesControllerProvider) 会变红。
+      edgeRepo.rows.add(<String, Object?>{
+        'id': 'e-shell',
+        'canvas_id': canvasId,
+        'source_node_id': shell.id,
+        'target_node_id': 'other',
+        'edge_type': 'data',
+        'role': 'reference',
+        'sort_order': 0,
+      });
+      final subscription = container.listen(
+        canvasEdgesControllerProvider(canvasId),
+        (Object? previous, Object? next) {},
+      );
+      addTearDown(subscription.close);
+      final List<CanvasEdge> before =
+          await container.read(canvasEdgesControllerProvider(canvasId).future);
+      expect(before.map((e) => e.id), contains('e-shell'));
+      final int callsBefore = edgeRepo.listByCanvasCalls;
+
+      // 硬删在 invalidate 之前完成 CASCADE。先从仓储拿掉这条边，重读才能看到它消失。
+      // invalidate 只是把重读登记进微任务，要等边控制器的 future 落定，listByCanvas 才跑完。
+      edgeRepo.rows.removeWhere((r) => r['id'] == 'e-shell');
       await ctrl.discardImportShell(shell.id);
+      final List<CanvasEdge> after =
+          await container.read(canvasEdgesControllerProvider(canvasId).future);
+
+      expect(edgeRepo.listByCanvasCalls, callsBefore + 1);
+      expect(after.map((e) => e.id), isNot(contains('e-shell')));
 
       expect(repo.hardDeleted, <String>[shell.id]);
       expect(repo.softDeleted, isEmpty, reason: '失败的壳不进回收站');

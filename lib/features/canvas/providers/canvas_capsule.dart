@@ -82,7 +82,7 @@ class CanvasCapsuleMessage {
   /// 动作按钮的字（如「重做」）。给了就该是 [CanvasCapsuleKind.action]（debug 断言）。
   final String? actionLabel;
 
-  /// 动作旁的键位提示（如 mac「⌘⇧Z」/ Windows「Ctrl Y」），由调用方按平台给。
+  /// 动作旁的键位提示（如 mac「⇧⌘Z」/ Windows「Ctrl Y」），由调用方按平台给。
   final String? actionHint;
 
   /// 点动作的回调；宿主调完它就收起胶囊。动作按钮只给鼠标（不进 Tab 序），键盘走该动作的快捷键。

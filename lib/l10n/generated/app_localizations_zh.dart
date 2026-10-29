@@ -1261,15 +1261,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get laneTintAuto => '自动';
 
   @override
-  String get laneDelete => '删除泳道';
-
-  @override
-  String get laneDeleteConfirmTitle => '删除该泳道？';
-
-  @override
-  String get laneDeleteConfirmBody => '泳道内节点位置保留，但会失去该泳道风格。';
-
-  @override
   String get laneDialogSave => '保存';
 
   @override

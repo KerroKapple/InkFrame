@@ -33,7 +33,7 @@ class InkCanvasCapsule extends StatelessWidget {
   /// 动作按钮的字（如「重做」）。与 [onAction] 都给才画动作。
   final String? actionLabel;
 
-  /// 动作旁的键位提示（如「Ctrl Y」/「⌘⇧Z」），按平台由调用方给。
+  /// 动作旁的键位提示（如「Ctrl Y」/「⇧⌘Z」），按平台由调用方给。
   final String? actionHint;
 
   final VoidCallback? onAction;

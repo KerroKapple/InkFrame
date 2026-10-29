@@ -1,6 +1,7 @@
 // VideoConfigInspector widget 测试——骨架层级：
 // 渲染 prompt / duration / camera 控件；Generate 按钮初始 disabled。
 
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/providers.dart';
@@ -9,7 +10,10 @@ import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/core/models/shot_language.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
+import 'package:inkframe/features/canvas/providers/inspector_submit_controller.dart';
+import 'package:inkframe/features/canvas/widgets/cost_breakdown_tooltip.dart';
 import 'package:inkframe/features/canvas/widgets/inspector_rows.dart';
+import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/features/canvas/widgets/node_inputs_section.dart';
 import 'package:inkframe/features/canvas/widgets/video_config_inspector.dart';
 
@@ -390,6 +394,67 @@ void main() {
     // 传进来的 node 没变（typeConfig 还是 5 秒）：金额跟着变只能是走了检查器的本地态。
     expect(costValue(r'$3.00'), findsOneWidget);
     expect(costValue(r'$1.50'), findsNothing);
+  });
+
+  // 锁定既有行为：悬停「生成视频」能看到明细卡，证明 costEstimate 经 Binding 传到了按钮。
+  // 拿掉 video_config_inspector 里传给 InspectorStatusBinding 的 `costEstimate: cost`（改成 null）这条会变红。
+  // 视频按秒计价，公式是 costFormulaPerSecond，不是批量的 costFormulaBatch。
+  testWidgets('悬停「生成视频」出明细卡：costEstimate 经 Binding 传到按钮', (tester) async {
+    final AppLocalizations zh = lookupAppLocalizations(const Locale('zh'));
+    final perSecondCaps = _fakeVideoCaps.copyWith(
+      costModel: const CostModel.perSecondVideo(
+        usdPerSecondAt1080p: 0.30,
+        resolutionMultiplier: {caps.Resolution.p720: 0.5, caps.Resolution.p1080: 1.0},
+      ),
+    );
+    const node = CanvasNode(
+      id: 'n-cost',
+      label: '',
+      type: CanvasNodeType.video,
+      role: NodeRole.config,
+      canvasId: 'cv1',
+      typeConfig: <String, Object?>{
+        'provider_id': 'wanx-t2v',
+        'duration_ms': 5000,
+        'prompt': 'a boat',
+      },
+    );
+    await pumpInkApp(
+      tester,
+      const Scaffold(body: SingleChildScrollView(child: VideoConfigInspector(node: node))),
+      locale: const Locale('zh'),
+      overrides: [
+        providerCapabilitiesListProvider.overrideWith((ref) => [perSecondCaps]),
+        inspectorHasApiKeyProvider.overrideWith((ref, String providerId) async => true),
+      ],
+    );
+    await tester.pumpAndSettle();
+
+    final Finder button = find.widgetWithText(FilledButton, '生成视频');
+    expect(button, findsOneWidget);
+    expect(find.byKey(CostBreakdownTooltip.contentKey), findsNothing);
+
+    await tester.ensureVisible(button);
+    final TestGesture mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    addTearDown(mouse.removePointer);
+    await mouse.moveTo(tester.getCenter(button));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final Finder card = find.byKey(CostBreakdownTooltip.contentKey);
+    expect(card, findsOneWidget);
+    expect(
+      find.descendant(
+        of: card,
+        matching: find.text(zh.costFormulaPerSecond(r'$0.30')),
+      ),
+      findsOneWidget,
+    );
+
+    await mouse.moveTo(Offset.zero);
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('Generate 按钮初始 disabled（prompt 空）', (tester) async {

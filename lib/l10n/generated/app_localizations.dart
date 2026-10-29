@@ -2408,24 +2408,6 @@ abstract class AppLocalizations {
   /// **'Auto'**
   String get laneTintAuto;
 
-  /// No description provided for @laneDelete.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete lane'**
-  String get laneDelete;
-
-  /// No description provided for @laneDeleteConfirmTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Delete this lane?'**
-  String get laneDeleteConfirmTitle;
-
-  /// No description provided for @laneDeleteConfirmBody.
-  ///
-  /// In en, this message translates to:
-  /// **'Nodes in this lane keep their position but lose the lane style.'**
-  String get laneDeleteConfirmBody;
-
   /// No description provided for @laneDialogSave.
   ///
   /// In en, this message translates to:
