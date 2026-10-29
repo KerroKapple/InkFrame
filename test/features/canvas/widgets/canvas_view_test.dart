@@ -62,6 +62,21 @@ class _FakeNodesController extends CanvasNodesController {
     final previous = state.valueOrNull ?? const <CanvasNode>[];
     state = AsyncData([...previous, deletion.node]);
   }
+
+  /// 撤销删除走撤销栈的 DeleteNodesCommand → restoreAll：逐个记进 [restoreCalls] 并放回内存，
+  /// 返回放回的张数（内存里已经在的不重复插入）。
+  @override
+  Future<int> restoreAll(List<NodeDeletion> deletions) async {
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    final present = <String>{for (final n in previous) n.id};
+    final back = <CanvasNode>[];
+    for (final deletion in deletions) {
+      restoreCalls.add(deletion);
+      if (present.add(deletion.node.id)) back.add(deletion.node);
+    }
+    state = AsyncData([...previous, ...back]);
+    return back.length;
+  }
 }
 
 /// 边 undo 测试用：seed 一条边，捕获 removeEdge/restore 调用。
@@ -146,14 +161,35 @@ class _CascadeNodesController extends CanvasNodesController {
       if (edge != null) await _edges.restore(edge);
     }
   }
+
+  /// 撤销删除走撤销栈的 DeleteNodesCommand → restoreAll：同 [restore]，连带复原令牌里的边；
+  /// 返回放回的张数。
+  @override
+  Future<int> restoreAll(List<NodeDeletion> deletions) async {
+    final previous = state.valueOrNull ?? const <CanvasNode>[];
+    final present = <String>{for (final n in previous) n.id};
+    final back = <CanvasNode>[];
+    for (final deletion in deletions) {
+      if (present.add(deletion.node.id)) back.add(deletion.node);
+    }
+    state = AsyncData([...previous, ...back]);
+    for (final deletion in deletions) {
+      for (final eid in deletion.edgeIds) {
+        final edge = _removedEdges[eid];
+        if (edge != null) await _edges.restore(edge);
+      }
+    }
+    return back.length;
+  }
 }
 
-/// restore 抛 InkError → 触发 util/canvas_node_delete.dart 的 undoFailed 兜底提示。
+/// restoreAll 抛 InkError → 撤销栈视同 failed，错误卡「Couldn't undo」由执行口
+/// （util/canvas_history_actions.dart 的 _afterEffects）出。
 class _RestoreFailNodesController extends _FakeNodesController {
   _RestoreFailNodesController(super.seed);
 
   @override
-  Future<void> restore(NodeDeletion deletion) async {
+  Future<int> restoreAll(List<NodeDeletion> deletions) async {
     throw const LocalIOError();
   }
 }

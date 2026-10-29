@@ -1,7 +1,11 @@
 // NodeInputsSection widget 测试——入边列表 + role 能力门控：
 // 渲染 data 入边行；role 下拉按 supportsFirstFrame/LastFrame 过滤；
 // 当前 role 不在允许集时保留（防 DropdownButton 断言）；
-// 切 role → updateRole 落库；移除 → removeEdge；空态文案。
+// 切 role → updateRole 落库；移除 → 走 deleteEdgeWithUndo（与舞台删线同一条路：撤销卡「Link deleted」，
+// 失败出「Failed to delete link」——原来静默吞掉）；空态文案。
+//
+// 变异对照：node_inputs_section.dart 改回 `removeEdge(...).catchError` ⇒「移除失败 ⇒ Failed to delete link」
+// 与「点移除 → 边被删除」的撤销卡断言红。
 
 import 'dart:io';
 
@@ -11,15 +15,18 @@ import 'package:inkframe/core/di/file_resolver.dart';
 import 'package:inkframe/core/di/repositories.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/file_resolver_service.dart';
+import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/models/cost_model.dart';
 import 'package:inkframe/core/models/provider_capabilities.dart' as caps;
 import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/widgets/node_inputs_section.dart';
+import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/theme/components/ink_error_banner.dart';
 import 'package:inkframe/theme/primitives/ink_dashed_slot.dart';
 
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/test_app.dart';
 
 const _kCanvasId = 'canvas-1';
@@ -129,13 +136,22 @@ const _imageCaps = caps.ProviderCapabilities(
   burst: 1,
 );
 
+/// 软删必失败的边仓储（「移除」失败用）：控制器回滚内存、上抛 InkError。
+class _FailingSoftDeleteEdgeRepository extends InMemoryEdgeRepository {
+  @override
+  Future<int> softDelete(String id) async =>
+      throw const LocalIOError(extra: <String, Object?>{'op': 'softDelete'});
+}
+
 void main() {
   late InMemoryNodeRepository nodeRepo;
   late InMemoryEdgeRepository edgeRepo;
+  late RecordingToastService toast;
 
   setUp(() {
     nodeRepo = InMemoryNodeRepository();
     edgeRepo = InMemoryEdgeRepository();
+    toast = RecordingToastService();
   });
 
   /// 预置一个 source result 节点 + 指向 target 的 data 边，返回 (targetNode, edgeId)。
@@ -190,6 +206,7 @@ void main() {
         nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
         edgeRepositoryProvider.overrideWith((ref) async => edgeRepo),
         fileResolverServiceProvider.overrideWithValue(_FakeResolver()),
+        toastServiceProvider.overrideWithValue(toast),
       ],
     );
     await tester.pumpAndSettle();
@@ -271,6 +288,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(await edgeRepo.listByCanvas(_kCanvasId), isEmpty);
+    expect(toast.titles, <String>['Link deleted'], reason: '与舞台删线同一条路：进撤销栈 + 撤销卡');
+    expect(toast.kinds, <ToastKind>[ToastKind.undo]);
+    expect(toast.shown.single.primary?.label, 'Undo');
+  });
+
+  testWidgets('移除失败 ⇒ Failed to delete link（原来静默吞掉）', (tester) async {
+    edgeRepo = _FailingSoftDeleteEdgeRepository();
+    final s = await seed();
+    await pump(tester, s.target, _bothFramesCaps);
+
+    await tester.tap(find.byIcon(Icons.link_off));
+    await tester.pumpAndSettle();
+
+    expect(toast.titles, <String>['Failed to delete link']);
+    expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    expect(toast.shown.single.primary, isNull, reason: '没删成，没有可撤销的东西');
+    expect(find.text('SrcNode'), findsOneWidget, reason: '控制器回滚，这一行冒回来');
   });
 
   group('B3 参考图 UI 补完', () {

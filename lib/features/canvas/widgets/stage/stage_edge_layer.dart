@@ -9,22 +9,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/di/canvas_style.dart';
-import '../../../../core/errors/ink_error.dart';
-import '../../../../core/interfaces/toast_service.dart';
-import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../l10n/l10n_x.dart';
 import '../../../../theme/app_theme.dart';
 import '../../../../theme/components/ink_error_banner.dart';
 import '../../../../theme/tokens.dart';
-import '../../../notifications/providers/toast_service_provider.dart';
 import '../../models/canvas_edge.dart';
 import '../../models/canvas_node.dart';
 import '../../providers/canvas_edges_controller.dart';
 import '../../providers/canvas_lanes_controller.dart';
 import '../../providers/canvas_selection_controller.dart';
 import '../../providers/node_drag_delta.dart';
-import '../../providers/selected_edge_controller.dart';
-import '../../util/canvas_snackbars.dart';
+import '../../util/canvas_edge_delete.dart';
 import '../../util/edge_hit_test.dart';
 import '../../util/edge_style.dart';
 import '../../util/lane_geometry.dart';
@@ -137,50 +132,15 @@ class StageEdgeDeleteOverlay extends ConsumerWidget {
   final LaneDirection direction;
   final TransformationController transform;
 
-  /// 本层只在有选中边时挂着：下面第一步清选中（删边时连线也先从内存里拿掉），舞台骨架下一帧就把本层拆了，
-  /// 写库往往比下一帧慢——等它回来，本层的 context / ref 早已失效。原来挂在舞台层上时没有这个问题，
-  /// 搬出来之后提示要用的东西（文案、通知服务）在清选中之前取齐，同 NodeCardSlot._commitDrag。
+  /// 删边走 util/canvas_edge_delete.dart 的 deleteEdgeWithUndo（与检查器入边区「移除」同一条路：进撤销栈 +
+  /// 撤销卡，失败出失败卡）。本层只在有选中边时挂着：那边第一步清选中，舞台骨架下一帧就把本层拆了，写库往往比
+  /// 下一帧慢——所以它在第一个 await 之前取齐容器与文案，之后不再碰本层的 context / ref。
   Future<void> _handleEdgeDelete(
     BuildContext context,
     WidgetRef ref,
     CanvasEdge edge,
-  ) async {
-    final AppLocalizations l = context.l10n;
-    final ToastService toasts = ref.read(toastServiceProvider);
-    ref.read(selectedEdgeControllerProvider(canvasId).notifier).clear();
-    final edgesCtrl = ref.read(
-      canvasEdgesControllerProvider(canvasId).notifier,
-    );
-    try {
-      final removed = await edgesCtrl.removeEdge(edge.id);
-      if (removed == null) return;
-      // 撤销卡，主按钮「撤销」复原；通知服务与文案都是 await 之前取好的。
-      showUndoToast(
-        toasts,
-        message: l.edgeDeleted,
-        undoLabel: l.commonUndo,
-        onUndo: () => _restoreEdge(toasts, l, edgesCtrl, removed),
-      );
-    } on InkError catch (_) {
-      // 删失败：EdgesController 已回滚内存，SelectedEdge 已清。回滚让连线**冒回来**，
-      // 可那只是现象——不说一声，用户只看到「删掉的线又回来了」，不知道是没删成。
-      // 删节点 / 删泳道失败都有提示，删连线原来是唯一不说的那个。
-      toasts.show(l.edgeDeleteFailed, kind: ToastKind.error);
-    }
-  }
-
-  Future<void> _restoreEdge(
-    ToastService toasts,
-    AppLocalizations l,
-    CanvasEdgesController ctrl,
-    CanvasEdge edge,
-  ) async {
-    try {
-      await ctrl.restore(edge);
-    } on InkError catch (_) {
-      toasts.show(l.undoFailed, kind: ToastKind.error);
-    }
-  }
+  ) =>
+      deleteEdgeWithUndo(context, ref, canvasId: canvasId, edgeId: edge.id);
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
