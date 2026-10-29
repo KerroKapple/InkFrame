@@ -10,6 +10,7 @@
 //
 // 不碰任何边：下游 data 边跟着当前 take 挪归 W5 tc-take-edge-follow，挪边信息记在 W4 抽出的 PinToken 里，
 // 命令本身不带边（也不预留字段）。
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/take_keys.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../providers/canvas_nodes_controller.dart';
