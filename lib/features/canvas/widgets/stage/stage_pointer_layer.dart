@@ -4,6 +4,10 @@
 //   - StageSpace / RenderStageSpace：舞台坐标系的锚，卡片插槽（node_card_slot.dart）往上找它换算拖线坐标
 //   - BlankPointerDetector：空白处的双击 / 右键；SecondaryClickDetector：右键单击（空白处与卡片上共用）——
 //     抬起时开、按下到抬起没挪出点击容差才开，锚点用按下点：按住右键拖动是拖画布，不开菜单
+//   - MarqueeGestureRecognizer / StageMarqueeDetector：鼠标左键在空白处（含泳道底色）拖 = 框选，按下当场胜出、
+//     压住 InteractiveViewer 的左键平移；挪动不到 kMarqueeClickSlop（4px）松手 = 点空白。右键拖 / 中键拖 / 触摸 /
+//     触控板照旧平移。点击容差两套口径：框选 4px，BlankPointerDetector / SecondaryClickDetector 用 computePanSlop
+//     （鼠标 2px）——鼠标手抖 3px 时框选侧算点、双击侧却当拖动，留给 tool-lock / cm-knife-cut 那一轮统一
 
 import 'dart:async';
 
@@ -12,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/canvas_marquee.dart';
 import '../../providers/canvas_tool_mode.dart';
 import '../canvas_shortcuts.dart';
 
@@ -264,6 +269,197 @@ class _SecondaryClickDetectorState extends State<SecondaryClickDetector> {
         onPointerMove: _onPointerMove,
         onPointerUp: _onPointerUp,
         onPointerCancel: _onPointerCancel,
+        child: widget.child,
+      );
+}
+
+/// 框选的识别器：只收鼠标左键（触摸 / 触控笔 / 触控板照旧走 InteractiveViewer 的平移缩放），
+/// [shouldClaim] 为真就在按下当场宣布胜出——InteractiveViewer 的平移与连线层的单击都让位，左键拖空白
+/// 不再拖画布。按下到松手挪动没到 [kMarqueeClickSlop] = 点（[onClick] 给按下点的局部坐标）；
+/// 到了就起框（[onStart] 给按下点，紧跟一次 [onUpdate]）。
+///
+/// 抬起时也按抬起点判阈值（主 Agent 决定 2 → A）：平台把 move 合并掉、抬起时已在阈值外 ⇒ 按一次完整框选
+/// 处理（onStart → onUpdate(抬起点) → onEnd），不算点。框选中指针被取消（窗口失焦、系统手势）⇒ [onCancel]。
+///
+/// 只听自己追踪的这一根指针；次键 / 中键、别的设备都不进来（右键拖、中键拖仍是平移，右键单击仍开菜单）。
+class MarqueeGestureRecognizer extends OneSequenceGestureRecognizer {
+  MarqueeGestureRecognizer({required this.shouldClaim, super.debugOwner});
+
+  /// 这一下按下要不要接（连线模式下不接；以后的 Alt 旁路也加在这里）。
+  final bool Function(PointerDownEvent event) shouldClaim;
+
+  GestureDragStartCallback? onStart;
+  GestureDragUpdateCallback? onUpdate;
+  VoidCallback? onEnd;
+  ValueChanged<Offset>? onClick;
+  VoidCallback? onCancel;
+
+  /// 正在追踪的那一根指针的按下事件；没在追踪 = null。
+  PointerDownEvent? _down;
+
+  /// 已经过了阈值、起了框。
+  bool _started = false;
+
+  @override
+  bool isPointerAllowed(PointerDownEvent event) =>
+      _down == null &&
+      event.kind == PointerDeviceKind.mouse &&
+      event.buttons == kPrimaryButton &&
+      shouldClaim(event) &&
+      super.isPointerAllowed(event);
+
+  @override
+  void addAllowedPointer(PointerDownEvent event) {
+    super.addAllowedPointer(event);
+    _down = event;
+    _started = false;
+    // 按下当场胜出：竞技场还开着时宣布 = 关场时直接判给本识别器，InteractiveViewer 的平移识别器与
+    // 连线层的单击识别器一起出局。
+    resolve(GestureDisposition.accepted);
+  }
+
+  /// 从按下点到全局坐标 [position] 挪过了阈值（屏幕逻辑 px）。
+  bool _pastSlop(PointerDownEvent down, Offset position) =>
+      (position - down.position).distance >= kMarqueeClickSlop;
+
+  void _start(PointerDownEvent down) {
+    _started = true;
+    onStart?.call(
+      DragStartDetails(
+        globalPosition: down.position,
+        localPosition: down.localPosition,
+      ),
+    );
+  }
+
+  void _update(PointerEvent event) {
+    onUpdate?.call(
+      DragUpdateDetails(
+        globalPosition: event.position,
+        localPosition: event.localPosition,
+      ),
+    );
+  }
+
+  @override
+  void handleEvent(PointerEvent event) {
+    final PointerDownEvent? down = _down;
+    if (down == null || event.pointer != down.pointer) return;
+    if (event is PointerMoveEvent) {
+      if (!_started) {
+        if (!_pastSlop(down, event.position)) return;
+        _start(down);
+      }
+      _update(event);
+    } else if (event is PointerUpEvent) {
+      if (!_started && _pastSlop(down, event.position)) {
+        _start(down);
+        _update(event);
+      }
+      if (_started) {
+        onEnd?.call();
+      } else {
+        onClick?.call(down.localPosition);
+      }
+      stopTrackingPointer(event.pointer);
+    } else if (event is PointerCancelEvent) {
+      if (_started) onCancel?.call();
+      stopTrackingPointer(event.pointer);
+    }
+  }
+
+  @override
+  void rejectGesture(int pointer) {
+    // 竞技场判给了别人（另有识别器更早宣布胜出）：这一下不归框选，什么都不报。
+    if (pointer == _down?.pointer) stopTrackingPointer(pointer);
+  }
+
+  @override
+  void didStopTrackingLastPointer(int pointer) {
+    _down = null;
+    _started = false;
+  }
+
+  @override
+  String get debugDescription => 'marquee';
+}
+
+/// 空白处的框选手势：包在 [BlankPointerDetector] 里面、连线层的单击 GestureDetector 外面——卡片盖着的地方
+/// 到不了这一层，收到的就是空白处（含泳道底色）的按下。
+///
+/// 回调坐标 = 本层局部坐标 = 舞台坐标。拖动中的点按**此刻**的渲染树把全局坐标换回舞台坐标：按下之后相机
+/// 可能已经被贴边自动平移 / 滚轮挪过，指针事件里缓存的变换是按下那一刻的，不能用。
+/// [enabled] 在每次按下时问（连线模式下不接；以后的 Alt 旁路也加在这里）。
+class StageMarqueeDetector extends StatefulWidget {
+  const StageMarqueeDetector({
+    super.key,
+    required this.enabled,
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
+    required this.onClick,
+    required this.onCancel,
+    required this.child,
+  });
+
+  final bool Function() enabled;
+
+  /// 起框：按下点（舞台坐标）。
+  final ValueChanged<Offset> onStart;
+
+  /// 框的另一角挪到 [stagePoint]（舞台坐标）；[globalPoint] 是指针的全局坐标（贴边自动平移用）。
+  final void Function(Offset stagePoint, Offset globalPoint) onUpdate;
+
+  /// 松手收框。
+  final VoidCallback onEnd;
+
+  /// 没过阈值就松手：一次点，给按下点（舞台坐标）。
+  final ValueChanged<Offset> onClick;
+
+  /// 框选中指针被取消。
+  final VoidCallback onCancel;
+
+  final Widget child;
+
+  @override
+  State<StageMarqueeDetector> createState() => _StageMarqueeDetectorState();
+}
+
+class _StageMarqueeDetectorState extends State<StageMarqueeDetector> {
+  void _onUpdate(DragUpdateDetails details) {
+    // 按着时这一层被拆了（画布切走）：命中路径照样把事件送来，不再报。
+    if (!mounted) return;
+    final RenderObject? box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    widget.onUpdate(box.globalToLocal(details.globalPosition), details.globalPosition);
+  }
+
+  @override
+  Widget build(BuildContext context) => RawGestureDetector(
+        gestures: <Type, GestureRecognizerFactory>{
+          MarqueeGestureRecognizer:
+              GestureRecognizerFactoryWithHandlers<MarqueeGestureRecognizer>(
+            () => MarqueeGestureRecognizer(
+              // 读 widget 而不是构造时的值：每次按下都按最新的谓词判。
+              shouldClaim: (_) => widget.enabled(),
+              debugOwner: this,
+            ),
+            (MarqueeGestureRecognizer r) => r
+              ..onStart = ((DragStartDetails d) {
+                if (mounted) widget.onStart(d.localPosition);
+              })
+              ..onUpdate = _onUpdate
+              ..onEnd = (() {
+                if (mounted) widget.onEnd();
+              })
+              ..onClick = ((Offset p) {
+                if (mounted) widget.onClick(p);
+              })
+              ..onCancel = (() {
+                if (mounted) widget.onCancel();
+              }),
+          ),
+        },
         child: widget.child,
       );
 }

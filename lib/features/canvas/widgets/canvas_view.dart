@@ -16,6 +16,10 @@
 //       stage_lane_layer.dart：泳道皮层平移 StageLaneShift、底色带 StageLaneBackgroundLayer、
 //         标题栏 + 分界线 StageLaneLayer
 //       stage_overlays.dart：挂起定位落地 PendingFocusApplier、计数 chip、连线提示条、加载失败整屏
+//   - 框选（Selection 稿）：鼠标左键拖空白（含泳道底色）= 框选，StageMarqueeDetector 包在连线层外面、
+//     按下当场压住 InteractiveViewer 的左键平移；框与「已选 N」、修饰键实时监听、贴边自动平移、Esc 档都在
+//     视口层 MarqueeLayer（marquee_layer.dart），命中在 CanvasMarqueeController 一处算。本层不 watch 框选状态。
+//     鼠标左键点空白（挪动不到 4px）在松手时生效；触摸 / 触控笔的点仍走连线层的 onTapDown，判据同一个 onBlankPoint
 //   - 可播放性 IO 判定在 playableVideoPathProvider；连线编排在 LinkActionController
 //   - 新建菜单（create_node_menu.dart）：从卡片出端口拖线（NodeCardSlot 报拖线、PendingWireLayer 画
 //     实时虚线、舞台层判落点——落在卡上 = linkTo，落在空白 = 带上下文开菜单）、空白处双击 / 右键
@@ -35,6 +39,7 @@ import '../../../theme/tokens.dart';
 import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
+import '../providers/canvas_marquee.dart';
 import '../providers/canvas_nodes_controller.dart';
 import '../providers/canvas_selection_controller.dart';
 import '../providers/canvas_transform_controller.dart';
@@ -62,6 +67,7 @@ import 'canvas_grid_painter.dart';
 import 'create_node_menu.dart';
 import 'lane_title_bar.dart';
 import 'lane_toolbar.dart';
+import 'marquee_layer.dart';
 import 'stage/node_card_slot.dart';
 import 'stage/stage_edge_layer.dart';
 import 'stage/stage_lane_layer.dart';
@@ -332,14 +338,22 @@ class _CanvasStage extends ConsumerWidget {
           direction: direction,
         );
 
-    void onEdgeLayerTap(TapDownDetails d) {
-      final hitId = edgeAt(d.localPosition);
+    // 空白处的一次「点」（舞台坐标）：压着连线 = 选中这条连线，否则 = 点空白（退出连线模式、清选中）。
+    // 鼠标左键的点由框选识别器在松手时报（onClick），触摸 / 触控笔的点仍走连线层的 onTapDown——同一个判据。
+    void onBlankPoint(Offset stagePoint) {
+      final hitId = edgeAt(stagePoint);
       if (hitId != null) {
         ref.read(selectedEdgeControllerProvider(canvasId).notifier).select(hitId);
         return;
       }
       onEmptyTap();
     }
+
+    void onEdgeLayerTap(TapDownDetails d) => onBlankPoint(d.localPosition);
+
+    // 框选：命中、写回选中都在控制器里；本层只把指针转给它（不 watch 框选状态，拖框不重建舞台）。
+    CanvasMarqueeController marquee() =>
+        ref.read(canvasMarqueeProvider(canvasId).notifier);
 
     // 空白处双击 → 在双击点开新建菜单；空白处右键单击 → 在按下的那一点开空白处右键菜单（create_node_menu.dart）。
     // 压着连线不算空白：连线自己的右键菜单不归这一版。菜单锚点是视口坐标（舞台坐标过一遍相机）。
@@ -504,11 +518,23 @@ class _CanvasStage extends ConsumerWidget {
                 clipBehavior: Clip.none,
                 children: [
                   // 连线层（含点击命中）。translucent 让空白处也冒泡。卡片盖着的地方点不到这一层，
-                  // 所以这里收到的双击 / 右键就是「空白处」的（BlankPointerDetector）。
+                  // 所以这里收到的双击 / 右键 / 框选就是「空白处」的（BlankPointerDetector / StageMarqueeDetector）。
                   Positioned.fill(
                     child: BlankPointerDetector(
                       onDoubleDown: onBlankDoubleDown,
                       onSecondaryClick: onBlankSecondaryClick,
+                      // 鼠标左键拖空白 = 框选（连线模式下不接，拖的仍是画布）；没过 4px 就松手 = 一次点。
+                      child: StageMarqueeDetector(
+                      enabled: () =>
+                          ref.read(linkModeControllerProvider(canvasId)) == null,
+                      onStart: (Offset stagePoint) =>
+                          marquee().begin(stagePoint, mode: currentMarqueeMode()),
+                      onUpdate: (Offset stagePoint, Offset globalPoint) =>
+                          marquee().update(stagePoint, pointerGlobal: globalPoint),
+                      onEnd: () => marquee().commit(),
+                      onClick: onBlankPoint,
+                      // 框选中指针被取消（窗口失焦等）：与 Esc 一样恢复按下前的选中。
+                      onCancel: () => marquee().cancel(),
                       child: GestureDetector(
                       behavior: HitTestBehavior.translucent,
                       onTapDown: onEdgeLayerTap,
@@ -524,6 +550,7 @@ class _CanvasStage extends ConsumerWidget {
                         transform: transformController,
                         selectedEdgeId: selectedEdgeId,
                       ),
+                    ),
                     ),
                     ),
                   ),
@@ -670,6 +697,17 @@ class _CanvasStage extends ConsumerWidget {
                   ),
                   ),
                 ),
+              // 框选的框与「已选 N」：视口层、在最上面、不收指针。只有它 watch 框选状态。
+              Positioned.fill(
+                key: const ValueKey<String>('marquee-layer'),
+                child: IgnorePointer(
+                  child: MarqueeLayer(
+                    canvasId: canvasId,
+                    transform: transformController,
+                    viewport: size,
+                  ),
+                ),
+              ),
             ],
           );
         },
