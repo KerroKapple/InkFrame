@@ -19,6 +19,7 @@ import '../../../theme/components/ink_input.dart';
 import '../../../theme/components/ink_progress_bar.dart';
 import '../../../theme/tokens.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/util/take_status.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/export_controller.dart';
 import '../util/export_file_name.dart';
@@ -76,6 +77,11 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
   /// 与 [_selected] 分开存是刻意的：勾选态会被用户改，而「这行是不是旧 take」
   /// 是关于数据的事实，不随勾选变。
   late final Set<String> _currentTakes;
+
+  /// 每行在同镜里的 take 状态（canvas/util/take_status.dart，与画布卡片 / 历史页同一判据），定行尾标记：
+  /// 固定的当前 take「固定」、比固定的当前新「未采用」、其余非当前「旧 take」。行里没有配置节点，
+  /// 固定 id 只能按 [_ExportVideoDialog.pinnedBySource] 显式传。同样是数据事实，不随勾选变。
+  late final Map<String, ResultTakeStatus?> _takeStatus;
   late final Set<String> _selected;
   final TextEditingController _nameCtrl = TextEditingController();
 
@@ -87,6 +93,14 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
     _rows = <CanvasNode>[...widget.videoNodes];
     // **只改默认勾选，不改候选集**：旧 take 照样列出、照样能手动勾回去。
     _currentTakes = currentTakeNodeIds(_rows, pinnedBySource: widget.pinnedBySource);
+    _takeStatus = <String, ResultTakeStatus?>{
+      for (final CanvasNode n in _rows)
+        n.id: resultTakeStatusOf(
+          n,
+          _rows,
+          pinnedResultId: n.sourceNodeId == null ? null : widget.pinnedBySource[n.sourceNodeId],
+        ),
+    };
     _selected = <String>{..._currentTakes};
   }
 
@@ -274,11 +288,12 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  // 默认没勾的那几行得说清为什么：同一镜当前用的是另一个 take（更新的，
-                  // 或被固定的那个）（勾回来仍然可以）。标记跟的是数据事实，不跟勾选态。
-                  if (!_currentTakes.contains(node.id)) ...<Widget>[
+                  // 默认没勾的那几行得说清为什么：同一镜当前用的是另一个 take（更新的 →「旧 take」，
+                  // 或被固定的那个、而它比固定的新 →「未采用」）（勾回来仍然可以）；固定的那行标「固定」。
+                  // 标记跟的是数据事实，不跟勾选态。
+                  if (_badgeOf(context, node) case final String badge) ...<Widget>[
                     const SizedBox(width: InkSpacing.xs),
-                    _olderTakeBadge(context),
+                    _takeBadge(context, badge),
                   ],
                 ],
               ),
@@ -319,11 +334,21 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
     );
   }
 
-  /// 「旧 take」标记（BOARD 194）：不在当前集的行（同镜当前用的是另一条：更新的，或被固定的
-  /// 那条）上挂一个弱化徽标。
+  /// 行尾标记的文案（三态）：固定的当前 take →「固定」；比固定的当前新 →「未采用」；其余不在当前集的
+  /// （同镜当前用的是更新的那条）→「旧 take」（BOARD 194）；当前且没固定 → 不标。
+  String? _badgeOf(BuildContext context, CanvasNode node) {
+    final l = context.l10n;
+    final ResultTakeStatus? s = _takeStatus[node.id];
+    if (s != null && s.pinned) return l.takePinnedBadge;
+    if (s != null && s.notAdopted) return l.takeNotAdopted;
+    if (!_currentTakes.contains(node.id)) return l.exportVideoOlderTake;
+    return null;
+  }
+
+  /// 行尾的弱化徽标（「固定 / 未采用 / 旧 take」）。
   /// 形制与画廊瓦片的角标同源（micro + InkRadius.xs），但用 surface2/fg3 而非
-  /// accent——它是「这行被顶下去了」的说明，不是高亮。
-  Widget _olderTakeBadge(BuildContext context) {
+  /// accent——它是「这行为什么勾 / 没勾」的说明，不是高亮。
+  Widget _takeBadge(BuildContext context, String text) {
     final colors = context.inkColors;
     return Container(
       padding: const EdgeInsets.symmetric(
@@ -335,7 +360,7 @@ class _ExportVideoDialogState extends ConsumerState<_ExportVideoDialog> {
         borderRadius: BorderRadius.circular(InkRadius.xs),
       ),
       child: Text(
-        context.l10n.exportVideoOlderTake,
+        text,
         style: context.inkTypography.micro.copyWith(color: colors.fg3),
       ),
     );

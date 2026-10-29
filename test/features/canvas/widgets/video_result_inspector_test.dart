@@ -14,6 +14,8 @@ import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/providers/playable_video_path.dart';
 import 'package:inkframe/features/canvas/widgets/result_inspector_parts.dart';
 import 'package:inkframe/features/canvas/widgets/video_result_inspector.dart';
+import 'package:inkframe/theme/components/ink_icon.dart';
+import 'package:inkframe/theme/icons/ink_glyph.dart';
 import 'package:inkframe/theme/primitives/ink_activatable.dart';
 
 import '../../../_harness/fake_repositories.dart';
@@ -127,6 +129,50 @@ void main() {
     expect(act(ResultInspectorKeys.locateSource).onTap, isNotNull);
     expect(act(ResultInspectorKeys.play).onTap, isNull);
     expect(act(ResultInspectorKeys.viewInSequence).onTap, isNull);
+  });
+
+  // tc-set-current：「设为当前」排动作行最前（在「播放」之前）；名下只有它一张 ⇒ 它就是当前 ⇒ 打勾置灰。
+  testWidgets('动作行第一个是「设为当前」；已是当前时置灰', (tester) async {
+    await pump(tester);
+    final Finder setCurrent = find.byKey(ResultInspectorKeys.setCurrent);
+    expect(setCurrent, findsOneWidget);
+    for (final Key other in <Key>[
+      ResultInspectorKeys.play,
+      ResultInspectorKeys.locateSource,
+      ResultInspectorKeys.viewInSequence,
+    ]) {
+      final Offset a = tester.getTopLeft(setCurrent);
+      final Offset b = tester.getTopLeft(find.byKey(other));
+      expect(a.dy < b.dy || (a.dy == b.dy && a.dx < b.dx), isTrue, reason: '「设为当前」排在 $other 之前');
+    }
+    final InkActivatable act =
+        tester.widget<InkActivatable>(find.descendant(of: setCurrent, matching: find.byType(InkActivatable)).first);
+    expect(act.onTap, isNull, reason: '已是当前：置灰');
+    expect(
+      find.descendant(
+        of: setCurrent,
+        matching: find.byWidgetPredicate((Widget w) => w is InkIcon && w.glyph == InkGlyph.success),
+      ),
+      findsOneWidget,
+      reason: '已是当前：打勾',
+    );
+  });
+
+  testWidgets('名下还有更新的 take ⇒「设为当前」可点', (tester) async {
+    await nodeRepo.update(result.id, <String, Object?>{'created_at': DateTime.utc(2026, 5, 1)});
+    final String newer = await nodeRepo.create(
+      canvasId: _canvasId,
+      type: 'video',
+      nodeRole: 'result',
+      sourceNodeId: result.sourceNodeId,
+      typeConfig: const <String, Object?>{'video_url': 'videos/j2.mp4'},
+    );
+    await nodeRepo.update(newer, <String, Object?>{'created_at': DateTime.utc(2026, 5, 2)});
+    await pump(tester);
+    final InkActivatable act = tester.widget<InkActivatable>(
+      find.descendant(of: find.byKey(ResultInspectorKeys.setCurrent), matching: find.byType(InkActivatable)).first,
+    );
+    expect(act.onTap, isNotNull);
   });
 
   testWidgets('视频文件在 ⇒ 播放可点（预览与动作行同一个回调）', (tester) async {
