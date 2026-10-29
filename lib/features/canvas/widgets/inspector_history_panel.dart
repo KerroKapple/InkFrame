@@ -12,7 +12,7 @@
 // 「当前」= 这一镜的当前 take（固定的 ?? 最新的，判据 util/take_status.dart 的 resultTakeStatusOf）：右侧写「当前」，
 //   被固定时前面画图钉（InkGlyph.pin）。其余有来源的 take 右侧一个「设为当前」按钮（InkActivatable，可 Tab / 回车），
 //   走 providers/current_take_controller.dart 的 setCurrent；按钮是行里更深的那层手势，点它不触发行的「单选 + 居中」。
-//   孤儿产物（来源已删）不画按钮。「当前」与「在用」是两件事（W5 之前不一定是同一张），两样都画。
+//   孤儿产物（没有来源，或来源配置已删 / 不在画布上）既不画「当前」也不画按钮。「当前」与「在用」是两件事（W5 之前不一定是同一张），两样都画。
 // 点一行 = 单选那个产物节点并把它移到视口中心（left_rail_actions.focusNodeOnCanvas，与左栏同一条路）；
 // 选中换到那张产物上之后，页签停在历史页不动（inspectorTabProvider），列表变成它的兄弟、它高亮。
 // 名下没有产物：一行 fg5 说明。
@@ -90,6 +90,9 @@ class InspectorHistoryPanel extends ConsumerWidget {
     final String? projectId = ref.watch(activeProjectProvider)?.id;
     final DateTime now = ref.watch(clockProvider).nowUtc();
     final CanvasNode owner = _ownerOf(node, nodes);
+    // 来源配置还在画布上（owner 回落成产物自己 = 来源已删）：不在就不谈「当前」——
+    // resultTakeStatusOf 只看 sourceNodeId，配置节点软删后产物仍带着它，画出按钮也只会 noSource、点了没反应。
+    final bool sourceAlive = owner.role == NodeRole.config;
     // take 号与左栏素材页同一个函数：按时间正序、最早的是 take 1；名下只有一个 ⇒ 不在表里 =「成片」。
     final Map<String, int> takeNumbers = takeNumbersOn(nodes);
 
@@ -114,7 +117,7 @@ class InspectorHistoryPanel extends ConsumerWidget {
             meta: _metaOf(l, takes[i], now),
             highlighted: takes[i].id == node.id,
             inUse: flowing.contains(takes[i].id),
-            status: resultTakeStatusOf(takes[i], nodes),
+            status: sourceAlive ? resultTakeStatusOf(takes[i], nodes) : null,
             onTap: () => focusNodeOnCanvas(ref, canvasId: canvasId, node: takes[i]),
             onSetCurrent: () =>
                 ref.read(currentTakeControllerProvider(canvasId)).setCurrent(takes[i].id, l: l).ignore(),
@@ -180,7 +183,7 @@ class _TakeRow extends ConsumerWidget {
   final bool highlighted;
   final bool inUse;
 
-  /// 它在同源兄弟里的 take 状态；null = 孤儿产物（没有来源，谈不上当前）：不画「当前」也不画按钮。
+  /// 它在同源兄弟里的 take 状态；null = 孤儿产物（没有来源，或来源配置已删，谈不上当前）：不画「当前」也不画按钮。
   final ResultTakeStatus? status;
   final VoidCallback onTap;
 

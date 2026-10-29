@@ -249,6 +249,7 @@ void main() {
   // 变异对照：
   // - 历史页按钮的手势冒泡到行（点按钮也单选 + 居中）⇒「非当前行有「设为当前」，点它固定且不改选中」红。
   // - 固定时不画图钉 ⇒「当前那行写「当前」，固定时带图钉」红。
+  // - 不看来源配置在不在（直接用 resultTakeStatusOf 的结果）⇒「来源配置已删：兄弟行不画…」红。
   group('当前 take', () {
     Finder pinIn(String id) => _inRow(
           id,
@@ -287,6 +288,9 @@ void main() {
       expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r1')), findsOneWidget);
       expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r2')), findsOneWidget);
 
+      // 选中 provider 是 autoDispose、单挂面板时树里没人订它：不保活的话，就算手势冒泡执行了 select('r1')，
+      // 帧末它也被回收，下面读到的是重建出来的空集——「两个回调都触发」的变异会漏掉。
+      c.listen(canvasSelectionControllerProvider('c1'), (_, _) {});
       await tester.tap(find.byKey(InspectorHistoryPanel.setCurrentKey('r1')));
       for (int i = 0; i < 5; i++) {
         await tester.pump();
@@ -304,6 +308,17 @@ void main() {
       expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r1')), findsNothing);
       // 胶囊（带动作 4 s）走完再收尾。
       await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('来源配置已删：兄弟行不画「当前」也不画「设为当前」', (tester) async {
+      // cfg 被软删、不在节点表里；它留下的产物仍带着 source_node_id = cfg。
+      await _pumpPanel(tester, _r2, nodes: <CanvasNode>[_r1, _r2, _r3]);
+      expect(_row('r1'), findsOneWidget);
+      expect(_row('r3'), findsOneWidget);
+      for (final String id in <String>['r1', 'r2', 'r3']) {
+        expect(find.byKey(InspectorHistoryPanel.setCurrentKey(id)), findsNothing, reason: '点了只会 noSource，没反应');
+        expect(find.byKey(InspectorHistoryPanel.currentBadgeKey(id)), findsNothing);
+      }
     });
   });
 
