@@ -6,6 +6,7 @@
 //   任一端节点已不在 ⇒ gone；否则 restore(快照)——沿用 restore 里首 / 尾帧的降级逻辑。
 // - apply（重做）：按两端找到在世的那条 ⇒ removeEdge(它的 id) 并把快照换成它；找不到 ⇒ gone。
 // 快照在重做后会换，所以本类不是 const。
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/ink_error.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../providers/canvas_edges_controller.dart';

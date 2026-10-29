@@ -8,6 +8,7 @@
 //
 // 步名里的泳道名是快照时的**原始** label（没起名 = 空串 / 道已不在 = null），到 [label] 时才落成当前语言的
 // 「未命名泳道」——在 record 时就本地化会把那一刻的语言冻进命令。
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/ink_error.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../providers/canvas_nodes_controller.dart';

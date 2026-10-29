@@ -11,6 +11,7 @@
 //
 // 令牌在重做后会被替换，所以本类不是 const；令牌本身仍是快照（不持控制器引用）。
 // 撤销删除时节点原来的泳道已被删：照旧复原 lane_id（与 restoreAll 现状相同），留给 undo-lanes。
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/errors/ink_error.dart';
 import '../../../../l10n/generated/app_localizations.dart';
 import '../../providers/canvas_nodes_controller.dart';
