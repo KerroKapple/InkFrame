@@ -1206,5 +1206,10 @@
   "canvasHistoryNothingToUndo": "没有可撤销的操作",
   "canvasHistoryNothingToRedo": "没有可重做的操作",
   "settingsShortcutCanvasUndo": "撤销",
-  "settingsShortcutCanvasRedo": "重做"
+  "settingsShortcutCanvasRedo": "重做",
+  "canvasCommandDeleteNodes": "{count, plural, other{删除 {count} 个节点}}",
+  "canvasCommandDeleteEdge": "删除连线",
+  "canvasCommandMoveNodes": "{count, plural, other{移动 {count} 个节点}}",
+  "canvasCommandMoveIntoLane": "移入泳道「{lane}」",
+  "canvasCommandMoveOutOfLane": "移出泳道「{lane}」"
 }

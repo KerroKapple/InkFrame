@@ -1656,5 +1656,14 @@
   "canvasHistoryNothingToUndo": "Nothing to undo",
   "canvasHistoryNothingToRedo": "Nothing to redo",
   "settingsShortcutCanvasUndo": "Undo",
-  "settingsShortcutCanvasRedo": "Redo"
+  "settingsShortcutCanvasRedo": "Redo",
+  "canvasCommandDeleteNodes": "{count, plural, one{Delete {count} node} other{Delete {count} nodes}}",
+  "@canvasCommandDeleteNodes": {"placeholders":{"count":{"type":"int"}}},
+  "canvasCommandDeleteEdge": "Delete link",
+  "canvasCommandMoveNodes": "{count, plural, one{Move {count} node} other{Move {count} nodes}}",
+  "@canvasCommandMoveNodes": {"placeholders":{"count":{"type":"int"}}},
+  "canvasCommandMoveIntoLane": "Move into lane “{lane}”",
+  "@canvasCommandMoveIntoLane": {"placeholders":{"lane":{"type":"String"}}},
+  "canvasCommandMoveOutOfLane": "Move out of lane “{lane}”",
+  "@canvasCommandMoveOutOfLane": {"placeholders":{"lane":{"type":"String"}}}
 }

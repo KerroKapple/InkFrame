@@ -3237,4 +3237,37 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasRedo => '重做';
+
+  @override
+  String canvasCommandDeleteNodes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '删除 $count 个节点',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get canvasCommandDeleteEdge => '删除连线';
+
+  @override
+  String canvasCommandMoveNodes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '移动 $count 个节点',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String canvasCommandMoveIntoLane(String lane) {
+    return '移入泳道「$lane」';
+  }
+
+  @override
+  String canvasCommandMoveOutOfLane(String lane) {
+    return '移出泳道「$lane」';
+  }
 }

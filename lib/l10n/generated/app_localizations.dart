@@ -5875,6 +5875,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Redo'**
   String get settingsShortcutCanvasRedo;
+
+  /// No description provided for @canvasCommandDeleteNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Delete {count} node} other{Delete {count} nodes}}'**
+  String canvasCommandDeleteNodes(int count);
+
+  /// No description provided for @canvasCommandDeleteEdge.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete link'**
+  String get canvasCommandDeleteEdge;
+
+  /// No description provided for @canvasCommandMoveNodes.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, one{Move {count} node} other{Move {count} nodes}}'**
+  String canvasCommandMoveNodes(int count);
+
+  /// No description provided for @canvasCommandMoveIntoLane.
+  ///
+  /// In en, this message translates to:
+  /// **'Move into lane “{lane}”'**
+  String canvasCommandMoveIntoLane(String lane);
+
+  /// No description provided for @canvasCommandMoveOutOfLane.
+  ///
+  /// In en, this message translates to:
+  /// **'Move out of lane “{lane}”'**
+  String canvasCommandMoveOutOfLane(String lane);
 }
 
 class _AppLocalizationsDelegate

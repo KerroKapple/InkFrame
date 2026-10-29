@@ -3384,4 +3384,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasRedo => 'Redo';
+
+  @override
+  String canvasCommandDeleteNodes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Delete $count nodes',
+      one: 'Delete $count node',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get canvasCommandDeleteEdge => 'Delete link';
+
+  @override
+  String canvasCommandMoveNodes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Move $count nodes',
+      one: 'Move $count node',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String canvasCommandMoveIntoLane(String lane) {
+    return 'Move into lane “$lane”';
+  }
+
+  @override
+  String canvasCommandMoveOutOfLane(String lane) {
+    return 'Move out of lane “$lane”';
+  }
 }
