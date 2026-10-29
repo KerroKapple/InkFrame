@@ -2,14 +2,17 @@
 //
 // 列哪些 take（新 → 旧）：
 //   - 选中配置节点 ⇒ 它名下的全部产物（node_artifacts.resultsFor）；
-//   - 选中产物节点 ⇒ 它的兄弟（同一个 sourceNodeId，含它自己），当前这张高亮（surface5 底）；
+//   - 选中产物节点 ⇒ 它的兄弟（同一个 sourceNodeId，含它自己），选中的这张高亮（surface5 底）；
 //     没有来源的孤儿产物只列它自己。
 // 顶部说明「<节点名> 的全部 take」：配置节点用它自己的引用名（nodeRefName）；产物节点用它来源的那个。
 // 行：72×41 缩略（cover、圆角 3、1px outline）|「take N」（N 按时间正序，最早的是 take 1；名下只有一个写
 //   「成片」——号由 util/take_numbers.dart 的 takeNumbersOn 给，与左栏素材页的格子同一个函数）
 //   + meta（10 号 fg5）：相对时间（复用画廊的 galleryTimeAgo）· 种子（type_config 里有 seed 才写）。
 // 「在用」= 这个 take 有 data 出边（首帧 / 尾帧 / 参考，往下游流）：缩略描边换 accent，右侧写「在用」。
-// 稿上的图钉「固定」没有数据模型，不画。
+// 「当前」= 这一镜的当前 take（固定的 ?? 最新的，判据 util/take_status.dart 的 resultTakeStatusOf）：右侧写「当前」，
+//   被固定时前面画图钉（InkGlyph.pin）。其余有来源的 take 右侧一个「设为当前」按钮（InkActivatable，可 Tab / 回车），
+//   走 providers/current_take_controller.dart 的 setCurrent；按钮是行里更深的那层手势，点它不触发行的「单选 + 居中」。
+//   孤儿产物（来源已删）不画按钮。「当前」与「在用」是两件事（W5 之前不一定是同一张），两样都画。
 // 点一行 = 单选那个产物节点并把它移到视口中心（left_rail_actions.focusNodeOnCanvas，与左栏同一条路）；
 // 选中换到那张产物上之后，页签停在历史页不动（inspectorTabProvider），列表变成它的兄弟、它高亮。
 // 名下没有产物：一行 fg5 说明。
@@ -22,6 +25,9 @@ import '../../../core/di/clock.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
+import '../../../theme/components/ink_icon.dart';
+import '../../../theme/components/ink_primitives.dart';
+import '../../../theme/icons/ink_glyph.dart';
 import '../../../theme/primitives/ink_activatable.dart';
 import '../../../theme/tokens.dart';
 import '../../gallery/util/gallery_time.dart';
@@ -31,8 +37,10 @@ import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/current_take_controller.dart';
 import '../util/node_artifacts.dart';
 import '../util/take_numbers.dart';
+import '../util/take_status.dart';
 import 'left_rail/left_rail_actions.dart';
 import 'node_card.dart' show nodeRefName;
 
@@ -50,6 +58,12 @@ class InspectorHistoryPanel extends ConsumerWidget {
 
   /// 某个 take 行的测试锚点（挂在行的点击壳上）。
   static Key takeKey(String nodeId) => ValueKey<String>('inspector-history-take-$nodeId');
+
+  /// 某个 take 行的「设为当前」按钮。
+  static Key setCurrentKey(String nodeId) => ValueKey<String>('inspector-history-set-current-$nodeId');
+
+  /// 某个 take 行的「当前」徽标（固定时里面有图钉）。
+  static Key currentBadgeKey(String nodeId) => ValueKey<String>('inspector-history-current-$nodeId');
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -98,9 +112,12 @@ class InspectorHistoryPanel extends ConsumerWidget {
             take: takes[i],
             number: takeNumbers[takes[i].id],
             meta: _metaOf(l, takes[i], now),
-            current: takes[i].id == node.id,
+            highlighted: takes[i].id == node.id,
             inUse: flowing.contains(takes[i].id),
+            status: resultTakeStatusOf(takes[i], nodes),
             onTap: () => focusNodeOnCanvas(ref, canvasId: canvasId, node: takes[i]),
+            onSetCurrent: () =>
+                ref.read(currentTakeControllerProvider(canvasId)).setCurrent(takes[i].id, l: l).ignore(),
           ),
       ],
     );
@@ -136,7 +153,7 @@ class InspectorHistoryPanel extends ConsumerWidget {
   }
 }
 
-/// 一个 take：内边距上下 8、左右 14，间距 10；当前这张 surface5 底。
+/// 一个 take：内边距上下 8、左右 14，间距 10；选中的这张 surface5 底。
 class _TakeRow extends ConsumerWidget {
   const _TakeRow({
     required this.canvasId,
@@ -144,9 +161,11 @@ class _TakeRow extends ConsumerWidget {
     required this.take,
     required this.number,
     required this.meta,
-    required this.current,
+    required this.highlighted,
     required this.inUse,
+    required this.status,
     required this.onTap,
+    required this.onSetCurrent,
   });
 
   final String canvasId;
@@ -156,9 +175,17 @@ class _TakeRow extends ConsumerWidget {
   /// take 号；null =「成片」（名下只有这一个）。
   final int? number;
   final String meta;
-  final bool current;
+
+  /// 检查器此刻选中的就是这一张（surface5 底）。
+  final bool highlighted;
   final bool inUse;
+
+  /// 它在同源兄弟里的 take 状态；null = 孤儿产物（没有来源，谈不上当前）：不画「当前」也不画按钮。
+  final ResultTakeStatus? status;
   final VoidCallback onTap;
+
+  /// 「设为当前」。
+  final VoidCallback onSetCurrent;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -172,12 +199,13 @@ class _TakeRow extends ConsumerWidget {
         ? null
         : galleryResolveFile(ref, projectId: pid, canvasId: canvasId, relativePath: rel);
     final int? n = number;
+    final ResultTakeStatus? s = status;
     return InkActivatable(
       key: InspectorHistoryPanel.takeKey(take.id),
       onTap: onTap,
-      selected: current,
+      selected: highlighted,
       builder: (BuildContext context, bool hovered, bool focused) => Container(
-        color: current ? c.surface5 : null,
+        color: highlighted ? c.surface5 : null,
         padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s14, vertical: InkSpacing.sm),
         child: Row(
           children: <Widget>[
@@ -226,9 +254,35 @@ class _TakeRow extends ConsumerWidget {
                 ],
               ),
             ),
+            if (s != null && s.current) ...<Widget>[
+              const SizedBox(width: InkSpacing.s10),
+              Row(
+                key: InspectorHistoryPanel.currentBadgeKey(take.id),
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  if (s.pinned) ...<Widget>[
+                    InkIcon(InkGlyph.pin, size: InkIconSize.s14, color: c.accent),
+                    const SizedBox(width: InkSpacing.xs),
+                  ],
+                  Text(l.takeCurrentBadge, style: t.meta.copyWith(color: c.accent)),
+                ],
+              ),
+            ],
             if (inUse) ...<Widget>[
               const SizedBox(width: InkSpacing.s10),
               Text(l.inspectorHistoryInUse, style: t.meta.copyWith(color: c.accent)),
+            ],
+            if (s != null && !s.current) ...<Widget>[
+              const SizedBox(width: InkSpacing.s10),
+              // 行里更深的一层手势：点它只设为当前，不冒泡成行的「单选 + 居中」。
+              InkActivatable(
+                key: InspectorHistoryPanel.setCurrentKey(take.id),
+                onTap: onSetCurrent,
+                semanticLabel: l.takeSetCurrent,
+                focusRingRadius: BorderRadius.circular(InkRadius.s3),
+                builder: (BuildContext context, bool hovered, bool focused) =>
+                    InkSecondaryButton(l.takeSetCurrent),
+              ),
             ],
           ],
         ),

@@ -23,6 +23,12 @@
 // 现在两样都画。画布缩到 kCompactCardScale（0.6）以下时正文与摘要都收起，只留居中的类型
 // 图标——那个缩放下几行小字糊成一团，谁也读不了。
 //
+// take 状态（TakesCost 稿「当前 take · 固定」）：同一配置名下有 ≥ 2 个产物时，result 卡按 util/take_status.dart 的
+// resultTakeStatusOf 画——当前那张描边 accent（未选中时；选中本来就是 accent，选中优先、图钉照画），被固定时图区
+// 右上角一枚图钉；非当前的图区半透明；状态行「take N / M」，当前的加「· 当前」，比当前新而当前是固定的加「· 未采用」。
+// 只有一个产物的卡照旧。只订节点控制器里与自己有关的那份记录（select，记录结构相等，兄弟状态不变就不重建）；
+// 节点控制器还没人起的时候（单独挂的卡：单测 / golden）不为一张卡去起它——那会去连库。
+//
 // 拖拽（HI-13）：位移累积在本卡片局部状态（Transform.translate），每帧只重建
 // 自身；onPanEnd 把累计位移一次性回调 onDragEnd，由上层提交 controller。
 //
@@ -42,6 +48,7 @@ import '../../../core/di/file_resolver.dart';
 import '../../../core/interfaces/file_resolver_service.dart';
 import '../../../core/models/provider_capabilities.dart';
 import '../../../core/models/shot_language.dart';
+import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../../theme/app_theme.dart';
 import '../../../theme/components/ink_icon.dart';
@@ -61,6 +68,7 @@ import '../providers/node_active_job.dart';
 import '../providers/node_drag_delta.dart';
 import '../util/camera_labels.dart';
 import '../util/lane_tint.dart';
+import '../util/take_status.dart';
 import 'video_node_body.dart';
 
 /// 从出端口拖线的四个回调。坐标一律是指针的**全局**坐标——卡片不知道舞台的变换，换算归画布。
@@ -157,6 +165,12 @@ class NodeCard extends ConsumerStatefulWidget {
 
   /// 导入节点复制中叠在图区底部的进度条的测试锚点。
   static const Key importProgressKey = ValueKey<String>('node-card-import-progress');
+
+  /// 被固定的当前 take 图区右上角图钉的测试锚点。
+  static const Key takePinKey = ValueKey<String>('node-card-take-pin');
+
+  /// 非当前 take 图区那层半透明的测试锚点。
+  static const Key takeDimKey = ValueKey<String>('node-card-take-dim');
 
   @override
   ConsumerState<NodeCard> createState() => _NodeCardState();
@@ -282,7 +296,13 @@ class _NodeCardState extends ConsumerState<NodeCard> {
     final typo = context.inkTypography;
     final highlighted =
         widget.selected || widget.isLinkSource || widget.isLinkCandidate;
-    final Color edge = highlighted ? colors.accent : colors.outline;
+    // 同源 ≥ 2 个 take 才画 take 状态；只有一个的卡照旧。
+    final ResultTakeStatus? rawTake = _watchTakeStatus(ref, node);
+    final ResultTakeStatus? take = rawTake != null && rawTake.total >= 2 ? rawTake : null;
+    final bool currentTake = take?.current ?? false;
+    final bool dimTake = take != null && !take.current;
+    // 当前 take 描边 accent；选中也是 accent，选中优先（区分不了，图钉照画）。
+    final Color edge = highlighted || currentTake ? colors.accent : colors.outline;
     final Color outPort = highlighted ? colors.accent : colors.fg5;
     // 稿：shot 节点只有出端口。
     final bool hasIn =
@@ -348,13 +368,16 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                     clipBehavior: Clip.none,
                     children: <Widget>[
                       Positioned.fill(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(InkRadius.sm),
-                          child: ColoredBox(
-                            color: colors.thumbFill,
-                            child: _NodeBody(
-                              node: node,
-                              resolver: ref.watch(fileResolverServiceProvider),
+                        child: _dimIf(
+                          dimTake,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(InkRadius.sm),
+                            child: ColoredBox(
+                              color: colors.thumbFill,
+                              child: _NodeBody(
+                                node: node,
+                                resolver: ref.watch(fileResolverServiceProvider),
+                              ),
                             ),
                           ),
                         ),
@@ -374,6 +397,28 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                           ),
                         ),
                       ),
+                      if (take != null && take.pinned)
+                        Positioned(
+                          top: InkSpacing.xs,
+                          right: InkSpacing.xs,
+                          child: IgnorePointer(
+                            child: DecoratedBox(
+                              decoration: BoxDecoration(
+                                color: colors.surface1,
+                                borderRadius: BorderRadius.circular(InkRadius.s3),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(InkSpacing.s2),
+                                child: InkIcon(
+                                  InkGlyph.pin,
+                                  key: NodeCard.takePinKey,
+                                  size: InkIconSize.s14,
+                                  color: colors.accent,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                       if (showInPort)
                         Positioned(
                           left: -5,
@@ -405,7 +450,7 @@ class _NodeCardState extends ConsumerState<NodeCard> {
                   height: 16,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: InkSpacing.s2),
-                    child: _StatusRow(node: node),
+                    child: _StatusRow(node: node, take: take),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -529,10 +574,41 @@ NodeStatus nodeStatusOf(
   );
 }
 
+/// 本卡（result）在同源兄弟里的 take 状态；不是 result / 没有 canvasId / 节点控制器还没人起 ⇒ null。
+/// 只订与自己有关的那份记录（select，记录结构相等）。节点控制器不存在时不去起它：单独挂的卡（单测 / golden）
+/// 起它会去连库；画布上它一直被画布看着。
+ResultTakeStatus? _watchTakeStatus(WidgetRef ref, CanvasNode node) {
+  final String? canvasId = node.canvasId;
+  if (canvasId == null || node.role != NodeRole.result || node.sourceNodeId == null) return null;
+  final provider = canvasNodesControllerProvider(canvasId);
+  if (!ref.exists(provider)) return null;
+  return ref.watch(
+    provider.select(
+      (AsyncValue<List<CanvasNode>> v) =>
+          resultTakeStatusOf(node, v.valueOrNull ?? const <CanvasNode>[]),
+    ),
+  );
+}
+
+/// 非当前 take 的图区半透明（[dim] 为假原样返回）。
+Widget _dimIf(bool dim, Widget child) =>
+    dim ? Opacity(key: NodeCard.takeDimKey, opacity: 0.5, child: child) : child;
+
+/// take 卡的状态行文案：「take N / M」，当前加「· 当前」，比固定的当前新加「· 未采用」。
+String _takeCaption(AppLocalizations l, ResultTakeStatus take) {
+  // 进到这里的都是 total ≥ 2，号一定有；?? 1 只为类型。
+  final int n = take.number ?? 1;
+  if (take.current) return l.takeCardCaptionCurrent(n, take.total);
+  if (take.notAdopted) return l.takeCardCaptionNotAdopted(n, take.total);
+  return l.takeCardCaption(n, take.total);
+}
+
 /// 状态行：左状态文字（进行中 accent，其余 fg4），右等宽 meta（provider id / camera / txt）。
+/// [take] 非空（同源 ≥ 2 个 take）时，完成态的文字换成 take 文案（导入复制中 / 导入完成两支不动）。
 class _StatusRow extends ConsumerWidget {
-  const _StatusRow({required this.node});
+  const _StatusRow({required this.node, this.take});
   final CanvasNode node;
+  final ResultTakeStatus? take;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -558,10 +634,11 @@ class _StatusRow extends ConsumerWidget {
       status = l.nodeStatusImported;
       statusColor = colors.fg4;
     } else {
+      final ResultTakeStatus? t = take;
       status = switch (s.kind) {
         NodeStatusKind.running => l.inspectorStatusRunningWithProgress(s.percent ?? 0),
         NodeStatusKind.queued => l.canvasRenderQueueStatusQueued,
-        NodeStatusKind.done => l.nodeStatusDone,
+        NodeStatusKind.done => t == null ? l.nodeStatusDone : _takeCaption(l, t),
         NodeStatusKind.pending => l.nodeStatusPending,
         NodeStatusKind.ready => l.nodeStatusReady,
         NodeStatusKind.draft => l.nodeStatusDraft,

@@ -380,7 +380,8 @@ void main() {
       );
     });
 
-    testWidgets('pinnedBySource 指向旧 take → 默认勾旧的、最新那行标「旧 take」', (tester) async {
+    // tc-set-current 起：被顶下去的最新那行不再写「旧 take」，而是「未采用」（比固定的当前新）；固定的那行标「固定」。
+    testWidgets('pinnedBySource 指向旧 take → 默认勾旧的；最新那行标「未采用」、固定那行标「固定」', (tester) async {
       final service = _FakeVideoExportService();
       await pumpTwoTakes(
         tester,
@@ -395,16 +396,42 @@ void main() {
       );
       expect(_checkboxValues(tester), <bool?>[false, true]);
 
-      // 「旧 take」标记跟着当前集走：这次挂在最新那行（与 'new' 同一行，在 'old' 之上）。
-      expect(find.text('Earlier take'), findsOneWidget);
-      expect(
-        tester.getTopLeft(find.text('Earlier take')).dy,
-        lessThan(tester.getTopLeft(find.text('old')).dy),
-      );
+      // 标记跟着当前集走：最新那行（与 'new' 同一行）「未采用」，固定的 'old' 那行「固定」，没有「旧 take」。
+      expect(find.text('Earlier take'), findsNothing);
+      expect(find.text('Not used'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Not used')).dy, lessThan(tester.getTopLeft(find.text('old')).dy));
+      expect(find.text('Pinned'), findsOneWidget);
+      expect(tester.getTopLeft(find.text('Pinned')).dy, greaterThan(tester.getTopLeft(find.text('new')).dy));
 
       await tester.tap(find.text('Export'));
       await tester.pumpAndSettle();
       expect(service.lastInputs, <String>['canvases/c1/videos/old.mp4']);
+    });
+
+    // 变异：行尾标记不分「未采用」（比当前新的也写「旧 take」）⇒ 本条红。
+    testWidgets('固定的当前行标「固定」，更新的行标「未采用」，更旧的仍「旧 take」', (tester) async {
+      await _pumpDialog(
+        tester,
+        service: _FakeVideoExportService(),
+        pinnedBySource: const <String, String>{'cfg-s1': 'node-mid'},
+        nodes: <CanvasNode>[
+          _shotConfig('cfg-s1'),
+          _videoResult('early', 100, 'early.mp4', source: 'cfg-s1', createdAt: DateTime.utc(2026, 1, 1)),
+          _videoResult('mid', 200, 'mid.mp4', source: 'cfg-s1', createdAt: DateTime.utc(2026, 2, 1)),
+          _videoResult('late', 300, 'late.mp4', source: 'cfg-s1', createdAt: DateTime.utc(2026, 3, 1)),
+        ],
+      );
+
+      double rowY(String label) => tester.getTopLeft(find.text(label)).dy;
+      expect(find.text('Pinned'), findsOneWidget);
+      // 徽标与标题同一行（徽标有 2px 上下内边距，顶边差几像素；行距远大于此）。
+      expect(rowY('Pinned'), closeTo(rowY('mid'), 8), reason: '固定的当前行');
+      expect(find.text('Not used'), findsOneWidget);
+      expect(rowY('Not used'), closeTo(rowY('late'), 8), reason: '比固定的新');
+      expect(find.text('Earlier take'), findsOneWidget);
+      expect(rowY('Earlier take'), closeTo(rowY('early'), 8), reason: '比固定的旧');
+      // 默认勾选仍由当前集定：只勾固定的 mid（展示序 late / mid / early）。
+      expect(_checkboxValues(tester), <bool?>[false, true, false]);
     });
   });
 

@@ -4,7 +4,8 @@
 //   - [ResultPreviewFrame]  16:9 预览框（thumbFill 底 + outline 边 + 3px 圆角），内容由调用方给；
 //     [ResultFileImage] 把产物的相对路径解析成图，[ResultPreviewPlaceholder] 是没有图时的占位。
 //   - [ResultParamsGroup]   「生成参数」：取值走 util/result_params.dart（与画廊信息面板同一口径）。
-//   - [ResultActions]       「定位来源节点」/「在序列中定位」，video 再多一个「播放」。
+//   - [ResultActions]       「设为当前」（排最前；已是当前打勾置灰，没有来源置灰）/「定位来源节点」/
+//                           「在序列中定位」，video 再多一个「播放」（排在「设为当前」之后）。
 //
 // 没有 canvasId 的节点（单测里的裸节点）找不到来源、也谈不上定位：参数组只剩产物自己那几项，
 // 动作行不画——不为此去读任何仓储。
@@ -26,8 +27,10 @@ import '../../sequence/util/shot_index.dart';
 import '../../sequence/util/view_in_sequence.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../providers/current_take_controller.dart';
 import '../util/camera_labels.dart';
 import '../util/result_params.dart';
+import '../util/take_status.dart';
 import 'image_config_inspector.dart' show aspectRatioLabel;
 import 'inspector_rows.dart';
 import 'left_rail/left_rail_actions.dart';
@@ -40,6 +43,7 @@ abstract final class ResultInspectorKeys {
   static const Key locateSource = Key('inspector.result.locateSource');
   static const Key viewInSequence = Key('inspector.result.viewInSequence');
   static const Key play = Key('inspector.result.play');
+  static const Key setCurrent = Key('inspector.result.setCurrent');
 }
 
 /// 某个画布此刻的节点表；没有 canvasId 就是空表（不读仓储）。
@@ -224,7 +228,8 @@ class ResultParamsGroup extends ConsumerWidget {
   }
 }
 
-/// 动作行：「定位来源节点」（来源 config 还在才可点）/「在序列中定位」（产物落在叙事链某一镜上才可点）
+/// 动作行：「设为当前」（排最前；已是当前 ⇒ 打勾置灰；孤儿 / 来源已删 ⇒ 置灰；走 currentTakeControllerProvider）
+/// /「定位来源节点」（来源 config 还在才可点）/「在序列中定位」（产物落在叙事链某一镜上才可点）
 /// / [onPlay] 非空时多一个「播放」。不可用的置灰不隐藏，与节点右键菜单同一口径。
 class ResultActions extends ConsumerWidget {
   const ResultActions({super.key, required this.node, this.onPlay, this.showPlay = false});
@@ -245,12 +250,24 @@ class ResultActions extends ConsumerWidget {
     final Set<String> self = <String>{node.id};
     final bool inSequence =
         shotIndexForSelection(ref.watch(sequenceLensProvider(canvasId)), selection: self, nodes: nodes) >= 0;
+    // 来源配置不在（孤儿 / 已删）⇒ status 为 null，置灰不打勾；已是当前 ⇒ 打勾置灰。
+    final ResultTakeStatus? take = source == null ? null : resultTakeStatusOf(node, nodes);
+    final bool isCurrent = take?.current ?? false;
     return Padding(
       padding: const EdgeInsets.all(InkSpacing.s12),
       child: Wrap(
         spacing: InkSpacing.sm,
         runSpacing: InkSpacing.sm,
         children: <Widget>[
+          _ActionButton(
+            key: ResultInspectorKeys.setCurrent,
+            label: l.takeSetCurrent,
+            glyph: isCurrent ? InkGlyph.success : InkGlyph.pin,
+            checked: isCurrent,
+            onTap: take == null || isCurrent
+                ? null
+                : () => ref.read(currentTakeControllerProvider(canvasId)).setCurrent(node.id, l: l).ignore(),
+          ),
           if (showPlay)
             _ActionButton(
               key: ResultInspectorKeys.play,
@@ -276,20 +293,30 @@ class ResultActions extends ConsumerWidget {
 }
 
 /// 次级按钮 + InkActivatable 点击壳（可 Tab 聚焦、回车同效）；[onTap] 为 null ⇒ 置灰、不可点也不可聚焦。
+/// [checked]：「现在就是这样」（如「设为当前」时它已是当前）——调用方把 [glyph] 换成打勾（InkGlyph.success，与
+/// InkMenuPanel 的打勾行同一个图标；图标集 v1 没有 check）并给 null 的 [onTap]，整颗置灰。
 class _ActionButton extends StatelessWidget {
-  const _ActionButton({super.key, required this.label, required this.onTap, this.glyph});
+  const _ActionButton({
+    super.key,
+    required this.label,
+    required this.onTap,
+    this.glyph,
+    this.checked = false,
+  });
 
   final String label;
   final InkGlyph? glyph;
   final VoidCallback? onTap;
+  final bool checked;
 
   @override
   Widget build(BuildContext context) => InkActivatable(
-        onTap: onTap,
+        onTap: checked ? null : onTap,
         semanticLabel: label,
+        selected: checked ? true : null,
         focusRingRadius: BorderRadius.circular(InkRadius.s3),
         builder: (BuildContext context, bool hovered, bool focused) => Opacity(
-          opacity: onTap == null ? 0.5 : 1,
+          opacity: onTap == null || checked ? 0.5 : 1,
           child: InkSecondaryButton(label, leading: glyph),
         ),
       );

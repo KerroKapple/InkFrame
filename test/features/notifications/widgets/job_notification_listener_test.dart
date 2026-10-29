@@ -79,14 +79,36 @@ class _Harness {
       container.read(jobsRegistryProvider.notifier).upsert(job);
 }
 
+/// harness 的 FakeNodesController 没有 patchTypeConfigMany：补一个内存合并的覆盖，并记下收到的 patch
+/// （「设为当前」写固定走它）。
+class _PatchableNodes extends FakeNodesController {
+  _PatchableNodes(super.seed);
+
+  final List<Map<String, Map<String, Object?>>> patched = <Map<String, Map<String, Object?>>>[];
+
+  @override
+  Future<void> patchTypeConfigMany(Map<String, Map<String, Object?>> patches) async {
+    patched.add(patches);
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      for (final CanvasNode n in state.valueOrNull ?? const <CanvasNode>[])
+        if (patches[n.id] case final Map<String, Object?> p)
+          n.copyWith(typeConfig: <String, Object?>{...n.typeConfig, ...p})
+        else
+          n,
+    ]);
+  }
+}
+
 /// [canvasAlive]：任务所在画布的节点控制器是否本来就活着（画布开着）。
 /// [before]：挂上监听之前 registry 里就已经有的条目。
+/// [nodes]：画布 c1 的节点（缺省 = [_nodes]）。
 Future<_Harness> _pump(
   WidgetTester tester, {
   bool canvasAlive = true,
   ShellState shell = const ShellState(project: _alpha),
   List<JobState> before = const <JobState>[],
   InMemoryNodeRepository? repo,
+  List<CanvasNode> nodes = _nodes,
 }) async {
   final RecordingToastService toasts = RecordingToastService();
   final InMemoryNodeRepository nodeRepo = repo ?? InMemoryNodeRepository();
@@ -95,8 +117,7 @@ Future<_Harness> _pump(
       toastServiceProvider.overrideWithValue(toasts),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
       nodeRepositoryProvider.overrideWith((ref) async => nodeRepo),
-      canvasNodesControllerProvider
-          .overrideWith(() => FakeNodesController(_nodes)),
+      canvasNodesControllerProvider.overrideWith(() => _PatchableNodes(nodes)),
       shellControllerProvider.overrideWith(() => ShellNavigator(initial: shell)),
     ],
   );
@@ -282,5 +303,94 @@ void main() {
     h.upsert(_succeeded('j5'));
     await tester.pump();
     expect(h.toasts.shown.single.primary, isNull);
+  });
+
+  // tc-set-current：这一镜固定在别的 take 上时，新 take 完成卡写「当前仍是 take N」+「设为当前」。
+  //
+  // 变异对照：
+  // - 通知不看固定（永远不写 body / 不给 secondary）⇒「固定了 take 2 后新 take 完成…」红。
+  // - 号取错（不 `?? 1`：固定那张是名下唯一一张、新 take 还没进内存时号表里没有它）⇒「…唯一一张…take 1」红。
+  group('当前仍是 take N', () {
+    CanvasNode result(String id, int day) => CanvasNode(
+          id: id,
+          label: '',
+          type: CanvasNodeType.image,
+          role: NodeRole.result,
+          canvasId: 'c1',
+          sourceNodeId: 'n1',
+          createdAt: DateTime.utc(2026, 5, day),
+          typeConfig: <String, Object?>{'image_url': 'images/$id.png'},
+        );
+
+    CanvasNode pinnedConfig(String pin) => CanvasNode(
+          id: 'n1',
+          label: 'Shot 1',
+          type: CanvasNodeType.image,
+          canvasId: 'c1',
+          typeConfig: <String, Object?>{'pinned_result_id': pin},
+        );
+
+    JobState succeededWith(String jobId, String resultNodeId) => JobState.succeeded(
+          jobId: jobId,
+          providerId: 'p',
+          canvasId: 'c1',
+          projectId: 'p1',
+          sourceNodeId: 'n1',
+          resultNodeId: resultNodeId,
+          artifactPath: 'images/$resultNodeId.png',
+        );
+
+    testWidgets('固定了 take 2 后新 take 完成：body「当前仍是 take 2」+「设为当前」，点了固定新 take', (tester) async {
+      final _Harness h = await _pump(
+        tester,
+        nodes: <CanvasNode>[pinnedConfig('r2'), result('r1', 1), result('r2', 2), result('r3', 3)],
+      );
+      h.upsert(succeededWith('j1', 'r3'));
+      await tester.pump();
+
+      final RecordedToast t = h.toasts.shown.single;
+      final AppLocalizations l = _l10n(tester);
+      expect(t.kind, ToastKind.success);
+      expect(t.body, l.jobNotifyStillCurrentTake(2));
+      expect(t.secondary?.label, l.takeSetCurrent);
+      expect(t.primary?.label, l.toastActionView, reason: '「查看」照旧');
+
+      t.secondary!.onPressed();
+      for (int i = 0; i < 5; i++) {
+        await tester.pump();
+      }
+      final _PatchableNodes nodes =
+          h.container.read(canvasNodesControllerProvider('c1').notifier) as _PatchableNodes;
+      expect(nodes.patched, <Map<String, Map<String, Object?>>>[
+        <String, Map<String, Object?>>{
+          'n1': <String, Object?>{'pinned_result_id': 'r3'},
+        },
+      ]);
+      // 胶囊（带动作 4 s）走完再收尾。
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('固定的那张是名下唯一一张、新 take 还没进内存：「当前仍是 take 1」', (tester) async {
+      final _Harness h = await _pump(
+        tester,
+        nodes: <CanvasNode>[pinnedConfig('r1'), result('r1', 1)],
+      );
+      h.upsert(succeededWith('j2', 'r9'));
+      await tester.pump();
+      expect(h.toasts.shown.single.body, _l10n(tester).jobNotifyStillCurrentTake(1));
+    });
+
+    testWidgets('没固定：卡片与原来一样（无 body、无 secondary）', (tester) async {
+      final _Harness h = await _pump(
+        tester,
+        nodes: <CanvasNode>[_nodes.first, result('r1', 1), result('r2', 2)],
+      );
+      h.upsert(succeededWith('j3', 'r2'));
+      await tester.pump();
+      final RecordedToast t = h.toasts.shown.single;
+      expect(t.body, isNull);
+      expect(t.secondary, isNull);
+      expect(t.title, _l10n(tester).jobNotifySucceeded('Shot 1'));
+    });
   });
 }

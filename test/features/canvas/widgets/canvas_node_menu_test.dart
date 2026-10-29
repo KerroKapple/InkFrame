@@ -106,6 +106,20 @@ const CanvasNode _take = CanvasNode(
   typeConfig: <String, Object?>{'image_url': 'images/take.png'},
 );
 
+/// img 名下第二张产物（带 createdAt；_take 没有时间戳，排在它之后 ⇒ _take2 是最新 = 当前，_take 不是）。
+/// 只经 `_pump(nodes: [..._nodes, _take2])` 用，不进共享的 _nodes。
+final CanvasNode _take2 = CanvasNode(
+  id: 'take2',
+  label: 'Shot 01 take 2',
+  type: CanvasNodeType.image,
+  role: NodeRole.result,
+  sourceNodeId: 'img',
+  canvasId: 'c1',
+  position: const Offset(760, 320),
+  createdAt: DateTime.utc(2026, 5, 2),
+  typeConfig: const <String, Object?>{'image_url': 'images/take2.png'},
+);
+
 /// 不在叙事链上的文本节点。
 const CanvasNode _note = CanvasNode(
   id: 'note',
@@ -270,6 +284,22 @@ class _Nodes extends CanvasNodesController {
         for (final CanvasNode n in previous)
           if (n.id == id) (node: n, edgeIds: const <String>[]),
     ];
+  }
+
+  /// patchTypeConfigMany 每次收到的 patch（「设为当前」写固定走它）。
+  final List<Map<String, Map<String, Object?>>> patched = <Map<String, Map<String, Object?>>>[];
+
+  /// 内存合并（真实现会去读未覆盖的 unitOfWorkProvider）。
+  @override
+  Future<void> patchTypeConfigMany(Map<String, Map<String, Object?>> patches) async {
+    patched.add(patches);
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      for (final CanvasNode n in state.valueOrNull ?? const <CanvasNode>[])
+        if (patches[n.id] case final Map<String, Object?> p)
+          n.copyWith(typeConfig: <String, Object?>{...n.typeConfig, ...p})
+        else
+          n,
+    ]);
   }
 
   @override
@@ -1122,6 +1152,67 @@ void main() {
       // en 文案以 app_en.arb 的 undoFailed 为准。
       expect(_toastOf(c).shown.last.title, "Couldn't undo");
       expect(_toastOf(c).shown.last.kind, ToastKind.error);
+    });
+  });
+
+  // tc-set-current：take 组（组 20）的「设为当前」。
+  //
+  // 变异对照：
+  // - 菜单项对已是当前不置灰 ⇒「右键当前 take：「设为当前」打勾置灰」红。
+  // - 菜单项对配置卡也出 ⇒「右键配置卡：没有「设为当前」」红。
+  group('设为当前', () {
+    const String setCurrent = 'Set as current';
+
+    Finder row(String label) =>
+        find.ancestor(of: _item(label), matching: find.byType(InkActivatable));
+
+    testWidgets('右键非当前 take 卡：take 组出「设为当前」，点了固定', (tester) async {
+      final ProviderContainer c = await _pump(tester, nodes: <CanvasNode>[..._nodes, _take2]);
+      await _openMenuOn(tester, 'take');
+
+      expect(_enabled(tester, setCurrent), isTrue);
+      // take 组排在「做」组之后、「归类 · 定位」组之前。
+      final double y = tester.getCenter(_item(setCurrent)).dy;
+      expect(y, greaterThan(tester.getCenter(_item('Duplicate')).dy));
+      expect(y, lessThan(tester.getCenter(_item('Save as character')).dy));
+
+      await _pick(tester, setCurrent);
+      for (int i = 0; i < 3; i++) {
+        await tester.pump();
+      }
+
+      expect(_menu, findsNothing);
+      expect(_nodesOf(c).patched, <Map<String, Map<String, Object?>>>[
+        <String, Map<String, Object?>>{
+          'img': <String, Object?>{'pinned_result_id': 'take'},
+        },
+      ]);
+      // 胶囊（带动作 4 s）走完再收尾。
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('右键当前 take：「设为当前」打勾置灰', (tester) async {
+      final ProviderContainer c = await _pump(tester);
+      await _openMenuOn(tester, 'take');
+
+      expect(_item(setCurrent), findsOneWidget, reason: '置灰不隐藏');
+      expect(_enabled(tester, setCurrent), isFalse);
+      expect(
+        find.descendant(
+          of: row(setCurrent),
+          matching: find.byWidgetPredicate((Widget w) => w is InkIcon && w.glyph == InkGlyph.success),
+        ),
+        findsOneWidget,
+        reason: '已是当前：打勾',
+      );
+      await _pick(tester, setCurrent);
+      expect(_nodesOf(c).patched, isEmpty, reason: '置灰的项点了不执行');
+    });
+
+    testWidgets('右键配置卡：没有「设为当前」', (tester) async {
+      await _pump(tester, nodes: <CanvasNode>[..._nodes, _take2]);
+      await _openMenuOn(tester, 'img');
+      expect(find.descendant(of: _menu, matching: find.text(setCurrent)), findsNothing);
     });
   });
 }

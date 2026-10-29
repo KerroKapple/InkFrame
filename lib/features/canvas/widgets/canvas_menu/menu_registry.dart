@@ -23,6 +23,7 @@ import '../../../../theme/components/ink_menu_panel.dart';
 import 'blank_menu_entries.dart';
 import 'canvas_menu_request.dart';
 import 'node_menu_entries.dart';
+import 'set_current_menu_items.dart';
 import 'undo_menu_items.dart';
 
 /// 这一项出在哪个菜单里。
@@ -100,6 +101,7 @@ final List<CanvasMenuItemDef> kCanvasMenuItems = <CanvasMenuItemDef>[
   ...blankMenuItems,
   ...nodeMenuItems,
   ...undoBlankMenuItems,
+  ...setCurrentMenuItems,
 ];
 
 /// [scope] 那个菜单的分组：先按组号、组内按序号排；build 返回 null 的项不出，空组不出。
