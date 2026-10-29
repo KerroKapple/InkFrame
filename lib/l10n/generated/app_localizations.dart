@@ -5875,6 +5875,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Redo'**
   String get settingsShortcutCanvasRedo;
+
+  /// No description provided for @takeSetCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as current'**
+  String get takeSetCurrent;
+
+  /// No description provided for @takeCurrentBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get takeCurrentBadge;
+
+  /// No description provided for @takePinnedBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get takePinnedBadge;
+
+  /// No description provided for @takeNotAdopted.
+  ///
+  /// In en, this message translates to:
+  /// **'Not used'**
+  String get takeNotAdopted;
+
+  /// No description provided for @takeCardCaption.
+  ///
+  /// In en, this message translates to:
+  /// **'take {number} / {total}'**
+  String takeCardCaption(int number, int total);
+
+  /// No description provided for @takeCardCaptionCurrent.
+  ///
+  /// In en, this message translates to:
+  /// **'take {number} / {total} · current'**
+  String takeCardCaptionCurrent(int number, int total);
+
+  /// No description provided for @takeCardCaptionNotAdopted.
+  ///
+  /// In en, this message translates to:
+  /// **'take {number} / {total} · not used'**
+  String takeCardCaptionNotAdopted(int number, int total);
+
+  /// No description provided for @canvasCommandSetCurrentTake.
+  ///
+  /// In en, this message translates to:
+  /// **'Set as current · take {number}'**
+  String canvasCommandSetCurrentTake(int number);
+
+  /// No description provided for @jobNotifyStillCurrentTake.
+  ///
+  /// In en, this message translates to:
+  /// **'Current is still take {number}'**
+  String jobNotifyStillCurrentTake(int number);
 }
 
 class _AppLocalizationsDelegate

@@ -3237,4 +3237,41 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasRedo => '重做';
+
+  @override
+  String get takeSetCurrent => '设为当前';
+
+  @override
+  String get takeCurrentBadge => '当前';
+
+  @override
+  String get takePinnedBadge => '固定';
+
+  @override
+  String get takeNotAdopted => '未采用';
+
+  @override
+  String takeCardCaption(int number, int total) {
+    return 'take $number / $total';
+  }
+
+  @override
+  String takeCardCaptionCurrent(int number, int total) {
+    return 'take $number / $total · 当前';
+  }
+
+  @override
+  String takeCardCaptionNotAdopted(int number, int total) {
+    return 'take $number / $total · 未采用';
+  }
+
+  @override
+  String canvasCommandSetCurrentTake(int number) {
+    return '设为当前 · take $number';
+  }
+
+  @override
+  String jobNotifyStillCurrentTake(int number) {
+    return '当前仍是 take $number';
+  }
 }
