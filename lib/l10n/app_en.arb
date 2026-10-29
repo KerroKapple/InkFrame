@@ -1665,5 +1665,7 @@
   "canvasCommandMoveIntoLane": "Move into lane “{lane}”",
   "@canvasCommandMoveIntoLane": {"placeholders":{"lane":{"type":"String"}}},
   "canvasCommandMoveOutOfLane": "Move out of lane “{lane}”",
-  "@canvasCommandMoveOutOfLane": {"placeholders":{"lane":{"type":"String"}}}
+  "@canvasCommandMoveOutOfLane": {"placeholders":{"lane":{"type":"String"}}},
+  "canvasMarqueeCount": "{count} selected",
+  "@canvasMarqueeCount": {"placeholders":{"count":{"type":"int"}}}
 }
