@@ -1265,5 +1265,14 @@
   "referenceMenuAttachCostume": "当服装参考 → {node}",
   "@referenceMenuAttachCostume": {"placeholders":{"node":{"type":"String"}}},
   "referenceMenuPlace": "只放进画布",
-  "referenceMenuSaveCharacter": "存为角色"
+  "referenceMenuSaveCharacter": "存为角色",
+  "takeSetCurrent": "设为当前",
+  "takeCurrentBadge": "当前",
+  "takePinnedBadge": "固定",
+  "takeNotAdopted": "未采用",
+  "takeCardCaption": "take {number} / {total}",
+  "takeCardCaptionCurrent": "take {number} / {total} · 当前",
+  "takeCardCaptionNotAdopted": "take {number} / {total} · 未采用",
+  "canvasCommandSetCurrentTake": "设为当前 · take {number}",
+  "jobNotifyStillCurrentTake": "当前仍是 take {number}"
 }
