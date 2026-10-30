@@ -115,6 +115,14 @@ class _Lanes extends CanvasLanesController {
 
   @override
   Future<List<StyleLane>> build(String canvasId) async => seed;
+
+  /// 标题栏拖动落下时的重排请求；测试里不写库，只记下来。
+  static final List<List<String>> reorderCalls = <List<String>>[];
+
+  @override
+  Future<void> reorderLanes(List<String> orderedIds) async {
+    reorderCalls.add(orderedIds);
+  }
 }
 
 class _Edges extends CanvasEdgesController {
@@ -549,6 +557,7 @@ void main() {
   });
 
   testWidgets('泳道底色上起拖也是框选；标题栏上起拖仍是拖泳道', (tester) async {
+    _Lanes.reorderCalls.clear();
     await _pump(tester, nodes: const <CanvasNode>[_a, _b, _c, _d], lanes: _twoLanes);
 
     // L1 的底色（世界 y 0..400），不压卡片、不压标题栏。
@@ -568,6 +577,7 @@ void main() {
       beforeRelease: () async => expect(_frame, findsNothing, reason: '标题栏上起拖是拖泳道'),
     );
     expect(_frame, findsNothing);
+    expect(_Lanes.reorderCalls, isNotEmpty, reason: '标题栏拖动落下走泳道重排');
   });
 
   testWidgets('平移工具 / 按住空格时左键拖空白：仍是平移', (tester) async {
