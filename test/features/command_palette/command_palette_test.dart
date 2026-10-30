@@ -544,16 +544,16 @@ void main() {
     expect(find.text('clip-new'), findsOneWidget);
     expect(_checkedOnRowOf(tester, 'clip-old'), isTrue, reason: '固定的那条默认勾上');
     expect(_checkedOnRowOf(tester, 'clip-new'), isFalse, reason: '更新但没固定的那条默认不勾');
-    // 「旧 take」标记跟着当前集走：挂在没固定的 clip-new 那一行。
-    expect(find.text('Earlier take'), findsOneWidget);
+    // 固定了旧的：更新但没固定的 clip-new 那一行标「未采用」（W3 tc-set-current 三态）。
+    expect(find.text('Not used'), findsOneWidget);
     expect(
-      (tester.getCenter(find.text('Earlier take')).dy -
+      (tester.getCenter(find.text('Not used')).dy -
               tester.getCenter(find.text('clip-new')).dy)
           .abs(),
-      lessThan((tester.getCenter(find.text('Earlier take')).dy -
+      lessThan((tester.getCenter(find.text('Not used')).dy -
               tester.getCenter(find.text('clip-old')).dy)
           .abs()),
-      reason: '「旧 take」标在 clip-new 那行',
+      reason: '「未采用」标在 clip-new 那行',
     );
   });
 
