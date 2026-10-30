@@ -5905,6 +5905,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Move out of lane “{lane}”'**
   String canvasCommandMoveOutOfLane(String lane);
+
+  /// No description provided for @canvasMarqueeCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String canvasMarqueeCount(int count);
 }
 
 class _AppLocalizationsDelegate

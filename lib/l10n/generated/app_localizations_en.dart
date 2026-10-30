@@ -3419,4 +3419,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String canvasCommandMoveOutOfLane(String lane) {
     return 'Move out of lane “$lane”';
   }
+
+  @override
+  String canvasMarqueeCount(int count) {
+    return '$count selected';
+  }
 }
