@@ -3384,4 +3384,41 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsShortcutCanvasRedo => 'Redo';
+
+  @override
+  String get takeSetCurrent => 'Set as current';
+
+  @override
+  String get takeCurrentBadge => 'Current';
+
+  @override
+  String get takePinnedBadge => 'Pinned';
+
+  @override
+  String get takeNotAdopted => 'Not used';
+
+  @override
+  String takeCardCaption(int number, int total) {
+    return 'take $number / $total';
+  }
+
+  @override
+  String takeCardCaptionCurrent(int number, int total) {
+    return 'take $number / $total · current';
+  }
+
+  @override
+  String takeCardCaptionNotAdopted(int number, int total) {
+    return 'take $number / $total · not used';
+  }
+
+  @override
+  String canvasCommandSetCurrentTake(int number) {
+    return 'Set as current · take $number';
+  }
+
+  @override
+  String jobNotifyStillCurrentTake(int number) {
+    return 'Current is still take $number';
+  }
 }

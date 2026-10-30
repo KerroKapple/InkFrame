@@ -1656,5 +1656,19 @@
   "canvasHistoryNothingToUndo": "Nothing to undo",
   "canvasHistoryNothingToRedo": "Nothing to redo",
   "settingsShortcutCanvasUndo": "Undo",
-  "settingsShortcutCanvasRedo": "Redo"
+  "settingsShortcutCanvasRedo": "Redo",
+  "takeSetCurrent": "Set as current",
+  "takeCurrentBadge": "Current",
+  "takePinnedBadge": "Pinned",
+  "takeNotAdopted": "Not used",
+  "takeCardCaption": "take {number} / {total}",
+  "@takeCardCaption": {"placeholders":{"number":{"type":"int"},"total":{"type":"int"}}},
+  "takeCardCaptionCurrent": "take {number} / {total} · current",
+  "@takeCardCaptionCurrent": {"placeholders":{"number":{"type":"int"},"total":{"type":"int"}}},
+  "takeCardCaptionNotAdopted": "take {number} / {total} · not used",
+  "@takeCardCaptionNotAdopted": {"placeholders":{"number":{"type":"int"},"total":{"type":"int"}}},
+  "canvasCommandSetCurrentTake": "Set as current · take {number}",
+  "@canvasCommandSetCurrentTake": {"placeholders":{"number":{"type":"int"}}},
+  "jobNotifyStillCurrentTake": "Current is still take {number}",
+  "@jobNotifyStillCurrentTake": {"placeholders":{"number":{"type":"int"}}}
 }
