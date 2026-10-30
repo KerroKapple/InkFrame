@@ -1,12 +1,14 @@
 // 拖卡片换泳道（演示 O2）：canvas_view 的卡片插槽松手 → util/drop_placement.dart 的 resolveCardDrop → moveNode。
 //
 //   - 误拖：鼠标按下挪几个像素（过了平移阈值、拖动成立），位置照落，归属泳道不变——不在道里但压在道上的卡
-//     不会被顺手收进去，道里的卡也不会被换走；不弹提示。
-//   - 真拖进另一条道：拖动途中目标道高亮（泳道背景层的 dropTargetLaneId），松手后 moveNode 换道，弹一张撤销卡
-//     「Moved into lane “Dusk”」；点「Undo」把卡片挪回原位置、原泳道。
+//     不会被顺手收进去，道里的卡也不会被换走；不弹提示、不进撤销栈。
+//   - 真拖进另一条道：拖动途中目标道高亮（泳道背景层的 dropTargetLaneId），松手后 moveNode 换道，进画布撤销栈
+//     （MoveNodesCommand）并弹一张撤销卡「Moved into lane “Dusk”」；点「Undo」把卡片挪回原位置、原泳道；
+//     不点卡（卡收起）按 Ctrl Z（直接调 runCanvasUndo）同样挪回。撤销走 moveNodes，_Nodes 把它记成同一个 _Moved 结构。
 //
 // 变异对照：canvas_view 改回直接调 resolveLaneDrop（不过 resolveCardDrop 的闸）⇒「误拖」两条红；
-// 拿掉撤销卡 ⇒「真拖」红；拿掉背景层的 dropTargetLaneId 接线 ⇒「真拖」的高亮断言红。
+// 拿掉撤销卡 ⇒「真拖」红；拿掉背景层的 dropTargetLaneId 接线 ⇒「真拖」的高亮断言红；
+// 删掉 node_card_slot.dart _commitDrag 里的 record ⇒「换道后卡片收起，Ctrl Z 仍挪回」红。
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,8 +19,10 @@ import 'package:inkframe/features/canvas/models/canvas_edge.dart';
 import 'package:inkframe/features/canvas/models/canvas_node.dart';
 import 'package:inkframe/features/canvas/models/style_lane.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
+import 'package:inkframe/features/canvas/providers/canvas_history_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_lanes_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
+import 'package:inkframe/features/canvas/util/canvas_history_actions.dart';
 import 'package:inkframe/features/canvas/util/lane_geometry.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_shortcuts.dart';
 import 'package:inkframe/features/canvas/widgets/canvas_view.dart';
@@ -26,6 +30,7 @@ import 'package:inkframe/features/canvas/widgets/lane_background.dart';
 import 'package:inkframe/features/notifications/providers/toast_service_provider.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/features/shell/providers/shell_controller.dart';
+import 'package:inkframe/l10n/generated/app_localizations_en.dart';
 
 import '../../../_harness/fake_canvas.dart';
 import '../../../_harness/fake_toast_service.dart';
@@ -82,6 +87,25 @@ class _Nodes extends CanvasNodesController {
           n,
     ]);
   }
+
+  /// 撤销换道走整批挪动：每张卡记成一条 _Moved（与 moveNode 同一结构），再落进内存态。
+  @override
+  Future<void> moveNodes(Map<String, NodeMove> moves) async {
+    for (final MapEntry<String, NodeMove> e in moves.entries) {
+      moved.add((id: e.key, delta: e.value.delta, laneId: e.value.laneId));
+    }
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      for (final CanvasNode n in state.valueOrNull ?? const <CanvasNode>[])
+        if (moves.containsKey(n.id))
+          n.copyWith(
+            position: n.position + moves[n.id]!.delta,
+            laneId: moves[n.id]!.laneId,
+            clearLaneId: moves[n.id]!.laneId == null,
+          )
+        else
+          n,
+    ]);
+  }
 }
 
 class _Edges extends CanvasEdgesController {
@@ -127,6 +151,9 @@ RecordingToastService _toastOf(ProviderContainer c) =>
 
 Finder _card(String id) => find.byKey(ValueKey<String>('node-card-$id'));
 
+List<CanvasHistoryStep> _undoStack(ProviderContainer c) =>
+    c.read(canvasHistoryControllerProvider('c1')).undo;
+
 String? _highlighted(WidgetTester tester) =>
     tester.widget<LaneBackground>(find.byType(LaneBackground)).dropTargetLaneId;
 
@@ -169,6 +196,7 @@ void main() {
       expect(moved, hasLength(1), reason: '拖动成立：位置照落');
       _expectMoved(moved.single, id: 'free', delta: const Offset(1, 3), laneId: null);
       expect(_toastOf(c).shown, isEmpty);
+      expect(_undoStack(c), isEmpty, reason: '没换道的普通拖动不进撤销栈');
     });
 
     testWidgets('Rain 道里的卡：轻推还在 Rain，不弹提示', (WidgetTester tester) async {
@@ -183,6 +211,7 @@ void main() {
       expect(moved, hasLength(1));
       _expectMoved(moved.single, id: 'laned', delta: const Offset(0, 3), laneId: 'lane-1');
       expect(_toastOf(c).shown, isEmpty);
+      expect(_undoStack(c), isEmpty, reason: '没换道的普通拖动不进撤销栈');
     });
   });
 
@@ -219,5 +248,35 @@ void main() {
         .singleWhere((CanvasNode n) => n.id == 'laned');
     expect(back.position, const Offset(40, 40));
     expect(back.laneId, 'lane-1');
+  });
+
+  testWidgets('换道后卡片收起，Ctrl Z 仍挪回原位置、原泳道', (WidgetTester tester) async {
+    final ProviderContainer c = await _pump(tester, _laned);
+
+    final TestGesture gesture =
+        await _dragCard(tester, 'laned', slop: const Offset(0, 10), delta: const Offset(0, 400));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    final List<CanvasHistoryStep> stack = _undoStack(c);
+    expect(stack, hasLength(1), reason: '换道进了撤销栈');
+    expect(stack.single.command.label(AppLocalizationsEn()), 'Move into lane “Dusk”');
+    final RecordedToast card = _toastOf(c).shown.single;
+
+    // 不点卡（卡只是提醒，收不收起栈都在）：按 Ctrl Z。
+    await runCanvasUndo(c.read, canvasId: 'c1', l: AppLocalizationsEn(), isMac: false);
+    await tester.pumpAndSettle();
+
+    final List<_Moved> moved = _nodesOf(c).moved;
+    expect(moved, hasLength(2));
+    _expectMoved(moved[1], id: 'laned', delta: const Offset(0, -400), laneId: 'lane-1');
+    final CanvasNode back = c
+        .read(canvasNodesControllerProvider('c1'))
+        .requireValue
+        .singleWhere((CanvasNode n) => n.id == 'laned');
+    expect(back.position, const Offset(40, 40));
+    expect(back.laneId, 'lane-1');
+    expect(card.dismissed, isTrue, reason: 'Ctrl Z 撤掉这一步，它的卡当场收起');
+    expect(_undoStack(c), isEmpty);
   });
 }

@@ -4,6 +4,7 @@
 // 已存 role 即使不在允许集也保留展示（钳制语义，防 DropdownButton 断言）。
 // maxRefImages > 0 时组内首行带 n/max 计数，超限给忽略警告（截断发生在 provider）。
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -21,6 +22,7 @@ import '../models/canvas_edge.dart';
 import '../models/canvas_node.dart';
 import '../providers/canvas_edges_controller.dart';
 import '../providers/canvas_nodes_controller.dart';
+import '../util/canvas_edge_delete.dart';
 import 'inspector_rows.dart';
 
 /// 入边行缩略图（稿：40×24）。
@@ -240,10 +242,16 @@ class _InputRow extends ConsumerWidget {
                   cursor: SystemMouseCursors.click,
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
-                    onTap: () {
-                      // 失败已由 Controller 回滚内存；UI 由 edges 列表自动重渲染。
-                      ctrl.removeEdge(edge.id).catchError((Object _) => null);
-                    },
+                    // 与舞台上选中线的 ✕ 同一条路：进撤销栈 + 撤销卡，失败出「删除连线失败」
+                    // （控制器回滚让这一行冒回来，不说一声就像没点到）。
+                    onTap: () => unawaited(
+                      deleteEdgeWithUndo(
+                        context,
+                        ref,
+                        canvasId: canvasId,
+                        edgeId: edge.id,
+                      ),
+                    ),
                     child: SizedBox(
                       width: 18,
                       height: 18,

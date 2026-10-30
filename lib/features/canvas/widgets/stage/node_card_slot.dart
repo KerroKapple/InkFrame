@@ -13,7 +13,9 @@ import '../../../../l10n/generated/app_localizations.dart';
 import '../../../../l10n/l10n_x.dart';
 import '../../../notifications/providers/toast_service_provider.dart';
 import '../../models/canvas_node.dart';
+import '../../models/commands/move_nodes_command.dart';
 import '../../models/style_lane.dart';
+import '../../providers/canvas_history_controller.dart';
 import '../../providers/canvas_nodes_controller.dart';
 import '../../providers/canvas_selection_controller.dart';
 import '../../providers/canvas_tool_mode.dart';
@@ -92,9 +94,19 @@ class NodeCardSlot extends ConsumerWidget {
     return l.laneUntitled;
   }
 
+  /// 泳道 [laneId] 的原始名字（没起名 = 空串；道不在 = null），进撤销栈的步名用它——显示时才落「未命名泳道」，
+  /// 不能拿 [_laneName] 那个已本地化的显示名。
+  String? _laneRawName(String? laneId) {
+    for (final StyleLane candidate in lanes) {
+      if (candidate.id == laneId) return candidate.label;
+    }
+    return null;
+  }
+
   /// 拖卡片松手：落位置；归属泳道只在真拖过去了时才改（判定在 util/drop_placement.dart 的 resolveCardDrop，
-  /// 误拖一两个像素不换道——演示 O2）。改了归属就弹一张撤销卡「已移入 / 移出泳道 X」，「撤销」把卡片挪回
-  /// 原位置、原泳道。
+  /// 误拖一两个像素不换道——演示 O2）。改了归属就进画布撤销栈（MoveNodesCommand「移入 / 移出泳道「X」」）并弹
+  /// 一张撤销卡「已移入 / 移出泳道 X」：卡上「撤销」只撤这一步，卡收起后 Ctrl Z / ⌘Z 仍能把卡片挪回原位置、
+  /// 原泳道。没换道的普通拖动不进栈。
   ///
   /// 提示要用的东西（文案、通知服务、容器）在 await 之前取齐：换了道，卡片会被挪进另一个分道位移组重新挂载，
   /// 这个插槽的 context / ref 当场失效，等写库回来再取就晚了。
@@ -116,36 +128,18 @@ class NodeCardSlot extends ConsumerWidget {
     final Offset origin = node.position;
     final String? fromLaneId = node.laneId;
     final String moveFailed = l.nodeMoveFailed;
-    final String undoFailed = l.undoFailed;
-    final String undoLabel = l.commonUndo;
-    // 没换道 = null（不弹卡）。从 A 道拖进 B 道写「已移入 B」。
+    // 没换道 = null（不弹卡、不进栈）。从 A 道拖进 B 道写「已移入 B」。
     final String? laneMessage = !drop.changed
         ? null
         : drop.laneId == null
             ? l.canvasNodeLeftLane(_laneName(l, fromLaneId))
             : l.canvasNodeJoinedLane(_laneName(l, drop.laneId));
+    // 步名原料：进了哪条道 / 出了哪条道，泳道名取原始 label（await 之前取）。
+    final MoveNodesLabel stepLabel = drop.laneId == null
+        ? (kind: MoveNodesLabelKind.outOfLane, laneName: _laneRawName(fromLaneId))
+        : (kind: MoveNodesLabelKind.intoLane, laneName: _laneRawName(drop.laneId));
 
-    // 撤销：挪回拖动前的位置（按此刻的位置算位移，期间被别处挪过也回得去）+ 原泳道。节点已不在（被删了）就不动。
-    Future<void> undo() async {
-      CanvasNode? current;
-      for (final CanvasNode n
-          in container.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
-              const <CanvasNode>[]) {
-        if (n.id == nodeId) current = n;
-      }
-      if (current == null) return;
-      try {
-        await nodesCtrl.moveNode(
-          nodeId,
-          origin - current.position,
-          laneId: fromLaneId,
-        );
-      } on InkError catch (_) {
-        toasts.show(undoFailed, kind: ToastKind.error);
-      }
-    }
-
-    // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，补用户提示。
+    // 手势回调内 fire-and-forget：控制器失败时已回滚内存态，补用户提示（不进栈）。
     Future<void> move() async {
       try {
         await nodesCtrl.moveNode(nodeId, drop.delta, laneId: drop.laneId);
@@ -153,12 +147,35 @@ class NodeCardSlot extends ConsumerWidget {
         toasts.show(moveFailed, kind: ToastKind.error);
         return;
       }
-      if (laneMessage == null) return;
-      showUndoToast(
-        toasts,
-        message: laneMessage,
-        undoLabel: undoLabel,
-        onUndo: () => unawaited(undo()),
+      final String? message = laneMessage;
+      if (message == null) return;
+      // after = 写库之后它此刻的位置（moveNode 夹过 ±kWorldReach，不自己算）。
+      CanvasNode? moved;
+      for (final CanvasNode n
+          in container.read(canvasNodesControllerProvider(canvasId)).valueOrNull ??
+              const <CanvasNode>[]) {
+        if (n.id == nodeId) moved = n;
+      }
+      if (moved == null) return;
+      final String stepId = container
+          .read(canvasHistoryControllerProvider(canvasId).notifier)
+          .record(
+            MoveNodesCommand(
+              before: <String, NodePlacement>{
+                nodeId: (world: origin, laneId: fromLaneId),
+              },
+              after: <String, NodePlacement>{
+                nodeId: (world: moved.position, laneId: drop.laneId),
+              },
+              label: stepLabel,
+            ),
+          );
+      showCanvasUndoSnackWith(
+        container,
+        l,
+        message: message,
+        canvasId: canvasId,
+        stepId: stepId,
       );
     }
 
