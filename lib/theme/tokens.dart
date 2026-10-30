@@ -448,3 +448,34 @@ class InkMotion {
   static const Duration normal = Duration(milliseconds: 200);
   static const Duration slow = Duration(milliseconds: 320);
 }
+
+/// 画布框选（Selection 稿「框选与加减选」）：框与「已选 N」芯片的尺寸，贴边自动平移的触发区与步长。
+/// 颜色 / 字体不在这里：框边与底 = accent，芯片 = surface4 底 + overlayBorder 边 + fg2，
+/// 等宽 10 号 = inkTypography.monoSmall，胶囊圆角 = InkRadius.pill。
+class InkMarquee {
+  InkMarquee._();
+
+  /// 框边（与芯片边）线宽。
+  static const double borderWidth = 1;
+
+  /// 框的圆角。
+  static const double radius = 1;
+
+  /// 框底 = accent 的这个不透明度。
+  static const double fillAlpha = 0.08;
+
+  /// 芯片高。
+  static const double chipHeight = 18;
+
+  /// 芯片左右内边距。
+  static const double chipPaddingH = 7;
+
+  /// 芯片压在框右下角：芯片下沿比框下沿低这么多。
+  static const double chipOverlap = 6;
+
+  /// 贴边自动平移的触发区：指针离视口任一边不到它就开始挪（设计缺口，本片拍板）。
+  static const double autoPanZone = 24;
+
+  /// 贴边自动平移每帧最多挪的屏幕 px（越靠边越快，至少 1）。
+  static const double autoPanMaxStep = 12;
+}

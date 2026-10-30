@@ -1211,5 +1211,6 @@
   "canvasCommandDeleteEdge": "删除连线",
   "canvasCommandMoveNodes": "{count, plural, other{移动 {count} 个节点}}",
   "canvasCommandMoveIntoLane": "移入泳道「{lane}」",
-  "canvasCommandMoveOutOfLane": "移出泳道「{lane}」"
+  "canvasCommandMoveOutOfLane": "移出泳道「{lane}」",
+  "canvasMarqueeCount": "已选 {count}"
 }

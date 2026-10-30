@@ -3270,4 +3270,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String canvasCommandMoveOutOfLane(String lane) {
     return '移出泳道「$lane」';
   }
+
+  @override
+  String canvasMarqueeCount(int count) {
+    return '已选 $count';
+  }
 }
