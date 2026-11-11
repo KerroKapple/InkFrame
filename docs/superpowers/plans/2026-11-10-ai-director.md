@@ -84,3 +84,73 @@
 2. 产物落盘只有 PNG inline bytes 与远端 URL 下载 → 需要 `JobStatus.success(localFiles:)` + 本机文件拷进画布目录的分支。
 3. `grok usage` 无头不可用 → 登录探测改用 `grok models` 输出。
 4. 无头命令：`--prompt-file … --permission-mode acceptEdits --allow image_gen/image_edit/image_to_video/reference_to_video --allow 'run_terminal_command(cp:*)'`；另有 `grok agent` 子命令可评估。
+
+## A2 导演 harness 骨架 + AI 分镜 实施细则（2026-11-11 重写，待批准）
+
+设计参照 DeepSeek Harness（`dsh`，`docs/architecture.md`）：借它的「模型可见即入日志」「提示词分段拼装」「人工命令不占模型轮次」「在确认点分叉」四点，用 Dart 在 App 内实现精简版；不引入 dsh 本身（Node 运行时，嵌进 Flutter 桌面太重）。
+
+### 1. 导演会话与事件日志（唯一事实源）
+
+- **新表**（schema v9，按 ADR-0012 加一条前向迁移 `006_director_sessions.sql` + `schema_v9.dart`）：
+  - `director_sessions`：`id`、`project_id`、`canvas_id`、`content_language`（BCP-47，如 `zh-CN`）、`setting`（JSONB：时代 / 地域 / 文化 / 美术风格，用内容语言写）、`created_at` / `updated_at`、软删列与其它表一致。
+  - `director_events`：`id`、`session_id`、`seq`（会话内连续递增，唯一索引）、`kind`、`parent_seq`（分叉来源，可空）、`payload`（JSONB）、`created_at`。只追加，不改不删（会话软删时随之隐藏）。
+- **事件种类**（`kind`，英文常量）：`script_submitted`、`model_request`（完整请求体，不含 Key）、`model_response`（最终消息 + usage + stop_reason）、`model_failed`（InkError code）、`storyboard_proposed`、`human_edited`、`human_confirmed`、`human_rejected`、`applied_to_canvas`（建出的节点 id）。
+- **铁律**：发给模型的每一次请求都必须能只靠日志里的 `model_request` 原样重建；用量 / 费用由 `model_response.usage` 派生，`ClaudeUsageLedger` 改为从日志读，不再单独记。
+- **项目包导出 / 导入**（LB-11 / LB-12）：两张新表纳入 `data.json`；导入重映射改写 `project_id` / `canvas_id` 与 `applied_to_canvas` 里的节点 id。
+- 仓储：`core/interfaces/director_repository.dart` + `storage/repositories/postgres_director_repository.dart`；追加事件与更新会话的 `updated_at` 在同一事务。
+
+### 2. 分段提示词拼装
+
+- `features/director/prompt/`：`PromptSection`（`id`、`order`、`stability`：`stable` / `session` / `step`、`render(context) → String`）+ `PromptAssembler`（按 stability 再按 order 排序拼成 system，保证稳定段在前）。
+- 段落（全部英文常量，放 `director_prompts.dart`）：
+  1. `role`（stable）：导演助理的身份与总原则。
+  2. `hard_rules`（stable）：《子美传》硬规则——保留原文人名 / 地名 / 器物名不翻译、不替换时代背景、不添加原文没有的元素；后续出图规则（不画断肢、画面无文字印章等）A3 再往这一段加。
+  3. `setting`（session）：会话设定；第一次拆分时为空，拆完写回。
+  4. `language`（session）：`Write every user-facing field in {content_language}.`——只把语言代码当参数注入，模板本身不随界面语言变化。
+  5. `task`（step）：本步的任务说明与输出要求。
+- 拼装结果原样写进 `model_request`，所以调提示词时历史可对比。
+
+### 3. 步骤管线
+
+- `DirectorStep` 抽象：`buildRequest(session, log) → ClaudeRequest`、`parse(ClaudeMessage) → StepProposal`、`apply(proposal, edits) → 画布写入`。每一步固定走：组请求 → 写 `model_request` → 调用 → 写 `model_response` / `model_failed` → 解析成提案 → **人工关口**（确认 / 改 / 驳回，全在本地，写 `human_*` 事件，不调模型）→ 确认后 apply、写 `applied_to_canvas`。
+- 驳回或重来：从最近一个 `human_confirmed` 分叉（新事件 `parent_seq` 指过去），驳回意见作为一段 user 文本注入下一次请求；确认过的结果不受影响。
+- `DirectorSessionController`（Riverpod，按会话 id）是唯一写入口；步骤实现不直接碰仓储。
+
+### 4. 第一个步骤：拆分镜（`StoryboardStep`）
+
+- 结构化输出 schema：
+  - 顶层：`content_language`、`setting{era, region, culture, art_style}`、`shots[]`。
+  - 每镜：`label`、`notes`（首帧画面 + 动作）、`shot_size`、`camera_angle`、`camera`、`duration_seconds`、`characters[]`；枚举直接写成 `ShotSize` / `CameraAngle` / `CameraMovement` 的 `.name`。
+- 解析：未知枚举当 null、时长夹到 1–15 秒、空 label 取 notes 首行；`content_language` 与 `setting` 写回会话；出场角色名附在 notes 末尾一行（挂角色库留到 A3）。
+- 落画布：`ShotDraft` 加可选的 `shotSize` / `cameraAngle` / `camera` / `durationMs`，`ScriptImportController.importDrafts` 有值才写进现有的 type_config 键——规则拆分与 AI 拆分共用这一条建链路径，不加节点新键。
+- effort `medium`；一次导入只调一次，不做 caching / batches。
+
+### 5. 剧本导入对话框
+
+- 策略加第三段「AI 拆分」；没填 Claude Key 时置灰，悬停提示去设置页。
+- AI 模式：「开始拆分」→ 进度（可取消，取消只是丢弃结果、照样记 `model_failed`）→ 预览顶部显示**识别出的语言与设定**（可直接改，改动记 `human_edited`），下面每镜「标题 · 景别 · 运镜 · 时长」，以及本次 token 和估算费用。
+- 拆完又改了剧本：预览标「文字已修改，需重新拆分」，创建按钮置灰。
+- 「创建镜头」= `human_confirmed` + apply。
+- 文案全走 ARB（中英），`flutter gen-l10n`。
+
+### 6. 测试
+
+- 迁移：v8 → v9 前向迁移，旧数据原样保留；降级拒绝。
+- 仓储：追加事件 seq 连续、并发追加不撞号、软删隐藏。
+- 拼装器：排序稳定、语言参数注入、同一会话两次拼装的稳定前缀逐字节一致。
+- 管线：用假 `AnthropicClient` 跑一遍确认 / 驳回再分叉 / 失败；断言日志里的 `model_request` 能原样重建实际发出的请求。
+- 解析：正常、未知枚举、时长越界、空 label、拒答冒泡。
+- 建链：带镜头语言 / 运镜 / 时长的草稿写对 type_config；规则草稿行为不变。
+- 项目包：导出再导入后会话与事件完整、id 已改写。
+- 对话框 widget：无 Key 置灰、拆分中 / 完成 / 失败、改字后标过期、改设定入日志、创建走同一控制器。
+
+### 7. 文档
+
+- `docs/MASTERPLAN.md` D-M4-1 补「AI 拆分作为可选增强接入（A2），规则拆分仍是默认」。
+- 新 ADR：`docs/adr/00xx-director-event-log.md`，记录「模型可见即入日志」与 dsh 参照。
+- `docs/CLAUDE.md` 目录快照加 `features/director/`、新仓储与 schema；README 目录概览同步。
+
+### 不做（留给后续）
+
+- 挂角色库、写出图提示词、按 Provider 选提示词语言（A3）；审图（A4）。
+- 导演会话的独立界面 / 历史浏览（日志先只供重建与记账）。
