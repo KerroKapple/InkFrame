@@ -11,11 +11,12 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/di/repositories.dart';
+import '../../../core/models/shot_language.dart';
 import '../../canvas/models/canvas_edge.dart';
 import '../../canvas/models/canvas_node.dart';
 import '../../canvas/providers/canvas_edges_controller.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
-import '../util/script_splitter.dart';
+import '../models/shot_draft.dart';
 
 /// 相邻两镜的横向间距。shot 卡宽 240，留 20 的走线余量。
 const double kShotChainSpacingX = 260;
@@ -35,20 +36,22 @@ class ScriptImportController {
   final Ref _ref;
   final String _canvasId;
 
-  /// 把 [drafts] 落成一条分镜链，返回建出的镜数。
+  /// 把 [drafts] 落成一条分镜链，返回建出的节点 id（按链序）。
   ///
   /// [origin] 是**第一镜的左上角世界坐标**，后续各镜沿 x 轴排开；缺省落世界原点。
-  /// 空清单直接返回 0，不开空事务。
+  /// 草稿带镜头语言（AI 拆分）时写进 shot 节点 type_config 的现有键，没值的键不写——
+  /// 规则拆分出的草稿落地后与从前一样只有 shot_notes。
+  /// 空清单直接返回空，不开空事务。
   /// 任一步失败抛 InkError（事务已回滚），由调用方提示。
-  Future<int> importDrafts(
+  Future<List<String>> importDrafts(
     List<ShotDraft> drafts, {
     Offset origin = Offset.zero,
   }) async {
-    if (drafts.isEmpty) return 0;
+    if (drafts.isEmpty) return const <String>[];
     final uow = await _ref.read(unitOfWorkProvider.future);
     final Size size = defaultNodeSize(CanvasNodeType.shot);
 
-    await uow.run((scope) async {
+    final List<String> ids = await uow.run((scope) async {
       final ids = <String>[];
       for (var i = 0; i < drafts.length; i++) {
         final ShotDraft draft = drafts[i];
@@ -62,8 +65,7 @@ class ScriptImportController {
             positionY: origin.dy,
             width: size.width,
             height: size.height,
-            // 与 ShotConfigInspector 同键：导入后点开面板就能接着编辑。
-            typeConfig: <String, Object?>{'shot_notes': draft.notes},
+            typeConfig: shotTypeConfigOf(draft),
           ),
         );
       }
@@ -76,10 +78,25 @@ class ScriptImportController {
           sortOrder: i,
         );
       }
+      return ids;
     });
 
     _ref.invalidate(canvasNodesControllerProvider(_canvasId));
     _ref.invalidate(canvasEdgesControllerProvider(_canvasId));
-    return drafts.length;
+    return List<String>.unmodifiable(ids);
   }
 }
+
+/// 草稿 → shot 节点 type_config。与 ShotConfigInspector / 镜头语言同键：导入后点开面板就能接着编辑。
+Map<String, Object?> shotTypeConfigOf(ShotDraft draft) => <String, Object?>{
+      kShotNotesKey: draft.notes,
+      ShotLanguage.keyShotSize: ?draft.shotSize?.name,
+      ShotLanguage.keyCameraAngle: ?draft.cameraAngle?.name,
+      kShotCameraKey: ?draft.camera?.name,
+      kShotDurationMsKey: ?draft.durationMs,
+    };
+
+/// shot 节点 type_config 里的备注 / 运镜 / 时长键（与 ShotConfigInspector 读写的同名）。
+const String kShotNotesKey = 'shot_notes';
+const String kShotCameraKey = 'camera';
+const String kShotDurationMsKey = 'duration_ms';

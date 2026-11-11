@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/di/repositories.dart';
+import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/toast_service.dart';
 import 'package:inkframe/core/interfaces/unit_of_work.dart';
@@ -20,6 +21,7 @@ import 'package:inkframe/features/notifications/providers/toast_service_provider
 import 'package:inkframe/features/storyboard/widgets/script_import_dialog.dart';
 
 import '../../../_harness/fake_repositories.dart';
+import '../../../_harness/fake_secure_storage.dart';
 import '../../../_harness/fake_toast_service.dart';
 import '../../../_harness/fake_unit_of_work.dart';
 import '../../../_harness/test_app.dart';
@@ -78,6 +80,7 @@ void main() {
       ),
       overrides: <Override>[
         unitOfWorkProvider.overrideWith((ref) async => unitOfWork),
+        secureStorageServiceProvider.overrideWithValue(FakeSecureStorage()),
         toastServiceProvider.overrideWithValue(toast),
       ],
       locale: locale,

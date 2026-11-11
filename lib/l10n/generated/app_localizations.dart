@@ -2984,6 +2984,114 @@ abstract class AppLocalizations {
   /// **'Couldn\'t import the script. Nothing was added to the canvas.'**
   String get scriptImportFailed;
 
+  /// No description provided for @scriptImportStrategyAi.
+  ///
+  /// In en, this message translates to:
+  /// **'AI split'**
+  String get scriptImportStrategyAi;
+
+  /// No description provided for @scriptImportAiNeedsKey.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a Claude API key in Settings › API keys to use AI split.'**
+  String get scriptImportAiNeedsKey;
+
+  /// No description provided for @scriptImportAiIntro.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude reads the script and proposes shots with framing, camera move and duration. Nothing is added to the canvas until you create the shots.'**
+  String get scriptImportAiIntro;
+
+  /// No description provided for @scriptImportAiStart.
+  ///
+  /// In en, this message translates to:
+  /// **'Start split'**
+  String get scriptImportAiStart;
+
+  /// No description provided for @scriptImportAiRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Splitting the script…'**
+  String get scriptImportAiRunning;
+
+  /// No description provided for @scriptImportAiStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get scriptImportAiStop;
+
+  /// No description provided for @scriptImportAiRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get scriptImportAiRetry;
+
+  /// No description provided for @scriptImportAiFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Split failed: {reason}'**
+  String scriptImportAiFailed(String reason);
+
+  /// No description provided for @scriptImportAiStale.
+  ///
+  /// In en, this message translates to:
+  /// **'The script changed after this split. Split again to create shots.'**
+  String get scriptImportAiStale;
+
+  /// No description provided for @scriptImportAiResplit.
+  ///
+  /// In en, this message translates to:
+  /// **'Split again'**
+  String get scriptImportAiResplit;
+
+  /// No description provided for @scriptImportAiFeedbackHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What should change? (optional)'**
+  String get scriptImportAiFeedbackHint;
+
+  /// No description provided for @scriptImportAiSettingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected language and setting'**
+  String get scriptImportAiSettingLabel;
+
+  /// No description provided for @scriptImportAiLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get scriptImportAiLanguage;
+
+  /// No description provided for @scriptImportAiEra.
+  ///
+  /// In en, this message translates to:
+  /// **'Era'**
+  String get scriptImportAiEra;
+
+  /// No description provided for @scriptImportAiRegion.
+  ///
+  /// In en, this message translates to:
+  /// **'Region'**
+  String get scriptImportAiRegion;
+
+  /// No description provided for @scriptImportAiCulture.
+  ///
+  /// In en, this message translates to:
+  /// **'Culture'**
+  String get scriptImportAiCulture;
+
+  /// No description provided for @scriptImportAiArtStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Art style'**
+  String get scriptImportAiArtStyle;
+
+  /// No description provided for @scriptImportAiUsage.
+  ///
+  /// In en, this message translates to:
+  /// **'{tokens} tokens · about {cost}'**
+  String scriptImportAiUsage(int tokens, String cost);
+
   /// No description provided for @inspectorGroupModel.
   ///
   /// In en, this message translates to:

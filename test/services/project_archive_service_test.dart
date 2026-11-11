@@ -27,6 +27,8 @@ ProjectArchiveSnapshot _snap({
       presets: const [],
       jobs: const [],
       batchResults: const [],
+      directorSessions: const [],
+      directorEvents: const [],
     );
 
 class _FakeReader implements ProjectArchiveReader {
@@ -144,6 +146,8 @@ void main() {
       'prompt_presets',
       'jobs',
       'batch_results',
+      'director_sessions',
+      'director_events',
     ]) {
       expect(data, contains(key));
     }

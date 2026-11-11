@@ -11,6 +11,7 @@ import 'package:inkframe/storage/schema/schema_v5.dart';
 import 'package:inkframe/storage/schema/schema_v6.dart';
 import 'package:inkframe/storage/schema/schema_v7.dart';
 import 'package:inkframe/storage/schema/schema_v8.dart';
+import 'package:inkframe/storage/schema/schema_v9.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:postgres/postgres.dart';
 
@@ -59,6 +60,7 @@ void main() {
         6: kSchemaV6,
         7: kSchemaV7,
         8: kSchemaV8,
+        9: kSchemaV9,
       };
       // 注册表条数必须与已知 schema 常量数一致——新增 schema_vN 必须同步建立映射。
       expect(

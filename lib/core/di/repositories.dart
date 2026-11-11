@@ -15,6 +15,7 @@ import '../interfaces/edge_repository.dart';
 import '../interfaces/job_repository.dart';
 import '../interfaces/node_repository.dart';
 import '../interfaces/project_repository.dart';
+import '../interfaces/director_repository.dart';
 import '../interfaces/prompt_preset_repository.dart';
 import '../interfaces/style_lane_repository.dart';
 import '../interfaces/unit_of_work.dart';
@@ -26,6 +27,7 @@ import '../../storage/repositories/postgres_edge_repository.dart';
 import '../../storage/repositories/postgres_job_repository.dart';
 import '../../storage/repositories/postgres_node_repository.dart';
 import '../../storage/repositories/postgres_project_repository.dart';
+import '../../storage/repositories/postgres_director_repository.dart';
 import '../../storage/repositories/postgres_prompt_preset_repository.dart';
 import '../../storage/repositories/postgres_style_lane_repository.dart';
 import 'database.dart';
@@ -84,6 +86,15 @@ final promptPresetRepositoryProvider = FutureProvider<PromptPresetRepository>((
   final pool = await ref.watch(pgMigratedPoolProvider.future);
   return PostgresPromptPresetRepository(pool);
 }, name: 'promptPresetRepositoryProvider');
+
+/// 导演会话与事件日志。追加事件自带事务（锁会话行分配 seq），所以绑连接池、
+/// 不进 [RepositoryScope]——事务里的 TxSession 开不了嵌套事务。
+final directorRepositoryProvider = FutureProvider<DirectorRepository>((
+  ref,
+) async {
+  final pool = await ref.watch(pgMigratedPoolProvider.future);
+  return PostgresDirectorRepository(pool);
+}, name: 'directorRepositoryProvider');
 
 /// 事务作用域的装配：把每个仓储都绑定到**同一个**会话 [s]。
 ///

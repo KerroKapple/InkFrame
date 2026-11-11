@@ -22,6 +22,8 @@ void main() {
     'edges': [EdgeCol.id, EdgeCol.canvasId, EdgeCol.sourceNodeId, EdgeCol.targetNodeId, EdgeCol.edgeType, EdgeCol.role, EdgeCol.sortOrder, EdgeCol.createdAt, EdgeCol.deletedAt],
     'jobs': [JobCol.id, JobCol.canvasId, JobCol.sourceNodeId, JobCol.resultNodeId, JobCol.providerId, JobCol.jobType, JobCol.status, JobCol.remoteTaskId, JobCol.fullPrompt, JobCol.userPrompt, JobCol.parameters, JobCol.batchSize, JobCol.progress, JobCol.errorCode, JobCol.errorMessage, JobCol.timeoutAt, JobCol.createdAt, JobCol.submittedAt, JobCol.completedAt],
     'batch_results': [BatchResultCol.id, BatchResultCol.nodeId, BatchResultCol.jobId, BatchResultCol.slotIndex, BatchResultCol.status, BatchResultCol.outputUrl, BatchResultCol.thumbnailUrl, BatchResultCol.width, BatchResultCol.height, BatchResultCol.fileSizeBytes, BatchResultCol.seed, BatchResultCol.errorCode, BatchResultCol.errorMessage, BatchResultCol.promoted, BatchResultCol.promotedNodeId, BatchResultCol.createdAt, BatchResultCol.completedAt],
+    'director_sessions': [DirectorSessionCol.id, DirectorSessionCol.projectId, DirectorSessionCol.canvasId, DirectorSessionCol.contentLanguage, DirectorSessionCol.setting, DirectorSessionCol.createdAt, DirectorSessionCol.updatedAt, DirectorSessionCol.deletedAt],
+    'director_events': [DirectorEventCol.id, DirectorEventCol.sessionId, DirectorEventCol.seq, DirectorEventCol.kind, DirectorEventCol.parentSeq, DirectorEventCol.payload, DirectorEventCol.createdAt],
     'schema_version': [SchemaVersionCol.id, SchemaVersionCol.version, SchemaVersionCol.appliedAt],
   };
 
@@ -81,6 +83,8 @@ void main() {
       'EdgeCol': 'edges',
       'JobCol': 'jobs',
       'BatchResultCol': 'batch_results',
+      'DirectorSessionCol': 'director_sessions',
+      'DirectorEventCol': 'director_events',
       'SchemaVersionCol': 'schema_version',
     };
     // 刻意不对真列的常量。

@@ -2,26 +2,36 @@
 //
 // 覆盖：请求体固定字段（model / thinking / effort / fallbacks / beta 头 / 版本头 /
 // output_config.format / image base64 块）与禁用字段、SSE 拼接、refusal、max_tokens、
-// 429 / 529 / 5xx / 连接错误的退避重试与放弃、401 / 400、Key 校验三态、记账。
+// 429 / 529 / 5xx / 连接错误的退避重试与放弃、401 / 400、Key 校验三态、观察口（入日志）。
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
-import 'package:inkframe/core/interfaces/claude_usage_ledger.dart';
+import 'package:inkframe/core/interfaces/anthropic_client.dart';
 import 'package:inkframe/core/models/claude_message.dart';
 import 'package:inkframe/core/models/key_validation_result.dart';
 import 'package:inkframe/services/anthropic/anthropic_protocol.dart';
 import 'package:inkframe/services/anthropic/dio_anthropic_client.dart';
 
-import '../../_harness/fake_clock.dart';
 import '../../_harness/scripted_http_adapter.dart';
 
-class _RecordingLedger implements ClaudeUsageLedger {
-  final List<ClaudeUsageRecord> records = <ClaudeUsageRecord>[];
+/// 记下交出的请求体与回应（导演日志的替身）。
+class _RecordingObserver implements ClaudeExchangeObserver {
+  final List<Map<String, Object?>> bodies = <Map<String, Object?>>[];
+  final List<int> attempts = <int>[];
+  final List<ClaudeExchangeResponse> responses = <ClaudeExchangeResponse>[];
+
   @override
-  void record(ClaudeUsageRecord record) => records.add(record);
+  Future<void> onRequest(Map<String, Object?> body, {required int attempt}) async {
+    bodies.add(body);
+    attempts.add(attempt);
+  }
+
+  @override
+  Future<void> onResponse(ClaudeExchangeResponse response) async => responses.add(response);
 }
 
-final DateTime _t0 = DateTime.utc(2026, 11, 11, 9);
 
 /// 一次正常的流：message_start → thinking 块 → 两个 text 块（跨 delta）→ message_delta → stop。
 List<String> _okStream({
@@ -116,16 +126,16 @@ class _Rig {
     client = DioAnthropicClient(
       dio: dio,
       keySource: () async => key,
-      ledger: ledger,
-      clock: FakeClock(_t0),
       sleep: (Duration d) async => sleeps.add(d),
     );
   }
 
   final ScriptedHttpAdapter adapter;
-  final _RecordingLedger ledger = _RecordingLedger();
+  final _RecordingObserver observer = _RecordingObserver();
   final List<Duration> sleeps = <Duration>[];
   late final DioAnthropicClient client;
+
+  Future<ClaudeMessage> send(ClaudeRequest r) => client.createMessage(r, observer: observer);
 
   Map<String, Object?> body(int i) =>
       (adapter.requests[i].data as Map).cast<String, Object?>();
@@ -148,7 +158,7 @@ void main() {
   group('请求', () {
     test('固定字段：model / stream / thinking adaptive / effort / fallbacks + 头', () async {
       final _Rig rig = _Rig(<ScriptedReply>[_ok()]);
-      await rig.client.createMessage(_req(system: 'You are a director.'));
+      await rig.send(_req(system: 'You are a director.'));
 
       final RequestOptions o = rig.adapter.requests.single;
       expect(o.method, 'POST');
@@ -188,7 +198,7 @@ void main() {
         'required': <String>['pass'],
         'additionalProperties': false,
       });
-      await rig.client.createMessage(_req(effort: ClaudeEffort.high, schema: schema));
+      await rig.send(_req(effort: ClaudeEffort.high, schema: schema));
 
       expect(rig.body(0)['output_config'], <String, Object?>{
         'effort': 'high',
@@ -198,7 +208,7 @@ void main() {
 
     test('图片走 base64 image 块，与文本块同一条 user 消息', () async {
       final _Rig rig = _Rig(<ScriptedReply>[_ok()]);
-      await rig.client.createMessage(_req(messages: <ClaudeMessageParam>[
+      await rig.send(_req(messages: <ClaudeMessageParam>[
         ClaudeMessageParam(role: ClaudeRole.user, content: const <ClaudeContentBlock>[
           ClaudeImageBlock(mediaType: 'image/png', base64Data: 'iVBORw0KGgo='),
           ClaudeTextBlock('Review this keyframe.'),
@@ -221,7 +231,7 @@ void main() {
     test('末轮是 assistant（= 预填）⇒ 本地拦下 invalidParameter，不发请求', () async {
       final _Rig rig = _Rig(const <ScriptedReply>[]);
       await expectLater(
-        rig.client.createMessage(_req(messages: <ClaudeMessageParam>[
+        rig.send(_req(messages: <ClaudeMessageParam>[
           ClaudeMessageParam.userText('hi'),
           ClaudeMessageParam(
             role: ClaudeRole.assistant,
@@ -237,7 +247,7 @@ void main() {
   group('SSE 拼接', () {
     test('text 块按序拼接、thinking 内容不收；usage 合并 message_start + message_delta', () async {
       final _Rig rig = _Rig(<ScriptedReply>[_ok()]);
-      final ClaudeMessage m = await rig.client.createMessage(_req());
+      final ClaudeMessage m = await rig.send(_req());
 
       expect(m.id, 'msg_1');
       expect(m.model, 'claude-opus-5-5');
@@ -267,14 +277,14 @@ void main() {
           }),
         );
       final _Rig rig = _Rig(<ScriptedReply>[_ok(chunks: _rechunk(frames, 7))]);
-      final ClaudeMessage m = await rig.client.createMessage(_req());
+      final ClaudeMessage m = await rig.send(_req());
       expect(m.text, '{"shots":[1,2]}杜甫');
     });
 
     test('流没走到 message_stop 就断 ⇒ 当可重试的服务端错误，重来一次成功', () async {
       final List<String> cut = _okStream()..removeLast();
       final _Rig rig = _Rig(<ScriptedReply>[_ok(chunks: cut), _ok()]);
-      final ClaudeMessage m = await rig.client.createMessage(_req());
+      final ClaudeMessage m = await rig.send(_req());
       expect(m.text, '{"shots":[1,2]}');
       expect(rig.adapter.requests, hasLength(2));
     });
@@ -287,7 +297,7 @@ void main() {
         }),
       ]);
       final _Rig rig = _Rig(<ScriptedReply>[overloaded, _ok()]);
-      await rig.client.createMessage(_req());
+      await rig.send(_req());
       expect(rig.adapter.requests, hasLength(2));
       expect(rig.sleeps, <Duration>[const Duration(seconds: 1)]);
     });
@@ -304,13 +314,13 @@ void main() {
         ),
       ]);
       await expectLater(
-        rig.client.createMessage(_req()),
+        rig.send(_req()),
         throwsA(isA<RefusalError>()
             .having((e) => e.category, 'category', 'cyber')
             .having((e) => e.code, 'code', InkErrorCode.modelRefusal)),
       );
       expect(rig.adapter.requests, hasLength(1));
-      expect(rig.ledger.records, hasLength(1));
+      expect(rig.observer.responses, hasLength(1));
     });
 
     test('refusal 而 stop_details 为 null ⇒ 仍是 RefusalError，category null', () async {
@@ -318,7 +328,7 @@ void main() {
         _ok(chunks: _okStream(stopReason: AnthropicStopReasons.refusal)),
       ]);
       await expectLater(
-        rig.client.createMessage(_req()),
+        rig.send(_req()),
         throwsA(isA<RefusalError>().having((e) => e.category, 'category', isNull)),
       );
     });
@@ -328,13 +338,13 @@ void main() {
         _ok(chunks: _okStream(stopReason: AnthropicStopReasons.maxTokens)),
       ]);
       await expectLater(
-        rig.client.createMessage(_req()),
+        rig.send(_req()),
         throwsA(isA<ProviderError>()
             .having((e) => e.code, 'code', InkErrorCode.outputTruncated)
             .having((e) => e.retryable, 'retryable', isFalse)),
       );
       expect(rig.adapter.requests, hasLength(1));
-      expect(rig.ledger.records, hasLength(1));
+      expect(rig.observer.responses, hasLength(1));
     });
   });
 
@@ -344,7 +354,7 @@ void main() {
         _err(529, 'overloaded_error', headers: const <String, String>{'retry-after': '3'}),
         _ok(),
       ]);
-      await rig.client.createMessage(_req());
+      await rig.send(_req());
       expect(rig.sleeps, <Duration>[const Duration(seconds: 3)]);
       expect(rig.adapter.requests, hasLength(2));
     });
@@ -355,7 +365,7 @@ void main() {
         _err(500, 'api_error'),
         _ok(),
       ]);
-      await rig.client.createMessage(_req());
+      await rig.send(_req());
       expect(rig.sleeps, <Duration>[const Duration(seconds: 1), const Duration(seconds: 2)]);
     });
 
@@ -364,7 +374,7 @@ void main() {
         _err(429, 'rate_limit_error', headers: const <String, String>{'retry-after': '3600'}),
         _ok(),
       ]);
-      await rig.client.createMessage(_req());
+      await rig.send(_req());
       expect(rig.sleeps, <Duration>[const Duration(seconds: 60)]);
     });
 
@@ -373,7 +383,7 @@ void main() {
         const ScriptedReply.fail(DioExceptionType.connectionError),
         _ok(),
       ]);
-      await rig.client.createMessage(_req());
+      await rig.send(_req());
       expect(rig.adapter.requests, hasLength(2));
     });
 
@@ -384,7 +394,7 @@ void main() {
         _err(529, 'overloaded_error'),
       ]);
       await expectLater(
-        rig.client.createMessage(_req()),
+        rig.send(_req()),
         throwsA(isA<ProviderError>()
             .having((e) => e.code, 'code', InkErrorCode.providerBusy)
             .having((e) => e.extra['status'], 'status', 529)),
@@ -397,7 +407,7 @@ void main() {
     test('401 ⇒ invalidKey，不重试', () async {
       final _Rig rig = _Rig(<ScriptedReply>[_err(401, 'authentication_error')]);
       await expectLater(
-        rig.client.createMessage(_req()),
+        rig.send(_req()),
         throwsA(isA<ProviderError>().having((e) => e.code, 'code', InkErrorCode.invalidKey)),
       );
       expect(rig.adapter.requests, hasLength(1));
@@ -407,7 +417,7 @@ void main() {
     test('400 ⇒ invalidParameter，带错误摘要，不重试', () async {
       final _Rig rig = _Rig(<ScriptedReply>[_err(400, 'invalid_request_error')]);
       await expectLater(
-        rig.client.createMessage(_req()),
+        rig.send(_req()),
         throwsA(isA<ProviderError>()
             .having((e) => e.code, 'code', InkErrorCode.invalidParameter)
             .having((e) => e.extra['body_code'], 'body_code', 'invalid_request_error')
@@ -457,23 +467,79 @@ void main() {
     });
   });
 
-  group('记账', () {
-    test('成功调用记一行：时间、模型、用量、按 4/20 USD 每百万 + cache 价估算费用', () async {
+  group('观察口（入日志）', () {
+    test('发出前交出原样请求体：与线上发送的逐字段相同，且不含 Key', () async {
       final _Rig rig = _Rig(<ScriptedReply>[_ok()]);
-      await rig.client.createMessage(_req());
+      await rig.send(_req(system: 'sys'));
 
-      final ClaudeUsageRecord r = rig.ledger.records.single;
-      expect(r.at, _t0);
-      expect(r.model, 'claude-opus-5-5');
-      expect(r.usage.outputTokens, 42);
-      // 100×4 + 42×20 + 20×0.2 + 10×5 = 1294 （每百万 token）
-      expect(r.estimatedCostUsd, closeTo(1294 / 1000000, 1e-12));
+      expect(rig.observer.bodies, hasLength(1));
+      expect(rig.observer.bodies.single, rig.body(0));
+      expect(jsonEncode(rig.observer.bodies.single), jsonEncode(rig.body(0)));
+      expect(jsonEncode(rig.observer.bodies.single), isNot(contains('sk-ant-test')));
     });
 
-    test('失败重试不重复记账：没拿到用量的失败不记', () async {
+    test('重试的每一次都先交出，attempt 递增；没拿到用量的失败不报回应', () async {
       final _Rig rig = _Rig(<ScriptedReply>[_err(529, 'overloaded_error'), _ok()]);
-      await rig.client.createMessage(_req());
-      expect(rig.ledger.records, hasLength(1));
+      await rig.send(_req());
+      expect(rig.observer.attempts, <int>[0, 1]);
+      expect(rig.observer.bodies[0], rig.body(1));
+      expect(rig.observer.responses, hasLength(1));
+    });
+
+    test('成功回应：id / 模型 / 文本块 / 用量 / stop_reason', () async {
+      final _Rig rig = _Rig(<ScriptedReply>[_ok()]);
+      await rig.send(_req());
+
+      final ClaudeExchangeResponse r = rig.observer.responses.single;
+      expect(r.id, 'msg_1');
+      expect(r.model, 'claude-opus-5-5');
+      expect(r.textBlocks, <String>['{"shots":[1,2]}']);
+      expect(r.usage, const ClaudeUsage(
+        inputTokens: 100,
+        outputTokens: 42,
+        cacheCreationInputTokens: 10,
+        cacheReadInputTokens: 20,
+      ));
+      expect(r.stopReason, 'end_turn');
+      expect(r.partial, isFalse);
+    });
+
+    test('拒答也交出回应（计费），带 category', () async {
+      final _Rig rig = _Rig(<ScriptedReply>[
+        _ok(
+          chunks: _okStream(
+            stopReason: AnthropicStopReasons.refusal,
+            stopDetails: <String, Object?>{'type': 'refusal', 'category': 'cyber'},
+          ),
+        ),
+      ]);
+      await expectLater(rig.send(_req()), throwsA(isA<RefusalError>()));
+      expect(rig.observer.responses.single.stopReason, 'refusal');
+      expect(rig.observer.responses.single.refusalCategory, 'cyber');
+    });
+
+    test('观察口抛错 ⇒ 这次请求不发出', () async {
+      final _Rig rig = _Rig(<ScriptedReply>[_ok()]);
+      await expectLater(
+        rig.client.createMessage(_req(), observer: _FailingObserver()),
+        throwsA(isA<LocalIOError>()),
+      );
+      expect(rig.adapter.requests, isEmpty);
+    });
+
+    test('不给观察口也照常工作', () async {
+      final _Rig rig = _Rig(<ScriptedReply>[_ok()]);
+      final ClaudeMessage m = await rig.client.createMessage(_req());
+      expect(m.text, '{"shots":[1,2]}');
     });
   });
+}
+
+class _FailingObserver implements ClaudeExchangeObserver {
+  @override
+  Future<void> onRequest(Map<String, Object?> body, {required int attempt}) async =>
+      throw const LocalIOError();
+
+  @override
+  Future<void> onResponse(ClaudeExchangeResponse response) async {}
 }

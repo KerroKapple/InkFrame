@@ -224,15 +224,15 @@ lib/
 │   ├── icons/                         # 图标集 v1：ink_glyph.dart（45 个图标的 SVG 路径，与设计稿同源）+ svg_path_data.dart（d → Path，不引 SVG 依赖）；绘制入口是 components/ink_icon.dart
 │   └── components/                    # Reusable Ink* components (incl. ink_menu_panel.dart — InkMenuPanel / InkMenuEntry, the searchable keyboard menu panel with disabled / danger / checked rows and submenus, knows nothing about the canvas; ink_icon.dart — the one painter for icon set v1 glyphs; ink_canvas_capsule.dart — the canvas hint capsule (text + optional action + key hint, live region, actions excluded from focus traversal; sizes in InkCanvasCapsuleSize); ink_toast_card.dart — toast card + InkToastLeading, pure presentation with its own InkToastTone)
 ├── core/                              # Shared abstractions (no Flutter imports below interfaces)
-│   ├── constants/                     # Enums, numeric constants (no side effects); take_keys.dart（type_config 里 take 相关的 JSON 键常量）+ import_keys.dart（导入媒体节点的 type_config 键）
+│   ├── constants/                     # Enums, numeric constants (no side effects); take_keys.dart（type_config 里 take 相关的 JSON 键常量）+ import_keys.dart（导入媒体节点的 type_config 键）+ director_keys.dart（导演事件 payload / 会话设定的 JSON 键；放 core 是因为导入重映射要认 applied_to_canvas 的节点 id）
 │   ├── db/                            # DbRow typing + column-name constants (columns.dart, row_reader.dart)
-│   ├── di/                            # Riverpod provider definitions (the only wiring folder); media_import.dart（mediaImportServiceProvider、mediaFilesPickerProvider）+ anthropic.dart（anthropicClientProvider：独立 dio + env 代理，Key 现取 SecureStorageKeys.anthropicApiKey；claudeUsageLedgerProvider：本次会话的 Claude 用量账）+ key_validation.dart（apiKeyValidatorProvider：Key scope → 校验方，anthropic 走 AnthropicClient、其它走注册表 Provider；设置页 Key 行与引导共用）
+│   ├── di/                            # Riverpod provider definitions (the only wiring folder); media_import.dart（mediaImportServiceProvider、mediaFilesPickerProvider）+ anthropic.dart（anthropicClientProvider：独立 dio + env 代理，Key 现取 SecureStorageKeys.anthropicApiKey；claudeKeyConfiguredProvider：填没填 Claude Key，AI 拆分入口的可用闸，设置页存 / 清 Key 后失效；不再有内存记账——用量从导演事件日志派生）+ repositories.dart 里的 directorRepositoryProvider（导演仓储绑连接池、不进 RepositoryScope：追加事件自带事务）+ key_validation.dart（apiKeyValidatorProvider：Key scope → 校验方，anthropic 走 AnthropicClient、其它走注册表 Provider；设置页 Key 行与引导共用）
 │   ├── errors/                        # InkError sealed hierarchy + InkErrorCode；RefusalError（模型拒答，带 stop_details.category）+ ProviderError(outputTruncated)（输出截断）
-│   ├── interfaces/                    # Abstract service / repository contracts; media_import_service.dart（把本地图片 / 视频拷进项目 imports/ 的契约：先写 .partial 再改名，零残留）+ anthropic_client.dart（AnthropicClient：createMessage 流式拼最终消息，并实现 KeyValidatable）+ claude_usage_ledger.dart（记账写入口）
+│   ├── interfaces/                    # Abstract service / repository contracts; media_import_service.dart（把本地图片 / 视频拷进项目 imports/ 的契约：先写 .partial 再改名，零残留）+ anthropic_client.dart（AnthropicClient：createMessage 流式拼最终消息，并实现 KeyValidatable；可选 ClaudeExchangeObserver——每次真正发出前交出原样请求体〔写不进日志就不发〕、每次带用量的回应交出回应）+ director_repository.dart（导演会话 / 事件日志：追加事件锁会话行分配连续 seq，会话写回与 updated_at 同事务；只追加，无改 / 删事件的方法）
 │   ├── licenses.dart                  # LicenseRegistry entries for bundled non-pub artifacts (libmpv+FFmpeg, PostgreSQL, OFL fonts)
 │   ├── logging/                       # InkLogger interface
 │   ├── media/                         # png_dimensions.dart (XM-2: PNG header → pixel size, pure; no image decoder dependency)
-│   ├── models/                        # Domain models (freezed, immutable) + claude_message.dart（Claude 请求 / 响应 / 用量 / 记账行，手写不可变值对象） + gen_inputs.dart（生成快照契约：GenInputSource〔手写不可变值对象〕+ stripUnmappedGenInputs（项目包导入 import_remapper 用；模板插入 / 跨项目粘贴届时复用）） + shot_language.dart (P3 hand-written: ShotSize / CameraAngle / focal table / ShotLanguage ↔ type_config)
+│   ├── models/                        # Domain models (freezed, immutable) + claude_message.dart（Claude 请求 / 响应 / 用量 / 交给观察口的 ClaudeExchangeResponse / 记账行，手写不可变值对象）+ director.dart（DirectorSession / DirectorSetting / DirectorEvent / DirectorEventKind，手写不可变值对象，ADR-0015） + gen_inputs.dart（生成快照契约：GenInputSource〔手写不可变值对象〕+ stripUnmappedGenInputs（项目包导入 import_remapper 用；模板插入 / 跨项目粘贴届时复用）） + shot_language.dart (P3 hand-written: ShotSize / CameraAngle / focal table / ShotLanguage ↔ type_config)
 │   ├── net/                           # proxy_env.dart (LB-24: HTTPS_PROXY/HTTP_PROXY/NO_PROXY 纯函数 + applyEnvProxy dio 接线)
 │   └── paths/                         # app_paths.dart (well-known dirs, platform-conventional root) + legacy_root_migrator.dart (DIR-1 one-shot move)
 ├── features/                          # Feature modules (vertical slices)
@@ -247,6 +247,13 @@ lib/
 │   │   ├── palette_search.dart        # buildPaletteEntries — 镜头组只搜当前画布已加载节点（不为搜索读库）、产物组复用 galleryController、动作组 = buildCommandActions
 │   │   ├── command_actions.dart       # CommandAction — ⌘K 动作组 = 应用级动作表 kAppActions 按 inPalette 过滤（只列 inPalette 命中、可用且启用的行；⌘K 不画禁用行——PaletteEntry 没有禁用态，禁用原因只在「更多」等菜单里显示）
 │   │   └── widgets/                   # palette dialog / top-chrome chip / app-level shortcuts wrapper
+│   ├── director/                      # AI 导演 harness（A2，ADR-0015）：导演会话的一切状态写成只追加的事件日志（director_events），模型可见即入日志、每次请求可从日志原样重建
+│   │   ├── log/                       # director_payloads.dart（payload 编解码）+ director_log.dart（日志树视图：parent_seq 走分支、取分支上最近一件某种事件）+ claude_usage_ledger.dart（ClaudeUsageLedger.fromEvents：用量 / 费用从全部 model_response 派生，跨分支、取消 / 驳回的轮次都计费）
+│   │   ├── prompt/                    # prompt_section.dart（PromptSection：id / order / stability = stable · session · step）+ prompt_assembler.dart（按 stability → order → id 拼成 system，每段包进 <id>…</id>，稳定前缀逐字节不变）+ director_prompts.dart（role / hard_rules / setting / language / storyboard task，全英文常量；内容语言只作参数注入）
+│   │   ├── pipeline/                  # director_step.dart（DirectorStep：buildRequest / parse / encode·decodeProposal / sessionPatchOf / apply；ShotChainWriter 落画布出口）+ director_step_runner.dart（一轮模型部分：经观察口写 model_request / model_response，解析成提案写 storyboard_proposed，失败写 model_failed；取消令牌）
+│   │   ├── steps/storyboard/          # storyboard_step.dart（结构化输出 schema〔枚举即 ShotSize / CameraAngle / CameraMovement 的 .name〕、宽容解析：未知枚举 null、时长夹 1–15 秒、空标题取备注首行、角色名附备注末行）+ storyboard_proposal.dart（提案值对象 ↔ payload JSON）
+│   │   ├── providers/                 # director_session_controller.dart（DirectorSessionController：按会话 id 的唯一写入口——split〔重拆从最近 human_confirmed 分叉，驳回意见进下一次请求〕/ cancel / edit / confirm〔human_confirmed + ScriptImportController.importDrafts + applied_to_canvas〕；DirectorSessionStarter 在画布所属项目下建会话）+ director_session_state.dart（DirectorSessionState.fromLog：除「在跑」外全部由日志派生）
+│   │   └── widgets/                   # ai_storyboard_panel.dart（剧本导入对话框 AI 模式的预览区：开始 / 拆分中可停 / 失败重试 / 提案〔语言与设定可改、失焦记 human_edited；每镜一行；过期提示；修改意见 + 重新拆分；本次 token 与估算费用〕；只呈现，动作经回调交给控制器）
 │   ├── export/                        # Video export UI (concat dialog; entries: export tab / sequence tab「导出 mp4」/ ⌘K, all via open_export_dialog.dart — projectId + gating from ShellState.project, BOARD 210)
 │   │   ├── open_export_dialog.dart    # openExportVideoDialogForCanvas — the one path that orders by narrative chain and opens the dialog
 │   │   ├── providers/                 # ExportController (canvas→project path conversion)
@@ -279,10 +286,10 @@ lib/
 │   ├── startup/                       # Startup failure surface (DB-ready gate; LB-09)
 │   │   └── widgets/                   # StartupErrorView (full-screen error + retry + open-log-dir)
 │   ├── storyboard/                    # Script in, sequence out — paste a script into a shot chain (SB-1/SB-2), play the chain end to end (SB-6)
-│   │   ├── models/                    # sequence_shot.dart (what each shot shows, and for how long)
-│   │   ├── providers/                 # script_import_controller.dart (ShotDrafts → shot chain in ONE transaction; failure leaves no residue)
+│   │   ├── models/                    # sequence_shot.dart (what each shot shows, and for how long) + shot_draft.dart（ShotDraft：规则拆分与 AI 拆分共用的草稿；可选景别 / 机位 / 运镜 / 时长）
+│   │   ├── providers/                 # script_import_controller.dart (ShotDrafts → shot chain in ONE transaction; failure leaves no residue; returns node ids; 草稿带镜头语言时写进 shot 节点现有 type_config 键 shot_size / camera_angle / camera / duration_ms，规则草稿只有 shot_notes)
 │   │   ├── util/                      # sequence_builder.dart (nodes+edges → playlist) + script_splitter.dart (SB-1 rule-based, no LLM); both pure
-│   │   └── widgets/                   # script_import_dialog.dart (paste + strategy + live preview); the old sequence_preview_dialog moved into features/sequence (P2)
+│   │   └── widgets/                   # script_import_dialog.dart (paste + strategy〔空行 / 每行 / AI 拆分——无 Claude Key 置灰〕 + live preview；AI 模式预览区是 director/widgets/ai_storyboard_panel.dart); the old sequence_preview_dialog moved into features/sequence (P2)
 │   ├── sequence/                      # 序列视图（P2，Timeline 稿）：只读序列 lens 常驻在序列标签——叙事链 320 | 节目监视器 | 交付占位 320；序列区 300（时间尺 / 场次标记 / V1 只读轨 / 播放头）
 │   │   ├── models/                    # sequence_lens.dart (buildSequenceLens: shots + startsMs + totalMs + 场次标记由链上 shot 节点推 + 未入链计数；locate / globalMs 纯函数)
 │   │   ├── providers/                 # sequence_lens_provider (watch 节点 + 边控制器) / sequence_playhead (index + offsetMs + seekToken：监视器 report 不动 token，用户 seek 才自增；不落库) / sequence_zoom (px/s，Ctrl+滚轮，8..160)
@@ -320,10 +327,10 @@ lib/
 │   ├── base_repository.dart           # Shared SQL helpers
 │   ├── postgres_unit_of_work.dart     # Multi-step write transactions (UnitOfWork)
 │   ├── migrations/                    # Migration runner
-│   ├── repositories/                  # Concrete postgres_*_repository.dart
-│   └── schema/                        # DDL (.sql) + schema version (.dart)
+│   ├── repositories/                  # Concrete postgres_*_repository.dart（含 postgres_director_repository.dart：导演会话 / 事件日志）
+│   └── schema/                        # DDL (.sql, v1–v5 only) + schema_vN.dart（真相源；最新 v9：director_sessions / director_events，ADR-0015）
 └── services/                          # App-level services
-    ├── anthropic/                     # Claude 客户端（A1）：dio_anthropic_client.dart（AnthropicClient 实现：固定 model / thinking adaptive / fallbacks + beta 头；429·529·5xx·连接错误按 retry-after 退避最多 2 次，退避可注入；先记账再判 stop_reason）+ claude_sse.dart（SSE 切帧 + 累积 text 块 / usage / stop_reason / stop_details，thinking 不收）+ claude_request_encoder.dart（请求体；末轮非 user 本地拦下）+ claude_error_mapper.dart（状态码 / 流内 error.type → InkError）+ claude_pricing.dart（$4 / $20 每百万 token，cache read $0.20、write 1.25×）+ in_memory_claude_usage_ledger.dart（Notifier 记账）+ anthropic_protocol.dart（协议字面量）
+    ├── anthropic/                     # Claude 客户端（A1）：dio_anthropic_client.dart（AnthropicClient 实现：固定 model / thinking adaptive / fallbacks + beta 头；429·529·5xx·连接错误按 retry-after 退避最多 2 次，退避可注入；先把回应交给观察口再判 stop_reason，客户端自己不记账）+ claude_sse.dart（SSE 切帧 + 累积 text 块 / usage / stop_reason / stop_details，thinking 不收）+ claude_request_encoder.dart（请求体；末轮非 user 本地拦下）+ claude_error_mapper.dart（状态码 / 流内 error.type → InkError）+ claude_pricing.dart（$4 / $20 每百万 token，cache read $0.20、write 1.25×）+ anthropic_protocol.dart（协议字面量）
     ├── job_queue_service.dart         # InMemoryJobQueueService orchestrator (<500 lines): scheduling + state machine + cancel-race arbitration
     ├── job_queue/                      # JobQueue collaborators (LB-03 split)
     │   ├── job_media_persister.dart    # JobMediaPersisterImpl + NullJobMediaPersister (inlineBytes/remoteUrls 落盘 + slot 收敛)

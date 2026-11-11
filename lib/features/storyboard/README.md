@@ -7,10 +7,11 @@
 
 ```
 models/sequence_shot.dart    播放清单条目（一镜放什么、放多久）
-util/script_splitter.dart    粘贴的文本 → 分镜草稿（纯 Dart，无 Flutter 依赖）
+models/shot_draft.dart       分镜草稿（规则拆分与 AI 拆分共用；可选景别 / 机位 / 运镜 / 时长）
+util/script_splitter.dart    粘贴的文本 → 分镜草稿（纯规则文本处理）
 util/sequence_builder.dart   画布节点+边 → 播放清单（纯函数，全单测）
-providers/script_import_controller.dart  分镜草稿 → 画布上的 shot 链（单事务落库）
-widgets/script_import_dialog.dart        粘贴 + 策略切换 + 实时预览
+providers/script_import_controller.dart  分镜草稿 → 画布上的 shot 链（单事务落库，返回节点 id）
+widgets/script_import_dialog.dart        粘贴 + 策略切换（空行 / 每行 / AI 拆分）+ 实时预览
 widgets/sequence_preview_dialog.dart     只负责"放"与"推进"
 ```
 
@@ -32,6 +33,14 @@ widgets/sequence_preview_dialog.dart     只负责"放"与"推进"
 因为它既可独立出现（`# 山径破晓`）也可叠在编号前（`### Shot 1 dawn`）。
 
 `label` 是段首行截 60 字（展示用），`notes` 恒为全文 —— 截断不该丢内容。
+
+## AI 拆分（A2，可选增强）
+
+对话框第三段策略「AI 拆分」：填了 Claude Key 才亮。拆分、停止、改设定、重拆、创建全部
+经 `features/director` 的 `DirectorSessionController`，每一步写进导演事件日志（ADR-0015）。
+落画布仍是同一个 `importDrafts`：AI 草稿多带景别 / 机位 / 运镜 / 时长，有值才写进 shot 节点
+现有的 type_config 键（`shot_size` / `camera_angle` / `camera` / `duration_ms`），不加新键；
+规则拆分的草稿落地后照旧只有 `shot_notes`。
 
 ## 批量建链（SB-2）
 
@@ -105,8 +114,9 @@ narrative 边才可用（可用性只 watch 边，拖动节点不重建标签体
 ## 测试
 
 - `script_splitter_test.dart`（22 例）：分段策略、剥编号的边界、退化输入
-- `script_import_controller_test.dart`（10 例）：链形状、落点、单事务、**失败零残留**、invalidate
-- `script_import_dialog_test.dart`（6 例）：预览实时性、策略切换、成功/失败路径
+- `script_import_controller_test.dart`（13 例）：链形状、落点、单事务、**失败零残留**、invalidate、镜头语言写进现有 type_config 键
+- `script_import_dialog_test.dart`（11 例）：预览实时性、策略切换、成功/失败路径
+- `script_import_dialog_ai_test.dart`（7 例）：AI 拆分——无 Key 置灰、拆分中可停、完成 / 失败、改字过期、改设定入日志、创建走同一控制器
 - `sequence_builder_test.dart`（14 例）：折叠、时长优先级、取最新产物、跳过规则
 - `sequence_preview_dialog_test.dart`（12 例）：handle 生命周期、推进语义、控件门控
 - `shell_tabs_empty_state_test.dart`（序列 4 例）：入口可用性门控（T7 从 `canvas_top_chrome_sequence_test.dart` 整体搬运）

@@ -23,6 +23,8 @@ class _FakeReader implements ProjectArchiveReader {
         presets: const <Map<String, Object?>>[],
         jobs: const <Map<String, Object?>>[],
         batchResults: const <Map<String, Object?>>[],
+        directorSessions: const <Map<String, Object?>>[],
+        directorEvents: const <Map<String, Object?>>[],
       );
 }
 

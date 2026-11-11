@@ -4,7 +4,7 @@
 // （jobs.source_node_id / batch_results.node_id 可能指向软删节点），软删行连
 // deleted_at 一起进包，LB-12 导入后回收站语义原样恢复。
 //
-// 单方法快照读：9 张表必须出自同一事务快照（REPEATABLE READ）——分次读会在
+// 单方法快照读：11 张表必须出自同一事务快照（REPEATABLE READ）——分次读会在
 // 导出期间的并发写（JobQueue 在跑）下产生悬空引用（如 slot 属于未入选的 job），
 // 恰好破坏本接口要保证的 FK 闭包（#188 评审 P2-3）。
 
@@ -19,6 +19,8 @@ typedef ProjectArchiveSnapshot = ({
   List<Map<String, Object?>> presets,
   List<Map<String, Object?>> jobs,
   List<Map<String, Object?>> batchResults,
+  List<Map<String, Object?>> directorSessions,
+  List<Map<String, Object?>> directorEvents,
 });
 
 abstract class ProjectArchiveReader {
@@ -27,5 +29,7 @@ abstract class ProjectArchiveReader {
   /// - characters/presets：项目级（含软删），created_at,id ASC
   /// - jobs：拥有 ≥1 success slot 的 jobs（跨画布，含软删画布下的），created_at,id ASC
   /// - batchResults：上述 jobs 的全部 slot 行（含失败 slot），job_id,slot_index ASC
+  /// - directorSessions：项目下全部导演会话（含软删），created_at,id ASC
+  /// - directorEvents：上述会话的全部事件，session_id,seq ASC
   Future<ProjectArchiveSnapshot> snapshot(String projectId);
 }
