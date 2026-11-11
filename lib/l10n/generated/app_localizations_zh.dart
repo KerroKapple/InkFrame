@@ -45,6 +45,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get errorPollTimeout => '生成任务超时未完成。';
 
   @override
+  String get errorModelRefusal => 'Claude 拒绝了这次请求。换个说法再试。';
+
+  @override
+  String get errorOutputTruncated => 'Claude 的回复超出输出上限被截断了。把任务拆小一点再试。';
+
+  @override
   String get errorDownloadFailed => '生成结果下载失败，请检查网络后重试。';
 
   @override
@@ -2894,6 +2900,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get settingsApiKeyPlaceholderGeneric => '粘贴 API Key';
+
+  @override
+  String get settingsApiKeyPlaceholderClaude => 'sk-ant-...';
+
+  @override
+  String get settingsApiKeyClaudeNote => 'AI 导演（分镜、提示词、审图），不用于出图出片';
 
   @override
   String get secureStoreNameMac => 'macOS 钥匙串';

@@ -120,7 +120,7 @@ InkFrame/
 │   ├── core/           #   Shared abstractions: interfaces, models, errors, DI wiring
 │   ├── features/       #   Feature slices: canvas, storyboard, export, gallery, settings, studio…
 │   ├── providers/      #   AI provider adapters (Gemini, OpenAI, Kling, Wanx, Stability…)
-│   ├── services/       #   App-level services: job queue, backup/restore, ffmpeg export, updates
+│   ├── services/       #   App-level services: job queue, backup/restore, ffmpeg export, updates, Claude client (anthropic/)
 │   ├── storage/        #   Embedded PostgreSQL: lifecycle, repositories, forward migrations
 │   ├── theme/          #   Design tokens + reusable Ink* components
 │   └── l10n/           #   ARB strings (en / zh) + generated localizations

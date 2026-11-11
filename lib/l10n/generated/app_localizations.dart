@@ -170,6 +170,18 @@ abstract class AppLocalizations {
   /// **'Generation did not complete within the time limit.'**
   String get errorPollTimeout;
 
+  /// No description provided for @errorModelRefusal.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude declined this request. Rephrase it and try again.'**
+  String get errorModelRefusal;
+
+  /// No description provided for @errorOutputTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Claude\'s reply hit the output limit and was cut off. Try again with a shorter task.'**
+  String get errorOutputTruncated;
+
   /// No description provided for @errorDownloadFailed.
   ///
   /// In en, this message translates to:
@@ -5299,6 +5311,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Paste your API key'**
   String get settingsApiKeyPlaceholderGeneric;
+
+  /// No description provided for @settingsApiKeyPlaceholderClaude.
+  ///
+  /// In en, this message translates to:
+  /// **'sk-ant-...'**
+  String get settingsApiKeyPlaceholderClaude;
+
+  /// No description provided for @settingsApiKeyClaudeNote.
+  ///
+  /// In en, this message translates to:
+  /// **'AI director (storyboards, prompts, image review) — not used for image or video generation'**
+  String get settingsApiKeyClaudeNote;
 
   /// No description provided for @secureStoreNameMac.
   ///

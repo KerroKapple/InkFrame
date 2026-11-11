@@ -15,6 +15,7 @@
 - **File import**: file_selector
 - **FFI**: ffi（Windows「系统提示音」直接调 winmm 的 PlaySoundW，见 services/notification_sound/system_alert_sound.dart）
 - **Secure storage**: flutter_secure_storage (macOS Keychain / Windows Credential Manager); Debug+macOS falls back to a plaintext dev file (see Provider API Keys)
+- **LLM (AI director)**: Claude via raw HTTP on dio (no official Dart SDK): `claude-opus-5-5`, Messages API streaming (SSE), `anthropic-version: 2026-10-21`, server-side fallbacks (`fallbacks: "default"` + beta `server-side-fallback-2026-07-01`); see services/anthropic/. Not a generation provider (not in ProviderRegistry)
 - **Platforms**: macOS + Windows
 
 > Modules not yet implemented (e.g. script parsing / sequence preview) are tracked in `docs/BOARD.md` (status) and the repo-root `ROADMAP.md` (community roadmap). This file only documents what currently exists in the repo — when you add a module, update this file in the same commit.
@@ -225,13 +226,13 @@ lib/
 ├── core/                              # Shared abstractions (no Flutter imports below interfaces)
 │   ├── constants/                     # Enums, numeric constants (no side effects); take_keys.dart（type_config 里 take 相关的 JSON 键常量）+ import_keys.dart（导入媒体节点的 type_config 键）
 │   ├── db/                            # DbRow typing + column-name constants (columns.dart, row_reader.dart)
-│   ├── di/                            # Riverpod provider definitions (the only wiring folder); media_import.dart（mediaImportServiceProvider、mediaFilesPickerProvider）
-│   ├── errors/                        # InkError sealed hierarchy + InkErrorCode
-│   ├── interfaces/                    # Abstract service / repository contracts; media_import_service.dart（把本地图片 / 视频拷进项目 imports/ 的契约：先写 .partial 再改名，零残留）
+│   ├── di/                            # Riverpod provider definitions (the only wiring folder); media_import.dart（mediaImportServiceProvider、mediaFilesPickerProvider）+ anthropic.dart（anthropicClientProvider：独立 dio + env 代理，Key 现取 SecureStorageKeys.anthropicApiKey；claudeUsageLedgerProvider：本次会话的 Claude 用量账）+ key_validation.dart（apiKeyValidatorProvider：Key scope → 校验方，anthropic 走 AnthropicClient、其它走注册表 Provider；设置页 Key 行与引导共用）
+│   ├── errors/                        # InkError sealed hierarchy + InkErrorCode；RefusalError（模型拒答，带 stop_details.category）+ ProviderError(outputTruncated)（输出截断）
+│   ├── interfaces/                    # Abstract service / repository contracts; media_import_service.dart（把本地图片 / 视频拷进项目 imports/ 的契约：先写 .partial 再改名，零残留）+ anthropic_client.dart（AnthropicClient：createMessage 流式拼最终消息，并实现 KeyValidatable）+ claude_usage_ledger.dart（记账写入口）
 │   ├── licenses.dart                  # LicenseRegistry entries for bundled non-pub artifacts (libmpv+FFmpeg, PostgreSQL, OFL fonts)
 │   ├── logging/                       # InkLogger interface
 │   ├── media/                         # png_dimensions.dart (XM-2: PNG header → pixel size, pure; no image decoder dependency)
-│   ├── models/                        # Domain models (freezed, immutable) + gen_inputs.dart（生成快照契约：GenInputSource〔手写不可变值对象〕+ stripUnmappedGenInputs（项目包导入 import_remapper 用；模板插入 / 跨项目粘贴届时复用）） + shot_language.dart (P3 hand-written: ShotSize / CameraAngle / focal table / ShotLanguage ↔ type_config)
+│   ├── models/                        # Domain models (freezed, immutable) + claude_message.dart（Claude 请求 / 响应 / 用量 / 记账行，手写不可变值对象） + gen_inputs.dart（生成快照契约：GenInputSource〔手写不可变值对象〕+ stripUnmappedGenInputs（项目包导入 import_remapper 用；模板插入 / 跨项目粘贴届时复用）） + shot_language.dart (P3 hand-written: ShotSize / CameraAngle / focal table / ShotLanguage ↔ type_config)
 │   ├── net/                           # proxy_env.dart (LB-24: HTTPS_PROXY/HTTP_PROXY/NO_PROXY 纯函数 + applyEnvProxy dio 接线)
 │   └── paths/                         # app_paths.dart (well-known dirs, platform-conventional root) + legacy_root_migrator.dart (DIR-1 one-shot move)
 ├── features/                          # Feature modules (vertical slices)
@@ -268,8 +269,8 @@ lib/
 │   ├── settings/                      # Settings overlay dialog (Screens 稿第 3 屏: 1120×740 居中, 40 标题栏 | 左导航 200 + 页 | 44 底部条; 自持焦 + Esc 分层; 开关不写路由)
 │   │   ├── settings_screen.dart       # SettingsScreen (壳走 theme 层的 InkOverlayDialog + 左导航 + 各页正文 + 底部条 完成/导出诊断包); pages = 常规 / API 密钥 / 快捷键 / 性能 / 节点布局 / 网络 / 存储 / 关于（后三页里快捷键 / 性能 / 网络是 P7 补的只读页）
 │   │   ├── providers/
-│   │   ├── util/                      # shortcut_catalog.dart（快捷键页的清单：读画布快捷键注册表 kCanvasKeyRegistry〔只列 listed 的绑定〕+ kOverlayDismissActivator + 画布按住空格平移 CanvasToolKeys.holdToPan）+ proxy_status.dart（网络页：env 代理只读快照，凭据掩码，复用 core/net 的 proxyRuleFor）+ api_key_placeholder.dart（Key 输入框占位提示按 Provider 家族给：sk- / AIza / 通用；设置页 Key 表与引导第 2 步共用）+ settings_page_label.dart（页名，左导航与引导底部「打开设置 › 〈页名〉」共用）+ secure_store_name.dart（Key 存在哪的叫法：macOS 钥匙串 / Windows 凭据管理器）；shortcut_catalog 的修饰键 macOS 按 ⌥⇧⌘ 顺序拼；键名表也给第二批计划键位（Z / Y / X / C / U / N / F6）出显示名
-│   │   └── widgets/
+│   │   ├── util/                      # shortcut_catalog.dart（快捷键页的清单：读画布快捷键注册表 kCanvasKeyRegistry〔只列 listed 的绑定〕+ kOverlayDismissActivator + 画布按住空格平移 CanvasToolKeys.holdToPan）+ proxy_status.dart（网络页：env 代理只读快照，凭据掩码，复用 core/net 的 proxyRuleFor）+ api_key_placeholder.dart（Key 输入框占位提示按 Provider 家族给：sk- / AIza / sk-ant-（Claude）/ 通用；设置页 Key 表与引导第 2 步共用）+ settings_page_label.dart（页名，左导航与引导底部「打开设置 › 〈页名〉」共用）+ secure_store_name.dart（Key 存在哪的叫法：macOS 钥匙串 / Windows 凭据管理器）；shortcut_catalog 的修饰键 macOS 按 ⌥⇧⌘ 顺序拼；键名表也给第二批计划键位（Z / Y / X / C / U / N / F6）出显示名
+│   │   └── widgets/                   # 各页 section；api_keys_section.dart（Key 表：生成 Provider 按家族折叠成行 + 末尾固定一行 Claude，校验都走 ApiKeyScopeController → apiKeyValidatorProvider）
 │   ├── shell/                         # Persistent-tab app shell — the sole host after unlock; lib/app.dart's body is just InkShell (no routing predicates left there). See lib/features/shell/README.md for the invariants
 │   │   ├── models/                    # shell_state.dart (ShellTab / ShellOverlay / ProjectRef / ShellState — hand-written value object, 8 named transitions incl. closeCanvas / closeProject context-invalidation, no copyWith)
 │   │   ├── providers/                 # shell_controller.dart (ShellNavigator Notifier + shellControllerProvider — sole write entry point) + active_project.dart (activeProjectProvider — read-only projection of ShellState.project) + gallery_dirty.dart (galleryDirtyProvider — any job reaching JobSucceeded marks *its own project's* gallery dirty, keyed by JobState.projectId; the gallery tab refreshes once on the invisible→visible edge **if the active project is dirty**, then clears that project's mark. State is a `Set<String?>` where `null` is the "project unknown" wildcard — unreachable in production, falls back to the old global semantics. NOT live refresh: a gallery the user is already looking at stays put until they switch away and back)
@@ -322,6 +323,7 @@ lib/
 │   ├── repositories/                  # Concrete postgres_*_repository.dart
 │   └── schema/                        # DDL (.sql) + schema version (.dart)
 └── services/                          # App-level services
+    ├── anthropic/                     # Claude 客户端（A1）：dio_anthropic_client.dart（AnthropicClient 实现：固定 model / thinking adaptive / fallbacks + beta 头；429·529·5xx·连接错误按 retry-after 退避最多 2 次，退避可注入；先记账再判 stop_reason）+ claude_sse.dart（SSE 切帧 + 累积 text 块 / usage / stop_reason / stop_details，thinking 不收）+ claude_request_encoder.dart（请求体；末轮非 user 本地拦下）+ claude_error_mapper.dart（状态码 / 流内 error.type → InkError）+ claude_pricing.dart（$4 / $20 每百万 token，cache read $0.20、write 1.25×）+ in_memory_claude_usage_ledger.dart（Notifier 记账）+ anthropic_protocol.dart（协议字面量）
     ├── job_queue_service.dart         # InMemoryJobQueueService orchestrator (<500 lines): scheduling + state machine + cancel-race arbitration
     ├── job_queue/                      # JobQueue collaborators (LB-03 split)
     │   ├── job_media_persister.dart    # JobMediaPersisterImpl + NullJobMediaPersister (inlineBytes/remoteUrls 落盘 + slot 收敛)

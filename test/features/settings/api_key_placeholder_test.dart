@@ -17,6 +17,13 @@ void main() {
       );
     });
 
+    test('Claude 是 sk-ant- 前缀', () {
+      expect(
+        apiKeyPlaceholderKindOf('anthropic'),
+        ApiKeyPlaceholderKind.skAntPrefixed,
+      );
+    });
+
     test('OpenAI / Stability 是 sk- 前缀', () {
       expect(
         apiKeyPlaceholderKindOf('openai-image'),
@@ -61,13 +68,15 @@ void main() {
     final AppLocalizations en = lookupAppLocalizations(const Locale('en'));
     final AppLocalizations zh = lookupAppLocalizations(const Locale('zh'));
 
-    test('三种口径落到三条不同的文案', () {
+    test('四种口径落到四条不同的文案', () {
       final Set<String> texts = <String>{
         apiKeyPlaceholderText(en, 'gemini-image'),
         apiKeyPlaceholderText(en, 'openai-image'),
         apiKeyPlaceholderText(en, '${kCustomProviderIdPrefix}x'),
+        apiKeyPlaceholderText(en, 'anthropic'),
       };
-      expect(texts, hasLength(3));
+      expect(texts, hasLength(4));
+      expect(apiKeyPlaceholderText(zh, 'anthropic'), startsWith('sk-ant-'));
     });
 
     test('Gemini 的提示以 AIza 开头；sk- 家族沿用原占位', () {

@@ -18,6 +18,8 @@ enum InkErrorCode {
   providerBusy('provider_busy'),
   providerInvalidResponse('provider_invalid_response'),
   pollTimeout('poll_timeout'),
+  modelRefusal('model_refusal'),
+  outputTruncated('output_truncated'),
   downloadFailed('download_failed'),
   localIOError('local_io_error'),
   cancelledByUser('cancelled_by_user'),
@@ -50,6 +52,8 @@ const Map<InkErrorCode, String> kInkErrorMessageKeys = <InkErrorCode, String>{
   InkErrorCode.providerBusy: 'errorProviderBusy',
   InkErrorCode.providerInvalidResponse: 'errorProviderInvalidResponse',
   InkErrorCode.pollTimeout: 'errorPollTimeout',
+  InkErrorCode.modelRefusal: 'errorModelRefusal',
+  InkErrorCode.outputTruncated: 'errorOutputTruncated',
   InkErrorCode.downloadFailed: 'errorDownloadFailed',
   InkErrorCode.localIOError: 'errorLocalIO',
   InkErrorCode.cancelledByUser: 'errorCancelled',
@@ -113,9 +117,30 @@ final class ProviderError extends InkError {
               code == InkErrorCode.providerServer ||
               code == InkErrorCode.providerBusy ||
               code == InkErrorCode.providerInvalidResponse ||
-              code == InkErrorCode.pollTimeout,
+              code == InkErrorCode.pollTimeout ||
+              code == InkErrorCode.outputTruncated,
           'ProviderError only wraps provider/account/poll codes',
         );
+}
+
+/// 模型拒答（HTTP 200 + stop_reason = refusal）：安全分类器或模型本身拒绝，
+/// 已走过服务端 fallback 仍拒才会到这里。不可重试——原样重发只会再被拒。
+final class RefusalError extends InkError {
+  const RefusalError({
+    this.category,
+    super.extra,
+    super.cause,
+  }) : super(code: InkErrorCode.modelRefusal);
+
+  /// stop_details.category 原值（cyber / bio / reasoning_extraction …）；
+  /// 只作说明，可能为 null，判据永远是 stop_reason。
+  final String? category;
+
+  @override
+  Map<String, Object?> toLogJson() => <String, Object?>{
+        ...super.toLogJson(),
+        'category': category,
+      };
 }
 
 /// 网络层错误（本机 / 链路 / TLS / 代理）。

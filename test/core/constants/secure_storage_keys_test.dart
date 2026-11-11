@@ -65,4 +65,21 @@ void main() {
       );
     });
   });
+
+  group('Claude', () {
+    test('anthropicApiKey 与 providerApiKey(anthropicScope) 同一个键', () {
+      expect(SecureStorageKeys.anthropicApiKey, 'provider.anthropic.api_key');
+      expect(
+        SecureStorageKeys.providerApiKey(SecureStorageKeys.anthropicScope),
+        SecureStorageKeys.anthropicApiKey,
+      );
+    });
+
+    test('anthropic → Claude', () {
+      expect(
+        SecureStorageKeys.displayNameOf(SecureStorageKeys.anthropicScope),
+        'Claude',
+      );
+    });
+  });
 }

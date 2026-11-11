@@ -17,6 +17,9 @@ enum ApiKeyPlaceholderKind {
   /// `AIza` 开头：Google Gemini。
   aizaPrefixed,
 
+  /// `sk-ant-` 开头：Claude（Anthropic）。
+  skAntPrefixed,
+
   /// 格式不确定（自定义 OpenAI 兼容端点、未登记的家族）：只说「粘贴 Key」，
   /// 不猜前缀——猜错比不说更误导。
   generic,
@@ -29,6 +32,7 @@ const Map<String, ApiKeyPlaceholderKind> _kindByScope =
   'openai-image': ApiKeyPlaceholderKind.skPrefixed,
   'dashscope': ApiKeyPlaceholderKind.skPrefixed,
   'stability-image-core': ApiKeyPlaceholderKind.skPrefixed,
+  SecureStorageKeys.anthropicScope: ApiKeyPlaceholderKind.skAntPrefixed,
 };
 
 /// providerId（家族成员 id 也行）→ 占位提示口径。先折叠到家族 scope 再查表。
@@ -42,5 +46,7 @@ String apiKeyPlaceholderText(AppLocalizations l10n, String providerId) =>
       ApiKeyPlaceholderKind.skPrefixed => l10n.settingsApiKeyPlaceholder,
       ApiKeyPlaceholderKind.aizaPrefixed =>
         l10n.settingsApiKeyPlaceholderGemini,
+      ApiKeyPlaceholderKind.skAntPrefixed =>
+        l10n.settingsApiKeyPlaceholderClaude,
       ApiKeyPlaceholderKind.generic => l10n.settingsApiKeyPlaceholderGeneric,
     };

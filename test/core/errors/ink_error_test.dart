@@ -3,8 +3,10 @@ import 'package:inkframe/core/errors/ink_error.dart';
 
 void main() {
   group('InkErrorCode wire values', () {
-    test('15 codes match PRD §10.6 (+ providerInvalidResponse) wire format', () {
-      expect(InkErrorCode.values.length, 15);
+    test('17 codes match PRD §10.6 (+ providerInvalidResponse / modelRefusal / outputTruncated) wire format', () {
+      expect(InkErrorCode.values.length, 17);
+      expect(InkErrorCode.modelRefusal.wire, 'model_refusal');
+      expect(InkErrorCode.outputTruncated.wire, 'output_truncated');
       expect(InkErrorCode.invalidKey.wire, 'invalid_key');
       expect(InkErrorCode.insufficientBalance.wire, 'insufficient_balance');
       expect(InkErrorCode.contentPolicy.wire, 'content_policy');
@@ -57,7 +59,9 @@ void main() {
                     ? const CancelledError.byUser()
                     : c == InkErrorCode.cancelledOnExit
                         ? const CancelledError.onExit()
-                        : c == InkErrorCode.unknown
+                        : c == InkErrorCode.modelRefusal
+                            ? const RefusalError()
+                            : c == InkErrorCode.unknown
                             ? const UnknownError(cause: 'boom')
                             : c == InkErrorCode.networkTimeout ||
                                     c == InkErrorCode.networkOffline
@@ -79,7 +83,9 @@ void main() {
                     ? const CancelledError.byUser()
                     : c == InkErrorCode.cancelledOnExit
                         ? const CancelledError.onExit()
-                        : c == InkErrorCode.unknown
+                        : c == InkErrorCode.modelRefusal
+                            ? const RefusalError()
+                            : c == InkErrorCode.unknown
                             ? const UnknownError(cause: 'x')
                             : c == InkErrorCode.networkTimeout ||
                                     c == InkErrorCode.networkOffline
@@ -125,6 +131,22 @@ void main() {
         InkErrorCode.cancelledOnExit,
       );
       expect(UnknownError(cause: Exception('x')).code, InkErrorCode.unknown);
+    });
+  });
+
+  group('RefusalError', () {
+    test('固定 modelRefusal、不可重试，category 进日志', () {
+      const err = RefusalError(category: 'cyber');
+      expect(err.code, InkErrorCode.modelRefusal);
+      expect(err.retryable, isFalse);
+      expect(err.messageKey, 'errorModelRefusal');
+      expect(err.toLogJson()['category'], 'cyber');
+    });
+
+    test('outputTruncated 归 ProviderError、不可重试', () {
+      const err = ProviderError(code: InkErrorCode.outputTruncated);
+      expect(err.retryable, isFalse);
+      expect(err.messageKey, 'errorOutputTruncated');
     });
   });
 

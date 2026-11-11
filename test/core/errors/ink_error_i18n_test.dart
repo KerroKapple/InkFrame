@@ -23,11 +23,13 @@ InkError _errorFor(InkErrorCode code) => switch (code) {
       InkErrorCode.providerServer ||
       InkErrorCode.providerBusy ||
       InkErrorCode.providerInvalidResponse ||
-      InkErrorCode.pollTimeout =>
+      InkErrorCode.pollTimeout ||
+      InkErrorCode.outputTruncated =>
         ProviderError(code: code),
       InkErrorCode.networkTimeout ||
       InkErrorCode.networkOffline =>
         NetworkError(code: code),
+      InkErrorCode.modelRefusal => const RefusalError(),
       InkErrorCode.downloadFailed => const DownloadError(),
       InkErrorCode.localIOError => const LocalIOError(),
       InkErrorCode.cancelledByUser => const CancelledError.byUser(),
