@@ -84,6 +84,8 @@ const Map<String, String> _whitelistOf = <String, String>{
   '_presetCols': 'PromptPresetCol',
   '_jobCols': 'JobCol',
   '_batchCols': 'BatchResultCol',
+  '_directorSessionCols': 'DirectorSessionCol',
+  '_directorEventCols': 'DirectorEventCol',
 };
 
 /// 列类里刻意**不**进导入白名单的常量。每条都要说清为什么。

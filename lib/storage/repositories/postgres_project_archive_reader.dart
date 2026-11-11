@@ -1,6 +1,6 @@
 // PostgresProjectArchiveReader —— LB-11 导出专用全保真只读（含软删；见接口注释）。
 //
-// 9 张表在单 REPEATABLE READ 事务内读出：同一快照保证 FK 闭包不被导出期间的
+// 11 张表在单 REPEATABLE READ 事务内读出：同一快照保证 FK 闭包不被导出期间的
 // 并发写（JobQueue 在跑）撕开（#188 评审 P2-3）。
 import 'package:postgres/postgres.dart';
 
@@ -76,6 +76,15 @@ class PostgresProjectArchiveReader
               'SELECT br.* FROM batch_results br WHERE br.job_id IN '
               '(SELECT j.id $_successJobsFrom) '
               'ORDER BY br.job_id, br.slot_index',
+            ),
+            directorSessions: await rows(
+              'SELECT * FROM director_sessions WHERE project_id = @p '
+              'ORDER BY created_at, id',
+            ),
+            directorEvents: await rows(
+              'SELECT de.* FROM director_events de '
+              'JOIN director_sessions ds ON ds.id = de.session_id '
+              'WHERE ds.project_id = @p ORDER BY de.session_id, de.seq',
             ),
           );
         },

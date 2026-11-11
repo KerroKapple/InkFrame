@@ -4,8 +4,10 @@
 // （schemaVersion≤当前 的老包多余键丢弃）、jobs/slots 终态化、files/ 的
 // canvases/{旧id} 改名映射。宽容策略（拍板 8）：可空引用悬空→NULL+计数；
 // NOT NULL 引用悬空→整行丢弃+计数（防御第三方手工包；LB-11 全保真闭包下不触发）。
+import '../../core/constants/director_keys.dart';
 import '../../core/constants/job_statuses.dart';
 import '../../core/db/columns.dart';
+import '../../core/models/director.dart';
 import '../../core/models/gen_inputs.dart';
 import '../../core/models/import_plan_data.dart';
 
@@ -76,6 +78,17 @@ const Set<String> _batchCols = {
   BatchResultCol.promoted, BatchResultCol.promotedNodeId,
   BatchResultCol.createdAt, BatchResultCol.completedAt,
 };
+const Set<String> _directorSessionCols = {
+  DirectorSessionCol.id, DirectorSessionCol.projectId,
+  DirectorSessionCol.canvasId, DirectorSessionCol.contentLanguage,
+  DirectorSessionCol.setting, DirectorSessionCol.createdAt,
+  DirectorSessionCol.updatedAt, DirectorSessionCol.deletedAt,
+};
+const Set<String> _directorEventCols = {
+  DirectorEventCol.id, DirectorEventCol.sessionId, DirectorEventCol.seq,
+  DirectorEventCol.kind, DirectorEventCol.parentSeq, DirectorEventCol.payload,
+  DirectorEventCol.createdAt,
+};
 
 class _Counters {
   int droppedColumns = 0;
@@ -128,6 +141,8 @@ ImportPlanData remapArchiveData(
   final presetsRaw = _tableOf(dataJson, 'prompt_presets');
   final jobsRaw = _tableOf(dataJson, 'jobs');
   final batchRaw = _tableOf(dataJson, 'batch_results');
+  final directorSessionsRaw = _tableOf(dataJson, 'director_sessions');
+  final directorEventsRaw = _tableOf(dataJson, 'director_events');
 
   // 1) 全表 id 映射——**只映射会被保留的行**（#192 评审 P2-2：行被丢弃后
   // 其映射若还在，引用它的下游行会拿到「永不插入」的新 id，写库层 23503
@@ -156,6 +171,14 @@ ImportPlanData remapArchiveData(
   final presetMap = mapOf(presetsRaw);
   final jobMap = mapOf(jobsRaw);
   final batchMap = mapOf(batchRaw);
+  // 会话随画布：画布没被保留的会话不映射（它的事件跟着丢）。
+  final directorSessionMap = <String, String>{
+    for (final r in directorSessionsRaw)
+      if (r['id'] != null &&
+          canvasMap.containsKey(r[DirectorSessionCol.canvasId]?.toString()))
+        r['id'].toString(): newId(),
+  };
+  final directorEventMap = mapOf(directorEventsRaw);
 
   // 可空引用：悬空→NULL+计数。
   Object? optRef(Object? old, Map<String, String> m) {
@@ -352,6 +375,65 @@ ImportPlanData remapArchiveData(
     batchResults.add(row);
   }
 
+  // 10) director_sessions（project_id 强写；canvas_id NOT NULL）。
+  final directorSessions = <Map<String, Object?>>[];
+  final Set<String> keptSessionIds = <String>{};
+  for (final r in directorSessionsRaw) {
+    final row = _filterCols(r, _directorSessionCols, c);
+    final String? id = directorSessionMap[r['id']?.toString()];
+    final String? cid = reqRef(r[DirectorSessionCol.canvasId], canvasMap);
+    if (id == null || cid == null) {
+      c.droppedRows++;
+      continue;
+    }
+    row[DirectorSessionCol.id] = id;
+    row[DirectorSessionCol.projectId] = newProjectId;
+    row[DirectorSessionCol.canvasId] = cid;
+    keptSessionIds.add(r['id'].toString());
+    directorSessions.add(row);
+  }
+
+  // 11) director_events（session_id NOT NULL；seq / parent_seq 是会话内序号，原样）。
+  // applied_to_canvas 的 node_ids 经 nodeMap 改写，映射不到的剔除并计数；
+  // 其它种类的 payload 不含 id，原样。
+  final directorEvents = <Map<String, Object?>>[];
+  for (final r in directorEventsRaw) {
+    final row = _filterCols(r, _directorEventCols, c);
+    final String? id = directorEventMap[r['id']?.toString()];
+    final String? oldSession = r[DirectorEventCol.sessionId]?.toString();
+    final String? sid = (oldSession != null && keptSessionIds.contains(oldSession))
+        ? directorSessionMap[oldSession]
+        : null;
+    if (id == null || sid == null) {
+      c.droppedRows++;
+      continue;
+    }
+    row[DirectorEventCol.id] = id;
+    row[DirectorEventCol.sessionId] = sid;
+    final Object? payload = row[DirectorEventCol.payload];
+    if (row[DirectorEventCol.kind] == DirectorEventKind.appliedToCanvas.wire &&
+        payload is Map) {
+      final Map<String, Object?> p = <String, Object?>{
+        ...payload.cast<String, Object?>(),
+      };
+      final Object? ids = p[DirectorPayloadKeys.nodeIds];
+      if (ids is List) {
+        final remapped = <String>[];
+        for (final e in ids) {
+          final String? m = nodeMap[e.toString()];
+          if (m != null) {
+            remapped.add(m);
+          } else {
+            c.nulledRefs++;
+          }
+        }
+        p[DirectorPayloadKeys.nodeIds] = remapped;
+      }
+      row[DirectorEventCol.payload] = p;
+    }
+    directorEvents.add(row);
+  }
+
   return ImportPlanData(
     newProjectId: newProjectId,
     canvasIdMap: canvasMap,
@@ -364,6 +446,8 @@ ImportPlanData remapArchiveData(
     presets: presets,
     jobs: jobs,
     batchResults: batchResults,
+    directorSessions: directorSessions,
+    directorEvents: directorEvents,
     droppedColumnCount: c.droppedColumns,
     nulledRefCount: c.nulledRefs,
     droppedRowCount: c.droppedRows,

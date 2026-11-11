@@ -113,6 +113,8 @@ class ZipProjectArchiveService implements ProjectArchiveService {
         'prompt_presets': jsonSafe(snap.presets),
         'jobs': jsonSafe(snap.jobs),
         'batch_results': jsonSafe(snap.batchResults),
+        'director_sessions': jsonSafe(snap.directorSessions),
+        'director_events': jsonSafe(snap.directorEvents),
       };
       final Map<String, Object?> manifest = <String, Object?>{
         'formatVersion': kArchiveFormatVersion,

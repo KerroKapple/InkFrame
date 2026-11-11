@@ -15,6 +15,8 @@ class ImportPlanData {
     required this.presets,
     required this.jobs,
     required this.batchResults,
+    required this.directorSessions,
+    required this.directorEvents,
     required this.droppedColumnCount,
     required this.nulledRefCount,
     required this.droppedRowCount,
@@ -33,6 +35,8 @@ class ImportPlanData {
   final List<Map<String, Object?>> presets;
   final List<Map<String, Object?>> jobs;
   final List<Map<String, Object?>> batchResults;
+  final List<Map<String, Object?>> directorSessions;
+  final List<Map<String, Object?>> directorEvents;
   final int droppedColumnCount;
   final int nulledRefCount;
   final int droppedRowCount;

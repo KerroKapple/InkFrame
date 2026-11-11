@@ -2,8 +2,9 @@
 //
 // 单 runTx 事务按 FK 序插入：project(cover 置 NULL) → canvases → style_lanes →
 // nodes 两趟（先 source_node_id/lane_id 置 NULL 后 patch——自引用无序依赖）→
-// edges → characters → prompt_presets → jobs → batch_results → cover 补丁。
-// JSONB 列（type_config/parameters/reference_image_paths）经 jsonEncode + ::jsonb。
+// edges → characters → prompt_presets → jobs → batch_results → director_sessions →
+// director_events → cover 补丁。
+// JSONB 列（见 _jsonbCols）经 jsonEncode + ::jsonb。
 // 列名全部来自 remapper 的 columns.dart 白名单（无注入面）；值走参数绑定。
 import 'dart:convert';
 
@@ -35,6 +36,8 @@ class PostgresProjectImportWriter
     JobCol.parameters,
     CharacterCol.referenceImagePaths,
     ProjectCol.deliverySettings, // v8
+    DirectorSessionCol.setting, // v9
+    DirectorEventCol.payload, // v9
   };
 
   @override
@@ -119,6 +122,12 @@ class PostgresProjectImportWriter
         }
         for (final r in plan.batchResults) {
           await insert('batch_results', r);
+        }
+        for (final r in plan.directorSessions) {
+          await insert('director_sessions', r);
+        }
+        for (final r in plan.directorEvents) {
+          await insert('director_events', r);
         }
         // 3) cover 补丁。
         if (cover != null) {

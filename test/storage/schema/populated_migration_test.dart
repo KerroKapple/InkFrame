@@ -39,6 +39,7 @@ void main() {
         1: () => _seedV1(conn),
         6: () => _seedV6(conn),
         7: () => _seedV7(conn),
+        9: () => _seedV9(conn),
       };
       for (var k = 1; k <= kAppMigrations.length; k++) {
         await MigrationRunner(
@@ -65,6 +66,8 @@ void main() {
       expect(await count('SELECT count(*) FROM batch_results'), 2);
       expect(await count('SELECT count(*) FROM characters'), 1);
       expect(await count('SELECT count(*) FROM prompt_presets'), 1);
+      expect(await count('SELECT count(*) FROM director_sessions'), 1);
+      expect(await count('SELECT count(*) FROM director_events'), 2);
 
       // v3 悬空 cover 预清理:坏引用置 NULL,好引用原样保留。
       expect(
@@ -213,5 +216,20 @@ Future<void> _seedV7(Connection conn) async {
   await conn.execute(queryMode: QueryMode.simple, '''
     INSERT INTO prompt_presets (project_id, name, prompt, prefix) VALUES
       ('00000000-0000-4000-8000-000000000001', 'noir', 'moody', 'cinematic');
+  ''');
+}
+
+/// v9 引入 director_sessions / director_events。
+Future<void> _seedV9(Connection conn) async {
+  await conn.execute(queryMode: QueryMode.simple, '''
+    INSERT INTO director_sessions (id, project_id, canvas_id, content_language, setting) VALUES
+      ('00000000-0000-4000-8000-0000000000e1',
+       '00000000-0000-4000-8000-000000000001',
+       '00000000-0000-4000-8000-0000000000c1', 'zh-CN', '{"era":"唐"}'::jsonb);
+    INSERT INTO director_events (session_id, seq, kind, parent_seq, payload) VALUES
+      ('00000000-0000-4000-8000-0000000000e1', 1, 'script_submitted', NULL,
+       '{"text":"山径破晓"}'::jsonb),
+      ('00000000-0000-4000-8000-0000000000e1', 2, 'applied_to_canvas', 1,
+       '{"node_ids":["00000000-0000-4000-8000-0000000000d1"]}'::jsonb);
   ''');
 }

@@ -358,4 +358,69 @@ void main() {
       expect(plan.nulledRefCount, 0);
     });
   });
+
+  // 导演会话 / 事件（v9）：project_id 强写、canvas_id / session_id 改写、
+  // applied_to_canvas 的 node_ids 改写；seq / parent_seq 是会话内序号，原样。
+  group('director_sessions / director_events 重映射', () {
+    Map<String, dynamic> withDirector() => <String, dynamic>{
+          ..._fullData(),
+          'director_sessions': <Object?>[
+            <String, Object?>{
+              'id': 'ds1', 'project_id': 'P', 'canvas_id': 'c1',
+              'content_language': 'zh-CN',
+              'setting': <String, Object?>{'era': '唐'},
+            },
+            // 画布不在包里 ⇒ 会话与它的事件整行丢弃。
+            <String, Object?>{'id': 'ds2', 'project_id': 'P', 'canvas_id': 'ghost'},
+          ],
+          'director_events': <Object?>[
+            <String, Object?>{
+              'id': 'de1', 'session_id': 'ds1', 'seq': 1, 'kind': 'script_submitted',
+              'parent_seq': null, 'payload': <String, Object?>{'text': 'n1 山径'},
+            },
+            <String, Object?>{
+              'id': 'de2', 'session_id': 'ds1', 'seq': 2, 'kind': 'applied_to_canvas',
+              'parent_seq': 1,
+              'payload': <String, Object?>{'node_ids': <Object?>['n1', 'n2', 'gone']},
+            },
+            <String, Object?>{
+              'id': 'de3', 'session_id': 'ds2', 'seq': 1, 'kind': 'script_submitted',
+            },
+          ],
+        };
+
+    test('id 全新；会话归新项目、画布改写；事件归新会话', () {
+      final plan = remapArchiveData(withDirector(), newId: _seq());
+      final session = plan.directorSessions.single;
+      expect(session['project_id'], plan.newProjectId);
+      expect(session['canvas_id'], plan.canvasIdMap['c1']);
+      expect(session['id'], isNot('ds1'));
+      expect(session['setting'], <String, Object?>{'era': '唐'});
+
+      expect(plan.directorEvents, hasLength(2));
+      for (final e in plan.directorEvents) {
+        expect(e['session_id'], session['id']);
+        expect(e['id'], isNot(startsWith('de')));
+      }
+      expect(plan.directorEvents.map((e) => e['seq']), <Object?>[1, 2]);
+      expect(plan.directorEvents.last['parent_seq'], 1);
+    });
+
+    test('applied_to_canvas 的 node_ids 改写，包外节点剔除并计数；其它 payload 原样', () {
+      final base = remapArchiveData(_fullData(), newId: _seq());
+      final plan = remapArchiveData(withDirector(), newId: _seq());
+      final applied = plan.directorEvents.last['payload'] as Map;
+      final nodeIdsBefore = plan.nodes.map((n) => n['id']).toList();
+      expect(applied['node_ids'], <String>[nodeIdsBefore[0] as String, nodeIdsBefore[1] as String]);
+      expect(plan.nulledRefCount, base.nulledRefCount + 1);
+      expect(plan.directorEvents.first['payload'], <String, Object?>{'text': 'n1 山径'});
+      expect(plan.droppedRowCount, base.droppedRowCount + 2);
+    });
+
+    test('老包没有这两张表 ⇒ 空清单、不计数', () {
+      final plan = remapArchiveData(_fullData(), newId: _seq());
+      expect(plan.directorSessions, isEmpty);
+      expect(plan.directorEvents, isEmpty);
+    });
+  });
 }

@@ -151,6 +151,29 @@ abstract final class BatchResultCol {
   static const completedAt = 'completed_at';
 }
 
+/// 导演会话（迁移 v9）。
+abstract final class DirectorSessionCol {
+  static const id = 'id';
+  static const projectId = 'project_id';
+  static const canvasId = 'canvas_id';
+  static const contentLanguage = 'content_language';
+  static const setting = 'setting';
+  static const createdAt = 'created_at';
+  static const updatedAt = 'updated_at';
+  static const deletedAt = 'deleted_at';
+}
+
+/// 导演事件日志（迁移 v9，只追加）。
+abstract final class DirectorEventCol {
+  static const id = 'id';
+  static const sessionId = 'session_id';
+  static const seq = 'seq';
+  static const kind = 'kind';
+  static const parentSeq = 'parent_seq';
+  static const payload = 'payload';
+  static const createdAt = 'created_at';
+}
+
 abstract final class SchemaVersionCol {
   static const id = 'id';
   static const version = 'version';

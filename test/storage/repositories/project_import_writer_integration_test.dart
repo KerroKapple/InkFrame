@@ -173,6 +173,8 @@ void main() {
             'status': 'success',
           },
         ],
+        directorSessions: good.directorSessions,
+        directorEvents: good.directorEvents,
         droppedColumnCount: 0,
         nulledRefCount: 0,
         droppedRowCount: 0,

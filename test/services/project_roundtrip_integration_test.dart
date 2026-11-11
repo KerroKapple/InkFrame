@@ -10,12 +10,14 @@ import 'package:inkframe/core/constants/job_statuses.dart';
 import 'package:inkframe/core/interfaces/project_archive_reader.dart';
 import 'package:inkframe/core/interfaces/project_import_service.dart';
 import 'package:inkframe/core/logging/logger_service.dart';
+import 'package:inkframe/core/models/director.dart';
 import 'package:inkframe/core/paths/app_paths.dart';
 import 'package:inkframe/services/project_archive_service.dart';
 import 'package:inkframe/services/project_import_service.dart';
 import 'package:inkframe/storage/repositories/postgres_batch_result_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_canvas_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_character_repository.dart';
+import 'package:inkframe/storage/repositories/postgres_director_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_edge_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_job_repository.dart';
 import 'package:inkframe/storage/repositories/postgres_node_repository.dart';
@@ -112,6 +114,25 @@ void main() {
       });
       await slots.create(
           nodeId: n2, jobId: j1, slotIndex: 1, status: SlotStatuses.error);
+      // 导演会话：一条活的（带落画布事件）+ 一条软删的。
+      final director = PostgresDirectorRepository(h.conn);
+      final ds = await director.createSession(
+        projectId: pid,
+        canvasId: c1,
+        contentLanguage: 'zh-CN',
+        setting: const DirectorSetting(era: '唐'),
+      );
+      final e1 = await director.appendEvent(ds.id,
+          kind: DirectorEventKind.scriptSubmitted,
+          payload: <String, Object?>{'text': '山径破晓'});
+      await director.appendEvent(ds.id,
+          kind: DirectorEventKind.appliedToCanvas,
+          parentSeq: e1.seq,
+          payload: <String, Object?>{
+            'node_ids': <String>[n1],
+          });
+      final dsGone = await director.createSession(projectId: pid, canvasId: c1);
+      await director.softDeleteSession(dsGone.id);
 
       // 磁盘产物。
       final projDir = Directory(p.join(paths.projects.path, pid));
@@ -155,15 +176,40 @@ void main() {
       expect(dst.presets.length, src.presets.length);
       expect(dst.jobs.length, src.jobs.length);
       expect(dst.batchResults.length, src.batchResults.length);
+      expect(dst.directorSessions.length, 2);
+      expect(dst.directorEvents.length, 2);
       // 新旧 id 零交集。
       Set<String> ids(ProjectArchiveSnapshot snap) => <String>{
             for (final t in <List<Map<String, Object?>>>[
               snap.canvases, snap.nodes, snap.edges, snap.lanes,
               snap.characters, snap.presets, snap.jobs, snap.batchResults,
+              snap.directorSessions, snap.directorEvents,
             ])
               for (final r in t) r['id'].toString(),
           };
       expect(ids(src).intersection(ids(dst)), isEmpty);
+      // 导演会话：归新画布、软删保真、事件完整、落画布的节点 id 已改写。
+      final newMain = dst.canvases
+          .firstWhere((r) => r['deleted_at'] == null)['id']
+          .toString();
+      expect(
+        dst.directorSessions.map((r) => r['canvas_id'].toString()).toSet(),
+        <String>{newMain},
+      );
+      expect(dst.directorSessions.where((r) => r['deleted_at'] != null),
+          hasLength(1));
+      final liveSession = dst.directorSessions
+          .firstWhere((r) => r['deleted_at'] == null);
+      expect(liveSession['content_language'], 'zh-CN');
+      expect(liveSession['setting'], containsPair('era', '唐'));
+      final restored = await director.listEvents(liveSession['id'].toString());
+      expect(restored.map((e) => e.seq), <int>[1, 2]);
+      expect(restored.first.payload['text'], '山径破晓');
+      final dstConfig = dst.nodes.firstWhere(
+          (r) => r['node_role'] == 'config' && r['deleted_at'] == null);
+      expect(restored.last.parentSeq, 1);
+      expect(restored.last.payload['node_ids'],
+          <Object?>[dstConfig['id'].toString()]);
       // 软删保真。
       expect(dst.canvases.where((r) => r['deleted_at'] != null), hasLength(1));
       expect(dst.nodes.where((r) => r['deleted_at'] != null), hasLength(1));

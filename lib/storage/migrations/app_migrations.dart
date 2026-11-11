@@ -9,6 +9,7 @@ import '../schema/schema_v5.dart';
 import '../schema/schema_v6.dart';
 import '../schema/schema_v7.dart';
 import '../schema/schema_v8.dart';
+import '../schema/schema_v9.dart';
 import 'migration_runner.dart';
 
 const List<Migration> kAppMigrations = [
@@ -20,4 +21,5 @@ const List<Migration> kAppMigrations = [
   Migration(version: 6, sql: kSchemaV6),
   Migration(version: 7, sql: kSchemaV7),
   Migration(version: 8, sql: kSchemaV8),
+  Migration(version: 9, sql: kSchemaV9),
 ];
