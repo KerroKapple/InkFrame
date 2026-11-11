@@ -118,7 +118,7 @@ storyboarding, custom providers, asset gallery, video export). Remaining beta ga
 InkFrame/
 ├── lib/                # App source (Dart)
 │   ├── core/           #   Shared abstractions: interfaces, models, errors, DI wiring
-│   ├── features/       #   Feature slices: canvas, storyboard, export, gallery, settings, studio…
+│   ├── features/       #   Feature slices: canvas, storyboard, AI director, export, gallery, settings, studio…
 │   ├── providers/      #   AI provider adapters (Gemini, OpenAI, Kling, Wanx, Stability…)
 │   ├── services/       #   App-level services: job queue, backup/restore, ffmpeg export, updates, Claude client (anthropic/)
 │   ├── storage/        #   Embedded PostgreSQL: lifecycle, repositories, forward migrations

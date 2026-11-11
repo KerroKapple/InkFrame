@@ -91,6 +91,8 @@
 
 ### 1. 导演会话与事件日志（唯一事实源）
 
+> 实施注（2026-11-11）：v6 起迁移不再落 `.sql` 镜像，v9 只有 `lib/storage/schema/schema_v9.dart`；设计记录在 ADR-0015。
+
 - **新表**（schema v9，按 ADR-0012 加一条前向迁移 `006_director_sessions.sql` + `schema_v9.dart`）：
   - `director_sessions`：`id`、`project_id`、`canvas_id`、`content_language`（BCP-47，如 `zh-CN`）、`setting`（JSONB：时代 / 地域 / 文化 / 美术风格，用内容语言写）、`created_at` / `updated_at`、软删列与其它表一致。
   - `director_events`：`id`、`session_id`、`seq`（会话内连续递增，唯一索引）、`kind`、`parent_seq`（分叉来源，可空）、`payload`（JSONB）、`created_at`。只追加，不改不删（会话软删时随之隐藏）。
