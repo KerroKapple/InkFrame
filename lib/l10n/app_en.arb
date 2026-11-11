@@ -727,6 +727,35 @@
     }
   },
   "scriptImportFailed": "Couldn't import the script. Nothing was added to the canvas.",
+  "scriptImportStrategyAi": "AI split",
+  "scriptImportAiNeedsKey": "Add a Claude API key in Settings › API keys to use AI split.",
+  "scriptImportAiIntro": "Claude reads the script and proposes shots with framing, camera move and duration. Nothing is added to the canvas until you create the shots.",
+  "scriptImportAiStart": "Start split",
+  "scriptImportAiRunning": "Splitting the script…",
+  "scriptImportAiStop": "Stop",
+  "scriptImportAiRetry": "Try again",
+  "scriptImportAiFailed": "Split failed: {reason}",
+  "@scriptImportAiFailed": {
+    "placeholders": {
+      "reason": {"type": "String"}
+    }
+  },
+  "scriptImportAiStale": "The script changed after this split. Split again to create shots.",
+  "scriptImportAiResplit": "Split again",
+  "scriptImportAiFeedbackHint": "What should change? (optional)",
+  "scriptImportAiSettingLabel": "Detected language and setting",
+  "scriptImportAiLanguage": "Language",
+  "scriptImportAiEra": "Era",
+  "scriptImportAiRegion": "Region",
+  "scriptImportAiCulture": "Culture",
+  "scriptImportAiArtStyle": "Art style",
+  "scriptImportAiUsage": "{tokens} tokens · about {cost}",
+  "@scriptImportAiUsage": {
+    "placeholders": {
+      "tokens": {"type": "int", "format": "decimalPattern"},
+      "cost": {"type": "String"}
+    }
+  },
 
   "inspectorGroupModel": "Model",
   "inspectorGroupKeyframes": "Keyframes",

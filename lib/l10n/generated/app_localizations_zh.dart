@@ -1590,6 +1590,69 @@ class AppLocalizationsZh extends AppLocalizations {
   String get scriptImportFailed => '剧本导入失败，画布未做改动。';
 
   @override
+  String get scriptImportStrategyAi => 'AI 拆分';
+
+  @override
+  String get scriptImportAiNeedsKey =>
+      '在「设置 › API 密钥」里填好 Claude Key 后可用 AI 拆分。';
+
+  @override
+  String get scriptImportAiIntro => 'Claude 读剧本，给出每镜的景别、运镜与时长。点「创建镜头」之前不会改动画布。';
+
+  @override
+  String get scriptImportAiStart => '开始拆分';
+
+  @override
+  String get scriptImportAiRunning => '正在拆分剧本…';
+
+  @override
+  String get scriptImportAiStop => '停止';
+
+  @override
+  String get scriptImportAiRetry => '重试';
+
+  @override
+  String scriptImportAiFailed(String reason) {
+    return '拆分失败：$reason';
+  }
+
+  @override
+  String get scriptImportAiStale => '文字已修改，需重新拆分。';
+
+  @override
+  String get scriptImportAiResplit => '重新拆分';
+
+  @override
+  String get scriptImportAiFeedbackHint => '哪里要改？（可不填）';
+
+  @override
+  String get scriptImportAiSettingLabel => '识别出的语言与设定';
+
+  @override
+  String get scriptImportAiLanguage => '语言';
+
+  @override
+  String get scriptImportAiEra => '时代';
+
+  @override
+  String get scriptImportAiRegion => '地域';
+
+  @override
+  String get scriptImportAiCulture => '文化';
+
+  @override
+  String get scriptImportAiArtStyle => '美术风格';
+
+  @override
+  String scriptImportAiUsage(int tokens, String cost) {
+    final intl.NumberFormat tokensNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String tokensString = tokensNumberFormat.format(tokens);
+
+    return '$tokensString token · 约 $cost';
+  }
+
+  @override
   String get inspectorGroupModel => '模型';
 
   @override

@@ -1663,6 +1663,71 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn\'t import the script. Nothing was added to the canvas.';
 
   @override
+  String get scriptImportStrategyAi => 'AI split';
+
+  @override
+  String get scriptImportAiNeedsKey =>
+      'Add a Claude API key in Settings › API keys to use AI split.';
+
+  @override
+  String get scriptImportAiIntro =>
+      'Claude reads the script and proposes shots with framing, camera move and duration. Nothing is added to the canvas until you create the shots.';
+
+  @override
+  String get scriptImportAiStart => 'Start split';
+
+  @override
+  String get scriptImportAiRunning => 'Splitting the script…';
+
+  @override
+  String get scriptImportAiStop => 'Stop';
+
+  @override
+  String get scriptImportAiRetry => 'Try again';
+
+  @override
+  String scriptImportAiFailed(String reason) {
+    return 'Split failed: $reason';
+  }
+
+  @override
+  String get scriptImportAiStale =>
+      'The script changed after this split. Split again to create shots.';
+
+  @override
+  String get scriptImportAiResplit => 'Split again';
+
+  @override
+  String get scriptImportAiFeedbackHint => 'What should change? (optional)';
+
+  @override
+  String get scriptImportAiSettingLabel => 'Detected language and setting';
+
+  @override
+  String get scriptImportAiLanguage => 'Language';
+
+  @override
+  String get scriptImportAiEra => 'Era';
+
+  @override
+  String get scriptImportAiRegion => 'Region';
+
+  @override
+  String get scriptImportAiCulture => 'Culture';
+
+  @override
+  String get scriptImportAiArtStyle => 'Art style';
+
+  @override
+  String scriptImportAiUsage(int tokens, String cost) {
+    final intl.NumberFormat tokensNumberFormat =
+        intl.NumberFormat.decimalPattern(localeName);
+    final String tokensString = tokensNumberFormat.format(tokens);
+
+    return '$tokensString tokens · about $cost';
+  }
+
+  @override
   String get inspectorGroupModel => 'Model';
 
   @override
