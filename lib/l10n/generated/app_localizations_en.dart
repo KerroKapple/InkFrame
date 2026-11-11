@@ -53,6 +53,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Generation did not complete within the time limit.';
 
   @override
+  String get errorModelRefusal =>
+      'Claude declined this request. Rephrase it and try again.';
+
+  @override
+  String get errorOutputTruncated =>
+      'Claude\'s reply hit the output limit and was cut off. Try again with a shorter task.';
+
+  @override
   String get errorDownloadFailed =>
       'The generated file couldn\'t be downloaded. Check your connection and retry.';
 
@@ -3020,6 +3028,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsApiKeyPlaceholderGeneric => 'Paste your API key';
+
+  @override
+  String get settingsApiKeyPlaceholderClaude => 'sk-ant-...';
+
+  @override
+  String get settingsApiKeyClaudeNote =>
+      'AI director (storyboards, prompts, image review) — not used for image or video generation';
 
   @override
   String get secureStoreNameMac => 'the macOS Keychain';

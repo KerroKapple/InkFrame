@@ -20,6 +20,7 @@ InkFrame 测试基础设施。所有 widget / provider / controller test 共享�
 | `test_app.dart` | `pumpInkApp(tester, child, {...})` widget 启动器 |
 | `fixtures.dart` | `loadProviderFixture(providerId, name)` JSON loader |
 | `fake_dio.dart` | `FakeDio.fromFixture / respondWith / throwsError / routes` dio builder |
+| `scripted_http_adapter.dart` | `ScriptedHttpAdapter([ScriptedReply...])`：按脚本逐个回放的 dio adapter（分块 body 测 SSE、`ScriptedReply.fail` 测重试），记下每次请求；`sseFrame(event, data)` 拼一帧 SSE |
 | `fake_providers.dart` | `FakeSubmittable / FakePollable / FakeKeyValidatable / FakeProvider` + `fakeImageCapabilities / fakeVideoCapabilities` 工厂 |
 | `fake_clock.dart` | `FakeClock(initial).advance(d)` 实现 `Clock` 接口 |
 | `fake_secure_storage.dart` | `FakeSecureStorage([seed])` 实现 `SecureStorageService` |

@@ -7,6 +7,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
+import 'package:inkframe/core/di/key_validation.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
@@ -236,5 +237,25 @@ void main() {
         .save('sk-ds');
 
     expect(secure.box.keys, ['provider.dashscope.api_key']);
+  });
+
+  // Claude 不在注册表里：校验方走 apiKeyValidatorProvider 分派到 AnthropicClient。
+  test('anthropic scope → 用 Claude 校验方，存到 anthropicApiKey，不碰注册表', () async {
+    const scope = SecureStorageKeys.anthropicScope;
+    final claude = FakeKeyValidatable();
+    container = ProviderContainer(overrides: [
+      secureStorageServiceProvider.overrideWithValue(secure),
+      providerRegistryProvider.overrideWithValue(CachingProviderRegistry({})),
+      apiKeyValidatorProvider(scope).overrideWithValue(claude),
+    ]);
+    await container.read(apiKeyScopeControllerProvider(scope).future);
+
+    final outcome = await container
+        .read(apiKeyScopeControllerProvider(scope).notifier)
+        .save('sk-ant-good');
+
+    expect(outcome, isA<ApiKeySaved>());
+    expect(claude.validatedKeys, ['sk-ant-good']);
+    expect(secure.box.keys, [SecureStorageKeys.anthropicApiKey]);
   });
 }

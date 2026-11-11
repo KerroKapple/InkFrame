@@ -4,7 +4,7 @@
 // storage key 经 SecureStorageKeys.providerApiKey 自动折叠到家族 scope。
 //
 // state: AsyncValue<bool> = 该 scope 是否已配置。
-// save 流程：registry 取 Provider → validateApiKey →
+// save 流程：apiKeyValidatorProvider 取校验方（生成 Provider 或 Claude 客户端）→ validateApiKey →
 //   valid          → 落盘 → ApiKeySaved
 //   invalid        → 不落盘 → ApiKeyRejected(reason)
 //   networkError   → 照常落盘（离线不阻塞配置）→ ApiKeySavedUnverified
@@ -13,10 +13,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/secure_storage_keys.dart';
-import '../../../core/di/providers.dart';
+import '../../../core/di/key_validation.dart';
 import '../../../core/di/secure_storage.dart';
 import '../../../core/errors/ink_error.dart';
-import '../../../core/interfaces/generation_provider.dart';
 import '../../../core/models/key_validation_result.dart';
 
 /// save 的三种用户可见结局。
@@ -85,11 +84,11 @@ class ApiKeyScopeController
   }
 
   Future<KeyValidationResult> _validate(String value) async {
-    final provider = ref.read(providerRegistryProvider).get(arg);
+    final validator = ref.read(apiKeyValidatorProvider(arg));
     // 契约上所有 Provider 都实现 KeyValidatable；防御性兜底视作有效。
-    if (provider is! KeyValidatable) return const KeyValidationResult.valid();
+    if (validator == null) return const KeyValidationResult.valid();
     try {
-      return await (provider as KeyValidatable).validateApiKey(value);
+      return await validator.validateApiKey(value);
     } on InkError {
       // 契约要求 validateApiKey 返回结果而非抛错；漏网的传输层错误归为不可判定。
       return const KeyValidationResult.networkError(

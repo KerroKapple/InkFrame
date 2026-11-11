@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inkframe/core/constants/secure_storage_keys.dart';
+import 'package:inkframe/core/di/key_validation.dart';
 import 'package:inkframe/core/di/providers.dart';
 import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
@@ -47,6 +48,11 @@ class _FakeSecure implements SecureStorageService {
 
 const _id = 'test-provider';
 
+Finder _inRow(Finder f) => find.descendant(
+      of: find.byKey(ApiKeysSection.rowKey(_id)),
+      matching: f,
+    );
+
 List<Override> _overrides(
   SecureStorageService secure, {
   Future<KeyValidationResult> Function(String)? onValidate,
@@ -78,10 +84,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(_id), findsOneWidget);
-    expect(find.text('Not set'), findsOneWidget);
+    expect(_inRow(find.text('Not set')), findsOneWidget);
     // Clear 按钮 disabled
     final clearBtn = tester
-        .widget<InkButton>(find.widgetWithText(InkButton, 'Clear'));
+        .widget<InkButton>(_inRow(find.widgetWithText(InkButton, 'Clear')));
     expect(clearBtn.onPressed, isNull);
   });
 
@@ -96,13 +102,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'sk-abc');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-abc');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     final storedKey = SecureStorageKeys.providerApiKey(_id);
     expect(await secure.retrieve(storedKey), 'sk-abc');
-    expect(find.text('Set'), findsOneWidget);
+    expect(_inRow(find.text('Set')), findsOneWidget);
     expect(toast.titles, <String>['Saved']);
     expect(toast.kinds, <ToastKind>[ToastKind.success]);
     expect(toast.shown.single.chime, isFalse,
@@ -125,13 +131,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'sk-bad');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-bad');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     final storedKey = SecureStorageKeys.providerApiKey(_id);
     expect(await secure.retrieve(storedKey), isNull);
-    expect(find.text('Not set'), findsOneWidget);
+    expect(_inRow(find.text('Not set')), findsOneWidget);
     expect(
       toast.titles,
       <String>['The provider rejected this key as invalid. It was not saved.'],
@@ -139,7 +145,7 @@ void main() {
     expect(toast.kinds, <ToastKind>[ToastKind.error]);
     // 输入框保留原文，便于用户修改重试。
     expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      tester.widget<TextField>(_inRow(find.byType(TextField))).controller!.text,
       'sk-bad',
     );
   });
@@ -162,8 +168,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'sk-broke');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-broke');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     expect(await secure.retrieve(SecureStorageKeys.providerApiKey(_id)), isNull);
@@ -194,8 +200,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'sk-policy');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-policy');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     expect(await secure.retrieve(SecureStorageKeys.providerApiKey(_id)), isNull);
@@ -224,13 +230,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'sk-maybe');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-maybe');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     final storedKey = SecureStorageKeys.providerApiKey(_id);
     expect(await secure.retrieve(storedKey), 'sk-maybe');
-    expect(find.text('Set'), findsOneWidget);
+    expect(_inRow(find.text('Set')), findsOneWidget);
     expect(
       toast.titles,
       <String>[
@@ -251,19 +257,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'sk-disk');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-disk');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     expect(await secure.retrieve(SecureStorageKeys.providerApiKey(_id)), isNull);
-    expect(find.text('Not set'), findsOneWidget);
+    expect(_inRow(find.text('Not set')), findsOneWidget);
     expect(
       toast.titles,
       <String>['Local disk I/O error. Check space and permissions.'],
     );
     expect(toast.kinds, <ToastKind>[ToastKind.error]);
     expect(
-      tester.widget<TextField>(find.byType(TextField)).controller!.text,
+      tester.widget<TextField>(_inRow(find.byType(TextField))).controller!.text,
       'sk-disk',
     );
   });
@@ -288,13 +294,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byType(TextField), 'sk-bad');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-bad');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     verdict = const KeyValidationResult.valid();
-    await tester.enterText(find.byType(TextField), 'sk-good');
-    await tester.tap(find.widgetWithText(InkButton, 'Save'));
+    await tester.enterText(_inRow(find.byType(TextField)), 'sk-good');
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Save')));
     await tester.pumpAndSettle();
 
     expect(toast.kinds, <ToastKind>[ToastKind.error, ToastKind.success]);
@@ -317,13 +323,13 @@ void main() {
       overrides: _overrides(secure, toast: toast),
     );
     await tester.pumpAndSettle();
-    expect(find.text('Set'), findsOneWidget);
+    expect(_inRow(find.text('Set')), findsOneWidget);
 
-    await tester.tap(find.widgetWithText(InkButton, 'Clear'));
+    await tester.tap(_inRow(find.widgetWithText(InkButton, 'Clear')));
     await tester.pumpAndSettle();
 
     expect(await secure.retrieve(storedKey), isNull);
-    expect(find.text('Not set'), findsOneWidget);
+    expect(_inRow(find.text('Not set')), findsOneWidget);
     expect(toast.titles, <String>['Cleared']);
     expect(toast.kinds, <ToastKind>[ToastKind.info]);
   });
@@ -360,7 +366,105 @@ void main() {
         .widgetList<TextField>(find.byType(TextField))
         .map((f) => f.decoration?.hintText)
         .toList();
-    expect(hints, <String?>['AIza...', 'sk-...', 'Paste your API key']);
+    expect(hints, <String?>['AIza...', 'sk-...', 'Paste your API key', 'sk-ant-...']);
+  });
+
+  group('Claude 行', () {
+    Finder inClaude(Finder f) => find.descendant(
+          of: find.byKey(
+            ApiKeysSection.rowKey(SecureStorageKeys.anthropicScope),
+          ),
+          matching: f,
+        );
+
+    List<Override> claudeOverrides(
+      _FakeSecure secure,
+      FakeKeyValidatable claude, {
+      RecordingToastService? toast,
+    }) =>
+        <Override>[
+          ..._overrides(secure, toast: toast),
+          apiKeyValidatorProvider(SecureStorageKeys.anthropicScope)
+              .overrideWithValue(claude),
+        ];
+
+    testWidgets('排在生成 Provider 之后：名称 Claude + 用途说明 + sk-ant 占位，初始未配置',
+        (tester) async {
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+        overrides: claudeOverrides(_FakeSecure(), FakeKeyValidatable()),
+      );
+      await tester.pumpAndSettle();
+
+      expect(inClaude(find.text('Claude')), findsOneWidget);
+      expect(
+        inClaude(find.textContaining('not used for image or video generation')),
+        findsOneWidget,
+      );
+      expect(
+        tester.widget<TextField>(inClaude(find.byType(TextField))).decoration?.hintText,
+        'sk-ant-...',
+      );
+      expect(inClaude(find.text('Not set')), findsOneWidget);
+      final double testRowY =
+          tester.getTopLeft(find.byKey(ApiKeysSection.rowKey(_id))).dy;
+      final double claudeRowY = tester
+          .getTopLeft(find.byKey(
+              ApiKeysSection.rowKey(SecureStorageKeys.anthropicScope)))
+          .dy;
+      expect(claudeRowY, greaterThan(testRowY));
+    });
+
+    testWidgets('Save：经 Claude 校验方验过后存到 anthropicApiKey，切到已配置', (tester) async {
+      final secure = _FakeSecure();
+      final claude = FakeKeyValidatable();
+      final toast = RecordingToastService();
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+        overrides: claudeOverrides(secure, claude, toast: toast),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(inClaude(find.byType(TextField)), 'sk-ant-abc');
+      await tester.tap(inClaude(find.widgetWithText(InkButton, 'Save')));
+      await tester.pumpAndSettle();
+
+      expect(claude.validatedKeys, <String>['sk-ant-abc']);
+      expect(await secure.retrieve(SecureStorageKeys.anthropicApiKey), 'sk-ant-abc');
+      expect(inClaude(find.text('Set')), findsOneWidget);
+      // 生成 Provider 那一行不受影响。
+      expect(_inRow(find.text('Not set')), findsOneWidget);
+      expect(toast.kinds, <ToastKind>[ToastKind.success]);
+    });
+
+    testWidgets('Save 被拒（401）：不落盘、提示无效', (tester) async {
+      final secure = _FakeSecure();
+      final toast = RecordingToastService();
+      await pumpInkApp(
+        tester,
+        const Scaffold(body: SingleChildScrollView(child: ApiKeysSection())),
+        overrides: claudeOverrides(
+          secure,
+          FakeKeyValidatable(
+            onValidate: (_) async => const KeyValidationResult.invalid(
+              reason: KeyInvalidReason.invalidKey,
+            ),
+          ),
+          toast: toast,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.enterText(inClaude(find.byType(TextField)), 'sk-ant-bad');
+      await tester.tap(inClaude(find.widgetWithText(InkButton, 'Save')));
+      await tester.pumpAndSettle();
+
+      expect(await secure.retrieve(SecureStorageKeys.anthropicApiKey), isNull);
+      expect(inClaude(find.text('Not set')), findsOneWidget);
+      expect(toast.kinds, <ToastKind>[ToastKind.error]);
+    });
   });
 
   testWidgets('custom:* 行显示 displayName 而非裸 id（GAP-1 顺带修）', (tester) async {

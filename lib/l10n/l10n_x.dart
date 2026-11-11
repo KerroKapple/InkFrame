@@ -65,6 +65,8 @@ String _l10nByMessageKey(AppLocalizations l, String messageKey) {
     'errorProviderBusy' => l.errorProviderBusy,
     'errorProviderInvalidResponse' => l.errorProviderInvalidResponse,
     'errorPollTimeout' => l.errorPollTimeout,
+    'errorModelRefusal' => l.errorModelRefusal,
+    'errorOutputTruncated' => l.errorOutputTruncated,
     'errorDownloadFailed' => l.errorDownloadFailed,
     'errorLocalIO' => l.errorLocalIO,
     'errorCancelled' => l.errorCancelled,

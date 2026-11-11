@@ -1,7 +1,8 @@
 // ApiKeysSection — 设置「API 密钥」页的 Key 表（Screens 稿第 3 屏）。
 //
 // 按 SecureStorageKeys.scopeOf 折叠家族。DashScope 的 6 款 Provider 合并为
-// 一行，共用一把 Key；Gemini 独占一行。
+// 一行，共用一把 Key；Gemini 独占一行。末尾固定一行 Claude（导演用的语言模型，
+// 不在生成 Provider 注册表里，校验走 AnthropicClient）。
 //
 // 表列照稿：Provider（名称 + 10px 成员说明）| Key（等宽输入，只有 1px 底线）| 状态。
 // 稿上的「区域」列与「✓ 已验证 / ! 余额不足 / ✕ 连接失败」没有对应字段——
@@ -39,6 +40,9 @@ class ApiKeysSection extends ConsumerWidget {
   static const double providerColumnWidth = 168;
   static const double statusColumnWidth = 96;
 
+  /// 每行的 Key（测试按 scope 定位到某一行）。
+  static Key rowKey(String scope) => ValueKey<String>('settings.apiKeyRow.$scope');
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final caps = ref.watch(providerCapabilitiesListProvider);
@@ -68,8 +72,41 @@ class ApiKeysSection extends ConsumerWidget {
           ),
         ),
         for (final entry in groups.entries)
-          _ApiKeyRow(scope: entry.key, members: entry.value),
+          _generationRow(entry.key, entry.value),
+        // Claude 不是生成 Provider（不在注册表里），固定排在最后一行。
+        _ApiKeyRow(
+          key: rowKey(SecureStorageKeys.anthropicScope),
+          scope: SecureStorageKeys.anthropicScope,
+          familyArg: SecureStorageKeys.anthropicScope,
+          label: SecureStorageKeys.displayNameOf(
+            SecureStorageKeys.anthropicScope,
+          ),
+          subtitle: context.l10n.settingsApiKeyClaudeNote,
+        ),
       ],
+    );
+  }
+
+  /// 生成 Provider 家族一行：scope 下所有成员共用同一把 Key——任选一成员做 family arg。
+  static Widget _generationRow(
+    String scope,
+    List<ProviderCapabilities> members,
+  ) {
+    // custom:* 行显示配置里的 displayName（GAP-1 顺带修——此前裸 custom:<id>）。
+    final String? customDisplayName = members.first.displayName;
+    final label = scope.startsWith(kCustomProviderIdPrefix) &&
+            customDisplayName != null &&
+            customDisplayName.isNotEmpty
+        ? customDisplayName
+        : SecureStorageKeys.displayNameOf(scope);
+    final memberIds = members.map((c) => c.providerId).join(' / ');
+    final showMembers = members.length > 1 || memberIds != label;
+    return _ApiKeyRow(
+      key: rowKey(scope),
+      scope: scope,
+      familyArg: members.first.providerId,
+      label: label,
+      subtitle: showMembers ? memberIds : null,
     );
   }
 }
@@ -97,10 +134,22 @@ class _Columns extends StatelessWidget {
 }
 
 class _ApiKeyRow extends ConsumerStatefulWidget {
-  const _ApiKeyRow({required this.scope, required this.members});
+  const _ApiKeyRow({
+    super.key,
+    required this.scope,
+    required this.familyArg,
+    required this.label,
+    this.subtitle,
+  });
 
   final String scope;
-  final List<ProviderCapabilities> members;
+
+  /// ApiKeyScopeController 的 family arg（经 scopeOf 折叠到 [scope]）。
+  final String familyArg;
+  final String label;
+
+  /// 名称下的 10px 说明（家族成员 id / Claude 的用途）；null 不画。
+  final String? subtitle;
 
   @override
   ConsumerState<_ApiKeyRow> createState() => _ApiKeyRowState();
@@ -109,8 +158,7 @@ class _ApiKeyRow extends ConsumerStatefulWidget {
 class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
   final TextEditingController _ctrl = TextEditingController();
 
-  /// scope 下所有 Provider 共用同一把 Key——任选一成员做 family arg。
-  String get _providerId => widget.members.first.providerId;
+  String get _providerId => widget.familyArg;
 
   @override
   void dispose() {
@@ -185,17 +233,7 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
     final keyState = ref.watch(apiKeyScopeControllerProvider(_providerId));
     final loading = keyState.isLoading;
     final isSet = keyState.valueOrNull ?? false;
-    // custom:* 行显示配置里的 displayName（GAP-1 顺带修——此前裸 custom:<id>）。
-    final String? customDisplayName = widget.members.first.displayName;
-    final label = widget.scope.startsWith(kCustomProviderIdPrefix) &&
-            customDisplayName != null &&
-            customDisplayName.isNotEmpty
-        ? customDisplayName
-        : SecureStorageKeys.displayNameOf(widget.scope);
-    final memberIds =
-        widget.members.map((c) => c.providerId).join(' / ');
-    final showMembers =
-        widget.members.length > 1 || memberIds != label;
+    final String? subtitle = widget.subtitle;
 
     // 稿：行 min 40 + padding 6，下沿 1（borderSubtle）。
     return Container(
@@ -207,10 +245,10 @@ class _ApiKeyRowState extends ConsumerState<_ApiKeyRow> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.body.copyWith(color: c.fg1)),
-            if (showMembers) ...<Widget>[
+            Text(widget.label, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.body.copyWith(color: c.fg1)),
+            if (subtitle != null) ...<Widget>[
               const SizedBox(height: InkSpacing.s2),
-              Text(memberIds, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.micro.copyWith(color: c.fg6)),
+              Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: t.micro.copyWith(color: c.fg6)),
             ],
           ],
         ),

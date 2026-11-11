@@ -22,6 +22,7 @@ class SecureStorageKeys {
     'dashscope': 'DashScope',
     'openai-image': 'OpenAI',
     'stability-image-core': 'Stable Image Core',
+    anthropicScope: 'Claude',
   };
 
   /// 解析 providerId → storage scope（家族成员共用 scope）。
@@ -37,6 +38,13 @@ class SecureStorageKeys {
   /// `provider.{scope}.api_key`——scope 可能是 providerId 或家族名。
   static String providerApiKey(String providerId) =>
       'provider.${scopeOf(providerId)}.api_key';
+
+  /// Claude（Anthropic Messages API）的 Key scope。它不是出图出片的 Provider，
+  /// 不进 ProviderRegistry；只借用同一套 `provider.{scope}.api_key` 命名。
+  static const String anthropicScope = 'anthropic';
+
+  /// Claude API Key 的存储键（= providerApiKey(anthropicScope)）。
+  static const String anthropicApiKey = 'provider.$anthropicScope.api_key';
 
   /// 全局代理密码（无 provider 维度）。
   static const String proxyPassword = 'network.proxy.password';

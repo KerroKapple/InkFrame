@@ -118,7 +118,7 @@ InkFrame/
 │   ├── core/           #   共享抽象：接口、模型、错误体系、依赖注入接线
 │   ├── features/       #   功能切片：画布、分镜、导出、素材库、设置、工作台……
 │   ├── providers/      #   AI 服务适配器（Gemini、OpenAI、可灵、通义万相、Stability……）
-│   ├── services/       #   应用级服务：任务队列、备份还原、ffmpeg 导出、更新检查
+│   ├── services/       #   应用级服务：任务队列、备份还原、ffmpeg 导出、更新检查、Claude 客户端（anthropic/）
 │   ├── storage/        #   嵌入式 PostgreSQL：生命周期、仓储、前向迁移
 │   ├── theme/          #   设计令牌 + 可复用 Ink* 组件
 │   └── l10n/           #   ARB 文案（中 / 英）+ 生成的本地化代码
