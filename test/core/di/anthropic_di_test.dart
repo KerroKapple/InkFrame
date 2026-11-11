@@ -9,8 +9,10 @@ import 'package:inkframe/core/di/secure_storage.dart';
 import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/anthropic_client.dart';
 import 'package:inkframe/core/models/claude_message.dart';
+import 'package:inkframe/features/settings/providers/api_key_scope_controller.dart';
 import 'package:inkframe/providers/provider_registry.dart';
 
+import '../../_harness/fake_anthropic_client.dart';
 import '../../_harness/fake_providers.dart';
 import '../../_harness/fake_secure_storage.dart';
 
@@ -56,5 +58,25 @@ void main() {
       c.read(providerRegistryProvider).ids.map(SecureStorageKeys.scopeOf),
       isNot(contains(SecureStorageKeys.anthropicScope)),
     );
+  });
+
+  test('claudeKeyConfiguredProvider：有无 Claude Key；设置页存 / 清 Key 后重算', () async {
+    final FakeSecureStorage storage = FakeSecureStorage();
+    final ProviderContainer c = ProviderContainer(overrides: [
+      secureStorageServiceProvider.overrideWithValue(storage),
+      anthropicClientProvider.overrideWithValue(FakeAnthropicClient(const <FakeClaudeReply>[])),
+    ]);
+    addTearDown(c.dispose);
+    c.listen(claudeKeyConfiguredProvider, (_, _) {});
+    expect(await c.read(claudeKeyConfiguredProvider.future), isFalse);
+
+    final scope = apiKeyScopeControllerProvider(SecureStorageKeys.anthropicScope);
+    c.listen(scope, (_, _) {});
+    await c.read(scope.future);
+    await c.read(scope.notifier).save('sk-ant-x');
+    expect(await c.read(claudeKeyConfiguredProvider.future), isTrue);
+
+    await c.read(scope.notifier).clear();
+    expect(await c.read(claudeKeyConfiguredProvider.future), isFalse);
   });
 }

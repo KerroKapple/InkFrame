@@ -2,22 +2,20 @@
 //
 // 每次请求固定：model claude-opus-5-5、thinking adaptive、fallbacks "default"
 // + beta 头 server-side-fallback-2026-07-01、stream true。
-// 结局判定顺序：HTTP 状态 → 流内 error 事件 → 记账 → stop_reason
+// 结局判定顺序：HTTP 状态 → 流内 error 事件 → 交出回应（observer）→ stop_reason
 // （refusal / max_tokens 先于读内容）。可重试错误按 retry-after 退避，最多 [maxRetries] 次。
+// 每次尝试发出前先把请求体交给 observer：没入日志的请求不发（ADR-0015）。
 import 'dart:convert';
 
 import 'package:dio/dio.dart';
 
 import '../../core/errors/ink_error.dart';
 import '../../core/interfaces/anthropic_client.dart';
-import '../../core/interfaces/claude_usage_ledger.dart';
-import '../../core/logging/logger_service.dart';
 import '../../core/models/claude_message.dart';
 import '../../core/models/key_validation_result.dart';
 import '../../providers/dio_error_mapper.dart';
 import 'anthropic_protocol.dart';
 import 'claude_error_mapper.dart';
-import 'claude_pricing.dart';
 import 'claude_request_encoder.dart';
 import 'claude_sse.dart';
 
@@ -30,22 +28,16 @@ class DioAnthropicClient implements AnthropicClient {
   DioAnthropicClient({
     required Dio dio,
     required Future<String> Function() keySource,
-    required ClaudeUsageLedger ledger,
-    required Clock clock,
     RetrySleep sleep = _realSleep,
     this.maxRetries = 2,
     this.baseBackoff = const Duration(seconds: 1),
     this.maxBackoff = const Duration(seconds: 60),
   })  : _dio = dio,
         _keySource = keySource,
-        _ledger = ledger,
-        _clock = clock,
         _sleep = sleep;
 
   final Dio _dio;
   final Future<String> Function() _keySource;
-  final ClaudeUsageLedger _ledger;
-  final Clock _clock;
   final RetrySleep _sleep;
 
   /// 首次之外最多再试几次。
@@ -58,12 +50,16 @@ class DioAnthropicClient implements AnthropicClient {
   final Duration maxBackoff;
 
   @override
-  Future<ClaudeMessage> createMessage(ClaudeRequest request) async {
+  Future<ClaudeMessage> createMessage(
+    ClaudeRequest request, {
+    ClaudeExchangeObserver? observer,
+  }) async {
     final Map<String, Object?> body = encodeClaudeRequest(request);
     final String key = await _keySource();
     for (int attempt = 0;; attempt++) {
+      await observer?.onRequest(body, attempt: attempt);
       try {
-        return _conclude(await _attempt(key, body), request);
+        return await _conclude(await _attempt(key, body, observer), request, observer);
       } on _AttemptFailure catch (f) {
         if (!f.error.retryable || attempt >= maxRetries) throw f.error;
         await _sleep(_delayFor(attempt, f.retryAfter));
@@ -105,7 +101,11 @@ class DioAnthropicClient implements AnthropicClient {
         if (withBeta) AnthropicHeaders.beta: AnthropicProtocol.fallbackBeta,
       };
 
-  Future<ClaudeStreamResult> _attempt(String key, Map<String, Object?> body) async {
+  Future<ClaudeStreamResult> _attempt(
+    String key,
+    Map<String, Object?> body,
+    ClaudeExchangeObserver? observer,
+  ) async {
     final Response<ResponseBody> resp;
     try {
       resp = await _dio.post<ResponseBody>(
@@ -139,13 +139,13 @@ class DioAnthropicClient implements AnthropicClient {
       }
       return acc.finish();
     } on InkError catch (e) {
-      _recordPartial(acc);
+      await _reportPartial(acc, observer);
       throw _AttemptFailure(e, retryAfter);
     } on DioException catch (e) {
-      _recordPartial(acc);
+      await _reportPartial(acc, observer);
       throw _AttemptFailure(_mapDio(e), retryAfter);
     } on FormatException catch (e) {
-      _recordPartial(acc);
+      await _reportPartial(acc, observer);
       throw _AttemptFailure(
         ProviderError(
           code: InkErrorCode.providerInvalidResponse,
@@ -160,9 +160,13 @@ class DioAnthropicClient implements AnthropicClient {
     }
   }
 
-  /// 先记账（拒答、截断同样计费），再判 stop_reason。
-  ClaudeMessage _conclude(ClaudeStreamResult r, ClaudeRequest request) {
-    _record(r.model, r.usage);
+  /// 先交出回应（拒答、截断同样计费、同样入日志），再判 stop_reason。
+  Future<ClaudeMessage> _conclude(
+    ClaudeStreamResult r,
+    ClaudeRequest request,
+    ClaudeExchangeObserver? observer,
+  ) async {
+    await observer?.onResponse(_responseOf(r, partial: false));
     final Map<String, Object?> extra = <String, Object?>{
       'provider_id': AnthropicProtocol.clientId,
       'model': r.model,
@@ -191,18 +195,25 @@ class DioAnthropicClient implements AnthropicClient {
     );
   }
 
-  void _recordPartial(ClaudeStreamAccumulator acc) {
-    if (acc.usage != const ClaudeUsage()) _record(acc.model, acc.usage);
+  /// 流中途断开：已经计费的用量照样交出；一个 token 都没算的不报。
+  Future<void> _reportPartial(
+    ClaudeStreamAccumulator acc,
+    ClaudeExchangeObserver? observer,
+  ) async {
+    if (observer == null || acc.usage == const ClaudeUsage()) return;
+    await observer.onResponse(_responseOf(acc.current(), partial: true));
   }
 
-  void _record(String model, ClaudeUsage usage) {
-    _ledger.record(ClaudeUsageRecord(
-      at: _clock.nowUtc(),
-      model: model.isEmpty ? AnthropicProtocol.model : model,
-      usage: usage,
-      estimatedCostUsd: estimateClaudeCostUsd(usage),
-    ));
-  }
+  ClaudeExchangeResponse _responseOf(ClaudeStreamResult r, {required bool partial}) =>
+      ClaudeExchangeResponse(
+        id: r.id,
+        model: r.model.isEmpty ? AnthropicProtocol.model : r.model,
+        textBlocks: r.textBlocks,
+        usage: r.usage,
+        stopReason: r.stopReason,
+        refusalCategory: r.refusalCategory,
+        partial: partial,
+      );
 
   Duration _delayFor(int attempt, Duration? retryAfter) {
     final Duration d = retryAfter ?? baseBackoff * (1 << attempt);

@@ -171,6 +171,33 @@ class ClaudeMessage {
   String get text => textBlocks.join();
 }
 
+/// 一次带用量的回应，交给 [ClaudeExchangeObserver]（见 core/interfaces/anthropic_client.dart）
+/// 入日志。与 [ClaudeMessage] 不同，它也覆盖拒答、截断与流中途断开（[partial]）。
+@immutable
+class ClaudeExchangeResponse {
+  ClaudeExchangeResponse({
+    required this.id,
+    required this.model,
+    required List<String> textBlocks,
+    required this.usage,
+    required this.stopReason,
+    this.refusalCategory,
+    this.partial = false,
+  }) : textBlocks = List<String>.unmodifiable(textBlocks);
+
+  final String id;
+  final String model;
+  final List<String> textBlocks;
+  final ClaudeUsage usage;
+
+  /// 线上 stop_reason 原值；流没走完时为 null。
+  final String? stopReason;
+  final String? refusalCategory;
+
+  /// 流中途断开：用量已计费，内容不完整，这次尝试算失败。
+  final bool partial;
+}
+
 /// 记账里的一行：一次调用（成功、拒答或截断——都计费）的用量与估算费用。
 @immutable
 class ClaudeUsageRecord {

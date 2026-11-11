@@ -13,6 +13,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/secure_storage_keys.dart';
+import '../../../core/di/anthropic.dart';
 import '../../../core/di/key_validation.dart';
 import '../../../core/di/secure_storage.dart';
 import '../../../core/errors/ink_error.dart';
@@ -71,6 +72,7 @@ class ApiKeyScopeController
     await ref.read(secureStorageServiceProvider).store(_storageKey, value);
     // key 集合变化 → 让 Studio 软 banner 重新评估是否已配置。
     ref.invalidate(anyProviderKeyConfiguredProvider);
+    ref.invalidate(claudeKeyConfiguredProvider);
     state = const AsyncData(true);
     return result is KeyValid
         ? const ApiKeySaved()
@@ -80,6 +82,7 @@ class ApiKeyScopeController
   Future<void> clear() async {
     await ref.read(secureStorageServiceProvider).delete(_storageKey);
     ref.invalidate(anyProviderKeyConfiguredProvider);
+    ref.invalidate(claudeKeyConfiguredProvider);
     state = const AsyncData(false);
   }
 

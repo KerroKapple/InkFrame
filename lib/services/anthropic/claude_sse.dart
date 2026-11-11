@@ -144,6 +144,11 @@ class ClaudeStreamAccumulator {
         },
       );
     }
+    return current();
+  }
+
+  /// 到目前为止拼出的结果（流中途失败时入日志用；不做完整性检查）。
+  ClaudeStreamResult current() {
     final List<int> order = _texts.keys.toList()..sort();
     return ClaudeStreamResult(
       id: _id,
