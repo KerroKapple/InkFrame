@@ -12,10 +12,12 @@ import 'package:inkframe/core/errors/ink_error.dart';
 import 'package:inkframe/core/interfaces/edge_repository.dart';
 import 'package:inkframe/core/interfaces/node_repository.dart';
 import 'package:inkframe/core/interfaces/unit_of_work.dart';
+import 'package:inkframe/core/models/provider_capabilities.dart';
+import 'package:inkframe/core/models/shot_language.dart';
 import 'package:inkframe/features/canvas/providers/canvas_edges_controller.dart';
 import 'package:inkframe/features/canvas/providers/canvas_nodes_controller.dart';
 import 'package:inkframe/features/storyboard/providers/script_import_controller.dart';
-import 'package:inkframe/features/storyboard/util/script_splitter.dart';
+import 'package:inkframe/features/storyboard/models/shot_draft.dart';
 
 import '../../../_harness/fake_repositories.dart';
 import '../../../_harness/fake_unit_of_work.dart';
@@ -209,10 +211,10 @@ void main() {
     setUp(() => build());
 
     test('N 段 → N 个 shot config 节点，label/备注原样落地', () async {
-      final int created =
+      final List<String> created =
           await controllerOf(container).importDrafts(threeDrafts);
 
-      expect(created, 3);
+      expect(created, <String>['n0', 'n1', 'n2']);
       expect(nodes.committed, hasLength(3));
       expect(nodes.committed.map((n) => n.type), everyElement('shot'));
       expect(nodes.committed.map((n) => n.role), everyElement('config'));
@@ -253,11 +255,11 @@ void main() {
     });
 
     test('单镜 → 1 个节点 0 条边（不自连）', () async {
-      final int created = await controllerOf(container).importDrafts(
+      final List<String> created = await controllerOf(container).importDrafts(
         const <ShotDraft>[ShotDraft(label: 'A', notes: 'A')],
       );
 
-      expect(created, 1);
+      expect(created, <String>['n0']);
       expect(nodes.committed, hasLength(1));
       expect(edges.committed, isEmpty);
     });
@@ -268,14 +270,53 @@ void main() {
     });
   });
 
+  group('importDrafts · 镜头语言（AI 拆分的草稿）', () {
+    setUp(() => build());
+
+    test('带景别 / 机位 / 运镜 / 时长 ⇒ 写进现有 type_config 键', () async {
+      await controllerOf(container).importDrafts(const <ShotDraft>[
+        ShotDraft(
+          label: 'A',
+          notes: 'a',
+          shotSize: ShotSize.closeUp,
+          cameraAngle: CameraAngle.low,
+          camera: CameraMovement.pushIn,
+          durationMs: 4000,
+        ),
+      ]);
+      expect(nodes.committed.single.typeConfig, <String, Object?>{
+        'shot_notes': 'a',
+        'shot_size': 'closeUp',
+        'camera_angle': 'low',
+        'camera': 'pushIn',
+        'duration_ms': 4000,
+      });
+    });
+
+    test('只带部分 ⇒ 只写有值的键', () async {
+      await controllerOf(container).importDrafts(const <ShotDraft>[
+        ShotDraft(label: 'A', notes: 'a', durationMs: 2000),
+      ]);
+      expect(nodes.committed.single.typeConfig,
+          <String, Object?>{'shot_notes': 'a', 'duration_ms': 2000});
+    });
+
+    test('规则草稿行为不变：只有 shot_notes', () async {
+      await controllerOf(container).importDrafts(threeDrafts);
+      for (final n in nodes.committed) {
+        expect(n.typeConfig.keys, <String>['shot_notes']);
+      }
+    });
+  });
+
   group('importDrafts · 退化输入', () {
     setUp(() => build());
 
-    test('空清单 → 返回 0 且不开事务', () async {
-      final int created =
+    test('空清单 → 返回空且不开事务', () async {
+      final List<String> created =
           await controllerOf(container).importDrafts(const <ShotDraft>[]);
 
-      expect(created, 0);
+      expect(created, isEmpty);
       expect(uow.runs, 0);
       expect(nodes.committed, isEmpty);
     });

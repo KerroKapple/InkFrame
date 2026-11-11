@@ -8,6 +8,7 @@
 // 去画一个数字 1）。但也不能剥过头——"1920 年代的街道"里的数字是内容。
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inkframe/features/storyboard/models/shot_draft.dart';
 import 'package:inkframe/features/storyboard/util/script_splitter.dart';
 
 List<String> _notes(List<ShotDraft> d) => d.map((e) => e.notes).toList();

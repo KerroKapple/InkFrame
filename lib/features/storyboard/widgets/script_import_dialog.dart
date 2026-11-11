@@ -15,6 +15,7 @@ import '../../../theme/components/ink_input.dart';
 import '../../../theme/tokens.dart';
 import '../../notifications/providers/toast_service_provider.dart';
 import '../providers/script_import_controller.dart';
+import '../models/shot_draft.dart';
 import '../util/script_splitter.dart';
 
 /// 打开剧本导入对话框。[origin] 是第一镜的左上角世界坐标（缺省世界原点）。

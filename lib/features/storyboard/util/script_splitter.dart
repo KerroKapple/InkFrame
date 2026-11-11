@@ -1,31 +1,12 @@
 // SB-1 规则脚本拆分器：一段粘贴来的文本 → 一串分镜草稿。
 //
-// **纯规则，零 LLM**（D-M4-1 拍 A 档）。理由：没有 API key 也能用，行为可断言、
-// 可单测、不花钱；而 LLM 辅助拆分的质量无法断言，成本 ≥L，留作日后可选增强。
+// **纯规则，零 LLM**（D-M4-1 拍 A 档）：没有 API key 也能用，行为可断言、可单测、不花钱。
+// 它仍是默认与兜底；AI 拆分（A2，features/director）是填了 Claude Key 才亮的可选增强，
+// 两者产出同一种 ShotDraft、走同一条建链路径。
 //
-// 纯 Dart，不 import Flutter——拆分是文本处理，与 UI 无关。
+// 拆分本身是纯文本处理，与 UI 无关。
 
-/// 一条待落地的分镜草稿。SB-2 把它变成真的 shot 节点。
-class ShotDraft {
-  const ShotDraft({required this.label, required this.notes});
-
-  /// 节点标题：段首行（已剥编号），超长截断。
-  final String label;
-
-  /// 分镜备注：整段原文（已剥段首编号），保留段内换行。
-  final String notes;
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is ShotDraft && label == other.label && notes == other.notes;
-
-  @override
-  int get hashCode => Object.hash(label, notes);
-
-  @override
-  String toString() => 'ShotDraft($label)';
-}
+import '../models/shot_draft.dart';
 
 /// 拆分策略。
 enum ScriptSplitStrategy {
