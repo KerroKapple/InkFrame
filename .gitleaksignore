@@ -1,0 +1,3 @@
+# gitleaks 已核实的误报（指纹 = 提交:文件:规则:行）。只在 workflow_dispatch 扫全部历史时会撞到；PR 事件只扫本 PR 的提交。
+# 2026-11-23：测试里的占位 key（sk-raw-…，dio_error_mapper 回显截断用例），不是真密钥。
+afeb555402173ab5989fd87fe196d1293c617fb4:test/providers/dio_error_mapper_test.dart:generic-api-key:80

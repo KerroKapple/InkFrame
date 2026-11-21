@@ -1,7 +1,14 @@
 # 手动触发：在 canonical ubuntu runner 上生成 golden 基线并自动提交。
 # 跨平台字体光栅化差异 → 基线必须在 CI 的 ubuntu 上生成，禁止提交本地 Windows/macOS 基线。
-# 用法：Actions → update-goldens → Run workflow（选目标分支）。跑完会把新增/变更的
+# 用法：Actions → update-goldens → Run workflow，目标选 PR 分支。跑完会把新增 / 变更的
 # test/**/goldens/*.png 提交回该分支；随后 node_card_golden_test 自动激活（_goldensPresent）。
+#
+# main 受规则集保护（必须走 PR + 必需检查，无人可绕过）：选 main 会在第一步直接失败，
+# 基线只能进 PR 分支，随 PR 一起合。
+# GITHUB_TOKEN 推上去的提交不会触发 ci，所以 PR 头上没有必需检查 ⇒ 合并按钮是灰的：
+# 跑完本 workflow 后，再对同一分支手动跑一次 ci 和 secret-scan（Actions → ci / secret-scan → Run workflow），
+# 必需检查都绿了才能合。手动跑的 secret-scan 会扫全部历史，历史里已核实的测试假 key 记在 .gitleaksignore。
+# 提交信息不带 [skip ci]：带了的话 squash 进 main 后 main 上的 ci 也会被跳过。
 name: update-goldens
 
 on:
@@ -18,6 +25,11 @@ jobs:
     name: regenerate golden baselines (ubuntu)
     runs-on: ubuntu-latest
     steps:
+      - name: refuse to run on main
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        run: |
+          echo "::error::update-goldens 只能对 PR 分支跑；main 受规则集保护，基线随 PR 合入。"
+          exit 1
       - uses: actions/checkout@v5
       - uses: subosito/flutter-action@v2
         with:
@@ -43,6 +55,6 @@ jobs:
           if git diff --cached --quiet; then
             echo "no golden changes to commit"
           else
-            git commit -m "test(golden): regenerate baselines on ubuntu runner [skip ci]"
+            git commit -m "test(golden): regenerate baselines on ubuntu runner"
             git push
           fi
