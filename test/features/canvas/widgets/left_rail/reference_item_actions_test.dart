@@ -572,6 +572,25 @@ void main() {
       expect(_toastOf(rig.container).shown, isEmpty);
     });
 
+    testWidgets('起名框预填条目名，直接确认就用它', (tester) async {
+      final _Rig rig = await _pump(tester);
+      final ProviderSubscription<AsyncValue<List<Character>>> keep =
+          rig.container.listen(charactersControllerProvider('p1'), (_, _) {});
+      addTearDown(keep.close);
+
+      final Future<void> done = start(rig);
+      await tester.pumpAndSettle();
+      final TextField field = tester.widget<TextField>(
+        find.descendant(of: find.byType(InkNameDialog), matching: find.byType(TextField)),
+      );
+      expect(field.controller!.text, _portrait.name);
+      await tester.tap(find.widgetWithText(FilledButton, _l(rig).characterSave));
+      await tester.pumpAndSettle();
+      await done;
+
+      expect(charactersOf(rig.container).created.single.name, _portrait.name);
+    });
+
     testWidgets('确认 ⇒ 用原图绝对路径调 createFromImage，出成功卡', (tester) async {
       final _Rig rig = await _pump(tester);
       final ProviderSubscription<AsyncValue<List<Character>>> keep =

@@ -3504,4 +3504,93 @@ class AppLocalizationsEn extends AppLocalizations {
   String canvasMarqueeCount(int count) {
     return '$count selected';
   }
+
+  @override
+  String get referenceBlockNoSelection =>
+      'Select one image or video config first';
+
+  @override
+  String get referenceBlockNotConfig =>
+      'Select this shot\'s image or video config';
+
+  @override
+  String referenceBlockProviderNoRefs(String provider) {
+    return '$provider doesn\'t take reference images — switch model';
+  }
+
+  @override
+  String referenceBlockBudgetFull(int max) {
+    return 'Reference images full ($max/$max)';
+  }
+
+  @override
+  String get referenceAlreadyAttached => 'Already using this one';
+
+  @override
+  String get referenceTargetGone => 'That node is no longer on the canvas';
+
+  @override
+  String get referenceImportFailed => 'Couldn\'t import this reference image';
+
+  @override
+  String get referenceAttachFailed => 'Couldn\'t connect the reference';
+
+  @override
+  String get assetsScopeReference => 'Reference';
+
+  @override
+  String referenceCategoryPose(int count) {
+    return 'Poses $count';
+  }
+
+  @override
+  String referenceCategoryPortrait(int count) {
+    return 'Portraits $count';
+  }
+
+  @override
+  String referenceCategoryCostume(int count) {
+    return 'Costumes $count';
+  }
+
+  @override
+  String get referenceAngleAll => 'All angles';
+
+  @override
+  String get referenceSearchHint => 'Search poses, hairstyles, outfits…';
+
+  @override
+  String get referencePickFolder => 'Choose reference folder';
+
+  @override
+  String get referenceChangeFolder => 'Change folder';
+
+  @override
+  String get referenceEmptyNoFolder =>
+      'Point InkFrame at a downloaded reference library (ai-pose-gallery-zh).';
+
+  @override
+  String get referenceEmptyNotFound =>
+      'No reference library found in this folder.';
+
+  @override
+  String referenceMenuAttachPose(String node) {
+    return 'Use as pose reference → $node';
+  }
+
+  @override
+  String referenceMenuAttachPortrait(String node) {
+    return 'Use as face reference → $node';
+  }
+
+  @override
+  String referenceMenuAttachCostume(String node) {
+    return 'Use as outfit reference → $node';
+  }
+
+  @override
+  String get referenceMenuPlace => 'Place on canvas';
+
+  @override
+  String get referenceMenuSaveCharacter => 'Save as character';
 }

@@ -334,6 +334,7 @@ Future<void> saveReferenceAsCharacter(
       hint: ctx.l10n.characterFieldName,
       confirmLabel: ctx.l10n.characterSave,
       cancelLabel: ctx.l10n.commonCancel,
+      initialValue: item.name,
     ),
   );
   final String trimmed = name?.trim() ?? '';
