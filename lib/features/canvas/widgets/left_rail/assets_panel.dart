@@ -19,6 +19,9 @@
 // 删除：当前画布的条目按画布控制器里的实时节点表过一遍（assets_model.assetsWithoutDeleted）——节点删了格子
 // 立刻消失，不等画廊图重读；点格子时节点表里找不到就不选中（选中一个不存在的 id，状态栏写「选中 1」，
 // 检查器却是空的）。
+//
+// 第三段「参考库」：本机下载的姿势 / 人像 / 服装图库，内容整块交给 reference_library_section.dart（不看画廊产物，
+// 不画类型 chip）；本页只管按分段切换显示哪一块，前两段的行为不变。
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -48,6 +51,7 @@ import '../node_card.dart' show nodeTypeLabel;
 import 'assets_model.dart';
 import 'left_panel_parts.dart';
 import 'left_rail_actions.dart';
+import 'reference_library_section.dart';
 
 class AssetsPanel extends ConsumerStatefulWidget {
   const AssetsPanel({super.key, required this.canvasId});
@@ -223,12 +227,17 @@ class _AssetsPanelState extends ConsumerState<AssetsPanel> {
           scope: _scope,
           onChanged: (AssetScope s) => setState(() => _scope = s),
         ),
-        _KindChips(
-          kind: _kind,
-          counts: counts,
-          onChanged: (AssetKindFilter k) => setState(() => _kind = k),
+        if (_scope != AssetScope.reference)
+          _KindChips(
+            kind: _kind,
+            counts: counts,
+            onChanged: (AssetKindFilter k) => setState(() => _kind = k),
+          ),
+        Expanded(
+          child: _scope == AssetScope.reference
+              ? ReferenceLibrarySection(canvasId: widget.canvasId)
+              : body,
         ),
-        Expanded(child: body),
       ],
     );
   }
@@ -299,6 +308,15 @@ class _ScopeSegments extends StatelessWidget {
               label: l.leftRailAssetsWholeProject,
               selected: scope == AssetScope.project,
               onTap: () => onChanged(AssetScope.project),
+            ),
+          ),
+          const SizedBox(width: InkSpacing.s2),
+          Expanded(
+            child: _Segment(
+              key: AssetsPanel.scopeKey(AssetScope.reference),
+              label: l.assetsScopeReference,
+              selected: scope == AssetScope.reference,
+              onTap: () => onChanged(AssetScope.reference),
             ),
           ),
         ],
