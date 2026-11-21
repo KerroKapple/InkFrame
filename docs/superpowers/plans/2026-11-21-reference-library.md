@@ -237,6 +237,6 @@ ARB 键（en / zh），值照下表：
 | 任务 | 工作树 / 分支 | 基底 | 状态 |
 |---|---|---|---|
 | Task 1 | `.claude/worktrees/reference-library` / `feat/reference-library` | origin/main 2509c93 | ✅ 2c892d9 |
-| Task 2–3 | `.claude/worktrees/reference-library-reader` / `feat/reference-library-reader` | 2c892d9 | 🔵 executor（workflow wf_a3598b14-063） |
-| Task 4 | `.claude/worktrees/reference-library-model` / `feat/reference-library-model` | 2c892d9 | 🔵 executor（workflow wf_a3598b14-063） |
-| Task 5–6 | 合并 2–4 之后在 `feat/reference-library` 上做 | — | ⬜ |
+| Task 2–3 | `.claude/worktrees/reference-library-reader` / `feat/reference-library-reader` | 2c892d9 | ✅ 已 cherry-pick 为 3583eed、7250b5a；analyze 干净，测试全绿；变异 M1 M2 M6 均红 |
+| Task 4 | `.claude/worktrees/reference-library-model` / `feat/reference-library-model` | 2c892d9 | ✅ 已 cherry-pick 为 c5efbe0；变异 M3 M4 M5 均红 |
+| Task 5–6 | `.claude/worktrees/reference-library` / `feat/reference-library` | c5efbe0 之后 | 🔵 executor |
