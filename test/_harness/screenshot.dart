@@ -120,10 +120,12 @@ Future<void> pumpScreenshotScene(
         // 必须有 Scaffold：没有 Material 祖先时文字会被画上黄底红字的调试下划线
         // （踩过——截出来整屏文字都带下划线）。真实 app 里这些屏也是挂在
         // InkShell 的 Scaffold 下，所以这里套一层才是和生产一致的渲染。
-        home: RepaintBoundary(
+        // 截图边界包住整个 Navigator（含 Overlay）：弹出菜单、对话框这些浮层也拍得进去。
+        builder: (BuildContext context, Widget? navigator) => RepaintBoundary(
           key: kScreenshotBoundary,
-          child: Scaffold(body: child),
+          child: navigator,
         ),
+        home: Scaffold(body: child),
       ),
     ),
   );

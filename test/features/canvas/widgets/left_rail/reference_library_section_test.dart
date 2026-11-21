@@ -220,6 +220,15 @@ void main() {
   });
 
   group('浏览', () {
+    testWidgets('类别 chip 按文字收宽、同一行排开，不撑满整行', (tester) async {
+      await _pump(tester);
+      final Rect pose = tester.getRect(find.byKey(ReferenceLibrarySection.categoryKey(ReferenceCategory.pose)));
+      final Rect portrait =
+          tester.getRect(find.byKey(ReferenceLibrarySection.categoryKey(ReferenceCategory.portrait)));
+      expect(pose.width, lessThan(241 / 2), reason: 'chip 撑满整行是 Container(alignment) 在 Wrap 里的老坑');
+      expect(portrait.top, pose.top, reason: '两个 chip 应在同一行');
+    });
+
     testWidgets('默认姿势、chip 计数对；切到人像只剩人像；搜索过滤并改计数', (tester) async {
       await _pump(tester);
       final AppLocalizations l = _l(tester);

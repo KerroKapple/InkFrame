@@ -446,16 +446,19 @@ class _ReferenceChip extends StatelessWidget {
       builder: (BuildContext context, bool hovered, bool focused) => Container(
         height: height,
         padding: const EdgeInsets.symmetric(horizontal: InkSpacing.sm),
-        alignment: Alignment.center,
         decoration: BoxDecoration(
           color: selected ? c.accentWash : null,
           border: Border.all(color: selected ? c.accentWashBorder : c.outline),
           borderRadius: BorderRadius.circular(InkRadius.pill),
         ),
-        child: Text(
-          label,
-          maxLines: 1,
-          style: t.micro.copyWith(color: selected ? c.accent : c.fg4),
+        // 宽度按文字收：Container 带 alignment 会在 Wrap 的宽松约束下撑满整行（截图里每个 chip 独占一行）。
+        child: Center(
+          widthFactor: 1,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: t.micro.copyWith(color: selected ? c.accent : c.fg4),
+          ),
         ),
       ),
     );
