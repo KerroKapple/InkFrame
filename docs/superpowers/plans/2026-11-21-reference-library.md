@@ -231,3 +231,12 @@ ARB 键（en / zh），值照下表：
 - [ ] 变异实测：每个任务至少挑一条关键用例，把实现改回去，确认它变红。结果写进 PR 正文。
 - [ ] 截图：素材页「参考库」段，含有图和空态两张，用 fixture 数据、中性路径，附进 PR。
 - [ ] 开 PR 对 `main`。
+
+## 派工表（主会话维护，换会话照此续做）
+
+| 任务 | 工作树 / 分支 | 基底 | 状态 |
+|---|---|---|---|
+| Task 1 | `.claude/worktrees/reference-library` / `feat/reference-library` | origin/main 2509c93 | ✅ 2c892d9 |
+| Task 2–3 | `.claude/worktrees/reference-library-reader` / `feat/reference-library-reader` | 2c892d9 | 🔵 executor（workflow wf_a3598b14-063） |
+| Task 4 | `.claude/worktrees/reference-library-model` / `feat/reference-library-model` | 2c892d9 | 🔵 executor（workflow wf_a3598b14-063） |
+| Task 5–6 | 合并 2–4 之后在 `feat/reference-library` 上做 | — | ⬜ |
