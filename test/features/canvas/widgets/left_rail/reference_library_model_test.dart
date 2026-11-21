@@ -75,7 +75,7 @@ CanvasEdge _edge(
       role: role,
     );
 
-({ReferenceAttachBlock? block, ReferenceAttachPlan? plan}) _plan({
+ReferenceAttachDecision _plan({
   required ReferenceItem item,
   Set<String> selected = const <String>{'cfg'},
   required List<CanvasNode> nodes,
@@ -296,6 +296,9 @@ void main() {
       );
       expect(r.block, ReferenceAttachBlock.budgetFull);
       expect(r.plan, isNull);
+      // 置灰原因「参考图已满 N / N」要的服务商与上限：wanx-image 收 1 张。
+      expect(r.providerId, 'wanx-image');
+      expect(r.maxRefImages, 1);
     });
 
     test('wanx-image 已挂一张 costume 参考库图 ⇒ 不在 pose 的替换集里 ⇒ budgetFull', () {

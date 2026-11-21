@@ -99,8 +99,20 @@ typedef ReferenceAttachPlan = ({
   bool alreadyAttached,
 });
 
+/// [planReferenceAttach] 的结果：[block] 与 [plan] 恰好一个非空。
+///
+/// [providerId] / [maxRefImages] 给置灰原因的文案用（「〈服务商〉不支持参考图」「参考图已满 N / N」）：
+/// 解析出了服务商就报它的 id（不在能力表里也照报），否则 null；[maxRefImages] = 它在能力表里的上限，
+/// 解析不出 / 不在表里 / 判到服务商之前就停了（noSelection / notConfig）时为 0。
+typedef ReferenceAttachDecision = ({
+  ReferenceAttachBlock? block,
+  ReferenceAttachPlan? plan,
+  String? providerId,
+  int maxRefImages,
+});
+
 /// 把 [item] 当参考连到选中节点：block 与 plan 恰好一个非空。
-({ReferenceAttachBlock? block, ReferenceAttachPlan? plan}) planReferenceAttach({
+ReferenceAttachDecision planReferenceAttach({
   required ReferenceItem item,
   required Set<String> selectedIds,
   required List<CanvasNode> nodes,
@@ -109,10 +121,12 @@ typedef ReferenceAttachPlan = ({
   required String? lastUsedImageProviderId,
   required String? lastUsedVideoProviderId,
 }) {
-  ({ReferenceAttachBlock? block, ReferenceAttachPlan? plan}) blocked(
-    ReferenceAttachBlock b,
-  ) =>
-      (block: b, plan: null);
+  ReferenceAttachDecision blocked(
+    ReferenceAttachBlock b, {
+    String? providerId,
+    int maxRefImages = 0,
+  }) =>
+      (block: b, plan: null, providerId: providerId, maxRefImages: maxRefImages);
 
   // 1. 恰好一个、且还在画布上。
   if (selectedIds.length != 1) return blocked(ReferenceAttachBlock.noSelection);
@@ -144,7 +158,11 @@ typedef ReferenceAttachPlan = ({
     }
   }
   if (caps == null || caps.maxRefImages <= 0) {
-    return blocked(ReferenceAttachBlock.providerNoRefs);
+    return blocked(
+      ReferenceAttachBlock.providerNoRefs,
+      providerId: providerId,
+      maxRefImages: caps?.maxRefImages ?? 0,
+    );
   }
 
   // 4. 目标的 data/reference 入边；同类别的进替换集，同一条目 ⇒ 已经是这张。
@@ -168,7 +186,11 @@ typedef ReferenceAttachPlan = ({
 
   // 5. 新增一张才占名额。
   if (replaceEdgeIds.isEmpty && refEdges.length >= caps.maxRefImages) {
-    return blocked(ReferenceAttachBlock.budgetFull);
+    return blocked(
+      ReferenceAttachBlock.budgetFull,
+      providerId: providerId,
+      maxRefImages: caps.maxRefImages,
+    );
   }
 
   return (
@@ -178,5 +200,7 @@ typedef ReferenceAttachPlan = ({
       replaceEdgeIds: replaceEdgeIds,
       alreadyAttached: alreadyAttached,
     ),
+    providerId: providerId,
+    maxRefImages: caps.maxRefImages,
   );
 }

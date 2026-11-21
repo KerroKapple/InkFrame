@@ -1700,5 +1700,17 @@
   "canvasCommandMoveOutOfLane": "Move out of lane “{lane}”",
   "@canvasCommandMoveOutOfLane": {"placeholders":{"lane":{"type":"String"}}},
   "canvasMarqueeCount": "{count} selected",
-  "@canvasMarqueeCount": {"placeholders":{"count":{"type":"int"}}}
+  "@canvasMarqueeCount": {"placeholders":{"count":{"type":"int"}}},
+  "referenceBlockNoSelection": "Select one image or video config first",
+  "@referenceBlockNoSelection": {"description": "Reference library: why 'use as reference' is unavailable — not exactly one node selected"},
+  "referenceBlockNotConfig": "Select this shot's image or video config",
+  "@referenceBlockNotConfig": {"description": "Reference library: why 'use as reference' is unavailable — the selected node is not an image/video config (e.g. a shot node)"},
+  "referenceBlockProviderNoRefs": "{provider} doesn't take reference images — switch model",
+  "@referenceBlockProviderNoRefs": {"description": "Reference library: the selected config's provider accepts no reference images", "placeholders":{"provider":{"type":"String"}}},
+  "referenceBlockBudgetFull": "Reference images full ({max}/{max})",
+  "@referenceBlockBudgetFull": {"description": "Reference library: the selected config already has as many reference images as its provider accepts", "placeholders":{"max":{"type":"int"}}},
+  "referenceAlreadyAttached": "Already using this one",
+  "referenceTargetGone": "That node is no longer on the canvas",
+  "referenceImportFailed": "Couldn't import this reference image",
+  "referenceAttachFailed": "Couldn't connect the reference"
 }
