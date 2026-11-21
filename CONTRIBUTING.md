@@ -15,9 +15,9 @@ main        ← 集成主干。所有 PR 合这里。Release 时在 main 上打 
 ```
 
 **铁律：**
-- `main` 受保护。禁止直接 push，全部走 PR
+- `main` 受 GitHub 规则集「main protection」保护（Settings → Rules → Rulesets），没有任何人或机器人可以绕过：必须走 PR；必需检查 `analyze + lint` / `test + coverage` / `golden` / `release scripts` / `gitleaks` 全绿才能合；禁止 force push 和删除分支；必需审批数为 0（单人维护，GitHub 不允许自己批自己的 PR）
 - feature 分支超过 3 天必须每日 rebase main，避免大合并冲突
-- **线性历史强制**：`main` 禁止一切 merge commit。所有 PR **只允许 Squash 或 Rebase merge**，禁止 `--no-ff` 与 `Create a merge commit`。GitHub Branch Protection 已开启 `Require linear history`，非线性 push 会被远端直接拒
+- **线性历史强制**：`main` 禁止一切 merge commit。所有 PR **只允许 Squash 或 Rebase merge**，禁止 `--no-ff` 与 `Create a merge commit`。规则集已开启 `Require linear history`，非线性 push 会被远端直接拒
 
 ## 命名规范
 
@@ -59,7 +59,7 @@ main        ← 集成主干。所有 PR 合这里。Release 时在 main 上打 
 3. `git commit` 时 pre-commit hook 自动跑 5 条硬规则（i18n / tokens / magic strings / 直接实例化 / Disposable）
 4. `git push` 时 pre-push hook 自动跑 `flutter test`
 5. 开 PR 到 `main`
-6. CI 全绿 + 至少 1 个 approve 才能合
+6. 必需检查全绿才能合（规则集强制；不要求 approve）
 7. 合并策略（**全线性，零 merge commit**）：
    - `feature/*` / `fix/*` / `chore/*` / `docs/*` / `test/*` → `main`：**Squash merge**（一个 PR 压一个 commit 进 main）
    - `release/*` / `hotfix/*` → `main`：**Rebase & merge**（保留每个 commit，无 merge commit；合入后在 `main` 打 annotated tag）

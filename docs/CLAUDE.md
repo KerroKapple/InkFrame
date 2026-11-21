@@ -399,7 +399,7 @@ lib/
 
 ### Git
 
-- `main` is protected (GitHub Flow) — all changes land via feature branch + PR, never commit/push directly
+- `main` is protected by the GitHub ruleset "main protection" (no bypass actors): PR required, required checks `analyze + lint` / `test + coverage` / `golden` / `release scripts` / `gitleaks`, no force push / deletion, linear history, 0 required approvals — all changes land via feature branch + PR
 - Every commit must: compile clean, pass all tests, have full i18n coverage
 - Commit messages: conventional commits (feat/fix/refactor/test/docs)
 - No `--no-verify`, no skipping hooks
