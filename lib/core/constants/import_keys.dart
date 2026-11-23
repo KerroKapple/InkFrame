@@ -12,4 +12,12 @@ abstract final class ImportKeys {
 
   /// [origin] 的取值：导入。
   static const String originImport = 'import';
+
+  /// 从参考库导入时：参考库条目 id（ReferenceItem.id）。普通导入不写。
+  /// 「当参考」靠它认出「已经是这张」。
+  static const String referenceItemId = 'reference_item_id';
+
+  /// 从参考库导入时：类别（ReferenceCategory.name：pose / portrait / costume）。普通导入不写。
+  /// 「当参考」靠它找同类别的旧参考边来替换。
+  static const String referenceCategory = 'reference_category';
 }

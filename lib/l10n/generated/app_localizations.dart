@@ -6043,6 +6043,144 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} selected'**
   String canvasMarqueeCount(int count);
+
+  /// Reference library: why 'use as reference' is unavailable — not exactly one node selected
+  ///
+  /// In en, this message translates to:
+  /// **'Select one image or video config first'**
+  String get referenceBlockNoSelection;
+
+  /// Reference library: why 'use as reference' is unavailable — the selected node is not an image/video config (e.g. a shot node)
+  ///
+  /// In en, this message translates to:
+  /// **'Select this shot\'s image or video config'**
+  String get referenceBlockNotConfig;
+
+  /// Reference library: the selected config's provider accepts no reference images
+  ///
+  /// In en, this message translates to:
+  /// **'{provider} doesn\'t take reference images — switch model'**
+  String referenceBlockProviderNoRefs(String provider);
+
+  /// Reference library: the selected config already has as many reference images as its provider accepts
+  ///
+  /// In en, this message translates to:
+  /// **'Reference images full ({max}/{max})'**
+  String referenceBlockBudgetFull(int max);
+
+  /// No description provided for @referenceAlreadyAttached.
+  ///
+  /// In en, this message translates to:
+  /// **'Already using this one'**
+  String get referenceAlreadyAttached;
+
+  /// No description provided for @referenceTargetGone.
+  ///
+  /// In en, this message translates to:
+  /// **'That node is no longer on the canvas'**
+  String get referenceTargetGone;
+
+  /// No description provided for @referenceImportFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t import this reference image'**
+  String get referenceImportFailed;
+
+  /// No description provided for @referenceAttachFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t connect the reference'**
+  String get referenceAttachFailed;
+
+  /// Assets panel segment: browse the local reference library (poses, portraits, outfits)
+  ///
+  /// In en, this message translates to:
+  /// **'Reference'**
+  String get assetsScopeReference;
+
+  /// No description provided for @referenceCategoryPose.
+  ///
+  /// In en, this message translates to:
+  /// **'Poses {count}'**
+  String referenceCategoryPose(int count);
+
+  /// No description provided for @referenceCategoryPortrait.
+  ///
+  /// In en, this message translates to:
+  /// **'Portraits {count}'**
+  String referenceCategoryPortrait(int count);
+
+  /// No description provided for @referenceCategoryCostume.
+  ///
+  /// In en, this message translates to:
+  /// **'Costumes {count}'**
+  String referenceCategoryCostume(int count);
+
+  /// No description provided for @referenceAngleAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All angles'**
+  String get referenceAngleAll;
+
+  /// No description provided for @referenceSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search poses, hairstyles, outfits…'**
+  String get referenceSearchHint;
+
+  /// No description provided for @referencePickFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose reference folder'**
+  String get referencePickFolder;
+
+  /// No description provided for @referenceChangeFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Change folder'**
+  String get referenceChangeFolder;
+
+  /// No description provided for @referenceEmptyNoFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Point InkFrame at a downloaded reference library (ai-pose-gallery-zh).'**
+  String get referenceEmptyNoFolder;
+
+  /// No description provided for @referenceEmptyNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No reference library found in this folder.'**
+  String get referenceEmptyNotFound;
+
+  /// No description provided for @referenceMenuAttachPose.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as pose reference → {node}'**
+  String referenceMenuAttachPose(String node);
+
+  /// No description provided for @referenceMenuAttachPortrait.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as face reference → {node}'**
+  String referenceMenuAttachPortrait(String node);
+
+  /// No description provided for @referenceMenuAttachCostume.
+  ///
+  /// In en, this message translates to:
+  /// **'Use as outfit reference → {node}'**
+  String referenceMenuAttachCostume(String node);
+
+  /// No description provided for @referenceMenuPlace.
+  ///
+  /// In en, this message translates to:
+  /// **'Place on canvas'**
+  String get referenceMenuPlace;
+
+  /// No description provided for @referenceMenuSaveCharacter.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as character'**
+  String get referenceMenuSaveCharacter;
 }
 
 class _AppLocalizationsDelegate

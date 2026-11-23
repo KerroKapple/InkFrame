@@ -1,0 +1,46 @@
+[
+ {
+  "id": "pose_std_P001_front",
+  "体系": "全身单人・标准系",
+  "姿势编号": "P001",
+  "分类": "站姿",
+  "姿势名称": "自然站立・双手垂放",
+  "角度": "正面",
+  "缩略图": "thumbs/pose_std_P001_front.png",
+  "原图": "img/pose_std_P001_front.png",
+  "检索": "pose_std_P001_front 全身单人・标准系站姿自然站立・双手垂放正面"
+ },
+ {
+  "id": "pose_std_P001_side",
+  "体系": "全身单人・标准系",
+  "姿势编号": "P001",
+  "分类": "站姿",
+  "姿势名称": "自然站立・双手垂放",
+  "角度": "侧面",
+  "缩略图": "thumbs/pose_std_P001_side.png",
+  "原图": "img/pose_std_P001_side.png",
+  "检索": "pose_std_P001_side 全身单人・标准系站姿自然站立・双手垂放侧面"
+ },
+ {
+  "id": "pose_sexy_P001_front",
+  "体系": "全身单人・性感系",
+  "姿势编号": "P001",
+  "分类": "站姿",
+  "姿势名称": "成人向条目（应被隐藏）",
+  "角度": "正面",
+  "缩略图": "thumbs/pose_sexy_P001_front.png",
+  "原图": "img/pose_sexy_P001_front.png",
+  "检索": "pose_sexy_P001_front 全身单人・性感系"
+ },
+ {
+  "id": "pose_couple_P001_front",
+  "体系": "双人缠绵",
+  "姿势编号": "P001",
+  "分类": "站姿",
+  "姿势名称": "成人向条目（应被隐藏）",
+  "角度": "正面",
+  "缩略图": "thumbs/pose_couple_P001_front.png",
+  "原图": "img/pose_couple_P001_front.png",
+  "检索": "pose_couple_P001_front 双人缠绵"
+ }
+]

@@ -1,4 +1,4 @@
-// AppPreferences：应用级 UI 偏好（主题/对比度/缩放/语言/上次会话/通知）。
+// AppPreferences：应用级 UI 偏好（主题/对比度/缩放/语言/上次会话/通知/参考库文件夹）。
 //
 // 持久化到 <root>/config/preferences.json——属应用配置、非项目数据，刻意不入 PG。
 // 用手写不可变类（与 canvas 模型同例外）：避免为一个配置 DTO 引 freezed/json 代码生成。
@@ -28,6 +28,7 @@ class AppPreferences {
     this.notificationSound = 'inkframe',
     this.notificationSoundFile,
     this.toastDwell = 'standard',
+    this.referenceLibraryRoot,
   });
 
   /// 'dark' | 'light' | 'system'
@@ -80,6 +81,9 @@ class AppPreferences {
   /// 通知卡停留时长：'standard' | 'long' | 'never'（ToastDwell.name）。
   final String toastDwell;
 
+  /// 参考库文件夹（本机下载的 ai-pose-gallery-zh 图库根目录，绝对路径）；null = 还没选。
+  final String? referenceLibraryRoot;
+
   AppPreferences copyWith({
     String? themePreference,
     bool? highContrast,
@@ -105,6 +109,7 @@ class AppPreferences {
     String? notificationSoundFile,
     bool clearNotificationSoundFile = false,
     String? toastDwell,
+    String? referenceLibraryRoot,
   }) {
     return AppPreferences(
       themePreference: themePreference ?? this.themePreference,
@@ -134,6 +139,7 @@ class AppPreferences {
           ? null
           : (notificationSoundFile ?? this.notificationSoundFile),
       toastDwell: toastDwell ?? this.toastDwell,
+      referenceLibraryRoot: referenceLibraryRoot ?? this.referenceLibraryRoot,
     );
   }
 
@@ -157,6 +163,7 @@ class AppPreferences {
         'notification_sound': notificationSound,
         'notification_sound_file': notificationSoundFile,
         'toast_dwell': toastDwell,
+        'reference_library_root': referenceLibraryRoot,
       };
 
   /// 容错解析：缺失/类型不符/非法值一律退默认，绝不抛——损坏的偏好文件不该炸启动。
@@ -182,6 +189,7 @@ class AppPreferences {
     final ns = m['notification_sound'];
     final nsf = m['notification_sound_file'];
     final td = m['toast_dwell'];
+    final rlr = m['reference_library_root'];
     return AppPreferences(
       themePreference:
           pref is String && allowedTheme.contains(pref) ? pref : 'dark',
@@ -204,6 +212,7 @@ class AppPreferences {
           ns is String && allowedSound.contains(ns) ? ns : 'inkframe',
       notificationSoundFile: nsf is String && nsf.isNotEmpty ? nsf : null,
       toastDwell: td is String && allowedDwell.contains(td) ? td : 'standard',
+      referenceLibraryRoot: rlr is String && rlr.isNotEmpty ? rlr : null,
     );
   }
 
@@ -229,7 +238,8 @@ class AppPreferences {
           other.canvasCardColor == canvasCardColor &&
           other.notificationSound == notificationSound &&
           other.notificationSoundFile == notificationSoundFile &&
-          other.toastDwell == toastDwell;
+          other.toastDwell == toastDwell &&
+          other.referenceLibraryRoot == referenceLibraryRoot;
 
   @override
   int get hashCode => Object.hash(
@@ -252,5 +262,6 @@ class AppPreferences {
         notificationSound,
         notificationSoundFile,
         toastDwell,
+        referenceLibraryRoot,
       );
 }

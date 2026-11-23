@@ -16,8 +16,8 @@ import '../../../gallery/util/gallery_meta.dart';
 import '../../models/canvas_node.dart';
 import '../../util/take_numbers.dart';
 
-/// 分段：本画布 / 项目全部。
-enum AssetScope { canvas, project }
+/// 分段：本画布 / 项目全部 / 参考库。参考库段不看画廊产物，内容在 reference_library_section.dart。
+enum AssetScope { canvas, project, reference }
 
 /// 类型 chip：全部 / 图片 / 视频。
 enum AssetKindFilter { all, image, video }
@@ -25,7 +25,7 @@ enum AssetKindFilter { all, image, video }
 /// 三个 chip 的计数（随分段变）。
 typedef AssetCounts = ({int all, int image, int video});
 
-/// 分段过滤：本画布 = 只留 [canvasId] 的产物；项目全部 = 原样。保持画廊的聚合序（新 → 旧）。
+/// 分段过滤：本画布 = 只留 [canvasId] 的产物；项目全部 = 原样；参考库 = 没有画廊产物。保持画廊的聚合序（新 → 旧）。
 List<GalleryItem> assetsInScope(
   List<GalleryItem> items, {
   required AssetScope scope,
@@ -37,6 +37,7 @@ List<GalleryItem> assetsInScope(
           for (final GalleryItem i in items)
             if (i.canvasId == canvasId) i,
         ],
+      AssetScope.reference => const <GalleryItem>[],
     };
 
 /// 删掉的不显示：[canvasId]（当前画布）的条目，节点已不在 [liveNodes]（画布控制器里的实时节点表）里的

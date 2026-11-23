@@ -281,4 +281,45 @@ void main() {
     expect(on == off, isFalse);
     expect(on.hashCode == off.hashCode, isFalse);
   });
+
+  group('参考库文件夹', () {
+    test('fromMap 往返后值不变', () {
+      final p = AppPreferences.fromMap(<String, Object?>{
+        'reference_library_root': 'D:/x',
+      });
+      expect(p.referenceLibraryRoot, 'D:/x');
+      expect(p.toMap()['reference_library_root'], 'D:/x');
+      expect(AppPreferences.fromMap(p.toMap()), p);
+    });
+
+    test('缺这个键 ⇒ null（老用户的 preferences.json）', () {
+      expect(
+        AppPreferences.fromMap(const <String, Object?>{}).referenceLibraryRoot,
+        isNull,
+      );
+    });
+
+    test('值不是字符串 / 空字符串 ⇒ null', () {
+      expect(
+        AppPreferences.fromMap(<String, Object?>{'reference_library_root': 3})
+            .referenceLibraryRoot,
+        isNull,
+      );
+      expect(
+        AppPreferences.fromMap(<String, Object?>{'reference_library_root': ''})
+            .referenceLibraryRoot,
+        isNull,
+      );
+    });
+
+    test('copyWith 置位 / 不传保留；参与 ==/hashCode', () {
+      const p = AppPreferences();
+      final q = p.copyWith(referenceLibraryRoot: 'D:/lib');
+      expect(q.referenceLibraryRoot, 'D:/lib');
+      expect(q.copyWith().referenceLibraryRoot, 'D:/lib');
+      expect(q == p, isFalse);
+      expect(q.hashCode == p.hashCode, isFalse);
+      expect(q == p.copyWith(referenceLibraryRoot: 'D:/lib'), isTrue);
+    });
+  });
 }

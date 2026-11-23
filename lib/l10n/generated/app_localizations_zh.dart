@@ -3350,4 +3350,89 @@ class AppLocalizationsZh extends AppLocalizations {
   String canvasMarqueeCount(int count) {
     return '已选 $count';
   }
+
+  @override
+  String get referenceBlockNoSelection => '先选中一镜的图像或视频配置';
+
+  @override
+  String get referenceBlockNotConfig => '选中这一镜的图像或视频配置';
+
+  @override
+  String referenceBlockProviderNoRefs(String provider) {
+    return '$provider 不支持参考图，换一个模型再试';
+  }
+
+  @override
+  String referenceBlockBudgetFull(int max) {
+    return '参考图已满 $max / $max';
+  }
+
+  @override
+  String get referenceAlreadyAttached => '已经是这张';
+
+  @override
+  String get referenceTargetGone => '目标已不在画布上';
+
+  @override
+  String get referenceImportFailed => '这张参考图导入失败';
+
+  @override
+  String get referenceAttachFailed => '参考图连线失败';
+
+  @override
+  String get assetsScopeReference => '参考库';
+
+  @override
+  String referenceCategoryPose(int count) {
+    return '姿势 $count';
+  }
+
+  @override
+  String referenceCategoryPortrait(int count) {
+    return '人像 $count';
+  }
+
+  @override
+  String referenceCategoryCostume(int count) {
+    return '服装 $count';
+  }
+
+  @override
+  String get referenceAngleAll => '全部视角';
+
+  @override
+  String get referenceSearchHint => '搜索：站姿、回眸、短发…';
+
+  @override
+  String get referencePickFolder => '选择参考库文件夹';
+
+  @override
+  String get referenceChangeFolder => '换文件夹';
+
+  @override
+  String get referenceEmptyNoFolder => '选一个已下载的参考库文件夹（ai-pose-gallery-zh）。';
+
+  @override
+  String get referenceEmptyNotFound => '这个文件夹里没找到参考库。';
+
+  @override
+  String referenceMenuAttachPose(String node) {
+    return '当姿势参考 → $node';
+  }
+
+  @override
+  String referenceMenuAttachPortrait(String node) {
+    return '当长相参考 → $node';
+  }
+
+  @override
+  String referenceMenuAttachCostume(String node) {
+    return '当服装参考 → $node';
+  }
+
+  @override
+  String get referenceMenuPlace => '只放进画布';
+
+  @override
+  String get referenceMenuSaveCharacter => '存为角色';
 }

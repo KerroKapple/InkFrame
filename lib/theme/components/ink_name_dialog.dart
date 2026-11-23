@@ -27,7 +27,11 @@ class InkNameDialog extends StatefulWidget {
     required this.hint,
     required this.confirmLabel,
     required this.cancelLabel,
+    this.initialValue = '',
   });
+
+  /// 打开时输入框里预填的名字（全选，直接打字即覆盖）；默认空。
+  final String initialValue;
 
   final String title;
   final String hint;
@@ -41,7 +45,8 @@ class InkNameDialog extends StatefulWidget {
 class _InkNameDialogState extends State<InkNameDialog> {
   /// controller 的生命周期归 dialog 自身——退场动画期间 TextField 仍引用它，
   /// 调用方在 showDialog 返回后立即 dispose 会炸。
-  final TextEditingController _ctrl = TextEditingController();
+  late final TextEditingController _ctrl = TextEditingController(text: widget.initialValue)
+    ..selection = TextSelection(baseOffset: 0, extentOffset: widget.initialValue.length);
 
   @override
   void dispose() {
