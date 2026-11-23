@@ -15,6 +15,9 @@
 //   thumbnail_url：先看活着的控制器，可成功那一刻那里的 result 节点通常还是占位版本
 //  （CanvasJobListener 发起的重拉还没回来），所以拿不到时按 resultNodeId 读一次库——
 //   首帧缩略图在发出成功之前就已写进 type_config。读失败就落到类型图标，不拦通知。
+// - 「当前仍是 take N」：这一镜固定在别的 take 上时，新 take 到了也不顶替它——完成卡 body 说清楚，
+//   secondary 给「设为当前」（走 canvas/providers/current_take_controller.dart，与画布上的入口同一条路）。
+//   固定信息同样只从活着的节点控制器里拿；画布没开着就不写，卡片与没固定时一样。
 // - 「查看」要一个 ProjectRef（外壳换项目必须带名字）：任务属于外壳当前项目时直接用它，
 //   否则从 Studio 一直开着的工作库列表里找名字；都拿不到就不给这个按钮，绝不挂一个
 //   点了没反应的按钮。
@@ -31,8 +34,12 @@ import '../../../core/interfaces/toast_service.dart';
 import '../../../l10n/generated/app_localizations.dart';
 import '../../../l10n/l10n_x.dart';
 import '../../canvas/models/canvas_node.dart';
+import '../../canvas/models/canvas_node_take.dart';
 import '../../canvas/providers/canvas_nodes_controller.dart';
 import '../../canvas/providers/canvas_focus_request.dart';
+import '../../canvas/providers/current_take_controller.dart';
+import '../../canvas/util/node_artifacts.dart';
+import '../../canvas/util/take_numbers.dart';
 import '../../generation/models/job_state.dart';
 import '../../generation/providers/jobs_registry.dart';
 import '../../shell/models/shell_state.dart';
@@ -87,6 +94,8 @@ class _JobNotificationListenerState
     final List<CanvasNode>? nodes = _aliveNodes(job.canvasId);
     final String? label = _labelOf(_find(nodes, job.sourceNodeId));
     final ToastAction? view = _viewAction(job);
+    final int? stillCurrent = _stillCurrentTake(job, nodes);
+    final ToastAction? setCurrent = stillCurrent == null ? null : _setCurrentAction(job, l);
     String? thumbnail = _thumbnailPath(job, nodes);
     if (thumbnail == null && !_isImage(job.artifactPath)) {
       thumbnail = await _storedThumbnail(job);
@@ -97,10 +106,39 @@ class _JobNotificationListenerState
               ? l.jobNotifySucceededGeneric
               : l.jobNotifySucceeded(label),
           kind: ToastKind.success,
+          body: stillCurrent == null ? null : l.jobNotifyStillCurrentTake(stillCurrent),
           thumbnailPath: thumbnail,
           primary: view,
+          secondary: setCurrent,
           chime: true,
         );
+  }
+
+  /// 新 take 到达时这一镜仍然固定在别的 take 上 ⇒ 那张的 take 号；否则 null（卡片与没有固定时一样）。
+  ///
+  /// 只看还活着的画布节点控制器（[nodes]）：画布没开着拿不到固定信息，照旧不写（设计缺口 ③）。
+  /// 固定的那张要还在候选里（currentResultFor 认它）且不是这次的新产物。号走 takeNumbersOn；新产物还没进
+  /// 内存时固定那张若是名下唯一一张，它不在号表里——那就是 take 1。
+  static int? _stillCurrentTake(JobSucceeded job, List<CanvasNode>? nodes) {
+    final CanvasNode? config = _find(nodes, job.sourceNodeId);
+    if (nodes == null || config == null || config.role != NodeRole.config) return null;
+    final String? pin = config.pinnedResultId;
+    if (pin == null || pin == job.resultNodeId) return null;
+    final CanvasNode? current = currentResultFor(sourceNodeId: config.id, nodes: nodes);
+    if (current == null || current.id != pin) return null;
+    return takeNumbersOn(nodes)[pin] ?? 1;
+  }
+
+  /// 「设为当前」：把这次的新产物设为当前（与检查器历史页 / 右键菜单同一条路）。画布此刻不在内存里也照样做——
+  /// setCurrent 自己会先保活并等节点控制器加载完。
+  ToastAction? _setCurrentAction(JobSucceeded job, AppLocalizations l) {
+    final String? resultNodeId = job.resultNodeId;
+    if (resultNodeId == null) return null;
+    final String canvasId = job.canvasId;
+    return ToastAction(l.takeSetCurrent, () {
+      if (!mounted) return;
+      ref.read(currentTakeControllerProvider(canvasId)).setCurrent(resultNodeId, l: l).ignore();
+    });
   }
 
   static bool _isImage(String path) =>

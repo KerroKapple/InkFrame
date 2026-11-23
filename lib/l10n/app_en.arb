@@ -1734,5 +1734,19 @@
   "referenceMenuAttachCostume": "Use as outfit reference → {node}",
   "@referenceMenuAttachCostume": {"placeholders":{"node":{"type":"String"}}},
   "referenceMenuPlace": "Place on canvas",
-  "referenceMenuSaveCharacter": "Save as character"
+  "referenceMenuSaveCharacter": "Save as character",
+  "takeSetCurrent": "Set as current",
+  "takeCurrentBadge": "Current",
+  "takePinnedBadge": "Pinned",
+  "takeNotAdopted": "Not used",
+  "takeCardCaption": "take {number} / {total}",
+  "@takeCardCaption": {"placeholders":{"number":{"type":"int"},"total":{"type":"int"}}},
+  "takeCardCaptionCurrent": "take {number} / {total} · current",
+  "@takeCardCaptionCurrent": {"placeholders":{"number":{"type":"int"},"total":{"type":"int"}}},
+  "takeCardCaptionNotAdopted": "take {number} / {total} · not used",
+  "@takeCardCaptionNotAdopted": {"placeholders":{"number":{"type":"int"},"total":{"type":"int"}}},
+  "canvasCommandSetCurrentTake": "Set as current · take {number}",
+  "@canvasCommandSetCurrentTake": {"placeholders":{"number":{"type":"int"}}},
+  "jobNotifyStillCurrentTake": "Current is still take {number}",
+  "@jobNotifyStillCurrentTake": {"placeholders":{"number":{"type":"int"}}}
 }

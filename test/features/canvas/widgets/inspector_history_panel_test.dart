@@ -22,6 +22,8 @@ import 'package:inkframe/features/canvas/widgets/inspector_history_panel.dart';
 import 'package:inkframe/features/shell/models/shell_state.dart';
 import 'package:inkframe/l10n/generated/app_localizations.dart';
 import 'package:inkframe/l10n/l10n_x.dart';
+import 'package:inkframe/theme/components/ink_icon.dart';
+import 'package:inkframe/theme/icons/ink_glyph.dart';
 import 'package:inkframe/theme/primitives/ink_activatable.dart';
 import 'package:inkframe/theme/tokens.dart';
 
@@ -94,7 +96,32 @@ const List<CanvasEdge> _edges = <CanvasEdge>[
 
 List<CanvasNode> get _all => <CanvasNode>[_config, _r1, _r2, _r3, _other, _blank, _soloConfig, _soloTake];
 
-Future<void> _pumpPanel(WidgetTester tester, CanvasNode selected) async {
+/// harness 的 FakeNodesController 没有 patchTypeConfigMany（真实现会去读未覆盖的 unitOfWorkProvider）：
+/// 这里补一个内存合并的覆盖，并记下收到的 patch。
+class _PatchableNodes extends FakeNodesController {
+  _PatchableNodes(super.seed);
+
+  final List<Map<String, Map<String, Object?>>> patches = <Map<String, Map<String, Object?>>>[];
+
+  @override
+  Future<void> patchTypeConfigMany(Map<String, Map<String, Object?>> patches) async {
+    this.patches.add(patches);
+    state = AsyncData<List<CanvasNode>>(<CanvasNode>[
+      for (final CanvasNode n in state.valueOrNull ?? const <CanvasNode>[])
+        if (patches[n.id] case final Map<String, Object?> p)
+          n.copyWith(typeConfig: <String, Object?>{...n.typeConfig, ...p})
+        else
+          n,
+    ]);
+  }
+}
+
+/// 固定了 r2 的配置节点（r3 比它新 ⇒ 未采用）。
+final CanvasNode _pinnedConfig = _config.copyWith(
+  typeConfig: <String, Object?>{..._config.typeConfig, 'pinned_result_id': 'r2'},
+);
+
+Future<void> _pumpPanel(WidgetTester tester, CanvasNode selected, {List<CanvasNode>? nodes}) async {
   await pumpInkApp(
     tester,
     Scaffold(
@@ -108,7 +135,7 @@ Future<void> _pumpPanel(WidgetTester tester, CanvasNode selected) async {
       ),
     ),
     overrides: <Override>[
-      canvasNodesControllerProvider.overrideWith(() => FakeNodesController(_all)),
+      canvasNodesControllerProvider.overrideWith(() => _PatchableNodes(nodes ?? _all)),
       canvasEdgesControllerProvider.overrideWith(() => _Edges(_edges)),
       fileResolverServiceProvider.overrideWithValue(StubFileResolver()),
       clockProvider.overrideWithValue(FakeClock(_now)),
@@ -214,6 +241,84 @@ void main() {
       final AppLocalizations l = _l(tester);
       expect(find.text(l.inspectorHistoryEmpty), findsOneWidget);
       expect(find.byType(InkActivatable), findsNothing);
+    });
+  });
+
+  // tc-set-current：「当前」徽标 + 图钉、非当前行的「设为当前」。
+  //
+  // 变异对照：
+  // - 历史页按钮的手势冒泡到行（点按钮也单选 + 居中）⇒「非当前行有「设为当前」，点它固定且不改选中」红。
+  // - 固定时不画图钉 ⇒「当前那行写「当前」，固定时带图钉」红。
+  // - 不看来源配置在不在（直接用 resultTakeStatusOf 的结果）⇒「来源配置已删：兄弟行不画…」红。
+  group('当前 take', () {
+    Finder pinIn(String id) => _inRow(
+          id,
+          find.byWidgetPredicate((Widget w) => w is InkIcon && w.glyph == InkGlyph.pin),
+        );
+
+    testWidgets('没固定：最新那行写「当前」、不画图钉', (tester) async {
+      await _pumpPanel(tester, _config);
+      final AppLocalizations l = _l(tester);
+      expect(find.byKey(InspectorHistoryPanel.currentBadgeKey('r3')), findsOneWidget);
+      expect(_inRow('r3', find.text(l.takeCurrentBadge)), findsOneWidget);
+      expect(pinIn('r3'), findsNothing, reason: '没固定：当前是最新，不画图钉');
+      expect(find.byKey(InspectorHistoryPanel.currentBadgeKey('r2')), findsNothing);
+      expect(find.byKey(InspectorHistoryPanel.currentBadgeKey('r1')), findsNothing);
+    });
+
+    testWidgets('当前那行写「当前」，固定时带图钉', (tester) async {
+      // 固定了 r2：它写「当前」并带图钉；r3 不再是当前。
+      await _pumpPanel(
+        tester,
+        _pinnedConfig,
+        nodes: <CanvasNode>[_pinnedConfig, _r1, _r2, _r3],
+      );
+      final AppLocalizations l = _l(tester);
+      expect(_inRow('r2', find.text(l.takeCurrentBadge)), findsOneWidget);
+      expect(pinIn('r2'), findsOneWidget);
+      expect(find.byKey(InspectorHistoryPanel.currentBadgeKey('r3')), findsNothing);
+      expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r3')), findsOneWidget, reason: '非当前的有按钮');
+      expect(_inRow('r2', find.text(l.inspectorHistoryInUse)), findsOneWidget, reason: '「当前」与「在用」两样都画');
+    });
+
+    testWidgets('非当前行有「设为当前」，点它固定且不改选中', (tester) async {
+      await _pumpPanel(tester, _config);
+      final ProviderContainer c = ProviderScope.containerOf(tester.element(find.byType(InspectorHistoryPanel)));
+      expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r3')), findsNothing, reason: '当前那行没有按钮');
+      expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r1')), findsOneWidget);
+      expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r2')), findsOneWidget);
+
+      // 选中 provider 是 autoDispose、单挂面板时树里没人订它：不保活的话，就算手势冒泡执行了 select('r1')，
+      // 帧末它也被回收，下面读到的是重建出来的空集——「两个回调都触发」的变异会漏掉。
+      c.listen(canvasSelectionControllerProvider('c1'), (_, _) {});
+      await tester.tap(find.byKey(InspectorHistoryPanel.setCurrentKey('r1')));
+      for (int i = 0; i < 5; i++) {
+        await tester.pump();
+      }
+
+      final _PatchableNodes nodes = c.read(canvasNodesControllerProvider('c1').notifier) as _PatchableNodes;
+      expect(nodes.patches, <Map<String, Map<String, Object?>>>[
+        <String, Map<String, Object?>>{
+          'cfg': <String, Object?>{'pinned_result_id': 'r1'},
+        },
+      ]);
+      expect(c.read(canvasSelectionControllerProvider('c1')), isEmpty, reason: '按钮不冒泡成行的「单选 + 居中」');
+      // 固定之后 r1 成了当前、带图钉；它的按钮没了。
+      expect(pinIn('r1'), findsOneWidget);
+      expect(find.byKey(InspectorHistoryPanel.setCurrentKey('r1')), findsNothing);
+      // 胶囊（带动作 4 s）走完再收尾。
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('来源配置已删：兄弟行不画「当前」也不画「设为当前」', (tester) async {
+      // cfg 被软删、不在节点表里；它留下的产物仍带着 source_node_id = cfg。
+      await _pumpPanel(tester, _r2, nodes: <CanvasNode>[_r1, _r2, _r3]);
+      expect(_row('r1'), findsOneWidget);
+      expect(_row('r3'), findsOneWidget);
+      for (final String id in <String>['r1', 'r2', 'r3']) {
+        expect(find.byKey(InspectorHistoryPanel.setCurrentKey(id)), findsNothing, reason: '点了只会 noSource，没反应');
+        expect(find.byKey(InspectorHistoryPanel.currentBadgeKey(id)), findsNothing);
+      }
     });
   });
 
