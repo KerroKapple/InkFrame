@@ -346,15 +346,15 @@ flutter test test/features/canvas/widgets/node_card_golden_test.dart
 flutter test --update-goldens test/features/canvas/widgets/node_card_golden_test.dart
 ```
 
-正式基线经 `.github/workflows/update-goldens.yml`（workflow_dispatch）在 ubuntu 上跑
-`--update-goldens` 后自动提交（§8.3）。
+正式基线经 `.github/workflows/update-goldens.yml`（workflow_dispatch，**目标选 PR 分支**）在 ubuntu 上跑
+`--update-goldens` 后自动提交回该分支（§8.3）。机器人的提交不会触发 ci，跑完后对同一分支手动跑一次 ci，必需检查绿了才能合。
 
 **PR 规则**：更新 golden 必须在 PR 描述附一张前后对比图；没有视觉说明的 golden diff 视为未知变更，CR block。
 
 ### 8.3 平台差异
 
 - Golden 基线的 canonical 平台是 CI 的 ubuntu runner——Windows / macOS 上字体光栅化差异会无限 false positive
-- 禁止提交本地 Windows/macOS 生成的基线；用 `.github/workflows/update-goldens.yml`（workflow_dispatch）在 ubuntu 上跑 `--update-goldens` 后自动提交基线
+- 禁止提交本地 Windows/macOS 生成的基线；用 `.github/workflows/update-goldens.yml`（workflow_dispatch）在 ubuntu 上跑 `--update-goldens` 后自动提交到 PR 分支（选 main 会直接失败：main 受规则集保护）
 - `node_card_golden_test.dart` 在基线 PNG 存在时自动启用（`_goldensPresent`），CI golden job 在“有基线却 0 测试运行”时硬失败
 
 ---
